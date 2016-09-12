@@ -19,6 +19,8 @@
  *
  */
 
+// v 0_48
+
 (function forester() {
 
     "use strict";

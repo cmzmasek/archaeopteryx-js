@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_46
+// v 0_48
 
 if (!d3) {
     throw "no d3.js";
@@ -104,28 +104,6 @@ if (!forester) {
         _zoomListener.translate([x, y]);
     }
 
-    /*function toggleChildren(d) {
-     if (d.children) {
-     d._children = d.children;
-     d.children = null;
-     }
-     else if (d._children) {
-     d.children = d._children;
-     d._children = null;
-     }
-     return d;
-     }*/
-
-    /*function click(d) {
-     if (d3.event.defaultPrevented || !d.parent || !d.parent.parent) {
-     return;
-     }
-     d = toggleChildren(d);
-     update(d);
-     if (_settings.reCenterAfterCollapse) {
-     centerNode(d);
-     }
-     }*/
 
     function calcMaxTreeLengthForDisplay() {
         return _settings.rootOffset + _options.nodeLabelGap + ( _maxLabelLength * _options.externalNodeFontSize * 0.5 );
@@ -907,9 +885,9 @@ if (!forester) {
 
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
-        forester.preOrderTraversalX(_treeData, function (d) {
+        forester.preOrderTraversal(_treeData, function (d) {
             if (d._children) {
-                _maxLabelLength = Math.max((2 * _options.collapasedLabelLength) + 5, _maxLabelLength);
+                _maxLabelLength = Math.max((2 * _options.collapasedLabelLength) + 8, _maxLabelLength);
             }
             else if (!d.children) {
                 var l = makeNodeLabel(d);
@@ -917,7 +895,6 @@ if (!forester) {
                     _maxLabelLength = Math.max(l.length, _maxLabelLength);
                 }
             }
-
         });
     }
 
@@ -1378,7 +1355,7 @@ if (!forester) {
         if (query && query.length > 0) {
             _foundNodes0 = search(query);
         }
-        update();
+        update(0, null, true);
     }
 
     function search1() {
@@ -1387,7 +1364,7 @@ if (!forester) {
         if (query && query.length > 0) {
             _foundNodes1 = search(query);
         }
-        update();
+        update(0, null, true);
     }
 
     function search(query) {
@@ -1456,18 +1433,18 @@ if (!forester) {
 
     function changeBranchWidth(e, ui) {
         _options.branchWidthDefault = getSliderValue('branch_width_slider', ui);
-        update();
+        update(0, null, true);
     }
 
     function changeNodeSize(e, ui) {
         _options.internalNodeSize = getSliderValue('node_size_slider', ui);
-        update();
+        update(0, null, true);
     }
 
 
     function changeInternalFontSize(e, ui) {
         _options.internalNodeFontSize = getSliderValue('internal_font_size_slider', ui);
-        update();
+        update(0, null, true);
     }
 
     function changeExternalFontSize(e, ui) {
@@ -1477,7 +1454,7 @@ if (!forester) {
 
     function changeBranchDataFontSize(e, ui) {
         _options.branchDataFontSize = getSliderValue('branch_data_font_size_slider', ui);
-        update();
+        update(0, null, true);
     }
 
     function setRadioButtonValue(id, value) {
@@ -1602,7 +1579,6 @@ if (!forester) {
         $("#internal_nodes_cb").click(internalNodesCbClicked);
 
         $("#external_nodes_cb").click(externalNodesCbClicked);
-
 
         $("#label_color_select_menu").on("change", function () {
             var v = this.value;
