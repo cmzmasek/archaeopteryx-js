@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_48
+// v 0_49
 
 (function forester() {
 
@@ -624,6 +624,16 @@
                 return null;
             }
         }
+    };
+
+    forester.getAllExternalNodes = function (root) {
+        var nodes = [];
+        forester.preOrderTraversalX(root, function (node) {
+            if (!node.children && !node._children) {
+                nodes.push(node);
+            }
+        });
+        return nodes;
     };
 
     forester.calcMaxDepth = function (root) {

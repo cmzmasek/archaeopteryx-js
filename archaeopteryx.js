@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_48
+// v 0_49
 
 if (!d3) {
     throw "no d3.js";
@@ -80,6 +80,7 @@ if (!forester) {
         var distsToRoot = nodes_ary.map(function (n) {
             return n.distToRoot;
         });
+
         var yScale = d3.scale.linear()
             .domain([0, d3.max(distsToRoot)])
             .range([0, width]);
@@ -130,6 +131,7 @@ if (!forester) {
         }
 
         var nodes_ary = _tree(_treeData);
+
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
             if (_w < 1) {
@@ -150,7 +152,9 @@ if (!forester) {
         var gap = _options.nodeLabelGap;
 
         if (_options.phylogram === true) {
-            _yScale = branchLengthScaling(nodes_ary, _w);
+            var extNodes = forester.getAllExternalNodes(_root);
+            //TODO could store these, probably...
+            _yScale = branchLengthScaling(extNodes, _w);
         }
         else {
             d3.scale.linear()
@@ -273,7 +277,7 @@ if (!forester) {
                 var avg = forester.calcAverageTreeHeight(d, descs);
                 var xlength = _options.phylogram ? _yScale(avg) : 0;
                 var start = _options.phylogram ? (-1) : (-10);
-                var ylength = 10;
+                var ylength = 6;
 
                 var l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
                 d3.select(this).select("path").transition().duration(transitionDuration)
@@ -1120,7 +1124,6 @@ if (!forester) {
             }
 
 
-
             var rectWidth = 120;
             var rectHeight = 130;
 
@@ -1499,7 +1502,7 @@ if (!forester) {
 
         c1.css({
             'width': '120px',
-            'height': '560px',
+            'height': '580px',
             'padding': '0.5em',
             'opacity': '0.85',
             'background-color': '#e0e0e0'
@@ -1842,12 +1845,12 @@ if (!forester) {
 
             h = h.concat('<input type="button" value="+" name="incr_depth_collapse_level" id="incr_depth_collapse_level">');
             h = h.concat('</fieldset>');
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Collapse by Node Rank</legend>');
-            h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
-            h = h.concat('<input type="text"  name="rank_collapse_label" id="rank_collapse_label">');
-            h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
-            h = h.concat('</fieldset>');
+            //h = h.concat('<fieldset>');
+            // h = h.concat('<legend>Collapse by Node Rank</legend>');
+            //h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
+            //h = h.concat('<input type="text"  name="rank_collapse_label" id="rank_collapse_label">');
+            //h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
+            // h = h.concat('</fieldset>');
             return h;
         }
 
