@@ -69,8 +69,8 @@
             //phyloxml_test2
             //bcl_2
             //b
-            //pfam00046
             //pfam00046_2
+            //pfam00046
             //m
             //v1
             //v1_2
@@ -78,7 +78,7 @@
             jQuery.get(loc,
                     function (data) {
                         var trees = phyloXmlParser.parse(data, {trim: true, normalize: true});
-                        // console.log(JSON.stringify(trees[0], 1))
+                        console.log(JSON.stringify(trees[0], 1));
                         archaeopteryx.launch('#phylogram1', trees[0], options, settings);
                     },
                     "text")

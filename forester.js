@@ -263,6 +263,15 @@
     };
 
 
+    forester.unCollapseAll = function (node) {
+        forester.preOrderTraversal(node, function (d) {
+            if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+        });
+    };
+
     forester.copyBranchData = function (nodeFrom, nodeTo) {
         nodeTo.width = nodeFrom.width;
         nodeTo.color = nodeFrom.color;
@@ -373,7 +382,7 @@
         return properties;
     };
 
-    
+
     forester.searchData = function (query,
                                     phy,
                                     caseSensitive,
@@ -617,6 +626,66 @@
         }
     };
 
+    forester.calcMaxDepth = function (root) {
+        var max = 0;
+        forester.preOrderTraversalX(root, function (node) {
+            if (!node.children && !node._children) {
+                var steps = forester.calcDepth(node);
+                if (steps > max) {
+                    max = steps;
+                }
+            }
+        });
+        console.log("MAX = " + max);
+        return max;
+    };
+
+    forester.calcDepth = function (node) {
+        var steps = 0;
+        while (node.parent && node.parent.parent) {
+            steps++;
+            node = node.parent;
+        }
+        return steps;
+    };
+
+
+    forester.collapseToDepth = function (phy, root, depth) {
+        if (root.children && root.children.length === 1) {
+            forester.collapseToDepthHelper(root.children[0], 0, depth);
+        }
+    };
+
+    forester.collapseToDepthHelper = function (n, d, depth) {
+        if (!n.children && !n._children) {
+            return;
+        }
+        if (d >= depth) {
+            forester.collapse(n);
+        }
+        else {
+            forester.unCollapse(n);
+            ++d;
+            for (var i = n.children.length - 1; i >= 0; i--) {
+                forester.collapseToDepthHelper(n.children[i], d, depth);
+            }
+        }
+    };
+
+
+    forester.collapse = function (node) {
+        if (node.children) {
+            node._children = node.children;
+            node.children = null;
+        }
+    };
+
+    forester.unCollapse = function (node) {
+        if (node._children) {
+            node.children = node._children;
+            node._children = null;
+        }
+    };
 
     // --------------------------------------------------------------
     // For exporting

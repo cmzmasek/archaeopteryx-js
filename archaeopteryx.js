@@ -67,6 +67,9 @@ if (!forester) {
     var _dynahide_counter = 0;
     var _dynahide_factor = 0;
     var _treeProperties = null;
+    var _depth_collapse_level = -1;
+    var _rank_collapse_level = -1;
+    var _external_nodes = 0;
     var _w = null;
 
 
@@ -140,6 +143,8 @@ if (!forester) {
             return a.parent == b.parent ? 1 : 1;
         });
 
+        updateDepthCollapseDepthDisplay();
+
         var nodes = _tree.nodes(_root).reverse();
         var links = _tree.links(nodes);
         var gap = _options.nodeLabelGap;
@@ -179,7 +184,12 @@ if (!forester) {
             .style("cursor", "pointer")
             .style("opacity", "0")
             .attr('class', 'nodeCircleOptions')
-            .attr("r", 5);
+            .attr("r", function (d) {
+                if (d.parent) {
+                    return 5;
+                }
+                return 0;
+            });
 
         nodeEnter.append("text")
             .attr("class", "extlabel")
@@ -844,6 +854,8 @@ if (!forester) {
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
 
+        _external_nodes = forester.calcExternalNodes(_root);
+
         collectDataForVisualization();
 
         initializeGui();
@@ -1026,6 +1038,8 @@ if (!forester) {
                 if (n.children || n._children) {
                     text += "Number of External Nodes: " + forester.calcExternalNodes(n) + "<br>";
                 }
+                text += "Depth: " + forester.calcDepth(n) + "<br>";
+
 
                 $("<div id='node_data'>" + text + "</div>").dialog();
                 var dialog = $("#node_data");
@@ -1103,18 +1117,9 @@ if (!forester) {
                     d.children = d._children;
                     d._children = null;
                 }
-
             }
 
-            function unCollapseAll(root) {
-                forester.preOrderTraversal(root, function (d) {
-                    if (d._children) {
-                        d.children = d._children;
-                        d._children = null;
-                    }
-                });
 
-            }
 
             var rectWidth = 120;
             var rectHeight = 130;
@@ -1195,7 +1200,7 @@ if (!forester) {
                     }
                 })
                 .on("click", function (d) {
-                    unCollapseAll(d, true);
+                    forester.unCollapseAll(d);
                     update();
                 });
 
@@ -1367,6 +1372,7 @@ if (!forester) {
         update(0, null, true);
     }
 
+
     function search(query) {
         return forester.searchData(query,
             _treeData,
@@ -1511,6 +1517,7 @@ if (!forester) {
 
         c1.append(makeSearchBoxes());
 
+        c1.append(makeAutoCollapse());
 
         var c2 = $('#controls2');
 
@@ -1544,6 +1551,12 @@ if (!forester) {
         $("#zoom_in_y, #zoom_out_y")
             .css({
                 'width': '94px'
+            });
+
+        $("#decr_depth_collapse_level, #incr_depth_collapse_level," +
+            "#decr_rank_collapse_level, #incr_rank_collapse_level")
+            .css({
+                'width': '16px'
             });
 
         $(":radio").checkboxradio({
@@ -1637,7 +1650,7 @@ if (!forester) {
             change: changeBranchDataFontSize
         });
 
-        $("input:text")
+        $("#search0, #search1")
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -1650,6 +1663,22 @@ if (!forester) {
                 'cursor': 'text',
                 'width': '44px'
             });
+
+        $("#depth_collapse_label, #rank_collapse_label")
+            .button()
+            .off('keydown')
+            .off('mouseenter')
+            .off('mousedown')
+            .attr("disabled", "disabled")
+            .css({
+                'font': 'inherit',
+                'color': 'inherit',
+                'text-align': 'center',
+                'outline': 'none',
+                'cursor': 'text',
+                'width': '12px'
+            });
+
 
         $("#zoom_in_y").mousedown(function () {
             zoomInY();
@@ -1675,6 +1704,31 @@ if (!forester) {
         $("#zoom_out_x").mousedown(function () {
             zoomOutX();
             _intervalId = setInterval(zoomOutX, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+        $("#decr_depth_collapse_level").mousedown(function () {
+            decrDepthCollapseLevel();
+            _intervalId = setInterval(decrDepthCollapseLevel, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+        $("#incr_depth_collapse_level").mousedown(function () {
+            incrDepthCollapseLevel();
+            _intervalId = setInterval(incrDepthCollapseLevel, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+        $("#decr_rank_collapse_level").mousedown(function () {
+            decrRankCollapseLevel();
+            _intervalId = setInterval(decrRankCollapseLevel, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+        $("#incr_rank_collapse_level").mousedown(function () {
+            incrRankCollapseLevel();
+            _intervalId = setInterval(incrRankCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
@@ -1778,6 +1832,26 @@ if (!forester) {
             return h;
         }
 
+
+        function makeAutoCollapse() {
+            var h = "";
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Collapse by Node Depth</legend>');
+            h = h.concat('<input type="button" value="-" name="decr_depth_collapse_level" id="decr_depth_collapse_level">');
+            h = h.concat('<input type="text"  name="depth_collapse_label" id="depth_collapse_label">');
+
+            h = h.concat('<input type="button" value="+" name="incr_depth_collapse_level" id="incr_depth_collapse_level">');
+            h = h.concat('</fieldset>');
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Collapse by Node Rank</legend>');
+            h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
+            h = h.concat('<input type="text"  name="rank_collapse_label" id="rank_collapse_label">');
+            h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
+
         function makeVisualControls() {
             var h = "";
             h = h.concat('<div id="accordion">');
@@ -1837,6 +1911,106 @@ if (!forester) {
             }
 
         }
+    }
+
+    function decrDepthCollapseLevel() {
+        console.log("decrDepthCollapseLevel()");
+        if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
+            if (_depth_collapse_level <= 1) {
+                _depth_collapse_level = forester.calcMaxDepth(_root);
+                forester.unCollapseAll(_root);
+            }
+            else {
+                --_depth_collapse_level;
+                forester.collapseToDepth(_treeData, _root, _depth_collapse_level);
+            }
+        }
+        update(null, 0);
+    }
+
+    function incrDepthCollapseLevel() {
+        console.log("incrDepthCollapseLevel()");
+        if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
+            var max = forester.calcMaxDepth(_root);
+            if (_depth_collapse_level >= max) {
+                _depth_collapse_level = 1;
+            }
+            else {
+                forester.unCollapseAll(_root);
+                ++_depth_collapse_level;
+            }
+            forester.collapseToDepth(_treeData, _root, _depth_collapse_level);
+        }
+        update(null, 0);
+    }
+
+    function decrRankCollapseLevel() {
+        console.log("decrRankCollapseLevel()");
+    }
+
+    function incrRankCollapseLevel() {
+        console.log("incrRankCollapseLevel()");
+    }
+
+    function updateDepthCollapseDepthDisplay() {
+        var v = obtainDepthCollapseDepthValue();
+        console.log("v=" + v + ".");
+        $("#depth_collapse_label")
+            .val(" " + v);
+    }
+
+    function obtainDepthCollapseDepthValue() {
+        console.log("_depth_collapse_level=" + _depth_collapse_level);
+        if (!(_treeData && _root)) {
+            return "";
+        }
+        var p = _treeData;
+        if (_external_nodes < 3) {
+            console.log("<3");
+            return "off";
+        }
+        else if (_depth_collapse_level < 0) {
+            console.log("<0");
+            _depth_collapse_level = forester.calcMaxDepth(_root);
+            return "off";
+        }
+        else if (_depth_collapse_level == forester.calcMaxDepth(_root)) {
+            console.log("==");
+            return "off";
+        }
+        return _depth_collapse_level;
+    }
+
+    /*function obtainRankCollapseDepthValue() {
+     if ( !_treeData || _root) {
+     return "";
+     }
+     var p = _treeData;
+     if ( forester.calcExternalNodes(_root) < 3 ) {
+     return "off";
+     }
+     else {
+     final String ranks[] = PhylogenyMethods.obtainPresentRanksSorted( p );
+     if ( ranks.length < 1 ) {
+     return "off";
+     }
+     else if ( tp.getRankCollapseRankValue() < 0 ) {
+     tp.setRankCollapseRankValue( ranks.length - 1 );
+     return "off";
+     }
+     else if ( tp.getRankCollapseRankValue() == ( ranks.length - 1 ) ) {
+     return "off";
+     }
+     }
+     return String.valueOf( tp.getRankCollapseRankValue() );
+     }*/
+
+    function resetDepthCollapseDepthValue() {
+        return _depth_collapse_level = -1;
+    }
+
+    function resetRankCollapseRankValue() {
+        return _rank_collapse_level = -1;
     }
 
 
