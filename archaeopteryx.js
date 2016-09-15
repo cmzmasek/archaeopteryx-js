@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_49
+// v 0_50
 
 if (!d3) {
     throw "no d3.js";
@@ -48,7 +48,7 @@ if (!forester) {
     var _root = null;
     var _svgGroup = null;
     var _baseSvg = null;
-    var _tree = null;
+    var _treeFn = null;
     var _superTreeRoots = [];
     var _treeData = null;
     var _options = null;
@@ -73,18 +73,22 @@ if (!forester) {
     var _w = null;
 
 
-    function branchLengthScaling(nodes_ary, width) {
-        forester.preOrderTraversalX(_root, function (n) {
+    function branchLengthScaling(nodes, width) {
+
+        if (_root.parent) {
+            _root.parent.distToRoot = 0;
+        }
+        forester.preOrderTraversalAll(_root, function (n) {
             n.distToRoot = (n.parent ? n.parent.distToRoot : 0) + (n.branch_length || 0);
         });
-        var distsToRoot = nodes_ary.map(function (n) {
+        var distsToRoot = nodes.map(function (n) {
             return n.distToRoot;
         });
 
         var yScale = d3.scale.linear()
             .domain([0, d3.max(distsToRoot)])
             .range([0, width]);
-        forester.preOrderTraversalX(_root, function (n) {
+        forester.preOrderTraversalAll(_root, function (n) {
             n.y = yScale(n.distToRoot)
         });
         return yScale;
@@ -130,7 +134,7 @@ if (!forester) {
             transitionDuration = TRANSITION_DURATION_DEFAULT;
         }
 
-        var nodes_ary = _tree(_treeData);
+        //var nodes_ary = _treeFn(_treeData);
 
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
@@ -139,16 +143,19 @@ if (!forester) {
             }
         }
 
-        _tree = _tree.size([_displayHeight, _w]);
+        _treeFn = _treeFn.size([_displayHeight, _w]);
 
-        _tree = _tree.separation(function separation(a, b) {
+        _treeFn = _treeFn.separation(function separation(a, b) {
             return a.parent == b.parent ? 1 : 1;
         });
 
+        _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
+
+
         updateDepthCollapseDepthDisplay();
 
-        var nodes = _tree.nodes(_root).reverse();
-        var links = _tree.links(nodes);
+        var nodes = _treeFn.nodes(_root).reverse();
+        var links = _treeFn.links(nodes);
         var gap = _options.nodeLabelGap;
 
         if (_options.phylogram === true) {
@@ -164,7 +171,7 @@ if (!forester) {
 
         if (_options.dynahide) {
             _dynahide_counter = 0;
-            _dynahide_factor = Math.round(_options.externalNodeFontSize / ( 0.8 * _displayHeight / forester.calcExternalNodes(_root)));
+            _dynahide_factor = Math.round(_options.externalNodeFontSize / ( 0.8 * _displayHeight / forester.calcSumOfExternalDescendants(_root)));
         }
 
         var node = _svgGroup.selectAll("g.node")
@@ -178,7 +185,7 @@ if (!forester) {
                 return "translate(" + source.y0 + "," + source.x0 + ")";
             })
             .style("cursor", "default")
-            .on('click', _tree.clickEvent);
+            .on('click', _treeFn.clickEvent);
 
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
@@ -234,7 +241,7 @@ if (!forester) {
                 if (d.parent) {
                     return (d.parent.y - d.y + 1);
                 }
-                else {
+                else { //TODO could remove?
                     return 0;
                 }
             });
@@ -246,7 +253,7 @@ if (!forester) {
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y) );
                 }
-                else {
+                else { //TODO could remove?
                     return 0;
                 }
             });
@@ -257,7 +264,7 @@ if (!forester) {
                 return ( ( _options.internalNodeSize > 0 && d.parent )
                 && ( ( d.children && _options.showInternalNodes  )
                     || ( ( !d._children && !d.children ) && _options.showExternalNodes  )
-                ) ) ? _options.internalNodeSize : 0;
+                ) || ( _options.phylogram && d.parent && !d.parent.parent && (!d.branch_length || d.branch_length <= 0)) ) ? _options.internalNodeSize : 0;
             })
             .style("stroke", makeNodeColor)
             .style("stroke-width", _options.branchWidthDefault)
@@ -273,7 +280,7 @@ if (!forester) {
 
         node.each(function (d) {
             if (d._children) {
-                var descs = forester.getAllExternalDescendants(d);
+                var descs = forester.getAllExternalNodes(d);
                 var avg = forester.calcAverageTreeHeight(d, descs);
                 var xlength = _options.phylogram ? _yScale(avg) : 0;
                 var start = _options.phylogram ? (-1) : (-10);
@@ -645,7 +652,6 @@ if (!forester) {
         if (phynode.confidences && phynode.confidences.length > 0) {
             var c = phynode.confidences;
             var cl = c.length;
-
             if (_options.minConfidenceValueToShow) {
                 var show = false;
                 for (var i = 0; i < cl; ++i) {
@@ -833,7 +839,9 @@ if (!forester) {
     archaeopteryx.launch = function (id, phylo, options, settings) {
 
         _treeData = phylo;
-        _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 3]).on("zoom", zoom);
+        console.log(_treeData);
+
+        _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on("zoom", zoom);
         _treeProperties = forester.collectTreeProperties(_treeData);
         initializeOptions(options);
         initializeSettings(settings);
@@ -847,18 +855,19 @@ if (!forester) {
 
         _svgGroup = _baseSvg.append("g");
 
-        _tree = d3.layout.cluster()
+        _treeFn = d3.layout.cluster()
             .size([_displayHeight, _displayWidth]);
 
-        _tree.clickEvent = getClickEventListenerNode(phylo); //TODO
+
+        _treeFn.clickEvent = getClickEventListenerNode(phylo); //TODO
 
         calcMaxExtLabel();
 
         _root = phylo;
+
+
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
-
-        _external_nodes = forester.calcExternalNodes(_root);
 
         collectDataForVisualization();
 
@@ -1040,7 +1049,7 @@ if (!forester) {
                     }
                 }
                 if (n.children || n._children) {
-                    text += "Number of External Nodes: " + forester.calcExternalNodes(n) + "<br>";
+                    text += "Number of External Nodes: " + forester.calcSumOfAllExternalDescendants(n) + "<br>";
                 }
                 text += "Depth: " + forester.calcDepth(n) + "<br>";
 
@@ -1054,17 +1063,27 @@ if (!forester) {
 
             function goToSubTree(node) {
                 if (node.parent && node.children) {
-                    if (node === _root && _superTreeRoots.length > 0) {
+                    if (_superTreeRoots.length > 0 && node === _root.children[0]) {
                         _root = _superTreeRoots.pop();
-                        console.log("goToSubTree: <--");
-                        update(_root);
+                        resetDepthCollapseDepthValue();
+                        resetRankCollapseRankValue();
+                        // update(_root);
+                        updateDepthCollapseDepthDisplay();
                         zoomFit();
                     }
                     else if (node.parent.parent) {
                         _superTreeRoots.push(_root);
-                        _root = node;
-                        console.log("goToSubTree: -->");
-                        update(_root);
+                        var fakeNode = {};
+                        fakeNode.children = [node];
+                        fakeNode.x = 0;
+                        fakeNode.x0 = 0;
+                        fakeNode.y = 0;
+                        fakeNode.y0 = 0;
+                        _root = fakeNode;
+                        resetDepthCollapseDepthValue();
+                        resetRankCollapseRankValue();
+                        updateDepthCollapseDepthDisplay();
+                        // update(_root);
                         zoomFit();
                     }
                 }
@@ -1097,8 +1116,8 @@ if (!forester) {
                     var c = n.children;
                     var l = c.length;
                     if (l == 2) {
-                        var e0 = forester.calcExternalNodes(c[0]);
-                        var e1 = forester.calcExternalNodes(c[1]);
+                        var e0 = forester.calcSumOfAllExternalDescendants(c[0]);
+                        var e1 = forester.calcSumOfAllExternalDescendants(c[1]);
                         if (e0 !== e1 && e0 < e1 === order) {
                             changed = true;
                             var c0 = c[0];
@@ -1112,7 +1131,7 @@ if (!forester) {
                 }
             }
 
-            function collapse(d) {
+            function toggleCollapse(d) {
                 if (d.children) {
                     d._children = d.children;
                     d.children = null;
@@ -1180,7 +1199,7 @@ if (!forester) {
                     }
                 })
                 .on("click", function (d) {
-                    collapse(d);
+                    toggleCollapse(d);
                     update(d);
                 });
 
@@ -1192,7 +1211,7 @@ if (!forester) {
                 .style("font-weight", "bold")
                 .text(function (d) {
                     var cc = 0;
-                    forester.preOrderTraversalX(d, function (e) {
+                    forester.preOrderTraversalAll(d, function (e) {
                         if (e._children) {
                             ++cc;
                         }
@@ -1204,6 +1223,8 @@ if (!forester) {
                 })
                 .on("click", function (d) {
                     forester.unCollapseAll(d);
+                    resetDepthCollapseDepthValue();
+                    resetRankCollapseRankValue();
                     update();
                 });
 
@@ -1215,7 +1236,7 @@ if (!forester) {
                 .style("font-weight", "bold")
                 .text(function (d) {
                     if (d.parent && d.children) {
-                        if (d === _root && _superTreeRoots.length > 0) {
+                        if (_superTreeRoots.length > 0 && d === _root.children[0]) {
                             textSum += textInc;
                             return "Return to Super-tree";
                         }
@@ -1264,14 +1285,14 @@ if (!forester) {
                     }
                 })
                 .on("click", function (d) {
-                    if (!_tree.visData) {
-                        _tree.visData = {};
+                    if (!_treeFn.visData) {
+                        _treeFn.visData = {};
                     }
-                    if (_tree.visData.order === undefined) {
-                        _tree.visData.order = true;
+                    if (_treeFn.visData.order === undefined) {
+                        _treeFn.visData.order = true;
                     }
-                    orderSubtree(d, _tree.visData.order);
-                    _tree.visData.order = !_tree.visData.order;
+                    orderSubtree(d, _treeFn.visData.order);
+                    _treeFn.visData.order = !_treeFn.visData.order;
                     update();
                 });
 
@@ -1289,6 +1310,8 @@ if (!forester) {
                 })
                 .on("click", function (d) {
                     forester.reRoot(tree, _root, d, -1);
+                    resetDepthCollapseDepthValue();
+                    resetRankCollapseRankValue();
                     update();
                 });
 
@@ -1917,7 +1940,6 @@ if (!forester) {
     }
 
     function decrDepthCollapseLevel() {
-        console.log("decrDepthCollapseLevel()");
         if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
             if (_depth_collapse_level <= 1) {
                 _depth_collapse_level = forester.calcMaxDepth(_root);
@@ -1932,7 +1954,6 @@ if (!forester) {
     }
 
     function incrDepthCollapseLevel() {
-        console.log("incrDepthCollapseLevel()");
         if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
             var max = forester.calcMaxDepth(_root);
             if (_depth_collapse_level >= max) {
@@ -1957,7 +1978,7 @@ if (!forester) {
 
     function updateDepthCollapseDepthDisplay() {
         var v = obtainDepthCollapseDepthValue();
-        console.log("v=" + v + ".");
+        console.log("v=" + v);
         $("#depth_collapse_label")
             .val(" " + v);
     }
@@ -1967,7 +1988,7 @@ if (!forester) {
         if (!(_treeData && _root)) {
             return "";
         }
-        var p = _treeData;
+        //var p = _treeData;
         if (_external_nodes < 3) {
             console.log("<3");
             return "off";
@@ -1989,7 +2010,7 @@ if (!forester) {
      return "";
      }
      var p = _treeData;
-     if ( forester.calcExternalNodes(_root) < 3 ) {
+     if ( forester.calcSumOfExternalDescendants(_root) < 3 ) {
      return "off";
      }
      else {
@@ -2009,11 +2030,11 @@ if (!forester) {
      }*/
 
     function resetDepthCollapseDepthValue() {
-        return _depth_collapse_level = -1;
+        _depth_collapse_level = -1;
     }
 
     function resetRankCollapseRankValue() {
-        return _rank_collapse_level = -1;
+        _rank_collapse_level = -1;
     }
 
 

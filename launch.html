@@ -19,7 +19,7 @@
             var options = {};
             options.phylogram = true;
             options.dynahide = true;
-            options.showBranchLengthValues = true;
+            options.showBranchLengthValues = false;
             options.showConfidenceValues = true;
             options.showNodeName = true;
             options.showSequence = false;
@@ -33,14 +33,14 @@
             options.showSequenceName = true;
             options.showSequenceGeneSymbol = true;
             options.showDisributions = true;
-            options.showInternalNodes = true;
+            options.showInternalNodes = false;
             options.showExternalNodes = false;
             options.showInternalLabels = true;
             options.showExternalLabels = true;
-            options.branchWidthDefault = 2;
+            options.branchWidthDefault = 1;
             options.internalNodeSize = 3;
-            options.externalNodeFontSize = 10;
-            options.internalNodeFontSize = 9;
+            options.externalNodeFontSize = 9;
+            options.internalNodeFontSize = 8;
             options.branchDataFontSize = 7;
             options.branchColorDefault = "#909090";
             options.labelColorDefault = "#202020";
@@ -76,7 +76,9 @@
             //v1_2
             //tol_156
             //wnt_seed_seqs
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/wnt_seed_seqs.xml';
+            //larger_example
+            //test1
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/AtNBSpos.xml';
             jQuery.get(loc,
                     function (data) {
                         var trees = phyloXmlParser.parse(data, {trim: true, normalize: true});
@@ -105,7 +107,7 @@
                 }
 
             </style>
-            <h2>Archaeopteryx-js Demo: v 0_49</h2>
+            <h2>Archaeopteryx-js Demo: v 0_50</h2>
             <div id='phylogram1'></div>
 
             <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">

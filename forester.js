@@ -19,37 +19,71 @@
  *
  */
 
-// v 0_49
+// v 0_50
 
 (function forester() {
 
     "use strict";
 
+    /**
+     * Sets links to parent nodes in a
+     * phyloXML-based tree object
+     *
+     * @param phy - A phyloXML-based tree object.
+     */
+    forester.addParents = function (phy) {
+        if (phy.children) {
+            for (var i = phy.children.length - 1; i >= 0; --i) {
+                var c = phy.children[i];
+                c.parent = phy;
+                forester.addParents(c);
+            }
+        }
+    };
+
+
+    /**
+     * Returns the real root node of a
+     * phyloXML-based tree object.
+     *
+     * @param phy - A phyloXML-based tree object or node.
+     * @returns {*} - The real tree root node.
+     */
+    forester.getTreeRoot = function (phy) {
+        var root = phy;
+        if (!root.parent && root.children && root.children.length === 1) {
+            root = root.children[0];
+        }
+        while (root.parent && root.parent.parent) {
+            root = root.parent;
+        }
+        return root;
+    };
+
 
     forester.preOrderTraversal = function (n, fn) {
         fn(n);
         if (n.children) {
-            for (var i = n.children.length - 1; i >= 0; i--) {
-                forester.preOrderTraversal(n.children[i], fn)
+            for (var i = n.children.length - 1; i >= 0; --i) {
+                forester.preOrderTraversal(n.children[i], fn);
             }
         }
     };
 
 
-    forester.preOrderTraversalX = function (n, fn) {
+    forester.preOrderTraversalAll = function (n, fn) {
         fn(n);
         if (n.children) {
-            for (var i = n.children.length - 1; i >= 0; i--) {
-                forester.preOrderTraversalX(n.children[i], fn)
+            for (var i = n.children.length - 1; i >= 0; --i) {
+                forester.preOrderTraversalAll(n.children[i], fn)
             }
         }
         else if (n._children) {
-            for (var ii = n._children.length - 1; ii >= 0; ii--) {
-                forester.preOrderTraversalX(n._children[ii], fn)
+            for (var ii = n._children.length - 1; ii >= 0; --ii) {
+                forester.preOrderTraversalAll(n._children[ii], fn)
             }
         }
     };
-
 
     forester.reRoot = function (tree, root, n, distance_n_to_parent) {
         console.log("re-rooting");
@@ -293,18 +327,7 @@
     };
 
 
-    forester.calcExternalNodes = function (node) {
-        if (!node.children) {
-            return 1;
-        }
-        var c = node.children;
-        var l = c.length;
-        var cc = 0;
-        for (var i = 0; i < l; ++i) {
-            cc += forester.calcExternalNodes(c[i]);
-        }
-        return cc;
-    };
+
 
 
     forester.getChildren = function (node) {
@@ -312,22 +335,8 @@
     };
 
 
-    forester.getAllExternalDescendants = function (node) {
-        var c = forester.getChildren(node);
-        if (!c || c.length < 1) {
-            return [node];
-        }
-        var l = c.length;
-        var cc = [];
-        for (var i = 0; i < l; ++i) {
-            cc = cc.concat(forester.getAllExternalDescendants(c[i]));
-        }
-        return cc;
-    };
-
-
     forester.calcAverageTreeHeight = function (node, externalDescendants) {
-        var c = externalDescendants ? externalDescendants : forester.getAllExternalDescendants(node);
+        var c = externalDescendants ? externalDescendants : forester.getAllExternalNodes(node);
         var l = c.length;
         var s = 0;
         for (var i = 0; i < l; ++i) {
@@ -352,7 +361,7 @@
         properties.sequences = false;
         properties.taxonomies = false;
 
-        forester.preOrderTraversalX(tree, function (n) {
+        forester.preOrderTraversalAll(tree, function (n) {
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.children || n._children) {
@@ -626,19 +635,58 @@
         }
     };
 
-    forester.getAllExternalNodes = function (root) {
-        var nodes = [];
-        forester.preOrderTraversalX(root, function (node) {
-            if (!node.children && !node._children) {
-                nodes.push(node);
+
+    /**
+     * This calculates the sum of the external
+     * descendants of a node. It does not count descendants
+     * of collapsed nodes.
+     *
+     * @param node - A node.
+     * @returns {number} - The sum of external descendants.
+     */
+    forester.calcSumOfExternalDescendants = function (node) {
+        var nodes = 0;
+        forester.preOrderTraversal(node, function (n) {
+            if (!n.children) {
+                ++nodes;
             }
         });
         return nodes;
     };
 
+
+    /**
+     * This calculates the sum of all the external
+     * descendants of a node. It does count descendants
+     * of collapsed nodes.
+     *
+     * @param node - A node.
+     * @returns {number} - The sum of all external descendants.
+     */
+    forester.calcSumOfAllExternalDescendants = function (node) {
+        var nodes = 0;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (!(n.children || n._children)) {
+                ++nodes;
+            }
+        });
+        return nodes;
+    };
+
+
+    forester.getAllExternalNodes = function (node) {
+        var nodes = [];
+        forester.preOrderTraversalAll(node, function (n) {
+            if (!n.children && !n._children) {
+                nodes.push(n);
+            }
+        });
+        return nodes;
+    };
+    
     forester.calcMaxDepth = function (root) {
         var max = 0;
-        forester.preOrderTraversalX(root, function (node) {
+        forester.preOrderTraversalAll(root, function (node) {
             if (!node.children && !node._children) {
                 var steps = forester.calcDepth(node);
                 if (steps > max) {
@@ -646,7 +694,7 @@
                 }
             }
         });
-        console.log("MAX = " + max);
+        console.log("MAX DEPTH= " + max);
         return max;
     };
 
