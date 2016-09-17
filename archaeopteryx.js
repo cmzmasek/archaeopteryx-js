@@ -2095,7 +2095,9 @@ if (!forester) {
         _branch_length_collapse_data.max = 0;
 
         if (_root) {
-            forester.preOrderTraversalAll(_root, function (n) {
+            var stats = forester.calcBranchLengthSimpleStatistics(_root);
+
+            /*forester.preOrderTraversalAll(_root, function (n) {
                 if (n.children || n._children) {
                     var stats = forester.calcBranchLengthSimpleStatistics(n);
                     //var x = stats.max;
@@ -2107,15 +2109,16 @@ if (!forester) {
                         _branch_length_collapse_data.max = x;
                     }
                 }
-            });
+             });*/
+            _branch_length_collapse_data.min = stats.min;
+            _branch_length_collapse_data.max = stats.max;
             console.log("min  " + _branch_length_collapse_data.min);
             console.log("max  " + _branch_length_collapse_data.max);
 
             _branch_length_collapse_data.max = 0.25 * ( (3 * _branch_length_collapse_data.max) + _branch_length_collapse_data.min );
 
-            var x =
-
-                _branch_length_collapse_data.step = (_branch_length_collapse_data.max - _branch_length_collapse_data.min) / 100;
+            var x = stats.n < 200 ? ( Math.round(stats.n / 4) ) : 50;
+            _branch_length_collapse_data.step = (_branch_length_collapse_data.max - _branch_length_collapse_data.min) / x;
         }
     }
 
