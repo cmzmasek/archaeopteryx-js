@@ -69,6 +69,8 @@ if (!forester) {
     var _treeProperties = null;
     var _depth_collapse_level = -1;
     var _rank_collapse_level = -1;
+    var _branch_length_collapse_level = -1;
+    var _branch_length_collapse_data = {};
     var _external_nodes = 0;
     var _w = null;
 
@@ -134,7 +136,6 @@ if (!forester) {
             transitionDuration = TRANSITION_DURATION_DEFAULT;
         }
 
-        //var nodes_ary = _treeFn(_treeData);
 
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
@@ -151,8 +152,6 @@ if (!forester) {
 
         _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
 
-
-        updateDepthCollapseDepthDisplay();
 
         var nodes = _treeFn.nodes(_root).reverse();
         var links = _treeFn.links(nodes);
@@ -173,6 +172,9 @@ if (!forester) {
             _dynahide_counter = 0;
             _dynahide_factor = Math.round(_options.externalNodeFontSize / ( 0.8 * _displayHeight / forester.calcSumOfExternalDescendants(_root)));
         }
+
+        updateDepthCollapseDepthDisplay();
+        updateBranchLengthCollapseBranchLengthDisplay();
 
         var node = _svgGroup.selectAll("g.node")
             .data(nodes, function (d) {
@@ -1067,8 +1069,7 @@ if (!forester) {
                         _root = _superTreeRoots.pop();
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
-                        // update(_root);
-                        updateDepthCollapseDepthDisplay();
+                        resetBranchLengthCollapseValue();
                         zoomFit();
                     }
                     else if (node.parent.parent) {
@@ -1082,8 +1083,7 @@ if (!forester) {
                         _root = fakeNode;
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
-                        updateDepthCollapseDepthDisplay();
-                        // update(_root);
+                        resetBranchLengthCollapseValue();
                         zoomFit();
                     }
                 }
@@ -1225,6 +1225,7 @@ if (!forester) {
                     forester.unCollapseAll(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
+                    resetBranchLengthCollapseValue();
                     update();
                 });
 
@@ -1312,7 +1313,8 @@ if (!forester) {
                     forester.reRoot(tree, _root, d, -1);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
-                    update();
+                    resetBranchLengthCollapseValue();
+                    zoomFit();
                 });
 
             d3.selection.prototype.moveToFront = function () {
@@ -1375,7 +1377,7 @@ if (!forester) {
         intitialzeDisplaySize();
         initializeSettings(_settings);
         _zoomListener.scale(1);
-        update(null, 0);
+        update(_root, 0);
         centerNode(_root, _settings.rootOffset);
     }
 
@@ -1690,7 +1692,7 @@ if (!forester) {
                 'width': '44px'
             });
 
-        $("#depth_collapse_label, #rank_collapse_label")
+        $("#depth_collapse_label, #bl_collapse_label")
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -1702,9 +1704,8 @@ if (!forester) {
                 'text-align': 'center',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '12px'
+                'width': '18px'
             });
-
 
         $("#zoom_in_y").mousedown(function () {
             zoomInY();
@@ -1747,14 +1748,14 @@ if (!forester) {
             clearTimeout(_intervalId);
         });
         $("#decr_rank_collapse_level").mousedown(function () {
-            decrRankCollapseLevel();
-            _intervalId = setInterval(decrRankCollapseLevel, ZOOM_INTERVAL);
+            decrBlCollapseLevel();
+            _intervalId = setInterval(decrBlCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
         $("#incr_rank_collapse_level").mousedown(function () {
-            incrRankCollapseLevel();
-            _intervalId = setInterval(incrRankCollapseLevel, ZOOM_INTERVAL);
+            incrBlCollapseLevel();
+            _intervalId = setInterval(incrBlCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
@@ -1868,12 +1869,12 @@ if (!forester) {
 
             h = h.concat('<input type="button" value="+" name="incr_depth_collapse_level" id="incr_depth_collapse_level">');
             h = h.concat('</fieldset>');
-            //h = h.concat('<fieldset>');
-            // h = h.concat('<legend>Collapse by Node Rank</legend>');
-            //h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
-            //h = h.concat('<input type="text"  name="rank_collapse_label" id="rank_collapse_label">');
-            //h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
-            // h = h.concat('</fieldset>');
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Collapse by Branch Length</legend>');
+            h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
+            h = h.concat('<input type="text"  name="bl_collapse_label" id="bl_collapse_label">');
+            h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
+            h = h.concat('</fieldset>');
             return h;
         }
 
@@ -1940,7 +1941,7 @@ if (!forester) {
     }
 
     function decrDepthCollapseLevel() {
-        if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
+        if (_root && _treeData && ( _external_nodes > 2 )) {
             if (_depth_collapse_level <= 1) {
                 _depth_collapse_level = forester.calcMaxDepth(_root);
                 forester.unCollapseAll(_root);
@@ -1968,19 +1969,49 @@ if (!forester) {
         update(null, 0);
     }
 
-    function decrRankCollapseLevel() {
-        console.log("decrRankCollapseLevel()");
+    function decrBlCollapseLevel() {
+        console.log("decrBlCollapseLevel");
+        if (_root && _treeData && ( _external_nodes > 2 )) {
+            if (_branch_length_collapse_level <= _branch_length_collapse_data.min) {
+                _branch_length_collapse_level = _branch_length_collapse_data.max;
+                forester.unCollapseAll(_root);
+            }
+            else {
+                _branch_length_collapse_level -= _branch_length_collapse_data.step;
+                forester.collapseToBranchLength(_treeData, _root, _branch_length_collapse_level);
+            }
+        }
+        update(null, 0);
+
     }
 
-    function incrRankCollapseLevel() {
-        console.log("incrRankCollapseLevel()");
+    function incrBlCollapseLevel() {
+        console.log("incrBlCollapseLevel");
+        if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
+            if (_branch_length_collapse_level >= _branch_length_collapse_data.max) {
+                _branch_length_collapse_level = _branch_length_collapse_data.min;
+            }
+            else {
+                forester.unCollapseAll(_root);
+                _branch_length_collapse_level += _branch_length_collapse_data.step;
+            }
+            forester.collapseToBranchLength(_treeData, _root, _branch_length_collapse_level);
+        }
+        update(null, 0);
     }
 
     function updateDepthCollapseDepthDisplay() {
         var v = obtainDepthCollapseDepthValue();
-        console.log("v=" + v);
+        console.log("obtainDepthCollapseDepthValue=" + v);
         $("#depth_collapse_label")
             .val(" " + v);
+    }
+
+    function updateBranchLengthCollapseBranchLengthDisplay() {
+        var v = obtainBranchLengthCollapseBranchLengthValue();
+        console.log("obtainBranchLengthCollapseBranchLengthValue=" + v);
+        $("#bl_collapse_label")
+            .val(v);
     }
 
     function obtainDepthCollapseDepthValue() {
@@ -1988,9 +2019,8 @@ if (!forester) {
         if (!(_treeData && _root)) {
             return "";
         }
-        //var p = _treeData;
         if (_external_nodes < 3) {
-            console.log("<3");
+            console.log("-<3-");
             return "off";
         }
         else if (_depth_collapse_level < 0) {
@@ -2003,6 +2033,28 @@ if (!forester) {
             return "off";
         }
         return _depth_collapse_level;
+    }
+
+    function obtainBranchLengthCollapseBranchLengthValue() {
+        console.log("_branch_length_collapse_level=" + _branch_length_collapse_level);
+        if (!(_treeData && _root)) {
+            return "";
+        }
+        if (_external_nodes < 3) {
+            console.log("-<3-");
+            return "off";
+        }
+        else if (_branch_length_collapse_level <= _branch_length_collapse_data.min) {
+            console.log("<=");
+            _branch_length_collapse_level = _branch_length_collapse_data.min;
+            return "off";
+        }
+        else if (_branch_length_collapse_level >= _branch_length_collapse_data.max) {
+            _branch_length_collapse_data.max;
+            console.log(">=");
+            return "off";
+        }
+        return _branch_length_collapse_level;
     }
 
     /*function obtainRankCollapseDepthValue() {
@@ -2035,6 +2087,36 @@ if (!forester) {
 
     function resetRankCollapseRankValue() {
         _rank_collapse_level = -1;
+    }
+
+    function resetBranchLengthCollapseValue() {
+        _branch_length_collapse_level = -1;
+        _branch_length_collapse_data.min = Number.MAX_VALUE;
+        _branch_length_collapse_data.max = 0;
+
+        if (_root) {
+            forester.preOrderTraversalAll(_root, function (n) {
+                if (n.children || n._children) {
+                    var stats = forester.calcBranchLengthSimpleStatistics(n);
+                    //var x = stats.max;
+                    var x =;
+                    if (x < _branch_length_collapse_data.min) {
+                        _branch_length_collapse_data.min = x;
+                    }
+                    if (x > _branch_length_collapse_data.max) {
+                        _branch_length_collapse_data.max = x;
+                    }
+                }
+            });
+            console.log("min  " + _branch_length_collapse_data.min);
+            console.log("max  " + _branch_length_collapse_data.max);
+
+            _branch_length_collapse_data.max = 0.25 * ( (3 * _branch_length_collapse_data.max) + _branch_length_collapse_data.min );
+
+            var x =
+
+                _branch_length_collapse_data.step = (_branch_length_collapse_data.max - _branch_length_collapse_data.min) / 100;
+        }
     }
 
 

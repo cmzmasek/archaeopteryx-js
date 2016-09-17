@@ -26,7 +26,7 @@
     "use strict";
 
     /**
-     * Sets links to parent nodes in a
+     * Sets links to parent nodes for all nodes in a
      * phyloXML-based tree object
      *
      * @param phy - A phyloXML-based tree object.
@@ -45,6 +45,7 @@
     /**
      * Returns the real root node of a
      * phyloXML-based tree object.
+     * Precondition: needs to have parents set.
      *
      * @param phy - A phyloXML-based tree object or node.
      * @returns {*} - The real tree root node.
@@ -60,56 +61,115 @@
         return root;
     };
 
-
-    forester.preOrderTraversal = function (n, fn) {
-        fn(n);
-        if (n.children) {
-            for (var i = n.children.length - 1; i >= 0; --i) {
-                forester.preOrderTraversal(n.children[i], fn);
+    /**
+     * Visits all non-collapsed child nodes of a node
+     * while applying a function in pre-order.
+     *
+     * @param node - The root of the subtree to traverse.
+     * @param fn - The function to apply.
+     */
+    forester.preOrderTraversal = function (node, fn) {
+        fn(node);
+        if (node.children) {
+            for (var i = node.children.length - 1; i >= 0; --i) {
+                forester.preOrderTraversal(node.children[i], fn);
             }
         }
     };
 
-
-    forester.preOrderTraversalAll = function (n, fn) {
-        fn(n);
-        if (n.children) {
-            for (var i = n.children.length - 1; i >= 0; --i) {
-                forester.preOrderTraversalAll(n.children[i], fn)
+    /**
+     * Visits all child nodes of a node
+     * while applying a function in pre-order.
+     *
+     * @param node - The root of the subtree to traverse.
+     * @param fn - The function to apply.
+     */
+    forester.preOrderTraversalAll = function (node, fn) {
+        fn(node);
+        if (node.children) {
+            for (var i = node.children.length - 1; i >= 0; --i) {
+                forester.preOrderTraversalAll(node.children[i], fn)
             }
         }
-        else if (n._children) {
-            for (var ii = n._children.length - 1; ii >= 0; --ii) {
-                forester.preOrderTraversalAll(n._children[ii], fn)
+        else if (node._children) {
+            for (var ii = node._children.length - 1; ii >= 0; --ii) {
+                forester.preOrderTraversalAll(node._children[ii], fn)
             }
         }
     };
 
-    forester.reRoot = function (tree, root, n, distance_n_to_parent) {
-        console.log("re-rooting");
-        console.log("tree: " + tree);
-        console.log("n: " + n);
-        console.log("distance_n_to_parent: " + distance_n_to_parent);
-        console.log("root: " + root);
+    forester.findByNodeName = function (node, name) {
+        var found = [];
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n.name === name) {
+                found.push(n);
+            }
+        });
+        return found;
+    };
+
+    forester.findByTaxonomyCode = function (node, code) {
+        var found = [];
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].code === code) {
+                found.push(n);
+            }
+        });
+        return found;
+    };
+
+    forester.findByTaxonomyScientificName = function (node, scientificName) {
+        var found = [];
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].scientific_name === scientificName) {
+                found.push(n);
+            }
+        });
+        return found;
+    };
+
+
+    /**
+     * To re-root a tree object.
+     *
+     * @param tree - The tree to be re-rooted.
+     * @param root - The root of the tree to be re-rooted.
+     * @param node - The node on where to place the new root (on its parent branch).
+     * @param branchLength - The branch length to use if new root is not placed in the middle (if
+     * non-negative).
+     */
+    forester.reRoot = function (tree, root, node, branchLength) {
+        if (!tree) {
+            throw ( "cannot re-root null tree" );
+        }
+        if (!root) {
+            throw ( "root must not be null" );
+        }
+        if (!node) {
+            throw ( "cannot re-root on null node" );
+        }
+        if (!branchLength) {
+            branchLength = -1;
+        }
 
         tree.rooted = true;
-        if (!n.parent || !n.parent.parent) {
-            console.log("NOTHING TO DO");
+        if (!node.parent || !node.parent.parent) {
+            // Nothing to do.
+            console.log(" Nothing to do");
         }
-        else if (!n.parent.parent.parent) {
-            console.log("PARENT IS ROOT");
-            if (( n.parent.children.length === 2 ) && ( distance_n_to_parent >= 0 )) {
-                var d = n.parent.children[0].branch_length
-                    + n.parent.children[1].branch_length;
+        else if (!node.parent.parent.parent) {
+            if (( node.parent.children.length === 2 ) && ( branchLength >= 0 )) {
+                var d = node.parent.children[0].branch_length
+                    + node.parent.children[1].branch_length;
                 var other;
-                if (n.parent.children[0] === n) {
-                    other = n.parent.children[1];
+                if (node.parent.children[0] === node) {
+                    other = node.parent.children[1];
                 }
                 else {
-                    other = n.parent.children[0];
+                    other = node.parent.children[0];
                 }
-                n.branch_length = distance_n_to_parent;
-                var dm = d - distance_n_to_parent;
+                node.branch_length = branchLength;
+                var dm = d - branchLength;
                 if (dm >= 0) {
                     other.branch_length = dm;
                 }
@@ -117,24 +177,24 @@
                     other.branch_length = 0;
                 }
             }
-            if (n.parent.children.length > 2) {
-                var index = getChildNodeIndex(n.parent, n);
+            if (node.parent.children.length > 2) {
+                var index = getChildNodeIndex(node.parent, node);
 
-                var dn = n.branch_length;
+                var dn = node.branch_length;
                 var prev_root = _root.children[0];
                 prev_root.children.splice(index, 1);
                 var nr = {};
                 nr.children = [];
 
-                setChildNode(nr, 0, n);
+                setChildNode(nr, 0, node);
                 setChildNode(nr, 1, prev_root);
 
-                copyBranchData(n, prev_root);
+                copyBranchData(node, prev_root);
 
                 _root.children[0] = nr;
-                if (distance_n_to_parent >= 0) {
-                    n.branch_length = distance_n_to_parent;
-                    var dnmp = dn - distance_n_to_parent;
+                if (branchLength >= 0) {
+                    node.branch_length = branchLength;
+                    var dnmp = dn - branchLength;
                     if (dnmp >= 0) {
                         prev_root.branch_length = dnmp;
                     }
@@ -145,14 +205,14 @@
                 else {
                     if (dn >= 0) {
                         var dn2 = dn / 2.0;
-                        n.branch_length = dn2;
+                        node.branch_length = dn2;
                         prev_root.branch_length = dn2;
                     }
                 }
             }
         }
         else {
-            var a = n;
+            var a = node;
             var new_root = {};
             var distance1;
             var distance2 = 0.0;
@@ -179,9 +239,9 @@
                 b.branch_length = undefined;
             }
             else {
-                if (distance_n_to_parent >= 0.0) {
-                    var diff = a.branch_length - distance_n_to_parent;
-                    a.branch_length = distance_n_to_parent;
+                if (branchLength >= 0.0) {
+                    var diff = a.branch_length - branchLength;
+                    a.branch_length = branchLength;
                     b.branch_length = ( diff >= 0.0 ? diff : 0.0 );
                 }
                 else {
@@ -325,9 +385,6 @@
         }
         throw "unexpected exception: Could not determine the child index for a node";
     };
-
-
-
 
 
     forester.getChildren = function (node) {
@@ -683,18 +740,17 @@
         });
         return nodes;
     };
-    
-    forester.calcMaxDepth = function (root) {
+
+    forester.calcMaxDepth = function (node) {
         var max = 0;
-        forester.preOrderTraversalAll(root, function (node) {
-            if (!node.children && !node._children) {
-                var steps = forester.calcDepth(node);
+        forester.preOrderTraversalAll(node, function (n) {
+            if (!n.children && !n._children) {
+                var steps = forester.calcDepth(n);
                 if (steps > max) {
                     max = steps;
                 }
             }
         });
-        console.log("MAX DEPTH= " + max);
         return max;
     };
 
@@ -708,24 +764,117 @@
     };
 
 
-    forester.collapseToDepth = function (phy, root, depth) {
+    forester.calcBranchLengthSimpleStatistics = function (node) {
+        var stats = {};
+        stats.mean = 0;
+        stats.min = Number.MAX_VALUE;
+        stats.max = 0;
+        stats.n = 0;
+        var sum = 0;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n !== node && n.branch_length && n.branch_length >= 0) {
+                ++stats.n;
+                sum += n.branch_length;
+                if (n.branch_length < stats.min) {
+                    stats.min = n.branch_length;
+                }
+                if (n.branch_length > stats.max) {
+                    stats.max = n.branch_length;
+                }
+            }
+        });
+        if (stats.n > 0) {
+            stats.mean = sum / stats.n;
+        }
+        return stats;
+    };
+
+    forester.collapseFnBranchLengthMax = function (node) {
+
+        //  collapseFnBranchLengthMax.isCollapse = function (node) {
+        // console.log(node.name);
+        var stats = forester.calcBranchLengthSimpleStatistics(node);
+
+        console.log(stats.max);
+        if (stats.max < 1) {
+            return true;
+        }
+        return false;
+        //  }
+
+    };
+
+
+    forester.collapseToFn = function (phy, root, fn) {
+        var x = 0;
         if (root.children && root.children.length === 1) {
-            forester.collapseToDepthHelper(root.children[0], 0, depth);
+            collapseToFnHelper(root.children[0], fn);
+        }
+
+        function collapseToFnHelper(n, fn) {
+            if (!n.children && !n._children) {
+                return;
+            }
+            x++;
+
+            if (fn(n)) {
+                forester.collapse(n);
+                console.log(x + " collapse");
+            }
+            else {
+                console.log(x + " ");
+                forester.unCollapse(n);
+                for (var i = n.children.length - 1; i >= 0; i--) {
+                    collapseToFnHelper(n.children[i], fn);
+                }
+            }
         }
     };
 
-    forester.collapseToDepthHelper = function (n, d, depth) {
-        if (!n.children && !n._children) {
-            return;
+
+    forester.collapseToBranchLength = function (phy, root, branchLength) {
+        if (root.children && root.children.length === 1) {
+            collapseToBranchLengthHelper(root.children[0], branchLength);
         }
-        if (d >= depth) {
-            forester.collapse(n);
+
+        function collapseToBranchLengthHelper(n, branchLength) {
+            if (!n.children && !n._children) {
+                return;
+            }
+
+            var stats = forester.calcBranchLengthSimpleStatistics(n);
+            console.log("branchLength=" + branchLength);
+            console.log("max=" + stats.max);
+            if (stats.max < branchLength) {
+                forester.collapse(n);
+            }
+            else {
+                forester.unCollapse(n);
+                for (var i = n.children.length - 1; i >= 0; i--) {
+                    collapseToBranchLengthHelper(n.children[i], branchLength);
+                }
+            }
         }
-        else {
-            forester.unCollapse(n);
-            ++d;
-            for (var i = n.children.length - 1; i >= 0; i--) {
-                forester.collapseToDepthHelper(n.children[i], d, depth);
+    };
+
+    forester.collapseToDepth = function (phy, root, depth) {
+        if (root.children && root.children.length === 1) {
+            collapseToDepthHelper(root.children[0], 0, depth);
+        }
+
+        function collapseToDepthHelper(n, d, depth) {
+            if (!n.children && !n._children) {
+                return;
+            }
+            if (d >= depth) {
+                forester.collapse(n);
+            }
+            else {
+                forester.unCollapse(n);
+                ++d;
+                for (var i = n.children.length - 1; i >= 0; i--) {
+                    collapseToDepthHelper(n.children[i], d, depth);
+                }
             }
         }
     };

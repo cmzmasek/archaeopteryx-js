@@ -35,33 +35,13 @@ var t1 = require('path').join(__dirname, "./data/t1.xml");
 console.log("getTreeRoot                : " + ( testGetTreeRoot() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversal          : " + ( testPreOrderTraversal() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversalAll       : " + ( testPreOrderTraversalAll() === true ? "pass" : "FAIL" ));
+console.log("reRoot                     : " + ( testReRoot() === true ? "pass" : "FAIL" ));
+console.log("coll                       : " + ( testColl() === true ? "pass" : "FAIL" ));
 
 
 function readPhyloXmlFromFile(fileName) {
     var text = fs.readFileSync(fileName, 'utf8');
     return pp.parse(text, {trim: true, normalize: true});
-}
-
-function findByName(clade, name) {
-    var found_clades = [];
-    var findByName = function (clade) {
-        if (clade.name == name) {
-            found_clades.push(clade);
-        }
-    };
-    visitDfs(clade, findByName);
-    return found_clades;
-}
-
-function visitDfs(clade, func) {
-    if (func) {
-        func(clade);
-    }
-    if (clade.children) {
-        clade.children.forEach(function (child) {
-            visitDfs(child, func);
-        })
-    }
 }
 
 
@@ -104,7 +84,7 @@ function testGetTreeRoot() {
         return false;
     }
 
-    var root4 = forester.getTreeRoot(findByName(phy, "22_MOUSE")[0]);
+    var root4 = forester.getTreeRoot(forester.findByNodeName(phy, "22_MOUSE")[0]);
     if (root4.taxonomies[0].scientific_name !== 'Metazoa') {
         return false;
     }
@@ -112,7 +92,7 @@ function testGetTreeRoot() {
         return false;
     }
 
-    var root5 = forester.getTreeRoot(findByName(phy, "3_BRAFL")[0]);
+    var root5 = forester.getTreeRoot(forester.findByNodeName(phy, "3_BRAFL")[0]);
     if (root5.taxonomies[0].scientific_name !== 'Metazoa') {
         return false;
     }
@@ -146,7 +126,7 @@ function testPreOrderTraversal() {
     }
 
     c = 0;
-    forester.preOrderTraversal(findByName(phy, "3_BRAFL")[0], function () {
+    forester.preOrderTraversal(forester.findByNodeName(phy, "3_BRAFL")[0], function () {
         ++c;
     });
     if (c !== 1) {
@@ -154,7 +134,7 @@ function testPreOrderTraversal() {
     }
 
     c = 0;
-    forester.preOrderTraversal(findByName(phy, "my name!")[0], function () {
+    forester.preOrderTraversal(forester.findByNodeName(phy, "my name!")[0], function () {
         ++c;
     });
     if (c !== 3) {
@@ -162,13 +142,11 @@ function testPreOrderTraversal() {
     }
 
     c = 0;
-    console.log(phy0);
     forester.preOrderTraversal(phy0, function () {
         ++c;
     });
 
-    if (c !== 1) {
-        console.log(c);
+    if (c !== 2) {
         return false;
     }
 
@@ -195,7 +173,7 @@ function testPreOrderTraversalAll() {
     }
 
     c = 0;
-    forester.preOrderTraversalAll(findByName(phy, "3_BRAFL")[0], function () {
+    forester.preOrderTraversalAll(forester.findByNodeName(phy, "3_BRAFL")[0], function () {
         ++c;
     });
     if (c !== 1) {
@@ -203,12 +181,46 @@ function testPreOrderTraversalAll() {
     }
 
     c = 0;
-    forester.preOrderTraversalAll(findByName(phy, "my name!")[0], function () {
+    forester.preOrderTraversalAll(forester.findByNodeName(phy, "my name!")[0], function () {
         ++c;
     });
     if (c !== 3) {
         return false;
     }
+
+    return true;
+}
+
+function testReRoot() {
+    var phy1 = readPhyloXmlFromFile(t1)[0];
+    forester.addParents(phy1);
+
+    var root1 = forester.getTreeRoot(phy1);
+    var newRoot = forester.findByTaxonomyCode(phy1, "TRICA")[0];
+    //console.log(newRoot);
+    forester.reRoot(phy1, root1, newRoot, -1);
+
+    var root5 = forester.getTreeRoot(phy1);
+    //console.log(root5);
+    if (root5.taxonomies[0].scientific_name !== 'Metazoa') {
+        return false;
+    }
+    //console.log(phy1);
+
+    forester.preOrderTraversalAll(phy1, function (n) {
+        //console.log(n.name);
+    });
+
+
+    return true;
+}
+
+function testColl() {
+    var phy1 = readPhyloXmlFromFile(t1)[0];
+    forester.addParents(phy1);
+
+    forester.collapseToFn(phy1, forester.getTreeRoot(phy1).parent, forester.collapseFnBranchLengthMax);
+
 
     return true;
 }
