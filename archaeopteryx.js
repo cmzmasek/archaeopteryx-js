@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_50
+// v 0_51
 
 if (!d3) {
     throw "no d3.js";
@@ -286,7 +286,7 @@ if (!forester) {
                 var avg = forester.calcAverageTreeHeight(d, descs);
                 var xlength = _options.phylogram ? _yScale(avg) : 0;
                 var start = _options.phylogram ? (-1) : (-10);
-                var ylength = 6;
+                var ylength = 4;
 
                 var l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
                 d3.select(this).select("path").transition().duration(transitionDuration)

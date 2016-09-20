@@ -39,9 +39,9 @@
             options.showExternalLabels = true;
             options.branchWidthDefault = 1;
             options.internalNodeSize = 3;
-            options.externalNodeFontSize = 9;
-            options.internalNodeFontSize = 8;
-            options.branchDataFontSize = 7;
+            options.externalNodeFontSize = 7;
+            options.internalNodeFontSize = 6;
+            options.branchDataFontSize = 6;
             options.branchColorDefault = "#909090";
             options.labelColorDefault = "#202020";
             options.backgroundColorDefault = "#f0f0f0";
@@ -78,7 +78,7 @@
             //wnt_seed_seqs
             //larger_example
             //test1
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/pfam00046_2.xml';
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/larger_example.xml';
             jQuery.get(loc,
                     function (data) {
                         var trees = phyloXmlParser.parse(data, {trim: true, normalize: true});
@@ -107,7 +107,7 @@
                 }
 
             </style>
-            <h2>Archaeopteryx-js Demo: v 0_50</h2>
+            <h2>Archaeopteryx-js Demo: v 0_51</h2>
             <div id='phylogram1'></div>
 
             <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
