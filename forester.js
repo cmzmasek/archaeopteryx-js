@@ -789,46 +789,23 @@
         return stats;
     };
 
-    forester.collapseFnBranchLengthMax = function (node) {
-
-        //  collapseFnBranchLengthMax.isCollapse = function (node) {
-        // console.log(node.name);
-        var stats = forester.calcBranchLengthSimpleStatistics(node);
-
-        console.log(stats.max);
-        if (stats.max < 1) {
-            return true;
-        }
-        return false;
-        //  }
-
+    forester.calcMaxBranchLength = function (node) {
+        var max = 0;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n !== node && n.branch_length && (n.branch_length > max)) {
+                max = n.branch_length;
+            }
+        });
+        return max;
     };
 
 
-    forester.collapseToFn = function (phy, root, fn) {
-        var x = 0;
-        if (root.children && root.children.length === 1) {
-            collapseToFnHelper(root.children[0], fn);
-        }
-
-        function collapseToFnHelper(n, fn) {
-            if (!n.children && !n._children) {
-                return;
+    forester.removeMaxBranchLength = function (node) {
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n.max) {
+                n.max = undefined;
             }
-            x++;
-
-            if (fn(n)) {
-                forester.collapse(n);
-                console.log(x + " collapse");
-            }
-            else {
-                console.log(x + " ");
-                forester.unCollapse(n);
-                for (var i = n.children.length - 1; i >= 0; i--) {
-                    collapseToFnHelper(n.children[i], fn);
-                }
-            }
-        }
+        });
     };
 
 
@@ -838,14 +815,15 @@
         }
 
         function collapseToBranchLengthHelper(n, branchLength) {
-            if (!n.children && !n._children) {
+            if (!(n.children || n._children)) {
                 return;
             }
 
-            var stats = forester.calcBranchLengthSimpleStatistics(n);
-            console.log("branchLength=" + branchLength);
-            console.log("max=" + stats.max);
-            if (stats.max < branchLength) {
+            if (!n.max) {
+                n.max = forester.calcMaxBranchLength(n);
+            }
+            var max = n.max;
+            if (max < branchLength) {
                 forester.collapse(n);
             }
             else {
