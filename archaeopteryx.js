@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_51
+// v 0_52
 
 if (!d3) {
     throw "no d3.js";
@@ -27,6 +27,10 @@ if (!d3) {
 
 if (!forester) {
     throw "no forester.js";
+}
+
+if (!phyloXmlParser) {
+    throw "no phyloxml_parser.js";
 }
 (function archaeopteryx() {
 
@@ -877,6 +881,14 @@ if (!forester) {
 
         update(null, 0);
         centerNode(_root, _settings.rootOffset);
+    };
+
+    archaeopteryx.parsePhyloXML = function (data) {
+        return phyloXmlParser.parse(data, {trim: true, normalize: true})[0]
+    };
+
+    archaeopteryx.parseNewHampshire = function (data) {
+        return forester.parseNewHampshire(data);
     };
 
     function collectDataForVisualization() {

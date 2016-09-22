@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_51
+// v 0_52
 
 (function forester() {
 
@@ -88,15 +88,32 @@
         fn(node);
         if (node.children) {
             for (var i = node.children.length - 1; i >= 0; --i) {
-                forester.preOrderTraversalAll(node.children[i], fn)
+                forester.preOrderTraversalAll(node.children[i], fn);
             }
         }
         else if (node._children) {
             for (var ii = node._children.length - 1; ii >= 0; --ii) {
-                forester.preOrderTraversalAll(node._children[ii], fn)
+                forester.preOrderTraversalAll(node._children[ii], fn);
             }
         }
     };
+
+    forester.postOrderTraversalAll = function (node, fn) {
+        if (node.children) {
+            var l = node.children.length;
+            for (var i = 0; i < l; ++i) {
+                forester.postOrderTraversalAll(node.children[i], fn);
+            }
+        }
+        else if (node._children) {
+            var ll = node._children.length;
+            for (var ii = 0; ii < ll; ++ii) {
+                forester.postOrderTraversalAll(node._children[ii], fn);
+            }
+        }
+        fn(node);
+    };
+
 
     forester.findByNodeName = function (node, name) {
         var found = [];
@@ -869,6 +886,107 @@
         if (node._children) {
             node.children = node._children;
             node._children = null;
+        }
+    };
+
+    /**
+     * To parse a New Hampshire (Newick) formatted tree.
+     *
+     * @param nhStr - A New Hampshire (Newick) formatted string.
+     * @returns {{}} - A phylogenetic tree object.
+     */
+    forester.parseNewHampshire = function (nhStr) {
+        var ancs = [];
+        var x = {};
+        var ss = nhStr.split(/\s*(;|\(|\)|,|:)\s*/);
+        var ssl = ss.length;
+        for (var i = 0; i < ssl; ++i) {
+            var element = ss[i];
+            switch (element) {
+                case '(':
+                    var subtree1 = {};
+                    x.children = [subtree1];
+                    ancs.push(x);
+                    x = subtree1;
+                    break;
+                case ',':
+                    var subtree2 = {};
+                    ancs[ancs.length - 1].children.push(subtree2);
+                    x = subtree2;
+                    break;
+                case ')':
+                    x = ancs.pop();
+                    break;
+                case ':':
+                    break;
+                default:
+                    var e = ss[i - 1];
+                    if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
+                        if (element && element.length > 0) {
+                            x.name = element;
+                            if ((x.name.charAt(0) === "'" && x.name.charAt(x.name.length - 1) === "'" )
+                                || (x.name.charAt(0) === '"' && x.name.charAt(x.name.length - 1) === '"' )) {
+                                x.name = x.name.substring(1, x.name.length - 1);
+                            }
+                        }
+                    }
+                    else if (e === ':') {
+                        x.branch_length = parseFloat(element);
+                    }
+            }
+        }
+        var phy = {};
+        phy.children = [x];
+        return phy;
+    };
+
+    /**
+     * To convert a phylogentic tree object to a New Hampshire (Newick) formatted string.
+     *
+     * @param phy - A phylogentic tree object.
+     * @returns {*} - a New Hampshire (Newick) formatted string.
+     */
+    forester.toNewHamphshire = function (phy) {
+        var nh = "";
+        if (phy.children && phy.children.length === 1) {
+            toNewHamphshireHelper(phy.children[0], true);
+        }
+        if (nh.length > 0) {
+            return nh + ";";
+        }
+        return nh;
+
+        function toNewHamphshireHelper(node, last) {
+            if (node.children) {
+                var l = node.children.length;
+                nh += "(";
+                for (var i = 0; i < l; ++i) {
+                    toNewHamphshireHelper(node.children[i], i === l - 1);
+                }
+                nh += ")";
+            }
+            else if (node._children) {
+                var ll = node._children.length;
+                nh += "(";
+                for (var ii = 0; ii < ll; ++ii) {
+                    toNewHamphshireHelper(node._children[ii], ii === ll - 1);
+                }
+                nh += ")";
+            }
+            if (node.name && node.name.length > 0) {
+                if (node.name.indexOf(' ') >= 0) {
+                    nh += "'" + node.name + "'";
+                }
+                else {
+                    nh += node.name;
+                }
+            }
+            if (node.branch_length) {
+                nh += ":" + node.branch_length;
+            }
+            if (!last) {
+                nh += ",";
+            }
         }
     };
 

@@ -36,7 +36,7 @@ console.log("getTreeRoot                : " + ( testGetTreeRoot() === true ? "pa
 console.log("preOrderTraversal          : " + ( testPreOrderTraversal() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversalAll       : " + ( testPreOrderTraversalAll() === true ? "pass" : "FAIL" ));
 console.log("reRoot                     : " + ( testReRoot() === true ? "pass" : "FAIL" ));
-console.log("coll                       : " + ( testColl() === true ? "pass" : "FAIL" ));
+console.log("parseNewHampshire          : " + ( testParseNewHampshire() === true ? "pass" : "FAIL" ));
 
 
 function readPhyloXmlFromFile(fileName) {
@@ -215,13 +215,75 @@ function testReRoot() {
     return true;
 }
 
-function testColl() {
-    var phy1 = readPhyloXmlFromFile(t1)[0];
-    forester.addParents(phy1);
 
-    forester.collapseToFn(phy1, forester.getTreeRoot(phy1).parent, forester.collapseFnBranchLengthMax);
+function testParseNewHampshire() {
+    var nh0 = "";
+    var nh1 = "();";
+    var nh2 = "(a);";
+    var nh3 = "(a:0.000001);";
+    var nh4 = "(,);";
+    var nh5 = "((a));";
+    var nh6 = "(a,b);";
+    var nh7 = "((a:0.001,b:0.000001),c:0.1);";
+    var nh8 = "((a:0.001,b:0.000001,c:1)abc:0.1,d:0.1);";
+    var nh9 = "(((a,b,c),(d,e)),f)r;";
+    var nh10 = "((()));";
+    var nh11 = "(((,),),);";
+    var nh12 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825,11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901,((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709,23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)'Strongylocentrotus purpuratus':0.34475):0.26168,(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898,29_AEDAE:0.86398)Diptera:0.24915,30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134,8_BRAFL:0.58563)'Branchiostoma floridae':0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)'Nematostella vectensis':0.28437):0.09305,9_BRAFL:1.09612):0.54836,((3_BRAFL:0.48766,2_BRAFL:0.65293)'Branchiostoma floridae':0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)'Branchiostoma floridae':0.43438):0.18105)Metazoa;";
 
+    var phy0 = forester.parseNewHampshire(nh0);
+    var phy1 = forester.parseNewHampshire(nh1);
+    var phy2 = forester.parseNewHampshire(nh2);
+    var phy3 = forester.parseNewHampshire(nh3);
+    var phy4 = forester.parseNewHampshire(nh4);
+    var phy5 = forester.parseNewHampshire(nh5);
+    var phy6 = forester.parseNewHampshire(nh6);
+    var phy7 = forester.parseNewHampshire(nh7);
+    var phy8 = forester.parseNewHampshire(nh8);
+    var phy9 = forester.parseNewHampshire(nh9);
+    var phy10 = forester.parseNewHampshire(nh10);
+    var phy11 = forester.parseNewHampshire(nh11);
+    var phy12 = forester.parseNewHampshire(nh12);
 
+    if (forester.toNewHamphshire(phy0) !== nh0) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy1) !== nh1) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy2) !== nh2) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy3) !== nh3) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy4) !== nh4) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy5) !== nh5) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy6) !== nh6) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy7) !== nh7) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy8) !== nh8) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy9) !== nh9) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy10) !== nh10) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy11) !== nh11) {
+        return false;
+    }
+    if (forester.toNewHamphshire(phy12) !== nh12) {
+        return false;
+    }
     return true;
 }
 

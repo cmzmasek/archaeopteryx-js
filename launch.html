@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <!--<meta name="viewport" content="width=device-width, initial-scale=1">-->
 
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <script src="https://cdn.rawgit.com/cmzmasek/phyloxml-js/master/lib/sax.js"></script>
@@ -11,7 +10,6 @@
     <script src="forester.js"></script>
     <script src="archaeopteryx.js"></script>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
-    <!--<link rel="stylesheet" href="/resources/demos/style.css">-->
 
     <script>
         function load() {
@@ -79,11 +77,26 @@
             //larger_example
             //test1
             var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/larger_example.xml';
+            //var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/apaf2.nh';
+
             jQuery.get(loc,
                     function (data) {
-                        var trees = phyloXmlParser.parse(data, {trim: true, normalize: true});
-                        //console.log(JSON.stringify(trees[0], 1));
-                        archaeopteryx.launch('#phylogram1', trees[0], options, settings);
+                        var tree = null;
+                        try {
+                            tree = archaeopteryx.parsePhyloXML(data);
+                            //tree = archaeopteryx.parseNewHampshire(data);
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (tree) {
+                            try {
+                                archaeopteryx.launch('#phylogram1', tree, options, settings);
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
                     },
                     "text")
                     .fail(function () {
@@ -93,7 +106,6 @@
     </script>
 
 
-
 </head>
 <body onload="load()">
 
@@ -101,13 +113,12 @@
     <tr>
         <td>
             <style type="text/css">
-
                 .overlay {
                     background-color: #f0f0f0;
                 }
-
             </style>
-            <h2>Archaeopteryx-js Demo: v 0_51</h2>
+
+            <h2>Archaeopteryx-js Demo: v 0_52</h2>
             <div id='phylogram1'></div>
 
             <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
