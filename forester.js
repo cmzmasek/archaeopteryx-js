@@ -42,6 +42,28 @@
     };
 
 
+    forester.addParentsX = function (phy) {
+        if (phy.children) {
+            for (var i = phy.children.length - 1; i >= 0; --i) {
+                var c = phy.children[i];
+                if (!c.parent) {
+                    c.parent = phy;
+
+                    console.log("-------------");
+                    console.log("name:" + c.name);
+                    console.log("chs :" + c.children.length);
+                    console.log("ch1 name:" + c.children[0].name);
+                    console.log("ch2 name:" + c.children[1].name);
+                    console.log("phy name:" + phy.name);
+                    console.log("chs :" + phy.children.length);
+                    console.log("^^^^^^^^^^^^^");
+                }
+                // forester.addParents(c);
+            }
+        }
+    };
+
+
     /**
      * Returns the real root node of a
      * phyloXML-based tree object.
@@ -149,18 +171,14 @@
     /**
      * To re-root a tree object.
      *
-     * @param tree - The tree to be re-rooted.
-     * @param root - The root of the tree to be re-rooted.
+     * @param phy - The tree to be re-rooted.
      * @param node - The node on where to place the new root (on its parent branch).
      * @param branchLength - The branch length to use if new root is not placed in the middle (if
      * non-negative).
      */
-    forester.reRoot = function (tree, root, node, branchLength) {
-        if (!tree) {
+    forester.reRoot = function (phy, node, branchLength) {
+        if (!phy) {
             throw ( "cannot re-root null tree" );
-        }
-        if (!root) {
-            throw ( "root must not be null" );
         }
         if (!node) {
             throw ( "cannot re-root on null node" );
@@ -168,11 +186,21 @@
         if (!branchLength) {
             branchLength = -1;
         }
+        if (forester.isString(node)) {
+            var nodes = forester.findByNodeName(phy, node);
+            if (nodes.length > 1) {
+                throw ("node name '" + node + "' is not unique");
+            }
+            else if (nodes.length < 1) {
+                throw ("node name '" + node + "' is not found");
+            }
+            node = nodes[0];
+        }
 
-        tree.rooted = true;
+        phy.rooted = true;
+        var root = forester.getTreeRoot(phy);
+
         if (!node.parent || !node.parent.parent) {
-            // Nothing to do.
-            console.log(" Nothing to do");
         }
         else if (!node.parent.parent.parent) {
             if (( node.parent.children.length === 2 ) && ( branchLength >= 0 )) {
@@ -195,20 +223,27 @@
                 }
             }
             if (node.parent.children.length > 2) {
-                var index = getChildNodeIndex(node.parent, node);
-
+                var index = forester.getChildNodeIndex(node.parent, node);
+                console.log("index=" + index);
                 var dn = node.branch_length;
-                var prev_root = _root.children[0];
+                var prev_root = root;
+                console.log("prev_root.children.length=" + prev_root.children.length);
                 prev_root.children.splice(index, 1);
+                console.log("prev_root.children.length=" + prev_root.children.length);
                 var nr = {};
                 nr.children = [];
 
-                setChildNode(nr, 0, node);
-                setChildNode(nr, 1, prev_root);
+                forester.setChildNode(nr, 0, node);
+                forester.setChildNode(nr, 1, prev_root);
 
-                copyBranchData(node, prev_root);
+                //forester.copyBranchData(node, prev_root);
 
-                _root.children[0] = nr;
+                //root.parent.children[0] = nr;
+                // root.children[0] = nr;
+                phy.children[0] = nr;
+                //phy.children[0] = phy.children[0].children[0];
+                //phy.children[0].parent = phy;
+
                 if (branchLength >= 0) {
                     node.branch_length = branchLength;
                     var dnmp = dn - branchLength;
@@ -307,10 +342,27 @@
                 }
             }
             else {
+                console.log("___");
                 c.parent = b;
                 forester.removeChildNode(c, forester.getChildNodeIndex(c, b));
+                console.log("c.name=" + c.name);
+                console.log("b.name=" + b.name);
+                console.log("c.children=" + c.children.length);
+                console.log("b.children=" + b.children.length);
+                console.log("b.children 0 " + b.children[0].name);
+                console.log("b.children 1 " + b.children[1].name);
+                console.log("b.children 2 " + b.children[2].name);
+                console.log("c.children 0 " + c.children[0].name);
+                console.log("c.children 1 " + c.children[1].name);
+                // console.log("c.children 2 " + c.children[2].name);
+
+
             }
             root.children[0] = new_root;
+            console.log("new_root=" + new_root.name);
+            console.log("root=" + root.name);
+            phy.children[0] = phy.children[0].children[0];
+            phy.children[0].parent = phy;
         }
 
         function setChildNodeOnly(parentNode, i, node) {
@@ -332,6 +384,7 @@
             throw ( "attempt to get child node " + i + " of a node with "
             + parentNode.children.length + " child nodes." );
         }
+        parentNode.children[i].parent = undefined;
         parentNode.children.splice(i, 1);
     };
 
@@ -937,6 +990,7 @@
         }
         var phy = {};
         phy.children = [x];
+        forester.addParents(phy);
         return phy;
     };
 
@@ -944,24 +998,26 @@
      * To convert a phylogentic tree object to a New Hampshire (Newick) formatted string.
      *
      * @param phy - A phylogentic tree object.
+     * @param dec - maximal number of decimal points for branch lengths (optional)
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
-    forester.toNewHamphshire = function (phy) {
+    forester.toNewHamphshire = function (phy, dec) {
         var nh = "";
         if (phy.children && phy.children.length === 1) {
-            toNewHamphshireHelper(phy.children[0], true);
+            toNewHamphshireHelper(phy.children[0], true, dec);
         }
         if (nh.length > 0) {
             return nh + ";";
         }
         return nh;
 
-        function toNewHamphshireHelper(node, last) {
+        function toNewHamphshireHelper(node, last, dec) {
+            //console.log(">>" + node.name);
             if (node.children) {
                 var l = node.children.length;
                 nh += "(";
                 for (var i = 0; i < l; ++i) {
-                    toNewHamphshireHelper(node.children[i], i === l - 1);
+                    toNewHamphshireHelper(node.children[i], i === l - 1, dec);
                 }
                 nh += ")";
             }
@@ -969,7 +1025,7 @@
                 var ll = node._children.length;
                 nh += "(";
                 for (var ii = 0; ii < ll; ++ii) {
-                    toNewHamphshireHelper(node._children[ii], ii === ll - 1);
+                    toNewHamphshireHelper(node._children[ii], ii === ll - 1, dec);
                 }
                 nh += ")";
             }
@@ -982,13 +1038,29 @@
                 }
             }
             if (node.branch_length) {
-                nh += ":" + node.branch_length;
+                if (dec && dec > 0) {
+                    nh += ":" + forester.roundNumber(node.branch_length, dec);
+                }
+                else {
+                    nh += ":" + node.branch_length;
+                }
             }
             if (!last) {
                 nh += ",";
             }
         }
     };
+
+    forester.roundNumber = function (num, dec) {
+        return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
+    };
+
+    forester.isString = function (s) {
+        return (typeof s === 'string' || s instanceof String);
+    };
+
+
+
 
     // --------------------------------------------------------------
     // For exporting
