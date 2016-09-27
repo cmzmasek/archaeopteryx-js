@@ -9,9 +9,29 @@
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
     <script src="forester.js"></script>
     <script src="archaeopteryx.js"></script>
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
 
+
+    <style>
+
+        #draggable {
+            padding: 0.5em;
+        }
+
+        .ui-controlgroup-vertical {
+            width: 120px;
+        }
+
+
+    </style>
     <script>
+        $(function () {
+            $(".controlgroup").controlgroup();
+            $(".display_data").controlgroup({
+                "direction": "vertical"
+            });
+        });
+
         function load() {
 
             var options = {};
@@ -83,8 +103,8 @@
                     function (data) {
                         var tree = null;
                         try {
-                            tree = archaeopteryx.parsePhyloXML(data);
-                            //tree = archaeopteryx.parseNewHampshire(data);
+                            //tree = archaeopteryx.parsePhyloXML(data);
+                            tree = archaeopteryx.parseNewHampshire("(((a,b,c),(d,e)),f)r;");
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
@@ -109,27 +129,21 @@
 </head>
 <body onload="load()">
 
-<table>
-    <tr>
-        <td>
-            <style type="text/css">
-                .overlay {
-                    background-color: #f0f0f0;
-                }
-            </style>
+<div>
+    <style type="text/css">
+        .overlay {
+            background-color: #f0f0f0;
+        }
+    </style>
 
-            <h2>Archaeopteryx-js Demo: v 0_52</h2>
-            <div id='phylogram1'></div>
+    <h2>Archaeopteryx-js Demo: v 0_52</h2>
+    <div id='phylogram1'></div>
 
-            <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
-            </div>
+    <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
+    </div>
 
-            <div style="position:absolute; right: 20px; top: 60px;" id="controls2" class="ui-widget-content">
-            </div>
 
-        </td>
-    </tr>
-</table>
+</div>
 
 
 </body>
