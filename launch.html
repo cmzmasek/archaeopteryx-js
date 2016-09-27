@@ -11,26 +11,7 @@
     <script src="archaeopteryx.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
 
-
-    <style>
-
-        #draggable {
-            padding: 0.5em;
-        }
-
-        .ui-controlgroup-vertical {
-            width: 120px;
-        }
-
-
-    </style>
     <script>
-        $(function () {
-            $(".controlgroup").controlgroup();
-            $(".display_data").controlgroup({
-                "direction": "vertical"
-            });
-        });
 
         function load() {
 
@@ -103,8 +84,8 @@
                     function (data) {
                         var tree = null;
                         try {
-                            //tree = archaeopteryx.parsePhyloXML(data);
-                            tree = archaeopteryx.parseNewHampshire("(((a,b,c),(d,e)),f)r;");
+                            tree = archaeopteryx.parsePhyloXML(data);
+                            //tree = archaeopteryx.parseNewHampshire("(((a,b,c),(d,e)),f)r;");
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
@@ -136,7 +117,7 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_52</h2>
+    <h2>Archaeopteryx-js Demo: v 0_53</h2>
     <div id='phylogram1'></div>
 
     <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">

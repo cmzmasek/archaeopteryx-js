@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_52
+// v 0_53
 
 if (!d3) {
     throw "no d3.js";
@@ -1538,28 +1538,11 @@ if (!phyloXmlParser) {
         c1.css({
             //  'width': '120px',
             // 'height': '580px',
-            //'padding': '0.5em',
+            'padding': '0.25em',
             'opacity': '0.85',
             'background-color': '#e0e0e0'
         });
 
-        //$(function () {
-        // $(".controlgroup").controlgroup();
-
-        // $( ".controlgroup-vertical" ).controlgroup( "option", "direction", "vertical" );
-
-
-        // var cg =  $('.controlgroup-vertical');
-        // console.log(cg);
-
-        //  cg.direction ="vertical";
-
-        // console.log(cg);
-
-        //$(".controlgroup-vertical").controlgroup({
-        //     'direction': "vertical"
-        // });
-        // });
 
         c1.draggable({containment: "parent"});
 
@@ -1567,22 +1550,25 @@ if (!phyloXmlParser) {
 
         c1.append(makeDisplayControl());
 
-        $(".display_data_fs").controlgroup({
-            "direction": "vertical"
-        });
 
         $(".phylogram_cladogram").controlgroup({
-            "direction": "horizontal"
+            "direction": "horizontal",
+            "width": "120px"
         });
 
 
-        //c1.append(makeZoomControl());
+        $(".display_data_fs").controlgroup({
+            "direction": "vertical",
+            "width": "120px"
+        });
 
-        //c1.append(makeSliders());
+        c1.append(makeZoomControl());
 
-        //c1.append(makeSearchBoxes());
+        c1.append(makeSliders());
 
-        // c1.append(makeAutoCollapse());
+        c1.append(makeSearchBoxes());
+
+        c1.append(makeAutoCollapse());
 
         var c2 = $('#controls2');
 
@@ -1602,10 +1588,18 @@ if (!phyloXmlParser) {
             collapsible: true
         });
 
+        $("input:button")
+            .button()
+            .css({
+                'width': '26px',
+                'text-align': 'center',
+                'outline': 'none',
+                'margin': '1px'
+            });
 
         $("#zoom_in_y, #zoom_out_y")
             .css({
-                'width': '94px'
+                'width': '82px'
             });
 
         $("#decr_depth_collapse_level, #incr_depth_collapse_level," +
@@ -1840,7 +1834,6 @@ if (!phyloXmlParser) {
             h = h.concat('<input type="checkbox" name="internal_label_cb" id="internal_nodes_cb">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
-            console.log(h);
             return h;
         }
 
@@ -1894,7 +1887,7 @@ if (!phyloXmlParser) {
         function makeAutoCollapse() {
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Collapse by Node Depth</legend>');
+            h = h.concat('<legend>Collapse Node Depth</legend>');
             h = h.concat('<input type="button" value="-" name="decr_depth_collapse_level" id="decr_depth_collapse_level">');
             h = h.concat('<input type="text"  name="depth_collapse_label" id="depth_collapse_label">');
 
@@ -1902,7 +1895,7 @@ if (!phyloXmlParser) {
             h = h.concat('</fieldset>');
             if (_treeProperties.branchLengths) {
                 h = h.concat('<fieldset>');
-                h = h.concat('<legend>Collapse by Length</legend>');
+                h = h.concat('<legend>Collapse  Length</legend>');
                 h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
                 h = h.concat('<input type="text"  name="bl_collapse_label" id="bl_collapse_label">');
                 h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
