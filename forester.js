@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_53
+// v 0_54
 
 (function forester() {
 
@@ -40,29 +40,6 @@
             }
         }
     };
-
-
-    forester.addParentsX = function (phy) {
-        if (phy.children) {
-            for (var i = phy.children.length - 1; i >= 0; --i) {
-                var c = phy.children[i];
-                if (!c.parent) {
-                    c.parent = phy;
-
-                    console.log("-------------");
-                    console.log("name:" + c.name);
-                    console.log("chs :" + c.children.length);
-                    console.log("ch1 name:" + c.children[0].name);
-                    console.log("ch2 name:" + c.children[1].name);
-                    console.log("phy name:" + phy.name);
-                    console.log("chs :" + phy.children.length);
-                    console.log("^^^^^^^^^^^^^");
-                }
-                // forester.addParents(c);
-            }
-        }
-    };
-
 
     /**
      * Returns the real root node of a
@@ -201,6 +178,7 @@
         var root = forester.getTreeRoot(phy);
 
         if (!node.parent || !node.parent.parent) {
+            //do noting
         }
         else if (!node.parent.parent.parent) {
             if (( node.parent.children.length === 2 ) && ( branchLength >= 0 )) {
@@ -224,26 +202,18 @@
             }
             if (node.parent.children.length > 2) {
                 var index = forester.getChildNodeIndex(node.parent, node);
-                console.log("index=" + index);
                 var dn = node.branch_length;
                 var prev_root = root;
-                console.log("prev_root.children.length=" + prev_root.children.length);
                 prev_root.children.splice(index, 1);
-                console.log("prev_root.children.length=" + prev_root.children.length);
                 var nr = {};
                 nr.children = [];
-
                 forester.setChildNode(nr, 0, node);
                 forester.setChildNode(nr, 1, prev_root);
 
-                //forester.copyBranchData(node, prev_root);
+                forester.copyBranchData(node, prev_root);
 
-                //root.parent.children[0] = nr;
-                // root.children[0] = nr;
                 phy.children[0] = nr;
-                //phy.children[0] = phy.children[0].children[0];
-                //phy.children[0].parent = phy;
-
+                nr.parent = phy;
                 if (branchLength >= 0) {
                     node.branch_length = branchLength;
                     var dnmp = dn - branchLength;
@@ -342,27 +312,12 @@
                 }
             }
             else {
-                console.log("___");
                 c.parent = b;
                 forester.removeChildNode(c, forester.getChildNodeIndex(c, b));
-                console.log("c.name=" + c.name);
-                console.log("b.name=" + b.name);
-                console.log("c.children=" + c.children.length);
-                console.log("b.children=" + b.children.length);
-                console.log("b.children 0 " + b.children[0].name);
-                console.log("b.children 1 " + b.children[1].name);
-                console.log("b.children 2 " + b.children[2].name);
-                console.log("c.children 0 " + c.children[0].name);
-                console.log("c.children 1 " + c.children[1].name);
-                // console.log("c.children 2 " + c.children[2].name);
-
-
             }
-            root.children[0] = new_root;
-            console.log("new_root=" + new_root.name);
-            console.log("root=" + root.name);
-            phy.children[0] = phy.children[0].children[0];
-            phy.children[0].parent = phy;
+            phy.children[0] = new_root;
+            new_root.parent = phy;
+            forester.addParents(phy);
         }
 
         function setChildNodeOnly(parentNode, i, node) {
@@ -1012,7 +967,6 @@
         return nh;
 
         function toNewHamphshireHelper(node, last, dec) {
-            //console.log(">>" + node.name);
             if (node.children) {
                 var l = node.children.length;
                 nh += "(";
