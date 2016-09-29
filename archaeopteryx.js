@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_53
+// v 0_55
 
 if (!d3) {
     throw "no d3.js";
@@ -77,7 +77,6 @@ if (!phyloXmlParser) {
     var _branch_length_collapse_data = {};
     var _external_nodes = 0;
     var _w = null;
-
 
     function branchLengthScaling(nodes, width) {
 
@@ -155,7 +154,7 @@ if (!phyloXmlParser) {
         });
 
         _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
-
+        var uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
 
         var nodes = _treeFn.nodes(_root).reverse();
         var links = _treeFn.links(nodes);
@@ -174,7 +173,7 @@ if (!phyloXmlParser) {
 
         if (_options.dynahide) {
             _dynahide_counter = 0;
-            _dynahide_factor = Math.round(_options.externalNodeFontSize / ( 0.8 * _displayHeight / forester.calcSumOfExternalDescendants(_root)));
+            _dynahide_factor = Math.round(_options.externalNodeFontSize / ( ( 0.8 * _displayHeight) / uncollsed_nodes ));
         }
 
         updateDepthCollapseDepthDisplay();
@@ -264,7 +263,6 @@ if (!phyloXmlParser) {
                 }
             });
 
-
         node.select("circle.nodeCircle")
             .attr("r", function (d) {
                 return ( ( _options.internalNodeSize > 0 && d.parent )
@@ -283,19 +281,23 @@ if (!phyloXmlParser) {
                 return "M" + 0 + "," + 0 + "L" + 0 + "," + 0 + "L" + 0 + "," + 0 + "L" + 0 + "," + 0;
             });
 
+        var start = _options.phylogram ? (-1) : (-10);
+        var ylength = _displayHeight / ( 3 * uncollsed_nodes );
 
         node.each(function (d) {
             if (d._children) {
+                var yl = ylength;
                 var descs = forester.getAllExternalNodes(d);
+                if (descs.length < 5) {
+                    yl = 0.5 * yl;
+                }
                 var avg = forester.calcAverageTreeHeight(d, descs);
                 var xlength = _options.phylogram ? _yScale(avg) : 0;
-                var start = _options.phylogram ? (-1) : (-10);
-                var ylength = 4;
 
                 var l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
                 d3.select(this).select("path").transition().duration(transitionDuration)
                     .attr("d", function (d) {
-                        return "M" + start + "," + (-l) + "L" + xlength + "," + (-ylength) + "L" + xlength + "," + (ylength) + "L" + start + "," + l + "L" + start + "," + (-l);
+                        return "M" + start + "," + (-l) + "L" + xlength + "," + (-yl) + "L" + xlength + "," + (yl) + "L" + start + "," + l + "L" + start + "," + (-l);
                     })
                     .style("fill", makeCollapsedColor(d));
                 d3.select(this).select(".collapsedText").attr("font-size", function (d) {
@@ -350,7 +352,6 @@ if (!phyloXmlParser) {
 
         nodeUpdate.select("text.conflabel")
             .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
-
 
         var nodeExit = node.exit().transition()
             .duration(transitionDuration)
@@ -616,31 +617,26 @@ if (!phyloXmlParser) {
         }
     };
 
-
     var makeCollapsedLabel = function (descs) {
-        if (!_options.showExternalLabels) {
-            return null;
-        }
-        var first;
-        var last;
-        if (descs.length > 1) {
-            first = descs[0];
-            last = descs[descs.length - 1];
-        }
-        var text = null;
-        if (first && last) {
-            var first_label = makeNodeLabel(first);
-            var last_label = makeNodeLabel(last);
-            if (first_label && last_label) {
-                text = first_label.substring(0, _options.collapasedLabelLength)
-                    + " ... " + last_label.substring(0, _options.collapasedLabelLength)
-                    + " (" + descs.length + ")";
+        if (_options.showExternalLabels) {
+            var first;
+            var last;
+            if (descs.length > 1) {
+                first = descs[0];
+                last = descs[descs.length - 1];
             }
-            else {
-                text = "(" + descs.length + ")";
+            var text = null;
+            if (first && last) {
+                var first_label = makeNodeLabel(first);
+                var last_label = makeNodeLabel(last);
+                if (first_label && last_label) {
+                    text = first_label.substring(0, _options.collapasedLabelLength)
+                        + " ... " + last_label.substring(0, _options.collapasedLabelLength)
+                        + " (" + descs.length + ")";
+                }
             }
+            return text;
         }
-        return text;
     };
 
     var makeBranchLengthLabel = function (phynode) {
@@ -1111,36 +1107,6 @@ if (!phyloXmlParser) {
                 }
             }
 
-
-            function orderSubtree(n, order) {
-                var changed = false;
-                ord(n);
-                if (!changed) {
-                    order = !order;
-                    ord(n);
-                }
-                function ord(n) {
-                    if (!n.children) {
-                        return;
-                    }
-                    var c = n.children;
-                    var l = c.length;
-                    if (l == 2) {
-                        var e0 = forester.calcSumOfAllExternalDescendants(c[0]);
-                        var e1 = forester.calcSumOfAllExternalDescendants(c[1]);
-                        if (e0 !== e1 && e0 < e1 === order) {
-                            changed = true;
-                            var c0 = c[0];
-                            c[0] = c[1];
-                            c[1] = c0;
-                        }
-                    }
-                    for (var i = 0; i < l; ++i) {
-                        ord(c[i]);
-                    }
-                }
-            }
-
             function toggleCollapse(d) {
                 if (d.children) {
                     d._children = d.children;
@@ -1392,6 +1358,42 @@ if (!phyloXmlParser) {
     }
 
 
+    function returnToSupertreeButtonPressed() {
+        if (_root && _superTreeRoots.length > 0) {
+            _root = _superTreeRoots.pop();
+            resetDepthCollapseDepthValue();
+            resetRankCollapseRankValue();
+            resetBranchLengthCollapseValue();
+            zoomFit();
+        }
+    }
+
+    function orderButtonPressed() {
+        if (_root) {
+            if (!_treeFn.visData) {
+                _treeFn.visData = {};
+            }
+            if (_treeFn.visData.order === undefined) {
+                _treeFn.visData.order = true;
+            }
+            orderSubtree(_root, _treeFn.visData.order);
+            _treeFn.visData.order = !_treeFn.visData.order;
+            update();
+        }
+    }
+
+    function uncollapseAllButtonPressed() {
+        if (_root) {
+            forester.unCollapseAll(_root);
+            resetDepthCollapseDepthValue();
+            resetRankCollapseRankValue();
+            resetBranchLengthCollapseValue();
+            zoomFit();
+        }
+    }
+
+
+
     function search0() {
         _foundNodes0.clear();
         var query = $("#search0").val();
@@ -1432,16 +1434,28 @@ if (!phyloXmlParser) {
 
     function nodeNameCbClicked() {
         _options.showNodeName = getCheckboxValue('node_name_cb');
+        if (_options.showNodeName) {
+            _options.showExternalLabels = true;
+            setCheckboxValue('external_label_cb', true);
+        }
         update();
     }
 
     function taxonomyCbClicked() {
         _options.showTaxonomy = getCheckboxValue('taxonomy_cb');
+        if (_options.showTaxonomy) {
+            _options.showExternalLabels = true;
+            setCheckboxValue('external_label_cb', true);
+        }
         update();
     }
 
     function sequenceCbClicked() {
         _options.showSequence = getCheckboxValue('sequence_cb');
+        if (_options.showSequence) {
+            _options.showExternalLabels = true;
+            setCheckboxValue('external_label_cb', true);
+        }
         update();
     }
 
@@ -1564,11 +1578,15 @@ if (!phyloXmlParser) {
 
         c1.append(makeZoomControl());
 
+        c1.append(makeControlButons());
+
         c1.append(makeSliders());
+
 
         c1.append(makeSearchBoxes());
 
         c1.append(makeAutoCollapse());
+
 
         var c2 = $('#controls2');
 
@@ -1594,13 +1612,19 @@ if (!phyloXmlParser) {
                 'width': '26px',
                 'text-align': 'center',
                 'outline': 'none',
-                'margin': '1px'
+                'margin': '0px'
             });
 
         $("#zoom_in_y, #zoom_out_y")
             .css({
-                'width': '82px'
+                'width': '78px'
             });
+
+        $("#zoom_in_y, #zoom_out_y, #zoom_to_fit, #zoom_in_x, #zoom_out_x")
+            .css({
+                'height': '16px'
+            });
+
 
         $("#decr_depth_collapse_level, #incr_depth_collapse_level," +
             "#decr_rank_collapse_level, #incr_rank_collapse_level")
@@ -1783,6 +1807,13 @@ if (!phyloXmlParser) {
 
         $("#zoom_to_fit").mousedown(zoomFit);
 
+
+        $("#return_to_supertree_button").mousedown(returnToSupertreeButtonPressed);
+
+        $("#order_button").mousedown(orderButtonPressed);
+
+        $("#uncollapse_all_button").mousedown(uncollapseAllButtonPressed);
+
         function makePhylogramControl() {
             var h = "";
             h = h.concat('<fieldset>');
@@ -1794,11 +1825,11 @@ if (!phyloXmlParser) {
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
+
         }
 
         function makeDisplayControl() {
             var h = "";
-
             h = h.concat('<fieldset><legend>Display Data:</legend>');
             h = h.concat('<div class="display_data_fs">');
             if (_treeProperties.nodeNames) {
@@ -1841,38 +1872,50 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom:</legend>');
-            h = h.concat('<input type="button" value="Y+" name="zoom_in_y" id="zoom_in_y">');
+            h = h.concat('<input type="button" value="Y+" name="zoom_in_y" id="zoom_in_y" title="zoom in vertically">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="X-" name="zoom_out_x" id="zoom_out_x">');
-            h = h.concat('<input type="button" value="F" name="zoom_to_fit" id="zoom_to_fit">');
-            h = h.concat('<input type="button" value="X+" name="zoom_in_x" id="zoom_in_x">');
+            h = h.concat('<input type="button" value="X-" name="zoom_out_x" id="zoom_out_x" title="zoom out horizontally">');
+            h = h.concat('<input type="button" value="F" name="zoom_to_fit" id="zoom_to_fit" title="fit to display">');
+            h = h.concat('<input type="button" value="X+" name="zoom_in_x" id="zoom_in_x" title="zoom it horizontally">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="Y-" name="zoom_out_y" id="zoom_out_y">');
+            h = h.concat('<input type="button" value="Y-" name="zoom_out_y" id="zoom_out_y"  title="zoom out vertically">');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
+        function makeControlButons() {
+            var h = "";
+            h = h.concat('<fieldset>');
+            h = h.concat('<div>');
+            h = h.concat('<input type="button" value="O" name="order_button" title="order all" id="order_button">');
+            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to super-tree" id="return_to_supertree_button">');
+            h = h.concat('<input type="button" value="U" name="uncollapse_all_button" title="uncollapse all" id="uncollapse_all_button">');
+            h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
 
         function makeSliders() {
             var h = "";
-            h = h.concat('<p>External label size:');
+            h = h.concat('External label size:');
             h = h.concat('<div id="external_font_size_slider"></div>');
-            h = h.concat('</p>');
+            h = h.concat('');
             if (_treeProperties.internalNodeData) {
-                h = h.concat('<p>Internal label size:');
+                h = h.concat('Internal label size:');
                 h = h.concat('<div id="internal_font_size_slider"></div>');
-                h = h.concat('</p>');
+                h = h.concat('');
             }
             if (_treeProperties.branchLengths || _treeProperties.confidences) {
-                h = h.concat('<p>Branch label size:');
+                h = h.concat('Branch label size:');
                 h = h.concat('<div id="branch_data_font_size_slider"></div>');
-                h = h.concat('</p>');
+                h = h.concat('');
             }
-            h = h.concat('<p>Node size:');
+            h = h.concat('Node size:');
             h = h.concat('<div id="node_size_slider"></div>');
-            h = h.concat('</p>');
-            h = h.concat('<p>Branch width:');
+            h = h.concat('');
+            h = h.concat('Branch width:');
             h = h.concat('<div id="branch_width_slider"></div>');
-            h = h.concat('</p>');
+            h = h.concat('<br>');
             return h;
         }
 
@@ -1922,8 +1965,8 @@ if (!phyloXmlParser) {
 
     function initializeGui() {
 
-        //     setRadioButtonValue('radio-phylogram', _options.phylogram); //TODO
-        //     setRadioButtonValue('radio-cladogram', !_options.phylogram);//TODO
+        setRadioButtonValue('radio-phylogram', _options.phylogram);
+        setRadioButtonValue('radio-cladogram', !_options.phylogram);
         setCheckboxValue('node_name_cb', _options.showNodeName);
         setCheckboxValue('taxonomy_cb', _options.showTaxonomy);
         setCheckboxValue('sequence_cb', _options.showSequence);
@@ -1963,6 +2006,35 @@ if (!phyloXmlParser) {
                 );
             }
 
+        }
+    }
+
+    function orderSubtree(n, order) {
+        var changed = false;
+        ord(n);
+        if (!changed) {
+            order = !order;
+            ord(n);
+        }
+        function ord(n) {
+            if (!n.children) {
+                return;
+            }
+            var c = n.children;
+            var l = c.length;
+            if (l == 2) {
+                var e0 = forester.calcSumOfAllExternalDescendants(c[0]);
+                var e1 = forester.calcSumOfAllExternalDescendants(c[1]);
+                if (e0 !== e1 && e0 < e1 === order) {
+                    changed = true;
+                    var c0 = c[0];
+                    c[0] = c[1];
+                    c[1] = c0;
+                }
+            }
+            for (var i = 0; i < l; ++i) {
+                ord(c[i]);
+            }
         }
     }
 

@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_54
+// v 0_55
 
 (function forester() {
 
@@ -754,8 +754,7 @@
         });
         return nodes;
     };
-
-
+    
     forester.getAllExternalNodes = function (node) {
         var nodes = [];
         forester.preOrderTraversalAll(node, function (n) {
@@ -1012,8 +1011,6 @@
     forester.isString = function (s) {
         return (typeof s === 'string' || s instanceof String);
     };
-
-
 
 
     // --------------------------------------------------------------
