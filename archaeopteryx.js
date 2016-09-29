@@ -179,6 +179,8 @@ if (!phyloXmlParser) {
         updateDepthCollapseDepthDisplay();
         updateBranchLengthCollapseBranchLengthDisplay();
 
+        updateButtonEnabledState();
+
         var node = _svgGroup.selectAll("g.node")
             .data(nodes, function (d) {
                 return d.id || (d.id = ++_i);
@@ -1270,7 +1272,7 @@ if (!phyloXmlParser) {
                     }
                     orderSubtree(d, _treeFn.visData.order);
                     _treeFn.visData.order = !_treeFn.visData.order;
-                    update();
+                    update(null, 0);
                 });
 
             d3.select(this).append("text")
@@ -1378,7 +1380,7 @@ if (!phyloXmlParser) {
             }
             orderSubtree(_root, _treeFn.visData.order);
             _treeFn.visData.order = !_treeFn.visData.order;
-            update();
+            update(null, 0);
         }
     }
 
@@ -1391,8 +1393,6 @@ if (!phyloXmlParser) {
             zoomFit();
         }
     }
-
-
 
     function search0() {
         _foundNodes0.clear();
@@ -1498,7 +1498,6 @@ if (!phyloXmlParser) {
         _options.internalNodeSize = getSliderValue('node_size_slider', ui);
         update(0, null, true);
     }
-
 
     function changeInternalFontSize(e, ui) {
         _options.internalNodeFontSize = getSliderValue('internal_font_size_slider', ui);
@@ -2114,6 +2113,26 @@ if (!phyloXmlParser) {
         var v = obtainBranchLengthCollapseBranchLengthValue();
         $("#bl_collapse_label")
             .val(v);
+    }
+
+    function updateButtonEnabledState() {
+        if (_superTreeRoots && _superTreeRoots.length > 0) {
+            $('#return_to_supertree_button').prop('disabled', false);
+            $('#return_to_supertree_button').css("background", "");
+        }
+        else {
+            $('#return_to_supertree_button').prop('disabled', true);
+            $('#return_to_supertree_button').css("background", "#e0e0e0");
+        }
+
+        if (forester.isHasCollapsedNodes(_root)) {
+            $('#uncollapse_all_button').prop('disabled', false);
+            $('#uncollapse_all_button').css("background", "")
+        }
+        else {
+            $('#uncollapse_all_button').prop('disabled', true);
+            $('#uncollapse_all_button').css("background", "#e0e0e0");
+        }
     }
 
     function obtainDepthCollapseDepthValue() {

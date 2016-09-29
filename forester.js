@@ -736,7 +736,6 @@
         return nodes;
     };
 
-
     /**
      * This calculates the sum of all the external
      * descendants of a node. It does count descendants
@@ -753,6 +752,25 @@
             }
         });
         return nodes;
+    };
+    
+    /**
+     * Returns true if at least one of the child nodes
+     * of node is collapsed.
+     *
+     * @param node - A node.
+     * @returns {boolean} - true if at least one of the child nodes is
+     * collapsed
+     */
+    forester.isHasCollapsedNodes = function (node) {
+        var collapsed = false;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n._children) {
+                collapsed = true;
+
+            }
+        });
+        return collapsed;
     };
     
     forester.getAllExternalNodes = function (node) {
