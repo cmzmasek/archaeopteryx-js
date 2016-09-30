@@ -753,7 +753,7 @@
         });
         return nodes;
     };
-    
+
     /**
      * Returns true if at least one of the child nodes
      * of node is collapsed.
@@ -772,7 +772,7 @@
         });
         return collapsed;
     };
-    
+
     forester.getAllExternalNodes = function (node) {
         var nodes = [];
         forester.preOrderTraversalAll(node, function (n) {

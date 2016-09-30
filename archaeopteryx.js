@@ -139,7 +139,6 @@ if (!phyloXmlParser) {
             transitionDuration = TRANSITION_DURATION_DEFAULT;
         }
 
-
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
             if (_w < 1) {
@@ -209,11 +208,22 @@ if (!phyloXmlParser) {
                 return 0;
             });
 
+        var makeIt = function (node) {
+            if (!(node.children || node._children)) {
+                if (_options.phylogram && _options.alignPhylogram) {
+                    return (-_yScale(node.distToRoot) + _w + gap);
+                }
+                else {
+                    return gap;
+                }
+            }
+            else {
+                return -gap;
+            }
+        };
+
         nodeEnter.append("text")
             .attr("class", "extlabel")
-            .attr("x", function (d) {
-                return d.children || d._children ? -gap : gap;
-            })
             .attr("text-anchor", function (d) {
                 return d.children || d._children ? "end" : "start";
             })
@@ -239,7 +249,8 @@ if (!phyloXmlParser) {
             .style("fill", makeLabelColor)
             .attr("dy", function (d) {
                 return d.children || d._children ? 0.3 * _options.internalNodeFontSize + "px" : 0.3 * _options.externalNodeFontSize + "px";
-            });
+            })
+            .attr("x", makeIt);
 
         node.select("text.bllabel")
             .style("font-size", _options.branchDataFontSize + "px")
@@ -391,6 +402,7 @@ if (!phyloXmlParser) {
                 });
             });
 
+
         link.transition()
             .duration(transitionDuration)
             .attr("d", elbow);
@@ -409,6 +421,51 @@ if (!phyloXmlParser) {
                 });
             })
             .remove();
+
+
+        if (_options.phylogram && _options.alignPhylogram && _options.showExternalLabels
+            && ( _options.showNodeName || _options.showTaxonomy || _options.showSequence )) {
+            var linkExtension = _svgGroup.append("g")
+                .attr("class", "link-extensions")
+                .selectAll("path")
+                .data(links.filter(function (d) {
+                    return !(d.target.children || d.target._children );
+                }));
+
+            linkExtension.enter().insert("path", "g")
+                .attr("class", "link")
+                .attr("fill", "none")
+                .attr("stroke-width", 1)
+                .attr("stroke", _options.branchColorDefault)
+                .style("stroke-opacity", 0.25)
+                .attr("d", function (d) {
+                    return step(d.target);
+                });
+
+
+            /* var linkExtension = _svgGroup.append("g")
+             .attr("class", "link-extensions")
+             .selectAll("path")
+             .data(links.filter(function (d) {
+             return !(d.target.children || d.target._children );
+             }))
+             .enter().append("path")
+             .each(function (d) {
+             d.target.linkExtensionNode = this;
+             })
+             .attr("stroke-width", 1)
+             .attr("stroke", _options.branchColorDefault)
+             .style("stroke-opacity", 0.25)
+             .attr("d", function (d) {
+             return step(d.target);
+             });*/
+
+            linkExtension.exit()
+            // .transition()
+            // .duration(0)
+                .attr("d", "M0,0L0,0")
+                .remove();
+        }
 
         nodes.forEach(function (d) {
             d.x0 = d.x;
@@ -693,6 +750,22 @@ if (!phyloXmlParser) {
             + "V" + d.target.x + "H" + d.target.y;
     };
 
+    var step = function (n) {
+        if (_options.phylogram) {
+            var x1 = n.y + 10; //gap //TODO
+            var y = n.x;
+            var x = (n.y - _yScale(n.distToRoot) + _w );
+            if ((x - x1) > 10) {
+                return "M" + x1 + "," + y
+                    + "L" + x + "," + y;
+            }
+        }
+        //else {
+        // return "M" + 0 + "," + 0
+        //      + "L" + 0 + "," + 0;
+        // }
+    };
+
 
     function initializeOptions(options) {
         _options = options ? options : {};
@@ -815,6 +888,9 @@ if (!phyloXmlParser) {
         }
         if (_options.searchUsesRegex === undefined) {
             _options.searchUsesRegex = false;
+        }
+        if (_options.alignPhylogram === undefined) {
+            _options.alignPhylogram = false;
         }
     }
 
@@ -1424,13 +1500,19 @@ if (!phyloXmlParser) {
 
     function toPhylogram() {
         _options.phylogram = true;
-        update();
+        update(null, 0);
     }
 
     function toCladegram() {
         _options.phylogram = false;
+        update(null, 0);
+    }
+
+    function alignPhylogrambCbClicked() {
+        _options.alignPhylogram = getCheckboxValue('align_phylogram_cb');
         update();
     }
+
 
     function nodeNameCbClicked() {
         _options.showNodeName = getCheckboxValue('node_name_cb');
@@ -1561,6 +1643,8 @@ if (!phyloXmlParser) {
 
         c1.append(makePhylogramControl());
 
+        c1.append(makeMoreControls());
+
         c1.append(makeDisplayControl());
 
 
@@ -1646,6 +1730,8 @@ if (!phyloXmlParser) {
         $("#radio-phylogram").click(toPhylogram);
 
         $("#radio-cladogram").click(toCladegram);
+
+        $("#align_phylogram_cb").click(alignPhylogrambCbClicked);
 
         $("#node_name_cb").click(nodeNameCbClicked);
 
@@ -1823,6 +1909,22 @@ if (!phyloXmlParser) {
             h = h.concat('<input type="radio" name="radio-1" id="radio-cladogram">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
+
+            return h;
+
+        }
+
+        function makeMoreControls() {
+            var h = "";
+
+            h = h.concat('<fieldset>');
+            h = h.concat('<div class="display_data_fs">');
+
+            h = h.concat('<label for="align_phylogram_cb">Lined Up</label>');
+            h = h.concat('<input type="checkbox" name="align_phylogram_cb" id="align_phylogram_cb">');
+
+            h = h.concat('</div>');
+            h = h.concat('</fieldset>');
             return h;
 
         }
@@ -1887,7 +1989,7 @@ if (!phyloXmlParser) {
             h = h.concat('<fieldset>');
             h = h.concat('<div>');
             h = h.concat('<input type="button" value="O" name="order_button" title="order all" id="order_button">');
-            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to super-tree" id="return_to_supertree_button">');
+            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to the super-tree (if in sub-tree)" id="return_to_supertree_button">');
             h = h.concat('<input type="button" value="U" name="uncollapse_all_button" title="uncollapse all" id="uncollapse_all_button">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -1966,6 +2068,7 @@ if (!phyloXmlParser) {
 
         setRadioButtonValue('radio-phylogram', _options.phylogram);
         setRadioButtonValue('radio-cladogram', !_options.phylogram);
+        setCheckboxValue('align_phylogram_cb', _options.alignPhylogram);
         setCheckboxValue('node_name_cb', _options.showNodeName);
         setCheckboxValue('taxonomy_cb', _options.showTaxonomy);
         setCheckboxValue('sequence_cb', _options.showSequence);

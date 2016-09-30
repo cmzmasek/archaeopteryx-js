@@ -53,6 +53,7 @@
             options.searchIsCaseSensitive = false;
             options.searchIsPartial = false;
             options.searchUsesRegex = true;
+            options.alignPhylogram = true;
             var settings = {};
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
@@ -85,7 +86,7 @@
                         var tree = null;
                         try {
                             tree = archaeopteryx.parsePhyloXML(data);
-                            // tree = archaeopteryx.parseNewHampshire("(((a,b,c),(d,e)),f)r;");
+                            //tree = archaeopteryx.parseNewHampshire("(((a:0.2,b:0.24,c:0.24):0.2,(d:0.223,e:0.2):0.42):0.28,f:0.62)r:0.2;");
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
