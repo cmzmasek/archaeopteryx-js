@@ -208,20 +208,6 @@ if (!phyloXmlParser) {
                 return 0;
             });
 
-        var makeIt = function (node) {
-            if (!(node.children || node._children)) {
-                if (_options.phylogram && _options.alignPhylogram) {
-                    return (-_yScale(node.distToRoot) + _w + gap);
-                }
-                else {
-                    return gap;
-                }
-            }
-            else {
-                return -gap;
-            }
-        };
-
         nodeEnter.append("text")
             .attr("class", "extlabel")
             .attr("text-anchor", function (d) {
@@ -250,7 +236,19 @@ if (!phyloXmlParser) {
             .attr("dy", function (d) {
                 return d.children || d._children ? 0.3 * _options.internalNodeFontSize + "px" : 0.3 * _options.externalNodeFontSize + "px";
             })
-            .attr("x", makeIt);
+            .attr("x", function (d) {
+                if (!(d.children || d._children)) {
+                    if (_options.phylogram && _options.alignPhylogram) {
+                        return (-_yScale(d.distToRoot) + _w + gap);
+                    }
+                    else {
+                        return gap;
+                    }
+                }
+                else {
+                    return -gap;
+                }
+            });
 
         node.select("text.bllabel")
             .style("font-size", _options.branchDataFontSize + "px")
@@ -353,9 +351,11 @@ if (!phyloXmlParser) {
             .text(function (d) {
                 if (( _options.dynahide && !(d.children || d._children) && _dynahide_factor >= 2 )
                     && (++_dynahide_counter % _dynahide_factor !== 0)) {
+                    d.hide = true;
                     return null;
                 }
                 else {
+                    d.hide = false;
                     return makeNodeLabel(d);
                 }
             });
@@ -408,8 +408,8 @@ if (!phyloXmlParser) {
             .attr("d", elbow);
 
         link.exit()
-            .transition()
-            .duration(transitionDuration)
+        // .transition()
+        // .duration(transitionDuration)
             .attr("d", function () {
                 var o = {
                     x: source.x,
@@ -426,10 +426,12 @@ if (!phyloXmlParser) {
         if (_options.phylogram && _options.alignPhylogram && _options.showExternalLabels
             && ( _options.showNodeName || _options.showTaxonomy || _options.showSequence )) {
             var linkExtension = _svgGroup.append("g")
-                .attr("class", "link-extensions")
+            // .attr("class", "link-extensions")
                 .selectAll("path")
                 .data(links.filter(function (d) {
-                    return !(d.target.children || d.target._children );
+                    return (!(d.target.children || d.target._children)
+                        && !( _options.dynahide && d.target.hide)
+                    );
                 }));
 
             linkExtension.enter().insert("path", "g")
@@ -439,32 +441,12 @@ if (!phyloXmlParser) {
                 .attr("stroke", _options.branchColorDefault)
                 .style("stroke-opacity", 0.25)
                 .attr("d", function (d) {
-                    return step(d.target);
+                    return connection(d.target);
                 });
 
-
-            /* var linkExtension = _svgGroup.append("g")
-             .attr("class", "link-extensions")
-             .selectAll("path")
-             .data(links.filter(function (d) {
-             return !(d.target.children || d.target._children );
-             }))
-             .enter().append("path")
-             .each(function (d) {
-             d.target.linkExtensionNode = this;
-             })
-             .attr("stroke-width", 1)
-             .attr("stroke", _options.branchColorDefault)
-             .style("stroke-opacity", 0.25)
-             .attr("d", function (d) {
-             return step(d.target);
-             });*/
-
-            linkExtension.exit()
-            // .transition()
-            // .duration(0)
-                .attr("d", "M0,0L0,0")
-                .remove();
+            //  linkExtension.exit()
+            //      .attr("d", "M100,100L0,0")
+            //      .remove();
         }
 
         nodes.forEach(function (d) {
@@ -750,7 +732,7 @@ if (!phyloXmlParser) {
             + "V" + d.target.x + "H" + d.target.y;
     };
 
-    var step = function (n) {
+    var connection = function (n) {
         if (_options.phylogram) {
             var x1 = n.y + 10; //gap //TODO
             var y = n.x;
