@@ -165,6 +165,18 @@ if (!phyloXmlParser) {
         if (_options.dynahide) {
             _dynahide_counter = 0;
             _dynahide_factor = Math.round(_options.externalNodeFontSize / ( ( 0.8 * _displayHeight) / uncollsed_nodes ));
+
+            forester.preOrderTraversal(_root, function (n) {
+                if (!n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0)) {
+                    n.hide = true;
+                }
+                else {
+                    n.hide = false;
+                }
+            });
+
+
+
         }
 
         updateDepthCollapseDepthDisplay();
@@ -357,13 +369,14 @@ if (!phyloXmlParser) {
 
         nodeUpdate.select("text.extlabel")
             .text(function (d) {
-                if (( _options.dynahide && !(d.children /*|| d._children*/) && _dynahide_factor >= 2 )
-                    && (++_dynahide_counter % _dynahide_factor !== 0)) {
-                    d.hide = true;
+                //if (( _options.dynahide && !(d.children /*|| d._children*/) && _dynahide_factor >= 2 )
+                //    && (++_dynahide_counter % _dynahide_factor !== 0)) {
+                if (_options.dynahide && d.hide) {
+                    //d.hide = true;
                     return null;
                 }
                 else {
-                    d.hide = false;
+                    // d.hide = false;
                     return makeNodeLabel(d);
                 }
             });
