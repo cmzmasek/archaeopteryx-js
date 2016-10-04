@@ -1134,7 +1134,7 @@ if (!phyloXmlParser) {
             }
 
             function goToSubTree(node) {
-                if (node.parent && node.children) {
+                if (node.parent && ( node.children || node._children )) {
                     if (_superTreeRoots.length > 0 && node === _root.children[0]) {
                         _root = _superTreeRoots.pop();
                         resetDepthCollapseDepthValue();
@@ -1151,6 +1151,11 @@ if (!phyloXmlParser) {
                         fakeNode.y = 0;
                         fakeNode.y0 = 0;
                         _root = fakeNode;
+                        if (node._children) {
+                            // To make sure, new root is uncollapsed.
+                            node.children = node._children;
+                            node._children = null;
+                        }
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
@@ -1276,7 +1281,7 @@ if (!phyloXmlParser) {
                 .style("fill", "white")
                 .style("font-weight", "bold")
                 .text(function (d) {
-                    if (d.parent && d.children) {
+                    if (d.parent && ( d.children || d._children )) {
                         if (_superTreeRoots.length > 0 && d === _root.children[0]) {
                             textSum += textInc;
                             return "Return to Super-tree";
@@ -1906,7 +1911,7 @@ if (!phyloXmlParser) {
             h = h.concat('<fieldset>');
             h = h.concat('<div class="display_data_fs">');
 
-            h = h.concat('<label for="align_phylogram_cb">Lined Up</label>');
+            h = h.concat('<label for="align_phylogram_cb">Line Up PH</label>');
             h = h.concat('<input type="checkbox" name="align_phylogram_cb" id="align_phylogram_cb">');
 
             h = h.concat('</div>');
@@ -2054,7 +2059,7 @@ if (!phyloXmlParser) {
 
         setRadioButtonValue('radio-phylogram', _options.phylogram);
         setRadioButtonValue('radio-cladogram', !_options.phylogram);
-        setCheckboxValue('align_phylogram_cb', _options.alignPhylogram);
+        setCheckboxValue('align_phylogram_cb', _options.phylogram ? _options.alignPhylogram : false);
         setCheckboxValue('node_name_cb', _options.showNodeName);
         setCheckboxValue('taxonomy_cb', _options.showTaxonomy);
         setCheckboxValue('sequence_cb', _options.showSequence);
