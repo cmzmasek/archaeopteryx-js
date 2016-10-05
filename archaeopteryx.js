@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_56
+// v 0_57
 
 if (!d3) {
     throw "no d3.js";
@@ -1418,12 +1418,14 @@ if (!phyloXmlParser) {
     }
 
     function zoomFit() {
-        calcMaxExtLabel();
-        intitialzeDisplaySize();
-        initializeSettings(_settings);
-        _zoomListener.scale(1);
-        update(_root, 0);
-        centerNode(_root, _settings.rootOffset);
+        if (_root) {
+            calcMaxExtLabel();
+            intitialzeDisplaySize();
+            initializeSettings(_settings);
+            _zoomListener.scale(1);
+            update(_root, 0);
+            centerNode(_root, _settings.rootOffset);
+        }
     }
 
 
@@ -1890,6 +1892,83 @@ if (!phyloXmlParser) {
 
         $("#uncollapse_all_button").mousedown(uncollapseAllButtonPressed);
 
+
+        $(document).keyup(function (e) {/////////
+            if (e.ctrlKey) {
+                if (e.keyCode === 77) {
+                    // m
+                    orderButtonPressed();
+                }
+                else if (e.keyCode === 188) {
+                    // ,
+                    returnToSupertreeButtonPressed();
+                }
+                else if (e.keyCode === 190) {
+                    // .
+                    uncollapseAllButtonPressed();
+                }
+                else if (e.keyCode === 90) {
+                    // z
+                    zoomFit();
+                }
+                else {
+                    console.log("-->" + e.keyCode);
+                }
+            }
+        });
+
+        $(document).keydown(function (e) {
+            if (e.shiftKey) {
+                console.log("~~~~>" + e.keyCode);
+                if (e.keyCode === 38) {
+                    // up
+                    zoomInY()
+                }
+                else if (e.keyCode === 40) {
+                    // dowm
+                    zoomOutY()
+                }
+                else if (e.keyCode === 37) {
+                    // left
+                    zoomOutX()
+                }
+                else if (e.keyCode === 39) {
+                    // right
+                    zoomInX()
+                }
+            }
+        });
+
+
+        $(document).on('mousewheel DOMMouseScroll', function (e) {
+            if (e.shiftKey) {
+                if (e.originalEvent) {
+                    var oe = e.originalEvent;
+                    if (oe.detail > 0 || oe.wheelDelta < 0) {
+                        zoomOutY(); //TODO need to add step, zoom is too much for wheel
+                        zoomOutX(); //TODO option?
+                    }
+                    else {
+                        zoomInY();
+                        zoomInX();
+                    }
+                }
+                // To prevent page fom scrolling:
+                return false;
+            }
+            if (e.ctrlKey) {
+                //maybe we could use this to turn of node change size
+            }
+            if (e.altKey) {
+                console.log("alt");
+                //maybe we could use this to turn of node change size
+                return false;
+            }
+
+
+        });
+
+
         function makePhylogramControl() {
             var h = "";
             h = h.concat('<fieldset>');
@@ -1917,7 +1996,6 @@ if (!phyloXmlParser) {
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
-
         }
 
         function makeDisplayControl() {
@@ -2053,7 +2131,7 @@ if (!phyloXmlParser) {
             h = h.concat('</div>');
             return h;
         }
-    }
+    } // function createGui()
 
     function initializeGui() {
 
