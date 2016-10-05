@@ -45,8 +45,51 @@ if (!phyloXmlParser) {
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
     var ZOOM_INTERVAL = 200;
-    var BUTTON_ZOOM_IN_FACTOR = 1.2;
+    var BUTTON_ZOOM_IN_FACTOR = 1.1;
     var BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
+    var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
+    var BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
+
+    var NODE_SIZE_MAX = 9;
+    var NODE_SIZE_MIN = 1;
+    var BRANCH_WIDTH_MAX = 9;
+    var BRANCH_WIDTH_MIN = 0.5;
+    var FONT_SIZE_MAX = 26;
+    var FONT_SIZE_MIN = 2;
+    var SLIDER_STEP = 0.5;
+
+    var PHYLOGRAM_BUTTON = 'radio-phylogram';
+    var CLADOGRAM_BUTTON = 'radio-cladogram';
+
+    var ALIGN_PHYLOGRAM_CB = 'align_phylogram_cb';
+
+    var INTERNAL_NODES_CB = 'internal_nodes_cb';
+    var EXTERNAL_NODES_CB = 'external_nodes_cb';
+
+    var INTERNAL_FONT_SIZE_SLIDER = 'internal_font_size_slider';
+    var EXTERNAL_FONT_SIZE_SLIDER = 'external_font_size_slider';
+    var BRANCH_DATA_FONT_SIZE_SLIDER = 'branch_data_font_size_slider';
+    var BRANCH_WIDTH_SLIDER = 'branch_width_slider';
+    var NODE_SIZE_SLIDER = 'node_size_slider';
+
+    var VK_M = 77;
+    var VK_COMMA = 188;
+    var VK_PERIOD = 190;
+    var VK_Z = 90;
+    var VK_FORWARD_SLASH = 191;
+    var VK_DELETE = 46;
+    var VK_BACKSPACE = 8;
+    var VK_HOME = 36;
+    var VK_UP = 38;
+    var VK_DOWN = 40;
+    var VK_LEFT = 37;
+    var VK_RIGHT = 39;
+    var VK_SEMICOLON = 186;
+    var VK_PLUS = 187;
+    var VK_MINUS = 189;
+    var VK_PAGE_UP = 33;
+    var VK_PAGE_DOWN = 34;
+
 
     // "Instance variables"
     var _root = null;
@@ -924,7 +967,7 @@ if (!phyloXmlParser) {
             .size([_displayHeight, _displayWidth]);
 
 
-        _treeFn.clickEvent = getClickEventListenerNode(phylo); //TODO
+        _treeFn.clickEvent = getClickEventListenerNode(phylo);
 
         calcMaxExtLabel();
 
@@ -1390,26 +1433,47 @@ if (!phyloXmlParser) {
     });
 
 
-    function zoomInX() {
-        _displayWidth = _displayWidth * BUTTON_ZOOM_IN_FACTOR;
+    function zoomInX(zoomInFactor) {
+        if (zoomInFactor) {
+            _displayWidth = _displayWidth * zoomInFactor;
+        }
+        else {
+            _displayWidth = _displayWidth * BUTTON_ZOOM_IN_FACTOR;
+        }
         update(null, 0);
     }
 
-    function zoomInY() {
-        _displayHeight = _displayHeight * BUTTON_ZOOM_IN_FACTOR;
+    function zoomInY(zoomInFactor) {
+        if (zoomInFactor) {
+            _displayHeight = _displayHeight * zoomInFactor;
+        }
+        else {
+            _displayHeight = _displayHeight * BUTTON_ZOOM_IN_FACTOR;
+        }
         update(null, 0);
     }
 
-    function zoomOutX() {
-        var newDisplayWidth = _displayWidth * BUTTON_ZOOM_OUT_FACTOR;
+    function zoomOutX(zoomOutFactor) {
+        var newDisplayWidth;
+        if (zoomOutFactor) {
+            newDisplayWidth = _displayWidth * zoomOutFactor;
+        }
+        else {
+            newDisplayWidth = _displayWidth * BUTTON_ZOOM_OUT_FACTOR;
+        }
         if ((newDisplayWidth - calcMaxTreeLengthForDisplay() ) >= 1) {
             _displayWidth = newDisplayWidth;
             update(null, 0);
         }
     }
 
-    function zoomOutY() {
-        _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
+    function zoomOutY(zoomOutFactor) {
+        if (zoomOutFactor) {
+            _displayHeight = _displayHeight * zoomOutFactor;
+        }
+        else {
+            _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
+        }
         var min = 0.25 * _settings.displayHeight;
         if (_displayHeight < min) {
             _displayHeight = min;
@@ -1454,7 +1518,7 @@ if (!phyloXmlParser) {
     }
 
     function uncollapseAllButtonPressed() {
-        if (_root) {
+        if (_root && forester.isHasCollapsedNodes(_root)) {
             forester.unCollapseAll(_root);
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
@@ -1502,7 +1566,7 @@ if (!phyloXmlParser) {
     }
 
     function alignPhylogrambCbClicked() {
-        _options.alignPhylogram = getCheckboxValue('align_phylogram_cb');
+        _options.alignPhylogram = getCheckboxValue(ALIGN_PHYLOGRAM_CB);
         update();
     }
 
@@ -1555,7 +1619,7 @@ if (!phyloXmlParser) {
     }
 
     function internalNodesCbClicked() {
-        _options.showInternalNodes = getCheckboxValue('internal_nodes_cb');
+        _options.showInternalNodes = getCheckboxValue(INTERNAL_NODES_CB);
         update();
     }
 
@@ -1564,29 +1628,35 @@ if (!phyloXmlParser) {
         update();
     }
 
-    function changeBranchWidth(e, ui) {
-        _options.branchWidthDefault = getSliderValue('branch_width_slider', ui);
-        update(0, null, true);
+    function changeBranchWidth(e, slider) {
+        _options.branchWidthDefault = getSliderValue(slider);
+        update(null, 0, true);
     }
 
-    function changeNodeSize(e, ui) {
-        _options.internalNodeSize = getSliderValue('node_size_slider', ui);
-        update(0, null, true);
+    function changeNodeSize(e, slider) {
+        _options.internalNodeSize = getSliderValue(slider);
+        if (!_options.showInternalNodes && !_options.showExternalNodes) {
+            _options.showInternalNodes = true;
+            _options.showExternalNodes = true;
+            setCheckboxValue(INTERNAL_NODES_CB, true);
+            setCheckboxValue(EXTERNAL_NODES_CB, true);
+        }
+        update(null, 0, true);
     }
 
-    function changeInternalFontSize(e, ui) {
-        _options.internalNodeFontSize = getSliderValue('internal_font_size_slider', ui);
-        update(0, null, true);
+    function changeInternalFontSize(e, slider) {
+        _options.internalNodeFontSize = getSliderValue(slider);
+        update(null, 0, true);
     }
 
-    function changeExternalFontSize(e, ui) {
-        _options.externalNodeFontSize = getSliderValue('external_font_size_slider', ui);
-        update(0, null, true);
+    function changeExternalFontSize(e, slider) {
+        _options.externalNodeFontSize = getSliderValue(slider);
+        update(null, 0, true);
     }
 
-    function changeBranchDataFontSize(e, ui) {
-        _options.branchDataFontSize = getSliderValue('branch_data_font_size_slider', ui);
-        update(0, null, true);
+    function changeBranchDataFontSize(e, slider) {
+        _options.branchDataFontSize = getSliderValue(slider);
+        update(null, 0, true);
     }
 
     function setRadioButtonValue(id, value) {
@@ -1609,10 +1679,64 @@ if (!phyloXmlParser) {
         return $('#' + id).is(':checked');
     }
 
-    function getSliderValue(id, ui) {
-        return ui.value;
+    function getSliderValue(slider) {
+        return slider.value;
     }
 
+    function setSliderValue(id, value) {
+        var sli = $('#' + id);
+        if (sli) {
+            sli.slider('value', value);
+        }
+    }
+
+    function increaseFontSizes() {
+        var step = SLIDER_STEP;
+        var max = FONT_SIZE_MAX - step;
+        var up = false;
+        if (_options.externalNodeFontSize <= max) {
+            _options.externalNodeFontSize += step;
+            up = true;
+        }
+        if (_options.internalNodeFontSize <= max) {
+            _options.internalNodeFontSize += step;
+            up = true;
+        }
+        if (_options.branchDataFontSize <= max) {
+            _options.branchDataFontSize += step;
+            up = true;
+        }
+        if (up) {
+            setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
+            setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
+            setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
+            update(0, null, true);
+        }
+    }
+
+    function decreaseFontSizes() {
+        var step = SLIDER_STEP;
+        var min = FONT_SIZE_MIN + step;
+        var up = false;
+        if (_options.externalNodeFontSize >= min) {
+            _options.externalNodeFontSize -= step;
+            up = true;
+        }
+        if (_options.internalNodeFontSize >= min) {
+            _options.internalNodeFontSize -= step;
+            up = true;
+        }
+        if (_options.branchDataFontSize >= min) {
+            _options.branchDataFontSize -= step;
+            up = true;
+        }
+        if (up) {
+            setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
+            setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
+            setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
+            update(0, null, true);
+        }
+    }
 
     function createGui() {
 
@@ -1657,7 +1781,6 @@ if (!phyloXmlParser) {
         c1.append(makeControlButons());
 
         c1.append(makeSliders());
-
 
         c1.append(makeSearchBoxes());
 
@@ -1720,11 +1843,11 @@ if (!phyloXmlParser) {
 
         $("#search1").keyup(search1);
 
-        $("#radio-phylogram").click(toPhylogram);
+        $("#" + PHYLOGRAM_BUTTON).click(toPhylogram);
 
-        $("#radio-cladogram").click(toCladegram);
+        $("#" + CLADOGRAM_BUTTON).click(toCladegram);
 
-        $("#align_phylogram_cb").click(alignPhylogrambCbClicked);
+        $("#" + ALIGN_PHYLOGRAM_CB).click(alignPhylogrambCbClicked);
 
         $("#node_name_cb").click(nodeNameCbClicked);
 
@@ -1740,9 +1863,9 @@ if (!phyloXmlParser) {
 
         $("#external_label_cb").click(externalLabelsCbClicked);
 
-        $("#internal_nodes_cb").click(internalNodesCbClicked);
+        $("#" + INTERNAL_NODES_CB).click(internalNodesCbClicked);
 
-        $("#external_nodes_cb").click(externalNodesCbClicked);
+        $("#" + EXTERNAL_NODES_CB).click(externalNodesCbClicked);
 
         $("#label_color_select_menu").on("change", function () {
             var v = this.value;
@@ -1756,45 +1879,52 @@ if (!phyloXmlParser) {
             update(null, 0);
         });
 
-        $("#node_size_slider").slider({
-            min: 0,
-            max: 8,
+        $('#' + NODE_SIZE_SLIDER).slider({
+            min: NODE_SIZE_MIN,
+            max: NODE_SIZE_MAX,
+            step: SLIDER_STEP,
             value: _options.internalNodeSize,
             animate: "fast",
             slide: changeNodeSize,
             change: changeNodeSize
         });
 
-        $("#branch_width_slider").slider({
-            min: 1,
-            max: 9,
+        $('#' + BRANCH_WIDTH_SLIDER).slider({
+            min: BRANCH_WIDTH_MIN,
+            max: BRANCH_WIDTH_MAX,
+            step: SLIDER_STEP,
             value: _options.branchWidthDefault,
             animate: "fast",
             slide: changeBranchWidth,
             change: changeBranchWidth
         });
 
-        $("#external_font_size_slider").slider({
-            min: 2,
-            max: 24,
+
+        $('#' + EXTERNAL_FONT_SIZE_SLIDER).slider({
+            min: FONT_SIZE_MIN,
+            max: FONT_SIZE_MAX,
+            step: SLIDER_STEP,
             value: _options.externalNodeFontSize,
             animate: "fast",
             slide: changeExternalFontSize,
             change: changeExternalFontSize
         });
 
-        $("#internal_font_size_slider").slider({
-            min: 2,
-            max: 24,
+
+        $('#' + INTERNAL_FONT_SIZE_SLIDER).slider({
+            min: FONT_SIZE_MIN,
+            max: FONT_SIZE_MAX,
+            step: SLIDER_STEP,
             value: _options.internalNodeFontSize,
             animate: "fast",
             slide: changeInternalFontSize,
             change: changeInternalFontSize
         });
 
-        $("#branch_data_font_size_slider").slider({
-            min: 2,
-            max: 24,
+        $('#' + BRANCH_DATA_FONT_SIZE_SLIDER).slider({
+            min: FONT_SIZE_MIN,
+            max: FONT_SIZE_MAX,
+            step: SLIDER_STEP,
             value: _options.branchDataFontSize,
             animate: "fast",
             slide: changeBranchDataFontSize,
@@ -1885,7 +2015,6 @@ if (!phyloXmlParser) {
 
         $("#zoom_to_fit").mousedown(zoomFit);
 
-
         $("#return_to_supertree_button").mousedown(returnToSupertreeButtonPressed);
 
         $("#order_button").mousedown(orderButtonPressed);
@@ -1893,49 +2022,67 @@ if (!phyloXmlParser) {
         $("#uncollapse_all_button").mousedown(uncollapseAllButtonPressed);
 
 
-        $(document).keyup(function (e) {/////////
-            if (e.ctrlKey) {
-                if (e.keyCode === 77) {
-                    // m
+        $(document).keyup(function (e) {
+
+            if (e.ctrlKey || e.altKey) {
+                if (e.keyCode === VK_M) {
                     orderButtonPressed();
                 }
-                else if (e.keyCode === 188) {
-                    // ,
+                else if (e.keyCode === VK_COMMA) {
                     returnToSupertreeButtonPressed();
                 }
-                else if (e.keyCode === 190) {
-                    // .
+                else if (e.keyCode === VK_PERIOD) {
                     uncollapseAllButtonPressed();
                 }
-                else if (e.keyCode === 90) {
-                    // z
+                else if (e.keyCode === VK_Z || e.keyCode === VK_DELETE
+                    || e.keyCode === VK_BACKSPACE || e.keyCode === VK_HOME) {
                     zoomFit();
                 }
-                else {
-                    console.log("-->" + e.keyCode);
+                else if (e.keyCode === VK_FORWARD_SLASH) {
+                    cycleDisplay();
                 }
+                else if (e.keyCode === VK_SEMICOLON) {
+                    toggleAlignPhylogram();
+                }
+                //else {
+                //    console.log("-->" + e.keyCode);
+                //}
+            }
+            else if (e.keyCode === VK_HOME) {
+                zoomFit();
             }
         });
 
         $(document).keydown(function (e) {
-            if (e.shiftKey) {
-                console.log("~~~~>" + e.keyCode);
-                if (e.keyCode === 38) {
-                    // up
-                    zoomInY()
+            if (e.shiftKey || e.altKey) {
+                if (e.keyCode === VK_UP) {
+                    zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
                 }
-                else if (e.keyCode === 40) {
-                    // dowm
-                    zoomOutY()
+                else if (e.keyCode === VK_DOWN) {
+                    zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                 }
-                else if (e.keyCode === 37) {
-                    // left
-                    zoomOutX()
+                else if (e.keyCode === VK_LEFT) {
+                    zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                 }
-                else if (e.keyCode === 39) {
-                    // right
-                    zoomInX()
+                else if (e.keyCode === VK_RIGHT) {
+                    zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
                 }
+            }
+            if (e.altKey) {
+                if (e.keyCode === VK_PLUS) {
+                    zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                    zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                }
+                else if (e.keyCode === VK_MINUS) {
+                    zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                    zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                }
+            }
+            if (e.keyCode === VK_PAGE_UP) {
+                increaseFontSizes();
+            }
+            else if (e.keyCode === VK_PAGE_DOWN) {
+                decreaseFontSizes();
             }
         });
 
@@ -1945,27 +2092,31 @@ if (!phyloXmlParser) {
                 if (e.originalEvent) {
                     var oe = e.originalEvent;
                     if (oe.detail > 0 || oe.wheelDelta < 0) {
-                        zoomOutY(); //TODO need to add step, zoom is too much for wheel
-                        zoomOutX(); //TODO option?
+                        if (e.ctrlKey) {
+                            decreaseFontSizes();
+                        }
+                        else if (e.altKey) {
+                            zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                        }
+                        else {
+                            zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                        }
                     }
                     else {
-                        zoomInY();
-                        zoomInX();
+                        if (e.ctrlKey) {
+                            increaseFontSizes();
+                        }
+                        else if (e.altKey) {
+                            zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                        }
+                        else {
+                            zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                        }
                     }
                 }
                 // To prevent page fom scrolling:
                 return false;
             }
-            if (e.ctrlKey) {
-                //maybe we could use this to turn of node change size
-            }
-            if (e.altKey) {
-                console.log("alt");
-                //maybe we could use this to turn of node change size
-                return false;
-            }
-
-
         });
 
 
@@ -1973,10 +2124,10 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div class="phylogram_cladogram">');
-            h = h.concat('<label for="radio-phylogram">PH</label>');
-            h = h.concat('<input type="radio" name="radio-1" id="radio-phylogram">');
-            h = h.concat('<label for="radio-cladogram">CL</label>');
-            h = h.concat('<input type="radio" name="radio-1" id="radio-cladogram">');
+            h = h.concat('<label for="' + PHYLOGRAM_BUTTON + '">PH</label>');
+            h = h.concat('<input type="radio" name="radio-1" id="' + PHYLOGRAM_BUTTON + '">');
+            h = h.concat('<label for="' + CLADOGRAM_BUTTON + '">CL</label>');
+            h = h.concat('<input type="radio" name="radio-1" id="' + CLADOGRAM_BUTTON + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
 
@@ -1990,8 +2141,8 @@ if (!phyloXmlParser) {
             h = h.concat('<fieldset>');
             h = h.concat('<div class="display_data_fs">');
 
-            h = h.concat('<label for="align_phylogram_cb">Line Up PH</label>');
-            h = h.concat('<input type="checkbox" name="align_phylogram_cb" id="align_phylogram_cb">');
+            h = h.concat('<label for="' + ALIGN_PHYLOGRAM_CB + '">Line Up PH</label>');
+            h = h.concat('<input type="checkbox" name="' + ALIGN_PHYLOGRAM_CB + '" id="' + ALIGN_PHYLOGRAM_CB + '">');
 
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -2029,10 +2180,10 @@ if (!phyloXmlParser) {
                 h = h.concat('<label for="internal_label_cb">Internal Labels</label>');
                 h = h.concat('<input type="checkbox" name="internal_label_cb" id="internal_label_cb">');
             }
-            h = h.concat('<label for="external_nodes_cb">External Nodes</label>');
-            h = h.concat('<input type="checkbox" name="external_label_cb" id="external_nodes_cb">');
-            h = h.concat('<label for="internal_nodes_cb">Internal Nodes</label>');
-            h = h.concat('<input type="checkbox" name="internal_label_cb" id="internal_nodes_cb">');
+            h = h.concat('<label for="' + EXTERNAL_NODES_CB + '">External Nodes</label>');
+            h = h.concat('<input type="checkbox" name="' + EXTERNAL_NODES_CB + '" id="' + EXTERNAL_NODES_CB + '">');
+            h = h.concat('<label for="' + INTERNAL_NODES_CB + '">Internal Nodes</label>');
+            h = h.concat('<input type="checkbox" name="' + INTERNAL_NODES_CB + '" id="' + INTERNAL_NODES_CB + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -2065,26 +2216,27 @@ if (!phyloXmlParser) {
             return h;
         }
 
+
         function makeSliders() {
             var h = "";
             h = h.concat('External label size:');
-            h = h.concat('<div id="external_font_size_slider"></div>');
+            h = h.concat('<div id="' + EXTERNAL_FONT_SIZE_SLIDER + '"></div>');
             h = h.concat('');
             if (_treeProperties.internalNodeData) {
                 h = h.concat('Internal label size:');
-                h = h.concat('<div id="internal_font_size_slider"></div>');
+                h = h.concat('<div id="' + INTERNAL_FONT_SIZE_SLIDER + '"></div>');
                 h = h.concat('');
             }
             if (_treeProperties.branchLengths || _treeProperties.confidences) {
                 h = h.concat('Branch label size:');
-                h = h.concat('<div id="branch_data_font_size_slider"></div>');
+                h = h.concat('<div id="' + BRANCH_DATA_FONT_SIZE_SLIDER + '"></div>');
                 h = h.concat('');
             }
             h = h.concat('Node size:');
-            h = h.concat('<div id="node_size_slider"></div>');
+            h = h.concat('<div id="' + NODE_SIZE_SLIDER + '"></div>');
             h = h.concat('');
             h = h.concat('Branch width:');
-            h = h.concat('<div id="branch_width_slider"></div>');
+            h = h.concat('<div id="' + BRANCH_WIDTH_SLIDER + '"></div>');
             h = h.concat('<br>');
             return h;
         }
@@ -2117,7 +2269,6 @@ if (!phyloXmlParser) {
             return h;
         }
 
-
         function makeVisualControls() {
             var h = "";
             h = h.concat('<div id="accordion">');
@@ -2135,9 +2286,10 @@ if (!phyloXmlParser) {
 
     function initializeGui() {
 
-        setRadioButtonValue('radio-phylogram', _options.phylogram);
-        setRadioButtonValue('radio-cladogram', !_options.phylogram);
-        setCheckboxValue('align_phylogram_cb', _options.phylogram ? _options.alignPhylogram : false);
+        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram);
+        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram);
+
+        setCheckboxValue(ALIGN_PHYLOGRAM_CB, _options.phylogram ? _options.alignPhylogram : false);
         setCheckboxValue('node_name_cb', _options.showNodeName);
         setCheckboxValue('taxonomy_cb', _options.showTaxonomy);
         setCheckboxValue('sequence_cb', _options.showSequence);
@@ -2145,8 +2297,8 @@ if (!phyloXmlParser) {
         setCheckboxValue('branch_length_values_cb', _options.showBranchLengthValues);
         setCheckboxValue('internal_label_cb', _options.showInternalLabels);
         setCheckboxValue('external_label_cb', _options.showExternalLabels);
-        setCheckboxValue('internal_nodes_cb', _options.showInternalNodes);
-        setCheckboxValue('external_nodes_cb', _options.showExternalNodes);
+        setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
+        setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
         initializeVisualizationMenu();
     }
 
@@ -2208,6 +2360,20 @@ if (!phyloXmlParser) {
             }
         }
     }
+
+    function cycleDisplay() {
+        _options.phylogram = !_options.phylogram;
+        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram);
+        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram);
+        update(null, 0);
+    }
+
+    function toggleAlignPhylogram() {
+        _options.alignPhylogram = !_options.alignPhylogram;
+        setCheckboxValue(ALIGN_PHYLOGRAM_CB, _options.alignPhylogram);
+        update(null, 0);
+    }
+
 
     function decrDepthCollapseLevel() {
         _rank_collapse_level = -1;
