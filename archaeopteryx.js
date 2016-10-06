@@ -79,11 +79,14 @@ if (!phyloXmlParser) {
     var BRANCH_WIDTH_SLIDER = 'branch_width_slider';
     var NODE_SIZE_SLIDER = 'node_size_slider';
 
-    var VK_M = 77;
-    var VK_COMMA = 188;
-    var VK_PERIOD = 190;
-    var VK_Z = 90;
-    var VK_FORWARD_SLASH = 191;
+    var VK_O = 79;
+    var VK_R = 82;
+    var VK_U = 85;
+    var VK_P = 80;
+    var VK_A = 65;
+    var VK_S = 83;
+    var VK_L = 76;
+    var VK_C = 67;
     var VK_DELETE = 46;
     var VK_BACKSPACE = 8;
     var VK_HOME = 36;
@@ -91,9 +94,10 @@ if (!phyloXmlParser) {
     var VK_DOWN = 40;
     var VK_LEFT = 37;
     var VK_RIGHT = 39;
-    var VK_SEMICOLON = 186;
     var VK_PLUS = 187;
     var VK_MINUS = 189;
+    var VK_PLUS_N = 107;
+    var VK_MINUS_N = 109;
     var VK_PAGE_UP = 33;
     var VK_PAGE_DOWN = 34;
 
@@ -1705,7 +1709,7 @@ if (!phyloXmlParser) {
     }
 
     function increaseFontSizes() {
-        var step = SLIDER_STEP;
+        var step = SLIDER_STEP * 2;
         var max = FONT_SIZE_MAX - step;
         var up = false;
         if (_options.externalNodeFontSize <= max) {
@@ -1729,7 +1733,7 @@ if (!phyloXmlParser) {
     }
 
     function decreaseFontSizes() {
-        var step = SLIDER_STEP;
+        var step = SLIDER_STEP * 2;
         var min = FONT_SIZE_MIN + step;
         var up = false;
         if (_options.externalNodeFontSize >= min) {
@@ -2038,24 +2042,24 @@ if (!phyloXmlParser) {
 
         $(document).keyup(function (e) {
 
-            if (e.ctrlKey || e.altKey) {
-                if (e.keyCode === VK_M) {
+            if (e.altKey) {
+                if (e.keyCode === VK_O) {
                     orderButtonPressed();
                 }
-                else if (e.keyCode === VK_COMMA) {
+                else if (e.keyCode === VK_R) {
                     returnToSupertreeButtonPressed();
                 }
-                else if (e.keyCode === VK_PERIOD) {
+                else if (e.keyCode === VK_U) {
                     uncollapseAllButtonPressed();
                 }
-                else if (e.keyCode === VK_Z || e.keyCode === VK_DELETE
+                else if (e.keyCode === VK_C || e.keyCode === VK_DELETE
                     || e.keyCode === VK_BACKSPACE || e.keyCode === VK_HOME) {
                     zoomFit();
                 }
-                else if (e.keyCode === VK_FORWARD_SLASH) {
+                else if (e.keyCode === VK_P) {
                     cycleDisplay();
                 }
-                else if (e.keyCode === VK_SEMICOLON) {
+                else if (e.keyCode === VK_L) {
                     toggleAlignPhylogram();
                 }
                 //else {
@@ -2068,7 +2072,7 @@ if (!phyloXmlParser) {
         });
 
         $(document).keydown(function (e) {
-            if (e.shiftKey || e.altKey) {
+            if (e.altKey) {
                 if (e.keyCode === VK_UP) {
                     zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
                 }
@@ -2081,15 +2085,30 @@ if (!phyloXmlParser) {
                 else if (e.keyCode === VK_RIGHT) {
                     zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
                 }
-            }
-            if (e.altKey) {
-                if (e.keyCode === VK_PLUS) {
-                    zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                    zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+
+                else if (e.keyCode === VK_PLUS || e.keyCode === VK_PLUS_N) {
+                    if (e.shiftKey) {
+                        increaseFontSizes();
+                    }
+                    else {
+                        zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                        zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                    }
                 }
-                else if (e.keyCode === VK_MINUS) {
-                    zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                    zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                else if (e.keyCode === VK_MINUS || e.keyCode === VK_MINUS_N) {
+                    if (e.shiftKey) {
+                        decreaseFontSizes();
+                    }
+                    else {
+                        zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                        zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                    }
+                }
+                else if (e.keyCode === VK_A) {
+                    decrDepthCollapseLevel();
+                }
+                else if (e.keyCode === VK_S) {
+                    incrDepthCollapseLevel();
                 }
             }
             if (e.keyCode === VK_PAGE_UP) {
@@ -2203,13 +2222,13 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom:</legend>');
-            h = h.concat('<input type="button" value="Y+" name="zoom_in_y" id="zoom_in_y" title="zoom in vertically">');
+            h = h.concat('<input type="button" value="Y+" name="zoom_in_y" id="zoom_in_y" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="X-" name="zoom_out_x" id="zoom_out_x" title="zoom out horizontally">');
-            h = h.concat('<input type="button" value="F" name="zoom_to_fit" id="zoom_to_fit" title="fit to display">');
-            h = h.concat('<input type="button" value="X+" name="zoom_in_x" id="zoom_in_x" title="zoom it horizontally">');
+            h = h.concat('<input type="button" value="X-" name="zoom_out_x" id="zoom_out_x" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
+            h = h.concat('<input type="button" value="F" name="zoom_to_fit" id="zoom_to_fit" title="fit and center to display (Alt+C or Home)">');
+            h = h.concat('<input type="button" value="X+" name="zoom_in_x" id="zoom_in_x" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="Y-" name="zoom_out_y" id="zoom_out_y"  title="zoom out vertically">');
+            h = h.concat('<input type="button" value="Y-" name="zoom_out_y" id="zoom_out_y"  title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
             h = h.concat('</fieldset>');
             return h;
         }
@@ -2218,9 +2237,9 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div>');
-            h = h.concat('<input type="button" value="O" name="order_button" title="order all" id="order_button">');
-            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to the super-tree (if in sub-tree)" id="return_to_supertree_button">');
-            h = h.concat('<input type="button" value="U" name="uncollapse_all_button" title="uncollapse all" id="uncollapse_all_button">');
+            h = h.concat('<input type="button" value="O" name="order_button" title="order all (Alt+O)" id="order_button">');
+            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to the super-tree (if in sub-tree) (Alt+R)" id="return_to_supertree_button">');
+            h = h.concat('<input type="button" value="U" name="uncollapse_all_button" title="uncollapse all (Alt+U)" id="uncollapse_all_button">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
