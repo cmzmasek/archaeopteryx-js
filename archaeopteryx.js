@@ -62,6 +62,13 @@ if (!phyloXmlParser) {
     var CLADOGRAM_BUTTON = 'radio-cladogram';
 
     var ALIGN_PHYLOGRAM_CB = 'align_phylogram_cb';
+    var NODE_NAME_CB = 'node_name_cb';
+    var TAXONOMY_CB = 'taxonomy_cb';
+    var SEQUENCE_CB = 'sequence_cb';
+    var CONFIDENCE_VALUES_CB = 'confidence_values_cb';
+    var BRANCH_LENGTH_VALUES_CB = 'branch_length_values_cb';
+    var INTERNAL_LABEL_CB = 'internal_label_cb';
+    var EXTERNAL_LABEL_CB = 'external_label_cb';
 
     var INTERNAL_NODES_CB = 'internal_nodes_cb';
     var EXTERNAL_NODES_CB = 'external_nodes_cb';
@@ -127,7 +134,7 @@ if (!phyloXmlParser) {
             _root.parent.distToRoot = 0;
         }
         forester.preOrderTraversalAll(_root, function (n) {
-            n.distToRoot = (n.parent ? n.parent.distToRoot : 0) + (n.branch_length || 0);
+            n.distToRoot = (n.parent ? n.parent.distToRoot : 0) + bl(n);
         });
         var distsToRoot = nodes.map(function (n) {
             return n.distToRoot;
@@ -140,6 +147,13 @@ if (!phyloXmlParser) {
             n.y = yScale(n.distToRoot)
         });
         return yScale;
+
+        function bl(node) {
+            if (!node.branch_length || node.branch_length < 0) {
+                return 0;
+            }
+            return node.branch_length;
+        }
     }
 
     function zoom() {
@@ -729,7 +743,7 @@ if (!phyloXmlParser) {
     };
 
     var makeBranchLengthLabel = function (phynode) {
-        if (phynode.branch_length && phynode.branch_length > 0) {
+        if (phynode.branch_length) {
             if (_options.phylogram
                 && _options.minBranchLengthValueToShow
                 && phynode.branch_length < _options.minBranchLengthValueToShow) {
@@ -1572,7 +1586,7 @@ if (!phyloXmlParser) {
 
 
     function nodeNameCbClicked() {
-        _options.showNodeName = getCheckboxValue('node_name_cb');
+        _options.showNodeName = getCheckboxValue(NODE_NAME_CB);
         if (_options.showNodeName) {
             _options.showExternalLabels = true;
             setCheckboxValue('external_label_cb', true);
@@ -1581,7 +1595,7 @@ if (!phyloXmlParser) {
     }
 
     function taxonomyCbClicked() {
-        _options.showTaxonomy = getCheckboxValue('taxonomy_cb');
+        _options.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
         if (_options.showTaxonomy) {
             _options.showExternalLabels = true;
             setCheckboxValue('external_label_cb', true);
@@ -1590,7 +1604,7 @@ if (!phyloXmlParser) {
     }
 
     function sequenceCbClicked() {
-        _options.showSequence = getCheckboxValue('sequence_cb');
+        _options.showSequence = getCheckboxValue(SEQUENCE_CB);
         if (_options.showSequence) {
             _options.showExternalLabels = true;
             setCheckboxValue('external_label_cb', true);
@@ -1599,22 +1613,22 @@ if (!phyloXmlParser) {
     }
 
     function confidenceValuesCbClicked() {
-        _options.showConfidenceValues = getCheckboxValue('confidence_values_cb');
+        _options.showConfidenceValues = getCheckboxValue(CONFIDENCE_VALUES_CB);
         update();
     }
 
     function branchLengthsCbClicked() {
-        _options.showBranchLengthValues = getCheckboxValue('branch_length_values_cb');
+        _options.showBranchLengthValues = getCheckboxValue(BRANCH_LENGTH_VALUES_CB);
         update();
     }
 
     function internalLabelsCbClicked() {
-        _options.showInternalLabels = getCheckboxValue('internal_label_cb');
+        _options.showInternalLabels = getCheckboxValue(INTERNAL_LABEL_CB);
         update();
     }
 
     function externalLabelsCbClicked() {
-        _options.showExternalLabels = getCheckboxValue('external_label_cb');
+        _options.showExternalLabels = getCheckboxValue(EXTERNAL_LABEL_CB);
         update();
     }
 
@@ -1624,7 +1638,7 @@ if (!phyloXmlParser) {
     }
 
     function externalNodesCbClicked() {
-        _options.showExternalNodes = getCheckboxValue('external_nodes_cb');
+        _options.showExternalNodes = getCheckboxValue(EXTERNAL_NODES_CB);
         update();
     }
 
@@ -1849,19 +1863,19 @@ if (!phyloXmlParser) {
 
         $("#" + ALIGN_PHYLOGRAM_CB).click(alignPhylogrambCbClicked);
 
-        $("#node_name_cb").click(nodeNameCbClicked);
+        $("#" + NODE_NAME_CB).click(nodeNameCbClicked);
 
-        $("#taxonomy_cb").click(taxonomyCbClicked);
+        $("#" + TAXONOMY_CB).click(taxonomyCbClicked);
 
-        $("#sequence_cb").click(sequenceCbClicked);
+        $("#" + SEQUENCE_CB).click(sequenceCbClicked);
 
-        $("#confidence_values_cb").click(confidenceValuesCbClicked);
+        $("#" + CONFIDENCE_VALUES_CB).click(confidenceValuesCbClicked);
 
-        $("#branch_length_values_cb").click(branchLengthsCbClicked);
+        $("#" + BRANCH_LENGTH_VALUES_CB).click(branchLengthsCbClicked);
 
-        $("#internal_label_cb").click(internalLabelsCbClicked);
+        $("#" + INTERNAL_LABEL_CB).click(internalLabelsCbClicked);
 
-        $("#external_label_cb").click(externalLabelsCbClicked);
+        $("#" + EXTERNAL_LABEL_CB).click(externalLabelsCbClicked);
 
         $("#" + INTERNAL_NODES_CB).click(internalNodesCbClicked);
 
@@ -2153,40 +2167,36 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset><legend>Display Data:</legend>');
             h = h.concat('<div class="display_data_fs">');
+
             if (_treeProperties.nodeNames) {
-                h = h.concat('<label for="node_name_cb">Node Name</label>');
-                h = h.concat('<input type="checkbox" name="node_name_cb" id="node_name_cb">');
+                h = h.concat(cb('Node Name', NODE_NAME_CB));
             }
             if (_treeProperties.taxonomies) {
-                h = h.concat('<label for="taxonomy_cb">Taxonomy</label>');
-                h = h.concat('<input type="checkbox" name="taxonomy_cb" id="taxonomy_cb">');
+                h = h.concat(cb('Taxonomy', TAXONOMY_CB));
             }
             if (_treeProperties.sequences) {
-                h = h.concat('<label for="sequence_cb">Sequence</label>');
-                h = h.concat('<input type="checkbox" name="sequence_cb" id="sequence_cb">');
+                h = h.concat(cb('Sequence', SEQUENCE_CB));
             }
             if (_treeProperties.confidences) {
-                h = h.concat('<label for="confidence_values_cb">Confidence</label>');
-                h = h.concat('<input type="checkbox" name="confidence_values_cb" id="confidence_values_cb">');
+                h = h.concat(cb('Confidence', CONFIDENCE_VALUES_CB));
             }
             if (_treeProperties.branchLengths) {
-                h = h.concat('<label for="branch_length_values_cb">Branch Length</label>');
-                h = h.concat('<input type="checkbox" name="branch_length_values_cb" id="branch_length_values_cb">');
+                h = h.concat(cb('Branch Length', BRANCH_LENGTH_VALUES_CB));
             }
-
-            h = h.concat('<label for="external_label_cb">External Labels</label>');
-            h = h.concat('<input type="checkbox" name="external_label_cb" id="external_label_cb">');
+            h = h.concat(cb('External Labels', EXTERNAL_LABEL_CB));
             if (_treeProperties.internalNodeData) {
-                h = h.concat('<label for="internal_label_cb">Internal Labels</label>');
-                h = h.concat('<input type="checkbox" name="internal_label_cb" id="internal_label_cb">');
+                h = h.concat(cb('Internal Labels', INTERNAL_LABEL_CB));
             }
-            h = h.concat('<label for="' + EXTERNAL_NODES_CB + '">External Nodes</label>');
-            h = h.concat('<input type="checkbox" name="' + EXTERNAL_NODES_CB + '" id="' + EXTERNAL_NODES_CB + '">');
-            h = h.concat('<label for="' + INTERNAL_NODES_CB + '">Internal Nodes</label>');
-            h = h.concat('<input type="checkbox" name="' + INTERNAL_NODES_CB + '" id="' + INTERNAL_NODES_CB + '">');
+            h = h.concat(cb('External Nodes', EXTERNAL_NODES_CB));
+            h = h.concat(cb('Internal Nodes', INTERNAL_NODES_CB));
+
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
+
+            function cb(label, id) {
+                return '<label for="' + id + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
+            }
         }
 
         function makeZoomControl() {
