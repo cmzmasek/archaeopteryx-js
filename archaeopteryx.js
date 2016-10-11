@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_57
+// v 0_58
 
 if (!d3) {
     throw "no d3.js";
@@ -78,6 +78,8 @@ if (!phyloXmlParser) {
     var BRANCH_DATA_FONT_SIZE_SLIDER = 'branch_data_font_size_slider';
     var BRANCH_WIDTH_SLIDER = 'branch_width_slider';
     var NODE_SIZE_SLIDER = 'node_size_slider';
+
+    var NODE_SHAPE_SELECT_MENU = "node_shape_select_menu";
 
     var VK_O = 79;
     var VK_R = 82;
@@ -258,6 +260,11 @@ if (!phyloXmlParser) {
             .attr('class', 'nodeCircle')
             .attr("r", 0);
 
+        //  nodeEnter.append("path")
+        //.style("stroke", makeNodeColor)
+        // .style("fill", "red")
+        //      .attr("d", null);
+
         nodeEnter.append("circle")
             .style("cursor", "pointer")
             .style("opacity", "0")
@@ -288,6 +295,7 @@ if (!phyloXmlParser) {
             .attr("dy", function (d) {
                 return 0.3 * _options.externalNodeFontSize + "px";
             });
+
 
         node.select("text.extlabel")
             .style("font-size", function (d) {
@@ -437,6 +445,42 @@ if (!phyloXmlParser) {
         nodeUpdate.select("text.conflabel")
             .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
 
+
+        /*nodeUpdate.select("path")
+         .style("stroke", makeNodeColor)
+         .style("fill", "green")
+         .attr("d", d3.svg.symbol()
+         .size(20)
+         .type(function (d) {
+         if (d.name && d.name.match(/[U]/)) {
+         // square cross diamond circle triangle-down triangle-up
+         return "cross";
+         }
+         else if (d.name && d.name.match(/[S]/)) {
+         return "diamond";
+         }
+         else if (d.name && d.name.match(/[A]/)) {
+         return "square";
+         }else {
+         return;
+         }
+         }
+         )
+         );*/
+
+
+        var arc = function () {
+            return d3.svg.symbol().type('triangle-down').size(20);
+        };
+
+        /* nodeUpdate.select("path")
+         .style("stroke", makeNodeColor)
+         .style("fill", "green")
+         .attr("d", function() { return arc() } );
+         */
+
+
+
         var nodeExit = node.exit().transition()
             .duration(transitionDuration)
             .attr("transform", function () {
@@ -519,6 +563,7 @@ if (!phyloXmlParser) {
         });
     }
 
+
     var makeBranchWidth = function (link) {
         if (link.target.width) {
             return link.target.width;
@@ -585,6 +630,7 @@ if (!phyloXmlParser) {
 
 
     function labelColorVisualization(node) {
+        //console.log(node);
         var distColors = {};
         distColors.CA = "rgb(0,0,255)";
         distColors.AZ = "rgb(0,255,255)";
@@ -593,6 +639,11 @@ if (!phyloXmlParser) {
         distColors.FL = "rgb(100,0,100)";
         distColors.IL = "rgb(100,100,100)";
         distColors.IL = "rgb(100,0,125)";
+
+
+        distColors.Algeria = "rgb(0,255,255)";
+        distColors.Angola = "rgb(255,0,255)";
+
 
         var drugColors = {};
         drugColors.Amantadine = "rgb(0,0,255)";
@@ -604,21 +655,59 @@ if (!phyloXmlParser) {
         hostColors["Anas platyrhynchos"] = "rgb(93,40,255)";
         hostColors["Sus scrofa"] = "rgb(10,129,23)";
 
-        if (_currentLabelColorVisualization === "distribution") {
-            if (node.distributions && node.distributions.length > 0) {
-                return distColors[node.distributions[0].desc];
-            }
-        }
-        else if (_currentLabelColorVisualization === "vipr:host"
+        hostColors["Unknown"] = "rgb(100,100,100)";
+        hostColors["Human"] = "rgb(10,129,23)";
+        hostColors["Cattle"] = "rgb(255,129,23)";
+
+
+        var yearColors = {};
+        yearColors["2016"] = "rgb(0,255,0)";
+        yearColors["2015"] = "rgb(0,245,0)";
+        yearColors["2014"] = "rgb(0,235,0)";
+        yearColors["2013"] = "rgb(0,225,0)";
+        yearColors["2012"] = "rgb(0,215,0)";
+        yearColors["2011"] = "rgb(0,205,0)";
+        yearColors["2010"] = "rgb(0,195,0)";
+        yearColors["2009"] = "rgb(0,185,0)";
+        yearColors["2008"] = "rgb(0,175,0)";
+        yearColors["2007"] = "rgb(0,165,0)";
+        yearColors["2006"] = "rgb(0,155,0)";
+        yearColors["2005"] = "rgb(0,145,0)";
+        yearColors["2004"] = "rgb(0,135,0)";
+        yearColors["2003"] = "rgb(0,125,0)";
+        yearColors["2002"] = "rgb(0,115,0)";
+        yearColors["1111"] = "rgb(100,100,100)";
+
+
+        var vis = null;
+
+
+        if (_currentLabelColorVisualization === "Host"
+
+            || _currentLabelColorVisualization === "Year"
+            || _currentLabelColorVisualization === "Country"
+
             || _currentLabelColorVisualization === "vipr:drug") {
+
+
             if (node.properties && node.properties.length > 0) {
+
                 var propertiesLength = node.properties.length;
                 for (var i = 0; i < propertiesLength; ++i) {
                     var p = node.properties[i];
                     if (p.ref && p.value) {
                         var ref = p.ref;
-                        if (_currentLabelColorVisualization === "vipr:host" && ref === "vipr:host") {
+                        if (_currentLabelColorVisualization === "Host" && ref === "vipr:host") {
+
                             return hostColors[p.value];
+                        }
+                        else if (_currentLabelColorVisualization === "Year" && ref === "vipr:year") {
+
+                            return yearColors[p.value];
+                        }
+                        else if (_currentLabelColorVisualization === "Country" && ref === "vipr:country") {
+
+                            return distColors[p.value];
                         }
                         else if (_currentLabelColorVisualization === "vipr:drug" && ref === "vipr:drug") {
                             return drugColors[p.value];
@@ -995,6 +1084,11 @@ if (!phyloXmlParser) {
         _root.y0 = 0;
 
         collectDataForVisualization();
+        var dcn = obtainDynamicCharNames();
+        //console.log(dcn);
+        collectDataForVisualizationDynamicCharNames(dcn.DynamicCharNames);
+
+        // console.log(_dataForVisualization);
 
         initializeGui();
 
@@ -1009,6 +1103,44 @@ if (!phyloXmlParser) {
     archaeopteryx.parseNewHampshire = function (data) {
         return forester.parseNewHampshire(data);
     };
+
+    function obtainDynamicCharNames() {
+        var x = {
+            "DynamicCharNames": [
+                {"Category": {"CharName": "Region"}},
+                {"Category": {"CharName": "SFVT"}, "ExtraInfo": {"DisplayTex": "Sequence Feature ID"}},
+                {"Category": {"CharName": "Sequence Position"}, "ExtraInfo": {"DisplayTex": "Sequence Position"}},
+                {"Category": {"CharName": "Virus Type"}}
+            ]
+        };
+        //console.log(x);
+        return x;
+    }
+
+    function collectDataForVisualizationDynamicCharNames(x) {
+        console.log("x:" + x);
+        var xl = x.length;
+        console.log("xl:" + xl);
+        for (var i = 0; i < xl; ++i) {
+            var e = x[i];
+            console.log(i + ":");
+            console.log(e);
+            if (e.Category) {
+                if (e.Category.CharName) {
+                    if (!_dataForVisualization.category) {
+                        _dataForVisualization.category = [];
+                    }
+                    _dataForVisualization.category.push(e.Category.CharName);
+                    console.log("added: " + e.Category.CharName);
+                }
+            }
+        }
+        _dataForVisualization.category.push("Country");
+        _dataForVisualization.category.push("Year");
+        _dataForVisualization.category.push("Host");
+
+    }
+
 
     function collectDataForVisualization() {
         forester.preOrderTraversal(_treeData, function (node) {
@@ -1808,7 +1940,7 @@ if (!phyloXmlParser) {
         var c2 = $('#controls2');
 
         c2.css({
-            'width': '120px',
+            'width': '200px',
             'height': '270px',
             'padding': '0.5em',
             'opacity': '0.85',
@@ -1887,9 +2019,11 @@ if (!phyloXmlParser) {
 
         $("#label_color_select_menu").on("change", function () {
             var v = this.value;
+            //console.log("v is: " + v);
             if (v && v != "none") {
                 _currentLabelColorVisualization = v;
                 var x = _dataForVisualization[v];
+                //console.log("x is: " + x);
             }
             else {
                 _currentLabelColorVisualization = null;
@@ -2298,6 +2432,7 @@ if (!phyloXmlParser) {
             return h;
         }
 
+
         function makeVisualControls() {
             var h = "";
             h = h.concat('<div id="accordion">');
@@ -2307,6 +2442,14 @@ if (!phyloXmlParser) {
             h = h.concat('<br>');
             h = h.concat('<select name="label_color_select_menu" id="label_color_select_menu">');
             h = h.concat(' </select>');
+            h = h.concat('<br>');
+            h = h.concat('<br>');
+            h = h.concat('<label for="' + NODE_SHAPE_SELECT_MENU + '">Node Shape</label>');
+            h = h.concat('<br>');
+            h = h.concat('<select name="' + NODE_SHAPE_SELECT_MENU + '" id="' + NODE_SHAPE_SELECT_MENU + '">');
+            h = h.concat(' </select>');
+
+
             h = h.concat('</form>');
             h = h.concat('</div>');
             return h;
@@ -2338,24 +2481,52 @@ if (!phyloXmlParser) {
                 .val("none")
                 .html("none")
             );
+            $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                .val("none")
+                .html("none")
+            );
 
             if (_dataForVisualization["distribution"]) {
                 $("select#label_color_select_menu").append($("<option>")
                     .val("distribution")
                     .html("distribution")
                 );
-            }
-            if (_dataForVisualization["vipr:host"]) {
-                $("select#label_color_select_menu").append($("<option>")
-                    .val("vipr:host")
-                    .html("host")
+                $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                    .val("distribution")
+                    .html("distribution")
                 );
             }
+
+
+            //  if (_dataForVisualization["vipr:host"]) {
+            //      $("select#label_color_select_menu").append($("<option>")
+            //         .val("vipr:host")
+            //         .html("host")
+            //     );
+            // }
             if (_dataForVisualization["vipr:drug"]) {
                 $("select#label_color_select_menu").append($("<option>")
                     .val("vipr:drug")
                     .html("antiviral drug")
                 );
+                $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                    .val("vipr:drug")
+                    .html("antiviral drug")
+                );
+            }
+            if (_dataForVisualization["category"]) {
+                var xl = _dataForVisualization["category"].length;
+                for (var i = 0; i < xl; ++i) {
+                    var c = _dataForVisualization["category"][i];
+                    $("select#label_color_select_menu").append($("<option>")
+                        .val(c)
+                        .html(c)
+                    );
+                    $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                        .val(c)
+                        .html(c)
+                    );
+                }
             }
 
         }

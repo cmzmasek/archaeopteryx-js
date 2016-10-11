@@ -38,7 +38,7 @@
             options.showExternalLabels = true;
             options.branchWidthDefault = 1;
             options.internalNodeSize = 3;
-            options.externalNodeFontSize = 7;
+            options.externalNodeFontSize = 10;
             options.internalNodeFontSize = 6;
             options.branchDataFontSize = 6;
             options.branchColorDefault = "#909090";
@@ -46,7 +46,7 @@
             options.backgroundColorDefault = "#f0f0f0";
             options.found0ColorDefault = "#00ff00";
             options.found1ColorDefault = "#ff0000";
-            options.found0and1ColorDefault = "#00ffff";
+            options.found0and1ColorDefault = "#cccc00";
             options.collapasedLabelLength = 7;
             options.minBranchLengthValueToShow = 0.01;
             options.minConfidenceValueToShow = 0.5;
@@ -78,7 +78,9 @@
             //wnt_seed_seqs
             //larger_example
             //test1
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/larger_example.xml';
+            //backwards
+            //sample
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample.xml';
             //var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/apaf2.nh';
 
             jQuery.get(loc,
@@ -118,10 +120,13 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_56</h2>
+    <h2>Archaeopteryx-js Demo: v 0_58</h2>
     <div id='phylogram1'></div>
 
     <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
+    </div>
+
+    <div style="position:absolute; right: 20px; top: 60px;" id="controls2" class="ui-widget-content">
     </div>
 
 </div>
