@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_58
+// v 0_59
 
 if (!d3) {
     throw "no d3.js";
@@ -41,6 +41,7 @@ if (!phyloXmlParser) {
     var ROOTOFFSET_DEFAULT = 30;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var VIEWERHEIGHT_DEFAULT = 600;
+    var MENU_FONT_SIZE_DEFAULT = '9px';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
@@ -50,6 +51,10 @@ if (!phyloXmlParser) {
     var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
     var BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
 
+
+    var CONTROLS_0 = 'controls0';
+    var CONTROLS_1 = 'controls1';
+
     var NODE_SIZE_MAX = 9;
     var NODE_SIZE_MIN = 1;
     var BRANCH_WIDTH_MAX = 9;
@@ -58,28 +63,52 @@ if (!phyloXmlParser) {
     var FONT_SIZE_MIN = 2;
     var SLIDER_STEP = 0.5;
 
-    var PHYLOGRAM_BUTTON = 'radio-phylogram';
-    var CLADOGRAM_BUTTON = 'radio-cladogram';
+    var PHYLOGRAM_BUTTON = 'phy_b';
+    var CLADOGRAM_BUTTON = 'cla_b';
 
-    var ALIGN_PHYLOGRAM_CB = 'align_phylogram_cb';
-    var NODE_NAME_CB = 'node_name_cb';
-    var TAXONOMY_CB = 'taxonomy_cb';
-    var SEQUENCE_CB = 'sequence_cb';
-    var CONFIDENCE_VALUES_CB = 'confidence_values_cb';
-    var BRANCH_LENGTH_VALUES_CB = 'branch_length_values_cb';
-    var INTERNAL_LABEL_CB = 'internal_label_cb';
-    var EXTERNAL_LABEL_CB = 'external_label_cb';
+    var PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
+    var DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
 
-    var INTERNAL_NODES_CB = 'internal_nodes_cb';
-    var EXTERNAL_NODES_CB = 'external_nodes_cb';
+    var ALIGN_PHYLOGRAM_CB = 'al_cb';
+    var NODE_NAME_CB = 'nn_cb';
+    var TAXONOMY_CB = 'tax_cb';
+    var SEQUENCE_CB = 'seq_cb';
+    var CONFIDENCE_VALUES_CB = 'conf_cb';
+    var BRANCH_LENGTH_VALUES_CB = 'bl_cb';
+    var INTERNAL_LABEL_CB = 'intl_cb';
+    var EXTERNAL_LABEL_CB = 'extl_cb';
 
-    var INTERNAL_FONT_SIZE_SLIDER = 'internal_font_size_slider';
-    var EXTERNAL_FONT_SIZE_SLIDER = 'external_font_size_slider';
-    var BRANCH_DATA_FONT_SIZE_SLIDER = 'branch_data_font_size_slider';
-    var BRANCH_WIDTH_SLIDER = 'branch_width_slider';
-    var NODE_SIZE_SLIDER = 'node_size_slider';
+    var INTERNAL_NODES_CB = 'intn_cb';
+    var EXTERNAL_NODES_CB = 'extn_cb';
 
-    var NODE_SHAPE_SELECT_MENU = "node_shape_select_menu";
+    var ZOOM_IN_Y = 'zoomout_y';
+    var ZOOM_OUT_Y = 'zoomin_y';
+    var ZOOM_IN_X = 'zoomin_x';
+    var ZOOM_OUT_X = 'zoomout_x';
+    var ZOOM_TO_FIT = 'zoomtofit';
+
+    var INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
+    var EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
+    var BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
+    var BRANCH_WIDTH_SLIDER = 'bw_sl';
+    var NODE_SIZE_SLIDER = 'ns_sl';
+
+    var ORDER_BUTTON = 'ord_b';
+    var RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
+    var UNCOLLAPSE_ALL_BUTTON = 'unc_b';
+
+    var SEARCH_FIELD_0 = 'sf0';
+    var SEARCH_FIELD_1 = 'sf1';
+
+    var DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
+    var INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
+    var DECR_BL_COLLAPSE_LEVEL = 'decr_blcl';
+    var INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
+    var DEPTH_COLLAPSE_LABEL = 'depth_col_label';
+    var BL_COLLAPSE_LABEL = 'bl_col_label';
+
+    var NODE_SHAPE_SELECT_MENU = 'nss_menu';
+    var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
 
     var VK_O = 79;
     var VK_R = 82;
@@ -478,7 +507,6 @@ if (!phyloXmlParser) {
          .style("fill", "green")
          .attr("d", function() { return arc() } );
          */
-
 
 
         var nodeExit = node.exit().transition()
@@ -1044,6 +1072,9 @@ if (!phyloXmlParser) {
         if (!_settings.reCenterAfterCollapse) {
             _settings.reCenterAfterCollapse = RECENTER_AFTER_COLLAPSE_DEFAULT;
         }
+        if (!_settings.menuFontSize) {
+            _settings.menuFontSize = MENU_FONT_SIZE_DEFAULT;
+        }
         intitialzeDisplaySize();
     }
 
@@ -1085,10 +1116,7 @@ if (!phyloXmlParser) {
 
         collectDataForVisualization();
         var dcn = obtainDynamicCharNames();
-        //console.log(dcn);
         collectDataForVisualizationDynamicCharNames(dcn.DynamicCharNames);
-
-        // console.log(_dataForVisualization);
 
         initializeGui();
 
@@ -1679,7 +1707,7 @@ if (!phyloXmlParser) {
 
     function search0() {
         _foundNodes0.clear();
-        var query = $("#search0").val();
+        var query = $('#' + SEARCH_FIELD_0).val();
         if (query && query.length > 0) {
             _foundNodes0 = search(query);
         }
@@ -1688,7 +1716,7 @@ if (!phyloXmlParser) {
 
     function search1() {
         _foundNodes1.clear();
-        var query = $("#search1").val();
+        var query = $('#' + SEARCH_FIELD_1).val();
         if (query && query.length > 0) {
             _foundNodes1 = search(query);
         }
@@ -1888,74 +1916,69 @@ if (!phyloXmlParser) {
         }
     }
 
+
     function createGui() {
 
         $("body").css({
-            'font-size': '9px',
+            'font-size': _settings.menuFontSize,
             'font-family': 'Arial, Verdana, "Sans-serif"'
         });
 
-        var c1 = $('#controls1');
+        var c0 = $('#' + CONTROLS_0);
 
-        c1.css({
-            //  'width': '120px',
-            // 'height': '580px',
-            'padding': '0.25em',
-            'opacity': '0.85',
-            'background-color': '#e0e0e0'
-        });
+        if (c0) {
+            c0.css({
+                //  'width': '120px',
+                // 'height': '580px',
+                'padding': '0.25em',
+                'opacity': '0.85',
+                'background-color': '#e0e0e0'
+            });
 
-
-        c1.draggable({containment: "parent"});
-
-        c1.append(makePhylogramControl());
-
-        c1.append(makeMoreControls());
-
-        c1.append(makeDisplayControl());
-
-
-        $(".phylogram_cladogram").controlgroup({
-            "direction": "horizontal",
-            "width": "120px"
-        });
+            c0.draggable({containment: "parent"});
+            c0.append(makePhylogramControl());
+            c0.append(makeMoreControls());
+            c0.append(makeDisplayControl());
+            c0.append(makeZoomControl());
+            $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
+                "direction": "horizontal",
+                "width": "120px"
+            });
 
 
-        $(".display_data_fs").controlgroup({
-            "direction": "vertical",
-            "width": "120px"
-        });
+            $('.' + DISPLAY_DATA_CONTROLGROUP).controlgroup({
+                "direction": "vertical",
+                "width": "120px"
+            });
+            c0.append(makeControlButons());
 
-        c1.append(makeZoomControl());
+            c0.append(makeSliders());
 
-        c1.append(makeControlButons());
+            c0.append(makeSearchBoxes());
 
-        c1.append(makeSliders());
+            c0.append(makeAutoCollapse());
+        }
 
-        c1.append(makeSearchBoxes());
+        var c1 = $('#' + CONTROLS_1);
+        if (c1) {
+            c1.css({
+                'width': '200px',
+                'height': '270px',
+                'padding': '0.5em',
+                'opacity': '0.85',
+                'background-color': '#e0e0e0'
+            });
 
-        c1.append(makeAutoCollapse());
+            c1.draggable({containment: "parent"});
 
+            c1.append(makeVisualControls());
+        }
 
-        var c2 = $('#controls2');
-
-        c2.css({
-            'width': '200px',
-            'height': '270px',
-            'padding': '0.5em',
-            'opacity': '0.85',
-            'background-color': '#e0e0e0'
-        });
-
-        c2.draggable({containment: "parent"});
-
-        c2.append(makeVisualControls());
-
-        $("#accordion").accordion({
+        $('#accordion').accordion({
             collapsible: true
         });
 
-        $("input:button")
+        $('input:button')
             .button()
             .css({
                 'width': '26px',
@@ -1964,60 +1987,59 @@ if (!phyloXmlParser) {
                 'margin': '0px'
             });
 
-        $("#zoom_in_y, #zoom_out_y")
+        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y)
             .css({
                 'width': '78px'
             });
 
-        $("#zoom_in_y, #zoom_out_y, #zoom_to_fit, #zoom_in_x, #zoom_out_x")
+        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X)
             .css({
                 'height': '16px'
             });
 
 
-        $("#decr_depth_collapse_level, #incr_depth_collapse_level," +
-            "#decr_rank_collapse_level, #incr_rank_collapse_level")
+        $('#' + DECR_DEPTH_COLLAPSE_LEVEL + ', #' + INCR_DEPTH_COLLAPSE_LEVEL + ', #' + DECR_BL_COLLAPSE_LEVEL + ', #' + INCR_BL_COLLAPSE_LEVEL)
             .css({
                 'width': '16px'
             });
 
-        $(":radio").checkboxradio({
+        $(':radio').checkboxradio({
             icon: false
         });
 
-        $(":checkbox").checkboxradio({
+        $(':checkbox').checkboxradio({
             icon: false
         });
 
-        $("#search0").keyup(search0);
+        $('#' + SEARCH_FIELD_0).keyup(search0);
 
-        $("#search1").keyup(search1);
+        $('#' + SEARCH_FIELD_1).keyup(search1);
 
-        $("#" + PHYLOGRAM_BUTTON).click(toPhylogram);
+        $('#' + PHYLOGRAM_BUTTON).click(toPhylogram);
 
-        $("#" + CLADOGRAM_BUTTON).click(toCladegram);
+        $('#' + CLADOGRAM_BUTTON).click(toCladegram);
 
-        $("#" + ALIGN_PHYLOGRAM_CB).click(alignPhylogrambCbClicked);
+        $('#' + ALIGN_PHYLOGRAM_CB).click(alignPhylogrambCbClicked);
 
-        $("#" + NODE_NAME_CB).click(nodeNameCbClicked);
+        $('#' + NODE_NAME_CB).click(nodeNameCbClicked);
 
-        $("#" + TAXONOMY_CB).click(taxonomyCbClicked);
+        $('#' + TAXONOMY_CB).click(taxonomyCbClicked);
 
-        $("#" + SEQUENCE_CB).click(sequenceCbClicked);
+        $('#' + SEQUENCE_CB).click(sequenceCbClicked);
 
-        $("#" + CONFIDENCE_VALUES_CB).click(confidenceValuesCbClicked);
+        $('#' + CONFIDENCE_VALUES_CB).click(confidenceValuesCbClicked);
 
-        $("#" + BRANCH_LENGTH_VALUES_CB).click(branchLengthsCbClicked);
+        $('#' + BRANCH_LENGTH_VALUES_CB).click(branchLengthsCbClicked);
 
-        $("#" + INTERNAL_LABEL_CB).click(internalLabelsCbClicked);
+        $('#' + INTERNAL_LABEL_CB).click(internalLabelsCbClicked);
 
-        $("#" + EXTERNAL_LABEL_CB).click(externalLabelsCbClicked);
+        $('#' + EXTERNAL_LABEL_CB).click(externalLabelsCbClicked);
 
-        $("#" + INTERNAL_NODES_CB).click(internalNodesCbClicked);
+        $('#' + INTERNAL_NODES_CB).click(internalNodesCbClicked);
 
-        $("#" + EXTERNAL_NODES_CB).click(externalNodesCbClicked);
+        $('#' + EXTERNAL_NODES_CB).click(externalNodesCbClicked);
 
-        $("#label_color_select_menu").on("change", function () {
+        $('#' + LABEL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
             //console.log("v is: " + v);
             if (v && v != "none") {
@@ -2051,7 +2073,6 @@ if (!phyloXmlParser) {
             change: changeBranchWidth
         });
 
-
         $('#' + EXTERNAL_FONT_SIZE_SLIDER).slider({
             min: FONT_SIZE_MIN,
             max: FONT_SIZE_MAX,
@@ -2061,7 +2082,6 @@ if (!phyloXmlParser) {
             slide: changeExternalFontSize,
             change: changeExternalFontSize
         });
-
 
         $('#' + INTERNAL_FONT_SIZE_SLIDER).slider({
             min: FONT_SIZE_MIN,
@@ -2083,7 +2103,7 @@ if (!phyloXmlParser) {
             change: changeBranchDataFontSize
         });
 
-        $("#search0, #search1")
+        $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -2097,7 +2117,7 @@ if (!phyloXmlParser) {
                 'width': '44px'
             });
 
-        $("#depth_collapse_label, #bl_collapse_label")
+        $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -2112,66 +2132,66 @@ if (!phyloXmlParser) {
                 'width': '18px'
             });
 
-        $("#zoom_in_y").mousedown(function () {
+        $('#' + ZOOM_IN_Y).mousedown(function () {
             zoomInY();
             _intervalId = setInterval(zoomInY, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
 
-        $("#zoom_out_y").mousedown(function () {
+        $('#' + ZOOM_OUT_Y).mousedown(function () {
             zoomOutY();
             _intervalId = setInterval(zoomOutY, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
 
-        $("#zoom_in_x").mousedown(function () {
+        $('#' + ZOOM_IN_X).mousedown(function () {
             zoomInX();
             _intervalId = setInterval(zoomInX, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
 
-        $("#zoom_out_x").mousedown(function () {
+        $('#' + ZOOM_OUT_X).mousedown(function () {
             zoomOutX();
             _intervalId = setInterval(zoomOutX, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
 
-        $("#decr_depth_collapse_level").mousedown(function () {
+        $('#' + DECR_DEPTH_COLLAPSE_LEVEL).mousedown(function () {
             decrDepthCollapseLevel();
             _intervalId = setInterval(decrDepthCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
-        $("#incr_depth_collapse_level").mousedown(function () {
+        $('#' + INCR_DEPTH_COLLAPSE_LEVEL).mousedown(function () {
             incrDepthCollapseLevel();
             _intervalId = setInterval(incrDepthCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
-        $("#decr_rank_collapse_level").mousedown(function () {
+        $('#' + DECR_BL_COLLAPSE_LEVEL).mousedown(function () {
             decrBlCollapseLevel();
             _intervalId = setInterval(decrBlCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
-        $("#incr_rank_collapse_level").mousedown(function () {
+        $('#' + INCR_BL_COLLAPSE_LEVEL).mousedown(function () {
             incrBlCollapseLevel();
             _intervalId = setInterval(incrBlCollapseLevel, ZOOM_INTERVAL);
         }).bind('mouseup mouseleave', function () {
             clearTimeout(_intervalId);
         });
 
-        $("#zoom_to_fit").mousedown(zoomFit);
+        $('#' + ZOOM_TO_FIT).mousedown(zoomFit);
 
-        $("#return_to_supertree_button").mousedown(returnToSupertreeButtonPressed);
+        $('#' + RETURN_TO_SUPERTREE_BUTTON).mousedown(returnToSupertreeButtonPressed);
 
-        $("#order_button").mousedown(orderButtonPressed);
+        $('#' + ORDER_BUTTON).mousedown(orderButtonPressed);
 
-        $("#uncollapse_all_button").mousedown(uncollapseAllButtonPressed);
+        $('#' + UNCOLLAPSE_ALL_BUTTON).mousedown(uncollapseAllButtonPressed);
 
 
         $(document).keyup(function (e) {
@@ -2196,9 +2216,6 @@ if (!phyloXmlParser) {
                 else if (e.keyCode === VK_L) {
                     toggleAlignPhylogram();
                 }
-                //else {
-                //    console.log("-->" + e.keyCode);
-                //}
             }
             else if (e.keyCode === VK_HOME) {
                 zoomFit();
@@ -2290,7 +2307,7 @@ if (!phyloXmlParser) {
         function makePhylogramControl() {
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<div class="phylogram_cladogram">');
+            h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + '">');
             h = h.concat('<label for="' + PHYLOGRAM_BUTTON + '">PH</label>');
             h = h.concat('<input type="radio" name="radio-1" id="' + PHYLOGRAM_BUTTON + '">');
             h = h.concat('<label for="' + CLADOGRAM_BUTTON + '">CL</label>');
@@ -2306,7 +2323,7 @@ if (!phyloXmlParser) {
             var h = "";
 
             h = h.concat('<fieldset>');
-            h = h.concat('<div class="display_data_fs">');
+            h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
 
             h = h.concat('<label for="' + ALIGN_PHYLOGRAM_CB + '">Line Up PH</label>');
             h = h.concat('<input type="checkbox" name="' + ALIGN_PHYLOGRAM_CB + '" id="' + ALIGN_PHYLOGRAM_CB + '">');
@@ -2319,7 +2336,7 @@ if (!phyloXmlParser) {
         function makeDisplayControl() {
             var h = "";
             h = h.concat('<fieldset><legend>Display Data:</legend>');
-            h = h.concat('<div class="display_data_fs">');
+            h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
 
             if (_treeProperties.nodeNames) {
                 h = h.concat(cb('Node Name', NODE_NAME_CB));
@@ -2356,24 +2373,25 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom:</legend>');
-            h = h.concat('<input type="button" value="Y+" name="zoom_in_y" id="zoom_in_y" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
+            h = h.concat('<input type="button" value="Y+" name="' + ZOOM_IN_Y + '" id="' + ZOOM_IN_Y + '" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="X-" name="zoom_out_x" id="zoom_out_x" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
-            h = h.concat('<input type="button" value="F" name="zoom_to_fit" id="zoom_to_fit" title="fit and center to display (Alt+C or Home)">');
-            h = h.concat('<input type="button" value="X+" name="zoom_in_x" id="zoom_in_x" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
+            h = h.concat('<input type="button" value="X-" name="' + ZOOM_OUT_X + '" id="' + ZOOM_OUT_X + '" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
+            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center to display (Alt+C or Home)">');
+            h = h.concat('<input type="button" value="X+" name="' + ZOOM_IN_X + '" id="' + ZOOM_IN_X + '" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="Y-" name="zoom_out_y" id="zoom_out_y"  title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
+            h = h.concat('<input type="button" value="Y-" name="' + ZOOM_OUT_Y + '" id="' + ZOOM_OUT_Y + '" title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
             h = h.concat('</fieldset>');
             return h;
         }
+
 
         function makeControlButons() {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div>');
-            h = h.concat('<input type="button" value="O" name="order_button" title="order all (Alt+O)" id="order_button">');
-            h = h.concat('<input type="button" value="R" name="return_to_supertree_button" title="return to the super-tree (if in sub-tree) (Alt+R)" id="return_to_supertree_button">');
-            h = h.concat('<input type="button" value="U" name="uncollapse_all_button" title="uncollapse all (Alt+U)" id="uncollapse_all_button">');
+            h = h.concat('<input type="button" value="O" name="' + ORDER_BUTTON + '" title="order all (Alt+O)" id="' + ORDER_BUTTON + '">');
+            h = h.concat('<input type="button" value="R" name="' + RETURN_TO_SUPERTREE_BUTTON + '" title="return to the super-tree (if in sub-tree) (Alt+R)" id="' + RETURN_TO_SUPERTREE_BUTTON + '">');
+            h = h.concat('<input type="button" value="U" name="' + UNCOLLAPSE_ALL_BUTTON + '" title="uncollapse all (Alt+U)" id="' + UNCOLLAPSE_ALL_BUTTON + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -2406,8 +2424,8 @@ if (!phyloXmlParser) {
 
         function makeSearchBoxes() {
             var h = "";
-            h = h.concat('Search (A)<br> <input type="text" name="search0" id="search0"><br>');
-            h = h.concat('Search (B)<br> <input type="text" name="search1" id="search1"><br>');
+            h = h.concat('Search (A)<br> <input type="text" name="' + SEARCH_FIELD_0 + '" id="' + SEARCH_FIELD_0 + '"><br>');
+            h = h.concat('Search (B)<br> <input type="text" name="' + SEARCH_FIELD_1 + '" id="' + SEARCH_FIELD_1 + '"><br>');
             return h;
         }
 
@@ -2416,17 +2434,17 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Collapse Node Depth</legend>');
-            h = h.concat('<input type="button" value="-" name="decr_depth_collapse_level" id="decr_depth_collapse_level">');
-            h = h.concat('<input type="text"  name="depth_collapse_label" id="depth_collapse_label">');
+            h = h.concat('<input type="button" value="-" name="' + DECR_DEPTH_COLLAPSE_LEVEL + '" id="' + DECR_DEPTH_COLLAPSE_LEVEL + '">');
+            h = h.concat('<input type="text"  name="' + DEPTH_COLLAPSE_LABEL + '" id="' + DEPTH_COLLAPSE_LABEL + '">');
 
-            h = h.concat('<input type="button" value="+" name="incr_depth_collapse_level" id="incr_depth_collapse_level">');
+            h = h.concat('<input type="button" value="+" name="' + INCR_DEPTH_COLLAPSE_LEVEL + '" id="' + INCR_DEPTH_COLLAPSE_LEVEL + '">');
             h = h.concat('</fieldset>');
             if (_treeProperties.branchLengths) {
                 h = h.concat('<fieldset>');
                 h = h.concat('<legend>Collapse  Length</legend>');
-                h = h.concat('<input type="button" value="-" name="decr_rank_collapse_level" id="decr_rank_collapse_level">');
-                h = h.concat('<input type="text"  name="bl_collapse_label" id="bl_collapse_label">');
-                h = h.concat('<input type="button" value="+" name="incr_rank_collapse_level" id="incr_rank_collapse_level">');
+                h = h.concat('<input type="button" value="-" name="' + DECR_BL_COLLAPSE_LEVEL + '" id="' + DECR_BL_COLLAPSE_LEVEL + '">');
+                h = h.concat('<input type="text"  name="' + BL_COLLAPSE_LABEL + '" id="' + BL_COLLAPSE_LABEL + '">');
+                h = h.concat('<input type="button" value="+" name="' + INCR_BL_COLLAPSE_LEVEL + '" id="' + INCR_BL_COLLAPSE_LEVEL + '">');
                 h = h.concat('</fieldset>');
             }
             return h;
@@ -2438,9 +2456,9 @@ if (!phyloXmlParser) {
             h = h.concat('<div id="accordion">');
             h = h.concat('<h3>Special</h3>');
             h = h.concat('<form action="#">');
-            h = h.concat('<label for="label_color_select_menu">Label Color</label>');
+            h = h.concat('<label for="' + LABEL_COLOR_SELECT_MENU + '">Label Color</label>');
             h = h.concat('<br>');
-            h = h.concat('<select name="label_color_select_menu" id="label_color_select_menu">');
+            h = h.concat('<select name="' + LABEL_COLOR_SELECT_MENU + '" id="' + LABEL_COLOR_SELECT_MENU + '">');
             h = h.concat(' </select>');
             h = h.concat('<br>');
             h = h.concat('<br>');
@@ -2462,13 +2480,13 @@ if (!phyloXmlParser) {
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram);
 
         setCheckboxValue(ALIGN_PHYLOGRAM_CB, _options.phylogram ? _options.alignPhylogram : false);
-        setCheckboxValue('node_name_cb', _options.showNodeName);
-        setCheckboxValue('taxonomy_cb', _options.showTaxonomy);
-        setCheckboxValue('sequence_cb', _options.showSequence);
-        setCheckboxValue('confidence_values_cb', _options.showConfidenceValues);
-        setCheckboxValue('branch_length_values_cb', _options.showBranchLengthValues);
-        setCheckboxValue('internal_label_cb', _options.showInternalLabels);
-        setCheckboxValue('external_label_cb', _options.showExternalLabels);
+        setCheckboxValue(NODE_NAME_CB, _options.showNodeName);
+        setCheckboxValue(TAXONOMY_CB, _options.showTaxonomy);
+        setCheckboxValue(SEQUENCE_CB, _options.showSequence);
+        setCheckboxValue(CONFIDENCE_VALUES_CB, _options.showConfidenceValues);
+        setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _options.showBranchLengthValues);
+        setCheckboxValue(INTERNAL_LABEL_CB, _options.showInternalLabels);
+        setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
         setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
         setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
         initializeVisualizationMenu();
@@ -2477,7 +2495,7 @@ if (!phyloXmlParser) {
 
     function initializeVisualizationMenu() {
         if (_dataForVisualization && Object.keys(_dataForVisualization).length) {
-            $("select#label_color_select_menu").append($("<option>")
+            $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
                 .val("none")
                 .html("none")
             );
@@ -2487,7 +2505,7 @@ if (!phyloXmlParser) {
             );
 
             if (_dataForVisualization["distribution"]) {
-                $("select#label_color_select_menu").append($("<option>")
+                $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
                     .val("distribution")
                     .html("distribution")
                 );
@@ -2499,17 +2517,17 @@ if (!phyloXmlParser) {
 
 
             //  if (_dataForVisualization["vipr:host"]) {
-            //      $("select#label_color_select_menu").append($("<option>")
+            //      $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
             //         .val("vipr:host")
             //         .html("host")
             //     );
             // }
             if (_dataForVisualization["vipr:drug"]) {
-                $("select#label_color_select_menu").append($("<option>")
+                $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
                     .val("vipr:drug")
                     .html("antiviral drug")
                 );
-                $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                $('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
                     .val("vipr:drug")
                     .html("antiviral drug")
                 );
@@ -2518,11 +2536,11 @@ if (!phyloXmlParser) {
                 var xl = _dataForVisualization["category"].length;
                 for (var i = 0; i < xl; ++i) {
                     var c = _dataForVisualization["category"][i];
-                    $("select#label_color_select_menu").append($("<option>")
+                    $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
                         .val(c)
                         .html(c)
                     );
-                    $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+                    $('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
                         .val(c)
                         .html(c)
                     );
@@ -2643,33 +2661,47 @@ if (!phyloXmlParser) {
 
     function updateDepthCollapseDepthDisplay() {
         var v = obtainDepthCollapseDepthValue();
-        $("#depth_collapse_label")
+        $('#' + DEPTH_COLLAPSE_LABEL)
             .val(" " + v);
     }
 
     function updateBranchLengthCollapseBranchLengthDisplay() {
         var v = obtainBranchLengthCollapseBranchLengthValue();
-        $("#bl_collapse_label")
+        $('#' + BL_COLLAPSE_LABEL)
             .val(v);
     }
 
+
     function updateButtonEnabledState() {
+        var b = null;
         if (_superTreeRoots && _superTreeRoots.length > 0) {
-            $('#return_to_supertree_button').prop('disabled', false);
-            $('#return_to_supertree_button').css("background", "");
+            b = $('#' + RETURN_TO_SUPERTREE_BUTTON);
+            if (b) {
+                b.prop('disabled', false);
+                b.css("background", "");
+            }
         }
         else {
-            $('#return_to_supertree_button').prop('disabled', true);
-            $('#return_to_supertree_button').css("background", "#e0e0e0");
+            b = $('#' + RETURN_TO_SUPERTREE_BUTTON);
+            if (b) {
+                b.prop('disabled', true);
+                b.css("background", "#e0e0e0");
+            }
         }
 
         if (forester.isHasCollapsedNodes(_root)) {
-            $('#uncollapse_all_button').prop('disabled', false);
-            $('#uncollapse_all_button').css("background", "")
+            b = $('#' + UNCOLLAPSE_ALL_BUTTON);
+            if (b) {
+                b.prop('disabled', false);
+                b.css("background", "");
+            }
         }
         else {
-            $('#uncollapse_all_button').prop('disabled', true);
-            $('#uncollapse_all_button').css("background", "#e0e0e0");
+            b = $('#' + UNCOLLAPSE_ALL_BUTTON);
+            if (b) {
+                b.prop('disabled', true);
+                b.css("background", "#e0e0e0");
+            }
         }
     }
 
