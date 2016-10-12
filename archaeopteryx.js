@@ -69,6 +69,7 @@ if (!phyloXmlParser) {
     var PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
     var DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
 
+
     var ALIGN_PHYLOGRAM_CB = 'al_cb';
     var NODE_NAME_CB = 'nn_cb';
     var TAXONOMY_CB = 'tax_cb';
@@ -109,6 +110,16 @@ if (!phyloXmlParser) {
 
     var NODE_SHAPE_SELECT_MENU = 'nss_menu';
     var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
+
+    var VISUAL_CONTROLS = 'visual_controls';
+
+    var SEARCH_OPTIONS = 'search_options';
+    var SEARCH_OPTIONS_GROUP = 'search_opts_g';
+    var SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
+    var SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
+    var SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
+    var SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
+
 
     var VK_O = 79;
     var VK_R = 82;
@@ -608,16 +619,11 @@ if (!phyloXmlParser) {
     };
 
     var makeNodeColor = function (phynode) {
-        if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
-            return _options.found0and1ColorDefault;
+        var foundColor = getFoundColor(phynode);
+        if (foundColor != null) {
+            return foundColor;
         }
-        else if (_foundNodes0 && _foundNodes0.has(phynode)) {
-            return _options.found0ColorDefault;
-        }
-        else if (_foundNodes1 && _foundNodes1.has(phynode)) {
-            return _options.found1ColorDefault;
-        }
-        else if (phynode.color) {
+        if (phynode.color) {
             var c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -633,14 +639,10 @@ if (!phyloXmlParser) {
     };
 
     var makeLabelColor = function (phynode) {
-        if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
-            return _options.found0and1ColorDefault;
-        }
-        else if (_foundNodes0 && _foundNodes0.has(phynode)) {
-            return _options.found0ColorDefault;
-        }
-        else if (_foundNodes1 && _foundNodes1.has(phynode)) {
-            return _options.found1ColorDefault;
+
+        var foundColor = getFoundColor(phynode);
+        if (foundColor != null) {
+            return foundColor;
         }
 
         if (_currentLabelColorVisualization) {
@@ -655,6 +657,32 @@ if (!phyloXmlParser) {
         }
         return _options.labelColorDefault;
     };
+
+    function getFoundColor(phynode) {
+        if (!_options.searchNegateResult) {
+            if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
+                return _options.found0and1ColorDefault;
+            }
+            else if (_foundNodes0 && _foundNodes0.has(phynode)) {
+                return _options.found0ColorDefault;
+            }
+            else if (_foundNodes1 && _foundNodes1.has(phynode)) {
+                return _options.found1ColorDefault;
+            }
+        }
+        else {
+            if ((_foundNodes0 && _foundNodes0.size > 0) && (_foundNodes1 && _foundNodes1.size > 0) && !_foundNodes0.has(phynode) && !_foundNodes1.has(phynode)) {
+                return _options.found0and1ColorDefault;
+            }
+            else if ((_foundNodes0 && _foundNodes0.size > 0) && !_foundNodes0.has(phynode)) {
+                return _options.found0ColorDefault;
+            }
+            else if ((_foundNodes1 && _foundNodes1.size > 0) && !_foundNodes1.has(phynode)) {
+                return _options.found1ColorDefault;
+            }
+        }
+        return null;
+    }
 
 
     function labelColorVisualization(node) {
@@ -1050,6 +1078,7 @@ if (!phyloXmlParser) {
         if (_options.searchIsPartial === undefined) {
             _options.searchIsPartial = true;
         }
+        _options.searchNegateResult = false;
         if (_options.searchUsesRegex === undefined) {
             _options.searchUsesRegex = false;
         }
@@ -1753,7 +1782,7 @@ if (!phyloXmlParser) {
         _options.showNodeName = getCheckboxValue(NODE_NAME_CB);
         if (_options.showNodeName) {
             _options.showExternalLabels = true;
-            setCheckboxValue('external_label_cb', true);
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         update();
     }
@@ -1762,7 +1791,7 @@ if (!phyloXmlParser) {
         _options.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
         if (_options.showTaxonomy) {
             _options.showExternalLabels = true;
-            setCheckboxValue('external_label_cb', true);
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         update();
     }
@@ -1771,7 +1800,7 @@ if (!phyloXmlParser) {
         _options.showSequence = getCheckboxValue(SEQUENCE_CB);
         if (_options.showSequence) {
             _options.showExternalLabels = true;
-            setCheckboxValue('external_label_cb', true);
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         update();
     }
@@ -1836,6 +1865,46 @@ if (!phyloXmlParser) {
         _options.branchDataFontSize = getSliderValue(slider);
         update(null, 0, true);
     }
+
+    function searchOptionsCaseSenstiveCbClicked() {
+        _options.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
+        if (_options.searchIsCaseSensitive === true) {
+            _options.searchUsesRegex = false;
+            setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
+        }
+        search0();
+        search1();
+    }
+
+    function searchOptionsCompleteTermsOnlyCbClicked() {
+        _options.searchIsPartial = !getCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB);
+        if (_options.searchIsPartial === false) {
+            _options.searchUsesRegex = false;
+            setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
+        }
+        search0();
+        search1();
+    }
+
+    function searchOptionsRegexCbClicked() {
+        _options.searchUsesRegex = getCheckboxValue(SEARCH_OPTIONS_REGEX_CB);
+        if (_options.searchUsesRegex === true) {
+            _options.searchIsPartial = true;
+            _options.searchIsCaseSensitive = false;
+            setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _options.searchIsCaseSensitive);
+            setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
+        }
+        search0();
+        search1();
+    }
+
+
+    function searchOptionsNegateResultCbClicked() {
+        _options.searchNegateResult = getCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB);
+        search0();
+        search1();
+    }
+
 
     function setRadioButtonValue(id, value) {
         var radio = $('#' + id);
@@ -1950,6 +2019,7 @@ if (!phyloXmlParser) {
                 "direction": "vertical",
                 "width": "120px"
             });
+
             c0.append(makeControlButons());
 
             c0.append(makeSliders());
@@ -1961,6 +2031,7 @@ if (!phyloXmlParser) {
 
         var c1 = $('#' + CONTROLS_1);
         if (c1) {
+
             c1.css({
                 'width': '200px',
                 'height': '270px',
@@ -1969,14 +2040,29 @@ if (!phyloXmlParser) {
                 'background-color': '#e0e0e0'
             });
 
+
+            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
+                "direction": "vertical"
+            });
+
+
             c1.draggable({containment: "parent"});
 
             c1.append(makeVisualControls());
+
+            c1.append(makeSearchControls());
+
+            $('#' + VISUAL_CONTROLS).accordion({
+                collapsible: true
+            });
+
+            $('#' + SEARCH_OPTIONS).accordion({
+                collapsible: true
+            });
+
+
         }
 
-        $('#accordion').accordion({
-            collapsible: true
-        });
 
         $('input:button')
             .button()
@@ -2193,6 +2279,10 @@ if (!phyloXmlParser) {
 
         $('#' + UNCOLLAPSE_ALL_BUTTON).mousedown(uncollapseAllButtonPressed);
 
+        $('#' + SEARCH_OPTIONS_CASE_SENSITIVE_CB).click(searchOptionsCaseSenstiveCbClicked);
+        $('#' + SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB).click(searchOptionsCompleteTermsOnlyCbClicked);
+        $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
+        $('#' + SEARCH_OPTIONS_NEGATE_RES_CB).click(searchOptionsNegateResultCbClicked);
 
         $(document).keyup(function (e) {
 
@@ -2429,14 +2519,12 @@ if (!phyloXmlParser) {
             return h;
         }
 
-
         function makeAutoCollapse() {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Collapse Node Depth</legend>');
             h = h.concat('<input type="button" value="-" name="' + DECR_DEPTH_COLLAPSE_LEVEL + '" id="' + DECR_DEPTH_COLLAPSE_LEVEL + '">');
             h = h.concat('<input type="text"  name="' + DEPTH_COLLAPSE_LABEL + '" id="' + DEPTH_COLLAPSE_LABEL + '">');
-
             h = h.concat('<input type="button" value="+" name="' + INCR_DEPTH_COLLAPSE_LEVEL + '" id="' + INCR_DEPTH_COLLAPSE_LEVEL + '">');
             h = h.concat('</fieldset>');
             if (_treeProperties.branchLengths) {
@@ -2450,28 +2538,50 @@ if (!phyloXmlParser) {
             return h;
         }
 
-
         function makeVisualControls() {
             var h = "";
-            h = h.concat('<div id="accordion">');
+            h = h.concat('<div id="' + VISUAL_CONTROLS + '">');
             h = h.concat('<h3>Special</h3>');
             h = h.concat('<form action="#">');
             h = h.concat('<label for="' + LABEL_COLOR_SELECT_MENU + '">Label Color</label>');
             h = h.concat('<br>');
             h = h.concat('<select name="' + LABEL_COLOR_SELECT_MENU + '" id="' + LABEL_COLOR_SELECT_MENU + '">');
-            h = h.concat(' </select>');
+            h = h.concat('</select>');
             h = h.concat('<br>');
             h = h.concat('<br>');
             h = h.concat('<label for="' + NODE_SHAPE_SELECT_MENU + '">Node Shape</label>');
             h = h.concat('<br>');
             h = h.concat('<select name="' + NODE_SHAPE_SELECT_MENU + '" id="' + NODE_SHAPE_SELECT_MENU + '">');
-            h = h.concat(' </select>');
-
-
+            h = h.concat('</select>');
             h = h.concat('</form>');
             h = h.concat('</div>');
             return h;
         }
+
+
+        function makeSearchControls() {
+            var h = "";
+            h = h.concat('<div id="' + SEARCH_OPTIONS + '">');
+            h = h.concat('<h3>Search Options</h3>');
+
+            h = h.concat('<fieldset>');
+            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
+
+            h = h.concat(cb('Case Sensitive', SEARCH_OPTIONS_CASE_SENSITIVE_CB));
+            h = h.concat(cb('Complete Terms Only', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB));
+            h = h.concat(cb('Regular Expressions', SEARCH_OPTIONS_REGEX_CB));
+            h = h.concat(cb('Negate Result', SEARCH_OPTIONS_NEGATE_RES_CB));
+
+            h = h.concat('</div>');
+            h = h.concat('</fieldset>');
+            h = h.concat('</div>');
+            return h;
+
+            function cb(label, id) {
+                return '<label for="' + id + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
+            }
+        }
+
     } // function createGui()
 
     function initializeGui() {
@@ -2490,6 +2600,7 @@ if (!phyloXmlParser) {
         setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
         setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
         initializeVisualizationMenu();
+        initializeSearchOptions();
     }
 
 
@@ -2549,6 +2660,25 @@ if (!phyloXmlParser) {
 
         }
     }
+
+    function initializeSearchOptions() {
+        if (_options.searchUsesRegex === true) {
+            _options.searchIsCaseSensitive = false;
+            _options.searchIsPartial = true;
+        }
+        if (_options.searchIsCaseSensitive === true) {
+            _options.searchUsesRegex = false;
+        }
+        if (_options.searchIsPartial === false) {
+            _options.searchUsesRegex = false;
+        }
+        _options.searchNegateResult = false;
+        setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _options.searchIsCaseSensitive);
+        setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
+        setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
+        setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _options.searchNegateResult);
+    }
+
 
     function orderSubtree(n, order) {
         var changed = false;

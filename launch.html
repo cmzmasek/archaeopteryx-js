@@ -51,14 +51,15 @@
             options.minBranchLengthValueToShow = 0.01;
             options.minConfidenceValueToShow = 0.5;
             options.searchIsCaseSensitive = false;
-            options.searchIsPartial = false;
-            options.searchUsesRegex = true;
+            options.searchIsPartial = true;
+            options.searchUsesRegex = false;
             options.alignPhylogram = true;
             var settings = {};
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
             settings.displayHight = 1000;
             settings.reCenterAfterCollapse = false;
+            settings.menuFontSize = '9px';
 
             //apaf
             //apaf5
@@ -120,13 +121,13 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_58</h2>
+    <h2>Archaeopteryx-js Demo: v 0_59</h2>
     <div id='phylogram1'></div>
 
-    <div style="position:absolute; left: 20px; top: 60px;" id="controls1" class="ui-widget-content">
+    <div style="position:absolute; left: 20px; top: 60px;" id="controls0" class="ui-widget-content">
     </div>
 
-    <div style="position:absolute; right: 20px; top: 60px;" id="controls2" class="ui-widget-content">
+    <div style="position:absolute; right: 20px; top: 60px;" id="controls1" class="ui-widget-content">
     </div>
 
 </div>
