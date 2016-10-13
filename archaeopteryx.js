@@ -175,6 +175,7 @@ if (!phyloXmlParser) {
     var _branch_length_collapse_data = {};
     var _external_nodes = 0;
     var _w = null;
+    var _visualizations = null;
 
     function branchLengthScaling(nodes, width) {
 
@@ -226,6 +227,42 @@ if (!phyloXmlParser) {
     function calcMaxTreeLengthForDisplay() {
         return _settings.rootOffset + _options.nodeLabelGap + ( _maxLabelLength * _options.externalNodeFontSize * 0.8 );
     }
+
+    function initializevisualizations() {
+        _visualizations = {};
+
+        _visualizations.patternToShape = {};
+        _visualizations.patternToShape.field = 'name';
+        _visualizations.patternToShape.map = {};
+        _visualizations.patternToShape.map['UN'] = 'triangle-down';
+        _visualizations.patternToShape.map['AN'] = 'triangle-up';
+        _visualizations.patternToShape.map['Hu'] = 'cross';
+        _visualizations.patternToShape.map['C'] = 'diamond';
+        _visualizations.patternToShape.map['DZA'] = 'square';
+        _visualizations.patternToShape.map['E'] = 'circle';
+
+        _visualizations.patternToNodeColor = {};
+        _visualizations.patternToNodeColor.field = 'name';
+        _visualizations.patternToNodeColor.map = {};
+        _visualizations.patternToNodeColor.map['UN'] = 'red';
+        _visualizations.patternToNodeColor.map['AN'] = 'greed';
+        _visualizations.patternToNodeColor.map['Hu'] = 'blue';
+        _visualizations.patternToNodeColor.map['C'] = 'yellow';
+        _visualizations.patternToNodeColor.map['DZA'] = 'orange';
+        _visualizations.patternToNodeColor.map['E'] = 'pink';
+
+        _visualizations.patternToNodeSize = {};
+        _visualizations.patternToNodeSize.field = 'name';
+        _visualizations.patternToNodeSize.map = {};
+        _visualizations.patternToNodeSize.map['UN'] = 40;
+        _visualizations.patternToNodeSize.map['AN'] = 20;
+        _visualizations.patternToNodeSize.map['Hu'] = 30;
+        _visualizations.patternToNodeSize.map['C'] = 40;
+        _visualizations.patternToNodeSize.map['DZA'] = 10;
+        _visualizations.patternToNodeSize.map['E'] = 25;
+
+    }
+
 
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
@@ -282,7 +319,6 @@ if (!phyloXmlParser) {
 
         updateDepthCollapseDepthDisplay();
         updateBranchLengthCollapseBranchLengthDisplay();
-
         updateButtonEnabledState();
 
         var node = _svgGroup.selectAll("g.node")
@@ -301,11 +337,6 @@ if (!phyloXmlParser) {
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
             .attr("r", 0);
-
-        //  nodeEnter.append("path")
-        //.style("stroke", makeNodeColor)
-        // .style("fill", "red")
-        //      .attr("d", null);
 
         nodeEnter.append("circle")
             .style("cursor", "pointer")
@@ -337,7 +368,6 @@ if (!phyloXmlParser) {
             .attr("dy", function (d) {
                 return 0.3 * _options.externalNodeFontSize + "px";
             });
-
 
         node.select("text.extlabel")
             .style("font-size", function (d) {
@@ -387,7 +417,7 @@ if (!phyloXmlParser) {
 
         node.select("circle.nodeCircle")
             .attr("r", function (d) {
-                return ( ( _options.internalNodeSize > 0 && d.parent )
+                return ( ( _options.internalNodeSize > 0 && d.parent && !d.hasVis )
                 && ( ( d.children && _options.showInternalNodes  )
                     || ( ( !d._children && !d.children ) && _options.showExternalNodes  )
                 ) || ( _options.phylogram && d.parent && !d.parent.parent && (!d.branch_length || d.branch_length <= 0)) ) ? _options.internalNodeSize : 0;
@@ -405,6 +435,35 @@ if (!phyloXmlParser) {
 
         var start = _options.phylogram ? (-1) : (-10);
         var ylength = _displayHeight / ( 3 * uncollsed_nodes );
+
+
+        var nodeUpdate = node.transition()
+            .duration(transitionDuration)
+            .attr("transform", function (d) {
+                return "translate(" + d.y + "," + d.x + ")";
+            });
+
+        nodeUpdate.select("text")
+            .style("fill-opacity", 1);
+
+        nodeUpdate.select("text.extlabel")
+            .text(function (d) {
+                if (!_options.dynahide || !d.hide) {
+                    return makeNodeLabel(d);
+                }
+            });
+
+        nodeUpdate.select("text.bllabel")
+            .text(_options.showBranchLengthValues ? makeBranchLengthLabel : null);
+
+        nodeUpdate.select("text.conflabel")
+            .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
+
+
+        nodeUpdate.select("path")
+            .style("stroke", makeVisNodeColor)
+            .style("fill", makeVisNodeColor)
+            .attr("d", makeVisShape);
 
         node.each(function (d) {
             if (d._children) {
@@ -464,82 +523,6 @@ if (!phyloXmlParser) {
                     });
             }
         });
-
-        var nodeUpdate = node.transition()
-            .duration(transitionDuration)
-            .attr("transform", function (d) {
-                return "translate(" + d.y + "," + d.x + ")";
-            });
-
-        nodeUpdate.select("text")
-            .style("fill-opacity", 1);
-
-        nodeUpdate.select("text.extlabel")
-            .text(function (d) {
-                if (!_options.dynahide || !d.hide) {
-                    return makeNodeLabel(d);
-                }
-            });
-
-        nodeUpdate.select("text.bllabel")
-            .text(_options.showBranchLengthValues ? makeBranchLengthLabel : null);
-
-        nodeUpdate.select("text.conflabel")
-            .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
-
-
-        /*nodeUpdate.select("path")
-         .style("stroke", makeNodeColor)
-         .style("fill", "green")
-         .attr("d", d3.svg.symbol()
-         .size(20)
-         .type(function (d) {
-         if (d.name && d.name.match(/[U]/)) {
-         // square cross diamond circle triangle-down triangle-up
-         return "cross";
-         }
-         else if (d.name && d.name.match(/[S]/)) {
-         return "diamond";
-         }
-         else if (d.name && d.name.match(/[A]/)) {
-         return "square";
-         }else {
-         return;
-         }
-         }
-         )
-         );*/
-
-
-        var map = {};
-        map.patternToShape = {};
-        map.patternToShape['UN'] = 'triangle-down';
-        map.patternToShape['AN'] = 'triangle-up';
-        map.patternToShape['Hu'] = 'cross';
-        map.patternToShape['C'] = 'diamond';
-        map.patternToShape['DZA'] = 'square';
-        map.patternToShape['E'] = 'circle';
-
-        var makeShape = function (n) {
-            var shape = 'circle';
-            var size = 0;
-            for (var key in map.patternToShape) {
-                if (n.name) {
-                    var re = new RegExp(key);
-                    if (n.name.search(re) > -1) {
-                        shape = map.patternToShape[key];
-                        size = 20;
-                        return d3.svg.symbol().type(shape).size(size)();
-                    }
-                }
-            }
-            return null;
-        };
-
-        nodeUpdate.select("path")
-            .style("stroke", makeNodeColor)
-            .style("fill", "green")
-            .attr("d", makeShape);
 
         var nodeExit = node.exit().transition()
             .duration(transitionDuration)
@@ -623,7 +606,6 @@ if (!phyloXmlParser) {
         });
     }
 
-
     var makeBranchWidth = function (link) {
         if (link.target.width) {
             return link.target.width;
@@ -677,6 +659,67 @@ if (!phyloXmlParser) {
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
         return _options.labelColorDefault;
+    };
+
+    var makeVisShape = function (node) {
+        if (_visualizations && !node._children && _visualizations.patternToShape
+            && _visualizations.patternToShape.field
+            && _visualizations.patternToShape.map) {
+            var field_name = _visualizations.patternToShape.field;
+            var field = node[field_name];
+            if (field) {
+                var shape = 'circle';
+                for (var key in _visualizations.patternToShape.map) {
+                    var re = new RegExp(key);
+                    if (field.search(re) > -1) {
+                        shape = _visualizations.patternToShape.map[key];
+                        node.hasVis = true;
+
+                        var size = makeVisNodeSize(node);
+                        return d3.svg.symbol().type(shape).size(size)();
+                    }
+                }
+            }
+        }
+    };
+
+    var makeVisNodeColor = function (node) {
+        if (_visualizations && !node._children && _visualizations.patternToNodeColor
+            && _visualizations.patternToNodeColor.field
+            && _visualizations.patternToNodeColor.map) {
+            var field_name = _visualizations.patternToNodeColor.field;
+            var field = node[field_name];
+            if (field) {
+                for (var key in _visualizations.patternToNodeColor.map) {
+                    var re = new RegExp(key);
+                    if (field.search(re) > -1) {
+                        var color = _visualizations.patternToNodeColor.map[key];
+                        node.hasVis = true;
+                        return color;
+                    }
+                }
+            }
+        }
+        return _options.branchColorDefault;
+    };
+
+    var makeVisNodeSize = function (node) {
+        if (_visualizations && !node._children && _visualizations.patternToNodeSize
+            && _visualizations.patternToNodeSize.field
+            && _visualizations.patternToNodeSize.map) {
+            var field_name = _visualizations.patternToNodeSize.field;
+            var field = node[field_name];
+            if (field) {
+                for (var key in _visualizations.patternToNodeSize.map) {
+                    var re = new RegExp(key);
+                    if (field.search(re) > -1) {
+                        var size = _visualizations.patternToNodeSize.map[key];
+                        return size * _options.internalNodeSize;
+                    }
+                }
+            }
+        }
+        return 2 * _options.internalNodeSize * _options.internalNodeSize;
     };
 
     function getFoundColor(phynode) {
@@ -1141,6 +1184,7 @@ if (!phyloXmlParser) {
         _treeProperties = forester.collectTreeProperties(_treeData);
         initializeOptions(options);
         initializeSettings(settings);
+        initializevisualizations();
         createGui(_treeProperties);
 
         _baseSvg = d3.select(id).append("svg")
@@ -1897,10 +1941,6 @@ if (!phyloXmlParser) {
 
     function searchOptionsCaseSenstiveCbClicked() {
         _options.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
-        if (_options.searchIsCaseSensitive === true) {
-            _options.searchUsesRegex = false;
-            setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
-        }
         search0();
         search1();
     }
@@ -1919,8 +1959,6 @@ if (!phyloXmlParser) {
         _options.searchUsesRegex = getCheckboxValue(SEARCH_OPTIONS_REGEX_CB);
         if (_options.searchUsesRegex === true) {
             _options.searchIsPartial = true;
-            _options.searchIsCaseSensitive = false;
-            setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _options.searchIsCaseSensitive);
             setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
         }
         search0();
@@ -2590,10 +2628,10 @@ if (!phyloXmlParser) {
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
 
-            h = h.concat(cb('Case Sensitive', SEARCH_OPTIONS_CASE_SENSITIVE_CB));
-            h = h.concat(cb('Complete Terms Only', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB));
-            h = h.concat(cb('Regular Expressions', SEARCH_OPTIONS_REGEX_CB));
-            h = h.concat(cb('Negate Result', SEARCH_OPTIONS_NEGATE_RES_CB));
+            h = h.concat(cb('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB));
+            h = h.concat(cb('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB));
+            h = h.concat(cb('Regex', SEARCH_OPTIONS_REGEX_CB));
+            h = h.concat(cb('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB));
 
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -2686,11 +2724,7 @@ if (!phyloXmlParser) {
 
     function initializeSearchOptions() {
         if (_options.searchUsesRegex === true) {
-            _options.searchIsCaseSensitive = false;
             _options.searchIsPartial = true;
-        }
-        if (_options.searchIsCaseSensitive === true) {
-            _options.searchUsesRegex = false;
         }
         if (_options.searchIsPartial === false) {
             _options.searchUsesRegex = false;
