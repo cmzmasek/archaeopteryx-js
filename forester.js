@@ -289,24 +289,24 @@
             }
             // removing the old root:
             if (c.children.length == 2) {
-                var node = c.children[1 - forester.getChildNodeIndex(c, b)];
-                node.parent = b;
+                var node2 = c.children[1 - forester.getChildNodeIndex(c, b)];
+                node2.parent = b;
                 if (( !c.branch_length  )
-                    && ( !node.branch_length  )) {
-                    node.branch_length = undefined;
+                    && ( !node2.branch_length  )) {
+                    node2.branch_length = undefined;
                 }
                 else {
-                    node.branch_length = ( c.branch_length >= 0.0 ? c.branch_length : 0.0 )
-                        + ( node.branch_length >= 0.0 ? node.branch_length : 0.0 );
+                    node2.branch_length = ( c.branch_length >= 0.0 ? c.branch_length : 0.0 )
+                        + ( node2.branch_length >= 0.0 ? node2.branch_length : 0.0 );
                 }
                 var cbd = forester.getBranchData(c);
                 if (cbd) {
-                    forester.setBranchData(node, cbd);
+                    forester.setBranchData(node2, cbd);
                 }
                 var l = b.children.length;
                 for (var i = 0; i < l; ++i) {
                     if (b.children[i] === c) {
-                        setChildNodeOnly(b, i, node);
+                        setChildNodeOnly(b, i, node2);
                         break;
                     }
                 }
