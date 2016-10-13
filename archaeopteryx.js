@@ -159,6 +159,8 @@ if (!phyloXmlParser) {
     var _yScale = null;
     var _foundNodes0 = new Set();
     var _foundNodes1 = new Set();
+    var _searchBox0Empty = true;
+    var _searchBox1Empty = true;
     var _displayWidth = 0;
     var _displayHeight = 0;
     var _intervalId = 0;
@@ -509,16 +511,35 @@ if (!phyloXmlParser) {
          );*/
 
 
-        var arc = function () {
-            return d3.svg.symbol().type('triangle-down').size(20);
+        var map = {};
+        map.patternToShape = {};
+        map.patternToShape['UN'] = 'triangle-down';
+        map.patternToShape['AN'] = 'triangle-up';
+        map.patternToShape['Hu'] = 'cross';
+        map.patternToShape['C'] = 'diamond';
+        map.patternToShape['DZA'] = 'square';
+        map.patternToShape['E'] = 'circle';
+
+        var makeShape = function (n) {
+            var shape = 'circle';
+            var size = 0;
+            for (var key in map.patternToShape) {
+                if (n.name) {
+                    var re = new RegExp(key);
+                    if (n.name.search(re) > -1) {
+                        shape = map.patternToShape[key];
+                        size = 20;
+                        return d3.svg.symbol().type(shape).size(size)();
+                    }
+                }
+            }
+            return null;
         };
 
-        /* nodeUpdate.select("path")
-         .style("stroke", makeNodeColor)
-         .style("fill", "green")
-         .attr("d", function() { return arc() } );
-         */
-
+        nodeUpdate.select("path")
+            .style("stroke", makeNodeColor)
+            .style("fill", "green")
+            .attr("d", makeShape);
 
         var nodeExit = node.exit().transition()
             .duration(transitionDuration)
@@ -670,14 +691,14 @@ if (!phyloXmlParser) {
                 return _options.found1ColorDefault;
             }
         }
-        else {
-            if ((_foundNodes0 && _foundNodes0.size > 0) && (_foundNodes1 && _foundNodes1.size > 0) && !_foundNodes0.has(phynode) && !_foundNodes1.has(phynode)) {
+        else if (forester.isHasNodeData(phynode)) {
+            if ((_foundNodes0 && !_searchBox0Empty) && (_foundNodes1 && !_searchBox1Empty) && !_foundNodes0.has(phynode) && !_foundNodes1.has(phynode)) {
                 return _options.found0and1ColorDefault;
             }
-            else if ((_foundNodes0 && _foundNodes0.size > 0) && !_foundNodes0.has(phynode)) {
+            else if ((_foundNodes0 && !_searchBox0Empty) && !_foundNodes0.has(phynode)) {
                 return _options.found0ColorDefault;
             }
-            else if ((_foundNodes1 && _foundNodes1.size > 0) && !_foundNodes1.has(phynode)) {
+            else if ((_foundNodes1 && !_searchBox1Empty) && !_foundNodes1.has(phynode)) {
                 return _options.found1ColorDefault;
             }
         }
@@ -1699,7 +1720,6 @@ if (!phyloXmlParser) {
         }
     }
 
-
     function returnToSupertreeButtonPressed() {
         if (_root && _superTreeRoots.length > 0) {
             _root = _superTreeRoots.pop();
@@ -1736,22 +1756,31 @@ if (!phyloXmlParser) {
 
     function search0() {
         _foundNodes0.clear();
+        _searchBox0Empty = true;
         var query = $('#' + SEARCH_FIELD_0).val();
         if (query && query.length > 0) {
-            _foundNodes0 = search(query);
+            var my_query = query.trim();
+            if (my_query.length > 0) {
+                _searchBox0Empty = false;
+                _foundNodes0 = search(my_query);
+            }
         }
         update(0, null, true);
     }
 
     function search1() {
         _foundNodes1.clear();
+        _searchBox1Empty = true;
         var query = $('#' + SEARCH_FIELD_1).val();
         if (query && query.length > 0) {
-            _foundNodes1 = search(query);
+            var my_query = query.trim();
+            if (my_query.length > 0) {
+                _searchBox1Empty = false;
+                _foundNodes1 = search(my_query);
+            }
         }
         update(0, null, true);
     }
-
 
     function search(query) {
         return forester.searchData(query,
@@ -2062,7 +2091,6 @@ if (!phyloXmlParser) {
 
 
         }
-
 
         $('input:button')
             .button()
@@ -2404,20 +2432,15 @@ if (!phyloXmlParser) {
             h = h.concat('<input type="radio" name="radio-1" id="' + CLADOGRAM_BUTTON + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
-
             return h;
-
         }
 
         function makeMoreControls() {
             var h = "";
-
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
-
             h = h.concat('<label for="' + ALIGN_PHYLOGRAM_CB + '">Line Up PH</label>');
             h = h.concat('<input type="checkbox" name="' + ALIGN_PHYLOGRAM_CB + '" id="' + ALIGN_PHYLOGRAM_CB + '">');
-
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -2767,7 +2790,6 @@ if (!phyloXmlParser) {
             forester.collapseToBranchLength(_treeData, _root, _branch_length_collapse_level);
         }
         update(null, 0);
-
     }
 
     function incrBlCollapseLevel() {
