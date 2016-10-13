@@ -231,35 +231,49 @@ if (!phyloXmlParser) {
     function initializevisualizations() {
         _visualizations = {};
 
-        _visualizations.patternToShape = {};
-        _visualizations.patternToShape.field = 'name';
-        _visualizations.patternToShape.map = {};
-        _visualizations.patternToShape.map['UN'] = 'triangle-down';
-        _visualizations.patternToShape.map['AN'] = 'triangle-up';
-        _visualizations.patternToShape.map['Hu'] = 'cross';
-        _visualizations.patternToShape.map['C'] = 'diamond';
-        _visualizations.patternToShape.map['DZA'] = 'square';
-        _visualizations.patternToShape.map['E'] = 'circle';
+        _visualizations.nodeShape = {};
+        _visualizations.nodeShape.field = 'name';
+        _visualizations.nodeShape.regex = true;
+        _visualizations.nodeShape.mapping = {};
+        _visualizations.nodeShape.mapping['UNK|ANG0'] = 'triangle-down';
+        _visualizations.nodeShape.mapping['03'] = 'triangle-up';
+        _visualizations.nodeShape.mapping['05|06|08'] = 'cross';
+        _visualizations.nodeShape.mapping['CVB|Hu'] = 'diamond';
+        _visualizations.nodeShape.mapping['DZA'] = 'square';
+        _visualizations.nodeShape.mapping['SAT|101|pat'] = 'circle';
 
-        _visualizations.patternToNodeColor = {};
-        _visualizations.patternToNodeColor.field = 'name';
-        _visualizations.patternToNodeColor.map = {};
-        _visualizations.patternToNodeColor.map['UN'] = 'red';
-        _visualizations.patternToNodeColor.map['AN'] = 'greed';
-        _visualizations.patternToNodeColor.map['Hu'] = 'blue';
-        _visualizations.patternToNodeColor.map['C'] = 'yellow';
-        _visualizations.patternToNodeColor.map['DZA'] = 'orange';
-        _visualizations.patternToNodeColor.map['E'] = 'pink';
+        _visualizations.nodeColor = {};
+        _visualizations.nodeColor.field = 'name';
+        _visualizations.nodeColor.regex = true;
+        _visualizations.nodeColor.mapping = {};
+        _visualizations.nodeColor.mapping['UN'] = 'red';
+        _visualizations.nodeColor.mapping['AN'] = 'green';
+        _visualizations.nodeColor.mapping['Hu|ANG'] = 'blue';
+        _visualizations.nodeColor.mapping['C'] = 'yellow';
+        _visualizations.nodeColor.mapping['DZA'] = 'orange';
+        _visualizations.nodeColor.mapping['E|pat'] = 'pink';
 
-        _visualizations.patternToNodeSize = {};
-        _visualizations.patternToNodeSize.field = 'name';
-        _visualizations.patternToNodeSize.map = {};
-        _visualizations.patternToNodeSize.map['UN'] = 40;
-        _visualizations.patternToNodeSize.map['AN'] = 20;
-        _visualizations.patternToNodeSize.map['Hu'] = 30;
-        _visualizations.patternToNodeSize.map['C'] = 40;
-        _visualizations.patternToNodeSize.map['DZA'] = 10;
-        _visualizations.patternToNodeSize.map['E'] = 25;
+        _visualizations.nodeSize = {};
+        _visualizations.nodeSize.field = 'name';
+        _visualizations.nodeSize.regex = true;
+        _visualizations.nodeSize.mapping = {};
+        _visualizations.nodeSize.mapping['UN'] = 40;
+        _visualizations.nodeSize.mapping['AN'] = 20;
+        _visualizations.nodeSize.mapping['Hu'] = 30;
+        _visualizations.nodeSize.mapping['C'] = 40;
+        _visualizations.nodeSize.mapping['DZA'] = 10;
+        _visualizations.nodeSize.mapping['E'] = 25;
+
+        _visualizations.labelColor = {};
+        _visualizations.labelColor.field = 'name';
+        _visualizations.labelColor.regex = true;
+        _visualizations.labelColor.mapping = {};
+        _visualizations.labelColor.mapping['UN'] = 'red';
+        _visualizations.labelColor.mapping['AN'] = 'green';
+        _visualizations.labelColor.mapping['Hu|ANG'] = 'blue';
+        _visualizations.labelColor.mapping['C'] = 'yellow';
+        _visualizations.labelColor.mapping['DZA'] = 'orange';
+        _visualizations.labelColor.mapping['E|pat'] = 'pink';
 
     }
 
@@ -435,7 +449,6 @@ if (!phyloXmlParser) {
 
         var start = _options.phylogram ? (-1) : (-10);
         var ylength = _displayHeight / ( 3 * uncollsed_nodes );
-
 
         var nodeUpdate = node.transition()
             .duration(transitionDuration)
@@ -663,17 +676,17 @@ if (!phyloXmlParser) {
     };
 
     var makeVisShape = function (node) {
-        if (_visualizations && !node._children && _visualizations.patternToShape
-            && _visualizations.patternToShape.field
-            && _visualizations.patternToShape.map) {
-            var field_name = _visualizations.patternToShape.field;
+        if (_visualizations && !node._children && _visualizations.nodeShape
+            && _visualizations.nodeShape.field
+            && _visualizations.nodeShape.mapping) {
+            var field_name = _visualizations.nodeShape.field;
             var field = node[field_name];
             if (field) {
                 var shape = 'circle';
-                for (var key in _visualizations.patternToShape.map) {
+                for (var key in _visualizations.nodeShape.mapping) {
                     var re = new RegExp(key);
                     if (field.search(re) > -1) {
-                        shape = _visualizations.patternToShape.map[key];
+                        shape = _visualizations.nodeShape.mapping[key];
                         node.hasVis = true;
                         var size = makeVisNodeSize(node);
                         return d3.svg.symbol().type(shape).size(size)();
@@ -684,16 +697,16 @@ if (!phyloXmlParser) {
     };
 
     var makeVisNodeColor = function (node) {
-        if (_visualizations && !node._children && _visualizations.patternToNodeColor
-            && _visualizations.patternToNodeColor.field
-            && _visualizations.patternToNodeColor.map) {
-            var field_name = _visualizations.patternToNodeColor.field;
+        if (_visualizations && !node._children && _visualizations.nodeColor
+            && _visualizations.nodeColor.field
+            && _visualizations.nodeColor.mapping) {
+            var field_name = _visualizations.nodeColor.field;
             var field = node[field_name];
             if (field) {
-                for (var key in _visualizations.patternToNodeColor.map) {
+                for (var key in _visualizations.nodeColor.mapping) {
                     var re = new RegExp(key);
                     if (field.search(re) > -1) {
-                        var color = _visualizations.patternToNodeColor.map[key];
+                        var color = _visualizations.nodeColor.mapping[key];
                         node.hasVis = true;
                         return color;
                     }
@@ -704,16 +717,16 @@ if (!phyloXmlParser) {
     };
 
     var makeVisNodeSize = function (node) {
-        if (_visualizations && !node._children && _visualizations.patternToNodeSize
-            && _visualizations.patternToNodeSize.field
-            && _visualizations.patternToNodeSize.map) {
-            var field_name = _visualizations.patternToNodeSize.field;
+        if (_visualizations && !node._children && _visualizations.nodeSize
+            && _visualizations.nodeSize.field
+            && _visualizations.nodeSize.mapping) {
+            var field_name = _visualizations.nodeSize.field;
             var field = node[field_name];
             if (field) {
-                for (var key in _visualizations.patternToNodeSize.map) {
+                for (var key in _visualizations.nodeSize.mapping) {
                     var re = new RegExp(key);
                     if (field.search(re) > -1) {
-                        var size = _visualizations.patternToNodeSize.map[key];
+                        var size = _visualizations.nodeSize.mapping[key];
                         return size * _options.internalNodeSize;
                     }
                 }
@@ -2615,7 +2628,7 @@ if (!phyloXmlParser) {
         function makeVisualControls() {
             var h = "";
             h = h.concat('<div id="' + VISUAL_CONTROLS + '">');
-            h = h.concat('<h3>Special</h3>');
+            h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
             h = h.concat('<label for="' + LABEL_COLOR_SELECT_MENU + '">Label Color</label>');
             h = h.concat('<br>');
