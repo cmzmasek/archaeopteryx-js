@@ -78,9 +78,9 @@ if (!phyloXmlParser) {
     var BRANCH_LENGTH_VALUES_CB = 'bl_cb';
     var INTERNAL_LABEL_CB = 'intl_cb';
     var EXTERNAL_LABEL_CB = 'extl_cb';
-
     var INTERNAL_NODES_CB = 'intn_cb';
     var EXTERNAL_NODES_CB = 'extn_cb';
+    var NODE_VIS_CB = 'nodevis_cb';
 
     var ZOOM_IN_Y = 'zoomout_y';
     var ZOOM_OUT_Y = 'zoomin_y';
@@ -417,7 +417,7 @@ if (!phyloXmlParser) {
 
         node.select("circle.nodeCircle")
             .attr("r", function (d) {
-                return ( ( _options.internalNodeSize > 0 && d.parent && !d.hasVis )
+                return ( ( _options.internalNodeSize > 0 && d.parent && !( _options.showNodeVisualizations && d.hasVis) )
                 && ( ( d.children && _options.showInternalNodes  )
                     || ( ( !d._children && !d.children ) && _options.showExternalNodes  )
                 ) || ( _options.phylogram && d.parent && !d.parent.parent && (!d.branch_length || d.branch_length <= 0)) ) ? _options.internalNodeSize : 0;
@@ -461,9 +461,10 @@ if (!phyloXmlParser) {
 
 
         nodeUpdate.select("path")
-            .style("stroke", makeVisNodeColor)
-            .style("fill", makeVisNodeColor)
-            .attr("d", makeVisShape);
+            .style("stroke", _options.showNodeVisualizations ? makeVisNodeColor : null)
+            .style("fill", _options.showNodeVisualizations ? makeVisNodeColor : null)
+            .attr("d", _options.showNodeVisualizations ? makeVisShape : null);
+
 
         node.each(function (d) {
             if (d._children) {
@@ -674,7 +675,6 @@ if (!phyloXmlParser) {
                     if (field.search(re) > -1) {
                         shape = _visualizations.patternToShape.map[key];
                         node.hasVis = true;
-
                         var size = makeVisNodeSize(node);
                         return d3.svg.symbol().type(shape).size(size)();
                     }
@@ -1149,6 +1149,11 @@ if (!phyloXmlParser) {
         if (_options.alignPhylogram === undefined) {
             _options.alignPhylogram = false;
         }
+        if (_options.showNodeVisualizations === undefined) {
+            _options.showNodeVisualizations = false;
+        }
+
+       
     }
 
     function initializeSettings(settings) {
@@ -1908,6 +1913,11 @@ if (!phyloXmlParser) {
         update();
     }
 
+    function nodeVisCbClicked() {
+        _options.showNodeVisualizations = getCheckboxValue(NODE_VIS_CB);
+        update();
+    }
+
     function changeBranchWidth(e, slider) {
         _options.branchWidthDefault = getSliderValue(slider);
         update(null, 0, true);
@@ -1915,7 +1925,7 @@ if (!phyloXmlParser) {
 
     function changeNodeSize(e, slider) {
         _options.internalNodeSize = getSliderValue(slider);
-        if (!_options.showInternalNodes && !_options.showExternalNodes) {
+        if (!_options.showInternalNodes && !_options.showExternalNodes && !_options.showNodeVisualizations) {
             _options.showInternalNodes = true;
             _options.showExternalNodes = true;
             setCheckboxValue(INTERNAL_NODES_CB, true);
@@ -2190,6 +2200,8 @@ if (!phyloXmlParser) {
         $('#' + INTERNAL_NODES_CB).click(internalNodesCbClicked);
 
         $('#' + EXTERNAL_NODES_CB).click(externalNodesCbClicked);
+
+        $('#' + NODE_VIS_CB).click(nodeVisCbClicked);
 
         $('#' + LABEL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
@@ -2510,6 +2522,7 @@ if (!phyloXmlParser) {
             }
             h = h.concat(cb('External Nodes', EXTERNAL_NODES_CB));
             h = h.concat(cb('Internal Nodes', INTERNAL_NODES_CB));
+            h = h.concat(cb('Node Vis', NODE_VIS_CB));
 
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -2660,6 +2673,7 @@ if (!phyloXmlParser) {
         setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
         setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
         setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
+        setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
         initializeVisualizationMenu();
         initializeSearchOptions();
     }

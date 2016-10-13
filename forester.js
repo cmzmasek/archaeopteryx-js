@@ -515,6 +515,7 @@
 
         return nodes;
 
+
         function matcher(node) {
             var mqueries = [];
             if (!regex && ( q.indexOf("+") >= 0 )) {
@@ -839,6 +840,13 @@
             }
         });
         return max;
+    };
+
+
+    forester.isHasNodeData = function (node) {
+        return ( (node.name && node.name.length > 0 ) ||
+        (node.taxonomies && node.taxonomies.length > 0) ||
+        (node.sequences && node.sequences.length > 0) );
     };
 
 
