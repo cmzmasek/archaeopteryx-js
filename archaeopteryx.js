@@ -109,7 +109,8 @@ if (!phyloXmlParser) {
     var BL_COLLAPSE_LABEL = 'bl_col_label';
 
     var NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
-    var NODE_COLOR_SELECT_MENU = 'ncolors_menu';
+    var NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
+    var NODE_BORDER_COLOR_SELECT_MENU = 'nbcolors_menu';
     var NODE_SIZE_SELECT_MENU = 'nsizes_menu';
     var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
 
@@ -171,7 +172,8 @@ if (!phyloXmlParser) {
     var _dataForVisualization = {};
     var _currentLabelColorVisualization = null;
     var _currentNodeShapeVisualization = null;
-    var _currentNodeColorVisualization = null;
+    var _currentNodeFillColorVisualization = null;
+    var _currentNodeBorderColorVisualization = null;
     var _currentNodeSizeVisualization = null;
     var _dynahide_counter = 0;
     var _dynahide_factor = 0;
@@ -366,7 +368,7 @@ if (!phyloXmlParser) {
         cm0['DZA'] = 'orange';
         cm0['SAT|101|pat'] = 'pink';
 
-        addNodeColorVisualization('Name',
+        addNodeFillColorVisualization('Name',
             'External Node Names',
             'name',
             null,
@@ -378,7 +380,7 @@ if (!phyloXmlParser) {
         cm1['Angola'] = 'red';
         cm1['Algeria'] = 'green';
 
-        addNodeColorVisualization('Country',
+        addNodeFillColorVisualization('Country',
             'Country',
             null,
             'vipr:country',
@@ -391,7 +393,7 @@ if (!phyloXmlParser) {
         cm2['Human'] = 'orange';
         cm2['Unknown'] = 'black';
 
-        addNodeColorVisualization('Host',
+        addNodeFillColorVisualization('Host',
             'Host',
             null,
             'vipr:host',
@@ -418,7 +420,7 @@ if (!phyloXmlParser) {
         cm3['2002'] = 'orange';
         cm3['2001'] = 'orange';
 
-        addNodeColorVisualization('Year',
+        addNodeFillColorVisualization('Year',
             'Year',
             null,
             'vipr:year',
@@ -430,12 +432,92 @@ if (!phyloXmlParser) {
         cm4['pat-29'] = 'red';
         cm4['ALG/1/99'] = 'blue';
 
-        addNodeColorVisualization('Full Name',
+        addNodeFillColorVisualization('Full Name',
             'Full Name',
             'name',
             null,
             false,
             cm4,
+            null);
+
+        var cfm0 = {};
+        cfm0['UNK|ANG0'] = 'red';
+        cfm0['03'] = 'green';
+        cfm0['05|06|08'] = 'blue';
+        cfm0['CVB|Hu'] = 'yellow';
+        cfm0['DZA'] = 'orange';
+        cfm0['SAT|101|pat'] = 'pink';
+
+        addNodeBorderColorVisualization('Name',
+            'External Node Names',
+            'name',
+            null,
+            true,
+            cfm0,
+            null);
+
+        var cfm1 = {};
+        cfm1['Angola'] = 'red';
+        cfm1['Algeria'] = 'green';
+
+        addNodeBorderColorVisualization('Country',
+            'Country',
+            null,
+            'vipr:country',
+            false,
+            cfm1,
+            null);
+
+        var cfm2 = {};
+        cfm2['Cattle'] = 'red';
+        cfm2['Human'] = 'orange';
+        cfm2['Unknown'] = 'black';
+
+        addNodeBorderColorVisualization('Host',
+            'Host',
+            null,
+            'vipr:host',
+            false,
+            cfm2,
+            null);
+
+        var cfm3 = {};
+        cfm3['2016'] = 'green';
+        cfm3['1111'] = 'black';
+        cfm3['2015'] = 'blue';
+        cfm3['2014'] = 'blue';
+        cfm3['2013'] = 'blue';
+        cfm3['2012'] = 'blue';
+        cfm3['2011'] = 'blue';
+        cfm3['2010'] = 'blue';
+        cfm3['2009'] = 'red';
+        cfm3['2008'] = 'red';
+        cfm3['2007'] = 'red';
+        cfm3['2006'] = 'red';
+        cfm3['2005'] = 'red';
+        cfm3['2004'] = 'orange';
+        cfm3['2003'] = 'orange';
+        cfm3['2002'] = 'orange';
+        cfm3['2001'] = 'orange';
+
+        addNodeBorderColorVisualization('Year',
+            'Year',
+            null,
+            'vipr:year',
+            false,
+            cfm3,
+            null);
+
+        var cfm4 = {};
+        cfm4['pat-29'] = 'red';
+        cfm4['ALG/1/99'] = 'blue';
+
+        addNodeBorderColorVisualization('Full Name',
+            'Full Name',
+            'name',
+            null,
+            false,
+            cfm4,
             null);
 
         _visualizations.labelColor = {};
@@ -505,21 +587,21 @@ if (!phyloXmlParser) {
         }
     }
 
-    function addNodeColorVisualization(label,
-                                       description,
-                                       field,
-                                       cladePropertyRef,
-                                       isRegex,
-                                       mapping,
-                                       mappingFn) {
+    function addNodeFillColorVisualization(label,
+                                           description,
+                                           field,
+                                           cladePropertyRef,
+                                           isRegex,
+                                           mapping,
+                                           mappingFn) {
         if (!_visualizations) {
             _visualizations = {};
         }
-        if (!_visualizations.nodeColor) {
-            _visualizations.nodeColor = {};
+        if (!_visualizations.nodeFillColor) {
+            _visualizations.nodeFillColor = {};
         }
-        if (_visualizations.nodeColor[label]) {
-            throw('node color visualization for "' + label + '" already exists')
+        if (_visualizations.nodeFillColor[label]) {
+            throw('node fill color visualization for "' + label + '" already exists')
         }
         var vis = createVisualization(label,
             description,
@@ -529,9 +611,38 @@ if (!phyloXmlParser) {
             mapping,
             mappingFn);
         if (vis) {
-            _visualizations.nodeColor[vis.label] = vis;
+            _visualizations.nodeFillColor[vis.label] = vis;
         }
     }
+
+    function addNodeBorderColorVisualization(label,
+                                             description,
+                                             field,
+                                             cladePropertyRef,
+                                             isRegex,
+                                             mapping,
+                                             mappingFn) {
+        if (!_visualizations) {
+            _visualizations = {};
+        }
+        if (!_visualizations.nodeBorderColor) {
+            _visualizations.nodeBorderColor = {};
+        }
+        if (_visualizations.nodeBorderColor[label]) {
+            throw('node border color visualization for "' + label + '" already exists')
+        }
+        var vis = createVisualization(label,
+            description,
+            field,
+            cladePropertyRef,
+            isRegex,
+            mapping,
+            mappingFn);
+        if (vis) {
+            _visualizations.nodeBorderColor[vis.label] = vis;
+        }
+    }
+
 
     function addNodeShapeVisualization(label,
                                        description,
@@ -758,7 +869,7 @@ if (!phyloXmlParser) {
 
 
         nodeUpdate.select("path")
-            .style("stroke", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
+            .style("stroke", _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
             .style("fill", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
             .attr("d", _options.showNodeVisualizations ? makeVisShape : null);
 
@@ -1017,13 +1128,64 @@ if (!phyloXmlParser) {
 
 
     var makeVisNodeFillColor = function (node) {
-        if (!_currentNodeColorVisualization) {
+        if (!_currentNodeFillColorVisualization) {
             return _options.branchColorDefault;
         }
 
-        if (_visualizations && !node._children && _visualizations.nodeColor
-            && _visualizations.nodeColor[_currentNodeColorVisualization]) {
-            var vis = _visualizations.nodeColor[_currentNodeColorVisualization];
+        if (_visualizations && !node._children && _visualizations.nodeFillColor
+            && _visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
+            var vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
+
+            if (vis.field) {
+                var fieldValue = node[vis.field];
+                if (fieldValue) {
+                    var color;
+                    if (!vis.isRegex) {
+                        color = vis.mapping[fieldValue];
+                        if (color) {
+                            node.hasVis = true;
+                            return color;
+                        }
+                    }
+                    else {
+                        for (var key in vis.mapping) {
+                            var re = new RegExp(key);
+                            if (re && fieldValue.search(re) > -1) {
+                                color = vis.mapping[key];
+                                if (color) {
+                                    node.hasVis = true;
+                                    return color;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
+                var ref_name = vis.cladePropertyRef;
+                var propertiesLength = node.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var p = node.properties[i];
+                    if (p.ref && p.value && p.ref === ref_name) {
+                        if (vis.mapping[p.value]) {
+                            node.hasVis = true;
+                            return vis.mapping[p.value];
+                        }
+                    }
+                }
+            }
+        }
+        return _options.branchColorDefault;
+    };
+
+    var makeVisNodeBorderColor = function (node) {
+        if (!_currentNodeBorderColorVisualization) {
+            return _options.branchColorDefault;
+        }
+
+        if (_visualizations && !node._children && _visualizations.nodeBorderColor
+            && _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]) {
+            var vis = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization];
 
             if (vis.field) {
                 var fieldValue = node[vis.field];
@@ -2618,13 +2780,24 @@ if (!phyloXmlParser) {
             update(null, 0);
         });
 
-        $('#' + NODE_COLOR_SELECT_MENU).on("change", function () {
+        $('#' + NODE_FILL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
             if (v && v != NONE) {
-                _currentNodeColorVisualization = v;
+                _currentNodeFillColorVisualization = v;
             }
             else {
-                _currentNodeColorVisualization = null;
+                _currentNodeFillColorVisualization = null;
+            }
+            update(null, 0);
+        });
+
+        $('#' + NODE_BORDER_COLOR_SELECT_MENU).on("change", function () {
+            var v = this.value;
+            if (v && v != NONE) {
+                _currentNodeBorderColorVisualization = v;
+            }
+            else {
+                _currentNodeBorderColorVisualization = null;
             }
             update(null, 0);
         });
@@ -3045,6 +3218,7 @@ if (!phyloXmlParser) {
             h = h.concat('<br>');
             h = h.concat('<select name="' + LABEL_COLOR_SELECT_MENU + '" id="' + LABEL_COLOR_SELECT_MENU + '">');
             h = h.concat('</select>');
+
             h = h.concat('<br>');
             h = h.concat('<br>');
             h = h.concat('<label for="' + NODE_SHAPE_SELECT_MENU + '">Node Shape</label>');
@@ -3054,9 +3228,16 @@ if (!phyloXmlParser) {
 
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat('<label for="' + NODE_COLOR_SELECT_MENU + '">Node Color</label>');
+            h = h.concat('<label for="' + NODE_FILL_COLOR_SELECT_MENU + '">Node Fill Color</label>');
             h = h.concat('<br>');
-            h = h.concat('<select name="' + NODE_COLOR_SELECT_MENU + '" id="' + NODE_COLOR_SELECT_MENU + '">');
+            h = h.concat('<select name="' + NODE_FILL_COLOR_SELECT_MENU + '" id="' + NODE_FILL_COLOR_SELECT_MENU + '">');
+            h = h.concat('</select>');
+
+            h = h.concat('<br>');
+            h = h.concat('<br>');
+            h = h.concat('<label for="' + NODE_BORDER_COLOR_SELECT_MENU + '">Node Border Color</label>');
+            h = h.concat('<br>');
+            h = h.concat('<select name="' + NODE_BORDER_COLOR_SELECT_MENU + '" id="' + NODE_BORDER_COLOR_SELECT_MENU + '">');
             h = h.concat('</select>');
 
 
@@ -3122,15 +3303,24 @@ if (!phyloXmlParser) {
 
     function initializeVisualizationMenu() {
         if (_dataForVisualization && Object.keys(_dataForVisualization).length) {
-            $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
+            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($("<option>")
                 .val(NONE)
                 .html("none")
             );
+            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($("<option>")
+                .val(NONE)
+                .html("none")
+            );
+
             $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
                 .val(NONE)
                 .html("none")
             );
             $("select#" + NODE_SIZE_SELECT_MENU).append($("<option>")
+                .val(NONE)
+                .html("none")
+            );
+            $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
                 .val(NONE)
                 .html("none")
             );
@@ -3189,10 +3379,20 @@ if (!phyloXmlParser) {
                         }
                     }
                 }
-                if (_visualizations.nodeColor) {
-                    for (var key in _visualizations.nodeColor) {
-                        if (_visualizations.nodeColor.hasOwnProperty(key)) {
-                            $('select#' + NODE_COLOR_SELECT_MENU).append($("<option>")
+                if (_visualizations.nodeFillColor) {
+                    for (var key in _visualizations.nodeFillColor) {
+                        if (_visualizations.nodeFillColor.hasOwnProperty(key)) {
+                            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($("<option>")
+                                .val(key)
+                                .html(key)
+                            );
+                        }
+                    }
+                }
+                if (_visualizations.nodeBorderColor) {
+                    for (var key in _visualizations.nodeBorderColor) {
+                        if (_visualizations.nodeBorderColor.hasOwnProperty(key)) {
+                            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($("<option>")
                                 .val(key)
                                 .html(key)
                             );
