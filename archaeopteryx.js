@@ -322,23 +322,26 @@ if (!phyloXmlParser) {
             null);
 
         var lm3 = {};
-        lm3['2016'] = 'green';
-        lm3['1111'] = 'black';
-        lm3['2015'] = 'blue';
-        lm3['2014'] = 'blue';
-        lm3['2013'] = 'blue';
-        lm3['2012'] = 'blue';
-        lm3['2011'] = 'blue';
-        lm3['2010'] = 'blue';
-        lm3['2009'] = 'red';
-        lm3['2008'] = 'red';
-        lm3['2007'] = 'red';
-        lm3['2006'] = 'red';
-        lm3['2005'] = 'red';
-        lm3['2004'] = 'orange';
-        lm3['2003'] = 'orange';
-        lm3['2002'] = 'orange';
-        lm3['2001'] = 'orange';
+        lm3['2016'] = 'rgb(0,255,0)';
+        lm3['2015'] = 'rgb(0,245,0)';
+        lm3['2014'] = 'rgb(0,235,0)';
+        lm3['2013'] = 'rgb(0,225,0)';
+        lm3['2012'] = 'rgb(0,215,0)';
+        lm3['2011'] = 'rgb(0,205,0)';
+        lm3['2010'] = 'rgb(0,195,50)';
+        lm3['2009'] = 'rgb(0,185,55)';
+        lm3['2008'] = 'rgb(0,175,60)';
+        lm3['2007'] = 'rgb(0,165,65)';
+        lm3['2006'] = 'rgb(0,155,70)';
+        lm3['2005'] = 'rgb(0,145,75)';
+        lm3['2004'] = 'rgb(0,135,80)';
+        lm3['2003'] = 'rgb(0,125,85)';
+        lm3['2002'] = 'rgb(0,115,90)';
+        lm3['2001'] = 'rgb(0,105,95)';
+        lm3['2000'] = 'rgb(0,95,100)';
+        lm3['1111'] = 'rgb(100,100,100)';
+
+
 
         addLabelColorVisualization('Year',
             'Year',
@@ -359,7 +362,6 @@ if (!phyloXmlParser) {
             false,
             lm4,
             null);
-
 
 
         var m0 = {};
@@ -1178,9 +1180,7 @@ if (!phyloXmlParser) {
         }
 
         if (_visualizations && !node._children && _visualizations.nodeShape
-            && _visualizations.nodeShape[_currentNodeShapeVisualization]
-        /*  && _visualizations.nodeShape.field
-         && _visualizations.nodeShape.mapping*/) {
+            && _visualizations.nodeShape[_currentNodeShapeVisualization]) {
             var vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
 
             var size;
@@ -1347,7 +1347,6 @@ if (!phyloXmlParser) {
                     if (!vis.isRegex) {
                         color = vis.mapping[fieldValue];
                         if (color) {
-                            //node.hasVis = true;
                             return color;
                         }
                     }
@@ -1357,7 +1356,6 @@ if (!phyloXmlParser) {
                             if (re && fieldValue.search(re) > -1) {
                                 color = vis.mapping[key];
                                 if (color) {
-                                    //node.hasVis = true;
                                     return color;
                                 }
                             }
@@ -1372,7 +1370,6 @@ if (!phyloXmlParser) {
                     var p = node.properties[i];
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
-                            //node.hasVis = true;
                             return vis.mapping[p.value];
                         }
                     }
@@ -1459,94 +1456,7 @@ if (!phyloXmlParser) {
     }
 
 
-    /*function labelColorVisualization(node) {
-        var distColors = {};
-        distColors.CA = "rgb(0,0,255)";
-        distColors.AZ = "rgb(0,255,255)";
-        distColors.NY = "rgb(255,0,255)";
-        distColors.MN = "rgb(100,0,255)";
-        distColors.FL = "rgb(100,0,100)";
-        distColors.IL = "rgb(100,100,100)";
-        distColors.IL = "rgb(100,0,125)";
 
-
-        distColors.Algeria = "rgb(0,255,255)";
-        distColors.Angola = "rgb(255,0,255)";
-
-
-        var drugColors = {};
-        drugColors.Amantadine = "rgb(0,0,255)";
-        drugColors.Docosanol = "rgb(0,255,0)";
-        drugColors.Emtricitabin = "rgb(255,0,0)";
-
-        var hostColors = {};
-        hostColors["Gallus gallus"] = "rgb(129,20,0)";
-        hostColors["Anas platyrhynchos"] = "rgb(93,40,255)";
-        hostColors["Sus scrofa"] = "rgb(10,129,23)";
-
-        hostColors["Unknown"] = "rgb(100,100,100)";
-        hostColors["Human"] = "rgb(10,129,23)";
-        hostColors["Cattle"] = "rgb(255,129,23)";
-
-
-        var yearColors = {};
-        yearColors["2016"] = "rgb(0,255,0)";
-        yearColors["2015"] = "rgb(0,245,0)";
-        yearColors["2014"] = "rgb(0,235,0)";
-        yearColors["2013"] = "rgb(0,225,0)";
-        yearColors["2012"] = "rgb(0,215,0)";
-        yearColors["2011"] = "rgb(0,205,0)";
-        yearColors["2010"] = "rgb(0,195,0)";
-        yearColors["2009"] = "rgb(0,185,0)";
-        yearColors["2008"] = "rgb(0,175,0)";
-        yearColors["2007"] = "rgb(0,165,0)";
-        yearColors["2006"] = "rgb(0,155,0)";
-        yearColors["2005"] = "rgb(0,145,0)";
-        yearColors["2004"] = "rgb(0,135,0)";
-        yearColors["2003"] = "rgb(0,125,0)";
-        yearColors["2002"] = "rgb(0,115,0)";
-        yearColors["1111"] = "rgb(100,100,100)";
-
-
-        var vis = null;
-
-
-        if (_currentLabelColorVisualization === "Host"
-
-            || _currentLabelColorVisualization === "Year"
-            || _currentLabelColorVisualization === "Country"
-
-            || _currentLabelColorVisualization === "vipr:drug") {
-
-
-            if (node.properties && node.properties.length > 0) {
-
-                var propertiesLength = node.properties.length;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var p = node.properties[i];
-                    if (p.ref && p.value) {
-                        var ref = p.ref;
-                        if (_currentLabelColorVisualization === "Host" && ref === "vipr:host") {
-
-                            return hostColors[p.value];
-                        }
-                        else if (_currentLabelColorVisualization === "Year" && ref === "vipr:year") {
-
-                            return yearColors[p.value];
-                        }
-                        else if (_currentLabelColorVisualization === "Country" && ref === "vipr:country") {
-
-                            return distColors[p.value];
-                        }
-                        else if (_currentLabelColorVisualization === "vipr:drug" && ref === "vipr:drug") {
-                            return drugColors[p.value];
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-     }*/
 
     var makeNodeLabel = function (phynode) {
 
@@ -3478,49 +3388,6 @@ if (!phyloXmlParser) {
                 .html("none")
             );
 
-            //  if (_dataForVisualization["distribution"]) {
-            //     $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
-            //         .val("distribution")
-            //        .html("distribution")
-            //    );
-                //  $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
-                //      .val("distribution")
-                //      .html("distribution")
-                //  );
-            // }
-
-
-            //  if (_dataForVisualization["vipr:host"]) {
-            //      $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
-            //         .val("vipr:host")
-            //         .html("host")
-            //     );
-            // }
-            //  if (_dataForVisualization["vipr:drug"]) {
-            //     $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
-            //         .val("vipr:drug")
-            //        .html("antiviral drug")
-            //    );
-                //$('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
-                //    .val("vipr:drug")
-                //    .html("antiviral drug")
-                // );
-            // }
-            // if (_dataForVisualization["category"]) {
-            //    var xl = _dataForVisualization["category"].length;
-            //  for (var i = 0; i < xl; ++i) {
-            ////    var c = _dataForVisualization["category"][i];
-            //    $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
-            //     .val(c)
-            //    .html(c)
-            //);
-                    // $('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
-                    //     .val(c)
-                    //     .html(c)
-                    // );
-            //}
-            //  }
-
             if (_visualizations) {
                 if (_visualizations.labelColor) {
                     for (var key in _visualizations.labelColor) {
@@ -3782,29 +3649,6 @@ if (!phyloXmlParser) {
         return _branch_length_collapse_level;
     }
 
-    /*function obtainRankCollapseDepthValue() {
-     if ( !_treeData || _root) {
-     return "";
-     }
-     var p = _treeData;
-     if ( forester.calcSumOfExternalDescendants(_root) < 3 ) {
-     return "off";
-     }
-     else {
-     final String ranks[] = PhylogenyMethods.obtainPresentRanksSorted( p );
-     if ( ranks.length < 1 ) {
-     return "off";
-     }
-     else if ( tp.getRankCollapseRankValue() < 0 ) {
-     tp.setRankCollapseRankValue( ranks.length - 1 );
-     return "off";
-     }
-     else if ( tp.getRankCollapseRankValue() == ( ranks.length - 1 ) ) {
-     return "off";
-     }
-     }
-     return String.valueOf( tp.getRankCollapseRankValue() );
-     }*/
 
     function resetDepthCollapseDepthValue() {
         _depth_collapse_level = -1;
