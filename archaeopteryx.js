@@ -122,6 +122,8 @@ if (!phyloXmlParser) {
     var SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
     var SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
 
+    var NONE = 'none';
+
 
     var VK_O = 79;
     var VK_R = 82;
@@ -275,9 +277,6 @@ if (!phyloXmlParser) {
     }
 
     function initializevisualizations() {
-        _visualizations = {};
-        _visualizations.nodeShape = {};
-        _visualizations.nodeColor = {};
 
         var m0 = {};
         m0['UNK|ANG0'] = 'triangle-down';
@@ -287,7 +286,7 @@ if (!phyloXmlParser) {
         m0['DZA'] = 'square';
         m0['SAT|101|pat'] = 'circle';
 
-        var x0 = createVisualization('Name',
+        addNodeShapeVisualization('Name',
             'External Node Names',
             'name',
             null,
@@ -295,13 +294,11 @@ if (!phyloXmlParser) {
             m0,
             null);
 
-        _visualizations.nodeShape[x0.label] = x0;
-
         var m1 = {};
         m1['Angola'] = 'triangle-down';
         m1['Algeria'] = 'triangle-up';
 
-        var x1 = createVisualization('Country',
+        addNodeShapeVisualization('Country',
             'Country',
             null,
             'vipr:country',
@@ -314,7 +311,7 @@ if (!phyloXmlParser) {
         m2['Human'] = 'square';
         m2['Unknown'] = 'circle';
 
-        var x2 = createVisualization('Host',
+        addNodeShapeVisualization('Host',
             'Host',
             null,
             'vipr:host',
@@ -341,8 +338,7 @@ if (!phyloXmlParser) {
         m3['2002'] = 'cross';
         m3['2001'] = 'cross';
 
-
-        var x3 = createVisualization('Year',
+        addNodeShapeVisualization('Year',
             'Year',
             null,
             'vipr:year',
@@ -350,24 +346,17 @@ if (!phyloXmlParser) {
             m3,
             null);
 
-
         var m4 = {};
         m4['pat-29'] = 'diamond';
         m4['ALG/1/99'] = 'square';
 
-
-        var x4 = createVisualization('Full Name',
+        addNodeShapeVisualization('Full Name',
             'Full Name',
             'name',
             null,
             false,
             m4,
             null);
-
-        _visualizations.nodeShape[x1.label] = x1;
-        _visualizations.nodeShape[x2.label] = x2;
-        _visualizations.nodeShape[x3.label] = x3;
-        _visualizations.nodeShape[x4.label] = x4;
 
         var cm0 = {};
         cm0['UNK|ANG0'] = 'red';
@@ -377,7 +366,7 @@ if (!phyloXmlParser) {
         cm0['DZA'] = 'orange';
         cm0['SAT|101|pat'] = 'pink';
 
-        var c0 = createVisualization('Name',
+        addNodeColorVisualization('Name',
             'External Node Names',
             'name',
             null,
@@ -385,12 +374,11 @@ if (!phyloXmlParser) {
             cm0,
             null);
 
-
         var cm1 = {};
         cm1['Angola'] = 'red';
         cm1['Algeria'] = 'green';
 
-        var c1 = createVisualization('Country',
+        addNodeColorVisualization('Country',
             'Country',
             null,
             'vipr:country',
@@ -403,14 +391,13 @@ if (!phyloXmlParser) {
         cm2['Human'] = 'orange';
         cm2['Unknown'] = 'black';
 
-        var c2 = createVisualization('Host',
+        addNodeColorVisualization('Host',
             'Host',
             null,
             'vipr:host',
             false,
             cm2,
             null);
-
 
         var cm3 = {};
         cm3['2016'] = 'green';
@@ -431,8 +418,7 @@ if (!phyloXmlParser) {
         cm3['2002'] = 'orange';
         cm3['2001'] = 'orange';
 
-
-        var c3 = createVisualization('Year',
+        addNodeColorVisualization('Year',
             'Year',
             null,
             'vipr:year',
@@ -440,49 +426,17 @@ if (!phyloXmlParser) {
             cm3,
             null);
 
-
         var cm4 = {};
         cm4['pat-29'] = 'red';
         cm4['ALG/1/99'] = 'blue';
 
-
-        var c4 = createVisualization('Full Name',
+        addNodeColorVisualization('Full Name',
             'Full Name',
             'name',
             null,
             false,
             cm4,
             null);
-
-        _visualizations.nodeColor[c0.label] = c0;
-        _visualizations.nodeColor[c1.label] = c1;
-        _visualizations.nodeColor[c2.label] = c2;
-        _visualizations.nodeColor[c3.label] = c3;
-        _visualizations.nodeColor[c4.label] = c4;
-
-
-        /*
-        _visualizations.nodeColor = {};
-        _visualizations.nodeColor.field = 'name';
-        _visualizations.nodeColor.regex = true;
-        _visualizations.nodeColor.mapping = {};
-        _visualizations.nodeColor.mapping['UN'] = 'red';
-        _visualizations.nodeColor.mapping['AN'] = 'green';
-        _visualizations.nodeColor.mapping['Hu|ANG'] = 'blue';
-        _visualizations.nodeColor.mapping['C'] = 'yellow';
-        _visualizations.nodeColor.mapping['DZA'] = 'orange';
-         _visualizations.nodeColor.mapping['E|pat'] = 'pink';*/
-
-        _visualizations.nodeSize = {};
-        _visualizations.nodeSize.field = 'name';
-        _visualizations.nodeSize.regex = true;
-        _visualizations.nodeSize.mapping = {};
-        _visualizations.nodeSize.mapping['UN'] = 40;
-        _visualizations.nodeSize.mapping['AN'] = 20;
-        _visualizations.nodeSize.mapping['Hu'] = 30;
-        _visualizations.nodeSize.mapping['C'] = 40;
-        _visualizations.nodeSize.mapping['DZA'] = 10;
-        _visualizations.nodeSize.mapping['E'] = 25;
 
         _visualizations.labelColor = {};
         _visualizations.labelColor.field = '';
@@ -492,6 +446,119 @@ if (!phyloXmlParser) {
         _visualizations.labelColor.mapping['Angola'] = 'red';
         _visualizations.labelColor.mapping['Algeria'] = 'green';
 
+        var sm0 = {};
+        sm0['UNK|ANG0'] = 20;
+        sm0['03'] = 25;
+        sm0['05|06|08'] = 30;
+        sm0['CVB|Hu'] = 40;
+        sm0['DZA'] = 50;
+        sm0['SAT|101|pat'] = 60;
+
+        addNodeSizeVisualization('Name',
+            'External Node Names',
+            'name',
+            null,
+            true,
+            sm0,
+            null);
+
+        var sm1 = {};
+        sm1['Angola'] = 30;
+        sm1['Algeria'] = 40;
+
+        addNodeSizeVisualization('Country',
+            'Country',
+            null,
+            'vipr:country',
+            false,
+            sm1,
+            null);
+
+    }
+
+
+    function addNodeSizeVisualization(label,
+                                      description,
+                                      field,
+                                      cladePropertyRef,
+                                      isRegex,
+                                      mapping,
+                                      mappingFn) {
+        if (!_visualizations) {
+            _visualizations = {};
+        }
+        if (!_visualizations.nodeSize) {
+            _visualizations.nodeSize = {};
+        }
+        if (_visualizations.nodeSize[label]) {
+            throw('node size visualization for "' + label + '" already exists')
+        }
+        var vis = createVisualization(label,
+            description,
+            field,
+            cladePropertyRef,
+            isRegex,
+            mapping,
+            mappingFn);
+        if (vis) {
+            _visualizations.nodeSize[vis.label] = vis;
+        }
+    }
+
+    function addNodeColorVisualization(label,
+                                       description,
+                                       field,
+                                       cladePropertyRef,
+                                       isRegex,
+                                       mapping,
+                                       mappingFn) {
+        if (!_visualizations) {
+            _visualizations = {};
+        }
+        if (!_visualizations.nodeColor) {
+            _visualizations.nodeColor = {};
+        }
+        if (_visualizations.nodeColor[label]) {
+            throw('node color visualization for "' + label + '" already exists')
+        }
+        var vis = createVisualization(label,
+            description,
+            field,
+            cladePropertyRef,
+            isRegex,
+            mapping,
+            mappingFn);
+        if (vis) {
+            _visualizations.nodeColor[vis.label] = vis;
+        }
+    }
+
+    function addNodeShapeVisualization(label,
+                                       description,
+                                       field,
+                                       cladePropertyRef,
+                                       isRegex,
+                                       mapping,
+                                       mappingFn) {
+        if (!_visualizations) {
+            _visualizations = {};
+        }
+        if (!_visualizations.nodeShape) {
+            _visualizations.nodeShape = {};
+        }
+        if (_visualizations.nodeShape[label]) {
+            throw('node shape visualization for "' + label + '" already exists')
+        }
+        var vis = createVisualization(label,
+            description,
+            field,
+            cladePropertyRef,
+            isRegex,
+            mapping,
+            mappingFn);
+        if (vis) {
+            _visualizations.nodeShape[vis.label] = vis;
+        }
     }
 
 
@@ -691,8 +758,8 @@ if (!phyloXmlParser) {
 
 
         nodeUpdate.select("path")
-            .style("stroke", _options.showNodeVisualizations ? makeVisNodeColor : null)
-            .style("fill", _options.showNodeVisualizations ? makeVisNodeColor : null)
+            .style("stroke", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
+            .style("fill", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
             .attr("d", _options.showNodeVisualizations ? makeVisShape : null);
 
 
@@ -893,7 +960,6 @@ if (!phyloXmlParser) {
     };
 
     var makeVisShape = function (node) {
-        //console.log("_currentNodeShapeVisualization=" + _currentNodeShapeVisualization);
         if (!_currentNodeShapeVisualization) {
             return null;
         }
@@ -903,16 +969,17 @@ if (!phyloXmlParser) {
         /*  && _visualizations.nodeShape.field
          && _visualizations.nodeShape.mapping*/) {
             var vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
-            //console.log("vis:");
-            //console.log(vis);
+
+            var size;
             if (vis.field) {
                 var fieldValue = node[vis.field];
                 if (fieldValue) {
+                    var shape;
                     if (!vis.isRegex) {
-                        var shape = vis.mapping[fieldValue];
+                        shape = vis.mapping[fieldValue];
                         if (shape) {
                             node.hasVis = true;
-                            var size = makeVisNodeSize(node);
+                            size = makeVisNodeSize(node);
                             return d3.svg.symbol().type(shape).size(size)();
                         }
                     }
@@ -920,10 +987,10 @@ if (!phyloXmlParser) {
                         for (var key in vis.mapping) {
                             var re = new RegExp(key);
                             if (re && fieldValue.search(re) > -1) {
-                                var shape = vis.mapping[key];
+                                shape = vis.mapping[key];
                                 if (shape) {
                                     node.hasVis = true;
-                                    var size = makeVisNodeSize(node);
+                                    size = makeVisNodeSize(node);
                                     return d3.svg.symbol().type(shape).size(size)();
                                 }
                             }
@@ -936,12 +1003,10 @@ if (!phyloXmlParser) {
                 var propertiesLength = node.properties.length;
                 for (var i = 0; i < propertiesLength; ++i) {
                     var p = node.properties[i];
-                    //console.log("___ p.ref=" + p.ref);
-                    //console.log("___ ref_name=" + ref_name);
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
                             node.hasVis = true;
-                            var size = makeVisNodeSize(node);
+                            size = makeVisNodeSize(node);
                             return d3.svg.symbol().type(vis.mapping[p.value]).size(size)();
                         }
                     }
@@ -951,7 +1016,7 @@ if (!phyloXmlParser) {
     };
 
 
-    var makeVisNodeColor = function (node) {
+    var makeVisNodeFillColor = function (node) {
         if (!_currentNodeColorVisualization) {
             return _options.branchColorDefault;
         }
@@ -963,8 +1028,9 @@ if (!phyloXmlParser) {
             if (vis.field) {
                 var fieldValue = node[vis.field];
                 if (fieldValue) {
+                    var color;
                     if (!vis.isRegex) {
-                        var color = vis.mapping[fieldValue];
+                        color = vis.mapping[fieldValue];
                         if (color) {
                             node.hasVis = true;
                             return color;
@@ -974,7 +1040,7 @@ if (!phyloXmlParser) {
                         for (var key in vis.mapping) {
                             var re = new RegExp(key);
                             if (re && fieldValue.search(re) > -1) {
-                                var color = vis.mapping[key];
+                                color = vis.mapping[key];
                                 if (color) {
                                     node.hasVis = true;
                                     return color;
@@ -989,8 +1055,6 @@ if (!phyloXmlParser) {
                 var propertiesLength = node.properties.length;
                 for (var i = 0; i < propertiesLength; ++i) {
                     var p = node.properties[i];
-                    //console.log("___ p.ref=" + p.ref);
-                    //console.log("___ ref_name=" + ref_name);
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
                             node.hasVis = true;
@@ -1003,44 +1067,55 @@ if (!phyloXmlParser) {
         return _options.branchColorDefault;
     };
 
-    /*var makeVisNodeColorOLd = function (node) {
-        if (_visualizations && !node._children && _visualizations.nodeColor
-            && _visualizations.nodeColor.field
-            && _visualizations.nodeColor.mapping) {
-            var field_name = _visualizations.nodeColor.field;
-            var field = node[field_name];
-            if (field) {
-                for (var key in _visualizations.nodeColor.mapping) {
-                    var re = new RegExp(key);
-                    if (field.search(re) > -1) {
-                        var color = _visualizations.nodeColor.mapping[key];
-                        node.hasVis = true;
-                        return color;
+    var makeVisNodeSize = function (node) {
+        if (_currentNodeSizeVisualization) {
+            if (_visualizations && !node._children && _visualizations.nodeSize
+                && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
+                var vis = _visualizations.nodeSize[_currentNodeSizeVisualization];
+                if (vis.field) {
+                    var size;
+                    var fieldValue = node[vis.field];
+                    if (fieldValue) {
+                        if (!vis.isRegex) {
+                            size = vis.mapping[fieldValue];
+                            if (size) {
+                                node.hasVis = true;
+                                return size * _options.internalNodeSize;
+                            }
+                        }
+                        else {
+                            for (var key in vis.mapping) {
+                                var re = new RegExp(key);
+                                if (re && fieldValue.search(re) > -1) {
+                                    size = vis.mapping[key];
+                                    if (size) {
+                                        node.hasVis = true;
+                                        return size * _options.internalNodeSize;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        }
-        return _options.branchColorDefault;
-     };*/
+                else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
+                    var ref_name = vis.cladePropertyRef;
+                    var propertiesLength = node.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        var p = node.properties[i];
 
-    var makeVisNodeSize = function (node) {
-        if (_visualizations && !node._children && _visualizations.nodeSize
-            && _visualizations.nodeSize.field
-            && _visualizations.nodeSize.mapping) {
-            var field_name = _visualizations.nodeSize.field;
-            var field = node[field_name];
-            if (field) {
-                for (var key in _visualizations.nodeSize.mapping) {
-                    var re = new RegExp(key);
-                    if (field.search(re) > -1) {
-                        var size = _visualizations.nodeSize.mapping[key];
-                        return size * _options.internalNodeSize;
+                        if (p.ref && p.value && p.ref === ref_name) {
+                            if (vis.mapping[p.value]) {
+                                node.hasVis = true;
+                                return vis.mapping[p.value] * _options.internalNodeSize;
+                            }
+                        }
                     }
                 }
             }
         }
         return 2 * _options.internalNodeSize * _options.internalNodeSize;
     };
+
 
     function getFoundColor(phynode) {
         if (!_options.searchNegateResult) {
@@ -1070,7 +1145,6 @@ if (!phyloXmlParser) {
 
 
     function labelColorVisualization(node) {
-        //console.log(node);
         var distColors = {};
         distColors.CA = "rgb(0,0,255)";
         distColors.AZ = "rgb(0,255,255)";
@@ -1560,25 +1634,23 @@ if (!phyloXmlParser) {
                 {"Category": {"CharName": "Virus Type"}}
             ]
         };
-        //console.log(x);
+
         return x;
     }
 
     function collectDataForVisualizationDynamicCharNames(x) {
-        console.log("x:" + x);
         var xl = x.length;
-        console.log("xl:" + xl);
+
         for (var i = 0; i < xl; ++i) {
             var e = x[i];
-            console.log(i + ":");
-            console.log(e);
+
             if (e.Category) {
                 if (e.Category.CharName) {
                     if (!_dataForVisualization.category) {
                         _dataForVisualization.category = [];
                     }
                     _dataForVisualization.category.push(e.Category.CharName);
-                    console.log("added: " + e.Category.CharName);
+
                 }
             }
         }
@@ -2525,7 +2597,7 @@ if (!phyloXmlParser) {
 
         $('#' + LABEL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
-            if (v && v != "none") {
+            if (v && v != NONE) {
                 _currentLabelColorVisualization = v;
                 var x = _dataForVisualization[v];
             }
@@ -2536,12 +2608,9 @@ if (!phyloXmlParser) {
         });
 
         $('#' + NODE_SHAPE_SELECT_MENU).on("change", function () {
-            //console.log("NODE_SHAPE_SELECT_MENU");
             var v = this.value;
-            if (v && v != "none") {
+            if (v && v != NONE) {
                 _currentNodeShapeVisualization = v;
-                //console.log("_currentNodeShapeVisualization=" + _currentNodeShapeVisualization);
-                //var x = _dataForVisualization[v];
             }
             else {
                 _currentNodeShapeVisualization = null;
@@ -2550,11 +2619,9 @@ if (!phyloXmlParser) {
         });
 
         $('#' + NODE_COLOR_SELECT_MENU).on("change", function () {
-            console.log("NODE_COLOR_SELECT_MENU");
             var v = this.value;
-            if (v && v != "none") {
+            if (v && v != NONE) {
                 _currentNodeColorVisualization = v;
-
             }
             else {
                 _currentNodeColorVisualization = null;
@@ -2562,9 +2629,16 @@ if (!phyloXmlParser) {
             update(null, 0);
         });
 
+
         $('#' + NODE_SIZE_SELECT_MENU).on("change", function () {
-            console.log("NODE_SIZE_SELECT_MENU");
-            //TODO
+            var v = this.value;
+            if (v && v != NONE) {
+                _currentNodeSizeVisualization = v;
+            }
+            else {
+                _currentNodeSizeVisualization = null;
+            }
+            update(null, 0);
         });
 
         $('#' + NODE_SIZE_SLIDER).slider({
@@ -3049,15 +3123,15 @@ if (!phyloXmlParser) {
     function initializeVisualizationMenu() {
         if (_dataForVisualization && Object.keys(_dataForVisualization).length) {
             $('select#' + LABEL_COLOR_SELECT_MENU).append($("<option>")
-                .val("none")
+                .val(NONE)
                 .html("none")
             );
             $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
-                .val("none")
+                .val(NONE)
                 .html("none")
             );
-            $("select#" + NODE_COLOR_SELECT_MENU).append($("<option>")
-                .val("none")
+            $("select#" + NODE_SIZE_SELECT_MENU).append($("<option>")
+                .val(NONE)
                 .html("none")
             );
 
@@ -3108,7 +3182,6 @@ if (!phyloXmlParser) {
                 if (_visualizations.nodeShape) {
                     for (var key in _visualizations.nodeShape) {
                         if (_visualizations.nodeShape.hasOwnProperty(key)) {
-                            console.log("nodeShape>>>>>>>>" + key);
                             $('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
                                 .val(key)
                                 .html(key)
@@ -3119,7 +3192,6 @@ if (!phyloXmlParser) {
                 if (_visualizations.nodeColor) {
                     for (var key in _visualizations.nodeColor) {
                         if (_visualizations.nodeColor.hasOwnProperty(key)) {
-                            console.log("nodeColor>>>>>>>>" + key);
                             $('select#' + NODE_COLOR_SELECT_MENU).append($("<option>")
                                 .val(key)
                                 .html(key)
@@ -3130,7 +3202,6 @@ if (!phyloXmlParser) {
                 if (_visualizations.nodeSize) {
                     for (var key in _visualizations.nodeSize) {
                         if (_visualizations.nodeSize.hasOwnProperty(key)) {
-                            console.log("nodeSize>>>>>>>>" + key);
                             $('select#' + NODE_SIZE_SELECT_MENU).append($("<option>")
                                 .val(key)
                                 .html(key)
