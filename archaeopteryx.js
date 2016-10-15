@@ -280,20 +280,80 @@ if (!phyloXmlParser) {
 
     function initializevisualizations() {
 
-        var lm0 = {};
-        lm0['UNK|ANG0'] = 'red';
-        lm0['03'] = 'green';
-        lm0['05|06|08'] = 'blue';
-        lm0['CVB|Hu'] = 'yellow';
-        lm0['DZA'] = 'orange';
-        lm0['SAT|101|pat'] = 'pink';
+        var y = {};
+        y['2016'] = 'rgb(0,255,0)';
+        y['2015'] = 'rgb(0,245,20)';
+        y['2014'] = 'rgb(0,235,30)';
+        y['2013'] = 'rgb(0,225,35)';
+        y['2012'] = 'rgb(0,215,40)';
+        y['2011'] = 'rgb(0,205,45)';
+        y['2010'] = 'rgb(0,195,50)';
+        y['2009'] = 'rgb(0,185,55)';
+        y['2008'] = 'rgb(0,175,60)';
+        y['2007'] = 'rgb(0,165,65)';
+        y['2006'] = 'rgb(0,155,70)';
+        y['2005'] = 'rgb(0,145,75)';
+        y['2004'] = 'rgb(0,135,80)';
+        y['2003'] = 'rgb(0,125,85)';
+        y['2002'] = 'rgb(0,115,90)';
+        y['2001'] = 'rgb(0,105,95)';
+        y['2000'] = 'rgb(0,95,100)';
+        y['1111'] = 'rgb(100,100,100)';
+
+        var ys = {};
+        ys['2016'] = 'square';
+        ys['2015'] = 'square';
+        ys['2014'] = 'square';
+        ys['2013'] = 'square';
+        ys['2012'] = 'square';
+        ys['2011'] = 'square';
+        ys['2010'] = 'square';
+        ys['2009'] = 'square';
+        ys['2008'] = 'square';
+        ys['2007'] = 'square';
+        ys['2006'] = 'square';
+        ys['2005'] = 'square';
+        ys['2004'] = 'square';
+        ys['2003'] = 'square';
+        ys['2002'] = 'square';
+        ys['2001'] = 'square';
+        ys['2000'] = 'square';
+        ys['1111'] = 'cross';
+
+        var ysize = {};
+        ysize['2016'] = 40;
+        ysize['2015'] = 38;
+        ysize['2014'] = 36;
+        ysize['2013'] = 34;
+        ysize['2012'] = 32;
+        ysize['2011'] = 30;
+        ysize['2010'] = 28;
+        ysize['2009'] = 26;
+        ysize['2008'] = 24;
+        ysize['2007'] = 22;
+        ysize['2006'] = 20;
+        ysize['2005'] = 18;
+        ysize['2004'] = 16;
+        ysize['2003'] = 14;
+        ysize['2002'] = 12;
+        ysize['2001'] = 10;
+        ysize['2000'] = 8;
+        ysize['1111'] = 4;
+
+        var ncp = {};
+        ncp['UNK|ANG0'] = 'red';
+        ncp['03'] = 'green';
+        ncp['05|06|08'] = 'blue';
+        ncp['CVB|Hu'] = 'yellow';
+        ncp['DZA'] = 'orange';
+        ncp['SAT|101|pat'] = 'pink';
 
         addLabelColorVisualization('Name',
             'External Node Names',
             'name',
             null,
             true,
-            lm0,
+            ncp,
             null);
 
         var lm1 = {};
@@ -321,34 +381,12 @@ if (!phyloXmlParser) {
             lm2,
             null);
 
-        var lm3 = {};
-        lm3['2016'] = 'rgb(0,255,0)';
-        lm3['2015'] = 'rgb(0,245,0)';
-        lm3['2014'] = 'rgb(0,235,0)';
-        lm3['2013'] = 'rgb(0,225,0)';
-        lm3['2012'] = 'rgb(0,215,0)';
-        lm3['2011'] = 'rgb(0,205,0)';
-        lm3['2010'] = 'rgb(0,195,50)';
-        lm3['2009'] = 'rgb(0,185,55)';
-        lm3['2008'] = 'rgb(0,175,60)';
-        lm3['2007'] = 'rgb(0,165,65)';
-        lm3['2006'] = 'rgb(0,155,70)';
-        lm3['2005'] = 'rgb(0,145,75)';
-        lm3['2004'] = 'rgb(0,135,80)';
-        lm3['2003'] = 'rgb(0,125,85)';
-        lm3['2002'] = 'rgb(0,115,90)';
-        lm3['2001'] = 'rgb(0,105,95)';
-        lm3['2000'] = 'rgb(0,95,100)';
-        lm3['1111'] = 'rgb(100,100,100)';
-
-
-
         addLabelColorVisualization('Year',
             'Year',
             null,
             'vipr:year',
             false,
-            lm3,
+            y,
             null);
 
         var lm4 = {};
@@ -405,31 +443,13 @@ if (!phyloXmlParser) {
             m2,
             null);
 
-        var m3 = {};
-        m3['2016'] = 'diamond';
-        m3['1111'] = 'square';
-        m3['2015'] = 'circle';
-        m3['2014'] = 'circle';
-        m3['2013'] = 'circle';
-        m3['2012'] = 'circle';
-        m3['2011'] = 'circle';
-        m3['2010'] = 'circle';
-        m3['2009'] = 'square';
-        m3['2008'] = 'square';
-        m3['2007'] = 'square';
-        m3['2006'] = 'square';
-        m3['2005'] = 'square';
-        m3['2004'] = 'cross';
-        m3['2003'] = 'cross';
-        m3['2002'] = 'cross';
-        m3['2001'] = 'cross';
 
         addNodeShapeVisualization('Year',
             'Year',
             null,
             'vipr:year',
             false,
-            m3,
+            ys,
             null);
 
         var m4 = {};
@@ -444,20 +464,12 @@ if (!phyloXmlParser) {
             m4,
             null);
 
-        var cm0 = {};
-        cm0['UNK|ANG0'] = 'red';
-        cm0['03'] = 'green';
-        cm0['05|06|08'] = 'blue';
-        cm0['CVB|Hu'] = 'yellow';
-        cm0['DZA'] = 'orange';
-        cm0['SAT|101|pat'] = 'pink';
-
         addNodeFillColorVisualization('Name',
             'External Node Names',
             'name',
             null,
             true,
-            cm0,
+            ncp,
             null);
 
         var cm1 = {};
@@ -485,31 +497,12 @@ if (!phyloXmlParser) {
             cm2,
             null);
 
-        var cm3 = {};
-        cm3['2016'] = 'green';
-        cm3['1111'] = 'black';
-        cm3['2015'] = 'blue';
-        cm3['2014'] = 'blue';
-        cm3['2013'] = 'blue';
-        cm3['2012'] = 'blue';
-        cm3['2011'] = 'blue';
-        cm3['2010'] = 'blue';
-        cm3['2009'] = 'red';
-        cm3['2008'] = 'red';
-        cm3['2007'] = 'red';
-        cm3['2006'] = 'red';
-        cm3['2005'] = 'red';
-        cm3['2004'] = 'orange';
-        cm3['2003'] = 'orange';
-        cm3['2002'] = 'orange';
-        cm3['2001'] = 'orange';
-
         addNodeFillColorVisualization('Year',
             'Year',
             null,
             'vipr:year',
             false,
-            cm3,
+            y,
             null);
 
         var cm4 = {};
@@ -524,20 +517,13 @@ if (!phyloXmlParser) {
             cm4,
             null);
 
-        var cfm0 = {};
-        cfm0['UNK|ANG0'] = 'red';
-        cfm0['03'] = 'green';
-        cfm0['05|06|08'] = 'blue';
-        cfm0['CVB|Hu'] = 'yellow';
-        cfm0['DZA'] = 'orange';
-        cfm0['SAT|101|pat'] = 'pink';
 
         addNodeBorderColorVisualization('Name',
             'External Node Names',
             'name',
             null,
             true,
-            cfm0,
+            ncp,
             null);
 
         var cfm1 = {};
@@ -565,31 +551,12 @@ if (!phyloXmlParser) {
             cfm2,
             null);
 
-        var cfm3 = {};
-        cfm3['2016'] = 'green';
-        cfm3['1111'] = 'black';
-        cfm3['2015'] = 'blue';
-        cfm3['2014'] = 'blue';
-        cfm3['2013'] = 'blue';
-        cfm3['2012'] = 'blue';
-        cfm3['2011'] = 'blue';
-        cfm3['2010'] = 'blue';
-        cfm3['2009'] = 'red';
-        cfm3['2008'] = 'red';
-        cfm3['2007'] = 'red';
-        cfm3['2006'] = 'red';
-        cfm3['2005'] = 'red';
-        cfm3['2004'] = 'orange';
-        cfm3['2003'] = 'orange';
-        cfm3['2002'] = 'orange';
-        cfm3['2001'] = 'orange';
-
         addNodeBorderColorVisualization('Year',
             'Year',
             null,
             'vipr:year',
             false,
-            cfm3,
+            y,
             null);
 
         var cfm4 = {};
@@ -604,32 +571,12 @@ if (!phyloXmlParser) {
             cfm4,
             null);
 
-        var sm0 = {};
-        sm0['UNK|ANG0'] = 20;
-        sm0['03'] = 25;
-        sm0['05|06|08'] = 30;
-        sm0['CVB|Hu'] = 40;
-        sm0['DZA'] = 50;
-        sm0['SAT|101|pat'] = 60;
-
-        addNodeSizeVisualization('Name',
-            'External Node Names',
-            'name',
+        addNodeSizeVisualization('Year',
+            'Year',
             null,
-            true,
-            sm0,
-            null);
-
-        var sm1 = {};
-        sm1['Angola'] = 30;
-        sm1['Algeria'] = 40;
-
-        addNodeSizeVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
+            'vipr:year',
             false,
-            sm1,
+            ysize,
             null);
 
     }
@@ -935,9 +882,11 @@ if (!phyloXmlParser) {
                     || ( ( !d._children && !d.children ) && _options.showExternalNodes  )
                 ) || ( _options.phylogram && d.parent && !d.parent.parent && (!d.branch_length || d.branch_length <= 0)) ) ? _options.internalNodeSize : 0;
             })
-            .style("stroke", makeNodeColor)
+            .style("stroke", function (d) {
+                return makeNodeColor(d)
+            })
             .style("stroke-width", _options.branchWidthDefault)
-            .style("fill", function (d) {
+            .style("fill", function (d) { //TODO needed?
                 return d._children ? makeNodeColor(d) : _options.backgroundColorDefault;
             });
 
@@ -1135,11 +1084,14 @@ if (!phyloXmlParser) {
     };
 
     var makeNodeColor = function (phynode) {
-        var foundColor = getFoundColor(phynode);
+        var foundColor = getFoundColor(phynode);//TODO maybe only if search is "on"
         if (foundColor != null) {
             return foundColor;
         }
-        if (phynode.color) {
+        else if (_options.showNodeVisualizations) {
+            return makeVisNodeFillColor(phynode, true);
+        }
+        else if (phynode.color) {
             var c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -1229,7 +1181,11 @@ if (!phyloXmlParser) {
     };
 
 
-    var makeVisNodeFillColor = function (node) {
+    var makeVisNodeFillColor = function (node, setVis) {
+        if (setVis === undefined) { //TODO
+            setVis = false;//TODO
+        }//TODO
+
         if (!_currentNodeFillColorVisualization) {
             return _options.branchColorDefault;
         }
@@ -1245,7 +1201,9 @@ if (!phyloXmlParser) {
                     if (!vis.isRegex) {
                         color = vis.mapping[fieldValue];
                         if (color) {
-                            node.hasVis = true;
+                            if (!setVis) {
+                                node.hasVis = true;
+                            }
                             return color;
                         }
                     }
@@ -1255,7 +1213,9 @@ if (!phyloXmlParser) {
                             if (re && fieldValue.search(re) > -1) {
                                 color = vis.mapping[key];
                                 if (color) {
-                                    node.hasVis = true;
+                                    if (!setVis) {
+                                        node.hasVis = true;
+                                    }
                                     return color;
                                 }
                             }
@@ -1270,7 +1230,9 @@ if (!phyloXmlParser) {
                     var p = node.properties[i];
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
-                            node.hasVis = true;
+                            if (!setVis) {
+                                node.hasVis = true;
+                            }
                             return vis.mapping[p.value];
                         }
                     }
@@ -1454,8 +1416,6 @@ if (!phyloXmlParser) {
         }
         return null;
     }
-
-
 
 
     var makeNodeLabel = function (phynode) {
