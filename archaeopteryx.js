@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_59
+// v 0_60
 
 if (!d3) {
     throw "no d3.js";
@@ -723,6 +723,12 @@ if (!phyloXmlParser) {
         }
     }
 
+    function resetVis() {
+        forester.preOrderTraversal(_root, function (n) {
+            n.hasVis = undefined;
+        });
+    }
+
 
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
@@ -875,19 +881,26 @@ if (!phyloXmlParser) {
                 }
             });
 
+
+        var makeNodeSize = function (node) {
+
+
+            return ( ( _options.internalNodeSize > 0 && node.parent && !( /*_options.showNodeVisualizations &&*/ node.hasVis) )
+            && ( ( node.children && _options.showInternalNodes  )
+                || ( ( !node._children && !node.children ) && _options.showExternalNodes  ) //TODO internalnode size should just be nodesize
+            ) || ( _options.phylogram && node.parent && !node.parent.parent && (!node.branch_length || node.branch_length <= 0)) ) ? makeVisNodeSize2(node) : 0;
+
+        };
+
+
         node.select("circle.nodeCircle")
-            .attr("r", function (d) {
-                return ( ( _options.internalNodeSize > 0 && d.parent && !( _options.showNodeVisualizations && d.hasVis) )
-                && ( ( d.children && _options.showInternalNodes  )
-                    || ( ( !d._children && !d.children ) && _options.showExternalNodes  )
-                ) || ( _options.phylogram && d.parent && !d.parent.parent && (!d.branch_length || d.branch_length <= 0)) ) ? _options.internalNodeSize : 0;
-            })
+            .attr("r", makeNodeSize)
             .style("stroke", function (d) {
-                return makeNodeColor(d)
+                return makeNodeStrokeColor(d)
             })
             .style("stroke-width", _options.branchWidthDefault)
-            .style("fill", function (d) { //TODO needed?
-                return d._children ? makeNodeColor(d) : _options.backgroundColorDefault;
+            .style("fill", function (d) {
+                return _options.showNodeVisualizations ? makeNodeFillColor(d) : _options.backgroundColorDefault;
             });
 
         nodeEnter.append("path")
@@ -920,11 +933,11 @@ if (!phyloXmlParser) {
         nodeUpdate.select("text.conflabel")
             .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
 
-
         nodeUpdate.select("path")
             .style("stroke", _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
+            .style("stroke-width", _options.branchWidthDefault)
             .style("fill", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
-            .attr("d", _options.showNodeVisualizations ? makeVisShape : null);
+            .attr("d", _options.showNodeVisualizations ? makeNodeVisShape : null);
 
 
         node.each(function (d) {
@@ -1083,13 +1096,21 @@ if (!phyloXmlParser) {
         return _options.branchColorDefault;
     };
 
-    var makeNodeColor = function (phynode) {
+    var makeNodeFillColor = function (phynode) {
+        var foundColor = getFoundColor(phynode);//TODO maybe only if search is "on"
+        if (foundColor != null) {
+            return foundColor;
+        }
+        return makeVisNodeFillColor(phynode);
+    };
+
+    var makeNodeStrokeColor = function (phynode) {
         var foundColor = getFoundColor(phynode);//TODO maybe only if search is "on"
         if (foundColor != null) {
             return foundColor;
         }
         else if (_options.showNodeVisualizations) {
-            return makeVisNodeFillColor(phynode, true);
+            return makeVisNodeBorderColor(phynode);
         }
         else if (phynode.color) {
             var c = phynode.color;
@@ -1126,7 +1147,7 @@ if (!phyloXmlParser) {
         return _options.labelColorDefault;
     };
 
-    var makeVisShape = function (node) {
+    var makeNodeVisShape = function (node) {
         if (!_currentNodeShapeVisualization) {
             return null;
         }
@@ -1182,12 +1203,12 @@ if (!phyloXmlParser) {
 
 
     var makeVisNodeFillColor = function (node, setVis) {
-        if (setVis === undefined) { //TODO
-            setVis = false;//TODO
-        }//TODO
+        //   if (setVis === undefined) { //TODO
+        //       setVis = false;//TODO
+        //   }//TODo
 
         if (!_currentNodeFillColorVisualization) {
-            return _options.branchColorDefault;
+            return _options.backgroundColorDefault;
         }
 
         if (_visualizations && !node._children && _visualizations.nodeFillColor
@@ -1201,9 +1222,9 @@ if (!phyloXmlParser) {
                     if (!vis.isRegex) {
                         color = vis.mapping[fieldValue];
                         if (color) {
-                            if (!setVis) {
-                                node.hasVis = true;
-                            }
+                            // if (!setVis) {
+                            //     node.hasVis = true;
+                            // }
                             return color;
                         }
                     }
@@ -1213,9 +1234,9 @@ if (!phyloXmlParser) {
                             if (re && fieldValue.search(re) > -1) {
                                 color = vis.mapping[key];
                                 if (color) {
-                                    if (!setVis) {
-                                        node.hasVis = true;
-                                    }
+                                    //  if (!setVis) {
+                                    //      node.hasVis = true;
+                                    //  }
                                     return color;
                                 }
                             }
@@ -1230,16 +1251,16 @@ if (!phyloXmlParser) {
                     var p = node.properties[i];
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
-                            if (!setVis) {
-                                node.hasVis = true;
-                            }
+                            // if (!setVis) {
+                            //     node.hasVis = true;
+                            //  }
                             return vis.mapping[p.value];
                         }
                     }
                 }
             }
         }
-        return _options.branchColorDefault;
+        return _options.backgroundColorDefault;
     };
 
     var makeVisNodeBorderColor = function (node) {
@@ -1258,7 +1279,7 @@ if (!phyloXmlParser) {
                     if (!vis.isRegex) {
                         color = vis.mapping[fieldValue];
                         if (color) {
-                            node.hasVis = true;
+                            // node.hasVis = true;
                             return color;
                         }
                     }
@@ -1268,7 +1289,7 @@ if (!phyloXmlParser) {
                             if (re && fieldValue.search(re) > -1) {
                                 color = vis.mapping[key];
                                 if (color) {
-                                    node.hasVis = true;
+                                    //    node.hasVis = true;
                                     return color;
                                 }
                             }
@@ -1283,7 +1304,7 @@ if (!phyloXmlParser) {
                     var p = node.properties[i];
                     if (p.ref && p.value && p.ref === ref_name) {
                         if (vis.mapping[p.value]) {
-                            node.hasVis = true;
+                            // node.hasVis = true;
                             return vis.mapping[p.value];
                         }
                     }
@@ -1353,7 +1374,7 @@ if (!phyloXmlParser) {
                         if (!vis.isRegex) {
                             size = vis.mapping[fieldValue];
                             if (size) {
-                                node.hasVis = true;
+                                // node.hasVis = true;
                                 return size * _options.internalNodeSize;
                             }
                         }
@@ -1363,7 +1384,7 @@ if (!phyloXmlParser) {
                                 if (re && fieldValue.search(re) > -1) {
                                     size = vis.mapping[key];
                                     if (size) {
-                                        node.hasVis = true;
+                                        //  node.hasVis = true;
                                         return size * _options.internalNodeSize;
                                     }
                                 }
@@ -1372,14 +1393,14 @@ if (!phyloXmlParser) {
                     }
                 }
                 else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
+                    //alert("xxx");
                     var ref_name = vis.cladePropertyRef;
                     var propertiesLength = node.properties.length;
                     for (var i = 0; i < propertiesLength; ++i) {
                         var p = node.properties[i];
-
                         if (p.ref && p.value && p.ref === ref_name) {
                             if (vis.mapping[p.value]) {
-                                node.hasVis = true;
+                                //node.hasVis = true;
                                 return vis.mapping[p.value] * _options.internalNodeSize;
                             }
                         }
@@ -1388,6 +1409,64 @@ if (!phyloXmlParser) {
             }
         }
         return 2 * _options.internalNodeSize * _options.internalNodeSize;
+    };
+
+    var makeVisNodeSize2 = function (node) {
+        var ff = 0.1;
+        if (_currentNodeSizeVisualization) {
+            if (_visualizations && !node._children && _visualizations.nodeSize
+                && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
+
+                var vis = _visualizations.nodeSize[_currentNodeSizeVisualization];
+
+                if (vis.field) {
+
+                    var size;
+                    var fieldValue = node[vis.field];
+                    if (fieldValue) {
+                        if (!vis.isRegex) {
+                            size = vis.mapping[fieldValue];
+                            if (size) {
+
+                                // node.hasVis = true;
+                                return ff * size * _options.internalNodeSize;
+                            }
+                        }
+                        else {
+                            for (var key in vis.mapping) {
+                                var re = new RegExp(key);
+                                if (re && fieldValue.search(re) > -1) {
+                                    size = vis.mapping[key];
+                                    if (size) {
+
+                                        //  node.hasVis = true;
+                                        return ff * size * _options.internalNodeSize;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
+
+                    //alert("ddd");
+                    var ref_name = vis.cladePropertyRef;
+                    var propertiesLength = node.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        var p = node.properties[i];
+                        if (p.ref && p.value && p.ref === ref_name) {
+                            if (vis.mapping[p.value]) {
+                                //node.hasVis = true;
+
+                                return ff * vis.mapping[p.value] * _options.internalNodeSize;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return _options.internalNodeSize;
     };
 
 
@@ -2492,7 +2571,9 @@ if (!phyloXmlParser) {
 
     function nodeVisCbClicked() {
         _options.showNodeVisualizations = getCheckboxValue(NODE_VIS_CB);
-        update();
+        resetVis();
+        update(null, 0);
+        update(null, 0);
     }
 
     function changeBranchWidth(e, slider) {
@@ -2799,7 +2880,10 @@ if (!phyloXmlParser) {
             }
             else {
                 _currentNodeShapeVisualization = null;
+
             }
+            resetVis();
+            update(null, 0);
             update(null, 0);
         });
 
