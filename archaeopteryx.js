@@ -169,7 +169,6 @@ if (!phyloXmlParser) {
     var _displayWidth = 0;
     var _displayHeight = 0;
     var _intervalId = 0;
-    var _dataForVisualization = {};
     var _currentLabelColorVisualization = null;
     var _currentNodeShapeVisualization = null;
     var _currentNodeFillColorVisualization = null;
@@ -1870,11 +1869,7 @@ if (!phyloXmlParser) {
 
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
-
-        collectDataForVisualization();
-        var dcn = obtainDynamicCharNames();
-        collectDataForVisualizationDynamicCharNames(dcn.DynamicCharNames);
-
+        
         initializeGui();
 
         update(null, 0);
@@ -1889,72 +1884,6 @@ if (!phyloXmlParser) {
         return forester.parseNewHampshire(data);
     };
 
-    function obtainDynamicCharNames() {
-        var x = {
-            "DynamicCharNames": [
-                {"Category": {"CharName": "Region"}},
-                {"Category": {"CharName": "SFVT"}, "ExtraInfo": {"DisplayTex": "Sequence Feature ID"}},
-                {"Category": {"CharName": "Sequence Position"}, "ExtraInfo": {"DisplayTex": "Sequence Position"}},
-                {"Category": {"CharName": "Virus Type"}}
-            ]
-        };
-
-        return x;
-    }
-
-    function collectDataForVisualizationDynamicCharNames(x) {
-        var xl = x.length;
-
-        for (var i = 0; i < xl; ++i) {
-            var e = x[i];
-
-            if (e.Category) {
-                if (e.Category.CharName) {
-                    if (!_dataForVisualization.category) {
-                        _dataForVisualization.category = [];
-                    }
-                    _dataForVisualization.category.push(e.Category.CharName);
-
-                }
-            }
-        }
-        _dataForVisualization.category.push("Country");
-        _dataForVisualization.category.push("Year");
-        _dataForVisualization.category.push("Host");
-
-    }
-
-
-    function collectDataForVisualization() {
-        forester.preOrderTraversal(_treeData, function (node) {
-            if (node.properties && node.properties.length > 0) {
-                var propertiesLength = node.properties.length;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var p = node.properties[i];
-                    if (p.ref && p.value) {
-                        var ref = p.ref;
-                        if (!_dataForVisualization[ref]) {
-                            _dataForVisualization[ref] = new Set();
-                        }
-                        _dataForVisualization[ref].add(p.value);
-                    }
-                }
-            }
-            if (node.distributions && node.distributions.length > 0) {
-                var distributionsLength = node.distributions.length;
-                for (var i = 0; i < distributionsLength; ++i) {
-                    var d = node.distributions[i];
-                    var desc = d.desc;
-                    if (desc) {
-                        if (!_dataForVisualization.distribution) {
-                            _dataForVisualization.distribution = new Set();
-                        }
-                        _dataForVisualization.distribution.add(desc);
-                    }
-                }
-            }
-        });
-    }
 
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
@@ -2865,7 +2794,6 @@ if (!phyloXmlParser) {
             var v = this.value;
             if (v && v != NONE) {
                 _currentLabelColorVisualization = v;
-                var x = _dataForVisualization[v];
             }
             else {
                 _currentLabelColorVisualization = null;
@@ -3409,7 +3337,7 @@ if (!phyloXmlParser) {
 
 
     function initializeVisualizationMenu() {
-        if (_dataForVisualization && Object.keys(_dataForVisualization).length) {
+        if (true) {
             $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($("<option>")
                 .val(NONE)
                 .html("none")
