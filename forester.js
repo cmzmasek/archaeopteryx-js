@@ -433,8 +433,50 @@
         return s / l;
     };
 
+    forester.setToArray = function (set) {
+        var array = [];
+        set.forEach(function (e) {
+            array.push(e);
+        });
+        return array
+    };
 
-    forester.collectTreeProperties = function (tree) {
+
+    /**
+     * This collects all properties in a tree
+     * and returns them as dictionary of Sets mapping
+     * keys to values.
+     * It only collects properly formed properties
+     * (as per phyloXML standard), which means
+     * that 'applies_to' and 'datatype' have to be present.
+     *
+     *
+     * @param phy - A phyloXML-based tree object or node.
+     * @param appliesTo - 'phylogeny', 'clade', 'node', 'annotation', 'parent_branch', or 'other'.
+     * @returns {{}}
+     */
+    forester.collectProperties = function (phy, appliesTo) {
+        var props = {};
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n.properties && n.properties.length > 0) {
+                var propertiesLength = n.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var property = n.properties[i];
+                    if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
+                        var ref = property.ref;
+                        if (!props[ref]) {
+                            props[ref] = new Set();
+                        }
+                        props[ref].add(property.value);
+                    }
+                }
+            }
+        });
+        return props;
+    };
+
+
+    forester.collectBasicTreeProperties = function (tree) {
         var properties = {};
         properties.internalNodeData = false;
         properties.nodeNames = false;
