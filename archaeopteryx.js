@@ -313,6 +313,14 @@ if (!phyloXmlParser) {
             null,
             shapesCountry);
 
+        addNodeShapeVisualization('Host',
+            'Host',
+            null,
+            'vipr:host',
+            false,
+            null,
+            shapesHost);
+
         /*var ds = np['vipr:country'];
          var colors = ["#000000", "#0000FF"];
          var heatmapColor = d3.scale.linear()
@@ -411,309 +419,69 @@ if (!phyloXmlParser) {
             null,
             yearSize);
 
-    }
-
-    function initializevisualizationsOLD() {
-
-        var y = {};
-        y['2016'] = 'rgb(0,255,0)';
-        y['2015'] = 'rgb(0,245,20)';
-        y['2014'] = 'rgb(0,235,30)';
-        y['2013'] = 'rgb(0,225,35)';
-        y['2012'] = 'rgb(0,215,40)';
-        y['2011'] = 'rgb(0,205,45)';
-        y['2010'] = 'rgb(0,195,50)';
-        y['2009'] = 'rgb(0,185,55)';
-        y['2008'] = 'rgb(0,175,60)';
-        y['2007'] = 'rgb(0,165,65)';
-        y['2006'] = 'rgb(0,155,70)';
-        y['2005'] = 'rgb(0,145,75)';
-        y['2004'] = 'rgb(0,135,80)';
-        y['2003'] = 'rgb(0,125,85)';
-        y['2002'] = 'rgb(0,115,90)';
-        y['2001'] = 'rgb(0,105,95)';
-        y['2000'] = 'rgb(0,95,100)';
-        y['1111'] = 'rgb(100,100,100)';
-
-        var ys = {};
-        ys['2016'] = 'square';
-        ys['2015'] = 'square';
-        ys['2014'] = 'square';
-        ys['2013'] = 'square';
-        ys['2012'] = 'square';
-        ys['2011'] = 'square';
-        ys['2010'] = 'square';
-        ys['2009'] = 'square';
-        ys['2008'] = 'square';
-        ys['2007'] = 'square';
-        ys['2006'] = 'square';
-        ys['2005'] = 'square';
-        ys['2004'] = 'square';
-        ys['2003'] = 'square';
-        ys['2002'] = 'square';
-        ys['2001'] = 'square';
-        ys['2000'] = 'square';
-        ys['1111'] = 'cross';
-
-        var ysize = {};
-        ysize['2016'] = 40;
-        ysize['2015'] = 38;
-        ysize['2014'] = 36;
-        ysize['2013'] = 34;
-        ysize['2012'] = 32;
-        ysize['2011'] = 30;
-        ysize['2010'] = 28;
-        ysize['2009'] = 26;
-        ysize['2008'] = 24;
-        ysize['2007'] = 22;
-        ysize['2006'] = 20;
-        ysize['2005'] = 18;
-        ysize['2004'] = 16;
-        ysize['2003'] = 14;
-        ysize['2002'] = 12;
-        ysize['2001'] = 10;
-        ysize['2000'] = 8;
-        ysize['1111'] = 4;
-
         var ncp = {};
-        ncp['UNK|ANG0'] = 'red';
-        ncp['03'] = 'green';
-        ncp['05|06|08'] = 'blue';
-        ncp['CVB|Hu'] = 'yellow';
+        ncp['UNKNOWN'] = 'red';
+        ncp['Hu'] = 'green';
+        ncp['ANG'] = 'blue';
+        ncp['ALG'] = 'yellow';
         ncp['DZA'] = 'orange';
-        ncp['SAT|101|pat'] = 'pink';
+        ncp['pat'] = 'pink';
 
-        addLabelColorVisualization('Name',
-            'External Node Names',
+        addLabelColorVisualization('Name Pattern',
+            'Name Pattern',
             'name',
             null,
             true,
             ncp,
             null);
 
-        var lm1 = {};
-        lm1['Angola'] = 'red';
-        lm1['Algeria'] = 'green';
-
-        addLabelColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            lm1,
-            null);
-
-        var lm2 = {};
-        lm2['Cattle'] = 'red';
-        lm2['Human'] = 'orange';
-        lm2['Unknown'] = 'black';
-
-        addLabelColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            lm2,
-            null);
-
-        addLabelColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            y,
-            null);
-
-        var lm4 = {};
-        lm4['pat-29'] = 'red';
-        lm4['ALG/1/99'] = 'blue';
-
-        addLabelColorVisualization('Full Name',
-            'Full Name',
-            'name',
-            null,
-            false,
-            lm4,
-            null);
-
-
-        var m0 = {};
-        m0['UNK|ANG0'] = 'triangle-down';
-        m0['03'] = 'triangle-up';
-        m0['05|06|08'] = 'cross';
-        m0['CVB|Hu'] = 'diamond';
-        m0['DZA'] = 'square';
-        m0['SAT|101|pat'] = 'circle';
-
-        addNodeShapeVisualization('Name',
-            'External Node Names',
-            'name',
-            null,
-            true,
-            m0,
-            null);
-
-        var m1 = {};
-        m1['Angola'] = 'triangle-down';
-        m1['Algeria'] = 'triangle-up';
-
-        addNodeShapeVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            m1,
-            null);
-
-        var m2 = {};
-        m2['Cattle'] = 'diamond';
-        m2['Human'] = 'square';
-        m2['Unknown'] = 'circle';
-
-        addNodeShapeVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            m2,
-            null);
-
-
-        addNodeShapeVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            ys,
-            null);
-
-        var m4 = {};
-        m4['pat-29'] = 'diamond';
-        m4['ALG/1/99'] = 'square';
-
-        addNodeShapeVisualization('Full Name',
-            'Full Name',
-            'name',
-            null,
-            false,
-            m4,
-            null);
-
-        addNodeFillColorVisualization('Name',
-            'External Node Names',
+        addNodeBorderColorVisualization('Name Pattern',
+            'Name Pattern',
             'name',
             null,
             true,
             ncp,
             null);
 
-        var cm1 = {};
-        cm1['Angola'] = 'red';
-        cm1['Algeria'] = 'green';
-
-        addNodeFillColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            cm1,
-            null);
-
-        var cm2 = {};
-        cm2['Cattle'] = 'red';
-        cm2['Human'] = 'orange';
-        cm2['Unknown'] = 'black';
-
-        addNodeFillColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            cm2,
-            null);
-
-        addNodeFillColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            y,
-            null);
-
-        var cm4 = {};
-        cm4['pat-29'] = 'red';
-        cm4['ALG/1/99'] = 'blue';
-
-        addNodeFillColorVisualization('Full Name',
-            'Full Name',
-            'name',
-            null,
-            false,
-            cm4,
-            null);
-
-
-        addNodeBorderColorVisualization('Name',
-            'External Node Names',
+        addNodeFillColorVisualization('Name Pattern',
+            'Name Pattern',
             'name',
             null,
             true,
             ncp,
             null);
 
-        var cfm1 = {};
-        cfm1['Angola'] = 'red';
-        cfm1['Algeria'] = 'green';
+        var nsp = {};
+        nsp['UNKNOWN'] = 'cross';
+        nsp['Hu'] = 'triangle-up';
+        nsp['ANG'] = 'triangle-down';
+        nsp['ALG'] = 'diamond';
+        nsp['DZA'] = 'square';
+        nsp['pat'] = 'circle';
 
-        addNodeBorderColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            cfm1,
-            null);
-
-        var cfm2 = {};
-        cfm2['Cattle'] = 'red';
-        cfm2['Human'] = 'orange';
-        cfm2['Unknown'] = 'black';
-
-        addNodeBorderColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            cfm2,
-            null);
-
-        addNodeBorderColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            y,
-            null);
-
-        var cfm4 = {};
-        cfm4['pat-29'] = 'red';
-        cfm4['ALG/1/99'] = 'blue';
-
-        addNodeBorderColorVisualization('Full Name',
-            'Full Name',
+        addNodeShapeVisualization('Name Pattern',
+            'Name Pattern',
             'name',
             null,
-            false,
-            cfm4,
+            true,
+            nsp,
             null);
 
-        addNodeSizeVisualization('Year',
-            'Year',
+        var ns = {};
+        ns['UNKNOWN'] = 10;
+        ns['Hu'] = 20;
+        ns['ANG'] = 30;
+        ns['ALG'] = 40;
+        ns['DZA'] = 50;
+        ns['pat'] = 60;
+
+        addNodeSizeVisualization('Name Pattern',
+            'Name Pattern',
+            'name',
             null,
-            'vipr:year',
-            false,
-            ysize,
+            true,
+            ns,
             null);
-
     }
 
     function addNodeSizeVisualization(label,
