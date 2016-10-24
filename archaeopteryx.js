@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_60
+// v 0_61
 
 if (!d3) {
     throw "no d3.js";
@@ -290,11 +290,11 @@ if (!phyloXmlParser) {
         var countries = forester.setToArray(np['vipr:country']);
         var hosts = forester.setToArray(np['vipr:host']);
         var yearCol = d3.scale.linear()
-            .range(["#FF0000", "#0000FF"])
+            .range(["#FF0000", "#00FF00"])
             .domain(d3.extent(years));
 
         var yearSize = d3.scale.linear()
-            .range([10, 50])
+            .range([20, 60])
             .domain(d3.extent(years));
 
         var shapesHost = d3.scale.ordinal()
