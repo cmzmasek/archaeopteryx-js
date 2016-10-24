@@ -435,9 +435,11 @@
 
     forester.setToArray = function (set) {
         var array = [];
-        set.forEach(function (e) {
-            array.push(e);
-        });
+        if (set) {
+            set.forEach(function (e) {
+                array.push(e);
+            });
+        }
         return array
     };
 
