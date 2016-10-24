@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_61
+// v 0_62
 
 (function forester() {
 
@@ -1017,6 +1017,63 @@
         forester.addParents(phy);
         return phy;
     };
+
+    /**
+     * To be deprecated!
+     *
+     * @param phy
+     * @returns {{}}
+     */
+    forester.moveSimpleCharacteristicsToProperties = function (phy) {
+        var HOST = 'vipr:host';
+        var COUNTRY = 'vipr:country';
+        var YEAR = 'vipr:year';
+        var NODE = 'node';
+        var STRING = 'xsd:string';
+        var INT = 'xsd:integer';
+
+
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n.simple_characteristics) {
+                var sc = n.simple_characteristics;
+                var props;
+                if (sc.country && sc.country.length > 0) {
+                    props = {};
+                    props.ref = COUNTRY;
+                    props.datatype = STRING;
+                    props.applies_to = NODE;
+                    props.value = sc.country;
+                    addProperties(n, props);
+                }
+                if (sc.host && sc.host.length > 0) {
+                    props = {};
+                    props.ref = HOST;
+                    props.datatype = STRING;
+                    props.applies_to = NODE;
+                    props.value = sc.host;
+                    addProperties(n, props);
+                }
+                if (sc.year && sc.year.length > 0) {
+                    props = {};
+                    props.ref = YEAR;
+                    props.datatype = INT;
+                    props.applies_to = NODE;
+                    props.value = parseInt(sc.year);
+                    addProperties(n, props);
+                }
+                n.simple_characteristics = undefined;
+            }
+        });
+        function addProperties(n, props) {
+            if (props) {
+                if (!n.properties) {
+                    n.properties = [];
+                }
+                n.properties.push(props);
+            }
+        }
+    };
+
 
     /**
      * To convert a phylogentic tree object to a New Hampshire (Newick) formatted string.

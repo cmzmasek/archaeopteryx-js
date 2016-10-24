@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_61
+// v 0_62
 
 if (!d3) {
     throw "no d3.js";
@@ -1643,6 +1643,10 @@ if (!phyloXmlParser) {
 
         _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on("zoom", zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
+
+        if (settings.readSimpleCharacteristics) {
+            forester.moveSimpleCharacteristicsToProperties(_treeData);
+        }
 
         initializeOptions(options);
         initializeSettings(settings);

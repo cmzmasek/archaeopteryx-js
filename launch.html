@@ -4,7 +4,7 @@
 
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <script src="https://cdn.rawgit.com/cmzmasek/phyloxml-js/master/lib/sax.js"></script>
-    <script src="https://rawgit.com/cmzmasek/phyloxml-js/master/phyloxml_parser.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/phyloxml_parser.js"></script>
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
     <script src="forester.js"></script>
@@ -21,8 +21,8 @@
             options.showBranchLengthValues = false;
             options.showConfidenceValues = true;
             options.showNodeName = true;
-            options.showSequence = false;
-            options.showTaxonomy = false;
+            options.showSequence = true;
+            options.showTaxonomy = true;
             options.showTaxonomyCode = true;
             options.showTaxonomyScientificName = true;
             options.showTaxonomyCommonName = true;
@@ -63,6 +63,7 @@
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
+            settings.readSimpleCharacteristics = true;
 
             //apaf
             //apaf5
@@ -86,13 +87,16 @@
             //sample
             var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample.xml';
             //var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/apaf2.nh';
+            //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/miyamoto_goodman_1986.nh';
 
             jQuery.get(loc,
                     function (data) {
                         var tree = null;
                         try {
                             tree = archaeopteryx.parsePhyloXML(data);
-                            //tree = archaeopteryx.parseNewHampshire("(((a:0.2,b:0.24,c:0.24):0.2,(d:0.223,e:0.2):0.42):0.28,f:0.62)r:0.2;");
+                            // console.log(tree);
+                            // tree = archaeopteryx.parseNewHampshire(data);
+                            //  tree = archaeopteryx.parseNewHampshire("(((a:0.2,b:0.24,c:0.24):0.2,(d:0.223,e:0.2):0.42):0.28,f:0.62)r:0.2;");
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
@@ -124,7 +128,7 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_60</h2>
+    <h2>Archaeopteryx-js Demo: v 0_62</h2>
     <div id='phylogram1'></div>
 
     <div style="position:absolute; left: 20px; top: 60px;" id="controls0" class="ui-widget-content">
