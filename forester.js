@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_62
+// v 0_63
 
 (function forester() {
 
@@ -1082,22 +1082,22 @@
      * @param dec - maximal number of decimal points for branch lengths (optional)
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
-    forester.toNewHamphshire = function (phy, dec) {
+    forester.toNewHamphshire = function (phy, dec, replaceChars) {
         var nh = "";
         if (phy.children && phy.children.length === 1) {
-            toNewHamphshireHelper(phy.children[0], true, dec);
+            toNewHamphshireHelper(phy.children[0], true);
         }
         if (nh.length > 0) {
             return nh + ";";
         }
         return nh;
 
-        function toNewHamphshireHelper(node, last, dec) {
+        function toNewHamphshireHelper(node, last) {
             if (node.children) {
                 var l = node.children.length;
                 nh += "(";
                 for (var i = 0; i < l; ++i) {
-                    toNewHamphshireHelper(node.children[i], i === l - 1, dec);
+                    toNewHamphshireHelper(node.children[i], i === l - 1);
                 }
                 nh += ")";
             }
@@ -1105,17 +1105,32 @@
                 var ll = node._children.length;
                 nh += "(";
                 for (var ii = 0; ii < ll; ++ii) {
-                    toNewHamphshireHelper(node._children[ii], ii === ll - 1, dec);
+                    toNewHamphshireHelper(node._children[ii], ii === ll - 1);
                 }
                 nh += ")";
             }
             if (node.name && node.name.length > 0) {
-                if (node.name.indexOf(' ') >= 0) {
-                    nh += "'" + node.name + "'";
+                if (replaceChars && ((node.name.indexOf(',') > -1) ||
+                    ( node.name.indexOf('(') > -1) || ( node.name.indexOf(')') > -1)
+                    || (node.name.indexOf(':') > -1) || ( node.name.indexOf(';') > -1))) {
+
+                    var myName = replaceUnsafeChars(node.name);
+                    if (myName.indexOf(' ') >= 0) {
+                        nh += "'" + myName + "'";
+                    }
+                    else {
+                        nh += myName;
+                    }
                 }
                 else {
-                    nh += node.name;
+                    if (node.name.indexOf(' ') >= 0) {
+                        nh += "'" + node.name + "'";
+                    }
+                    else {
+                        nh += node.name;
+                    }
                 }
+
             }
             if (node.branch_length) {
                 if (dec && dec > 0) {
@@ -1128,6 +1143,15 @@
             if (!last) {
                 nh += ",";
             }
+        }
+
+        function replaceUnsafeChars(str) {
+            return str
+                .replace(/,/g, "_")
+                .replace(/\(/g, "{")
+                .replace(/\)/g, "}")
+                .replace(/:/g, "_")
+                .replace(/;/g, "_");
         }
     };
 
