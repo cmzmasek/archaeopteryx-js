@@ -1079,10 +1079,11 @@
      * To convert a phylogentic tree object to a New Hampshire (Newick) formatted string.
      *
      * @param phy - A phylogentic tree object.
-     * @param dec - maximal number of decimal points for branch lengths (optional)
+     * @param decPointsMax - Maximal number of decimal points for branch lengths (optional)
+     * @param replaceChars - To replace (),:;
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
-    forester.toNewHamphshire = function (phy, dec, replaceChars) {
+    forester.toNewHamphshire = function (phy, decPointsMax, replaceChars) {
         var nh = "";
         if (phy.children && phy.children.length === 1) {
             toNewHamphshireHelper(phy.children[0], true);
@@ -1110,10 +1111,9 @@
                 nh += ")";
             }
             if (node.name && node.name.length > 0) {
-                if (replaceChars && ((node.name.indexOf(',') > -1) ||
+                if (replaceChars === true && ((node.name.indexOf(',') > -1) ||
                     ( node.name.indexOf('(') > -1) || ( node.name.indexOf(')') > -1)
                     || (node.name.indexOf(':') > -1) || ( node.name.indexOf(';') > -1))) {
-
                     var myName = replaceUnsafeChars(node.name);
                     if (myName.indexOf(' ') >= 0) {
                         nh += "'" + myName + "'";
@@ -1133,8 +1133,8 @@
 
             }
             if (node.branch_length) {
-                if (dec && dec > 0) {
-                    nh += ":" + forester.roundNumber(node.branch_length, dec);
+                if (decPointsMax && decPointsMax > 0) {
+                    nh += ":" + forester.roundNumber(node.branch_length, decPointsMax);
                 }
                 else {
                     nh += ":" + node.branch_length;
