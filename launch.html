@@ -1,14 +1,27 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-
+    <!-- D3.js, jQuery, and jQuery UI:-->
     <script src="http://d3js.org/d3.v3.min.js"></script>
-    <script src="https://cdn.rawgit.com/cmzmasek/phyloxml-js/master/lib/sax.js"></script>
-    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/phyloxml_parser.js"></script>
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+    <!-- SAX XML parser:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/sax.js"></script>
+
+    <!-- The following five libraries are needed for download/export of images and files:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/rgbcolor.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/Blob.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/canvas-toBlob.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/canvg.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/FileSaver.js"></script>
+
+    <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/phyloxml_parser_0_902.js"></script>
     <script src="forester.js"></script>
     <script src="archaeopteryx.js"></script>
+
+    <!-- CSS for jQuery UI: -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
 
     <script>
@@ -41,12 +54,12 @@
             options.externalNodeFontSize = 10;
             options.internalNodeFontSize = 6;
             options.branchDataFontSize = 6;
-            options.branchColorDefault = "#909090";
-            options.labelColorDefault = "#202020";
-            options.backgroundColorDefault = "#f0f0f0";
-            options.found0ColorDefault = "#00ff00";
-            options.found1ColorDefault = "#ff0000";
-            options.found0and1ColorDefault = "#0000ff";
+            options.branchColorDefault = '#909090';
+            options.labelColorDefault = '#202020';
+            options.backgroundColorDefault = '#f0f0f0';
+            options.found0ColorDefault = '#00ff00';
+            options.found1ColorDefault = '#ff0000';
+            options.found0and1ColorDefault = '#0000ff';
             options.collapasedLabelLength = 7;
             options.minBranchLengthValueToShow = 0.01;
             options.minConfidenceValueToShow = 0.5;
@@ -56,14 +69,21 @@
             options.alignPhylogram = true;
             options.showNodeVisualizations = true;
             options.nodeVisualizationsOpacity = 0.9;
+            options.nameForNhDownload = 'archaeopteryx-js.nh';
+            options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
+            options.nameForPngDownload = 'archaeopteryx-js.png';
+            options.nameForSvgDownload = 'archaeopteryx-js.svg';
+
+
             var settings = {};
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
-            settings.displayHeight = 1000;
+            settings.displayHeight = 800;
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
             settings.readSimpleCharacteristics = true;
+            settings.enableDownloads = true;
 
             //apaf
             //apaf5
@@ -86,8 +106,9 @@
             //backwards
             //sample
             var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample.xml';
-            //var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/apaf2.nh';
-            //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/miyamoto_goodman_1986.nh';
+            // var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
+            //var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
+            //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
 
             jQuery.get(loc,
                     function (data) {
@@ -95,7 +116,7 @@
                         try {
                             tree = archaeopteryx.parsePhyloXML(data);
                             // console.log(tree);
-                            // tree = archaeopteryx.parseNewHampshire(data);
+                            //tree = archaeopteryx.parseNewHampshire(data);
                             //  tree = archaeopteryx.parseNewHampshire("(((a:0.2,b:0.24,c:0.24):0.2,(d:0.223,e:0.2):0.42):0.28,f:0.62)r:0.2;");
                         }
                         catch (e) {
@@ -128,7 +149,7 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_62</h2>
+    <h2>Archaeopteryx-js Demo: v 0_65</h2>
     <div id='phylogram1'></div>
 
     <div style="position:absolute; left: 20px; top: 60px;" id="controls0" class="ui-widget-content">

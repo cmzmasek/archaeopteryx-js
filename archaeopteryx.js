@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_62
+// v 0_65
 
 if (!d3) {
     throw "no d3.js";
@@ -37,7 +37,6 @@ if (!phyloXmlParser) {
     "use strict";
 
     var TRANSITION_DURATION_DEFAULT = 750;
-    var PHYLOGRAM_DEFAULT = false;
     var ROOTOFFSET_DEFAULT = 30;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var VIEWERHEIGHT_DEFAULT = 600;
@@ -63,13 +62,12 @@ if (!phyloXmlParser) {
     var CONTROLS_1 = 'controls1';
 
     var PHYLOGRAM_BUTTON = 'phy_b';
+    var PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
     var CLADOGRAM_BUTTON = 'cla_b';
 
     var PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
     var DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
 
-
-    var ALIGN_PHYLOGRAM_CB = 'al_cb';
     var NODE_NAME_CB = 'nn_cb';
     var TAXONOMY_CB = 'tax_cb';
     var SEQUENCE_CB = 'seq_cb';
@@ -92,7 +90,6 @@ if (!phyloXmlParser) {
     var BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
     var BRANCH_WIDTH_SLIDER = 'bw_sl';
     var NODE_SIZE_SLIDER = 'ns_sl';
-
 
     var ORDER_BUTTON = 'ord_b';
     var RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
@@ -122,6 +119,18 @@ if (!phyloXmlParser) {
     var SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
     var SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
     var SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
+
+    var DOWNLOAD_BUTTON = 'dl_b';
+    var EXPORT_FORMAT_SELECT = 'exp_f_sel';
+    var PNG_EXPORT_FORMAT = 'PNG';
+    var SVG_EXPORT_FORMAT = 'SVG';
+    var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
+    var NH_EXPORT_FORMAT = 'Newick';
+    var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx-js.nh';
+    var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx-js.xml';
+    var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.png';
+    var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.svg';
+
 
     var NONE = 'none';
     var DEFAULT = 'default';
@@ -286,40 +295,152 @@ if (!phyloXmlParser) {
         xx['vipr:host'] = 'Host';
         xx['vipr:year'] = 'Year';
 
-        var years = forester.setToArray(np['vipr:year']);
-        var countries = forester.setToArray(np['vipr:country']);
-        var hosts = forester.setToArray(np['vipr:host']);
-        var yearCol = d3.scale.linear()
-            .range(["#FF0000", "#00FF00"])
-            .domain(d3.extent(years));
+        var year = true;
+        var host = true;
+        var country = true;
 
-        var yearSize = d3.scale.linear()
-            .range([20, 60])
-            .domain(d3.extent(years));
+        if (year) {
+            // color mapping:
+            //values
+            //label
+            //(desc)
+            //color range
 
-        var shapesHost = d3.scale.ordinal()
-            .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
-            .domain(hosts);
+            // size mapping:
+            //values
+            //label
+            //(desc)
+            //size range
+            var years = forester.setToArray(np['vipr:year']);
+            var yearCol = d3.scale.linear()
+                .range(["#FF00FF", "#00FF00"])
+                .domain(d3.extent(years));
 
-        var shapesCountry = d3.scale.ordinal()
-            .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
-            .domain(countries);
+            var yearSize = d3.scale.linear()
+                .range([20, 60])
+                .domain(d3.extent(years));
 
-        addNodeShapeVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            null,
-            shapesCountry);
+            addLabelColorVisualization('Year',
+                'Year',
+                null,
+                'vipr:year',
+                false,
+                null,
+                yearCol);
 
-        addNodeShapeVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            null,
-            shapesHost);
+            addNodeFillColorVisualization('Year',
+                'Year',
+                null,
+                'vipr:year',
+                false,
+                null,
+                yearCol);
+
+            addNodeBorderColorVisualization('Year',
+                'Year',
+                null,
+                'vipr:year',
+                false,
+                null,
+                yearCol);
+
+            addNodeSizeVisualization('Year',
+                'Year',
+                null,
+                'vipr:year',
+                false,
+                null,
+                yearSize);
+
+        }
+
+        if (host) {
+            var hosts = forester.setToArray(np['vipr:host']);
+
+            var shapesHost = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(hosts);
+
+            color = d3.scale.category20()
+                .domain(hosts);
+
+            addNodeShapeVisualization('Host',
+                'Host',
+                null,
+                'vipr:host',
+                false,
+                null,
+                shapesHost);
+
+            addLabelColorVisualization('Host',
+                'Host',
+                null,
+                'vipr:host',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Host',
+                'Host',
+                null,
+                'vipr:host',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Host',
+                'Host',
+                null,
+                'vipr:host',
+                false,
+                null,
+                color);
+
+        }
+
+        if (country) {
+            var countries = forester.setToArray(np['vipr:country']);
+
+            var shapesCountry = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(countries);
+
+            addNodeShapeVisualization('Country',
+                'Country',
+                null,
+                'vipr:country',
+                false,
+                null,
+                shapesCountry);
+
+            var color = d3.scale.category20()
+                .domain(countries);
+
+            addLabelColorVisualization('Country',
+                'Country',
+                null,
+                'vipr:country',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Country',
+                'Country',
+                null,
+                'vipr:country',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Country',
+                'Country',
+                null,
+                'vipr:country',
+                false,
+                null,
+                color);
+        }
+
 
         /*var ds = np['vipr:country'];
          var colors = ["#000000", "#0000FF"];
@@ -333,91 +454,6 @@ if (!phyloXmlParser) {
          console.log(heatmapColor(0.1));
          console.log(heatmapColor(c('Algeria')));*/
 
-        var color = d3.scale.category20()
-            .domain(countries);
-
-        addLabelColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            null,
-            color);
-
-        addNodeFillColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            null,
-            color);
-
-        addNodeBorderColorVisualization('Country',
-            'Country',
-            null,
-            'vipr:country',
-            false,
-            null,
-            color);
-
-        color = d3.scale.category20()
-            .domain(hosts);
-
-        addLabelColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            null,
-            color);
-
-        addNodeFillColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            null,
-            color);
-
-        addNodeBorderColorVisualization('Host',
-            'Host',
-            null,
-            'vipr:host',
-            false,
-            null,
-            color);
-
-        addLabelColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            null,
-            yearCol);
-
-        addNodeFillColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            null,
-            yearCol);
-
-        addNodeBorderColorVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            null,
-            yearCol);
-
-        addNodeSizeVisualization('Year',
-            'Year',
-            null,
-            'vipr:year',
-            false,
-            null,
-            yearSize);
 
         var ncp = {};
         ncp['UNKNOWN'] = 'red';
@@ -1481,11 +1517,18 @@ if (!phyloXmlParser) {
 
         if (_basicTreeProperties.branchLengths) {
             if (_options.phylogram === undefined) {
-                _options.phylogram = PHYLOGRAM_DEFAULT;
+                _options.phylogram = true;
+            }
+            if (_options.alignPhylogram === undefined) {
+                _options.alignPhylogram = false;
             }
         }
         else {
             _options.phylogram = false;
+            _options.alignPhylogram = false;
+        }
+        if (_options.phylogram === false) {
+            _options.alignPhylogram = false;
         }
         if (_options.dynahide === undefined) {
             _options.dynahide = false;
@@ -1607,6 +1650,18 @@ if (!phyloXmlParser) {
             _options.nodeVisualizationsOpacity = 1;
         }
 
+        if (!_options.nameForNhDownload) {
+            _options.nameForNhDownload = NAME_FOR_NH_DOWNLOAD_DEFAULT;
+        }
+        if (!_options.nameForPhyloXmlDownload) {
+            _options.nameForPhyloXmlDownload = NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
+        }
+        if (!_options.nameForPngDownload) {
+            _options.nameForPngDownload = NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+        }
+        if (!_options.nameForSvgDownload) {
+            _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
+        }
     }
 
     function initializeSettings(settings) {
@@ -1629,13 +1684,18 @@ if (!phyloXmlParser) {
         if (_settings.showNodeVisualizations === undefined) {
             _settings.showNodeVisualizations = false;
         }
-        intitialzeDisplaySize();
+        if (_settings.enableDownloads === undefined) {
+            _settings.enableDownloads = false;
+        }
+        intitializeDisplaySize();
     }
 
-    function intitialzeDisplaySize() {
+    function intitializeDisplaySize() {
         _displayHeight = _settings.displayHeight;
         _displayWidth = _settings.displayWidth;
     }
+
+    var _id;
 
     archaeopteryx.launch = function (id, phylo, options, settings) {
 
@@ -1655,7 +1715,7 @@ if (!phyloXmlParser) {
             var np = forester.collectProperties(_treeData, 'node');
             initializeNodeVisualizations(np);
         }
-
+        _id = id;
 
         createGui(_basicTreeProperties);
 
@@ -2156,7 +2216,7 @@ if (!phyloXmlParser) {
     function zoomFit() {
         if (_root) {
             calcMaxExtLabel();
-            intitialzeDisplaySize();
+            intitializeDisplaySize();
             initializeSettings(_settings);
             _zoomListener.scale(1);
             update(_root, 0);
@@ -2237,19 +2297,24 @@ if (!phyloXmlParser) {
 
     function toPhylogram() {
         _options.phylogram = true;
+        _options.alignPhylogram = false;
+        setDisplayTypeButtons();
+        update(null, 0);
+    }
+
+    function toAlignedPhylogram() {
+        _options.phylogram = true;
+        _options.alignPhylogram = true;
+        setDisplayTypeButtons();
         update(null, 0);
     }
 
     function toCladegram() {
         _options.phylogram = false;
+        _options.alignPhylogram = false;
+        setDisplayTypeButtons();
         update(null, 0);
     }
-
-    function alignPhylogrambCbClicked() {
-        _options.alignPhylogram = getCheckboxValue(ALIGN_PHYLOGRAM_CB);
-        update();
-    }
-
 
     function nodeNameCbClicked() {
         _options.showNodeName = getCheckboxValue(NODE_NAME_CB);
@@ -2313,6 +2378,14 @@ if (!phyloXmlParser) {
         resetVis();
         update(null, 0);
         update(null, 0);
+    }
+
+    function downloadButtonPressed() {
+        var s = $('#' + EXPORT_FORMAT_SELECT);
+        if (s) {
+            var format = s.val();
+            downloadTree(format);
+        }
     }
 
     function changeBranchWidth(e, slider) {
@@ -2481,7 +2554,7 @@ if (!phyloXmlParser) {
 
             c0.draggable({containment: "parent"});
             c0.append(makePhylogramControl());
-            c0.append(makeMoreControls());
+
             c0.append(makeDisplayControl());
             c0.append(makeZoomControl());
             $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
@@ -2495,13 +2568,17 @@ if (!phyloXmlParser) {
                 "width": "120px"
             });
 
-            c0.append(makeControlButons());
+            c0.append(makeControlButtons());
 
             c0.append(makeSliders());
 
             c0.append(makeSearchBoxes());
 
             c0.append(makeAutoCollapse());
+
+            if (_settings.enableDownloads) {
+                c0.append(makeDownloadSection());
+            }
         }
 
         var c1 = $('#' + CONTROLS_1);
@@ -2566,6 +2643,11 @@ if (!phyloXmlParser) {
                 'width': '16px'
             });
 
+        $('#' + DOWNLOAD_BUTTON)
+            .css({
+                'width': '60px'
+            });
+
         $(':radio').checkboxradio({
             icon: false
         });
@@ -2580,9 +2662,9 @@ if (!phyloXmlParser) {
 
         $('#' + PHYLOGRAM_BUTTON).click(toPhylogram);
 
-        $('#' + CLADOGRAM_BUTTON).click(toCladegram);
+        $('#' + PHYLOGRAM_ALIGNED_BUTTON).click(toAlignedPhylogram);
 
-        $('#' + ALIGN_PHYLOGRAM_CB).click(alignPhylogrambCbClicked);
+        $('#' + CLADOGRAM_BUTTON).click(toCladegram);
 
         $('#' + NODE_NAME_CB).click(nodeNameCbClicked);
 
@@ -2809,6 +2891,14 @@ if (!phyloXmlParser) {
         $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
         $('#' + SEARCH_OPTIONS_NEGATE_RES_CB).click(searchOptionsNegateResultCbClicked);
 
+        $('#' + DOWNLOAD_BUTTON).mousedown(downloadButtonPressed);
+
+        $('#' + EXPORT_FORMAT_SELECT)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
 
         $(document).keyup(function (e) {
             if (e.altKey) {
@@ -2923,25 +3013,17 @@ if (!phyloXmlParser) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + '">');
-            h = h.concat('<label for="' + PHYLOGRAM_BUTTON + '">PH</label>');
+            h = h.concat('<label for="' + PHYLOGRAM_BUTTON + '">P</label>');
+            h = h.concat('<input title ="could be anything" type="radio" name="radio-1" id="' + PHYLOGRAM_ALIGNED_BUTTON + '">');
+            h = h.concat('<label for="' + PHYLOGRAM_ALIGNED_BUTTON + '">A</label>');
             h = h.concat('<input type="radio" name="radio-1" id="' + PHYLOGRAM_BUTTON + '">');
-            h = h.concat('<label for="' + CLADOGRAM_BUTTON + '">CL</label>');
-            h = h.concat('<input type="radio" name="radio-1" id="' + CLADOGRAM_BUTTON + '">');
+            h = h.concat('<label for="' + CLADOGRAM_BUTTON + '">C</label>');
+            h = h.concat('<input title="radio" type="radio" name="radio-1" id="' + CLADOGRAM_BUTTON + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
 
-        function makeMoreControls() {
-            var h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
-            h = h.concat('<label for="' + ALIGN_PHYLOGRAM_CB + '">Line Up PH</label>');
-            h = h.concat('<input type="checkbox" name="' + ALIGN_PHYLOGRAM_CB + '" id="' + ALIGN_PHYLOGRAM_CB + '">');
-            h = h.concat('</div>');
-            h = h.concat('</fieldset>');
-            return h;
-        }
 
         function makeDisplayControl() {
             var h = "";
@@ -2980,6 +3062,7 @@ if (!phyloXmlParser) {
             }
         }
 
+
         function makeZoomControl() {
             var h = "";
             h = h.concat('<fieldset>');
@@ -2996,7 +3079,7 @@ if (!phyloXmlParser) {
         }
 
 
-        function makeControlButons() {
+        function makeControlButtons() {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div>');
@@ -3005,6 +3088,24 @@ if (!phyloXmlParser) {
             h = h.concat('<input type="button" value="U" name="' + UNCOLLAPSE_ALL_BUTTON + '" title="uncollapse all (Alt+U)" id="' + UNCOLLAPSE_ALL_BUTTON + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
+            return h;
+        }
+
+
+        function makeDownloadSection() {
+            var h = "";
+            h = h.concat('<form action="#">');
+            h = h.concat('<fieldset>');
+            h = h.concat('<input type="button" value="Download" name="' + DOWNLOAD_BUTTON + '" title="download/export tree in a selected format" id="' + DOWNLOAD_BUTTON + '">');
+            h = h.concat('<br>');
+            h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT + '">');
+            h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
+            h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
+            h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
+            h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
+            h = h.concat('</select>');
+            h = h.concat('</fieldset>');
+            h = h.concat('</form>');
             return h;
         }
 
@@ -3133,10 +3234,8 @@ if (!phyloXmlParser) {
 
     function initializeGui() {
 
-        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram);
-        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram);
+        setDisplayTypeButtons();
 
-        setCheckboxValue(ALIGN_PHYLOGRAM_CB, _options.phylogram ? _options.alignPhylogram : false);
         setCheckboxValue(NODE_NAME_CB, _options.showNodeName);
         setCheckboxValue(TAXONOMY_CB, _options.showTaxonomy);
         setCheckboxValue(SEQUENCE_CB, _options.showSequence);
@@ -3171,11 +3270,11 @@ if (!phyloXmlParser) {
                 .html("same as fill")
             );
 
-            $("select#" + NODE_SHAPE_SELECT_MENU).append($("<option>")
+            $('select#' + NODE_SHAPE_SELECT_MENU).append($("<option>")
                 .val(DEFAULT)
                 .html("default")
             );
-            $("select#" + NODE_SIZE_SELECT_MENU).append($("<option>")
+            $('select#' + NODE_SIZE_SELECT_MENU).append($("<option>")
                 .val(DEFAULT)
                 .html("default")
             );
@@ -3285,16 +3384,25 @@ if (!phyloXmlParser) {
     }
 
     function cycleDisplay() {
-        _options.phylogram = !_options.phylogram;
-        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram);
-        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram);
+        if (_options.phylogram && !_options.alignPhylogram) {
+            _options.alignPhylogram = true;
+
+        }
+        else if (_options.phylogram && _options.alignPhylogram) {
+            _options.phylogram = false;
+            _options.alignPhylogram = false;
+        }
+        else if (!_options.phylogram && !_options.alignPhylogram) {
+            _options.phylogram = true;
+        }
+        setDisplayTypeButtons();
         update(null, 0);
     }
 
-    function toggleAlignPhylogram() {
-        _options.alignPhylogram = !_options.alignPhylogram;
-        setCheckboxValue(ALIGN_PHYLOGRAM_CB, _options.alignPhylogram);
-        update(null, 0);
+    function setDisplayTypeButtons() {
+        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
+        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
+        setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
     }
 
 
@@ -3470,6 +3578,58 @@ if (!phyloXmlParser) {
             _branch_length_collapse_data.step = (_branch_length_collapse_data.max - _branch_length_collapse_data.min) / x;
 
         }
+    }
+
+    function getTreeAsSvg() {
+        var container = _id.replace('#', '');
+        var wrapper = document.getElementById(container);
+        var svg = wrapper.querySelector('svg');
+        if (typeof window.XMLSerializer !== 'undefined') {
+            var svgTree = (new XMLSerializer()).serializeToString(svg);
+        }
+        else if (typeof svg.xml !== 'undefined') {
+            var svgTree = svg.xml;
+        }
+        return svgTree;
+    }
+
+    function downloadTree(format) {
+        if (format === PNG_EXPORT_FORMAT) {
+            downloadAsPng()
+        }
+        else if (format === SVG_EXPORT_FORMAT) {
+            downloadAsSVG();
+        }
+        else if (format === NH_EXPORT_FORMAT) {
+            downloadAsNH();
+        }
+        else if (format === PHYLOXML_EXPORT_FORMAT) {
+            downloadAsPhyloXml();
+        }
+    }
+
+    function downloadAsPhyloXml() {
+        var x = phyloXmlParser.toPhyloXML(_root, 9);
+        saveAs(new Blob([x], {type: "application/xml"}), _options.nameForPhyloXmlDownload);
+    }
+
+    function downloadAsNH() {
+        var nh = forester.toNewHamphshire(_root, 9, true);
+        saveAs(new Blob([nh], {type: "application/txt"}), _options.nameForNhDownload);
+    }
+
+    function downloadAsSVG() {
+        var svg = getTreeAsSvg();
+        saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
+    }
+
+    function downloadAsPng() {
+        var svg = getTreeAsSvg();
+        var canvas = document.createElement("canvas");
+        canvg(canvas, svg);
+        canvas.toBlob(function (blob) {
+            saveAs(blob, _options.nameForPngDownload);
+        });
     }
 
 

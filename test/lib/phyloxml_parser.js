@@ -21,6 +21,9 @@
  */
 
 /**
+ *
+ * Version 0.902 20161031
+ *
  * This requires sax-js from https://github.com/isaacs/sax-js
  *
  * Usage:
@@ -117,6 +120,7 @@
     var CONFIDENCE = 'confidence';
     var CONFIDENCE_TYPE_ATTR = 'type';
     var CONFIDENCE_STDDEV_ATTR = 'stddev';
+    var CONFIDENCES = 'confidences';
 
     // Cross References
     var CROSS_REFERENCES = 'cross_references';
@@ -141,7 +145,7 @@
     var EVENTS = 'events';
     var EVENTS_TYPE = 'type';
     var EVENTS_DUPLICATIONS = 'duplications';
-    var EVENTS_SPECIATIONs = 'speciations';
+    var EVENTS_SPECIATIONS = 'speciations';
     var EVENTS_LOSSES = 'losses';
 
     // Id
@@ -173,6 +177,7 @@
     var PROPERTY_UNIT_ATTR = 'unit';
     var PROPERTY_DATATYPE_ATTR = 'datatype';
     var PROPERTY_APPLIES_TO_ATTR = 'applies_to';
+    var PROPERTIES = 'properties';
 
     // Protein Domain
     var PROTEINDOMAIN = 'domain';
@@ -195,15 +200,20 @@
     var SEQUENCE_NAME = 'name';
     var SEQUENCE_GENE_NAME = 'gene_name';
     var SEQUENCE_LOCATION = 'location';
+    var SEQUENCES = 'sequences';
+
 
     // Taxonomy
     var TAXONOMY = 'taxonomy';
+    var TAXONOMY_ID_SOURCE_ATTR = 'id_source';
     var TAXONOMY_CODE = 'code';
     var TAXONOMY_SCIENTIFIC_NAME = 'scientific_name';
     var TAXONOMY_AUTHORITY = 'authority';
     var TAXONOMY_COMMON_NAME = 'common_name';
     var TAXONOMY_SYNONYM = 'synonym';
     var TAXONOMY_RANK = 'rank';
+    var TAXONOMIES = 'taxonomies';
+    var TAXONOMY_SYNONYMS = 'synonyms';
 
     // Uri
     var URI = 'uri';
@@ -219,6 +229,12 @@
     var PHYLOGENY_DESCRIPTION = 'description';
     var PHYLOGENY_DATE = 'date';
 
+    // Simple_Characteristics (to be deprecated!)
+    var X_SIMPLE_CHARACTERISTICS = 'Simple_Characteristics';
+    var X_SIMPLE_CHARACTERISTIC_COUNTRY = 'Country';
+    var X_SIMPLE_CHARACTERISTIC_YEAR = 'Year';
+    var X_SIMPLE_CHARACTERISTIC_HOST = 'Host';
+
     // --------------------------------------------------------------
     // Instance variables
     // --------------------------------------------------------------
@@ -229,18 +245,28 @@
     var _objectStack = null;
 
     // --------------------------------------------------------------
+    // Others
+    // --------------------------------------------------------------
+    var PROPERTY_REF_RE = /[a-zA-Z0-9_]+:\S+/;
+    var PROPERTY_UNIT_RE = /[a-zA-Z0-9_]+:\S+/;
+    var PROPERTY_DATATYPE_RE = /xsd:\S+/;
+
+    // --------------------------------------------------------------
     // Functions for object creation
     // --------------------------------------------------------------
     function newAccession(tag) {
         var parent = _tagStack.get(1);
-        if (!(parent == SEQUENCE || parent == CROSS_REFERENCES)) {
+        if (!(parent === SEQUENCE || parent === CROSS_REFERENCES)) {
             throw new PhyloXmlError("found accession outside of sequence or cross-references");
         }
         var acc = {};
         acc.value = null;
         acc.source = getAttribute(ACCESSION_SOURCE_ATTR, tag.attributes);
         acc.comment = getAttribute(ACCESSION_COMMENT_ATTR, tag.attributes);
-        if (parent == SEQUENCE) {
+        if (!acc.source) {
+            acc.source = '?';
+        }
+        if (parent === SEQUENCE) {
             getCurrentObject().accession = acc;
         }
         else {
@@ -269,9 +295,9 @@
             throw new PhyloXmlError("found branch color outside of clade");
         }
         var col = {};
-        col.red = null;
-        col.green = null;
-        col.blue = null;
+        col.red = 0;
+        col.green = 0;
+        col.blue = 0;
         getCurrentObject().color = col;
         _objectStack.push(col);
     }
@@ -283,7 +309,7 @@
         if (CLADE_ID_SOURCE_ATTR in tag.attributes) {
             newClade.id_source = tag.attributes[CLADE_ID_SOURCE_ATTR];
         }
-        if (_phylogeny == null) {
+        if (_phylogeny === null) {
             var phylogeny_data = _objectStack.pop();
             if (!_objectStack.isEmpty()) {
                 throw new PhyloXmlError('severe phyloXML format error');
@@ -293,7 +319,7 @@
         }
         else {
             var currClade = getCurrentClade();
-            if (currClade.children == undefined) {
+            if (currClade.children === undefined) {
                 currClade.children = [newClade];
             }
             else {
@@ -330,10 +356,10 @@
         conf.type = getAttribute(CONFIDENCE_TYPE_ATTR, tag.attributes);
         conf.stddev = getAttributeAsFloat(CONFIDENCE_STDDEV_ATTR, tag.attributes);
         var parent = _tagStack.get(1);
-        if (parent == CLADE || parent == PHYLOGENY) {
-            addToArrayInCurrentObject('confidences', conf);
+        if (parent === CLADE || parent === PHYLOGENY) {
+            addToArrayInCurrentObject(CONFIDENCES, conf);
         }
-        else if (parent == ANNOTATION || parent == EVENTS || parent == CLADE_RELATION || parent == SEQUENCE_RELATION) {
+        else if (parent === ANNOTATION || parent === EVENTS || parent === CLADE_RELATION || parent === SEQUENCE_RELATION) {
             getCurrentObject().confidence = conf;
         }
         _objectStack.push(conf);
@@ -398,7 +424,7 @@
         p.alt_unit = getAttribute(POINT_ALT_UNIT_ATTR, tag.attributes);
         p.geodetic_datum = getAttribute(POINT_GEODETIC_DATUM_ATTR, tag.attributes);
         var parent = _tagStack.get(1);
-        if (parent == DISTRIBUTION) {
+        if (parent === DISTRIBUTION) {
             addToArrayInCurrentObject('points', p);
         }
         _objectStack.push(p);
@@ -411,7 +437,27 @@
         prop.datatype = getAttribute(PROPERTY_DATATYPE_ATTR, tag.attributes);
         prop.applies_to = getAttribute(PROPERTY_APPLIES_TO_ATTR, tag.attributes);
         prop.id_ref = getAttribute(PROPERTY_ID_REF_ATTR, tag.attributes);
-        addToArrayInCurrentObject('properties', prop);
+
+        if (!prop.ref) {
+            throw new PhyloXmlError('property ref is missing');
+        }
+        if (!prop.datatype) {
+            throw new PhyloXmlError('property data-type is missing');
+        }
+        if (!prop.applies_to) {
+            throw new PhyloXmlError('property applies-to is missing');
+        }
+        if (!PROPERTY_REF_RE.test(prop.ref)) {
+            throw new PhyloXmlError('property ref is ill-formatted: ' + prop.ref);
+        }
+        if (!PROPERTY_DATATYPE_RE.test(prop.datatype)) {
+            throw new PhyloXmlError('property data-type is ill-formatted: ' + prop.datatype);
+        }
+        if (prop.unit && !PROPERTY_UNIT_RE.test(prop.unit)) {
+            throw new PhyloXmlError('property unit is ill-formatted: ' + prop.unit);
+        }
+
+        addToArrayInCurrentObject(PROPERTIES, prop);
         _objectStack.push(prop);
     }
 
@@ -438,14 +484,14 @@
         seq.type = getAttribute(SEQUENCE_TYPE_ATTR, tag.attributes);
         seq.id_source = getAttribute(SEQUENCE_ID_SOURCE_ATTR, tag.attributes);
         seq.id_ref = getAttribute(SEQUENCE_ID_REF_ATTR, tag.attributes);
-        addToArrayInCurrentObject('sequences', seq);
+        addToArrayInCurrentObject(SEQUENCES, seq);
         _objectStack.push(seq);
     }
 
     function newTaxonomy(tag) {
         var tax = {};
-        tax.id_source = getAttribute(CLADE_ID_SOURCE_ATTR, tag.attributes);
-        addToArrayInCurrentObject('taxonomies', tax);
+        tax.id_source = getAttribute(TAXONOMY_ID_SOURCE_ATTR, tag.attributes);
+        addToArrayInCurrentObject(TAXONOMIES, tax);
         _objectStack.push(tax);
     }
 
@@ -461,11 +507,25 @@
     function newPhylogeny(tag) {
         var phy = {};
         phy.rooted = getAttributeAsBoolean(PHYLOGENY_ROOTED_ATTR, tag.attributes);
+        if (phy.rooted === undefined) {
+            phy.rooted = true;
+        }
         phy.rerootable = getAttributeAsBoolean(PHYLOGENY_REROOTABLE_ATTR, tag.attributes);
+        if (phy.rerootable === undefined) {
+            phy.rerootable = true;
+        }
         phy.branch_length_unit = getAttribute(PHYLOGENY_BRANCH_LENGTH_UNIT_ATTR, tag.attributes);
         phy.type = getAttribute(PHYLOGENY_TYPE_ATTR, tag.attributes);
         _objectStack.push(phy);
     }
+
+    function newSimpleCharacteristics() {
+        //To be deprecated.
+        var sc = {};
+        getCurrentObject().simple_characteristics = sc;
+        _objectStack.push(sc);
+    }
+
 
     // --------------------------------------------------------------
     // Functions for processing text
@@ -476,34 +536,34 @@
     }
 
     function inAnnotation(text) {
-        if (getCurrentTag() == ANNOTATION_DESC) {
+        if (getCurrentTag() === ANNOTATION_DESC) {
             getCurrentObject().desc = text;
         }
     }
 
     function inBranchColor(text) {
-        if (getCurrentTag() == COLOR_RED) {
+        if (getCurrentTag() === COLOR_RED) {
             getCurrentObject().red = parseIntNumber(text);
         }
-        else if (getCurrentTag() == COLOR_GREEN) {
+        else if (getCurrentTag() === COLOR_GREEN) {
             getCurrentObject().green = parseIntNumber(text);
         }
-        else if (getCurrentTag() == COLOR_BLUE) {
+        else if (getCurrentTag() === COLOR_BLUE) {
             getCurrentObject().blue = parseIntNumber(text);
         }
-        if (getCurrentTag() == COLOR_ALPHA) {
+        if (getCurrentTag() === COLOR_ALPHA) {
             getCurrentObject().alpha = parseIntNumber(text);
         }
     }
 
     function inClade(text) {
-        if (getCurrentTag() == CLADE_NAME) {
+        if (getCurrentTag() === CLADE_NAME) {
             getCurrentClade().name = text;
         }
-        else if (getCurrentTag() == CLADE_BRANCH_LENGTH) {
+        else if (getCurrentTag() === CLADE_BRANCH_LENGTH) {
             getCurrentClade().branch_length = parseFloatNumber(text);
         }
-        else if (getCurrentTag() == CLADE_WIDTH) {
+        else if (getCurrentTag() === CLADE_WIDTH) {
             getCurrentClade().width = parseFloatNumber(text);
         }
     }
@@ -513,37 +573,37 @@
     }
 
     function inDate(text) {
-        if (getCurrentTag() == DATE_DESC) {
+        if (getCurrentTag() === DATE_DESC) {
             getCurrentObject().desc = text;
         }
-        else if (getCurrentTag() == DATE_VALUE) {
+        else if (getCurrentTag() === DATE_VALUE) {
             getCurrentObject().value = parseFloatNumber(text);
         }
-        else if (getCurrentTag() == DATE_MINIMUM) {
+        else if (getCurrentTag() === DATE_MINIMUM) {
             getCurrentObject().minimum = parseFloatNumber(text);
         }
-        else if (getCurrentTag() == DATE_MAXIMUM) {
+        else if (getCurrentTag() === DATE_MAXIMUM) {
             getCurrentObject().maximum = parseFloatNumber(text);
         }
     }
 
     function inDistribution(text) {
-        if (getCurrentTag() == DISTRIBUTION_DESC) {
+        if (getCurrentTag() === DISTRIBUTION_DESC) {
             getCurrentObject().desc = text;
         }
     }
 
     function inEvents(text) {
-        if (getCurrentTag() == EVENTS_TYPE) {
+        if (getCurrentTag() === EVENTS_TYPE) {
             getCurrentObject().type = text;
         }
-        else if (getCurrentTag() == EVENTS_DUPLICATIONS) {
+        else if (getCurrentTag() === EVENTS_DUPLICATIONS) {
             getCurrentObject().duplications = parseIntNumber(text);
         }
-        else if (getCurrentTag() == EVENTS_SPECIATIONs) {
+        else if (getCurrentTag() === EVENTS_SPECIATIONS) {
             getCurrentObject().speciations = parseIntNumber(text);
         }
-        else if (getCurrentTag() == EVENTS_LOSSES) {
+        else if (getCurrentTag() === EVENTS_LOSSES) {
             getCurrentObject().losses = parseIntNumber(text);
         }
     }
@@ -557,13 +617,13 @@
     }
 
     function inPoint(text) {
-        if (getCurrentTag() == POINT_LAT) {
+        if (getCurrentTag() === POINT_LAT) {
             getCurrentObject().lat = text;
         }
-        else if (getCurrentTag() == POINT_LONG) {
+        else if (getCurrentTag() === POINT_LONG) {
             getCurrentObject().long = text;
         }
-        else if (getCurrentTag() == POINT_ALT) {
+        else if (getCurrentTag() === POINT_ALT) {
             getCurrentObject().alt = text;
         }
     }
@@ -577,61 +637,74 @@
     }
 
     function inPhylogeny(text) {
-        if (getCurrentTag() == PHYLOGENY_NAME) {
+        if (getCurrentTag() === PHYLOGENY_NAME) {
             getCurrentObject().name = text;
         }
-        else if (getCurrentTag() == PHYLOGENY_DESCRIPTION) {
+        else if (getCurrentTag() === PHYLOGENY_DESCRIPTION) {
             getCurrentObject().description = text;
         }
-        else if (getCurrentTag() == PHYLOGENY_DATE) {
+        else if (getCurrentTag() === PHYLOGENY_DATE) {
             getCurrentObject().date = text;
         }
     }
 
     function inReference(text) {
-        if (getCurrentTag() == REFERENCE_DESC) {
+        if (getCurrentTag() === REFERENCE_DESC) {
             getCurrentObject().desc = text;
         }
     }
 
     function inSequence(text) {
-        if (getCurrentTag() == SEQUENCE_SYMBOL) {
+        if (getCurrentTag() === SEQUENCE_SYMBOL) {
             getCurrentObject().symbol = text;
         }
-        else if (getCurrentTag() == SEQUENCE_NAME) {
+        else if (getCurrentTag() === SEQUENCE_NAME) {
             getCurrentObject().name = text;
         }
-        else if (getCurrentTag() == SEQUENCE_GENE_NAME) {
+        else if (getCurrentTag() === SEQUENCE_GENE_NAME) {
             getCurrentObject().gene_name = text;
         }
-        else if (getCurrentTag() == SEQUENCE_LOCATION) {
+        else if (getCurrentTag() === SEQUENCE_LOCATION) {
             getCurrentObject().location = text;
         }
     }
 
     function inTaxonomy(text) {
-        if (getCurrentTag() == TAXONOMY_CODE) {
+        if (getCurrentTag() === TAXONOMY_CODE) {
             getCurrentObject().code = text;
         }
-        else if (getCurrentTag() == TAXONOMY_SCIENTIFIC_NAME) {
+        else if (getCurrentTag() === TAXONOMY_SCIENTIFIC_NAME) {
             getCurrentObject().scientific_name = text;
         }
-        else if (getCurrentTag() == TAXONOMY_AUTHORITY) {
+        else if (getCurrentTag() === TAXONOMY_AUTHORITY) {
             getCurrentObject().authority = text;
         }
-        else if (getCurrentTag() == TAXONOMY_COMMON_NAME) {
+        else if (getCurrentTag() === TAXONOMY_COMMON_NAME) {
             getCurrentObject().common_name = text;
         }
-        else if (getCurrentTag() == TAXONOMY_SYNONYM) {
-            addToArrayInCurrentObject('synonyms', text);
+        else if (getCurrentTag() === TAXONOMY_SYNONYM) {
+            addToArrayInCurrentObject(TAXONOMY_SYNONYMS, text);
         }
-        else if (getCurrentTag() == TAXONOMY_RANK) {
+        else if (getCurrentTag() === TAXONOMY_RANK) {
             getCurrentObject().rank = text;
         }
     }
 
     function inUri(text) {
         getCurrentObject().value = text;
+    }
+
+    function inSimpleCharacteristics(text) {
+        //To be deprecated.
+        if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_COUNTRY) {
+            getCurrentObject().country = text;
+        }
+        else if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_HOST) {
+            getCurrentObject().host = text;
+        }
+        else if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_YEAR) {
+            getCurrentObject().year = text;
+        }
     }
 
     // --------------------------------------------------------------
@@ -650,7 +723,7 @@
                 newAnnotation(tag);
                 break;
             case CLADE_RELATION:
-                if (_tagStack.get(1) == PHYLOGENY) {
+                if (_tagStack.get(1) === PHYLOGENY) {
                     newCladeRelation(tag);
                 }
                 break;
@@ -664,7 +737,7 @@
                 newCrossReferences();
                 break;
             case DATE:
-                if (_tagStack.get(1) == CLADE) {
+                if (_tagStack.get(1) === CLADE) {
                     newDate(tag);
                 }
                 break;
@@ -702,7 +775,7 @@
                 newSequence(tag);
                 break;
             case SEQUENCE_RELATION:
-                if (_tagStack.get(1) == PHYLOGENY) {
+                if (_tagStack.get(1) === PHYLOGENY) {
                     newSequenceRelation(tag);
                 }
                 break;
@@ -712,44 +785,49 @@
             case URI:
                 newUri(tag);
                 break;
+            case X_SIMPLE_CHARACTERISTICS:
+                //To be deprecated.
+                newSimpleCharacteristics();
+                break;
             default:
         }
     }
 
     function phyloxmlOnclosetag(tag) {
-        if (tag == CLADE) {
+        if (tag === CLADE) {
             _tagStack.pop();
             _objectStack.pop();
             _cladeStack.pop();
         }
         else if (
-            tag == ACCESSION
-            || tag == ANNOTATION
-            || ( tag == CLADE_RELATION && (_tagStack.get(1) == PHYLOGENY) )
-            || tag == COLOR
-            || tag == CONFIDENCE
-            || tag == CROSS_REFERENCES
-            || ( tag == DATE && (_tagStack.get(1) == CLADE) )
-            || tag == DISTRIBUTION
-            || tag == TAXONOMY
-            || tag == ID
-            || tag == EVENTS
-            || tag == MOLSEQ
-            || tag == REFERENCE
-            || tag == DOMAIN_ARCHITECTURE
-            || tag == PROTEINDOMAIN
-            || tag == SEQUENCE
-            || ( tag == SEQUENCE_RELATION && (_tagStack.get(1) == PHYLOGENY) )
-            || tag == PROPERTY
-            || tag == POINT
-            || tag == URI) {
+            tag === ACCESSION
+            || tag === ANNOTATION
+            || ( tag === CLADE_RELATION && (_tagStack.get(1) === PHYLOGENY) )
+            || tag === COLOR
+            || tag === CONFIDENCE
+            || tag === CROSS_REFERENCES
+            || ( tag === DATE && (_tagStack.get(1) === CLADE) )
+            || tag === DISTRIBUTION
+            || tag === TAXONOMY
+            || tag === ID
+            || tag === EVENTS
+            || tag === MOLSEQ
+            || tag === REFERENCE
+            || tag === DOMAIN_ARCHITECTURE
+            || tag === PROTEINDOMAIN
+            || tag === SEQUENCE
+            || ( tag === SEQUENCE_RELATION && (_tagStack.get(1) === PHYLOGENY) )
+            || tag === PROPERTY
+            || tag === POINT
+            || tag === URI
+            || tag === X_SIMPLE_CHARACTERISTICS) {
             _tagStack.pop();
             _objectStack.pop();
         }
-        else if (!(tag == PHYLOGENY || tag == PHYLOXML)) {
+        else if (!(tag === PHYLOGENY || tag === PHYLOXML)) {
             _tagStack.pop();
         }
-        else if (tag == PHYLOGENY) {
+        else if (tag === PHYLOGENY) {
             phyloxmlOnClosetagSanityCheck();
             _phylogenies.push(_phylogeny);
             startNewPhylogeny();
@@ -759,60 +837,62 @@
     function phyloxmlOntext(text) {
         var parentTag = _tagStack.get(1);
         var currentTag = _tagStack.peek();
-        if (parentTag == CLADE) {
+        if (parentTag === CLADE) {
             inClade(text);
         }
-        else if (parentTag == ANNOTATION) {
+        else if (parentTag === ANNOTATION) {
             inAnnotation(text);
         }
-        else if (parentTag == COLOR) {
+        else if (parentTag === COLOR) {
             inBranchColor(text);
         }
-        else if (parentTag == DATE) {
+        else if (parentTag === DATE) {
             inDate(text);
         }
-        else if (parentTag == DISTRIBUTION) {
+        else if (parentTag === DISTRIBUTION) {
             inDistribution(text);
         }
-        else if (parentTag == EVENTS) {
+        else if (parentTag === EVENTS) {
             inEvents(text);
         }
-        else if (parentTag == REFERENCE) {
+        else if (parentTag === REFERENCE) {
             inReference(text);
         }
-        else if (parentTag == PHYLOGENY) {
+        else if (parentTag === PHYLOGENY) {
             inPhylogeny(text);
         }
-        else if (parentTag == POINT) {
+        else if (parentTag === POINT) {
             inPoint(text);
         }
-        else if (parentTag == SEQUENCE) {
+        else if (parentTag === SEQUENCE) {
             inSequence(text);
         }
-        else if (parentTag == TAXONOMY) {
+        else if (parentTag === TAXONOMY) {
             inTaxonomy(text);
         }
-
-        if (currentTag == ACCESSION) {
+        if (currentTag === ACCESSION) {
             inAccession(text);
         }
-        else if (currentTag == CONFIDENCE) {
+        else if (currentTag === CONFIDENCE) {
             inConfidence(text);
         }
-        else if (currentTag == ID) {
+        else if (currentTag === ID) {
             inId(text);
         }
-        else if (currentTag == MOLSEQ) {
+        else if (currentTag === MOLSEQ) {
             inMolecularSequence(text);
         }
-        else if (currentTag == PROTEINDOMAIN) {
+        else if (currentTag === PROTEINDOMAIN) {
             inProteinDomain(text);
         }
-        else if (currentTag == PROPERTY) {
+        else if (currentTag === PROPERTY) {
             inProperty(text);
         }
-        else if (currentTag == URI) {
+        else if (currentTag === URI) {
             inUri(text);
+        }
+        else if (parentTag === X_SIMPLE_CHARACTERISTICS) {
+            inSimpleCharacteristics(text);
         }
     }
 
@@ -881,11 +961,11 @@
             parent = _phylogeny;
         }
         var ary = parent[name];
-        if (ary == undefined) {
-            parent[name] = [value];
+        if (ary) {
+            ary.push(value);
         }
         else {
-            ary.push(value);
+            parent[name] = [value];
         }
     }
 
@@ -911,10 +991,10 @@
     }
 
     function parseBoolean(text) {
-        if (text == 'true') {
+        if (text === 'true') {
             return true;
         }
-        else if (text == 'false') {
+        else if (text === 'false') {
             return false;
         }
         else {
@@ -948,7 +1028,7 @@
         this._stack = [];
         this.pop = function () {
             var p = this._stack.pop();
-            if (p == undefined) {
+            if (p === undefined) {
                 throw new Error('severe phyloXML format error')
             }
             return p;
@@ -981,6 +1061,286 @@
     PhyloXmlError.prototype = Object.create(Error.prototype);
 
     // --------------------------------------------------------------
+    // To phyloXML
+    // --------------------------------------------------------------
+    phyloXmlParser.toPhyloXML = function (phy, dec) {
+        var x = '';
+        var ind = '';
+        openPhyloXml();
+        openPhylogeny(phy, [PHYLOGENY_ROOTED_ATTR, PHYLOGENY_REROOTABLE_ATTR,
+            PHYLOGENY_BRANCH_LENGTH_UNIT_ATTR, PHYLOGENY_TYPE_ATTR]);
+
+        if (phy.children && phy.children.length === 1) {
+            toPhyloXMLhelper(phy.children[0]);
+        }
+        closePhylogeny();
+        closePhyloXml();
+        return x;
+
+        function toPhyloXMLhelper(node) {
+            var l;
+            var i;
+
+            openClade(node, [CLADE_ID_SOURCE_ATTR, CLADE_COLLAPSE_ATTR]);
+
+            addSingleElement(CLADE_NAME, node.name);
+
+            if (node[CLADE_BRANCH_LENGTH]) {
+                addSingleElement(CLADE_BRANCH_LENGTH, (dec && dec > 0) ? roundNumber(node[CLADE_BRANCH_LENGTH], dec) : node[CLADE_BRANCH_LENGTH]);
+            }
+
+            if (node[CONFIDENCES] && node[CONFIDENCES].length > 0) {
+                l = node[CONFIDENCES].length;
+                for (i = 0; i < l; ++i) {
+                    var conf = node[CONFIDENCES][i];
+                    if (!conf[CONFIDENCE_TYPE_ATTR]) {
+                        conf[CONFIDENCE_TYPE_ATTR] = '?';
+                    }
+                    addSingleElement(CONFIDENCE, conf.value, conf,
+                        [CONFIDENCE_TYPE_ATTR, CONFIDENCE_STDDEV_ATTR]);
+                }
+            }
+
+            addSingleElement(CLADE_WIDTH, node[CLADE_WIDTH]);
+
+            if (node[COLOR]) {
+                var col = node[COLOR];
+                open(COLOR);
+                addSingleElement(COLOR_RED, col[COLOR_RED]);
+                addSingleElement(COLOR_GREEN, col[COLOR_GREEN]);
+                addSingleElement(COLOR_BLUE, col[COLOR_BLUE]);
+                addSingleElement(COLOR_ALPHA, col[COLOR_ALPHA]);
+                close(COLOR);
+            }
+
+            if (node[TAXONOMIES] && node[TAXONOMIES].length > 0) {
+                l = node[TAXONOMIES].length;
+                for (i = 0; i < l; ++i) {
+                    var tax = node[TAXONOMIES][i];
+                    open(TAXONOMY, tax, [TAXONOMY_ID_SOURCE_ATTR]);
+                    if (tax[ID]) {
+                        if (!tax[ID][ID_PROVIDER_ATTR]) {
+                            tax[ID][ID_PROVIDER_ATTR] = '?';
+                        }
+                        addSingleElement(ID, tax[ID].value, tax[ID],
+                            [ID_PROVIDER_ATTR]);
+                    }
+                    addSingleElement(TAXONOMY_CODE, tax[TAXONOMY_CODE]);
+                    addSingleElement(TAXONOMY_SCIENTIFIC_NAME, tax[TAXONOMY_SCIENTIFIC_NAME]);
+                    addSingleElement(TAXONOMY_AUTHORITY, tax[TAXONOMY_AUTHORITY]);
+                    addSingleElement(TAXONOMY_COMMON_NAME, tax[TAXONOMY_COMMON_NAME]);
+                    if (tax[TAXONOMY_SYNONYMS] && tax[TAXONOMY_SYNONYMS].length > 0) {
+                        var ll = tax[TAXONOMY_SYNONYMS].length;
+                        for (var ii = 0; ii < ll; ++ii) {
+                            addSingleElement(TAXONOMY_SYNONYM, tax[TAXONOMY_SYNONYMS][ii]);
+                        }
+                    }
+                    addSingleElement(TAXONOMY_RANK, tax[TAXONOMY_RANK]);
+                    close(TAXONOMY);
+                }
+            }
+
+            if (node[SEQUENCES] && node[SEQUENCES].length > 0) {
+                l = node[SEQUENCES].length;
+                for (i = 0; i < l; ++i) {
+                    var seq = node[SEQUENCES][i];
+                    open(SEQUENCE, seq, [SEQUENCE_TYPE_ATTR, SEQUENCE_ID_SOURCE_ATTR, SEQUENCE_ID_REF_ATTR]);
+                    addSingleElement(SEQUENCE_SYMBOL, seq[SEQUENCE_SYMBOL]);
+                    if (seq[ACCESSION]) {
+                        if (!seq[ACCESSION][ACCESSION_SOURCE_ATTR]) {
+                            seq[ACCESSION][ACCESSION_SOURCE_ATTR] = '?';
+                        }
+                        addSingleElement(ACCESSION, seq[ACCESSION].value, seq[ACCESSION],
+                            [ACCESSION_SOURCE_ATTR, ACCESSION_COMMENT_ATTR]);
+                    }
+                    addSingleElement(SEQUENCE_NAME, seq[SEQUENCE_NAME]);
+                    addSingleElement(SEQUENCE_GENE_NAME, seq[SEQUENCE_GENE_NAME]);
+                    addSingleElement(SEQUENCE_LOCATION, seq[SEQUENCE_LOCATION]);
+                    if (seq[MOLSEQ]) {
+                        addSingleElement(MOLSEQ, seq[MOLSEQ].value, seq[MOLSEQ],
+                            [MOLSEQ_IS_ALIGNED_ATTR]);
+                    }
+                    close(SEQUENCE);
+                }
+            }
+
+            if (node[EVENTS]) {
+                var ev = node[EVENTS];
+                open(EVENTS);
+                addSingleElement(EVENTS_TYPE, ev[EVENTS_TYPE]);
+                addSingleElement(EVENTS_DUPLICATIONS, ev[EVENTS_DUPLICATIONS]);
+                addSingleElement(EVENTS_SPECIATIONS, ev[EVENTS_SPECIATIONS]);
+                addSingleElement(EVENTS_LOSSES, ev[EVENTS_LOSSES]);
+                if (ev[CONFIDENCE]) {
+                    var evconf = ev[CONFIDENCE];
+                    addSingleElement(CONFIDENCE, evconf.value, evconf,
+                        [CONFIDENCE_TYPE_ATTR, CONFIDENCE_STDDEV_ATTR]);
+                }
+                close(EVENTS);
+            }
+
+            if (node[PROPERTIES] && node[PROPERTIES].length > 0) {
+                l = node[PROPERTIES].length;
+                for (i = 0; i < l; ++i) {
+                    var prop = node[PROPERTIES][i];
+                    if (!prop[PROPERTY_APPLIES_TO_ATTR]) {
+                        throw new PhyloXmlError("property applies-to is missing");
+                    }
+                    if (!prop[PROPERTY_DATATYPE_ATTR]) {
+                        throw new PhyloXmlError("property data-type is missing");
+                    }
+                    if (!prop[PROPERTY_REF_ATTR]) {
+                        throw new PhyloXmlError("property ref is missing");
+                    }
+                    addSingleElement(PROPERTY, prop.value, prop, [PROPERTY_REF_ATTR,
+                        PROPERTY_UNIT_ATTR, PROPERTY_DATATYPE_ATTR, PROPERTY_APPLIES_TO_ATTR,
+                        PROPERTY_ID_REF_ATTR]);
+                }
+            }
+
+            if (node.children) {
+                l = node.children.length;
+                for (i = 0; i < l; ++i) {
+                    toPhyloXMLhelper(node.children[i]);
+                }
+            }
+            else if (node._children) {
+                l = node._children.length;
+                for (i = 0; i < l; ++i) {
+                    toPhyloXMLhelper(node._children[i]);
+                }
+            }
+
+            closeClade();
+
+        } // toPhyloXMLhelper
+
+        function addSingleElement(elemName, elemValue, object, attributeNames) {
+            if ((elemValue !== null) && (elemValue !== undefined)) {
+                if (typeof elemValue === 'string' || elemValue instanceof String) {
+                    elemValue = elemValue.trim();
+                    if (elemValue.length > 0) {
+                        if ((elemValue.indexOf('&') > -1) || ( elemValue.indexOf('<') > -1) || ( elemValue.indexOf('>') > -1)
+                            || (elemValue.indexOf('"') > -1) || ( elemValue.indexOf("'") > -1)) {
+                            elemValue = replaceUnsafeChars(elemValue);
+                        }
+                    }
+                    else {
+                        return;
+                    }
+                }
+                x += ( ind + '<' + elemName);
+                if (object && attributeNames && attributeNames.length > 0) {
+                    addAttributes(object, attributeNames);
+                }
+                x += ( '>' + elemValue + '</' + elemName + '>\n');
+            }
+        }
+
+        function open(elemName, object, attributeNames) {
+            if (object && attributeNames && attributeNames.length > 0) {
+                x += ( ind + '<' + elemName);
+                addAttributes(object, attributeNames);
+                x += '>\n';
+            }
+            else {
+                x += (ind + '<' + elemName + '>\n' );
+            }
+            ind = ind + ' ';
+        }
+
+        function close(elemName) {
+            reduceInd();
+            x += ( ind + '</' + elemName + '>\n' );
+        }
+
+        function openClade(object, attributeNames) {
+            if (object && attributeNames && attributeNames.length > 0) {
+                x += ind + '<clade';
+                addAttributes(object, attributeNames);
+                x += '>\n';
+            }
+            else {
+                x += ind + '<clade>\n';
+            }
+            ind = ind + ' ';
+        }
+
+        function closeClade() {
+            reduceInd();
+            x += ind + '</clade>\n';
+        }
+
+        function openPhylogeny(object, attributeNames) {
+            if (object[PHYLOGENY_ROOTED_ATTR] === undefined ||
+                object[PHYLOGENY_ROOTED_ATTR] === null) {
+                object[PHYLOGENY_ROOTED_ATTR] = true;
+            }
+            if (object[PHYLOGENY_REROOTABLE_ATTR] === undefined ||
+                object[PHYLOGENY_REROOTABLE_ATTR] === null) {
+                object[PHYLOGENY_REROOTABLE_ATTR] = true;
+            }
+            if (object && attributeNames && attributeNames.length > 0) {
+                x += ' <phylogeny';
+                addAttributes(object, attributeNames);
+                x += '>\n';
+            }
+            else {
+                x += ' <phylogeny>\n';
+            }
+            ind = '  ';
+        }
+
+        function closePhylogeny() {
+            ind = ' ';
+            x += ' </phylogeny>\n';
+        }
+
+        function openPhyloXml() {
+            ind = '';
+            x += '<?xml version="1.0" encoding="UTF-8"?>\n';
+            x += '<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">\n';
+        }
+
+        function closePhyloXml() {
+            x += '</phyloxml>\n';
+        }
+
+        function addAttributes(object, attributeNames) {
+            var l = attributeNames.length;
+            for (var i = 0; i < l; ++i) {
+                var attributeName = attributeNames[i];
+                if (attributeName && ( object[attributeName] !== undefined && object[attributeName] !== null )) {
+                    x += (' ' + attributeName + '="' + object[attributeName] + '"' );
+                }
+            }
+        }
+
+        function roundNumber(num, dec) {
+            return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
+        }
+
+        function replaceUnsafeChars(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&apos;");
+        }
+
+        function reduceInd() {
+            var l = ind.length;
+            ind = '';
+            for (var i = 0; i <= l - 2; ++i) {
+                ind += ' ';
+            }
+        }
+
+    }; // toPhyloXML
+
+
+    // --------------------------------------------------------------
     // Main functions
     // --------------------------------------------------------------
     phyloXmlParser.parseAsync = function (stream, parse_options) {
@@ -1006,6 +1366,7 @@
             stream.resume();
         });
     };
+
 
     phyloXmlParser.parse = function (source, parse_options) {
         source && ( source = source.toString().trim());
