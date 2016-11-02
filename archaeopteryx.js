@@ -159,6 +159,8 @@ if (!phyloXml) {
     var VK_PAGE_UP = 33;
     var VK_PAGE_DOWN = 34;
 
+    var ALLOW_NAME_PATTERN_TEST = false;
+
 
     // "Instance variables"
     var _root = null;
@@ -295,6 +297,27 @@ if (!phyloXml) {
         xx['vipr:country'] = 'Country';
         xx['vipr:host'] = 'Host';
         xx['vipr:year'] = 'Year';
+        xx['vipr:region'] = 'Region';
+        xx['ird:fluSeason'] = 'Flu Season';
+        xx['ird:h5Clade'] = 'H5 Clade';
+        xx['vipr:virusType'] = "Virus Type";
+        xx['vipr:viprType'] = 'Subtype/Genotype';
+        xx['vipr:viprGenotype'] = 'Genotype';
+
+
+        var years = forester.setToArray(np['vipr:year']),
+            countries = forester.setToArray(np['vipr:country']),
+            hosts = forester.setToArray(np['vipr:host']),
+            regions = forester.setToArray(np['vipr:region']),
+            fluSeasons = forester.setToArray(np['ird:fluSeason']),
+            h5Clades = forester.setToArray(np['ird:h5Clade']),
+            virusTypes = forester.setToArray(np['vipr:virusType']),
+            viprTypes = forester.setToArray(np['vipr:viprType']),
+            viprGenotypes = forester.setToArray(np['vipr:viprGenotype']);
+
+        var yearCol = d3.scale.linear()
+            .range(["#FF0000", "#00FF00"])
+            .domain(d3.extent(years));
 
         var year = true;
         var host = true;
@@ -312,7 +335,6 @@ if (!phyloXml) {
             //label
             //(desc)
             //size range
-            var years = forester.setToArray(np['vipr:year']);
             var yearCol = d3.scale.linear()
                 .range(["#FF00FF", "#00FF00"])
                 .domain(d3.extent(years));
@@ -356,8 +378,6 @@ if (!phyloXml) {
         }
 
         if (host) {
-            var hosts = forester.setToArray(np['vipr:host']);
-
             var shapesHost = d3.scale.ordinal()
                 .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
                 .domain(hosts);
@@ -400,8 +420,6 @@ if (!phyloXml) {
         }
 
         if (country) {
-            var countries = forester.setToArray(np['vipr:country']);
-
             var shapesCountry = d3.scale.ordinal()
                 .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
                 .domain(countries);
@@ -443,6 +461,259 @@ if (!phyloXml) {
         }
 
 
+        if (regions.length > 0) {
+            var shapesRegions = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(regions);
+
+            color = d3.scale.category20()
+                .domain(regions);
+
+            addNodeShapeVisualization('Region',
+                'Region',
+                null,
+                'vipr:region',
+                false,
+                null,
+                shapesRegions);
+
+            addLabelColorVisualization('Region',
+                'Region',
+                null,
+                'vipr:region',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Region',
+                'Region',
+                null,
+                'vipr:region',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Region',
+                'Region',
+                null,
+                'vipr:region',
+                false,
+                null,
+                color);
+
+        }
+
+        if (fluSeasons.length > 0) {
+            var shapesFluSeasons = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(fluSeasons);
+
+            color = d3.scale.category20()
+                .domain(fluSeasons);
+
+            addNodeShapeVisualization('Flu Season',
+                'Flu Season',
+                null,
+                'ird:fluSeason',
+                false,
+                null,
+                shapesFluSeasons);
+
+            addLabelColorVisualization('Flu Season',
+                'Flu Season',
+                null,
+                'ird:fluSeason',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Flu Season',
+                'Flu Season',
+                null,
+                'ird:fluSeason',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Flu Season',
+                'Flu Season',
+                null,
+                'ird:fluSeason',
+                false,
+                null,
+                color);
+
+        }
+
+        if (h5Clades.length > 0) {
+            var shapesH5Clades = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(h5Clades);
+
+            color = d3.scale.category20()
+                .domain(h5Clades);
+
+            addNodeShapeVisualization('H5 Clade',
+                'H5 Clade',
+                null,
+                'ird:h5Clade',
+                false,
+                null,
+                shapesH5Clades);
+
+            addLabelColorVisualization('H5 Clade',
+                'H5 Clade',
+                null,
+                'ird:h5Clade',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('H5 Clade',
+                'H5 Clade',
+                null,
+                'ird:h5Clade',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('H5 Clade',
+                'H5 Clade',
+                null,
+                'ird:h5Clade',
+                false,
+                null,
+                color);
+
+        }
+
+        if (virusTypes.length > 0) {
+            var shapesVirusTypes = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(virusTypes);
+
+            color = d3.scale.category20()
+                .domain(virusTypes);
+
+            addNodeShapeVisualization('Virus Type',
+                'Virus Type',
+                null,
+                'vipr:virusType',
+                false,
+                null,
+                shapesVirusTypes);
+
+            addLabelColorVisualization('Virus Type',
+                'Virus Type',
+                null,
+                'vipr:virusType',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Virus Type',
+                'Virus Type',
+                null,
+                'vipr:virusType',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Virus Type',
+                'Virus Type',
+                null,
+                'vipr:virusType',
+                false,
+                null,
+                color);
+
+        }
+
+        if (viprTypes.length > 0) {
+            var shapesViprTypes = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(viprTypes);
+
+            color = d3.scale.category20()
+                .domain(viprTypes);
+
+            addNodeShapeVisualization('Subtype/Genotype',
+                'Subtype/Genotype',
+                null,
+                'vipr:viprType',
+                false,
+                null,
+                shapesViprTypes);
+
+            addLabelColorVisualization('Subtype/Genotype',
+                'Subtype/Genotype',
+                null,
+                'vipr:viprType',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Subtype/Genotype',
+                'Subtype/Genotype',
+                null,
+                'vipr:viprType',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Subtype/Genotype',
+                'Subtype/Genotype',
+                null,
+                'vipr:viprType',
+                false,
+                null,
+                color);
+
+        }
+
+        if (viprGenotypes.length > 0) {
+            var shapesViprGenotypes = d3.scale.ordinal()
+                .range(['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'])
+                .domain(viprGenotypes);
+
+            color = d3.scale.category20()
+                .domain(viprGenotypes);
+
+            addNodeShapeVisualization('Genotype',
+                'Genotype',
+                null,
+                'vipr:viprGenotype',
+                false,
+                null,
+                shapesViprGenotypes);
+
+            addLabelColorVisualization('Genotype',
+                'Genotype',
+                null,
+                'vipr:viprGenotype',
+                false,
+                null,
+                color);
+
+            addNodeFillColorVisualization('Genotype',
+                'Genotype',
+                null,
+                'vipr:viprGenotype',
+                false,
+                null,
+                color);
+
+            addNodeBorderColorVisualization('Genotype',
+                'Genotype',
+                null,
+                'vipr:viprGenotype',
+                false,
+                null,
+                color);
+
+        }
+
+
         /*var ds = np['vipr:country'];
          var colors = ["#000000", "#0000FF"];
          var heatmapColor = d3.scale.linear()
@@ -455,70 +726,72 @@ if (!phyloXml) {
          console.log(heatmapColor(0.1));
          console.log(heatmapColor(c('Algeria')));*/
 
+        if (ALLOW_NAME_PATTERN_TEST) {
+            var ncp = {};
+            ncp['UNKNOWN'] = 'red';
+            ncp['Hu'] = 'green';
+            ncp['ANG'] = 'blue';
+            ncp['ALG'] = 'yellow';
+            ncp['DZA'] = 'orange';
+            ncp['pat'] = 'pink';
 
-        var ncp = {};
-        ncp['UNKNOWN'] = 'red';
-        ncp['Hu'] = 'green';
-        ncp['ANG'] = 'blue';
-        ncp['ALG'] = 'yellow';
-        ncp['DZA'] = 'orange';
-        ncp['pat'] = 'pink';
 
-        addLabelColorVisualization('Name Pattern',
-            'Name Pattern',
-            'name',
-            null,
-            true,
-            ncp,
-            null);
+            addLabelColorVisualization('Name Pattern',
+                'Name Pattern',
+                'name',
+                null,
+                true,
+                ncp,
+                null);
 
-        addNodeBorderColorVisualization('Name Pattern',
-            'Name Pattern',
-            'name',
-            null,
-            true,
-            ncp,
-            null);
+            addNodeBorderColorVisualization('Name Pattern',
+                'Name Pattern',
+                'name',
+                null,
+                true,
+                ncp,
+                null);
 
-        addNodeFillColorVisualization('Name Pattern',
-            'Name Pattern',
-            'name',
-            null,
-            true,
-            ncp,
-            null);
+            addNodeFillColorVisualization('Name Pattern',
+                'Name Pattern',
+                'name',
+                null,
+                true,
+                ncp,
+                null);
 
-        var nsp = {};
-        nsp['UNKNOWN'] = 'cross';
-        nsp['Hu'] = 'triangle-up';
-        nsp['ANG'] = 'triangle-down';
-        nsp['ALG'] = 'diamond';
-        nsp['DZA'] = 'square';
-        nsp['pat'] = 'circle';
+            var nsp = {};
+            nsp['UNKNOWN'] = 'cross';
+            nsp['Hu'] = 'triangle-up';
+            nsp['ANG'] = 'triangle-down';
+            nsp['ALG'] = 'diamond';
+            nsp['DZA'] = 'square';
+            nsp['pat'] = 'circle';
 
-        addNodeShapeVisualization('Name Pattern',
-            'Name Pattern',
-            'name',
-            null,
-            true,
-            nsp,
-            null);
+            addNodeShapeVisualization('Name Pattern',
+                'Name Pattern',
+                'name',
+                null,
+                true,
+                nsp,
+                null);
 
-        var ns = {};
-        ns['UNKNOWN'] = 10;
-        ns['Hu'] = 20;
-        ns['ANG'] = 30;
-        ns['ALG'] = 40;
-        ns['DZA'] = 50;
-        ns['pat'] = 60;
+            var ns = {};
+            ns['UNKNOWN'] = 10;
+            ns['Hu'] = 20;
+            ns['ANG'] = 30;
+            ns['ALG'] = 40;
+            ns['DZA'] = 50;
+            ns['pat'] = 60;
 
-        addNodeSizeVisualization('Name Pattern',
-            'Name Pattern',
-            'name',
-            null,
-            true,
-            ns,
-            null);
+            addNodeSizeVisualization('Name Pattern',
+                'Name Pattern',
+                'name',
+                null,
+                true,
+                ns,
+                null);
+        }
     }
 
     function addNodeSizeVisualization(label,
@@ -1846,7 +2119,7 @@ if (!phyloXml) {
                                 text += "- Accession: " + s.accession.value + "<br>";
                             }
                             if (s.accession.comment) {
-                                text += "-- comment: " + s.accession.commen + "<br>";
+                                text += "-- comment: " + s.accession.comment + "<br>";
                             }
                         }
                         if (s.symbol) {
