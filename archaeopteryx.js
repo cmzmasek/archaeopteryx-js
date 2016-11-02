@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_65
+// v 0_66
 
 if (!d3) {
     throw "no d3.js";
@@ -29,8 +29,8 @@ if (!forester) {
     throw "no forester.js";
 }
 
-if (!phyloXmlParser) {
-    throw "no phyloxml_parser.js";
+if (!phyloXml) {
+    throw "no phyloxml.js";
 }
 (function archaeopteryx() {
 
@@ -136,6 +136,7 @@ if (!phyloXmlParser) {
     var DEFAULT = 'default';
     var SAME_AS_FILL = 'sameasfill';
 
+    var VK_ESC = 27;
     var VK_O = 79;
     var VK_R = 82;
     var VK_U = 85;
@@ -1747,7 +1748,7 @@ if (!phyloXmlParser) {
     };
 
     archaeopteryx.parsePhyloXML = function (data) {
-        return phyloXmlParser.parse(data, {trim: true, normalize: true})[0]
+        return phyloXml.parse(data, {trim: true, normalize: true})[0]
     };
 
     archaeopteryx.parseNewHampshire = function (data) {
@@ -2538,7 +2539,7 @@ if (!phyloXmlParser) {
 
         $("body").css({
             'font-size': _settings.menuFontSize,
-            'font-family': 'Arial, Verdana, "Sans-serif"'
+            'font-family': 'Times'
         });
 
         var c0 = $('#' + CONTROLS_0);
@@ -2925,6 +2926,25 @@ if (!phyloXmlParser) {
             else if (e.keyCode === VK_HOME) {
                 zoomFit();
             }
+            else if (e.keyCode === VK_ESC) {
+                zoomFit();
+                var c0 = $('#' + CONTROLS_0);
+                if (c0) {
+                    c0.css({
+                        'left': '20px',
+                        'top': '50px'
+                    });
+                }
+                var c1 = $('#' + CONTROLS_1);
+                if (c1) {
+                    c1.css({
+                        'left': '600px',
+                        'top': '50px'
+                    });
+                }
+
+
+            }
         });
 
         $(document).keydown(function (e) {
@@ -3070,7 +3090,7 @@ if (!phyloXmlParser) {
             h = h.concat('<input type="button" value="Y+" name="' + ZOOM_IN_Y + '" id="' + ZOOM_IN_Y + '" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
             h = h.concat('<br>');
             h = h.concat('<input type="button" value="X-" name="' + ZOOM_OUT_X + '" id="' + ZOOM_OUT_X + '" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
-            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center to display (Alt+C or Home)">');
+            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center tree display (Alt+C or Home)">');
             h = h.concat('<input type="button" value="X+" name="' + ZOOM_IN_X + '" id="' + ZOOM_IN_X + '" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
             h = h.concat('<br>');
             h = h.concat('<input type="button" value="Y-" name="' + ZOOM_OUT_Y + '" id="' + ZOOM_OUT_Y + '" title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
@@ -3609,7 +3629,7 @@ if (!phyloXmlParser) {
     }
 
     function downloadAsPhyloXml() {
-        var x = phyloXmlParser.toPhyloXML(_root, 9);
+        var x = phyloXml.toPhyloXML(_root, 9);
         saveAs(new Blob([x], {type: "application/xml"}), _options.nameForPhyloXmlDownload);
     }
 

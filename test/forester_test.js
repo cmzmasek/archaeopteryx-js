@@ -22,7 +22,7 @@
 "use strict";
 
 var fs = require('fs');
-var pp = require('./lib/phyloxml_parser').phyloXmlParser;
+var px = require('./lib/phyloxml').phyloXml;
 var forester = require('../forester').forester;
 
 if (!forester) {
@@ -42,7 +42,7 @@ console.log("reRoot 3                   : " + ( testReRoot3() === true ? "pass" 
 
 function readPhyloXmlFromFile(fileName) {
     var text = fs.readFileSync(fileName, 'utf8');
-    return pp.parse(text, {trim: true, normalize: true});
+    return px.parse(text, {trim: true, normalize: true});
 }
 
 

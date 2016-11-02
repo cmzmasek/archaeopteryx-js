@@ -22,32 +22,38 @@
 
 /**
  *
- * Version 0.902 20161031
+ * Version 0.910 20161102
  *
  * This requires sax-js from https://github.com/isaacs/sax-js
  *
- * Usage:
+ * Usage
+ * -----
  *
- * Synchronous parsing of phyloXML-formatted string:
+ * Synchronous parsing of phyloXML-formatted string
+ * ------------------------------------------------
  *
- * var phyloxml_parser = require('./phyloxml_parser');
- * var p = phyloxml_parser.phyloXmlParser;
+ * var px = require('./phyloxml').phyloXml;
  *
- * var phys = p.parse(phyloxml_text, {trim: true, normalize: true});
+ * var phys = px.parse(phyloxmlText, {trim: true, normalize: true});
+ *
+ * console.log(px.toPhyloXML(phys[0], 6));
  *
  *
- * Asynchronous parsing of phyloXML-formatted stream:
+ *
+ * Asynchronous parsing of phyloXML-formatted stream
+ * -------------------------------------------------
  *
  * var fs = require('fs');
- * var phyloxml_parser = require('./phyloxml_parser');
- * var p = phyloxml_parser.phyloXmlParser;
+ * var px = require('./phyloxml').phyloXml;
  *
- * var stream = fs.createReadStream(xmlfile, {encoding: 'utf8'});
+ * var stream = fs.createReadStream(xmlFile, {encoding: 'utf8'});
  *
- * p.parseAsync(stream, {trim: true, normalize: true});
+ * px.parseAsync(stream, {trim: true, normalize: true});
+ *
+ *
  *
  */
-(function phyloXmlParser() {
+(function phyloXml() {
 
     "use strict";
 
@@ -1063,7 +1069,7 @@
     // --------------------------------------------------------------
     // To phyloXML
     // --------------------------------------------------------------
-    phyloXmlParser.toPhyloXML = function (phy, dec) {
+    phyloXml.toPhyloXML_ = function (phy, dec) {
         var x = '';
         var ind = '';
         openPhyloXml();
@@ -1337,29 +1343,35 @@
             }
         }
 
-    }; // toPhyloXML
+    }; // toPhyloXML_
 
 
     // --------------------------------------------------------------
     // Main functions
     // --------------------------------------------------------------
-    phyloXmlParser.parseAsync = function (stream, parse_options) {
+
+    /**
+     * To parse phyloXML formatted trees from a stream asynchronously.
+     *
+     * @param stream - The stream to be parsed.
+     * @param parseOptions - Options dict for the SAX parser.
+     *                       (example: {trim: true, normalize: true}).
+     */
+    phyloXml.parseAsync = function (stream, parseOptions) {
         _phylogenies = [];
         startNewPhylogeny();
-        var sax_parser = sax.createStream(true, parse_options);
+        var sax_parser = sax.createStream(true, parseOptions);
         addPhyloxmlParserEvents(sax_parser);
         stream.pipe(sax_parser);
 
         sax_parser.on('end', function () {
             finalSanityCheck();
             var len = _phylogenies.length;
-            console.log("Parsed " + len + " trees:");
-            for (var i = 0; i < len; i++) {
-                console.log();
-                console.log("Tree (async) " + i + ":");
-                var str = JSON.stringify(_phylogenies[i], null, 2);
-                console.log(str);
-            }
+            console.log("parsed " + len + " trees");
+            // for (var i = 0; i < len; ++i) {
+            //    do something, for example:
+            //    var str = JSON.stringify(_phylogenies[i], null, 2);
+            //}
         });
 
         process.stdout.on('drain', function () {
@@ -1367,8 +1379,15 @@
         });
     };
 
-
-    phyloXmlParser.parse = function (source, parse_options) {
+    /**
+     * To parse a phyloXML formatted source.
+     *
+     * @param source - The source.
+     * @param parseOptions - Options dict for the SAX parser
+     *                       (example: {trim: true, normalize: true}).
+     * @returns {*} - Array of phylogentic tree objects.
+     */
+    phyloXml.parse = function (source, parseOptions) {
         source && ( source = source.toString().trim());
 
         if (!source) {
@@ -1377,7 +1396,7 @@
 
         _phylogenies = [];
         startNewPhylogeny();
-        var sax_parser = sax.parser(true, parse_options);
+        var sax_parser = sax.parser(true, parseOptions);
         addPhyloxmlParserEvents(sax_parser);
 
         sax_parser.onend = function () {
@@ -1388,13 +1407,25 @@
         return _phylogenies;
     };
 
+
+    /**
+     * To convert a phylogentic tree object to a phyloXML formatted string.
+     *
+     * @param phy - A phylogentic tree object.
+     * @param decPointsMax - Maximal number of decimal points for branch lengths (optional).
+     * @returns A phyloXML formatted string.
+     */
+    phyloXml.toPhyloXML = function (phy, decPointsMax) {
+        return phyloXml.toPhyloXML_(phy, decPointsMax);
+    };
+
     // --------------------------------------------------------------
     // For exporting
     // --------------------------------------------------------------
     if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser)
-        module.exports.phyloXmlParser = phyloXmlParser;
+        module.exports.phyloXml = phyloXml;
     else if (typeof window !== "undefined")
-        window.phyloXmlParser = phyloXmlParser;
+        window.phyloXml = phyloXml;
     else
-        this.phyloXmlParser = phyloXmlParser;
+        this.phyloXml = phyloXml;
 })();
