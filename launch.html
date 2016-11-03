@@ -79,6 +79,8 @@
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
             settings.displayHeight = 800;
+            settings.controls0Top = '60px';
+            settings.controls1Top = '60px';
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
@@ -105,11 +107,11 @@
             //test1
             //backwards
             //sample
-            //var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample.xml';
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample.xml';
             // var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             //var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
+            // var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
 
             jQuery.get(loc,
                     function (data) {
@@ -153,10 +155,10 @@
     <h2>Archaeopteryx-js Demo: v 0_66</h2>
     <div id='phylogram1'></div>
 
-    <div style="position:absolute; left: 20px; top: 60px;" id="controls0" class="ui-widget-content">
+    <div id="controls0" class="ui-widget-content">
     </div>
 
-    <div style="position:absolute; left: 600px; top: 60px;" id="controls1" class="ui-widget-content">
+    <div id="controls1" class="ui-widget-content">
     </div>
 
 </div>
