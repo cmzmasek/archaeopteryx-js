@@ -40,6 +40,10 @@ if (!phyloXml) {
     var ROOTOFFSET_DEFAULT = 30;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var VIEWERHEIGHT_DEFAULT = 600;
+    var CONTROLS_0_LEFT_DEFAULT = '20px';
+    var CONTROLS_0_TOP_DEFAULT = '60px';
+    var CONTROLS_1_WIDTH = 220;
+    var CONTROLS_1_TOP_DEFAULT = '60px';
     var MENU_FONT_SIZE_DEFAULT = '9px';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
@@ -1955,6 +1959,19 @@ if (!phyloXml) {
         if (!_settings.menuFontSize) {
             _settings.menuFontSize = MENU_FONT_SIZE_DEFAULT;
         }
+        if (!_settings.controls0Left) {
+            _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
+        }
+        if (!_settings.controls0Top) {
+            _settings.controls0Top = CONTROLS_0_TOP_DEFAULT;
+        }
+        if (!_settings.controls1Top) {
+            _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;
+        }
+        if (!_settings.controls1Left) {
+            _settings.controls1Left = (_settings.displayWidth - CONTROLS_1_WIDTH ) + 'px';
+        }
+
         if (_settings.showNodeVisualizations === undefined) {
             _settings.showNodeVisualizations = false;
         }
@@ -2532,6 +2549,24 @@ if (!phyloXml) {
         }
     }
 
+    function escPressed() {
+        zoomFit();
+        var c0 = $('#' + CONTROLS_0);
+        if (c0) {
+            c0.css({
+                'left': _settings.controls0Left,
+                'top': _settings.controls0Top
+            });
+        }
+        var c1 = $('#' + CONTROLS_1);
+        if (c1) {
+            c1.css({
+                'left': _settings.controls1Left,
+                'top': _settings.controls1Top
+            });
+        }
+    }
+
     function search0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
@@ -2821,6 +2856,9 @@ if (!phyloXml) {
             c0.css({
                 //  'width': '120px',
                 // 'height': '580px',
+                'position': 'absolute',
+                'left': _settings.controls0Left,
+                'top': _settings.controls0Top,
                 'padding': '0.25em',
                 'opacity': '0.85',
                 'background-color': '#e0e0e0'
@@ -2859,8 +2897,11 @@ if (!phyloXml) {
         if (c1) {
 
             c1.css({
+                'position': 'absolute',
                 'width': '200px',
                 'height': '270px',
+                'left': _settings.controls1Left,
+                'top': _settings.controls1Top,
                 'padding': '0.5em',
                 'opacity': '0.85',
                 'background-color': '#e0e0e0'
@@ -3200,23 +3241,7 @@ if (!phyloXml) {
                 zoomFit();
             }
             else if (e.keyCode === VK_ESC) {
-                zoomFit();
-                var c0 = $('#' + CONTROLS_0);
-                if (c0) {
-                    c0.css({
-                        'left': '20px',
-                        'top': '50px'
-                    });
-                }
-                var c1 = $('#' + CONTROLS_1);
-                if (c1) {
-                    c1.css({
-                        'left': '600px',
-                        'top': '50px'
-                    });
-                }
-
-
+                escPressed();
             }
         });
 
@@ -3363,7 +3388,7 @@ if (!phyloXml) {
             h = h.concat('<input type="button" value="Y+" name="' + ZOOM_IN_Y + '" id="' + ZOOM_IN_Y + '" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
             h = h.concat('<br>');
             h = h.concat('<input type="button" value="X-" name="' + ZOOM_OUT_X + '" id="' + ZOOM_OUT_X + '" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
-            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center tree display (Alt+C or Home)">');
+            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center tree display (Alt+C, Home, or Esc to re-position controls as well)">');
             h = h.concat('<input type="button" value="X+" name="' + ZOOM_IN_X + '" id="' + ZOOM_IN_X + '" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
             h = h.concat('<br>');
             h = h.concat('<input type="button" value="Y-" name="' + ZOOM_OUT_Y + '" id="' + ZOOM_OUT_Y + '" title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
