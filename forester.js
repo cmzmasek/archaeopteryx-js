@@ -19,11 +19,15 @@
  *
  */
 
-// v 0_67
+// v 0_68
 
 (function forester() {
 
     "use strict";
+
+    var BRANCH_EVENT_REF = 'aptx:branch_event';
+    var BRANCH_EVENT_DATATYPE = 'xsd:string';
+    var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
 
     /**
      * Sets links to parent nodes for all nodes in a
@@ -513,10 +517,17 @@
                     properties.internalNodeData = true;
                 }
             }
-            if (n.taxonomies && n.taxonomies.length > 0) {
-                properties.taxonomies = true;
-                if (n.children || n._children) {
-                    properties.internalNodeData = true;
+            if (n.confidences && n.confidences.length > 0) {
+                properties.confidences = true;
+            }
+            if (n.properties && n.properties.length > 0) {
+                var l = n.properties.length;
+                for (var p = 0; p < l; ++p) {
+                    if (n.properties[p].ref === BRANCH_EVENT_REF
+                        && n.properties[p].datatype === BRANCH_EVENT_DATATYPE
+                        && n.properties[p].applies_to === BRANCH_EVENT_APPLIES_TO) {
+                        properties.branchEvents = true;
+                    }
                 }
             }
         });

@@ -68,8 +68,9 @@
             options.searchIsPartial = true;
             options.searchUsesRegex = false;
             options.showNodeEvents = true;
+            options.showBranchEvents = true;
             options.showNodeVisualizations = true;
-            options.showBranchVisualizations = true;
+            options.showBranchVisualizations = false;
             options.nodeVisualizationsOpacity = 0.9;
             options.nameForNhDownload = 'archaeopteryx-js.nh';
             options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
@@ -86,7 +87,7 @@
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
-            settings.enableBranchVisualizations = true;
+            settings.enableBranchVisualizations = false;
             settings.readSimpleCharacteristics = true;
             settings.enableDownloads = true;
 
@@ -215,7 +216,8 @@
             //i
             //ii
             //phyloIRD.xml
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_with_events.xml';
+            //bcl_2_branch_events
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/bcl_2_branch_events.xml';
             // var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             //var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
@@ -260,7 +262,7 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_67</h2>
+    <h2>Archaeopteryx-js Demo: v 0_68</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>
