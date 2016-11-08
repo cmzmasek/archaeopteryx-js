@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_66
+// v 0_67
 
 (function forester() {
 
@@ -484,6 +484,7 @@
         properties.nodeNames = false;
         properties.branchLengths = false;
         properties.confidences = false;
+        properties.nodeEvents = false;
         properties.sequences = false;
         properties.taxonomies = false;
 
@@ -497,11 +498,17 @@
             if (n.branch_length && n.branch_length > 0) {
                 properties.branchLengths = true;
             }
-            if (n.confidences && n.confidences.length > 0) {
-                properties.confidences = true;
+            if (n.events) {
+                properties.nodeEvents = true;
             }
             if (n.sequences && n.sequences.length > 0) {
                 properties.sequences = true;
+                if (n.children || n._children) {
+                    properties.internalNodeData = true;
+                }
+            }
+            if (n.taxonomies && n.taxonomies.length > 0) {
+                properties.taxonomies = true;
                 if (n.children || n._children) {
                     properties.internalNodeData = true;
                 }
