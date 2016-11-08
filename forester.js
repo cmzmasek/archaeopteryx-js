@@ -1076,7 +1076,17 @@
                 if (!n.properties) {
                     n.properties = [];
                 }
-                n.properties.push(props);
+                var alreadyHave = false;
+                var l = n.properties.length;
+                for (var i = 0; i < l; ++i) {
+                    if (n.properties[i].ref === props.ref) {
+                        alreadyHave = true;
+                        break;
+                    }
+                }
+                if (!alreadyHave) {
+                    n.properties.push(props);
+                }
             }
         }
     };
