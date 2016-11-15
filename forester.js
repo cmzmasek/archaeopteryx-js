@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_68
+// v 0_69
 
 (function forester() {
 
@@ -444,6 +444,71 @@
                 array.push(e);
             });
         }
+        return array
+    };
+
+    forester.calcMinMaxInSet = function (set) {
+        var array = [];
+        var first = true;
+        var min = 0;
+        var max = 0;
+        if (set) {
+            set.forEach(function (e) {
+                e = parseFloat(e);
+                if (first) {
+                    first = false;
+                    min = e;
+                    max = e;
+                }
+                else {
+                    if (e < min) {
+                        min = e;
+                    }
+                    if (e > max) {
+                        max = e;
+                    }
+                }
+            });
+        }
+        array[0] = min;
+        array[1] = max;
+        return array
+    };
+
+    forester.calcMinMeanMaxInSet = function (set) {
+        var array = [];
+        var first = true;
+        var min = 0;
+        var max = 0;
+        var mean = 0;
+        var sum = 0;
+        var n = 0;
+        if (set) {
+            set.forEach(function (e) {
+                e = parseFloat(e);
+                ++n;
+                sum += e;
+                if (first) {
+                    first = false;
+                    min = e;
+                    max = e;
+                }
+                else {
+                    if (e < min) {
+                        min = e;
+                    }
+                    if (e > max) {
+                        max = e;
+                    }
+                }
+            });
+        }
+        if (n > 0) {
+            mean = sum / n;
+        }
+        array[0] = min;
+        array[1] = mean;
+        array[2] = max;
         return array
     };
 
@@ -1190,7 +1255,6 @@
     forester.isString = function (s) {
         return (typeof s === 'string' || s instanceof String);
     };
-
 
     // --------------------------------------------------------------
     // For exporting

@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_68
+// v 0_69
 
 if (!d3) {
     throw "no d3.js";
@@ -133,6 +133,7 @@ if (!phyloXml) {
     var SVG_EXPORT_FORMAT = 'SVG';
     var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     var NH_EXPORT_FORMAT = 'Newick';
+    var PDF_EXPORT_FORMAT = 'PDF';
     var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx-js.nh';
     var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx-js.xml';
     var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.png';
@@ -146,6 +147,10 @@ if (!phyloXml) {
     var NONE = 'none';
     var DEFAULT = 'default';
     var SAME_AS_FILL = 'sameasfill';
+
+    var LEGEND_LABEL_COLOR = 'legendLabelColor';
+    var LEGEND_NODE_FILL_COLOR = 'legendNodeFillColor';
+    var LEGEND_NODE_BORDER_COLOR = 'legendNodeBorderColor';
 
     var VK_ESC = 27;
     var VK_O = 79;
@@ -210,6 +215,7 @@ if (!phyloXml) {
     var _w = null;
     var _visualizations = null;
     var _id = null;
+    var _legendColorScales = {};
 
 
     function branchLengthScaling(nodes, width) {
@@ -296,10 +302,16 @@ if (!phyloXml) {
         }
         visualization.isRegex = isRegex;
         if (mapping) {
+            if (mappingFn) {
+                throw( "need to have either mapping or mappingFn");
+            }
             visualization.mapping = mapping;
         }
         else if (mappingFn) {
             visualization.mappingFn = mappingFn;
+        }
+        else {
+            throw( "need to have either mapping or mappingFn");
         }
         return visualization;
     }
@@ -344,27 +356,38 @@ if (!phyloXml) {
                         if (nodeVisualization.colors) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
                                 var color = null;
-                                if (Array.isArray(nodeVisualization.colors) && (nodeVisualization.colors.length > 0  )) {
-                                    var color = d3.scale.linear()
-                                        .range(nodeVisualization.colors)
-                                        .domain(d3.extent(forester.setToArray(np[nodeVisualization.cladeRef])));
+                                if (Array.isArray(nodeVisualization.colors)) {
+                                    if (nodeVisualization.colors.length === 3) {
+                                        color = d3.scale.linear()
+                                            .range(nodeVisualization.colors)
+                                            .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                    }
+                                    else if (nodeVisualization.colors.length === 2) {
+                                        color = d3.scale.linear()
+                                            .range(nodeVisualization.colors)
+                                            .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                    }
+                                    else {
+                                        throw 'Number of colors has to be either 2 or 3';
+                                    }
                                 }
+
 
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     if (nodeVisualization.colors === 'category20') {
-                                        var color = d3.scale.category20()
+                                        color = d3.scale.category20()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category20b') {
-                                        var color = d3.scale.category20b()
+                                        color = d3.scale.category20b()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category20c') {
-                                        var color = d3.scale.category20c()
+                                        color = d3.scale.category20c()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category10') {
-                                        var color = d3.scale.category10()
+                                        color = d3.scale.category10()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else {
@@ -402,10 +425,20 @@ if (!phyloXml) {
 
                         if (nodeVisualization.sizes && Array.isArray(nodeVisualization.sizes) && (nodeVisualization.sizes.length > 0  )) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
-                                var size = d3.scale.linear()
-                                    .range(nodeVisualization.sizes)
-                                    .domain(d3.extent(forester.setToArray(np[nodeVisualization.cladeRef])));
-
+                                var size = null;
+                                if (nodeVisualization.sizes.length === 3) {
+                                    size = d3.scale.linear()
+                                        .range(nodeVisualization.sizes)
+                                        .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                }
+                                else if (nodeVisualization.sizes.length === 2) {
+                                    size = d3.scale.linear()
+                                        .range(nodeVisualization.sizes)
+                                        .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                }
+                                else {
+                                    throw 'Number of sizes has to be either 2 or 3';
+                                }
                                 if (size) {
                                     addNodeSizeVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -604,6 +637,7 @@ if (!phyloXml) {
         }
     }
 
+
     function addLabelColorVisualization(label,
                                         description,
                                         field,
@@ -639,6 +673,58 @@ if (!phyloXml) {
     }
 
 
+    function removeColorLegend(id) {
+        _baseSvg.selectAll('g.' + id).remove();
+    }
+
+    function makeColorLegend(id, xPos, yPos, colorScale, label) {
+
+        var legendRectSize = 10;
+        var legendSpacing = 4;
+
+        var legend = _baseSvg.selectAll('g.' + id)
+            .data(colorScale.domain());
+
+        var legendEnter = legend.enter().append('g')
+            .attr('class', id);
+
+        legendEnter.append('rect')
+            .attr('width', null)
+            .attr('height', null)
+            .style('fill', null)
+            .style('stroke', null);
+
+        legendEnter.append('text')
+            .attr('x', null)
+            .attr('y', null)
+            .text(null);
+
+        var legendUpdate = legend.transition()
+            .duration(200)
+            .attr('transform', function (d, i) {
+                var height = legendRectSize;
+                var x = xPos;
+                var y = yPos + i * height;
+                return 'translate(' + x + ',' + y + ')';
+            });
+
+        legendUpdate.select('rect')
+            .attr('width', legendRectSize)
+            .attr('height', legendRectSize)
+            .style('fill', colorScale)
+            .style('stroke', colorScale);
+
+        legendUpdate.select('text')
+            .attr('x', legendRectSize + legendSpacing)
+            .attr('y', legendRectSize - legendSpacing)
+            .text(function (d) {
+                return d;
+            });
+
+        legend.exit().remove();
+
+    }
+
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
         if (!source) {
@@ -652,6 +738,37 @@ if (!phyloXml) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
             if (_w < 1) {
                 _w = 1;
+            }
+        }
+
+        if (_settings.enableNodeVisualizations) {
+            var xPos = 160;
+            var yPos = 20;
+            var xPosIncr = 100;
+            var yPosIncr = 0;
+            if (_legendColorScales[LEGEND_LABEL_COLOR]) {
+                makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], 'label');
+                xPos += xPosIncr;
+                yPos += yPosIncr;
+            }
+            else {
+                removeColorLegend(LEGEND_LABEL_COLOR);
+            }
+            if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
+                makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], 'label');
+                xPos += xPosIncr;
+                yPos += yPosIncr;
+            }
+            else {
+                removeColorLegend(LEGEND_NODE_FILL_COLOR);
+            }
+            if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+                makeColorLegend(LEGEND_NODE_BORDER_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], 'label');
+                xPos += xPosIncr;
+                yPos += yPosIncr;
+            }
+            else {
+                removeColorLegend(LEGEND_NODE_BORDER_COLOR);
             }
         }
 
@@ -751,7 +868,6 @@ if (!phyloXml) {
                 return 0.3 * _options.externalNodeFontSize + "px";
             });
 
-
         node.select("text.extlabel")
             .style("font-size", function (d) {
                 return d.children || d._children ? _options.internalNodeFontSize + "px" : _options.externalNodeFontSize + "px";
@@ -806,7 +922,6 @@ if (!phyloXml) {
                     return (0.5 * (d.parent.y - d.y) );
                 }
             });
-
 
         node.select("circle.nodeCircle")
             .attr("r", function (d) {
@@ -911,7 +1026,6 @@ if (!phyloXml) {
                 if (!_options.showNodeVisualizations && makeNodeVisShape(d) === null) {
                     d3.select(this).select("path").transition().duration(transitionDuration)
                         .attr("d", function () {
-                            // return "M0,0L0,0L0,0L0,0"; //TODO can shorten?
                             return "M0,0";
                         });
                 }
@@ -1159,8 +1273,6 @@ if (!phyloXml) {
         function produceVis(vis, key) {
             if (vis.mappingFn) {
                 if (vis.mappingFn(key)) {
-                    //("__" + vis.mappingFn(key));
-
                     return makeShape(node, vis.mappingFn(key));
                 }
             }
@@ -1223,6 +1335,16 @@ if (!phyloXml) {
             return vis.mappingFn ? vis.mappingFn(key) : vis.mapping[key];
         }
     };
+
+    function addLegend(type, vis) {
+        if (vis) {
+            _legendColorScales[type] = vis.mappingFn ? vis.mappingFn : null;
+        }
+    }
+
+    function removeLegend(type) {
+        _legendColorScales[type] = null;
+    }
 
     var makeVisNodeBorderColor = function (node) {
         if (!_currentNodeBorderColorVisualization) {
@@ -2667,8 +2789,16 @@ if (!phyloXml) {
 
         $("body").css({
             'font-size': _settings.menuFontSize,
-            'font-family': 'Times'
+            'font-family': 'Arial'
         });
+
+        /*$('.' + LEGEND_LABEL_COLOR).css({ //TODO
+         'font-size': 16,
+         'font-family': 'Arial'
+         });
+         $('#' + "rect").css({
+         'stroke-width': 6
+         });*/
 
         var c0 = $('#' + CONTROLS_0);
 
@@ -2750,8 +2880,8 @@ if (!phyloXml) {
                 collapsible: true
             });
 
-
         }
+
 
         $('input:button')
             .button()
@@ -2831,9 +2961,11 @@ if (!phyloXml) {
             var v = this.value;
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
+                addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
             }
             else {
                 _currentLabelColorVisualization = null;
+                removeLegend(LEGEND_LABEL_COLOR);
             }
             update(null, 0);
         });
@@ -2855,10 +2987,17 @@ if (!phyloXml) {
         $('#' + NODE_FILL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
             if (v && v != DEFAULT) {
+                if (!_options.showExternalNodes && !_options.showInternalNodes
+                    && ( _currentNodeShapeVisualization == null )) {
+                    _options.showExternalNodes = true;
+                    setCheckboxValue(EXTERNAL_NODES_CB, true);
+                }
                 _currentNodeFillColorVisualization = v;
+                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
             }
             else {
                 _currentNodeFillColorVisualization = null;
+                removeLegend(LEGEND_NODE_FILL_COLOR);
             }
             update(null, 0);
         });
@@ -2867,10 +3006,23 @@ if (!phyloXml) {
             var v = this.value;
             if (v && v != DEFAULT) {
                 _currentNodeBorderColorVisualization = v;
+                if ((v != SAME_AS_FILL ) && (v != NONE)) {
+                    addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
+                    if (!_options.showExternalNodes && !_options.showInternalNodes
+                        && ( _currentNodeShapeVisualization == null )) {
+                        _options.showExternalNodes = true;
+                        setCheckboxValue(EXTERNAL_NODES_CB, true);
+                    }
+                }
             }
             else {
                 _currentNodeBorderColorVisualization = null;
+
             }
+            if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
+                removeLegend(LEGEND_NODE_BORDER_COLOR);
+            }
+
             update(null, 0);
         });
 
@@ -2879,6 +3031,11 @@ if (!phyloXml) {
             var v = this.value;
             if (v && v != DEFAULT) {
                 _currentNodeSizeVisualization = v;
+                if (!_options.showExternalNodes && !_options.showInternalNodes
+                    && ( _currentNodeShapeVisualization == null )) {
+                    _options.showExternalNodes = true;
+                    setCheckboxValue(EXTERNAL_NODES_CB, true);
+                }
             }
             else {
                 _currentNodeSizeVisualization = null;
@@ -3257,6 +3414,7 @@ if (!phyloXml) {
             h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
+            // h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
@@ -3738,11 +3896,12 @@ if (!phyloXml) {
         var container = _id.replace('#', '');
         var wrapper = document.getElementById(container);
         var svg = wrapper.querySelector('svg');
+        var svgTree = null;
         if (typeof window.XMLSerializer !== 'undefined') {
-            var svgTree = (new XMLSerializer()).serializeToString(svg);
+            svgTree = (new XMLSerializer()).serializeToString(svg);
         }
         else if (typeof svg.xml !== 'undefined') {
-            var svgTree = svg.xml;
+            svgTree = svg.xml;
         }
         return svgTree;
     }
@@ -3760,6 +3919,9 @@ if (!phyloXml) {
         else if (format === PHYLOXML_EXPORT_FORMAT) {
             downloadAsPhyloXml();
         }
+        else if (format === PDF_EXPORT_FORMAT) {
+            downloadAsPdf();
+        }
     }
 
     function downloadAsPhyloXml() {
@@ -3775,6 +3937,66 @@ if (!phyloXml) {
     function downloadAsSVG() {
         var svg = getTreeAsSvg();
         saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
+    }
+
+    function downloadAsPdf() {
+// Default export is a4 paper, portrait, using milimeters for units
+        var svg = getTreeAsSvg();
+        svg = svg.replace(/\r?\n|\r/g, '').trim();
+        var doc = new jsPDF('p', 'pt', 'a4');
+        doc.addSVG(svg, 10, 10);
+        //doc.text('Hello world!', 10, 10)
+        doc.save('a4.pdf');
+
+
+        /*var container = _id.replace('#', '');
+         var wrapper = document.getElementById(container);
+         var svg = wrapper.querySelector('svg');
+         if (svg) {
+         svg = svg.replace(/\r?\n|\r/g, '').trim();
+         }*/
+
+        // var svg = getTreeAsSvg();
+
+
+        //var svg = $('#container > svg').get(0);
+// you should set the format dynamically, write [width, height] instead of 'a4'
+        //  var pdf = new jsPDF('p', 'pt', 'a4');
+        // svgElementToPdf(svg, pdf, {
+        //     scale: 72 / 96, // this is the ratio of px to pt units
+        //    removeInvalid: true // this removes elements that could not be translated to pdf from the source svg
+        // });
+        //pdf.output('datauri'); // use output() to get the jsPDF buffer
+
+        //var doc = new jsPDF();
+        //var test = $.get('013_sillysvgrenderer.svg', function(svgText){
+        //   var svgAsText = new XMLSerializer().serializeToString(svgText.documentElement);
+        //  doc.addSVG(svg, 20, 20, 400);
+
+        // Save the PDF
+        //doc.save('TestSVG.pdf');
+
+        /*
+         var pdf = new jsPDF('p', 'pt', 'c1');
+         var c = pdf.canvas;
+         c.width = 1000;
+         c.height = 500;
+         var ctx = c.getContext('2d');
+         ctx.ignoreClearRect = true;
+         ctx.fillStyle = '#ffffff';
+         ctx.fillRect(0, 0, 1000, 700);
+         //load a svg snippet in the canvas with id = 'drawingArea'
+         canvg(c, document.getElementById('svg').outerHTML, {
+         ignoreMouse: true,
+         ignoreAnimation: true,
+         ignoreDimensions: true
+         });*/
+
+
+        //saveAs(new Blob([decodeURIComponent(encodeURIComponent(pdf.output('datauri')))], {type: "application/svg+xml"}), "x.pdf");
+
+
+        // saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
     }
 
     function downloadAsPng() {
