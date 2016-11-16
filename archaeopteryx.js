@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_69
+// v 0_70
 
 if (!d3) {
     throw "no d3.js";
@@ -2882,7 +2882,6 @@ if (!phyloXml) {
 
         }
 
-
         $('input:button')
             .button()
             .css({
@@ -3025,7 +3024,6 @@ if (!phyloXml) {
 
             update(null, 0);
         });
-
 
         $('#' + NODE_SIZE_SELECT_MENU).on("change", function () {
             var v = this.value;
@@ -3275,7 +3273,6 @@ if (!phyloXml) {
             }
         });
 
-
         $(document).on('mousewheel DOMMouseScroll', function (e) {
             if (e.shiftKey) {
                 if (e.originalEvent) {
@@ -3308,96 +3305,87 @@ if (!phyloXml) {
             }
         });
 
-
         function makePhylogramControl() {
+            var radioGroup = 'radio-1';
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + '">');
-            h = h.concat('<label for="' + PHYLOGRAM_BUTTON + '">P</label>');
-            h = h.concat('<input title ="could be anything" type="radio" name="radio-1" id="' + PHYLOGRAM_ALIGNED_BUTTON + '">');
-            h = h.concat('<label for="' + PHYLOGRAM_ALIGNED_BUTTON + '">A</label>');
-            h = h.concat('<input type="radio" name="radio-1" id="' + PHYLOGRAM_BUTTON + '">');
-            h = h.concat('<label for="' + CLADOGRAM_BUTTON + '">C</label>');
-            h = h.concat('<input title="radio" type="radio" name="radio-1" id="' + CLADOGRAM_BUTTON + '">');
+            h = h.concat(makeRadioButton('P', PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeRadioButton('A', PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeRadioButton('C', CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
 
-
+        // --------------------------------------------------------------
+        // Functions to make GUI elements
+        // --------------------------------------------------------------
         function makeDisplayControl() {
             var h = "";
             h = h.concat('<fieldset><legend>Display Data:</legend>');
             h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
-
             if (_basicTreeProperties.nodeNames) {
-                h = h.concat(cb('Node Name', NODE_NAME_CB));
+                h = h.concat(makeCheckboxButton('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
             }
             if (_basicTreeProperties.taxonomies) {
-                h = h.concat(cb('Taxonomy', TAXONOMY_CB));
+                h = h.concat(makeCheckboxButton('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
             }
             if (_basicTreeProperties.sequences) {
-                h = h.concat(cb('Sequence', SEQUENCE_CB));
+                h = h.concat(makeCheckboxButton('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
             }
             if (_basicTreeProperties.confidences) {
-                h = h.concat(cb('Confidence', CONFIDENCE_VALUES_CB));
+                h = h.concat(makeCheckboxButton('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
             }
             if (_basicTreeProperties.branchLengths) {
-                h = h.concat(cb('Branch Length', BRANCH_LENGTH_VALUES_CB));
+                h = h.concat(makeCheckboxButton('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
             if (_basicTreeProperties.nodeEvents) {
-                h = h.concat(cb('Node Events', NODE_EVENTS_CB));
+                h = h.concat(makeCheckboxButton('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
             }
             if (_basicTreeProperties.branchEvents) {
-                h = h.concat(cb('Branch Events', BRANCH_EVENTS_CB));
+                h = h.concat(makeCheckboxButton('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-            h = h.concat(cb('External Labels', EXTERNAL_LABEL_CB));
+            h = h.concat(makeCheckboxButton('External Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
             if (_basicTreeProperties.internalNodeData) {
-                h = h.concat(cb('Internal Labels', INTERNAL_LABEL_CB));
+                h = h.concat(makeCheckboxButton('Internal Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
             }
-            h = h.concat(cb('External Nodes', EXTERNAL_NODES_CB));
-            h = h.concat(cb('Internal Nodes', INTERNAL_NODES_CB));
+            h = h.concat(makeCheckboxButton('External Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
+            h = h.concat(makeCheckboxButton('Internal Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
 
             if (_settings.enableNodeVisualizations) {
-                h = h.concat(cb('Node Vis', NODE_VIS_CB));
+                h = h.concat(makeCheckboxButton('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
             }
             if (_settings.enableBranchVisualizations) {
-                h = h.concat(cb('Branch Vis', BRANCH_VIS_CB));
+                h = h.concat(makeCheckboxButton('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
             }
-
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
-
-            function cb(label, id) {
-                return '<label for="' + id + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
-            }
         }
-
 
         function makeZoomControl() {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom:</legend>');
-            h = h.concat('<input type="button" value="Y+" name="' + ZOOM_IN_Y + '" id="' + ZOOM_IN_Y + '" title="zoom in vertically (Alt+Up or Shift+mousewheel)">');
+            h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="X-" name="' + ZOOM_OUT_X + '" id="' + ZOOM_OUT_X + '" title="zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)">');
-            h = h.concat('<input type="button" value="F" name="' + ZOOM_TO_FIT + '" id="' + ZOOM_TO_FIT + '" title="fit and center tree display (Alt+C, Home, or Esc to re-position controls as well)">');
-            h = h.concat('<input type="button" value="X+" name="' + ZOOM_IN_X + '" id="' + ZOOM_IN_X + '" title="zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)">');
+            h = h.concat(makeButton('X-', ZOOM_OUT_X, 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)'));
+            h = h.concat(makeButton('F', ZOOM_TO_FIT, 'fit and center tree display (Alt+C, Home, or Esc to re-position controls as well)'));
+            h = h.concat(makeButton('X+', ZOOM_IN_X, 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)'));
             h = h.concat('<br>');
-            h = h.concat('<input type="button" value="Y-" name="' + ZOOM_OUT_Y + '" id="' + ZOOM_OUT_Y + '" title="zoom out vertically (Alt+Down or Shift+mousewheel)">');
+            h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
             h = h.concat('</fieldset>');
             return h;
         }
-
 
         function makeControlButtons() {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div>');
-            h = h.concat('<input type="button" value="O" name="' + ORDER_BUTTON + '" title="order all (Alt+O)" id="' + ORDER_BUTTON + '">');
-            h = h.concat('<input type="button" value="R" name="' + RETURN_TO_SUPERTREE_BUTTON + '" title="return to the super-tree (if in sub-tree) (Alt+R)" id="' + RETURN_TO_SUPERTREE_BUTTON + '">');
-            h = h.concat('<input type="button" value="U" name="' + UNCOLLAPSE_ALL_BUTTON + '" title="uncollapse all (Alt+U)" id="' + UNCOLLAPSE_ALL_BUTTON + '">');
+            h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
+            h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the super-tree (if in sub-tree) (Alt+R)'));
+            h = h.concat(makeButton('U', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all (Alt+U)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -3423,33 +3411,29 @@ if (!phyloXml) {
 
         function makeSliders() {
             var h = "";
-            h = h.concat('External label size:');
-            h = h.concat('<div id="' + EXTERNAL_FONT_SIZE_SLIDER + '"></div>');
-            h = h.concat('');
+            h = h.concat(makeSlider('External label size:', EXTERNAL_FONT_SIZE_SLIDER));
             if (_basicTreeProperties.internalNodeData) {
-                h = h.concat('Internal label size:');
-                h = h.concat('<div id="' + INTERNAL_FONT_SIZE_SLIDER + '"></div>');
-                h = h.concat('');
+                h = h.concat(makeSlider('Internal label size:', INTERNAL_FONT_SIZE_SLIDER));
             }
             if (_basicTreeProperties.branchLengths || _basicTreeProperties.confidences
                 || _basicTreeProperties.branchEvents) {
-                h = h.concat('Branch label size:');
-                h = h.concat('<div id="' + BRANCH_DATA_FONT_SIZE_SLIDER + '"></div>');
-                h = h.concat('');
+                h = h.concat(makeSlider('Branch label size:', BRANCH_DATA_FONT_SIZE_SLIDER));
             }
-            h = h.concat('Node size:');
-            h = h.concat('<div id="' + NODE_SIZE_SLIDER + '"></div>');
-            h = h.concat('');
-            h = h.concat('Branch width:');
-            h = h.concat('<div id="' + BRANCH_WIDTH_SLIDER + '"></div>');
+            h = h.concat(makeSlider('Node size:', NODE_SIZE_SLIDER));
+            h = h.concat(makeSlider('Branch width:', BRANCH_WIDTH_SLIDER));
             h = h.concat('<br>');
             return h;
         }
 
         function makeSearchBoxes() {
             var h = "";
-            h = h.concat('Search (A)<br> <input type="text" name="' + SEARCH_FIELD_0 + '" id="' + SEARCH_FIELD_0 + '"><br>');
-            h = h.concat('Search (B)<br> <input type="text" name="' + SEARCH_FIELD_1 + '" id="' + SEARCH_FIELD_1 + '"><br>');
+            var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND, use Search Options sub-menu " +
+                "to adjust search parameters, use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
+                " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
+            h = h.concat(makeTextInputWithLabel('Search (A)', '<br>', SEARCH_FIELD_0, tooltip));
+            h = h.concat('<br>');
+            h = h.concat(makeTextInputWithLabel('Search (B)', '<br>', SEARCH_FIELD_1, tooltip));
+            h = h.concat('<br>');
             return h;
         }
 
@@ -3457,16 +3441,16 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Collapse Node Depth</legend>');
-            h = h.concat('<input type="button" value="-" name="' + DECR_DEPTH_COLLAPSE_LEVEL + '" id="' + DECR_DEPTH_COLLAPSE_LEVEL + '">');
-            h = h.concat('<input type="text"  name="' + DEPTH_COLLAPSE_LABEL + '" id="' + DEPTH_COLLAPSE_LABEL + '">');
-            h = h.concat('<input type="button" value="+" name="' + INCR_DEPTH_COLLAPSE_LEVEL + '" id="' + INCR_DEPTH_COLLAPSE_LEVEL + '">');
+            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around)'));
+            h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
+            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around)'));
             h = h.concat('</fieldset>');
             if (_basicTreeProperties.branchLengths) {
                 h = h.concat('<fieldset>');
                 h = h.concat('<legend>Collapse  Length</legend>');
-                h = h.concat('<input type="button" value="-" name="' + DECR_BL_COLLAPSE_LEVEL + '" id="' + DECR_BL_COLLAPSE_LEVEL + '">');
-                h = h.concat('<input type="text"  name="' + BL_COLLAPSE_LABEL + '" id="' + BL_COLLAPSE_LABEL + '">');
-                h = h.concat('<input type="button" value="+" name="' + INCR_BL_COLLAPSE_LEVEL + '" id="' + INCR_BL_COLLAPSE_LEVEL + '">');
+                h = h.concat(makeButton('-', DECR_BL_COLLAPSE_LEVEL, 'to decrease the maximal subtree branch length threshold (wraps around)'));
+                h = h.concat(makeTextInput(BL_COLLAPSE_LABEL, 'the current maximal subtree branch length threshold'));
+                h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
                 h = h.concat('</fieldset>');
             }
             return h;
@@ -3477,42 +3461,21 @@ if (!phyloXml) {
             h = h.concat('<div id="' + VISUAL_CONTROLS + '">');
             h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
-            h = h.concat('<label for="' + LABEL_COLOR_SELECT_MENU + '">Label Color</label>');
-            h = h.concat('<br>');
-            h = h.concat('<select name="' + LABEL_COLOR_SELECT_MENU + '" id="' + LABEL_COLOR_SELECT_MENU + '">');
-            h = h.concat('</select>');
-
+            h = h.concat(makeSelectMenu('Label Color', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat('<label for="' + NODE_SHAPE_SELECT_MENU + '">Node Shape</label>');
-            h = h.concat('<br>');
-            h = h.concat('<select name="' + NODE_SHAPE_SELECT_MENU + '" id="' + NODE_SHAPE_SELECT_MENU + '">');
-            h = h.concat('</select>');
-
+            h = h.concat(makeSelectMenu('Node Shape', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat('<label for="' + NODE_FILL_COLOR_SELECT_MENU + '">Node Fill Color</label>');
-            h = h.concat('<br>');
-            h = h.concat('<select name="' + NODE_FILL_COLOR_SELECT_MENU + '" id="' + NODE_FILL_COLOR_SELECT_MENU + '">');
-            h = h.concat('</select>');
-
+            h = h.concat(makeSelectMenu('Node Fill Color', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat('<label for="' + NODE_BORDER_COLOR_SELECT_MENU + '">Node Border Color</label>');
-            h = h.concat('<br>');
-            h = h.concat('<select name="' + NODE_BORDER_COLOR_SELECT_MENU + '" id="' + NODE_BORDER_COLOR_SELECT_MENU + '">');
-            h = h.concat('</select>');
-
+            h = h.concat(makeSelectMenu('Node Border Color', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat('<label for="' + NODE_SIZE_SELECT_MENU + '">Node Size</label>');
-            h = h.concat('<br>');
-            h = h.concat('<select name="' + NODE_SIZE_SELECT_MENU + '" id="' + NODE_SIZE_SELECT_MENU + '">');
-            h = h.concat('</select>');
-
+            h = h.concat(makeSelectMenu('Node Size', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
             h = h.concat('</form>');
             h = h.concat('</div>');
-
             return h;
         }
 
@@ -3520,23 +3483,48 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<div id="' + SEARCH_OPTIONS + '">');
             h = h.concat('<h3>Search Options</h3>');
-
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-
-            h = h.concat(cb('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB));
-            h = h.concat(cb('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB));
-            h = h.concat(cb('Regex', SEARCH_OPTIONS_REGEX_CB));
-            h = h.concat(cb('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB));
-
+            h = h.concat(makeCheckboxButton('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxButton('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
+            h = h.concat(makeCheckboxButton('Regex', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat(makeCheckboxButton('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             h = h.concat('</div>');
             return h;
+        }
 
-            function cb(label, id) {
-                return '<label for="' + id + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
-            }
+
+        // --------------------------------------------------------------
+        // Functions to make individual GUI components
+        // --------------------------------------------------------------
+        function makeButton(label, id, tooltip) {
+            return '<input type="button" value="' + label + '" name="' + id + '" id="' + id + '" title="' + tooltip + '">';
+        }
+
+        function makeCheckboxButton(label, id, tooltip) {
+            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
+        }
+
+        function makeRadioButton(label, id, radioGroup, tooltip) {
+            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input type="radio" name="' + radioGroup + '" id="' + id + '">';
+        }
+
+        function makeSelectMenu(label, sep, id, tooltip) {
+            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label>' + sep + '<select name="' + id + '" id="' + id + '"></select>';
+        }
+
+        function makeSlider(label, id) {
+            return label + '<div id="' + id + '"></div>';
+        }
+
+        function makeTextInput(id, tooltip) {
+            return '<input title="' + tooltip + '" type="text" name="' + id + '" id="' + id + '">';
+        }
+
+        function makeTextInputWithLabel(label, sep, id, tooltip) {
+            return label + sep + '<input title="' + tooltip + '" type="text" name="' + id + '" id="' + id + '">';
         }
 
     } // function createGui()
@@ -3960,7 +3948,7 @@ if (!phyloXml) {
 
 
         //var svg = $('#container > svg').get(0);
-// you should set the format dynamically, write [width, height] instead of 'a4'
+        // you should set the format dynamically, write [width, height] instead of 'a4'
         //  var pdf = new jsPDF('p', 'pt', 'a4');
         // svgElementToPdf(svg, pdf, {
         //     scale: 72 / 96, // this is the ratio of px to pt units
