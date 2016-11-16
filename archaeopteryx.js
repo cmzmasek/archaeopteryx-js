@@ -152,6 +152,9 @@ if (!phyloXml) {
     var LEGEND_NODE_FILL_COLOR = 'legendNodeFillColor';
     var LEGEND_NODE_BORDER_COLOR = 'legendNodeBorderColor';
 
+    var ORDINAL_SCALE = 'ordinal';
+    var LINEAR_SCALE = 'linear';
+
     var VK_ESC = 27;
     var VK_O = 79;
     var VK_R = 82;
@@ -269,18 +272,20 @@ if (!phyloXml) {
         return _settings.rootOffset + _options.nodeLabelGap + ( _maxLabelLength * _options.externalNodeFontSize * 0.8 );
     }
 
+    // mappingFn is a scale
     function createVisualization(label,
                                  description,
                                  field,
                                  cladePropertyRef,
                                  isRegex,
                                  mapping,
-                                 mappingFn) {
-        if (arguments.length != 7) {
-            throw( "expected 7 arguments, got " + arguments.length);
+                                 mappingFn,
+                                 scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
         }
 
-        if (!label) {
+        if (!label || label.length < 1) {
             throw( "need to have label");
         }
         var visualization = {};
@@ -313,6 +318,7 @@ if (!phyloXml) {
         else {
             throw( "need to have either mapping or mappingFn");
         }
+        visualization.scaleType = scaleType;
         return visualization;
     }
 
@@ -356,7 +362,9 @@ if (!phyloXml) {
                         if (nodeVisualization.colors) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
                                 var colorScale = null;
+                                var scaleType = '';
                                 if (Array.isArray(nodeVisualization.colors)) {
+                                    scaleType = LINEAR_SCALE;
                                     if (nodeVisualization.colors.length === 3) {
                                         colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
@@ -374,6 +382,7 @@ if (!phyloXml) {
 
 
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
+                                    scaleType = ORDINAL_SCALE;
                                     if (nodeVisualization.colors === 'category20') {
                                         colorScale = d3.scale.category20()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
@@ -402,7 +411,8 @@ if (!phyloXml) {
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        colorScale);
+                                        colorScale,
+                                        scaleType);
 
                                     addNodeFillColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -410,7 +420,8 @@ if (!phyloXml) {
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        colorScale);
+                                        colorScale,
+                                        scaleType);
 
                                     addNodeBorderColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -418,7 +429,8 @@ if (!phyloXml) {
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        colorScale);
+                                        colorScale,
+                                        scaleType);
                                 }
                             }
                         }
@@ -472,7 +484,8 @@ if (!phyloXml) {
                 null,
                 true,
                 ncp,
-                null);
+                null,
+                '');
 
             addNodeBorderColorVisualization('Name Pattern',
                 'Name Pattern',
@@ -480,7 +493,8 @@ if (!phyloXml) {
                 null,
                 true,
                 ncp,
-                null);
+                null,
+                '');
 
             addNodeFillColorVisualization('Name Pattern',
                 'Name Pattern',
@@ -488,7 +502,8 @@ if (!phyloXml) {
                 null,
                 true,
                 ncp,
-                null);
+                null,
+                '');
 
             var nsp = {};
             nsp['UNKNOWN'] = 'cross';
@@ -504,7 +519,8 @@ if (!phyloXml) {
                 null,
                 true,
                 nsp,
-                null);
+                null,
+                '');
 
             var ns = {};
             ns['UNKNOWN'] = 10;
@@ -520,7 +536,8 @@ if (!phyloXml) {
                 null,
                 true,
                 ns,
-                null);
+                null,
+                '');
         }
     }
 
@@ -530,7 +547,8 @@ if (!phyloXml) {
                                       cladePropertyRef,
                                       isRegex,
                                       mapping,
-                                      mappingFn) {
+                                      mappingFn,
+                                      scaleType) {
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -546,7 +564,8 @@ if (!phyloXml) {
             cladePropertyRef,
             isRegex,
             mapping,
-            mappingFn);
+            mappingFn,
+            scaleType);
         if (vis) {
             _visualizations.nodeSize[vis.label] = vis;
         }
@@ -558,7 +577,8 @@ if (!phyloXml) {
                                            cladePropertyRef,
                                            isRegex,
                                            mapping,
-                                           mappingFn) {
+                                           mappingFn,
+                                           scaleType) {
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -574,7 +594,8 @@ if (!phyloXml) {
             cladePropertyRef,
             isRegex,
             mapping,
-            mappingFn);
+            mappingFn,
+            scaleType);
         if (vis) {
             _visualizations.nodeFillColor[vis.label] = vis;
         }
@@ -586,7 +607,8 @@ if (!phyloXml) {
                                              cladePropertyRef,
                                              isRegex,
                                              mapping,
-                                             mappingFn) {
+                                             mappingFn,
+                                             scaleType) {
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -602,7 +624,8 @@ if (!phyloXml) {
             cladePropertyRef,
             isRegex,
             mapping,
-            mappingFn);
+            mappingFn,
+            scaleType);
         if (vis) {
             _visualizations.nodeBorderColor[vis.label] = vis;
         }
@@ -615,7 +638,8 @@ if (!phyloXml) {
                                        cladePropertyRef,
                                        isRegex,
                                        mapping,
-                                       mappingFn) {
+                                       mappingFn,
+                                       scaleType) {
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -631,7 +655,8 @@ if (!phyloXml) {
             cladePropertyRef,
             isRegex,
             mapping,
-            mappingFn);
+            mappingFn,
+            scaleType);
         if (vis) {
             _visualizations.nodeShape[vis.label] = vis;
         }
@@ -644,7 +669,8 @@ if (!phyloXml) {
                                         cladePropertyRef,
                                         isRegex,
                                         mapping,
-                                        mappingFn) {
+                                        mappingFn,
+                                        scaleType) {
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -660,7 +686,8 @@ if (!phyloXml) {
             cladePropertyRef,
             isRegex,
             mapping,
-            mappingFn);
+            mappingFn,
+            scaleType);
         if (vis) {
             _visualizations.labelColor[vis.label] = vis;
         }
@@ -777,15 +804,16 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations) {
             var xPos = 160;
             var yPos = 30;
-            var xPosIncr = 100;
+            var xPosIncr = 120;
             var yPosIncr = 0;
             var label = '';
             var desc = '';
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
                 label = 'Label Color';
                 desc = _currentLabelColorVisualization;
-                var crappp = _legendColorScales[LEGEND_LABEL_COLOR];
-                console.log(crappp);
+                if (_visualizations.labelColor[_currentLabelColorVisualization].scaleType === LINEAR_SCALE) {
+                    label += ' (linear range)'
+                }
                 makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], label, desc);
                 xPos += xPosIncr;
                 yPos += yPosIncr;
@@ -796,6 +824,9 @@ if (!phyloXml) {
             if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
                 label = 'Node Fill';
                 desc = _currentNodeFillColorVisualization;
+                if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType === LINEAR_SCALE) {
+                    label += ' (linear range)'
+                }
                 makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], label, desc);
                 xPos += xPosIncr;
                 yPos += yPosIncr;
@@ -806,6 +837,9 @@ if (!phyloXml) {
             if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
                 label = 'Node Border';
                 desc = _currentNodeBorderColorVisualization;
+                if (_visualizations.nodeBorderColor[_currentNodeBorderColorVisualization].scaleType === LINEAR_SCALE) {
+                    label += ' (linear range)'
+                }
                 makeColorLegend(LEGEND_NODE_BORDER_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], label, desc);
 
             }
