@@ -355,15 +355,15 @@ if (!phyloXml) {
 
                         if (nodeVisualization.colors) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
-                                var color = null;
+                                var colorScale = null;
                                 if (Array.isArray(nodeVisualization.colors)) {
                                     if (nodeVisualization.colors.length === 3) {
-                                        color = d3.scale.linear()
+                                        colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
                                             .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors.length === 2) {
-                                        color = d3.scale.linear()
+                                        colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
                                             .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
                                     }
@@ -375,19 +375,19 @@ if (!phyloXml) {
 
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     if (nodeVisualization.colors === 'category20') {
-                                        color = d3.scale.category20()
+                                        colorScale = d3.scale.category20()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category20b') {
-                                        color = d3.scale.category20b()
+                                        colorScale = d3.scale.category20b()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category20c') {
-                                        color = d3.scale.category20c()
+                                        colorScale = d3.scale.category20c()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors === 'category10') {
-                                        color = d3.scale.category10()
+                                        colorScale = d3.scale.category10()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
                                     }
                                     else {
@@ -395,14 +395,14 @@ if (!phyloXml) {
                                     }
                                 }
 
-                                if (color) {
+                                if (colorScale) {
                                     addLabelColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
                                         null,
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        color);
+                                        colorScale);
 
                                     addNodeFillColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -410,7 +410,7 @@ if (!phyloXml) {
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        color);
+                                        colorScale);
 
                                     addNodeBorderColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -418,7 +418,7 @@ if (!phyloXml) {
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        color);
+                                        colorScale);
                                 }
                             }
                         }
@@ -677,10 +677,18 @@ if (!phyloXml) {
         _baseSvg.selectAll('g.' + id).remove();
     }
 
-    function makeColorLegend(id, xPos, yPos, colorScale, label) {
+    function makeColorLegend(id, xPos, yPos, colorScale, label, description) {
+
+        if (!label) {
+            throw 'legend label is missing'
+        }
 
         var legendRectSize = 10;
         var legendSpacing = 4;
+
+        var xCorrectionForLabel = -1;
+        var yFactorForLabel = -1.5;
+        var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
             .data(colorScale.domain());
@@ -695,9 +703,14 @@ if (!phyloXml) {
             .style('stroke', null);
 
         legendEnter.append('text')
-            .attr('x', null)
-            .attr('y', null)
-            .text(null);
+            .attr("class", "legend");
+
+        legendEnter.append('text')
+            .attr("class", "legendLabel");
+
+        legendEnter.append('text')
+            .attr("class", "legendDescription");
+
 
         var legendUpdate = legend.transition()
             .duration(200)
@@ -714,12 +727,32 @@ if (!phyloXml) {
             .style('fill', colorScale)
             .style('stroke', colorScale);
 
-        legendUpdate.select('text')
+        legendUpdate.select('text.legend')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d) {
                 return d;
             });
+
+        legendUpdate.select('text.legendLabel')
+            .style('font-weight', 'bold')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForLabel * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0) {
+                    return label;
+                }
+            });
+
+        legendUpdate.select('text.legendDescription')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForDesc * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0 && description) {
+                    return description;
+                }
+            });
+
 
         legend.exit().remove();
 
@@ -743,11 +776,17 @@ if (!phyloXml) {
 
         if (_settings.enableNodeVisualizations) {
             var xPos = 160;
-            var yPos = 20;
+            var yPos = 30;
             var xPosIncr = 100;
             var yPosIncr = 0;
+            var label = '';
+            var desc = '';
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
-                makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], 'label');
+                label = 'Label Color';
+                desc = _currentLabelColorVisualization;
+                var crappp = _legendColorScales[LEGEND_LABEL_COLOR];
+                console.log(crappp);
+                makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], label, desc);
                 xPos += xPosIncr;
                 yPos += yPosIncr;
             }
@@ -755,7 +794,9 @@ if (!phyloXml) {
                 removeColorLegend(LEGEND_LABEL_COLOR);
             }
             if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
-                makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], 'label');
+                label = 'Node Fill';
+                desc = _currentNodeFillColorVisualization;
+                makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], label, desc);
                 xPos += xPosIncr;
                 yPos += yPosIncr;
             }
@@ -763,9 +804,10 @@ if (!phyloXml) {
                 removeColorLegend(LEGEND_NODE_FILL_COLOR);
             }
             if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
-                makeColorLegend(LEGEND_NODE_BORDER_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], 'label');
-                xPos += xPosIncr;
-                yPos += yPosIncr;
+                label = 'Node Border';
+                desc = _currentNodeBorderColorVisualization;
+                makeColorLegend(LEGEND_NODE_BORDER_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], label, desc);
+
             }
             else {
                 removeColorLegend(LEGEND_NODE_BORDER_COLOR);
@@ -3441,9 +3483,9 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Collapse Node Depth</legend>');
-            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around)'));
+            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around) (Alt+A)'));
             h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
-            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around)'));
+            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around) (Alt+S)'));
             h = h.concat('</fieldset>');
             if (_basicTreeProperties.branchLengths) {
                 h = h.concat('<fieldset>');
@@ -3928,63 +3970,6 @@ if (!phyloXml) {
     }
 
     function downloadAsPdf() {
-// Default export is a4 paper, portrait, using milimeters for units
-        var svg = getTreeAsSvg();
-        svg = svg.replace(/\r?\n|\r/g, '').trim();
-        var doc = new jsPDF('p', 'pt', 'a4');
-        doc.addSVG(svg, 10, 10);
-        //doc.text('Hello world!', 10, 10)
-        doc.save('a4.pdf');
-
-
-        /*var container = _id.replace('#', '');
-         var wrapper = document.getElementById(container);
-         var svg = wrapper.querySelector('svg');
-         if (svg) {
-         svg = svg.replace(/\r?\n|\r/g, '').trim();
-         }*/
-
-        // var svg = getTreeAsSvg();
-
-
-        //var svg = $('#container > svg').get(0);
-        // you should set the format dynamically, write [width, height] instead of 'a4'
-        //  var pdf = new jsPDF('p', 'pt', 'a4');
-        // svgElementToPdf(svg, pdf, {
-        //     scale: 72 / 96, // this is the ratio of px to pt units
-        //    removeInvalid: true // this removes elements that could not be translated to pdf from the source svg
-        // });
-        //pdf.output('datauri'); // use output() to get the jsPDF buffer
-
-        //var doc = new jsPDF();
-        //var test = $.get('013_sillysvgrenderer.svg', function(svgText){
-        //   var svgAsText = new XMLSerializer().serializeToString(svgText.documentElement);
-        //  doc.addSVG(svg, 20, 20, 400);
-
-        // Save the PDF
-        //doc.save('TestSVG.pdf');
-
-        /*
-         var pdf = new jsPDF('p', 'pt', 'c1');
-         var c = pdf.canvas;
-         c.width = 1000;
-         c.height = 500;
-         var ctx = c.getContext('2d');
-         ctx.ignoreClearRect = true;
-         ctx.fillStyle = '#ffffff';
-         ctx.fillRect(0, 0, 1000, 700);
-         //load a svg snippet in the canvas with id = 'drawingArea'
-         canvg(c, document.getElementById('svg').outerHTML, {
-         ignoreMouse: true,
-         ignoreAnimation: true,
-         ignoreDimensions: true
-         });*/
-
-
-        //saveAs(new Blob([decodeURIComponent(encodeURIComponent(pdf.output('datauri')))], {type: "application/svg+xml"}), "x.pdf");
-
-
-        // saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
     }
 
     function downloadAsPng() {
