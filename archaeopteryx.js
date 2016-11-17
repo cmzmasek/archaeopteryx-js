@@ -155,6 +155,14 @@ if (!phyloXml) {
     var ORDINAL_SCALE = 'ordinal';
     var LINEAR_SCALE = 'linear';
 
+    var HORIZONTAL = 'horizontal';
+    var VERTICAL = 'vertical';
+
+    var VISUALIZATIONS_LEGEND_XPOS_DEFAULT = 160;
+    var VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
+    var VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
+
+
     var VK_ESC = 27;
     var VK_O = 79;
     var VK_R = 82;
@@ -704,11 +712,21 @@ if (!phyloXml) {
         _baseSvg.selectAll('g.' + id).remove();
     }
 
-    function makeColorLegend(id, xPos, yPos, colorScale, label, description) {
+    function makeColorLegend(id, xPos, yPos, colorScale, scaleType, label, description) {
 
         if (!label) {
             throw 'legend label is missing'
         }
+
+        var linearRangeLabel = ' (linear range)';
+        var isLinearRange = scaleType === LINEAR_SCALE;
+        var linearRangeLength = 0;
+        if (isLinearRange) {
+            label += linearRangeLabel;
+            linearRangeLength = colorScale.domain().length;
+        }
+
+        var counter = 0;
 
         var legendRectSize = 10;
         var legendSpacing = 4;
@@ -725,9 +743,7 @@ if (!phyloXml) {
 
         legendEnter.append('rect')
             .attr('width', null)
-            .attr('height', null)
-            .style('fill', null)
-            .style('stroke', null);
+            .attr('height', null);
 
         legendEnter.append('text')
             .attr("class", "legend");
@@ -742,6 +758,7 @@ if (!phyloXml) {
         var legendUpdate = legend.transition()
             .duration(200)
             .attr('transform', function (d, i) {
+                ++counter;
                 var height = legendRectSize;
                 var x = xPos;
                 var y = yPos + i * height;
@@ -757,8 +774,22 @@ if (!phyloXml) {
         legendUpdate.select('text.legend')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
-            .text(function (d) {
-                return d;
+            .text(function (d, i) {
+                if (isLinearRange) {
+                    if (i === 0) {
+                        return d + ' (min)';
+                    }
+                    else if (((linearRangeLength === 2 && i === 1)
+                        || (linearRangeLength === 3 && i === 2)  )) {
+                        return d + ' (max)';
+                    }
+                    else if (linearRangeLength === 3 && i === 1) {
+                        return d + ' (mean)';
+                    }
+                }
+                else {
+                    return d;
+                }
             });
 
         legendUpdate.select('text.legendLabel')
@@ -783,6 +814,188 @@ if (!phyloXml) {
 
         legend.exit().remove();
 
+        return counter;
+    }
+
+    function makeShapeLegend(id, xPos, yPos, colorScale, label, description) {
+
+        if (!label) {
+            throw 'legend label is missing'
+        }
+
+        var counter = 0;
+
+        var legendRectSize = 10;
+        var legendSpacing = 4;
+
+        var xCorrectionForLabel = -1;
+        var yFactorForLabel = -1.5;
+        var yFactorForDesc = -0.5;
+
+        var legend = _baseSvg.selectAll('g.' + id)
+            .data(colorScale.domain());
+
+        var legendEnter = legend.enter().append('g')
+            .attr('class', id)
+            .append('path');
+
+
+        legendEnter.append('text')
+            .attr("class", "legend2");
+
+        legendEnter.append('text')
+            .attr("class", "legendLabel2");
+
+        legendEnter.append('text')
+            .attr("class", "legendDescription2");
+
+        // var legendUpdate = legend.transition()
+        //     .duration(200);
+
+
+        var legendUpdate = legend.transition()
+            .duration(200)
+            .select('path')
+            .attr('d', d3.svg.symbol()
+                .size(function (d) {
+                    return 15
+                })
+                .type(function (d) {
+                    return 'diamond'
+                }))
+            .style('fill', 'black')
+            .attr('transform', function (d, i) {
+                ++counter;
+                var height = legendRectSize;
+                var x = xPos;
+                var y = yPos + i * height;
+                return 'translate(' + x + ',' + y + ')';
+            });
+
+        /*legendEnter.append("path")
+         .attr('d', d3.svg.symbol()
+         .size( function(d) { return 15 })
+         .type( function(d) { return 'diamond' }))
+         .style('fill', 'black')
+         .attr('transform', function (d, i) {
+         ++counter;
+         var height = legendRectSize;
+         var x = xPos;
+         var y = yPos + i * height;
+         return 'translate(' + x + ',' + y + ')';
+         });
+         */
+
+
+        legendUpdate.select('text.legend2')
+            .attr('x', legendRectSize + legendSpacing)
+            .attr('y', legendRectSize - legendSpacing)
+            .text(function (d, i) {
+                console.log(i + "=" + d);
+                return d;
+            });
+
+
+        legendUpdate.select('text.legendLabel2')
+            .style('font-weight', 'bold')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForLabel * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0) {
+                    return label;
+                }
+            });
+
+        legendUpdate.select('text.legendDescription2')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForDesc * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0 && description) {
+                    return description;
+                }
+            });
+
+        legend.exit().remove();
+
+        return counter;
+    }
+
+    function addLegends() {
+        var xPos = _settings.visualizationsLegendXpos;
+        var yPos = _settings.visualizationsLegendYpos;
+        var xPosIncr = 0;
+        var yPosIncr = 0;
+        var yPosIncrConst = 0;
+        if (_settings.visualizationsLegendOrientation === HORIZONTAL) {
+            xPosIncr = 130; //TODO should by dynamic
+        }
+        else if (_settings.visualizationsLegendOrientation === VERTICAL) {
+            yPosIncr = 10; // is dependent on font size!
+            yPosIncrConst = 40;
+        }
+        else {
+            throw ('unknown direction for legends ' + _settings.visualizationsLegendOrientation);
+        }
+        var label = '';
+        var desc = '';
+        var counter = 0;
+        var scaleType = '';
+        if (_legendColorScales[LEGEND_LABEL_COLOR]) {
+            label = 'Label Color';
+            desc = _currentLabelColorVisualization;
+            scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
+            counter = makeColorLegend(LEGEND_LABEL_COLOR,
+                xPos, yPos,
+                _legendColorScales[LEGEND_LABEL_COLOR],
+                scaleType,
+                label, desc);
+            xPos += xPosIncr;
+            yPos += ((counter * yPosIncr ) + yPosIncrConst);
+        }
+        else {
+            removeColorLegend(LEGEND_LABEL_COLOR);
+        }
+        if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
+            label = 'Node Fill';
+            desc = _currentNodeFillColorVisualization;
+            scaleType = _visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType;
+
+            counter = makeColorLegend(LEGEND_NODE_FILL_COLOR,
+                xPos, yPos,
+                _legendColorScales[LEGEND_NODE_FILL_COLOR],
+                scaleType,
+                label, desc);
+            xPos += xPosIncr;
+            yPos += ((counter * yPosIncr ) + yPosIncrConst);
+        }
+        else {
+            removeColorLegend(LEGEND_NODE_FILL_COLOR);
+        }
+        if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+            label = 'Node Border';
+            desc = _currentNodeBorderColorVisualization;
+            scaleType = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization].scaleType;
+
+            counter = makeColorLegend(LEGEND_NODE_BORDER_COLOR,
+                xPos, yPos,
+                _legendColorScales[LEGEND_NODE_BORDER_COLOR],
+                scaleType,
+                label, desc);
+            xPos += xPosIncr;
+            yPos += ((counter * yPosIncr ) + yPosIncrConst);
+        }
+        else {
+            removeColorLegend(LEGEND_NODE_BORDER_COLOR);
+        }
+        if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+            label = 'Node Shape';
+            desc = _currentNodeBorderColorVisualization;
+            makeShapeLegend(LEGEND_NODE_BORDER_COLOR + "2", xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], label, desc);
+        }
+        else {
+            removeColorLegend(LEGEND_NODE_BORDER_COLOR + "2");
+        }
+
     }
 
     function update(source, transitionDuration, doNotRecalculateWidth) {
@@ -802,50 +1015,7 @@ if (!phyloXml) {
         }
 
         if (_settings.enableNodeVisualizations) {
-            var xPos = 160;
-            var yPos = 30;
-            var xPosIncr = 120;
-            var yPosIncr = 0;
-            var label = '';
-            var desc = '';
-            if (_legendColorScales[LEGEND_LABEL_COLOR]) {
-                label = 'Label Color';
-                desc = _currentLabelColorVisualization;
-                if (_visualizations.labelColor[_currentLabelColorVisualization].scaleType === LINEAR_SCALE) {
-                    label += ' (linear range)'
-                }
-                makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], label, desc);
-                xPos += xPosIncr;
-                yPos += yPosIncr;
-            }
-            else {
-                removeColorLegend(LEGEND_LABEL_COLOR);
-            }
-            if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
-                label = 'Node Fill';
-                desc = _currentNodeFillColorVisualization;
-                if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType === LINEAR_SCALE) {
-                    label += ' (linear range)'
-                }
-                makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], label, desc);
-                xPos += xPosIncr;
-                yPos += yPosIncr;
-            }
-            else {
-                removeColorLegend(LEGEND_NODE_FILL_COLOR);
-            }
-            if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
-                label = 'Node Border';
-                desc = _currentNodeBorderColorVisualization;
-                if (_visualizations.nodeBorderColor[_currentNodeBorderColorVisualization].scaleType === LINEAR_SCALE) {
-                    label += ' (linear range)'
-                }
-                makeColorLegend(LEGEND_NODE_BORDER_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_BORDER_COLOR], label, desc);
-
-            }
-            else {
-                removeColorLegend(LEGEND_NODE_BORDER_COLOR);
-            }
+            addLegends();
         }
 
         _treeFn = _treeFn.size([_displayHeight, _w]);
@@ -1964,6 +2134,18 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations === undefined) {
             _settings.enableNodeVisualizations = false;
         }
+
+        if (!_settings.visualizationsLegendXpos) {
+            _settings.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
+        }
+        if (!_settings.visualizationsLegendYpos) {
+            _settings.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
+        }
+        if (!_settings.visualizationsLegendOrientation) {
+            _settings.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
+        }
+
+
         intitializeDisplaySize();
     }
 
@@ -2933,11 +3115,9 @@ if (!phyloXml) {
                 'background-color': '#e0e0e0'
             });
 
-
             $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
                 "direction": "vertical"
             });
-
 
             c1.draggable({containment: "parent"});
 
@@ -3381,6 +3561,9 @@ if (!phyloXml) {
             }
         });
 
+        // --------------------------------------------------------------
+        // Functions to make GUI elements
+        // --------------------------------------------------------------
         function makePhylogramControl() {
             var radioGroup = 'radio-1';
             var h = "";
@@ -3394,9 +3577,6 @@ if (!phyloXml) {
             return h;
         }
 
-        // --------------------------------------------------------------
-        // Functions to make GUI elements
-        // --------------------------------------------------------------
         function makeDisplayControl() {
             var h = "";
             h = h.concat('<fieldset><legend>Display Data:</legend>');
@@ -3540,9 +3720,6 @@ if (!phyloXml) {
             h = h.concat(makeSelectMenu('Label Color', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Shape', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
-            h = h.concat('<br>');
-            h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Fill Color', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
@@ -3550,6 +3727,9 @@ if (!phyloXml) {
             h = h.concat('<br>');
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Size', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
+            h = h.concat('<br>');
+            h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Shape', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('</form>');
             h = h.concat('</div>');
             return h;
