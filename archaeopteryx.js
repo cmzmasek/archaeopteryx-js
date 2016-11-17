@@ -825,7 +825,7 @@ if (!phyloXml) {
     }
 
     function makeShapeLegend(id, xPos, yPos, shapeScale, label, description) {
-        console.log('in makeShapeLegend');
+
         if (!label) {
             throw 'legend label is missing';
         }
@@ -842,22 +842,19 @@ if (!phyloXml) {
         var legend = _baseSvg.selectAll('g.' + id)
             .data(shapeScale.domain());
 
-        console.log(shapeScale.domain());
-        console.log(shapeScale.range());
-
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
         legendEnter.append("path");
 
         legendEnter.append('text')
-            .attr("class", "legend2");
+            .attr("class", "legendShape");
 
         legendEnter.append('text')
-            .attr("class", "legendLabel2");
+            .attr("class", "legendLabelShape");
 
         legendEnter.append('text')
-            .attr("class", "legendDescription2");
+            .attr("class", "legendDescriptionShape");
 
         var legendUpdate = legend.transition()
             .duration(200)
@@ -869,14 +866,17 @@ if (!phyloXml) {
                 return 'translate(' + x + ',' + y + ')';
             });
 
-        legendUpdate.select('text.legend2')
+        var text = [];
+
+        legendUpdate.select('text.legendShape')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
-            .text(function (d, i) {
+            .text(function (d) {
+                text.push(d);
                 return d;
             });
 
-        legendUpdate.select('text.legendLabel2')
+        legendUpdate.select('text.legendLabelShape')
             .style('font-weight', 'bold')
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
@@ -886,7 +886,7 @@ if (!phyloXml) {
                 }
             });
 
-        legendUpdate.select('text.legendDescription2')
+        legendUpdate.select('text.legendDescriptionShape')
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -895,19 +895,19 @@ if (!phyloXml) {
                 }
             });
 
-        legendUpdate
-            .select('path')
-            .attr('transform', function (d, i) {
+        legendUpdate.select('path')
+            .attr('transform', function () {
                 return 'translate(' + 1 + ',' + 3 + ')'
             })
             .attr('d', d3.svg.symbol()
-                .size(function (d, i) {
+                .size(function () {
                     return 20;
                 })
                 .type(function (d, i) {
-                    return shapeScale.range()[i];
+                    return shapeScale(text[i]);
                 }))
-            .style('fill', _options.branchColorDefault);
+            .style('fill', 'none')
+            .style('stroke', _options.branchColorDefault);
 
 
         legend.exit().remove();
@@ -985,7 +985,9 @@ if (!phyloXml) {
         if (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Node Shape';
             desc = _currentNodeShapeVisualization;
-            makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
+            counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
+            xPos += xPosIncr;
+            yPos += ((counter * yPosIncr ) + yPosIncrConst);
         }
         else {
             removeShapeLegend(LEGEND_NODE_SHAPE);
@@ -1584,6 +1586,7 @@ if (!phyloXml) {
     }
 
     function addLegendForShapes(type, vis) {
+        console.log('add');
         if (vis) {
             _legendShapeScales[type] = vis.mappingFn ? vis.mappingFn : null;
         }
@@ -1597,6 +1600,10 @@ if (!phyloXml) {
 
     function removeLegend(type) {
         _legendColorScales[type] = null;
+    }
+
+    function removeLegendForShapes(type) {
+        _legendShapeScales[type] = null;
     }
 
     var makeVisNodeBorderColor = function (node) {
@@ -3236,21 +3243,6 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_SHAPE_SELECT_MENU).on("change", function () {
-            var v = this.value;
-            if (v && v != DEFAULT) {
-                _currentNodeShapeVisualization = v;
-                addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-            }
-            else {
-                _currentNodeShapeVisualization = null;
-
-            }
-            resetVis();
-            update(null, 0);
-            update(null, 0);
-        });
-
         $('#' + NODE_FILL_COLOR_SELECT_MENU).on("change", function () {
             var v = this.value;
             if (v && v != DEFAULT) {
@@ -3289,6 +3281,21 @@ if (!phyloXml) {
             if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
                 removeLegend(LEGEND_NODE_BORDER_COLOR);
             }
+            update(null, 0);
+        });
+
+        $('#' + NODE_SHAPE_SELECT_MENU).on("change", function () {
+            var v = this.value;
+            if (v && v != DEFAULT) {
+                _currentNodeShapeVisualization = v;
+                addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
+            }
+            else {
+                _currentNodeShapeVisualization = null;
+                removeLegendForShapes(LEGEND_NODE_SHAPE);
+            }
+            resetVis();
+            update(null, 0);
             update(null, 0);
         });
 
@@ -3739,10 +3746,10 @@ if (!phyloXml) {
             h = h.concat(makeSelectMenu('Node Border Color', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Size', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
-            h = h.concat('<br>');
-            h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Shape', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
+            h = h.concat('<br>');
+            h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Size', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
             h = h.concat('</form>');
             h = h.concat('</div>');
             return h;
