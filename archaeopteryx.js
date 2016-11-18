@@ -450,28 +450,30 @@ if (!phyloXml) {
 
                         if (nodeVisualization.sizes && Array.isArray(nodeVisualization.sizes) && (nodeVisualization.sizes.length > 0  )) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
-                                var size = null;
+                                var sizeScale = null;
+                                var scaleType = LINEAR_SCALE;
                                 if (nodeVisualization.sizes.length === 3) {
-                                    size = d3.scale.linear()
+                                    sizeScale = d3.scale.linear()
                                         .range(nodeVisualization.sizes)
                                         .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
                                 }
                                 else if (nodeVisualization.sizes.length === 2) {
-                                    size = d3.scale.linear()
+                                    sizeScale = d3.scale.linear()
                                         .range(nodeVisualization.sizes)
                                         .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
                                 }
                                 else {
                                     throw 'Number of sizes has to be either 2 or 3';
                                 }
-                                if (size) {
+                                if (sizeScale) {
                                     addNodeSizeVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
                                         null,
                                         nodeVisualization.cladeRef,
                                         nodeVisualization.regex,
                                         null,
-                                        size);
+                                        sizeScale,
+                                        scaleType);
                                 }
                             }
                         }
@@ -721,6 +723,10 @@ if (!phyloXml) {
         _baseSvg.selectAll('g.' + id).remove();
     }
 
+    function removeSizeLegend(id) {
+        _baseSvg.selectAll('g.' + id).remove();
+    }
+
     function makeColorLegend(id, xPos, yPos, colorScale, scaleType, label, description) {
 
         if (!label) {
@@ -915,6 +921,118 @@ if (!phyloXml) {
         return counter;
     }
 
+
+    function makeSizeLegend(id, xPos, yPos, sizeScale, scaleType, label, description) {
+
+        if (!label) {
+            throw 'legend label is missing';
+        }
+
+        var linearRangeLabel = ' (linear range)';
+        var isLinearRange = scaleType === LINEAR_SCALE;
+        var linearRangeLength = 0;
+        if (isLinearRange) {
+            label += linearRangeLabel;
+            linearRangeLength = sizeScale.domain().length;
+        }
+
+        var counter = 0;
+
+        var legendRectSize = 10;
+        var legendSpacing = 4;
+
+        var xCorrectionForLabel = -1;
+        var yFactorForLabel = -1.5;
+        var yFactorForDesc = -0.5;
+
+        var legend = _baseSvg.selectAll('g.' + id)
+            .data(sizeScale.domain());
+
+        var legendEnter = legend.enter().append('g')
+            .attr('class', id);
+
+        legendEnter.append("path");
+
+        legendEnter.append('text')
+            .attr("class", "legendSize");
+
+        legendEnter.append('text')
+            .attr("class", "legendLabelSize");
+
+        legendEnter.append('text')
+            .attr("class", "legendDescriptionSize");
+
+        var legendUpdate = legend.transition()
+            .duration(200)
+            .attr('transform', function (d, i) {
+                ++counter;
+                var height = legendRectSize;
+                var x = xPos;
+                var y = yPos + i * height;
+                return 'translate(' + x + ',' + y + ')';
+            });
+
+        var text = [];
+
+        legendUpdate.select('text.legendSize')
+            .attr('x', legendRectSize + legendSpacing)
+            .attr('y', legendRectSize - legendSpacing)
+            .text(function (d, i) {
+                text.push(d);
+                if (isLinearRange) {
+                    if (i === 0) {
+                        return d + ' (min)';
+                    }
+                    else if (((linearRangeLength === 2 && i === 1) ||
+                        (linearRangeLength === 3 && i === 2)  )) {
+                        return d + ' (max)'; //TODO round?
+                    }
+                    else if (linearRangeLength === 3 && i === 1) {
+                        return d + ' (mean)';
+                    }
+                }
+                return d;
+            });
+
+        legendUpdate.select('text.legendLabelSize')
+            .style('font-weight', 'bold')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForLabel * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0) {
+                    return label;
+                }
+            });
+
+        legendUpdate.select('text.legendDescriptionSize')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForDesc * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0 && description) {
+                    return description;
+                }
+            });
+
+        legendUpdate.select('path')
+            .attr('transform', function () {
+                return 'translate(' + 1 + ',' + 3 + ')'
+            })
+            .attr('d', d3.svg.symbol()
+                .size(function () {
+                    return 20;
+                })
+                .type(function (d, i) {
+                    return 'circle';
+                }))
+            .style('fill', 'none')
+            .style('stroke', _options.branchColorDefault);
+
+
+        legend.exit().remove();
+
+        return counter;
+    }
+
     function addLegends() {
         var xPos = _settings.visualizationsLegendXpos;
         var yPos = _settings.visualizationsLegendYpos;
@@ -935,6 +1053,7 @@ if (!phyloXml) {
         var desc = '';
         var counter = 0;
         var scaleType = '';
+
         if (_legendColorScales[LEGEND_LABEL_COLOR]) {
             label = 'Label Color';
             desc = _currentLabelColorVisualization;
@@ -950,6 +1069,7 @@ if (!phyloXml) {
         else {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
+
         if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
             label = 'Node Fill';
             desc = _currentNodeFillColorVisualization;
@@ -966,6 +1086,7 @@ if (!phyloXml) {
         else {
             removeColorLegend(LEGEND_NODE_FILL_COLOR);
         }
+
         if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
             label = 'Node Border';
             desc = _currentNodeBorderColorVisualization;
@@ -982,6 +1103,7 @@ if (!phyloXml) {
         else {
             removeColorLegend(LEGEND_NODE_BORDER_COLOR);
         }
+
         if (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Node Shape';
             desc = _currentNodeShapeVisualization;
@@ -991,6 +1113,16 @@ if (!phyloXml) {
         }
         else {
             removeShapeLegend(LEGEND_NODE_SHAPE);
+        }
+
+        if (_options.showNodeVisualizations && _legendSizeScales[LEGEND_NODE_SIZE]) {
+            label = 'Node Size';
+            desc = _currentNodeSizeVisualization;
+            scaleType = _visualizations.nodeSize[_currentNodeSizeVisualization].scaleType;
+            makeSizeLegend(LEGEND_NODE_SIZE, xPos, yPos, _legendSizeScales[LEGEND_NODE_SIZE], scaleType, label, desc);
+        }
+        else {
+            removeSizeLegend(LEGEND_NODE_SIZE);
         }
 
     }
@@ -1586,7 +1718,6 @@ if (!phyloXml) {
     }
 
     function addLegendForShapes(type, vis) {
-        console.log('add');
         if (vis) {
             _legendShapeScales[type] = vis.mappingFn ? vis.mappingFn : null;
         }
@@ -1604,6 +1735,10 @@ if (!phyloXml) {
 
     function removeLegendForShapes(type) {
         _legendShapeScales[type] = null;
+    }
+
+    function removeLegendForSizes(type) {
+        _legendSizeScales[type] = null;
     }
 
     var makeVisNodeBorderColor = function (node) {
@@ -3303,6 +3438,7 @@ if (!phyloXml) {
             var v = this.value;
             if (v && v != DEFAULT) {
                 _currentNodeSizeVisualization = v;
+                addLegendForSizes(LEGEND_NODE_SIZE, _visualizations.nodeSize[_currentNodeSizeVisualization]);
                 if (!_options.showExternalNodes && !_options.showInternalNodes
                     && ( _currentNodeShapeVisualization == null )) {
                     _options.showExternalNodes = true;
@@ -3311,6 +3447,7 @@ if (!phyloXml) {
             }
             else {
                 _currentNodeSizeVisualization = null;
+                removeLegendForSizes(LEGEND_NODE_SIZE);
             }
             update(null, 0);
         });
