@@ -77,7 +77,7 @@
             options.showBranchEvents = true;
             options.showNodeVisualizations = true;
             options.showBranchVisualizations = false;
-            options.nodeVisualizationsOpacity = 0.9;
+            options.nodeVisualizationsOpacity = 1.0;
             options.nameForNhDownload = 'archaeopteryx-js.nh';
             options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
             options.nameForPngDownload = 'archaeopteryx-js.png';
@@ -88,12 +88,15 @@
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
             settings.displayHeight = 800;
-            settings.controls0Top = '60px';
-            settings.controls1Top = '60px';
+            settings.controls0Top = '50px';
+            settings.controls1Top = '50px';
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
             settings.enableBranchVisualizations = false;
+            settings.visualizationsLegendXpos = 160;
+            settings.visualizationsLegendYpos = 30;
+            settings.visualizationsLegendOrientation = 'vertical';
             settings.readSimpleCharacteristics = true;
             settings.enableDownloads = true;
 
@@ -129,7 +132,7 @@
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: ['#000000', '#00FF00'],
-                sizes: [20, 40, 60]
+                sizes: [60, 10, 60]
             };
 
             nodeVisualizations['Region'] = {
@@ -172,7 +175,7 @@
                 cladeRef: 'vipr:virusType',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category10',
+                colors: 'category20',
                 sizes: null
             };
 
@@ -223,7 +226,7 @@
             //ii
             //phyloIRD.xml
             //bcl_2_branch_events
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/wnt_seed_seqs.xml';
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
             // var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             //var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
@@ -269,7 +272,7 @@
     </style>
 
 
-    <h2>Archaeopteryx-js Demo: v 0_70</h2>
+    <h2>Archaeopteryx-js Demo: v 0_71</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>

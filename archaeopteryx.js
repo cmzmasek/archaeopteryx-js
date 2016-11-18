@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_70
+// v 0_71
 
 if (!d3) {
     throw "no d3.js";
@@ -974,6 +974,8 @@ if (!phyloXml) {
 
         var text = [];
 
+        //TODO for all legends, WARN 9with * maybe if symbols, colors re-used !!!! ///////
+
         legendUpdate.select('text.legendSize')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
@@ -985,10 +987,10 @@ if (!phyloXml) {
                     }
                     else if (((linearRangeLength === 2 && i === 1) ||
                         (linearRangeLength === 3 && i === 2)  )) {
-                        return d + ' (max)'; //TODO round?
+                        return d + ' (max)';
                     }
                     else if (linearRangeLength === 3 && i === 1) {
-                        return d + ' (mean)';
+                        return d + ' (mean)'; //TODO round?
                     }
                 }
                 return d;
@@ -1018,10 +1020,10 @@ if (!phyloXml) {
                 return 'translate(' + 1 + ',' + 3 + ')'
             })
             .attr('d', d3.svg.symbol()
-                .size(function () {
-                    return 20;
+                .size(function (d, i) {
+                    return sizeScale(text[i]);
                 })
-                .type(function (d, i) {
+                .type(function () {
                     return 'circle';
                 }))
             .style('fill', 'none')
