@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_71
+// v 0_72
 
 if (!d3) {
     throw "no d3.js";
@@ -188,8 +188,7 @@ if (!phyloXml) {
     var VK_PAGE_UP = 33;
     var VK_PAGE_DOWN = 34;
 
-    var ALLOW_NAME_PATTERN_TEST = false;
-
+    var WARNING = 'ArchaeopteryxJS: WARNING';
 
     // "Instance variables"
     var _root = null;
@@ -326,6 +325,13 @@ if (!phyloXml) {
         }
         else if (mappingFn) {
             visualization.mappingFn = mappingFn;
+            if (scaleType === ORDINAL_SCALE) {
+                if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
+                    var s = cladePropertyRef ? cladePropertyRef : field;
+                    console.log(WARNING + ": Ordinal scale mapping for " + label + " (" + s + "): domain > range: " +
+                        mappingFn.domain().length + " > " + mappingFn.range().length);
+                }
+            }
         }
         else {
             throw( "need to have either mapping or mappingFn");
@@ -343,31 +349,35 @@ if (!phyloXml) {
                     var nodeVisualization = _nodeVisualizations[key];
 
                     if (nodeVisualization.label) {
-
+                        var scaleType = '';
                         if (nodeVisualization.shapes &&
                             Array.isArray(nodeVisualization.shapes) &&
                             (nodeVisualization.shapes.length > 0  )) {
-                            var shapes = null;
+                            var shapeScale = null;
+
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] &&
                                 forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
-                                shapes = d3.scale.ordinal()
+                                shapeScale = d3.scale.ordinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
+                                scaleType = ORDINAL_SCALE;
                             }
                             else if (nodeVisualization.field && np[nodeVisualization.field] &&
                                 forester.setToArray(np[nodeVisualization.field]).length > 0) {
-                                shapes = d3.scale.ordinal()
+                                shapeScale = d3.scale.ordinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(forester.setToArray(np[nodeVisualization.field]));
+                                scaleType = ORDINAL_SCALE;
                             }
-                            if (shapes) {
+                            if (shapeScale) {
                                 addNodeShapeVisualization(nodeVisualization.label,
                                     nodeVisualization.description,
                                     nodeVisualization.field ? nodeVisualization.field : null,
                                     nodeVisualization.cladeRef ? nodeVisualization.cladeRef : null,
                                     nodeVisualization.regex,
                                     null,
-                                    shapes
+                                    shapeScale,
+                                    scaleType
                                 );
                             }
                         }
@@ -375,7 +385,7 @@ if (!phyloXml) {
                         if (nodeVisualization.colors) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
                                 var colorScale = null;
-                                var scaleType = '';
+
                                 if (Array.isArray(nodeVisualization.colors)) {
                                     scaleType = LINEAR_SCALE;
                                     if (nodeVisualization.colors.length === 3) {
@@ -482,78 +492,6 @@ if (!phyloXml) {
             }
         }
 
-
-        if (ALLOW_NAME_PATTERN_TEST) {
-            var ncp = {};
-            ncp['UNKNOWN'] = 'red';
-            ncp['Hu'] = 'green';
-            ncp['ANG'] = 'blue';
-            ncp['ALG'] = 'yellow';
-            ncp['DZA'] = 'orange';
-            ncp['pat'] = 'pink';
-
-
-            addLabelColorVisualization('Name Pattern',
-                'Name Pattern',
-                'name',
-                null,
-                true,
-                ncp,
-                null,
-                '');
-
-            addNodeBorderColorVisualization('Name Pattern',
-                'Name Pattern',
-                'name',
-                null,
-                true,
-                ncp,
-                null,
-                '');
-
-            addNodeFillColorVisualization('Name Pattern',
-                'Name Pattern',
-                'name',
-                null,
-                true,
-                ncp,
-                null,
-                '');
-
-            var nsp = {};
-            nsp['UNKNOWN'] = 'cross';
-            nsp['Hu'] = 'triangle-up';
-            nsp['ANG'] = 'triangle-down';
-            nsp['ALG'] = 'diamond';
-            nsp['DZA'] = 'square';
-            nsp['pat'] = 'circle';
-
-            addNodeShapeVisualization('Name Pattern',
-                'Name Pattern',
-                'name',
-                null,
-                true,
-                nsp,
-                null,
-                '');
-
-            var ns = {};
-            ns['UNKNOWN'] = 10;
-            ns['Hu'] = 20;
-            ns['ANG'] = 30;
-            ns['ALG'] = 40;
-            ns['DZA'] = 50;
-            ns['pat'] = 60;
-
-            addNodeSizeVisualization('Name Pattern',
-                'Name Pattern',
-                'name',
-                null,
-                true,
-                ns,
-                null,
-                '');
-        }
     }
 
     function addNodeSizeVisualization(label,
@@ -564,6 +502,9 @@ if (!phyloXml) {
                                       mapping,
                                       mappingFn,
                                       scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
+        }
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -594,6 +535,9 @@ if (!phyloXml) {
                                            mapping,
                                            mappingFn,
                                            scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
+        }
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -624,6 +568,9 @@ if (!phyloXml) {
                                              mapping,
                                              mappingFn,
                                              scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
+        }
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -655,6 +602,9 @@ if (!phyloXml) {
                                        mapping,
                                        mappingFn,
                                        scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
+        }
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -686,6 +636,9 @@ if (!phyloXml) {
                                         mapping,
                                         mappingFn,
                                         scaleType) {
+        if (arguments.length != 8) {
+            throw( "expected 8 arguments, got " + arguments.length);
+        }
         if (!_visualizations) {
             _visualizations = {};
         }
@@ -734,11 +687,17 @@ if (!phyloXml) {
         }
 
         var linearRangeLabel = ' (linear range)';
+        var outOfRangeSymbol = ' *';
         var isLinearRange = scaleType === LINEAR_SCALE;
         var linearRangeLength = 0;
         if (isLinearRange) {
             label += linearRangeLabel;
             linearRangeLength = colorScale.domain().length;
+        }
+        else {
+            if (colorScale.domain().length > colorScale.range().length) {
+                label += outOfRangeSymbol;
+            }
         }
 
         var counter = 0;
@@ -834,6 +793,12 @@ if (!phyloXml) {
 
         if (!label) {
             throw 'legend label is missing';
+        }
+
+        var outOfRangeSymbol = ' *';
+
+        if (shapeScale.domain().length > shapeScale.range().length) {
+            label += outOfRangeSymbol;
         }
 
         var counter = 0;
@@ -973,8 +938,6 @@ if (!phyloXml) {
             });
 
         var text = [];
-
-        //TODO for all legends, WARN 9with * maybe if symbols, colors re-used !!!! ///////
 
         legendUpdate.select('text.legendSize')
             .attr('x', legendRectSize + legendSpacing)
