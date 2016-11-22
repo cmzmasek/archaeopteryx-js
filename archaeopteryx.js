@@ -42,7 +42,7 @@ if (!phyloXml) {
     var VIEWERHEIGHT_DEFAULT = 600;
     var CONTROLS_0_LEFT_DEFAULT = '20px';
     var CONTROLS_0_TOP_DEFAULT = '60px';
-    var CONTROLS_1_WIDTH = 220;
+    var CONTROLS_1_WIDTH = 120; //220
     var CONTROLS_1_TOP_DEFAULT = '60px';
     var MENU_FONT_SIZE_DEFAULT = '9px';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
@@ -686,7 +686,7 @@ if (!phyloXml) {
             throw 'legend label is missing';
         }
 
-        var linearRangeLabel = ' (linear range)';
+        var linearRangeLabel = ' (gradient)';
         var outOfRangeSymbol = ' *';
         var isLinearRange = scaleType === LINEAR_SCALE;
         var linearRangeLength = 0;
@@ -837,13 +837,13 @@ if (!phyloXml) {
                 return 'translate(' + x + ',' + y + ')';
             });
 
-        var text = [];
+        var values = [];
 
         legendUpdate.select('text.legendShape')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d) {
-                text.push(d);
+                values.push(d);
                 return d;
             });
 
@@ -875,7 +875,7 @@ if (!phyloXml) {
                     return 20;
                 })
                 .type(function (d, i) {
-                    return shapeScale(text[i]);
+                    return shapeScale(values[i]);
                 }))
             .style('fill', 'none')
             .style('stroke', _options.branchColorDefault);
@@ -888,12 +888,12 @@ if (!phyloXml) {
 
 
     function makeSizeLegend(id, xPos, yPos, sizeScale, scaleType, label, description) {
-
+//////////////
         if (!label) {
             throw 'legend label is missing';
         }
 
-        var linearRangeLabel = ' (linear range)';
+        var linearRangeLabel = ' (range)';
         var isLinearRange = scaleType === LINEAR_SCALE;
         var linearRangeLength = 0;
         if (isLinearRange) {
@@ -937,13 +937,13 @@ if (!phyloXml) {
                 return 'translate(' + x + ',' + y + ')';
             });
 
-        var text = [];
+        var values = [];
 
         legendUpdate.select('text.legendSize')
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d, i) {
-                text.push(d);
+                values.push(d);
                 if (isLinearRange) {
                     if (i === 0) {
                         return d + ' (min)';
@@ -984,7 +984,12 @@ if (!phyloXml) {
             })
             .attr('d', d3.svg.symbol()
                 .size(function (d, i) {
-                    return sizeScale(text[i]);
+                    var scale = _zoomListener.scale();
+                    console.log("makeSizeLegend " + scale * _options.nodeSizeDefault * sizeScale(values[i]));
+                    //
+
+
+                    return scale * _options.nodeSizeDefault * sizeScale(values[i]);
                 })
                 .type(function () {
                     return 'circle';
@@ -1131,9 +1136,10 @@ if (!phyloXml) {
             _yScale = branchLengthScaling(extNodes, _w);
         }
         else {
-            d3.scale.linear()
-                .domain([0, _w])
-                .range([0, _w]);
+            //TODO not needed?
+            //d3.scale.linear()
+            //     .domain([0, _w])
+            //     .range([0, _w]);
         }
 
         if (_options.dynahide) {
@@ -1622,7 +1628,7 @@ if (!phyloXml) {
             return null;
         }
 
-        function makeShape(node, shape) {
+        function makeShape(node, shape) {/////////////
             node.hasVis = true;
             return d3.svg.symbol().type(shape).size(makeVisNodeSize(node))();
         }
@@ -1747,7 +1753,6 @@ if (!phyloXml) {
                 var vis = _visualizations.nodeSize[_currentNodeSizeVisualization];
                 var size;
                 if (vis.field) {
-
                     var fieldValue = node[vis.field];
                     if (fieldValue) {
                         if (vis.isRegex) {
@@ -1795,6 +1800,7 @@ if (!phyloXml) {
 
 
         function produceVis(vis, key, correctionFactor) {
+
             var size;
             if (vis.mappingFn) {
                 size = vis.mappingFn(key);
@@ -1804,9 +1810,11 @@ if (!phyloXml) {
             }
             if (size) {
                 if (correctionFactor) {
+                    console.log("_returning (cF) " + correctionFactor * size * _options.nodeSizeDefault);
                     return correctionFactor * size * _options.nodeSizeDefault;
                 }
                 else {
+                    console.log("_returning " + size * _options.nodeSizeDefault);
                     return size * _options.nodeSizeDefault;
                 }
             }
@@ -3176,7 +3184,7 @@ if (!phyloXml) {
         var c0 = $('#' + CONTROLS_0);
 
         if (c0) {
-            c0.css({
+            c0.css({ ///////////////
                 //  'width': '120px',
                 // 'height': '580px',
                 'position': 'absolute',
@@ -3184,7 +3192,10 @@ if (!phyloXml) {
                 'top': _settings.controls0Top,
                 'padding': '0.25em',
                 'opacity': '0.85',
-                'background-color': '#e0e0e0'
+                'background-color': '#e0e0e0',
+                'legend color': '#ff0000',
+                'font-size': _settings.menuFontSize,
+                'font-family': 'Arial'
             });
 
             c0.draggable({containment: "parent"});
@@ -3221,17 +3232,15 @@ if (!phyloXml) {
 
             c1.css({
                 'position': 'absolute',
-                'width': '200px',
-                'height': '270px',
+                // 'width': '200px',
+                // 'height': '270px',
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top,
                 'padding': '0.5em',
                 'opacity': '0.85',
-                'background-color': '#e0e0e0'
-            });
-
-            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
-                "direction": "vertical"
+                'background-color': '#e0e0e0',
+                'font-size': _settings.menuFontSize,
+                'font-family': 'Arial'
             });
 
             c1.draggable({containment: "parent"});
@@ -3242,14 +3251,20 @@ if (!phyloXml) {
 
             c1.append(makeSearchControls());
 
-            $('#' + VISUAL_CONTROLS).accordion({
-                collapsible: true,
-                heightStyle: "content"
+            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
+                "direction": "vertical",
+                "width": "120px"
             });
 
-            $('#' + SEARCH_OPTIONS).accordion({
-                collapsible: true
-            });
+            // $('#' + VISUAL_CONTROLS).accordion({
+            //     collapsible: true,
+            //     heightStyle: "content"
+            // });
+
+            // $('#' + SEARCH_OPTIONS).accordion({
+            //     collapsible: true
+            // });
+
 
         }
 
@@ -3574,6 +3589,41 @@ if (!phyloXml) {
                 'color': 'inherit'
             });
 
+        $('#' + LABEL_COLOR_SELECT_MENU)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + NODE_FILL_COLOR_SELECT_MENU)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + NODE_BORDER_COLOR_SELECT_MENU)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + NODE_SHAPE_SELECT_MENU)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + NODE_SIZE_SELECT_MENU)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
         $(document).keyup(function (e) {
             if (e.altKey) {
                 if (e.keyCode === VK_O) {
@@ -3701,6 +3751,7 @@ if (!phyloXml) {
 
         function makeDisplayControl() {
             var h = "";
+
             h = h.concat('<fieldset><legend>Display Data:</legend>');
             h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
             if (_basicTreeProperties.nodeNames) {
@@ -3836,32 +3887,38 @@ if (!phyloXml) {
 
         function makeVisualControls() {
             var h = "";
-            h = h.concat('<div id="' + VISUAL_CONTROLS + '">');
-            h = h.concat('<h3>Visualizations</h3>');
+            // h = h.concat('<div id="' + VISUAL_CONTROLS + '">'); // Uncomment for accordion
+            // h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
-            h = h.concat(makeSelectMenu('Label Color', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Visualizations</legend>');
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
+            //h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Fill Color', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
+            // h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
             h = h.concat('<br>');
+            //h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Border Color', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
-            h = h.concat('<br>');
-            h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Shape', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
-            h = h.concat('<br>');
-            h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Size', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
+            // h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Size:', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
+
+            h = h.concat('</fieldset>');
             h = h.concat('</form>');
-            h = h.concat('</div>');
+            // h = h.concat('</div>');
             return h;
         }
 
+
         function makeSearchControls() {
             var h = "";
-            h = h.concat('<div id="' + SEARCH_OPTIONS + '">');
-            h = h.concat('<h3>Search Options</h3>');
+            // h = h.concat('<div id="' + SEARCH_OPTIONS + '">'); // Uncomment for accordion
+            // h = h.concat('<h3>Search Options</h3>');
             h = h.concat('<fieldset>');
+            h = h.concat('<legend>Search Options:</legend>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
             h = h.concat(makeCheckboxButton('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
@@ -3869,7 +3926,7 @@ if (!phyloXml) {
             h = h.concat(makeCheckboxButton('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
-            h = h.concat('</div>');
+            // h = h.concat('</div>');
             return h;
         }
 
@@ -4094,7 +4151,7 @@ if (!phyloXml) {
             }
             else {
                 --_depth_collapse_level;
-                forester.collapseToDepth(_treeData, _root, _depth_collapse_level);
+                forester.collapseToDepth(_root, _depth_collapse_level);
             }
         }
         update(null, 0);
@@ -4112,7 +4169,7 @@ if (!phyloXml) {
                 forester.unCollapseAll(_root);
                 ++_depth_collapse_level;
             }
-            forester.collapseToDepth(_treeData, _root, _depth_collapse_level);
+            forester.collapseToDepth(_root, _depth_collapse_level);
         }
         update(null, 0);
     }
@@ -4125,7 +4182,7 @@ if (!phyloXml) {
                 _branch_length_collapse_level = _branch_length_collapse_data.max;
             }
             _branch_length_collapse_level -= _branch_length_collapse_data.step;
-            forester.collapseToBranchLength(_treeData, _root, _branch_length_collapse_level);
+            forester.collapseToBranchLength(_root, _branch_length_collapse_level);
         }
         update(null, 0);
     }
@@ -4143,7 +4200,7 @@ if (!phyloXml) {
                 forester.unCollapseAll(_root);
             }
             else {
-                forester.collapseToBranchLength(_treeData, _root, _branch_length_collapse_level);
+                forester.collapseToBranchLength(_root, _branch_length_collapse_level);
             }
         }
         update(null, 0);
