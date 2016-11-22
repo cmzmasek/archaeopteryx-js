@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_71
+// v 0_72
 
 (function forester() {
 
@@ -986,7 +986,7 @@
     };
 
 
-    forester.collapseToBranchLength = function (phy, root, branchLength) {
+    forester.collapseToBranchLength = function (root, branchLength) {
         if (root.children && root.children.length === 1) {
             collapseToBranchLengthHelper(root.children[0], branchLength);
         }
@@ -1012,7 +1012,7 @@
         }
     };
 
-    forester.collapseToDepth = function (phy, root, depth) {
+    forester.collapseToDepth = function (root, depth) {
         if (root.children && root.children.length === 1) {
             collapseToDepthHelper(root.children[0], 0, depth);
         }
