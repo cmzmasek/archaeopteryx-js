@@ -49,6 +49,7 @@ if (!phyloXml) {
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
     var ZOOM_INTERVAL = 200;
+    var MOVE_INTERVAL = 150;
     var BUTTON_ZOOM_IN_FACTOR = 1.1;
     var BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
     var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
@@ -164,6 +165,13 @@ if (!phyloXml) {
     var VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
     var VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
 
+    var LEGENDS_SHOW_BTN = 'legends_show';
+    var LEGENDS_HORIZ_VERT_BTN = 'legends_horizvert';
+    var LEGENDS_MOVE_UP_BTN = 'legends_mup';
+    var LEGENDS_MOVE_LEFT_BTN = 'legends_mleft';
+    var LEGENDS_RESET_BTN = 'legends_rest';
+    var LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
+    var LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
 
     var VK_ESC = 27;
     var VK_O = 79;
@@ -1004,20 +1012,20 @@ if (!phyloXml) {
     }
 
     function addLegends() {
-        var xPos = _settings.visualizationsLegendXpos;
-        var yPos = _settings.visualizationsLegendYpos;
+        var xPos = _options.visualizationsLegendXpos;
+        var yPos = _options.visualizationsLegendYpos;
         var xPosIncr = 0;
         var yPosIncr = 0;
         var yPosIncrConst = 0;
-        if (_settings.visualizationsLegendOrientation === HORIZONTAL) {
+        if (_options.visualizationsLegendOrientation === HORIZONTAL) {
             xPosIncr = 130; //TODO should by dynamic
         }
-        else if (_settings.visualizationsLegendOrientation === VERTICAL) {
+        else if (_options.visualizationsLegendOrientation === VERTICAL) {
             yPosIncr = 10; // is dependent on font size!
             yPosIncrConst = 40;
         }
         else {
-            throw ('unknown direction for legends ' + _settings.visualizationsLegendOrientation);
+            throw ('unknown direction for legends ' + _options.visualizationsLegendOrientation);
         }
         var label = '';
         var desc = '';
@@ -2216,6 +2224,20 @@ if (!phyloXml) {
         if (!_options.nameForSvgDownload) {
             _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
         }
+        if (!_options.visualizationsLegendXpos) {
+            _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
+        }
+        if (!_options.visualizationsLegendYpos) {
+            _options.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
+        }
+        _options.visualizationsLegendXposOrig = _options.visualizationsLegendXpos;
+        _options.visualizationsLegendYposOrig = _options.visualizationsLegendYpos;
+        if (!_options.visualizationsLegendOrientation) {
+            _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
+        }
+        if (!_options.showVisualizationsLegend === undefined) {
+            _options.showVisualizationsLegend = true;
+        }
 
     }
 
@@ -2257,17 +2279,6 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations === undefined) {
             _settings.enableNodeVisualizations = false;
         }
-
-        if (!_settings.visualizationsLegendXpos) {
-            _settings.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
-        }
-        if (!_settings.visualizationsLegendYpos) {
-            _settings.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
-        }
-        if (!_settings.visualizationsLegendOrientation) {
-            _settings.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
-        }
-
 
         intitializeDisplaySize();
     }
@@ -2857,6 +2868,9 @@ if (!phyloXml) {
     }
 
     function escPressed() {
+        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
+            legendReset();
+        }
         zoomFit();
         var c0 = $('#' + CONTROLS_0);
         if (c0) {
@@ -3086,6 +3100,73 @@ if (!phyloXml) {
         search1();
     }
 
+
+    function legendMoveUp(x) {
+        if (!x) {
+            x = 10;
+        }
+        if (_options.visualizationsLegendYpos > 0) {
+            _options.visualizationsLegendYpos -= x;
+            update(null, 0);
+        }
+    }
+
+    function legendMoveDown(x) {
+        if (!x) {
+            x = 10;
+        }
+        if (_options.visualizationsLegendYpos < _settings.displayHeight) {
+            _options.visualizationsLegendYpos += x;
+            update(null, 0);
+        }
+    }
+
+    function legendMoveRight(x) {
+        if (!x) {
+            x = 10;
+        }
+        if (_options.visualizationsLegendXpos < _settings.displayWidth) {
+            _options.visualizationsLegendXpos += x;
+            update(null, 0);
+        }
+    }
+
+    function legendMoveLeft(x) {
+        if (!x) {
+            x = 10;
+        }
+        if (_options.visualizationsLegendXpos > 0) {
+            _options.visualizationsLegendXpos -= x;
+            update(null, 0);
+        }
+    }
+
+
+    function legendHorizVertClicked() {
+        if (_options.visualizationsLegendOrientation === VERTICAL) {
+            _options.visualizationsLegendOrientation = HORIZONTAL;
+        }
+        else {
+            _options.visualizationsLegendOrientation = VERTICAL;
+        }
+        update(null, 0);
+    }
+
+    function legendShowClicked() {
+        ///// TODO
+        update(null, 0);
+    }
+
+    function legendResetClicked() {
+        legendReset();
+        update(null, 0);
+    }
+
+    function legendReset() {
+        _options.visualizationsLegendXpos = _options.visualizationsLegendXposOrig;
+        _options.visualizationsLegendYpos = _options.visualizationsLegendYposOrig;
+    }
+
     function setRadioButtonValue(id, value) {
         var radio = $('#' + id);
         if (radio) {
@@ -3247,6 +3328,7 @@ if (!phyloXml) {
 
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
                 c1.append(makeVisualControls());
+                c1.append(makeLegendControl());
             }
 
             c1.append(makeSearchControls());
@@ -3292,6 +3374,30 @@ if (!phyloXml) {
             .css({
                 'width': '16px'
             });
+
+        $('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN)
+            .css({
+                'width': '72px'
+            });
+
+        $('#' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN)
+            .css({
+                'width': '24px'
+            });
+
+        $('#' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN)
+            .css({
+                'width': '36px'
+            });
+
+        $('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN + ', #' +
+            LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN +
+            ', #' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN
+        )
+            .css({
+                'height': '16px'
+            });
+
 
         var downloadButton = $('#' + DOWNLOAD_BUTTON);
 
@@ -3577,6 +3683,43 @@ if (!phyloXml) {
         $('#' + SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB).click(searchOptionsCompleteTermsOnlyCbClicked);
         $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
         $('#' + SEARCH_OPTIONS_NEGATE_RES_CB).click(searchOptionsNegateResultCbClicked);
+
+        //////////////
+
+        $('#' + LEGENDS_MOVE_UP_BTN).mousedown(function () {
+            legendMoveUp(2);
+            _intervalId = setInterval(legendMoveUp, MOVE_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+        $('#' + LEGENDS_MOVE_DOWN_BTN).mousedown(function () {
+            legendMoveDown(2);
+            _intervalId = setInterval(legendMoveDown, MOVE_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+        $('#' + LEGENDS_MOVE_LEFT_BTN).mousedown(function () {
+            legendMoveLeft(2);
+            _intervalId = setInterval(legendMoveLeft, MOVE_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+        $('#' + LEGENDS_MOVE_RIGHT_BTN).mousedown(function () {
+            legendMoveRight(2);
+            _intervalId = setInterval(legendMoveRight, MOVE_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+        $('#' + LEGENDS_HORIZ_VERT_BTN).click(legendHorizVertClicked);
+        $('#' + LEGENDS_SHOW_BTN).click(legendShowClicked);
+        $('#' + LEGENDS_RESET_BTN).click(legendResetClicked);
+
+
+        //////////////
 
         if (downloadButton) {
             downloadButton.mousedown(downloadButtonPressed);
@@ -3885,13 +4028,31 @@ if (!phyloXml) {
             return h;
         }
 
+        function makeSearchControls() {
+            var h = "";
+            // h = h.concat('<div id="' + SEARCH_OPTIONS + '">'); // Uncomment for accordion
+            // h = h.concat('<h3>Search Options</h3>');
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Search Options:</legend>');
+            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
+            h = h.concat(makeCheckboxButton('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxButton('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
+            h = h.concat(makeCheckboxButton('Regex', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat(makeCheckboxButton('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat('</div>');
+            h = h.concat('</fieldset>');
+            // h = h.concat('</div>');
+            return h;
+        }
+
+
         function makeVisualControls() {
             var h = "";
             // h = h.concat('<div id="' + VISUAL_CONTROLS + '">'); // Uncomment for accordion
             // h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Visualizations</legend>');
+            h = h.concat('<legend>Visualizations:</legend>');
             h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             //h = h.concat('<br>');
@@ -3913,20 +4074,22 @@ if (!phyloXml) {
         }
 
 
-        function makeSearchControls() {
+        function makeLegendControl() {
             var h = "";
-            // h = h.concat('<div id="' + SEARCH_OPTIONS + '">'); // Uncomment for accordion
-            // h = h.concat('<h3>Search Options</h3>');
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Search Options:</legend>');
-            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxButton('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
-            h = h.concat(makeCheckboxButton('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxButton('Regex', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
-            h = h.concat(makeCheckboxButton('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
-            h = h.concat('</div>');
+            h = h.concat('<legend>Vis Legend:</legend>');
+            h = h.concat(makeButton('Show', LEGENDS_SHOW_BTN, 'to show/hide legend(s)'));
+            h = h.concat(makeButton('Dir', LEGENDS_HORIZ_VERT_BTN, 'to toggle between vertical and horizontal alignment of (multiple) legends'));
+            h = h.concat('<br>');
+            h = h.concat(makeButton('^', LEGENDS_MOVE_UP_BTN, 'move legend(s) up'));
+            h = h.concat('<br>');
+            h = h.concat(makeButton('<', LEGENDS_MOVE_LEFT_BTN, 'move legend(s) left'));
+            h = h.concat(makeButton('R', LEGENDS_RESET_BTN, 'return legend(s) to orignal position'));
+            h = h.concat(makeButton('>', LEGENDS_MOVE_RIGHT_BTN, 'move legend(s) right'));
+            h = h.concat('<br>');
+            h = h.concat(makeButton('v', LEGENDS_MOVE_DOWN_BTN, 'move legend(s) down'));
+
             h = h.concat('</fieldset>');
-            // h = h.concat('</div>');
             return h;
         }
 
