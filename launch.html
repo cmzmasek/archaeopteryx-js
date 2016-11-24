@@ -51,6 +51,7 @@
             options.showSequenceSymbol = true;
             options.showSequenceName = true;
             options.showSequenceGeneSymbol = true;
+            options.showSequenceAccession = true;
             options.showDisributions = true;
             options.showInternalNodes = false;
             options.showExternalNodes = false;
@@ -78,6 +79,10 @@
             options.showNodeVisualizations = true;
             options.showBranchVisualizations = false;
             options.nodeVisualizationsOpacity = 1.0;
+            options.visualizationsLegendXpos = 160;
+            options.visualizationsLegendYpos = 30;
+            options.visualizationsLegendOrientation = 'vertical';
+            options.showVisualizationsLegend = true;
             options.nameForNhDownload = 'archaeopteryx-js.nh';
             options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
             options.nameForPngDownload = 'archaeopteryx-js.png';
@@ -94,9 +99,6 @@
             settings.menuFontSize = '9px';
             settings.enableNodeVisualizations = true;
             settings.enableBranchVisualizations = false;
-            settings.visualizationsLegendXpos = 160;
-            settings.visualizationsLegendYpos = 30;
-            settings.visualizationsLegendOrientation = 'vertical';
             settings.readSimpleCharacteristics = true;
             settings.enableDownloads = true;
 
@@ -175,7 +177,7 @@
                 cladeRef: 'vipr:virusType',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
+                colors: 'category10',
                 sizes: null
             };
 
@@ -271,8 +273,7 @@
         }
     </style>
 
-
-    <h2>Archaeopteryx-js Demo: v 0_71</h2>
+    <h2>Archaeopteryx-js Demo: v 0_72</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>

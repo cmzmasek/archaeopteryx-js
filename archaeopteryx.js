@@ -105,6 +105,8 @@ if (!phyloXml) {
 
     var SEARCH_FIELD_0 = 'sf0';
     var SEARCH_FIELD_1 = 'sf1';
+    var RESET_SEARCH_A_BTN = 'reset_s_a';
+    var RESET_SEARCH_B_BTN = 'reset_s_b';
 
     var DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
     var INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
@@ -143,7 +145,6 @@ if (!phyloXml) {
     var BRANCH_EVENT_REF = 'aptx:branch_event';
     var BRANCH_EVENT_DATATYPE = 'xsd:string';
     var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
-
 
     var NONE = 'none';
     var DEFAULT = 'default';
@@ -1904,6 +1905,9 @@ if (!phyloXml) {
             if (_options.showSequenceGeneSymbol) {
                 l = appendP(l, s.gene_name);
             }
+            if (_options.showSequenceAccession && s.accession && s.accession.value) {
+                l = appendP(l, s.accession.value);
+            }
         }
         if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
             var d = phynode.distributions;
@@ -2123,6 +2127,9 @@ if (!phyloXml) {
         }
         if (_options.showSequenceGeneSymbol === undefined) {
             _options.showSequenceGeneSymbol = false;
+        }
+        if (_options.showSequenceAccession === undefined) {
+            _options.showSequenceAccession = false;
         }
         if (_options.showDistributions === undefined) {
             _options.showDistributions = false;
@@ -2916,6 +2923,21 @@ if (!phyloXml) {
         update(0, null, true);
     }
 
+    function resetSearch0() {
+        _foundNodes0.clear();
+        _searchBox0Empty = true;
+        $('#' + SEARCH_FIELD_0).val('');
+        update(0, null, true);
+    }
+
+    function resetSearch1() {
+        _foundNodes1.clear();
+        _searchBox1Empty = true;
+        $('#' + SEARCH_FIELD_1).val('');
+        update(0, null, true);
+    }
+
+
     function search(query) {
         return forester.searchData(query,
             _treeData,
@@ -3271,7 +3293,7 @@ if (!phyloXml) {
                 'position': 'absolute',
                 'left': _settings.controls0Left,
                 'top': _settings.controls0Top,
-                'padding': '0.25em',
+                'padding': '0.1em',
                 'opacity': '0.85',
                 'background-color': '#e0e0e0',
                 'legend color': '#ff0000',
@@ -3301,7 +3323,16 @@ if (!phyloXml) {
 
             c0.append(makeSearchBoxes());
 
+            c0.append(makeSearchControls22());
+
+            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
+                "direction": "horizontal"
+            });
+
+            c0.append('<br>');
+
             c0.append(makeAutoCollapse());
+
 
             if (_settings.enableDownloads) {
                 c0.append(makeDownloadSection());
@@ -3317,7 +3348,7 @@ if (!phyloXml) {
                 // 'height': '270px',
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top,
-                'padding': '0.5em',
+                'padding': '0.1em',
                 'opacity': '0.85',
                 'background-color': '#e0e0e0',
                 'font-size': _settings.menuFontSize,
@@ -3331,12 +3362,12 @@ if (!phyloXml) {
                 c1.append(makeLegendControl());
             }
 
-            c1.append(makeSearchControls());
+            //  c1.append(makeSearchControls());
 
-            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
-                "direction": "vertical",
-                "width": "120px"
-            });
+            //  $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
+            //      "direction": "horizontal",
+            //      "width": "120px"
+            //  });
 
             // $('#' + VISUAL_CONTROLS).accordion({
             //     collapsible: true,
@@ -3684,6 +3715,9 @@ if (!phyloXml) {
         $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
         $('#' + SEARCH_OPTIONS_NEGATE_RES_CB).click(searchOptionsNegateResultCbClicked);
 
+        $('#' + RESET_SEARCH_A_BTN).mousedown(resetSearch0);
+        $('#' + RESET_SEARCH_B_BTN).mousedown(resetSearch1);
+
         //////////////
 
         $('#' + LEGENDS_MOVE_UP_BTN).mousedown(function () {
@@ -3999,12 +4033,16 @@ if (!phyloXml) {
 
         function makeSearchBoxes() {
             var h = "";
-            var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND, use Search Options sub-menu " +
-                "to adjust search parameters, use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
+            var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," +
+                " use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
                 " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
-            h = h.concat(makeTextInputWithLabel('Search (A)', '<br>', SEARCH_FIELD_0, tooltip));
+            h = h.concat(makeTextInputWithLabel('Search A:', '<br>', SEARCH_FIELD_0, tooltip));
+            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, 'reset (remove) search result A'));
+
             h = h.concat('<br>');
-            h = h.concat(makeTextInputWithLabel('Search (B)', '<br>', SEARCH_FIELD_1, tooltip));
+            h = h.concat(makeTextInputWithLabel('Search B:', '<br>', SEARCH_FIELD_1, tooltip));
+            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, 'reset (remove) search result B'));
+
             h = h.concat('<br>');
             return h;
         }
@@ -4035,13 +4073,32 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search Options:</legend>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxButton('Match Case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
-            h = h.concat(makeCheckboxButton('Words', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxButton('Regex', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
-            h = h.concat(makeCheckboxButton('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by space, underscore, slash, etc.) only (does not apply to regular expression search)'));
+            h = h.concat(makeCheckboxButton('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat(makeCheckboxButton('I', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             // h = h.concat('</div>');
+            return h;
+        }
+
+        function makeSearchControls22() {
+            var h = "";
+
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Search Options:</legend>');
+            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
+            h = h.concat(makeCheckboxButton('Cas', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxButton('Wrd', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
+            h = h.concat('</div>');
+            h = h.concat('<br>');
+            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
+            h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat(makeCheckboxButton('Reg', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat('</div>');
+            h = h.concat('</fieldset>');
+
             return h;
         }
 
