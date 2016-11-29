@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_72
+// v 0_73
 
 if (!d3) {
     throw "no d3.js";
@@ -45,6 +45,7 @@ if (!phyloXml) {
     var CONTROLS_1_WIDTH = 120; //220
     var CONTROLS_1_TOP_DEFAULT = '60px';
     var MENU_FONT_SIZE_DEFAULT = '9px';
+    var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
@@ -107,6 +108,8 @@ if (!phyloXml) {
     var SEARCH_FIELD_1 = 'sf1';
     var RESET_SEARCH_A_BTN = 'reset_s_a';
     var RESET_SEARCH_B_BTN = 'reset_s_b';
+    var RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
+    var RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
 
     var DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
     var INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
@@ -199,6 +202,8 @@ if (!phyloXml) {
 
     var WARNING = 'ArchaeopteryxJS: WARNING';
 
+    var LIGHT_BLUE = '#2590FD';
+
     // "Instance variables"
     var _root = null;
     var _svgGroup = null;
@@ -239,6 +244,7 @@ if (!phyloXml) {
     var _legendColorScales = {};
     var _legendShapeScales = {};
     var _legendSizeScales = {};
+    var _showLegends = true;
 
 
     function branchLengthScaling(nodes, width) {
@@ -897,11 +903,9 @@ if (!phyloXml) {
 
 
     function makeSizeLegend(id, xPos, yPos, sizeScale, scaleType, label, description) {
-//////////////
         if (!label) {
             throw 'legend label is missing';
         }
-
         var linearRangeLabel = ' (range)';
         var isLinearRange = scaleType === LINEAR_SCALE;
         var linearRangeLength = 0;
@@ -994,10 +998,6 @@ if (!phyloXml) {
             .attr('d', d3.svg.symbol()
                 .size(function (d, i) {
                     var scale = _zoomListener.scale();
-                    console.log("makeSizeLegend " + scale * _options.nodeSizeDefault * sizeScale(values[i]));
-                    //
-
-
                     return scale * _options.nodeSizeDefault * sizeScale(values[i]);
                 })
                 .type(function () {
@@ -1033,7 +1033,7 @@ if (!phyloXml) {
         var counter = 0;
         var scaleType = '';
 
-        if (_legendColorScales[LEGEND_LABEL_COLOR]) {
+        if (_showLegends && _legendColorScales[LEGEND_LABEL_COLOR]) {
             label = 'Label Color';
             desc = _currentLabelColorVisualization;
             scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
@@ -1049,7 +1049,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
+        if (_showLegends && _options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
             label = 'Node Fill';
             desc = _currentNodeFillColorVisualization;
             scaleType = _visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType;
@@ -1066,7 +1066,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_NODE_FILL_COLOR);
         }
 
-        if (_options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+        if (_showLegends && _options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
             label = 'Node Border';
             desc = _currentNodeBorderColorVisualization;
             scaleType = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization].scaleType;
@@ -1083,7 +1083,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_NODE_BORDER_COLOR);
         }
 
-        if (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
+        if (_showLegends && _options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Node Shape';
             desc = _currentNodeShapeVisualization;
             counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
@@ -1094,7 +1094,7 @@ if (!phyloXml) {
             removeShapeLegend(LEGEND_NODE_SHAPE);
         }
 
-        if (_options.showNodeVisualizations && _legendSizeScales[LEGEND_NODE_SIZE]) {
+        if (_showLegends && _options.showNodeVisualizations && _legendSizeScales[LEGEND_NODE_SIZE]) {
             label = 'Node Size';
             desc = _currentNodeSizeVisualization;
             scaleType = _visualizations.nodeSize[_currentNodeSizeVisualization].scaleType;
@@ -1167,6 +1167,10 @@ if (!phyloXml) {
         updateDepthCollapseDepthDisplay();
         updateBranchLengthCollapseBranchLengthDisplay();
         updateButtonEnabledState();
+        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
+            updateLegendButtonEnabledState();
+        }
+
 
         var node = _svgGroup.selectAll("g.node")
             .data(nodes, function (d) {
@@ -1637,7 +1641,7 @@ if (!phyloXml) {
             return null;
         }
 
-        function makeShape(node, shape) {/////////////
+        function makeShape(node, shape) {
             node.hasVis = true;
             return d3.svg.symbol().type(shape).size(makeVisNodeSize(node))();
         }
@@ -1819,11 +1823,9 @@ if (!phyloXml) {
             }
             if (size) {
                 if (correctionFactor) {
-                    console.log("_returning (cF) " + correctionFactor * size * _options.nodeSizeDefault);
                     return correctionFactor * size * _options.nodeSizeDefault;
                 }
                 else {
-                    console.log("_returning " + size * _options.nodeSizeDefault);
                     return size * _options.nodeSizeDefault;
                 }
             }
@@ -2265,6 +2267,9 @@ if (!phyloXml) {
         if (!_settings.menuFontSize) {
             _settings.menuFontSize = MENU_FONT_SIZE_DEFAULT;
         }
+        if (!_settings.controlsBackgroundColor) {
+            _settings.controlsBackgroundColor = CONTROLS_BACKGROUND_COLOR_DEFAULT;
+        }
         if (!_settings.controls0Left) {
             _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
         }
@@ -2295,6 +2300,17 @@ if (!phyloXml) {
         _displayWidth = _settings.displayWidth;
     }
 
+    function mouseDown() {
+        if (d3.event.which === 1 && ( d3.event.altKey || d3.event.shiftKey )) {
+            if ((_showLegends && ( _settings.enableNodeVisualizations || _settings.enableBranchVisualizations ) && ( _legendColorScales[LEGEND_LABEL_COLOR] ||
+                (_options.showNodeVisualizations && ( _legendColorScales[LEGEND_NODE_FILL_COLOR] ||
+                _legendColorScales[LEGEND_NODE_BORDER_COLOR] ||
+                _legendShapeScales[LEGEND_NODE_SHAPE] ||
+                _legendSizeScales[LEGEND_NODE_SIZE]))))) {
+                moveLegendWithMouse(d3.event);
+            }
+        }
+    }
 
     archaeopteryx.launch = function (id, phylo, options, settings, nodeVisualizations) {
 
@@ -2321,6 +2337,11 @@ if (!phyloXml) {
         _id = id;
 
         createGui(_basicTreeProperties);
+
+        if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
+            d3.select(window)
+                .on("mousedown", mouseDown);
+        }
 
         _baseSvg = d3.select(id).append("svg")
             .attr("width", _displayWidth)
@@ -3163,6 +3184,17 @@ if (!phyloXml) {
         }
     }
 
+    function moveLegendWithMouse(ev) {
+        var x = ev.layerX;
+        var y = ev.layerY;
+        if (x > 0 && x < _displayWidth) {
+            _options.visualizationsLegendXpos = x;
+        }
+        if (y > 0 && y < _displayHeight) {
+            _options.visualizationsLegendYpos = y;
+        }
+        update(null, 0);
+    }
 
     function legendHorizVertClicked() {
         if (_options.visualizationsLegendOrientation === VERTICAL) {
@@ -3175,7 +3207,7 @@ if (!phyloXml) {
     }
 
     function legendShowClicked() {
-        ///// TODO
+        _showLegends = !_showLegends;
         update(null, 0);
     }
 
@@ -3287,7 +3319,7 @@ if (!phyloXml) {
         var c0 = $('#' + CONTROLS_0);
 
         if (c0) {
-            c0.css({ ///////////////
+            c0.css({
                 //  'width': '120px',
                 // 'height': '580px',
                 'position': 'absolute',
@@ -3295,7 +3327,7 @@ if (!phyloXml) {
                 'top': _settings.controls0Top,
                 'padding': '0.1em',
                 'opacity': '0.85',
-                'background-color': '#e0e0e0',
+                'background-color': _settings.controlsBackgroundColor,
                 'legend color': '#ff0000',
                 'font-size': _settings.menuFontSize,
                 'font-family': 'Arial'
@@ -3350,7 +3382,7 @@ if (!phyloXml) {
                 'top': _settings.controls1Top,
                 'padding': '0.1em',
                 'opacity': '0.85',
-                'background-color': '#e0e0e0',
+                'background-color': _settings.controlsBackgroundColor,
                 'font-size': _settings.menuFontSize,
                 'font-family': 'Arial'
             });
@@ -3718,8 +3750,6 @@ if (!phyloXml) {
         $('#' + RESET_SEARCH_A_BTN).mousedown(resetSearch0);
         $('#' + RESET_SEARCH_B_BTN).mousedown(resetSearch1);
 
-        //////////////
-
         $('#' + LEGENDS_MOVE_UP_BTN).mousedown(function () {
             legendMoveUp(2);
             _intervalId = setInterval(legendMoveUp, MOVE_INTERVAL);
@@ -3751,9 +3781,6 @@ if (!phyloXml) {
         $('#' + LEGENDS_HORIZ_VERT_BTN).click(legendHorizVertClicked);
         $('#' + LEGENDS_SHOW_BTN).click(legendShowClicked);
         $('#' + LEGENDS_RESET_BTN).click(legendResetClicked);
-
-
-        //////////////
 
         if (downloadButton) {
             downloadButton.mousedown(downloadButtonPressed);
@@ -4033,15 +4060,16 @@ if (!phyloXml) {
 
         function makeSearchBoxes() {
             var h = "";
+
             var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," +
                 " use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
                 " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
             h = h.concat(makeTextInputWithLabel('Search A:', '<br>', SEARCH_FIELD_0, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, 'reset (remove) search result A'));
+            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
 
             h = h.concat('<br>');
             h = h.concat(makeTextInputWithLabel('Search B:', '<br>', SEARCH_FIELD_1, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, 'reset (remove) search result B'));
+            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
 
             h = h.concat('<br>');
             return h;
@@ -4132,20 +4160,20 @@ if (!phyloXml) {
 
 
         function makeLegendControl() {
+            var mouseTip = ' (alternatively, place legend with mouse using shift+left-mouse-button click, or alt+left-mouse-button click)';
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Vis Legend:</legend>');
             h = h.concat(makeButton('Show', LEGENDS_SHOW_BTN, 'to show/hide legend(s)'));
             h = h.concat(makeButton('Dir', LEGENDS_HORIZ_VERT_BTN, 'to toggle between vertical and horizontal alignment of (multiple) legends'));
             h = h.concat('<br>');
-            h = h.concat(makeButton('^', LEGENDS_MOVE_UP_BTN, 'move legend(s) up'));
+            h = h.concat(makeButton('^', LEGENDS_MOVE_UP_BTN, 'move legend(s) up' + mouseTip));
             h = h.concat('<br>');
-            h = h.concat(makeButton('<', LEGENDS_MOVE_LEFT_BTN, 'move legend(s) left'));
-            h = h.concat(makeButton('R', LEGENDS_RESET_BTN, 'return legend(s) to orignal position'));
-            h = h.concat(makeButton('>', LEGENDS_MOVE_RIGHT_BTN, 'move legend(s) right'));
+            h = h.concat(makeButton('<', LEGENDS_MOVE_LEFT_BTN, 'move legend(s) left' + mouseTip));
+            h = h.concat(makeButton('R', LEGENDS_RESET_BTN, 'return legend(s) to original position' + mouseTip));
+            h = h.concat(makeButton('>', LEGENDS_MOVE_RIGHT_BTN, 'move legend(s) right' + mouseTip));
             h = h.concat('<br>');
-            h = h.concat(makeButton('v', LEGENDS_MOVE_DOWN_BTN, 'move legend(s) down'));
-
+            h = h.concat(makeButton('v', LEGENDS_MOVE_DOWN_BTN, 'move legend(s) down' + mouseTip));
             h = h.concat('</fieldset>');
             return h;
         }
@@ -4440,35 +4468,119 @@ if (!phyloXml) {
 
 
     function updateButtonEnabledState() {
-        var b = null;
+
         if (_superTreeRoots && _superTreeRoots.length > 0) {
-            b = $('#' + RETURN_TO_SUPERTREE_BUTTON);
-            if (b) {
-                b.prop('disabled', false);
-                b.css("background", "");
-            }
+            enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
         }
         else {
-            b = $('#' + RETURN_TO_SUPERTREE_BUTTON);
-            if (b) {
-                b.prop('disabled', true);
-                b.css("background", "#e0e0e0");
-            }
+            disableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
         }
 
         if (forester.isHasCollapsedNodes(_root)) {
-            b = $('#' + UNCOLLAPSE_ALL_BUTTON);
+            enableButton($('#' + UNCOLLAPSE_ALL_BUTTON));
+        }
+        else {
+            disableButton($('#' + UNCOLLAPSE_ALL_BUTTON));
+        }
+        var b = null;
+        if (_foundNodes0 && !_searchBox0Empty) {
+            b = $('#' + RESET_SEARCH_A_BTN);
             if (b) {
                 b.prop('disabled', false);
-                b.css("background", "");
+                if (_foundNodes0.size < 1) {
+                    b.css('background', '');
+                    b.css('color', '');
+                }
+                else {
+                    b.css('background', _options.found0ColorDefault);
+                    b.css('color', '#ffffff');
+                }
+                var nd0 = _foundNodes0.size === 1 ? 'node' : 'nodes';
+                b.prop('title', 'found ' + _foundNodes0.size + ' ' + nd0 + ' [click to ' + RESET_SEARCH_A_BTN_TOOLTIP + ']');
             }
         }
         else {
-            b = $('#' + UNCOLLAPSE_ALL_BUTTON);
+            b = $('#' + RESET_SEARCH_A_BTN);
             if (b) {
                 b.prop('disabled', true);
-                b.css("background", "#e0e0e0");
+                b.css('background', _settings.controlsBackgroundColor);
+                b.css('color', '');
+                b.prop('title', RESET_SEARCH_A_BTN_TOOLTIP);
             }
+        }
+
+        if (_foundNodes1 && !_searchBox1Empty) {
+            b = $('#' + RESET_SEARCH_B_BTN);
+            if (b) {
+                b.prop('disabled', false);
+                if (_foundNodes1.size < 1) {
+                    b.css('background', '');
+                    b.css('color', '');
+                }
+                else {
+                    b.css('background', _options.found1ColorDefault);
+                    b.css('color', '#ffffff');
+                }
+                var nd1 = _foundNodes1.size === 1 ? 'node' : 'nodes';
+                b.prop('title', 'found ' + _foundNodes1.size + ' ' + nd1 + ' [click to ' + RESET_SEARCH_B_BTN_TOOLTIP + ']');
+            }
+        }
+        else {
+            b = $('#' + RESET_SEARCH_B_BTN);
+            if (b) {
+                b.prop('disabled', true);
+                b.css('background', _settings.controlsBackgroundColor);
+                b.css('color', '');
+                b.prop('title', RESET_SEARCH_B_BTN_TOOLTIP);
+            }
+        }
+    }
+
+    function updateLegendButtonEnabledState() {
+        var b = $('#' + LEGENDS_SHOW_BTN);
+        if (b) {
+            if (_showLegends) {
+                b.css('background', LIGHT_BLUE);
+                b.css('color', '#ffffff');
+            }
+            else {
+                b.css('background', '');
+                b.css('color', '');
+            }
+        }
+        if (_showLegends && ( _legendColorScales[LEGEND_LABEL_COLOR] ||
+            (_options.showNodeVisualizations && ( _legendColorScales[LEGEND_NODE_FILL_COLOR] ||
+            _legendColorScales[LEGEND_NODE_BORDER_COLOR] ||
+            _legendShapeScales[LEGEND_NODE_SHAPE] ||
+            _legendSizeScales[LEGEND_NODE_SIZE])))) {
+            enableButton($('#' + LEGENDS_HORIZ_VERT_BTN));
+            enableButton($('#' + LEGENDS_MOVE_UP_BTN));
+            enableButton($('#' + LEGENDS_MOVE_DOWN_BTN));
+            enableButton($('#' + LEGENDS_MOVE_LEFT_BTN));
+            enableButton($('#' + LEGENDS_MOVE_RIGHT_BTN));
+            enableButton($('#' + LEGENDS_RESET_BTN));
+        }
+        else {
+            disableButton($('#' + LEGENDS_HORIZ_VERT_BTN));
+            disableButton($('#' + LEGENDS_MOVE_UP_BTN));
+            disableButton($('#' + LEGENDS_MOVE_DOWN_BTN));
+            disableButton($('#' + LEGENDS_MOVE_LEFT_BTN));
+            disableButton($('#' + LEGENDS_MOVE_RIGHT_BTN));
+            disableButton($('#' + LEGENDS_RESET_BTN));
+        }
+    }
+
+    function disableButton(b) {
+        if (b) {
+            b.prop('disabled', true);
+            b.css("background", _settings.controlsBackgroundColor);
+        }
+    }
+
+    function enableButton(b) {
+        if (b) {
+            b.prop('disabled', false);
+            b.css("background", "");
         }
     }
 
