@@ -1108,9 +1108,18 @@
      * @returns {{}}
      */
     forester.moveSimpleCharacteristicsToProperties = function (phy) {
-        var HOST = 'vipr:host';
-        var COUNTRY = 'vipr:country';
-        var YEAR = 'vipr:year';
+        var apptype;
+        if (phy.desc){
+            apptype = 'ird:'
+        }else{
+            apptype = 'vipr:'
+        }
+
+        var HOST = apptype + 'Host';
+        var COUNTRY = apptype + 'Country';
+        var YEAR = apptype + 'Year';
+        var HA = apptype+'HA'; 
+        var NA = apptype+'NA';
         var NODE = 'node';
         var STRING = 'xsd:string';
         var INT = 'xsd:integer';
@@ -1142,6 +1151,22 @@
                     props.datatype = INT;
                     props.applies_to = NODE;
                     props.value = parseInt(sc.year);
+                    addProperties(n, props);
+                }
+                if (sc.ha && sc.ha.length > 0) {
+                    props = {};
+                    props.ref = HA;
+                    props.datatype = INT;
+                    props.applies_to = NODE;
+                    props.value = parseInt(sc.ha);
+                    addProperties(n, props);
+                }
+                if (sc.na && sc.na.length > 0) {
+                    props = {};
+                    props.ref = NA;
+                    props.datatype = INT;
+                    props.applies_to = NODE;
+                    props.value = parseInt(sc.na);
                     addProperties(n, props);
                 }
                 n.simple_characteristics = undefined;

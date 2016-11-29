@@ -4716,7 +4716,4 @@ if (!phyloXml) {
         window.archaeopteryx = archaeopteryx;
     else
         this.archaeopteryx = archaeopteryx;
-})
-();
-
-
+})();
