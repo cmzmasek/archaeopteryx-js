@@ -108,13 +108,21 @@
             settings.readSimpleCharacteristics = true;
             settings.enableDownloads = true;
 
+            var decoratorSetter = '${param.decorator}';
+            var decorator;
+            if(decoratorSetter =='influenza')
+                decorator='ird:';
+            else
+                decorator='vipr:';
+            
+            
             var nodeVisualizations = {};
 
             nodeVisualizations['Host'] = {
                 label: 'Host',
                 description: 'the host of the virus',
                 field: null,
-                cladeRef: 'vipr:host',
+                cladeRef: decorator + 'Host',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
@@ -125,7 +133,7 @@
                 label: 'Country',
                 description: 'the country of the virus',
                 field: null,
-                cladeRef: 'vipr:country',
+                cladeRef: decorator + 'Country',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
@@ -136,7 +144,7 @@
                 label: 'Year',
                 description: 'the year of the virus',
                 field: null,
-                cladeRef: 'vipr:year',
+                cladeRef: decorator + 'Year',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: ['#000000', '#00FF00'],
@@ -147,7 +155,7 @@
                 label: 'Region',
                 description: 'the region of change',
                 field: null,
-                cladeRef: 'vipr:region',
+                cladeRef: decorator + 'Region',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
@@ -158,7 +166,7 @@
                 label: 'Flu Season',
                 description: 'the flu season',
                 field: null,
-                cladeRef: 'ird:fluSeason',
+                cladeRef: decorator + 'FluSeason',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: ['#FF0000', '#000000', '#0000FF'],
@@ -169,7 +177,7 @@
                 label: 'H5 Clade',
                 description: 'the H5 clade',
                 field: null,
-                cladeRef: 'ird:h5Clade',
+                cladeRef: decorator + 'H5Clade',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
@@ -180,7 +188,7 @@
                 label: 'Virus Type',
                 description: 'the type of virus',
                 field: null,
-                cladeRef: 'vipr:virusType',
+                cladeRef: decorator + 'VirusType',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category10',
@@ -191,7 +199,7 @@
                 label: 'Subtype/Genotype',
                 description: 'the subtype or genotype',
                 field: null,
-                cladeRef: 'vipr:viprType',
+                cladeRef: decorator + 'ViprType',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20c',
@@ -202,10 +210,43 @@
                 label: 'Genotype',
                 description: 'the vipr genotype',
                 field: null,
-                cladeRef: 'vipr:viprGenotype',
+                cladeRef: decorator + 'ViprGenotype',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20b',
+                sizes: null
+            };
+
+            nodeVisualizations['HA & NA Subtype'] = {
+                label: 'Genotype',
+                description: 'the vipr genotype',
+                field: null,
+                cladeRef: decorator + 'Subtype',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            
+            nodeVisualizations['A/HA Subtype'] = {
+                label: 'Genotype',
+                description: 'the vipr genotype',
+                field: null,
+                cladeRef: decorator + 'HA',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+
+            nodeVisualizations['A/NA Subtype'] = {
+                label: 'Genotype',
+                description: 'the vipr genotype',
+                field: null,
+                cladeRef: decorator + 'NA',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
                 sizes: null
             };
 
@@ -234,20 +275,27 @@
             //ii
             //phyloIRD.xml
             //bcl_2_branch_events
-            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
-            // var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
-            //var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
-            //  var loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
-            // var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
+            var loc;
+            /*if (${param.appType}===0||${param.appType}===0.1){
+                console.log(${param.appType});
+                loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&source=${param.source}&decorator=${param.decorator}&treeFile=${param.treeFile}&shortName=${param.shortName}';
+            }else{
+                loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&decorator=${param.decorator}&treeFile=${param.treeFile}';
+            }*/
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
 
             jQuery.get(loc,
                     function (data) {
                         var tree = null;
                         try {
-                            tree = archaeopteryx.parsePhyloXML(data);
-                            // console.log(tree);
-                            //tree = archaeopteryx.parseNewHampshire(data);
-                            //  tree = archaeopteryx.parseNewHampshire("(((a:0.2,b:0.24,c:0.24):0.2,(d:0.223,e:0.2):0.42):0.28,f:0.62)r:0.2;");
+                            if(loc.substr(-3,3)==='xml')
+                                tree = archaeopteryx.parsePhyloXML(data);
+                            else
+                                tree = archaeopteryx.parseNewHampshire(data);
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
@@ -277,6 +325,12 @@
         .overlay {
             background-color: #f0f0f0;
         }
+        #dl_b{
+            margin-bottom: 3px;
+        }
+        #search_options fieldset{
+            height: auto !important;
+        }
     </style>
 
     <h2>Archaeopteryx-js Demo: v 0_73</h2>
@@ -284,7 +338,9 @@
 
     <div id="controls0" class="ui-widget-content"></div>
 
-    <div id="controls1" class="ui-widget-content"></div>
+    <!-- <c:if test="${param.appType eq '4' or param.appType eq '4.1'}"> -->
+        <div id="controls1" class="ui-widget-content"></div>
+    <!-- </c:if> -->
 
 
 </div>
