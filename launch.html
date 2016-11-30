@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <title>Archaeopteryx-js Demo</title>
+
+    <!-- For MS IE/Edge compatibility:-->
+    <meta http-equiv="X-UA-Compatible" content="IE=100">
+
+    <!-- D3.js, jQuery, and jQuery UI:-->
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+    <!-- SAX XML parser:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/sax.js"></script>
+
+    <!-- The following five libraries are needed for download/export of images and files:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/rgbcolor.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/Blob.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/canvas-toBlob.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/canvg.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/FileSaver.js"></script>
+
+    <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/phyloxml_0_911.js"></script>
+    <script src="forester.js"></script>
+    <script src="archaeopteryx.js"></script>
+
+    <!-- CSS for jQuery UI: -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+
+    <script>
+
+        function load() {
+
+            var options = {};
+            options.phylogram = true;
+            options.alignPhylogram = true;
+            options.dynahide = true;
+            options.showBranchLengthValues = false;
+            options.showConfidenceValues = true;
+            options.showNodeName = true;
+            options.showSequence = true;
+            options.showTaxonomy = true;
+            options.showTaxonomyCode = true;
+            options.showTaxonomyScientificName = true;
+            options.showTaxonomyCommonName = true;
+            options.showTaxonomyRank = true;
+            options.showTaxonomySynonyms = true;
+            options.showSequenceSymbol = true;
+            options.showSequenceName = true;
+            options.showSequenceGeneSymbol = true;
+            options.showSequenceAccession = true;
+            options.showDisributions = true;
+            options.showInternalNodes = false;
+            options.showExternalNodes = false;
+            options.showInternalLabels = true;
+            options.showExternalLabels = true;
+            options.branchWidthDefault = 1;
+            options.nodeSizeDefault = 3;
+            options.externalNodeFontSize = 10;
+            options.internalNodeFontSize = 6;
+            options.branchDataFontSize = 6;
+            options.branchColorDefault = '#909090';
+            options.labelColorDefault = '#202020';
+            options.backgroundColorDefault = '#f0f0f0';
+            options.found0ColorDefault = '#00ff00';
+            options.found1ColorDefault = '#ff0000';
+            options.found0and1ColorDefault = '#0000ff';
+            options.collapasedLabelLength = 7;
+            options.minBranchLengthValueToShow = 0.01;
+            options.minConfidenceValueToShow = 0.5;
+            options.searchIsCaseSensitive = false;
+            options.searchIsPartial = true;
+            options.searchUsesRegex = false;
+            options.showNodeEvents = true;
+            options.nameForNhDownload = 'archaeopteryx-js.nh';
+            options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
+            options.nameForPngDownload = 'archaeopteryx-js.png';
+            options.nameForSvgDownload = 'archaeopteryx-js.svg';
+
+
+            var settings = {};
+            settings.rootOffset = 180;
+            settings.displayWidth = 1000;
+            settings.displayHeight = 800;
+            settings.controls0Top = '50px';
+            settings.controls1Top = '50px';
+            settings.reCenterAfterCollapse = false;
+            settings.menuFontSize = '9px';
+            settings.controlsBackgroundColor = '#e0e0e0';
+            settings.enableDownloads = true;
+
+
+            //apaf
+            //apaf5
+            //amphi_frost
+            //AtNBSpos
+            //two_trees
+            //example_2
+            //phyloxml_test2
+            //bcl_2
+            //b
+            //pfam00046_2
+            //pfam00046
+            //m
+            //v1
+            //v1_2
+            //tol_156
+            //wnt_seed_seqs
+            //larger_example
+            //test1
+            //backwards
+            //sample
+            //sample_with_events
+            //bcl_2_branch_events
+            var loc;
+
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/larger_example.xml';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
+
+            jQuery.get(loc,
+                    function (data) {
+                        var tree = null;
+                        try {
+                            if (loc.substr(-3, 3) === 'xml') {
+                                tree = archaeopteryx.parsePhyloXML(data);
+                            }
+                            else {
+                                tree = archaeopteryx.parseNewHampshire(data);
+                            }
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (tree) {
+                            try {
+                                archaeopteryx.launch('#phylogram1', tree, options, settings);
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
+                    },
+                    "text")
+                    .fail(function () {
+                        alert("error: failed to read tree(s) from \"" + loc + "\"");
+                    });
+        }
+    </script>
+
+
+</head>
+<body onload="load()">
+
+<div>
+    <style type="text/css">
+        .overlay {
+            background-color: #f0f0f0;
+        }
+    </style>
+
+    <h2>Archaeopteryx-js Demo: v 0_73</h2>
+    <div id='phylogram1'></div>
+
+    <div id="controls0" class="ui-widget-content"></div>
+
+</div>
+
+
+</body>
