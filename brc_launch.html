@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <title>Archaeopteryx-js Demo</title>
+    <title>Archaeopteryx.js Demo</title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -11,9 +11,8 @@
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>
-
-    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/svgToPdf.js"></script>
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/svgToPdf.js"></script>-->
 
     <!-- SAX XML parser:-->
     <script src="https://dl.dropboxusercontent.com/u/14456265/archaeopteryx-js/dependencies/sax.js"></script>
@@ -105,15 +104,25 @@
             settings.enableBranchVisualizations = false;
             settings.readSimpleCharacteristics = true;
             settings.enableDownloads = true;
+            settings.enableCollapseByBranchLenghts = true;
+            settings.enableCollapseByTaxonomyRank = false;
+            settings.enableCollapseByFeature = false;
 
             var decoratorSetter = '${param.decorator}';
             var decorator;
-            if(decoratorSetter =='influenza')
-                decorator='ird:';
-            else
-                decorator='vipr:';
-            
-            
+            if (decoratorSetter == 'influenza') {
+                decorator = 'ird:';
+            }
+            else {
+                decorator = 'vipr:';
+            }
+
+            //--------------------------------------
+            //REMOVE ME -> For CZ's testing only(!):
+            decorator = 'ird:';
+            //decorator = 'vipr:';
+            //-------------------------------------
+
             var nodeVisualizations = {};
 
             nodeVisualizations['Host'] = {
@@ -225,7 +234,7 @@
                 colors: 'category20',
                 sizes: null
             };
-            
+
             nodeVisualizations['A/HA Subtype'] = {
                 label: 'A/HA Subtype',
                 description: 'the HA subtype',
@@ -271,26 +280,22 @@
             //sample_with_events
             //i
             //ii
-            //phyloIRD.xml
             //bcl_2_branch_events
             var loc;
             /*if (${param.appType}===0||${param.appType}===0.1){
-                console.log(${param.appType});
-                loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&source=${param.source}&decorator=${param.decorator}&treeFile=${param.treeFile}&shortName=${param.shortName}';
-            }else{
-                loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&decorator=${param.decorator}&treeFile=${param.treeFile}';
-            }*/
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/phyloIRD.xml';
+             console.log(${param.appType});
+             loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&source=${param.source}&decorator=${param.decorator}&treeFile=${param.treeFile}&shortName=${param.shortName}';
+             }else{
+             loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&decorator=${param.decorator}&treeFile=${param.treeFile}';
+             }*/
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_ird_phylo.xml';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_phylo.xml';
 
             jQuery.get(loc,
                     function (data) {
                         var tree = null;
                         try {
-                            if(loc.substr(-3,3)==='xml')
+                            if (loc.substr(-3, 3) === 'xml')
                                 tree = archaeopteryx.parsePhyloXML(data);
                             else
                                 tree = archaeopteryx.parseNewHampshire(data);
@@ -323,25 +328,25 @@
         .overlay {
             background-color: #f0f0f0;
         }
-        #dl_b{
+
+        #dl_b {
             margin-bottom: 3px;
         }
-        #search_options fieldset{
+
+        #search_options fieldset {
             height: auto !important;
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_73</h2>
+    <h2>Archaeopteryx.js Demo: v 0_74</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>
 
     <!-- <c:if test="${param.appType eq '4' or param.appType eq '4.1'}"> -->
-        <div id="controls1" class="ui-widget-content"></div>
+    <div id="controls1" class="ui-widget-content"></div>
     <!-- </c:if> -->
 
-
 </div>
-
 
 </body>

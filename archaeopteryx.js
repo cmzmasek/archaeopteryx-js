@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_73
+// v 0_74
 
 if (!d3) {
     throw "no d3.js";
@@ -35,6 +35,11 @@ if (!phyloXml) {
 (function archaeopteryx() {
 
     "use strict";
+
+    var VERSION = '0.74';
+    var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
+    var NAME = 'Archaeopteryx.js';
+    var PROG_NAME = 'progname';
 
     var TRANSITION_DURATION_DEFAULT = 750;
     var ROOTOFFSET_DEFAULT = 30;
@@ -117,6 +122,10 @@ if (!phyloXml) {
     var INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
     var DEPTH_COLLAPSE_LABEL = 'depth_col_label';
     var BL_COLLAPSE_LABEL = 'bl_col_label';
+
+    var COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
+    var SPECIES_FEATURE = 'Species';
+    var OFF_FEATURE = 'off';
 
     var NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
     var NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
@@ -2291,6 +2300,15 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations === undefined) {
             _settings.enableNodeVisualizations = false;
         }
+        if (_settings.enableCollapseByBranchLenghts === undefined) {
+            _settings.enableCollapseByBranchLenghts = false;
+        }
+        if (_settings.enableCollapseByTaxonomyRank === undefined) {
+            _settings.enableCollapseByTaxonomyRank = false;
+        }
+        if (_settings.enableCollapseByFeature === undefined) {
+            _settings.enableCollapseByFeature = false;
+        }
 
         intitializeDisplaySize();
     }
@@ -2683,6 +2701,7 @@ if (!phyloXml) {
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
                     resetBranchLengthCollapseValue();
+                    resetCollapseByFeature();
                     update();
                 });
 
@@ -2891,6 +2910,7 @@ if (!phyloXml) {
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
+            resetCollapseByFeature();
             zoomFit();
         }
     }
@@ -3308,6 +3328,7 @@ if (!phyloXml) {
             'font-family': 'Arial'
         });
 
+
         /*$('.' + LEGEND_LABEL_COLOR).css({ //TODO
          'font-size': 16,
          'font-family': 'Arial'
@@ -3334,10 +3355,35 @@ if (!phyloXml) {
             });
 
             c0.draggable({containment: "parent"});
+
+            c0.append(makeProgramDesc());
+
             c0.append(makePhylogramControl());
 
             c0.append(makeDisplayControl());
+
             c0.append(makeZoomControl());
+
+            var pn = $('.' + PROG_NAME);
+            if (pn) {
+                pn.css({
+                    'font-weight': 'bold',
+                    'font-style': 'italic',
+                    'font-size': _settings.menuFontSize,
+                    'text-align': 'center',
+                    'padding-top': '3px',
+                    'padding-bottom': '5px'
+
+                });
+            }
+            $('a').css({
+                'color': LIGHT_BLUE,
+                'text-decoration': 'none'
+            });
+            $('a:hover').css({
+                'color': '#ff00ff'
+            });
+
             $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
                 "direction": "horizontal",
                 "width": "120px"
@@ -3355,13 +3401,13 @@ if (!phyloXml) {
 
             c0.append(makeSearchBoxes());
 
-            c0.append(makeSearchControls22());
+            // c0.append(makeSearchControls22());
 
             $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
                 "direction": "horizontal"
             });
 
-            c0.append('<br>');
+            //c0.append('<br>');
 
             c0.append(makeAutoCollapse());
 
@@ -3663,7 +3709,7 @@ if (!phyloXml) {
                 'text-align': 'left',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '44px'
+                'width': '38px'
             });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
@@ -3786,12 +3832,30 @@ if (!phyloXml) {
             downloadButton.mousedown(downloadButtonPressed);
         }
 
+
+        $('#' + COLLAPSE_BY_FEATURE_SELECT)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
         $('#' + EXPORT_FORMAT_SELECT)
             .select()
             .css({
                 'font': 'inherit',
                 'color': 'inherit'
             });
+
+        $('#' + COLLAPSE_BY_FEATURE_SELECT).on('change', function () {
+            var s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+            if (s) {
+                var f = s.val();
+                if (f) {
+                    collapseByFeature(f);
+                }
+            }
+        });
 
         $('#' + LABEL_COLOR_SELECT_MENU)
             .select()
@@ -3940,6 +4004,16 @@ if (!phyloXml) {
         // --------------------------------------------------------------
         // Functions to make GUI elements
         // --------------------------------------------------------------
+
+
+        function makeProgramDesc() {
+            var h = "";
+            h = h.concat('<div class=' + PROG_NAME + '>');
+            h = h.concat('<a href="' + WEBSITE + '" target="_blank">' + NAME + ' ' + VERSION + '</a>');
+            h = h.concat('</div>');
+            return h;
+        }
+
         function makePhylogramControl() {
             var radioGroup = 'radio-1';
             var h = "";
@@ -3956,7 +4030,7 @@ if (!phyloXml) {
         function makeDisplayControl() {
             var h = "";
 
-            h = h.concat('<fieldset><legend>Display Data:</legend>');
+            h = h.concat('<fieldset><legend>Display Data</legend>');
             h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
             if (_basicTreeProperties.nodeNames) {
                 h = h.concat(makeCheckboxButton('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
@@ -4000,7 +4074,7 @@ if (!phyloXml) {
         function makeZoomControl() {
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Zoom:</legend>');
+            h = h.concat('<legend>Zoom</legend>');
             h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
             h = h.concat('<br>');
             h = h.concat(makeButton('X-', ZOOM_OUT_X, 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)'));
@@ -4015,6 +4089,7 @@ if (!phyloXml) {
         function makeControlButtons() {
             var h = "";
             h = h.concat('<fieldset>');
+            h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
             h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
             h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the super-tree (if in sub-tree) (Alt+R)'));
@@ -4044,6 +4119,7 @@ if (!phyloXml) {
 
         function makeSliders() {
             var h = "";
+            h = h.concat('<fieldset>');
             h = h.concat(makeSlider('External label size:', EXTERNAL_FONT_SIZE_SLIDER));
             if (_basicTreeProperties.internalNodeData) {
                 h = h.concat(makeSlider('Internal label size:', INTERNAL_FONT_SIZE_SLIDER));
@@ -4054,41 +4130,43 @@ if (!phyloXml) {
             }
             h = h.concat(makeSlider('Node size:', NODE_SIZE_SLIDER));
             h = h.concat(makeSlider('Branch width:', BRANCH_WIDTH_SLIDER));
-            h = h.concat('<br>');
-            return h;
-        }
-
-        function makeSearchBoxes() {
-            var h = "";
-
-            var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," +
-                " use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
-                " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
-            h = h.concat(makeTextInputWithLabel('Search A:', '<br>', SEARCH_FIELD_0, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
-
-            h = h.concat('<br>');
-            h = h.concat(makeTextInputWithLabel('Search B:', '<br>', SEARCH_FIELD_1, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
-
-            h = h.concat('<br>');
+            h = h.concat('</fieldset>');
             return h;
         }
 
         function makeAutoCollapse() {
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Collapse Node Depth</legend>');
+            h = h.concat('<legend>Collapse Depth</legend>');
             h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around) (Alt+A)'));
             h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
             h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around) (Alt+S)'));
             h = h.concat('</fieldset>');
-            if (_basicTreeProperties.branchLengths) {
+            if (_settings.enableCollapseByBranchLenghts && _basicTreeProperties.branchLengths) {
                 h = h.concat('<fieldset>');
-                h = h.concat('<legend>Collapse  Length</legend>');
+                h = h.concat('<legend>Collapse Length</legend>');
                 h = h.concat(makeButton('-', DECR_BL_COLLAPSE_LEVEL, 'to decrease the maximal subtree branch length threshold (wraps around)'));
                 h = h.concat(makeTextInput(BL_COLLAPSE_LABEL, 'the current maximal subtree branch length threshold'));
                 h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
+                h = h.concat('</fieldset>');
+            }
+            if (_settings.enableCollapseByTaxonomyRank) {
+                /*h = h.concat('<fieldset>');
+                 h = h.concat('<legend>Collapse Rank</legend>');
+                 h = h.concat(makeButton('-', DECR_BL_COLLAPSE_LEVEL, 'to decrease the maximal subtree branch length threshold (wraps around)'));
+                 h = h.concat(makeTextInput(BL_COLLAPSE_LABEL, 'the current maximal subtree branch length threshold'));
+                 h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
+                 h = h.concat('</fieldset>');*/
+            }
+
+            if (_settings.enableCollapseByFeature) {//////////////
+                h = h.concat('<fieldset>');
+                h = h.concat('<legend>Collapse Feature</legend>');
+                h = h.concat('<select name="' + COLLAPSE_BY_FEATURE_SELECT + '" id="' + COLLAPSE_BY_FEATURE_SELECT + '">');
+                h = h.concat('<option value="' + OFF_FEATURE + '">' + OFF_FEATURE + '</option>'); //TODO
+                h = h.concat('<option value="' + SPECIES_FEATURE + '">' + SPECIES_FEATURE + '</option>');
+
+                h = h.concat('</select>');
                 h = h.concat('</fieldset>');
             }
             return h;
@@ -4099,7 +4177,7 @@ if (!phyloXml) {
             // h = h.concat('<div id="' + SEARCH_OPTIONS + '">'); // Uncomment for accordion
             // h = h.concat('<h3>Search Options</h3>');
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Search Options:</legend>');
+            h = h.concat('<legend>Search Options</legend>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
             h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by space, underscore, slash, etc.) only (does not apply to regular expression search)'));
@@ -4111,11 +4189,31 @@ if (!phyloXml) {
             return h;
         }
 
+        function makeSearchBoxes() {
+
+            var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," +
+                " use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," +
+                " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
+            var h = "";
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>Search</legend>');
+            h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
+            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
+            h = h.concat('<br>');
+            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
+            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
+            h = h.concat('<br>');
+            h = h.concat('<br>');
+            h = h.concat(makeSearchControls22());
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
         function makeSearchControls22() {
             var h = "";
 
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Search Options:</legend>');
+            // h = h.concat('<fieldset>');
+            //  h = h.concat('<legend>Search Options:</legend>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('Cas', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
             h = h.concat(makeCheckboxButton('Wrd', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
@@ -4125,7 +4223,7 @@ if (!phyloXml) {
             h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat(makeCheckboxButton('Reg', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
             h = h.concat('</div>');
-            h = h.concat('</fieldset>');
+            //   h = h.concat('</fieldset>');
 
             return h;
         }
@@ -4137,7 +4235,7 @@ if (!phyloXml) {
             // h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Visualizations:</legend>');
+            h = h.concat('<legend>Visualizations</legend>');
             h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             //h = h.concat('<br>');
@@ -4163,7 +4261,7 @@ if (!phyloXml) {
             var mouseTip = ' (alternatively, place legend with mouse using shift+left-mouse-button click, or alt+left-mouse-button click)';
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Vis Legend:</legend>');
+            h = h.concat('<legend>Vis Legend</legend>');
             h = h.concat(makeButton('Show', LEGENDS_SHOW_BTN, 'to show/hide legend(s)'));
             h = h.concat(makeButton('Dir', LEGENDS_HORIZ_VERT_BTN, 'to toggle between vertical and horizontal alignment of (multiple) legends'));
             h = h.concat('<br>');
@@ -4466,6 +4564,27 @@ if (!phyloXml) {
             .val(v);
     }
 
+
+    function collapseByFeature(feature) {
+        console.log('feature: ' + feature);
+        if (feature === SPECIES_FEATURE) {
+            forester.collapseSpecificSubtrees(_root);
+        }
+        else if (feature === OFF_FEATURE) {
+            forester.unCollapseAll(_root)
+        }
+        else {
+            throw('do not know how to collapse by ' + feature);
+        }
+        update(null, 0);
+    }
+
+    function resetCollapseByFeature() {
+        var s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+        if (s) {
+            s.val(OFF_FEATURE);
+        }
+    }
 
     function updateButtonEnabledState() {
 

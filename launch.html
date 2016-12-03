@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <title>Archaeopteryx-js Demo</title>
+    <title>Archaeopteryx.js Demo</title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -90,8 +90,9 @@
             settings.menuFontSize = '9px';
             settings.controlsBackgroundColor = '#e0e0e0';
             settings.enableDownloads = true;
-
-
+            settings.enableCollapseByBranchLenghts = false;
+            settings.enableCollapseByTaxonomyRank = false;
+            settings.enableCollapseByFeature = true;
             //apaf
             //apaf5
             //amphi_frost
@@ -116,7 +117,7 @@
             //bcl_2_branch_events
             var loc;
 
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/larger_example.xml';
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/bcl_2.xml';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
@@ -162,7 +163,7 @@
         }
     </style>
 
-    <h2>Archaeopteryx-js Demo: v 0_73</h2>
+    <h2>Archaeopteryx.js Demo: v 0_74</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>

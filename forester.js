@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_73
+// v 0_74
 
 (function forester() {
 
@@ -1101,6 +1101,35 @@
         return phy;
     };
 
+    forester.collapseSpecificSubtrees = function (phy) {
+        var inferred = false;
+        forester.unCollapseAll(phy);
+
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n.children && !n._children && ( n.children.length > 1 )) {
+                var taxs = forester.obtainDistinctTaxonomies(n);
+                if (( taxs != null ) && ( taxs.size === 1 )) {
+                    forester.collapse(n);
+                    //
+                    inferred = true;
+                }
+            }
+        });
+        if (inferred) {
+            phy.rerootable = false;
+        }
+    };
+
+    forester.obtainDistinctTaxonomies = function (node) {
+        var taxSet = new Set();
+        forester.preOrderTraversalAll(node, function (n) {
+            if (n.taxonomies && n.taxonomies.length === 1 && n.taxonomies[0].code) {
+                taxSet.add(n.taxonomies[0].code);
+            }
+        });
+        return taxSet;
+    };
+
     /**
      * To be deprecated!
      *
@@ -1109,17 +1138,17 @@
      */
     forester.moveSimpleCharacteristicsToProperties = function (phy) {
         var apptype;
-        if (phy.desc){
+        if (phy.desc) {
             apptype = 'ird:'
-        }else{
+        } else {
             apptype = 'vipr:'
         }
 
         var HOST = apptype + 'Host';
         var COUNTRY = apptype + 'Country';
         var YEAR = apptype + 'Year';
-        var HA = apptype+'HA'; 
-        var NA = apptype+'NA';
+        var HA = apptype + 'HA';
+        var NA = apptype + 'NA';
         var NODE = 'node';
         var STRING = 'xsd:string';
         var INT = 'xsd:integer';
