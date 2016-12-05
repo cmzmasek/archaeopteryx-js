@@ -1101,33 +1101,122 @@
         return phy;
     };
 
-    forester.collapseSpecificSubtrees = function (phy) {
+    forester.collapseSpecificSubtrees = function (phy, propertyRef) {
         var inferred = false;
         forester.unCollapseAll(phy);
 
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (n.children && !n._children && ( n.children.length > 1 )) {
-                var taxs = forester.obtainDistinctTaxonomies(n);
-                if (( taxs != null ) && ( taxs.size === 1 )) {
-                    forester.collapse(n);
-                    //
-                    inferred = true;
+        if (propertyRef && propertyRef.length > 0) {
+            forester.preOrderTraversalAll(phy, function (n) {
+                if (n.children && !n._children && ( n.children.length > 1 )) {
+                    if (forester.isHasNoMoreThanOneDistinctNodeProperty(n, propertyRef)) {
+                        forester.collapse(n);
+                        inferred = true;
+                    }
                 }
-            }
-        });
+            });
+        }
+        else {
+            forester.preOrderTraversalAll(phy, function (n) {
+                if (n.children && !n._children && ( n.children.length > 1 )) {
+                    if (forester.isHasOneDistinctTaxonomy(n)) {
+                        forester.collapse(n);
+                        inferred = true;
+                    }
+                }
+            });
+        }
         if (inferred) {
             phy.rerootable = false;
         }
     };
 
-    forester.obtainDistinctTaxonomies = function (node) {
-        var taxSet = new Set();
+    forester.isHasOneDistinctTaxonomy = function (node) {
+        var id = null;
+        var code = null;
+        var sn = null;
+        var cn = null;
+        var result = true;
+        var sawTax = false;
         forester.preOrderTraversalAll(node, function (n) {
-            if (n.taxonomies && n.taxonomies.length === 1 && n.taxonomies[0].code) {
-                taxSet.add(n.taxonomies[0].code);
+            if (n.taxonomies && n.taxonomies.length === 1) {
+                var tax = n.taxonomies[0];
+                if (tax.code && tax.code.length > 0) {
+                    sawTax = true;
+                    if (code === null) {
+                        code = tax.code;
+                    }
+                    else if (code != tax.code) {
+                        result = false;
+                        return;
+                    }
+                }
+                if (tax.scientific_name && tax.scientific_name.length > 0) {
+                    sawTax = true;
+                    if (sn === null) {
+                        sn = tax.scientific_name;
+                    }
+                    else if (sn != tax.scientific_name) {
+                        result = false;
+                        return;
+                    }
+                }
+                if (tax.common_name && tax.common_name.length > 0) {
+                    sawTax = true;
+                    if (cn === null) {
+                        cn = tax.common_name;
+                    }
+                    else if (cn != tax.common_name) {
+                        result = false;
+                        return;
+                    }
+                }
+                if (tax.id && tax.id.value && tax.id.value.length > 0) {
+                    sawTax = true;
+                    var myid;
+                    if (tax.id.provider && tax.id.provider.length > 0) {
+                        myid = tax.id.provider + '=' + tax.id.value;
+                    }
+                    else {
+                        myid = tax.id.value;
+                    }
+                    if (id === null) {
+                        id = myid;
+                    }
+                    else if (id != myid) {
+                        result = false;
+
+                    }
+                }
+            }
+
+        });
+        if (!sawTax) {
+            return false;
+        }
+        return result;
+    };
+
+    forester.isHasNoMoreThanOneDistinctNodeProperty = function (node, propertyRef) {
+        var propValue = null;
+        var result = true;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (node.properties && node.properties.length > 0) {
+                var propertiesLength = n.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var property = node.properties[i];
+                    if (property.ref && property.value && property.ref === propertyRef && property.value.length > 0) {
+                        if (propValue === null) {
+                            propValue = property.value;
+                        }
+                        else if (propValue != property.value) {
+                            result = false;
+                            return;
+                        }
+                    }
+                }
             }
         });
-        return taxSet;
+        return result;
     };
 
     /**
@@ -1152,7 +1241,6 @@
         var NODE = 'node';
         var STRING = 'xsd:string';
         var INT = 'xsd:integer';
-
 
         forester.preOrderTraversalAll(phy, function (n) {
             if (n.simple_characteristics) {

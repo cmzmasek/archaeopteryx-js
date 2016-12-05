@@ -4163,7 +4163,7 @@ if (!phyloXml) {
                 h = h.concat('<fieldset>');
                 h = h.concat('<legend>Collapse Feature</legend>');
                 h = h.concat('<select name="' + COLLAPSE_BY_FEATURE_SELECT + '" id="' + COLLAPSE_BY_FEATURE_SELECT + '">');
-                h = h.concat('<option value="' + OFF_FEATURE + '">' + OFF_FEATURE + '</option>'); //TODO
+                h = h.concat('<option value="' + OFF_FEATURE + '">' + OFF_FEATURE + '</option>');
                 h = h.concat('<option value="' + SPECIES_FEATURE + '">' + SPECIES_FEATURE + '</option>');
 
                 h = h.concat('</select>');
@@ -4574,7 +4574,7 @@ if (!phyloXml) {
             forester.unCollapseAll(_root)
         }
         else {
-            throw('do not know how to collapse by ' + feature);
+            forester.collapseSpecificSubtrees(_root, feature);
         }
         update(null, 0);
     }
