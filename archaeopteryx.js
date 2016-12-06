@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_74
+// v 0_75
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.74';
+    var VERSION = '0.75';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -2349,7 +2349,7 @@ if (!phyloXml) {
         initializeSettings(settings);
 
         if (settings.enableNodeVisualizations) {
-            var np = forester.collectProperties(_treeData, 'node');
+            var np = forester.collectProperties(_treeData, 'node', false);
             initializeNodeVisualizations(np);
         }
         _id = id;
@@ -2790,6 +2790,8 @@ if (!phyloXml) {
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
                     resetBranchLengthCollapseValue();
+                    resetCollapseByFeature();
+                    forester.unCollapseAll(_root);
                     zoomFit();
                 });
 
@@ -4159,13 +4161,20 @@ if (!phyloXml) {
                  h = h.concat('</fieldset>');*/
             }
 
-            if (_settings.enableCollapseByFeature) {//////////////
+            if (_settings.enableCollapseByFeature) {
                 h = h.concat('<fieldset>');
                 h = h.concat('<legend>Collapse Feature</legend>');
                 h = h.concat('<select name="' + COLLAPSE_BY_FEATURE_SELECT + '" id="' + COLLAPSE_BY_FEATURE_SELECT + '">');
                 h = h.concat('<option value="' + OFF_FEATURE + '">' + OFF_FEATURE + '</option>');
-                h = h.concat('<option value="' + SPECIES_FEATURE + '">' + SPECIES_FEATURE + '</option>');
-
+                if (_basicTreeProperties.taxonomies) {
+                    h = h.concat('<option value="' + SPECIES_FEATURE + '">' + SPECIES_FEATURE + '</option>');
+                }
+                var refs = forester.collectPropertyRefs(_treeData, 'node', false);
+                if (refs) {
+                    refs.forEach(function (v) {
+                        h = h.concat('<option value="' + v + '">' + v + '</option>');
+                    });
+                }
                 h = h.concat('</select>');
                 h = h.concat('</fieldset>');
             }
@@ -4490,6 +4499,7 @@ if (!phyloXml) {
     function decrDepthCollapseLevel() {
         _rank_collapse_level = -1;
         _branch_length_collapse_level = -1;
+        resetCollapseByFeature();
         if (_root && _treeData && ( _external_nodes > 2 )) {
             if (_depth_collapse_level <= 1) {
                 _depth_collapse_level = forester.calcMaxDepth(_root);
@@ -4506,6 +4516,7 @@ if (!phyloXml) {
     function incrDepthCollapseLevel() {
         _rank_collapse_level = -1;
         _branch_length_collapse_level = -1;
+        resetCollapseByFeature();
         if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
             var max = forester.calcMaxDepth(_root);
             if (_depth_collapse_level >= max) {
@@ -4523,6 +4534,7 @@ if (!phyloXml) {
     function decrBlCollapseLevel() {
         _rank_collapse_level = -1;
         _depth_collapse_level = -1;
+        resetCollapseByFeature();
         if (_root && _treeData && ( _external_nodes > 2 )) {
             if (_branch_length_collapse_level <= _branch_length_collapse_data.min) {
                 _branch_length_collapse_level = _branch_length_collapse_data.max;
@@ -4536,6 +4548,7 @@ if (!phyloXml) {
     function incrBlCollapseLevel() {
         _rank_collapse_level = -1;
         _depth_collapse_level = -1;
+        resetCollapseByFeature();
         if (( _root && _treeData  ) && ( _external_nodes > 2 )) {
             if (_branch_length_collapse_level >= _branch_length_collapse_data.max
                 || _branch_length_collapse_level < 0) {
@@ -4564,9 +4577,10 @@ if (!phyloXml) {
             .val(v);
     }
 
-
     function collapseByFeature(feature) {
-        console.log('feature: ' + feature);
+        _rank_collapse_level = -1;
+        _depth_collapse_level = -1;
+        _branch_length_collapse_level = -1;
         if (feature === SPECIES_FEATURE) {
             forester.collapseSpecificSubtrees(_root);
         }
@@ -4587,7 +4601,6 @@ if (!phyloXml) {
     }
 
     function updateButtonEnabledState() {
-
         if (_superTreeRoots && _superTreeRoots.length > 0) {
             enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
         }

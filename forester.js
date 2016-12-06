@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_74
+// v 0_75
 
 (function forester() {
 
@@ -524,26 +524,49 @@
      *
      * @param phy - A phyloXML-based tree object or node.
      * @param appliesTo - 'phylogeny', 'clade', 'node', 'annotation', 'parent_branch', or 'other'.
+     * @param externalOnly - To collect from external nodes only.
      * @returns {{}}
      */
-    forester.collectProperties = function (phy, appliesTo) {
+    forester.collectProperties = function (phy, appliesTo, externalOnly) {
         var props = {};
         forester.preOrderTraversalAll(phy, function (n) {
-            if (n.properties && n.properties.length > 0) {
-                var propertiesLength = n.properties.length;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var property = n.properties[i];
-                    if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
-                        var ref = property.ref;
-                        if (!props[ref]) {
-                            props[ref] = new Set();
+
+            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
+                if (n.properties && n.properties.length > 0) {
+                    var propertiesLength = n.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        var property = n.properties[i];
+                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
+                            var ref = property.ref;
+                            if (!props[ref]) {
+                                props[ref] = new Set();
+                            }
+                            props[ref].add(property.value);
                         }
-                        props[ref].add(property.value);
                     }
                 }
             }
         });
         return props;
+    };
+
+    forester.collectPropertyRefs = function (phy, appliesTo, externalOnly) {
+        var propertyRefs = new Set();
+        forester.preOrderTraversalAll(phy, function (n) {
+
+            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
+                if (n.properties && n.properties.length > 0) {
+                    var propertiesLength = n.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        var property = n.properties[i];
+                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
+                            propertyRefs.add(property.ref);
+                        }
+                    }
+                }
+            }
+        });
+        return propertyRefs;
     };
 
 
@@ -1108,7 +1131,7 @@
         if (propertyRef && propertyRef.length > 0) {
             forester.preOrderTraversalAll(phy, function (n) {
                 if (n.children && !n._children && ( n.children.length > 1 )) {
-                    if (forester.isHasNoMoreThanOneDistinctNodeProperty(n, propertyRef)) {
+                    if (forester.isHasOneDistinctNodePropertyValue(n, propertyRef)) {
                         forester.collapse(n);
                         inferred = true;
                     }
@@ -1188,6 +1211,11 @@
                     }
                 }
             }
+            else if (!n.children && !n._children) {
+                // If an external node lacks taxonomy, return false.
+                result = false;
+
+            }
 
         });
         if (!sawTax) {
@@ -1196,15 +1224,16 @@
         return result;
     };
 
-    forester.isHasNoMoreThanOneDistinctNodeProperty = function (node, propertyRef) {
+    forester.isHasOneDistinctNodePropertyValue = function (node, propertyRef) {
         var propValue = null;
         var result = true;
         forester.preOrderTraversalAll(node, function (n) {
-            if (node.properties && node.properties.length > 0) {
+            if (n.properties && n.properties.length > 0) {
                 var propertiesLength = n.properties.length;
+                var gotIt = false;
                 for (var i = 0; i < propertiesLength; ++i) {
-                    var property = node.properties[i];
-                    if (property.ref && property.value && property.ref === propertyRef && property.value.length > 0) {
+                    var property = n.properties[i];
+                    if (property.ref && property.value && (property.applies_to === 'node') && ( property.ref === propertyRef) && ( property.value.length > 0)) {
                         if (propValue === null) {
                             propValue = property.value;
                         }
@@ -1212,10 +1241,19 @@
                             result = false;
                             return;
                         }
+                        gotIt = true;
                     }
+                }
+                if (!gotIt && !n.children && !n._children) {
+                    // If an external node lacks propertyRef, return false.
+                    result = false;
+
                 }
             }
         });
+        if (propValue === null) {
+            return false;
+        }
         return result;
     };
 
@@ -1229,7 +1267,8 @@
         var apptype;
         if (phy.desc) {
             apptype = 'ird:'
-        } else {
+        }
+        else {
             apptype = 'vipr:'
         }
 
