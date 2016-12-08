@@ -658,7 +658,7 @@
             if (q) {
                 q = q.trim();
                 if (q.length > 0) {
-                    forester.preOrderTraversal(phy, matcher);
+                    forester.preOrderTraversalAll(phy, matcher);
                 }
             }
         }
@@ -1124,15 +1124,27 @@
         return phy;
     };
 
-    forester.collapseSpecificSubtrees = function (phy, propertyRef) {
+    forester.collapseSpecificSubtrees = function (phy, nodePropertyRef, keyForCollapsedFeatureSpecialLabel) {
         var inferred = false;
         forester.unCollapseAll(phy);
 
-        if (propertyRef && propertyRef.length > 0) {
+        if (keyForCollapsedFeatureSpecialLabel) {
+            forester.preOrderTraversalAll(phy, function (n) {
+                if (n[keyForCollapsedFeatureSpecialLabel]) {
+                    n[keyForCollapsedFeatureSpecialLabel] = undefined;
+                }
+            });
+        }
+
+        if (nodePropertyRef && nodePropertyRef.length > 0) {
             forester.preOrderTraversalAll(phy, function (n) {
                 if (n.children && !n._children && ( n.children.length > 1 )) {
-                    if (forester.isHasOneDistinctNodePropertyValue(n, propertyRef)) {
+                    var pv = forester.isHasOneDistinctNodePropertyValue(n, nodePropertyRef);
+                    if (pv != null) {
                         forester.collapse(n);
+                        if (keyForCollapsedFeatureSpecialLabel) {
+                            n[keyForCollapsedFeatureSpecialLabel] = '[' + nodePropertyRef + '] ' + pv;
+                        }
                         inferred = true;
                     }
                 }
@@ -1252,9 +1264,14 @@
             }
         });
         if (propValue === null) {
-            return false;
+            return null;
         }
-        return result;
+        if (result === true) {
+            return propValue;
+        }
+        else {
+            return null;
+        }
     };
 
     /**
