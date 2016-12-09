@@ -33,6 +33,90 @@
 
         function load() {
 
+
+            var nodeVisualizations = {};
+
+            nodeVisualizations['First'] = {
+                label: 'First',
+                description: 'First',
+                field: null,
+                cladeRef: 'test:first',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Second'] = {
+                label: 'Second',
+                description: 'Second',
+                field: null,
+                cladeRef: 'test:second',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Third'] = {
+                label: 'Third',
+                description: 'Third',
+                field: null,
+                cladeRef: 'test:third',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Forth'] = {
+                label: 'Forth',
+                description: 'Forth',
+                field: null,
+                cladeRef: 'test:forth',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Fifth'] = {
+                label: 'Fifth',
+                description: 'Fifth',
+                field: null,
+                cladeRef: 'test:fifth',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Sixth'] = {
+                label: 'Sixth',
+                description: 'Sixth',
+                field: null,
+                cladeRef: 'test:sixth',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Seventh'] = {
+                label: 'Seventh',
+                description: 'Seventh',
+                field: null,
+                cladeRef: 'test:seventh',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+            nodeVisualizations['Eight'] = {
+                label: 'Eight',
+                description: 'Eight',
+                field: null,
+                cladeRef: 'test:eight',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+
             var options = {};
             options.phylogram = true;
             options.alignPhylogram = true;
@@ -74,6 +158,14 @@
             options.searchIsPartial = true;
             options.searchUsesRegex = false;
             options.showNodeEvents = true;
+            options.showBranchEvents = true;
+            options.showNodeVisualizations = true;
+            options.showBranchVisualizations = false;
+            options.nodeVisualizationsOpacity = 1.0;
+            options.visualizationsLegendXpos = 160;
+            options.visualizationsLegendYpos = 30;
+            options.visualizationsLegendOrientation = 'vertical';
+            options.showVisualizationsLegend = true;
             options.nameForNhDownload = 'archaeopteryx-js.nh';
             options.nameForPhyloXmlDownload = 'archaeopteryx-js.xml';
             options.nameForPngDownload = 'archaeopteryx-js.png';
@@ -89,6 +181,8 @@
             settings.reCenterAfterCollapse = false;
             settings.menuFontSize = '9px';
             settings.controlsBackgroundColor = '#e0e0e0';
+            settings.enableNodeVisualizations = true;
+            settings.enableBranchVisualizations = false;
             settings.enableDownloads = true;
             settings.enableCollapseByBranchLenghts = true;
             settings.enableCollapseByTaxonomyRank = true;
@@ -115,9 +209,10 @@
             //sample
             //sample_with_events
             //bcl_2_branch_events
+            //prop_test_1
             var loc;
 
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/bcl_2.xml';
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/prop_test_2.xml';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
@@ -138,7 +233,7 @@
                         }
                         if (tree) {
                             try {
-                                archaeopteryx.launch('#phylogram1', tree, options, settings);
+                                archaeopteryx.launch('#phylogram1', tree, options, settings, nodeVisualizations);
                             }
                             catch (e) {
                                 alert("error while launching archaeopteryx: " + e);
@@ -163,10 +258,11 @@
         }
     </style>
 
-    <h2>Archaeopteryx.js Demo: v 0_75</h2>
+    <h2>Archaeopteryx.js Demo: v 0_76</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>
+    <div id="controls1" class="ui-widget-content"></div>
 
 </div>
 

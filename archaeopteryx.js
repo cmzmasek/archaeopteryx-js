@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_75
+// v 0_76
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.75';
+    var VERSION = '0.76';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -1581,7 +1581,11 @@ if (!phyloXml) {
 
     var makeCollapsedColor = function (node) {
         var c = calcCollapsedColorInSubtree(node);
-        if (c != null) {
+        if (c) {
+            return c;
+        }
+        c = makeLabelColorForCollapsed(node);
+        if (c) {
             return c;
         }
         if (node.color) {
@@ -1613,7 +1617,8 @@ if (!phyloXml) {
             return color
         }
         if (_currentLabelColorVisualization) {
-            var color = makeVisLabelColor(phynode);
+            // var color = makeVisLabelColor(phynode);
+            var color = makeVisLabelColorForSubtree(phynode);
             if (color) {
                 return color;
             }
@@ -1802,14 +1807,12 @@ if (!phyloXml) {
                     var c = makeVisColor(n, vis);
                     if (!c) {
                         success = false;
-
                     }
                     else if (color == null) {
                         color = c;
                     }
                     else if (color != c) {
                         success = false;
-
                     }
                 }
             });
@@ -2720,14 +2723,13 @@ if (!phyloXml) {
                 }
             }
 
-            function toggleCollapse(d) {
-                if (d.children) {
-                    d._children = d.children;
-                    d.children = null;
+            function toggleCollapse(node) {
+                if (node.children) {
+                    node._children = node.children;
+                    node.children = null;
                 }
                 else {
-                    d.children = d._children;
-                    d._children = null;
+                    unCollapseAll(node);
                 }
             }
 
@@ -2789,6 +2791,10 @@ if (!phyloXml) {
                 })
                 .on("click", function (d) {
                     toggleCollapse(d);
+                    resetDepthCollapseDepthValue();
+                    resetRankCollapseRankValue();
+                    resetBranchLengthCollapseValue();
+                    resetCollapseByFeature();
                     update(d);
                 });
 
@@ -2811,7 +2817,7 @@ if (!phyloXml) {
                     }
                 })
                 .on("click", function (d) {
-                    forester.unCollapseAll(d);
+                    unCollapseAll(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
                     resetBranchLengthCollapseValue();
@@ -2905,7 +2911,7 @@ if (!phyloXml) {
                     resetRankCollapseRankValue();
                     resetBranchLengthCollapseValue();
                     resetCollapseByFeature();
-                    forester.unCollapseAll(_root);
+                    unCollapseAll(_root);
                     zoomFit();
                 });
 
@@ -3022,7 +3028,7 @@ if (!phyloXml) {
 
     function uncollapseAllButtonPressed() {
         if (_root && forester.isHasCollapsedNodes(_root)) {
-            forester.unCollapseAll(_root);
+            unCollapseAll(_root);
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
@@ -4610,6 +4616,18 @@ if (!phyloXml) {
     }
 
 
+    function unCollapseAll(node) {
+        forester.preOrderTraversal(node, function (n) {
+            if (n._children) {
+                n.children = n._children;
+                n._children = null;
+            }
+            if (n[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL]) {
+                n[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL] = undefined;
+            }
+        });
+    }
+
     function decrDepthCollapseLevel() {
         _rank_collapse_level = -1;
         _branch_length_collapse_level = -1;
@@ -4617,7 +4635,7 @@ if (!phyloXml) {
         if (_root && _treeData && ( _external_nodes > 2 )) {
             if (_depth_collapse_level <= 1) {
                 _depth_collapse_level = forester.calcMaxDepth(_root);
-                forester.unCollapseAll(_root);
+                unCollapseAll(_root);
             }
             else {
                 --_depth_collapse_level;
@@ -4637,7 +4655,7 @@ if (!phyloXml) {
                 _depth_collapse_level = 1;
             }
             else {
-                forester.unCollapseAll(_root);
+                unCollapseAll(_root);
                 ++_depth_collapse_level;
             }
             forester.collapseToDepth(_root, _depth_collapse_level);
@@ -4670,7 +4688,7 @@ if (!phyloXml) {
             }
             _branch_length_collapse_level += _branch_length_collapse_data.step;
             if (_branch_length_collapse_level >= _branch_length_collapse_data.max) {
-                forester.unCollapseAll(_root);
+                unCollapseAll(_root);
             }
             else {
                 forester.collapseToBranchLength(_root, _branch_length_collapse_level);
@@ -4696,21 +4714,67 @@ if (!phyloXml) {
         _depth_collapse_level = -1;
         _branch_length_collapse_level = -1;
         if (feature === SPECIES_FEATURE) {
-            forester.collapseSpecificSubtrees(_root);
+            collapseSpecificSubtrees(_root);
         }
         else if (feature === OFF_FEATURE) {
-            forester.unCollapseAll(_root)
+            unCollapseAll(_root)
         }
         else {
-            forester.collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
+            collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
         }
         update(null, 0);
     }
 
+
+    function removeForCollapsedFeatureSpecialLabel(phy, keyForCollapsedFeatureSpecialLabel) {
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n[keyForCollapsedFeatureSpecialLabel]) {
+                n[keyForCollapsedFeatureSpecialLabel] = undefined;
+            }
+        });
+
+    }
+
+    function collapseSpecificSubtrees(phy, nodePropertyRef, keyForCollapsedFeatureSpecialLabel) {
+        var inferred = false;
+        unCollapseAll(phy);
+
+        if (nodePropertyRef && nodePropertyRef.length > 0) {
+            forester.preOrderTraversalAll(phy, function (n) {
+                if (n.children && !n._children && ( n.children.length > 1 )) {
+                    var pv = forester.isHasOneDistinctNodePropertyValue(n, nodePropertyRef);
+                    if (pv != null) {
+                        forester.collapse(n);
+                        if (keyForCollapsedFeatureSpecialLabel) {
+                            n[keyForCollapsedFeatureSpecialLabel] = '[' + nodePropertyRef + '] ' + pv;
+                        }
+                        inferred = true;
+                    }
+                }
+            });
+        }
+        else {
+            forester.preOrderTraversalAll(phy, function (n) {
+                if (n.children && !n._children && ( n.children.length > 1 )) {
+                    if (forester.isHasOneDistinctTaxonomy(n)) {
+                        forester.collapse(n);
+                        inferred = true;
+                    }
+                }
+            });
+        }
+        if (inferred) {
+            phy.rerootable = false;
+        }
+    }
     function resetCollapseByFeature() {
         var s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
         if (s) {
-            s.val(OFF_FEATURE);
+            var f = s.val();
+            if (f != OFF_FEATURE) {
+                s.val(OFF_FEATURE);
+                removeForCollapsedFeatureSpecialLabel(_root, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
+            }
         }
     }
 

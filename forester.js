@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_75
+// v 0_76
 
 (function forester() {
 
@@ -384,7 +384,6 @@
             node.confidences = branchData.confidences;
         }
     };
-
 
     forester.unCollapseAll = function (node) {
         forester.preOrderTraversal(node, function (d) {
@@ -1124,46 +1123,6 @@
         return phy;
     };
 
-    forester.collapseSpecificSubtrees = function (phy, nodePropertyRef, keyForCollapsedFeatureSpecialLabel) {
-        var inferred = false;
-        forester.unCollapseAll(phy);
-
-        if (keyForCollapsedFeatureSpecialLabel) {
-            forester.preOrderTraversalAll(phy, function (n) {
-                if (n[keyForCollapsedFeatureSpecialLabel]) {
-                    n[keyForCollapsedFeatureSpecialLabel] = undefined;
-                }
-            });
-        }
-
-        if (nodePropertyRef && nodePropertyRef.length > 0) {
-            forester.preOrderTraversalAll(phy, function (n) {
-                if (n.children && !n._children && ( n.children.length > 1 )) {
-                    var pv = forester.isHasOneDistinctNodePropertyValue(n, nodePropertyRef);
-                    if (pv != null) {
-                        forester.collapse(n);
-                        if (keyForCollapsedFeatureSpecialLabel) {
-                            n[keyForCollapsedFeatureSpecialLabel] = '[' + nodePropertyRef + '] ' + pv;
-                        }
-                        inferred = true;
-                    }
-                }
-            });
-        }
-        else {
-            forester.preOrderTraversalAll(phy, function (n) {
-                if (n.children && !n._children && ( n.children.length > 1 )) {
-                    if (forester.isHasOneDistinctTaxonomy(n)) {
-                        forester.collapse(n);
-                        inferred = true;
-                    }
-                }
-            });
-        }
-        if (inferred) {
-            phy.rerootable = false;
-        }
-    };
 
     forester.isHasOneDistinctTaxonomy = function (node) {
         var id = null;
