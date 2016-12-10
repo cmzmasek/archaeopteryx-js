@@ -995,7 +995,8 @@
     forester.isHasNodeData = function (node) {
         return ( (node.name && node.name.length > 0 ) ||
         (node.taxonomies && node.taxonomies.length > 0) ||
-        (node.sequences && node.sequences.length > 0) );
+        (node.sequences && node.sequences.length > 0) ||
+        (node.properties && node.properties.length > 0) );
     };
 
 
@@ -1124,7 +1125,7 @@
     };
 
 
-    forester.isHasOneDistinctTaxonomy = function (node) {
+    forester.getOneDistinctTaxonomy = function (node) {
         var id = null;
         var code = null;
         var sn = null;
@@ -1168,7 +1169,7 @@
                     sawTax = true;
                     var myid;
                     if (tax.id.provider && tax.id.provider.length > 0) {
-                        myid = tax.id.provider + '=' + tax.id.value;
+                        myid = tax.id.provider + ':' + tax.id.value;
                     }
                     else {
                         myid = tax.id.value;
@@ -1185,17 +1186,30 @@
             else if (!n.children && !n._children) {
                 // If an external node lacks taxonomy, return false.
                 result = false;
-
             }
-
         });
         if (!sawTax) {
-            return false;
+            return null;
         }
-        return result;
+        if (result === true) {
+
+            if (sn) {
+                return sn;
+            }
+            else if (code) {
+                return code;
+            }
+            else if (cn) {
+                return cn;
+            }
+            else if (id) {
+                return id;
+            }
+        }
+        return null;
     };
 
-    forester.isHasOneDistinctNodePropertyValue = function (node, propertyRef) {
+    forester.getOneDistinctNodePropertyValue = function (node, propertyRef) {
         var propValue = null;
         var result = true;
         forester.preOrderTraversalAll(node, function (n) {
