@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_76
+// v 0_78
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.76';
+    var VERSION = '0.78';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -2095,12 +2095,18 @@ if (!phyloXml) {
                 text = first_label.substring(0, _options.collapasedLabelLength)
                     + " ... " + last_label.substring(0, _options.collapasedLabelLength)
                     + " [" + descs.length + "]";
+                if (_foundSum > 0 && _totalSearchedWithData) {
+                    text += (' [' + _foundSum + '/' + _totalSearchedWithData + ']' );
+                }
             }
-            if (_foundSum > 0 && _totalSearchedWithData) {
-                text += (' [' + _foundSum + '/' + _totalSearchedWithData + ']' );
-            }
+
             if (node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL]) {
-                text = node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL] + ': ' + text;
+                if (text) {
+                    text = node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL] + ': ' + text;
+                }
+                else {
+                    text = node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL];
+                }
             }
         }
         return text;
@@ -2425,6 +2431,9 @@ if (!phyloXml) {
         }
         if (_settings.enableCollapseByFeature === undefined) {
             _settings.enableCollapseByFeature = false;
+        }
+        if (_settings.nhExportWriteConfidences === undefined) {
+            _settings.nhExportWriteConfidences = false;
         }
 
         intitializeDisplaySize();
@@ -4995,7 +5004,7 @@ if (!phyloXml) {
     }
 
     function downloadAsNH() {
-        var nh = forester.toNewHamphshire(_root, 9, true);
+        var nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
         saveAs(new Blob([nh], {type: "application/txt"}), _options.nameForNhDownload);
     }
 

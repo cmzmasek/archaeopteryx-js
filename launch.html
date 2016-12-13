@@ -33,7 +33,6 @@
 
         function load() {
 
-
             var nodeVisualizations = {};
 
             nodeVisualizations['First'] = {
@@ -164,7 +163,7 @@
             options.searchUsesRegex = false;
             options.showNodeEvents = true;
             options.showBranchEvents = true;
-            options.showNodeVisualizations = true;
+            options.showNodeVisualizations = false;
             options.showBranchVisualizations = false;
             options.nodeVisualizationsOpacity = 1.0;
             options.visualizationsLegendXpos = 160;
@@ -193,12 +192,13 @@
             settings.menuTitleFont = 'Times';
             ///
             settings.controlsBackgroundColor = '#e0e0e0';
-            settings.enableNodeVisualizations = true;
+            settings.enableNodeVisualizations = false;
             settings.enableBranchVisualizations = false;
             settings.enableDownloads = true;
             settings.enableCollapseByBranchLenghts = true;
             settings.enableCollapseByTaxonomyRank = true;
             settings.enableCollapseByFeature = true;
+            settings.nhExportWriteConfidences = true;
             //apaf
             //apaf5
             //amphi_frost
@@ -222,9 +222,12 @@
             //sample_with_events
             //bcl_2_branch_events
             //prop_test_1
+            //RAxML_MajorityRuleConsensusTree.tre
             var loc;
 
             loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/bcl_2.xml';
+            //loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/test.tre';
+            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/RAxML_MajorityRuleConsensusTree.tre';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
@@ -270,11 +273,11 @@
         }
     </style>
 
-    <h2>Archaeopteryx.js Demo: v 0_76</h2>
+    <h2>Archaeopteryx.js Demo: v 0_78</h2>
     <div id='phylogram1'></div>
 
     <div id="controls0" class="ui-widget-content"></div>
-    <div id="controls1" class="ui-widget-content"></div>
+    <!--<div id="controls1" class="ui-widget-content"></div>-->
 
 </div>
 

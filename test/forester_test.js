@@ -196,123 +196,123 @@ function testReRoot1() {
     var nh = "(((a,b,c),(d,e)),f)r;";
     var phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a,((f,(d,e)),b,c));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "b");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(b,(a,(f,(d,e)),c));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(c,(a,b,(f,(d,e))));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "d");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(d,(((a,b,c),f),e));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "e");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(e,(d,((a,b,c),f)));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "f");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== nh) {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "r");
-    var rr = forester.toNewHamphshire(phy);
+    var rr = forester.toNewHampshire(phy);
     if (rr !== nh) {
         return false;
     }
     var nh3 = "(((a,b,c)abc,(d,e)de)abcde,f)r;";
     phy = forester.parseNewHampshire(nh3);
     forester.reRoot(phy, "abc");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((a,b,c)abc,(f,(d,e)de)abcde);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh3);
     forester.reRoot(phy, "abcde");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== nh3) {
         return false;
     }
     phy = forester.parseNewHampshire(nh3);
     forester.reRoot(phy, "de");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((d,e)de,((a,b,c)abc,f)abcde);") {
         return false;
     }
     var nh4 = "(((a:0.1,b:0.2,c:0.3)abc:0.4,(d:0.5,e:0.6)de:0.7)abcde:0.8,f:0.9)r:1.0;";
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(a:0.05,((f:1.7,(d:0.5,e:0.6)de:0.7)abcde:0.4,b:0.2,c:0.3)abc:0.05);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "b");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(b:0.1,(a:0.1,(f:1.7,(d:0.5,e:0.6)de:0.7)abcde:0.4,c:0.3)abc:0.1);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(c:0.15,(a:0.1,b:0.2,(f:1.7,(d:0.5,e:0.6)de:0.7)abcde:0.4)abc:0.15);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "d");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(d:0.25,(((a:0.1,b:0.2,c:0.3)abc:0.4,f:1.7)abcde:0.7,e:0.6)de:0.25);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "e");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(e:0.3,(d:0.5,((a:0.1,b:0.2,c:0.3)abc:0.4,f:1.7)abcde:0.7)de:0.3);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "f");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(((a:0.1,b:0.2,c:0.3)abc:0.4,(d:0.5,e:0.6)de:0.7)abcde:0.8,f:0.9)r:1;") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "abc");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "((a:0.1,b:0.2,c:0.3)abc:0.2,(f:1.7,(d:0.5,e:0.6)de:0.7)abcde:0.2);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "de");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "((d:0.5,e:0.6)de:0.35,((a:0.1,b:0.2,c:0.3)abc:0.4,f:1.7)abcde:0.35);") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "abcde");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(((a:0.1,b:0.2,c:0.3)abc:0.4,(d:0.5,e:0.6)de:0.7)abcde:0.8,f:0.9)r:1;") {
         return false;
     }
     phy = forester.parseNewHampshire(nh4);
     forester.reRoot(phy, "r");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(((a:0.1,b:0.2,c:0.3)abc:0.4,(d:0.5,e:0.6)de:0.7)abcde:0.8,f:0.9)r:1;") {
         return false;
     }
@@ -328,7 +328,7 @@ function testReRoot2() {
     forester.reRoot(phy, "a");
     forester.reRoot(phy, "b");
 
-    var rr = forester.toNewHamphshire(phy);
+    var rr = forester.toNewHampshire(phy);
     if (rr !== "(b,((f,(d,e)de)abcde,a,c)abc);") {
         return false;
     }
@@ -347,29 +347,29 @@ function testReRoot2() {
     forester.reRoot(phy, "de");
     forester.reRoot(phy, "abcde");
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(a:0.05,(c:0.3,((e:0.6,d:0.5)de:0.7,f:1.7)abcde:0.4,b:0.2)abc:0.05);") {
         return false;
     }
     forester.reRoot(phy, "f");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(f:0.85,((e:0.6,d:0.5)de:0.7,(c:0.3,a:0.1,b:0.2)abc:0.4)abcde:0.85);") {
         return false;
     }
     forester.reRoot(phy, "f");
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(f:0.85,((e:0.6,d:0.5)de:0.7,(c:0.3,a:0.1,b:0.2)abc:0.4)abcde:0.85);") {
         return false;
     }
     var nr = forester.findByNodeName(phy, "f")[0];
     forester.reRoot(phy, nr.parent, -1);
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(f:0.85,((e:0.6,d:0.5)de:0.7,(c:0.3,a:0.1,b:0.2)abc:0.4)abcde:0.85);") {
         return false;
     }
     nr = forester.findByNodeName(phy, "f")[0];
     forester.reRoot(phy, nr.parent.parent, -1);
-    rr = forester.toNewHamphshire(phy, 6);
+    rr = forester.toNewHampshire(phy, 6);
     if (rr !== "(f:0.85,((e:0.6,d:0.5)de:0.7,(c:0.3,a:0.1,b:0.2)abc:0.4)abcde:0.85);") {
         return false;
     }
@@ -385,7 +385,7 @@ function testReRoot3() {
 
     forester.reRoot(phy, "b2");
 
-    var rr = forester.toNewHamphshire(phy);
+    var rr = forester.toNewHampshire(phy);
     if (rr !== "(b2,(b1,((a1,a2,a3)a,(c1,c2,c3)c)r,b3)b);") {
         return false;
     }
@@ -393,88 +393,88 @@ function testReRoot3() {
     nh = "((a1,a2,a3)a,(b1,b2,b3)b,(c1,c2,c3)c,(d1,d2,d3)d);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((a1,a2,a3)a,((b1,b2,b3)b,(c1,c2,c3)c,(d1,d2,d3)d));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "b");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((b1,b2,b3)b,((a1,a2,a3)a,(c1,c2,c3)c,(d1,d2,d3)d));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((c1,c2,c3)c,((a1,a2,a3)a,(b1,b2,b3)b,(d1,d2,d3)d));") {
         return false;
     }
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "d");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((d1,d2,d3)d,((a1,a2,a3)a,(b1,b2,b3)b,(c1,c2,c3)c));") {
         return false;
     }
     nh = "(a,b,c);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a,(b,c));") {
         return false;
     }
     nh = "(a,b,c);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "b");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(b,(a,c));") {
         return false;
     }
     nh = "(a,b,c);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(c,(a,b));") {
         return false;
     }
     nh = "(a:0.1,b:0.2,c:0.3);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a:0.05,(b:0.2,c:0.3):0.05);") {
         return false;
     }
     nh = "(a:0.1,b:0.2,c:0.3);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "b");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(b:0.1,(a:0.1,c:0.3):0.1);") {
         return false;
     }
     nh = "(a:0.1,b:0.2,c:0.3);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(c:0.15,(a:0.1,b:0.2):0.15);") {
         return false;
     }
     nh = "((a1:0.01,a2:0.02)a:0.1,(b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a1:0.005,(((b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r:0.1,a2:0.02)a:0.005);") {
         return false;
     }
     nh = "((a1:0.01,a2:0.02)a:0.1,(b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a2");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a2:0.01,(a1:0.01,((b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r:0.1)a:0.01);") {
         return false;
     }
     nh = "((a1:0.01,a2:0.02)a:0.1,(b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((a1:0.01,a2:0.02)a:0.05,((b1:0.03,b2:0.04)b:0.2,(c1:0.05,c2:0.06)c:0.3)r:0.05);") {
         return false;
     }
@@ -483,7 +483,7 @@ function testReRoot3() {
     nh = "((a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a1:0.05,(((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4,a2:0.2,a3:0.3)a:0.05);") {
         return false;
     }
@@ -491,7 +491,7 @@ function testReRoot3() {
     nh = "((a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((a1:0.1,a2:0.2,a3:0.3)a:0.2,((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.2);") {
         return false;
     }
@@ -499,7 +499,7 @@ function testReRoot3() {
     nh = "(((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a12");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a12:0.001,(a11:0.001,(((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4,a2:0.2,a3:0.3)a:0.1,a13:0.002)a1:0.001);") {
         return false;
     }
@@ -510,7 +510,7 @@ function testReRoot3() {
     forester.reRoot(phy, "a11");
     forester.reRoot(phy, "a12");
     forester.reRoot(phy, "a13");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a13:0.001,((((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4,a2:0.2,a3:0.3)a:0.1,a11:0.001,a12:0.002)a1:0.001);") {
         return false;
     }
@@ -518,7 +518,7 @@ function testReRoot3() {
     nh = "(((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.2,((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.2);") {
         return false;
     }
@@ -526,7 +526,7 @@ function testReRoot3() {
     nh = "(((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "((a11:0.001,a12:0.002,a13:0.002)a1:0.05,(((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4,a2:0.2,a3:0.3)a:0.05);") {
         return false;
     }
@@ -535,7 +535,7 @@ function testReRoot3() {
     nh = "(((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.55;";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "a3");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(a3:0.15,((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4)a:0.15);") {
         return false;
     }
@@ -543,7 +543,7 @@ function testReRoot3() {
     nh = "(a3:0.15,((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,((b1:0.5,b2:0.6,b3:0.7)b:0.8,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.4)a:0.15);";
     phy = forester.parseNewHampshire(nh);
     forester.reRoot(phy, "b1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
     if (rr !== "(b1:0.25,((((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.8,b2:0.6,b3:0.7)b:0.25);") {
         return false;
     }
@@ -553,7 +553,7 @@ function testReRoot3() {
 
     forester.reRoot(phy, "a3");
     forester.reRoot(phy, "b1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
 
     if (rr !== "(b1:0.25,((((a11:0.001,a12:0.002,a13:0.002)a1:0.1,a2:0.2,a3:0.3)a:0.4,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.8,b2:0.6,b3:0.7)b:0.25);") {
         return false;
@@ -569,7 +569,7 @@ function testReRoot3() {
     forester.reRoot(phy, "a3");
     forester.reRoot(phy, "a");
     forester.reRoot(phy, "b1");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
 
     if (rr !== "(b1:0.25,(((a3:0.3,(a13:0.002,a11:0.001,a12:0.002)a1:0.1,a2:0.2)a:0.4,(c1:0.9,c2:1.01,c3:1.1)c:1.3,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:0.8,b2:0.6,b3:0.7)b:0.25);") {
         return false;
@@ -587,7 +587,7 @@ function testReRoot3() {
     forester.reRoot(phy, "b1");
     forester.reRoot(phy, "c2");
     forester.reRoot(phy, "c");
-    rr = forester.toNewHamphshire(phy);
+    rr = forester.toNewHampshire(phy);
 
     if (rr !== "(c2:0.505,(c1:0.9,((a3:0.3,(a13:0.002,a11:0.001,a12:0.002)a1:0.1,a2:0.2)a:0.4,(b1:0.5,b2:0.6,b3:0.7)b:0.8,(d1:0.11,d2:0.22,d3:0.33)d:0.44)r:1.3,c3:1.1)c:0.505);") {
         return false;
@@ -614,6 +614,10 @@ function testNewHampshire() {
     var nh14 = "((1,2,3)a,(4,5,6)b,(7,8,9)c);";
     var nh15 = "(a a,b b,c c);";
     var nh16 = "('a a','b b','c c');";
+    var nh17 = "(((a,b,c)[100],(d,e)[1])[30.000002],f)r[100];";
+    var nh18 = "((a:0.001,b:0.000001,c:1)abc:0.1[3.39472],d:0.1):2[1];";
+    var nh19 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825[23.4],11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901[0],((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709[0.001],23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)'Strongylocentrotus purpuratus':0.34475):0.26168[1],(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898[-1],29_AEDAE:0.86398)Diptera:0.24915[1],30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134[0],8_BRAFL:0.58563)'Branchiostoma floridae':0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)'Nematostella vectensis':0.28437):0.09305,9_BRAFL:1.09612):0.54836[303.039],((3_BRAFL:0.48766,2_BRAFL:0.65293)'Branchiostoma floridae':0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)'Branchiostoma floridae':0.43438):0.18105)Metazoa[100];";
+    var nh20 = "((((a,b)ab:3[2],c)[100],(d,e)de[1]):12[30.000002],f)r[100];";
 
     var phy0 = forester.parseNewHampshire(nh0);
     var phy1 = forester.parseNewHampshire(nh1);
@@ -632,56 +636,92 @@ function testNewHampshire() {
     var phy14 = forester.parseNewHampshire(nh14);
     var phy15 = forester.parseNewHampshire(nh15);
     var phy16 = forester.parseNewHampshire(nh16);
+    var phy17 = forester.parseNewHampshire(nh17);
+    var phy18 = forester.parseNewHampshire(nh18);
+    var phy19 = forester.parseNewHampshire(nh19);
+    var phy20 = forester.parseNewHampshire(nh20);
 
-    if (forester.toNewHamphshire(phy0) !== nh0) {
+
+    if (forester.toNewHampshire(phy0) !== nh0) {
         return false;
     }
-    if (forester.toNewHamphshire(phy1) !== nh1) {
+    if (forester.toNewHampshire(phy1) !== nh1) {
         return false;
     }
-    if (forester.toNewHamphshire(phy2) !== nh2) {
+    if (forester.toNewHampshire(phy2) !== nh2) {
         return false;
     }
-    if (forester.toNewHamphshire(phy3) !== nh3) {
+    if (forester.toNewHampshire(phy3) !== nh3) {
         return false;
     }
-    if (forester.toNewHamphshire(phy4) !== nh4) {
+    if (forester.toNewHampshire(phy4) !== nh4) {
         return false;
     }
-    if (forester.toNewHamphshire(phy5) !== nh5) {
+    if (forester.toNewHampshire(phy5) !== nh5) {
         return false;
     }
-    if (forester.toNewHamphshire(phy6) !== nh6) {
+    if (forester.toNewHampshire(phy6) !== nh6) {
         return false;
     }
-    if (forester.toNewHamphshire(phy7) !== nh7) {
+    if (forester.toNewHampshire(phy7) !== nh7) {
         return false;
     }
-    if (forester.toNewHamphshire(phy8) !== nh8) {
+    if (forester.toNewHampshire(phy8) !== nh8) {
         return false;
     }
-    if (forester.toNewHamphshire(phy9) !== nh9) {
+    if (forester.toNewHampshire(phy9) !== nh9) {
         return false;
     }
-    if (forester.toNewHamphshire(phy10) !== nh10) {
+    if (forester.toNewHampshire(phy10) !== nh10) {
         return false;
     }
-    if (forester.toNewHamphshire(phy11) !== nh11) {
+    if (forester.toNewHampshire(phy11) !== nh11) {
         return false;
     }
-    if (forester.toNewHamphshire(phy12) !== nh12) {
+    if (forester.toNewHampshire(phy12) !== nh12) {
         return false;
     }
-    if (forester.toNewHamphshire(phy13) !== nh13) {
+    if (forester.toNewHampshire(phy13) !== nh13) {
         return false;
     }
-    if (forester.toNewHamphshire(phy14) !== nh14) {
+    if (forester.toNewHampshire(phy14) !== nh14) {
         return false;
     }
-    if (forester.toNewHamphshire(phy15) !== "('a a','b b','c c');") {
+    if (forester.toNewHampshire(phy15) !== "('a a','b b','c c');") {
         return false;
     }
-    if (forester.toNewHamphshire(phy16) !== nh16) {
+    if (forester.toNewHampshire(phy16, 8, true, true) !== nh16) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy17, 8, true, true) !== nh17) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy18, 8, true, true) !== nh18) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy19, 8, true, true) !== nh19) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy20, 8, true, true) !== nh20) {
+        return false;
+    }
+
+    var n1 = forester.findByNodeName(phy20, "ab")[0];
+    if (n1.confidences[0].value !== 2) {
+        return false;
+    }
+    if (n1.parent.confidences[0].value !== 100) {
+        return false;
+    }
+    var n2 = forester.findByNodeName(phy20, "de")[0];
+    if (n2.confidences[0].value !== 1) {
+        return false;
+    }
+    if (n2.parent.confidences[0].value !== 30.000002) {
+        return false;
+    }
+    var n2 = forester.findByNodeName(phy20, "r")[0];
+    if (n2.confidences[0].value !== 100) {
         return false;
     }
     return true;

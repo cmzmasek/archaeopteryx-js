@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_76
+// v 0_78
 
 (function forester() {
 
@@ -1106,15 +1106,55 @@
                     var e = ss[i - 1];
                     if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
                         if (element && element.length > 0) {
-                            x.name = element;
-                            if ((x.name.charAt(0) === "'" && x.name.charAt(x.name.length - 1) === "'" )
-                                || (x.name.charAt(0) === '"' && x.name.charAt(x.name.length - 1) === '"' )) {
-                                x.name = x.name.substring(1, x.name.length - 1);
+                            if (element.charAt(element.length - 1) === "]") {
+                                var o = element.indexOf('[');
+                                if (o > -1) {
+                                    var confValue = parseSupport(element);
+                                    if (confValue != null) {
+                                        x.confidences = [];
+                                        var conf = {};
+                                        conf.value = confValue;
+                                        conf.type = 'unknown';
+                                        x.confidences.push(conf);
+                                    }
+                                    x.name = element.substring(0, o);
+                                }
+                            }
+                            else {
+                                x.name = element;
+                                if ((x.name.charAt(0) === "'" && x.name.charAt(x.name.length - 1) === "'" )
+                                    || (x.name.charAt(0) === '"' && x.name.charAt(x.name.length - 1) === '"' )) {
+                                    x.name = x.name.substring(1, x.name.length - 1);
+                                }
                             }
                         }
                     }
                     else if (e === ':') {
-                        x.branch_length = parseFloat(element);
+                        if (element && element.length > 0) {
+                            if (element.charAt(element.length - 1) === ']') {
+                                var o1 = element.indexOf('[');
+                                if (o1 > -1) {
+                                    var confValue1 = parseSupport(element);
+                                    if (confValue1 != null) {
+                                        x.confidences = [];
+                                        var conf = {};
+                                        conf.value = confValue1;
+                                        conf.type = 'unknown';
+                                        x.confidences.push(conf);
+                                    }
+                                    var bl = parseFloat(element.substring(0, o1));
+                                    if (forester.isNumber(bl)) {
+                                        x.branch_length = bl;
+                                    }
+                                }
+                            }
+                            else {
+                                var b = parseFloat(parseFloat(element));
+                                if (forester.isNumber(b)) {
+                                    x.branch_length = b;
+                                }
+                            }
+                        }
                     }
             }
         }
@@ -1122,8 +1162,29 @@
         phy.children = [x];
         forester.addParents(phy);
         return phy;
+
+        function parseSupport(str) {
+            var o = str.indexOf('[');
+            if (o > -1) {
+                var confValue = parseFloat(str.substring(o + 1, element.length - 1));
+                if (forester.isNumber(confValue)) {
+                    return confValue;
+                }
+            }
+            return null;
+        }
     };
 
+    forester.isNumber = function (v) {
+        if (v === undefined || v === null) {
+            return false;
+        }
+        if (v !== v) {
+            // This can only be true if the v is NaN
+            return false;
+        }
+        return true;
+    };
 
     forester.getOneDistinctTaxonomy = function (node) {
         var id = null;
@@ -1345,24 +1406,25 @@
      * @param phy - A phylogentic tree object.
      * @param decPointsMax - Maximal number of decimal points for branch lengths (optional)
      * @param replaceChars - To replace (),:;
+     * @param writeConfidences - to write confidence values in brackets
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
-    forester.toNewHamphshire = function (phy, decPointsMax, replaceChars) {
+    forester.toNewHampshire = function (phy, decPointsMax, replaceChars, writeConfidences) {
         var nh = "";
         if (phy.children && phy.children.length === 1) {
-            toNewHamphshireHelper(phy.children[0], true);
+            toNewHampshireHelper(phy.children[0], true);
         }
         if (nh.length > 0) {
             return nh + ";";
         }
         return nh;
 
-        function toNewHamphshireHelper(node, last) {
+        function toNewHampshireHelper(node, last) {
             if (node.children) {
                 var l = node.children.length;
                 nh += "(";
                 for (var i = 0; i < l; ++i) {
-                    toNewHamphshireHelper(node.children[i], i === l - 1);
+                    toNewHampshireHelper(node.children[i], i === l - 1);
                 }
                 nh += ")";
             }
@@ -1370,7 +1432,7 @@
                 var ll = node._children.length;
                 nh += "(";
                 for (var ii = 0; ii < ll; ++ii) {
-                    toNewHamphshireHelper(node._children[ii], ii === ll - 1);
+                    toNewHampshireHelper(node._children[ii], ii === ll - 1);
                 }
                 nh += ")";
             }
@@ -1394,14 +1456,21 @@
                         nh += node.name;
                     }
                 }
-
             }
-            if (node.branch_length) {
+            if (node.branch_length !== undefined && node.branch_length !== null) {
                 if (decPointsMax && decPointsMax > 0) {
                     nh += ":" + forester.roundNumber(node.branch_length, decPointsMax);
                 }
                 else {
                     nh += ":" + node.branch_length;
+                }
+            }
+            if (writeConfidences && node.confidences && node.confidences.length === 1 && node.confidences[0].value !== undefined && node.confidences[0].value !== null) {
+                if (decPointsMax && decPointsMax > 0) {
+                    nh += "[" + forester.roundNumber(node.confidences[0].value, decPointsMax) + "]";
+                }
+                else {
+                    nh += "[" + node.confidences[0].value + "]";
                 }
             }
             if (!last) {
