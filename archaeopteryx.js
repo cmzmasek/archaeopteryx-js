@@ -1,6 +1,6 @@
 /**
- *  Copyright (C) 2016 Christian M. Zmasek
- *  Copyright (C) 2016 J. Craig Venter Institute
+ *  Copyright (C) 2017 Christian M. Zmasek
+ *  Copyright (C) 2017 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -745,7 +745,10 @@ if (!phyloXml) {
 
         legendEnter.append('rect')
             .attr('width', null)
-            .attr('height', null);
+            .attr('height', null)
+            .on('click', function (d, i) {
+                legendColorRectClicked(d, i)
+            });
 
         legendEnter.append('text')
             .attr("class", "legend");
@@ -3372,6 +3375,17 @@ if (!phyloXml) {
         _options.visualizationsLegendYpos = _options.visualizationsLegendYposOrig;
     }
 
+    function legendColorRectClicked(d, i) {
+        //////////////////////
+        console.log('legendColorRectClicked:');
+        console.log(' d=' + d + '  i=' + i);
+        /////////////////////////
+        var picker = new colorPicker("#00DB00");
+        picker.picked = function (color) {
+            alert(color);
+        };
+    }
+
     function setRadioButtonValue(id, value) {
         var radio = $('#' + id);
         if (radio) {
@@ -5024,6 +5038,109 @@ if (!phyloXml) {
             saveAs(blob, _options.nameForPngDownload);
         });
     }
+
+    // --------------------------------------------------------------
+    // Color picker
+    // based on the work by Johannes Hofmeister
+    // http://jsfiddle.net/cessor/NnH5Q/
+    // --------------------------------------------------------------
+
+    var colorPicker = function (defaultColor, colorScale) {
+        ////////////////////////////
+        var self = this;
+        var rainbow = ["#FFD300", "#FFFF00", "#A2F300", "#00DB00", "#00B7FF", "#1449C4", "#4117C7", "#820AC3", "#DB007C", "#FF0000", "#FF7400", "#FFAA00"];
+        colorScale = colorScale || rainbow;
+        var color = function (i) {
+            return colorScale[i];
+        };
+        defaultColor = defaultColor || color(0);
+
+        self.pickedColor = defaultColor;
+        self.picked = function (color) {
+        };
+        var clicked = function () {
+            self.picked(self.pickedColor);
+        };
+
+        var pie = d3.layout.pie().sort(null);
+        var arc = d3.svg.arc().innerRadius(50).outerRadius(100);
+
+        // _baseSvg = d3.select(id).append("svg")
+        /*
+         var legend = _baseSvg.selectAll('g.' + id)
+         .data(colorScale.domain());
+
+         var legendEnter = legend.enter().append('g')
+         .attr('class', id);
+
+         legendEnter.append('rect')
+         .attr('width', null)
+         .attr('height', null)
+         .on('click', function (d, i) {
+         legendColorRectClicked(d, i)
+         });
+
+         legendEnter.append('text')
+         .attr("class", "legend");
+
+         legendEnter.append('text')
+         .attr("class", "legendLabel");
+
+         legendEnter.append('text')
+         .attr("class", "legendDescription");
+
+
+         var legendUpdate = legend.transition()
+         .duration(200)
+         .attr('transform', function (d, i) {
+         ++counter;
+         var height = legendRectSize;
+         var x = xPos;
+         var y = yPos + i * height;
+         return 'translate(' + x + ',' + y + ')';
+         });
+
+         legendUpdate.select('rect')
+         .attr('width', legendRectSize)
+         .attr('height', legendRectSize)
+         .style('fill', colorScale)
+         .style('stroke', colorScale);
+         */
+
+        var svg = d3.select("body")
+            .append("svg")
+            .attr("width", 500)
+            .attr("height", 500)
+            .append("g")
+            .attr("transform", "translate(200,200)");
+
+        var plate = svg.append("circle")
+            .attr("fill", defaultColor)
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 4)
+            .attr("r", 75)
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .on("click", clicked);
+
+        svg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+            .selectAll("path")
+            .data(pie)
+            .enter()
+            .append("path")
+            .attr("fill", function (d, i) {
+                return color(i);
+            })
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 4)
+            .attr("d", arc)
+            .on("mouseover", function () {
+                var fill = d3.select(this).attr("fill");
+                self.pickedColor = fill;
+                plate.attr("fill", fill);
+            })
+            .on("click", clicked);
+    };
 
 
 // --------------------------------------------------------------

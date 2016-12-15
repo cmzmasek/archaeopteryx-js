@@ -29,6 +29,9 @@
     var BRANCH_EVENT_DATATYPE = 'xsd:string';
     var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
 
+    var NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
+
+
     /**
      * Sets links to parent nodes for all nodes in a
      * phyloXML-based tree object
@@ -1119,12 +1122,22 @@
                                     }
                                     x.name = element.substring(0, o);
                                 }
+                                else {
+                                    x.name = element;
+                                }
                             }
                             else {
                                 x.name = element;
                                 if ((x.name.charAt(0) === "'" && x.name.charAt(x.name.length - 1) === "'" )
                                     || (x.name.charAt(0) === '"' && x.name.charAt(x.name.length - 1) === '"' )) {
                                     x.name = x.name.substring(1, x.name.length - 1);
+                                }
+                                var op = x.name.indexOf('[');
+                                if (op > -1) {
+                                    var cl = x.name.indexOf(']');
+                                    if (cl > op) {
+                                        x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
+                                    }
                                 }
                             }
                         }
@@ -1166,9 +1179,12 @@
         function parseSupport(str) {
             var o = str.indexOf('[');
             if (o > -1) {
-                var confValue = parseFloat(str.substring(o + 1, element.length - 1));
-                if (forester.isNumber(confValue)) {
-                    return confValue;
+                var s = str.substring(o + 1, element.length - 1);
+                if (NUMBERS_ONLY_PATTERN.test(s)) {
+                    var confValue = parseFloat(s);
+                    if (forester.isNumber(confValue)) {
+                        return confValue;
+                    }
                 }
             }
             return null;
