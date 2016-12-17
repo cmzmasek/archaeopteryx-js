@@ -750,7 +750,7 @@ if (!phyloXml) {
             .attr('width', null)
             .attr('height', null)
             .on('click', function (d, i) {
-                legendColorRectClicked(d, i)
+                legendColorRectClicked(d, i, colorScale);
             });
 
         legendEnter.append('text')
@@ -823,24 +823,28 @@ if (!phyloXml) {
         return counter;
     }
 
+    var _targetScale = null;
 
-    function addColorPicker() {
+    function addColorPicker(targetScale) {
+        _targetScale = targetScale;
         _showColorPicker = true;
     }
 
     function removeColorPicker() {
         _showColorPicker = false;
+        _targetScale = null;
         _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
     }
 
 
     function makeColorPicker(id, xPos, yPos, colorScale, label, description) {
-
+        console.log('targetScale:');
+        console.log(_targetScale);
         xPos = 260;
         yPos = 20;
         var colorScale = d3.scale.linear()
-            .domain([1, 2, 3, 4])
-            .range(["red", "white", "green", "blue"]);
+            .domain([1, 2, 3, 4, 5, 6, 7])
+            .range(["red", "white", "green", "blue", "pink", "black", "grey"]);
 
         var counter = 0;
 
@@ -861,8 +865,12 @@ if (!phyloXml) {
             .attr('width', null)
             .attr('height', null)
             .on('click', function (d, i) {
+                console.log(colorScale(d));
+                //_targetScale = colorScale;
+                /// TODO
+                _legendColorScales[LEGEND_LABEL_COLOR] = colorScale;
+                ////
                 colorPickerClicked(d, i);
-
             });
 
         legendEnter.append('text')
@@ -1248,7 +1256,9 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations) {
             addLegends();
             if (_showColorPicker) {
-                makeColorPicker(COLOR_PICKER);
+
+                makeColorPicker(COLOR_PICKER, 0, 0, null, '', '');
+
             }
         }
 
@@ -3489,17 +3499,11 @@ if (!phyloXml) {
         _options.visualizationsLegendYpos = _options.visualizationsLegendYposOrig;
     }
 
-    function legendColorRectClicked(d, i) {
-        //////////////////////
+    function legendColorRectClicked(d, i, targetScale) {
         console.log('legendColorRectClicked:');
         console.log(' d=' + d + '  i=' + i);
-        addColorPicker();
+        addColorPicker(targetScale);
         update();
-        /////////////////////////
-        // var picker = new colorPicker("#00DB00", null, d, i);
-        // picker.picked = function (color) {
-        //      alert(color);
-        // };
     }
 
     function setRadioButtonValue(id, value) {
@@ -5162,7 +5166,6 @@ if (!phyloXml) {
     // --------------------------------------------------------------
 
     var colorPicker = function (defaultColor, colorScale, d, i) {
-        ////////////////////////////
         var self = this;
         var rainbow = ["#FFD300", "#FFFF00", "#A2F300", "#00DB00", "#00B7FF", "#1449C4", "#4117C7", "#820AC3", "#DB007C", "#FF0000", "#FF7400", "#FFAA00"];
         colorScale = colorScale || rainbow;
@@ -5181,48 +5184,6 @@ if (!phyloXml) {
         var pie = d3.layout.pie().sort(null);
         var arc = d3.svg.arc().innerRadius(75).outerRadius(150);
 
-        // _baseSvg = d3.select(id).append("svg")
-        /*
-         var legend = _baseSvg.selectAll('g.' + id)
-         .data(colorScale.domain());
-
-         var legendEnter = legend.enter().append('g')
-         .attr('class', id);
-
-         legendEnter.append('rect')
-         .attr('width', null)
-         .attr('height', null)
-         .on('click', function (d, i) {
-         legendColorRectClicked(d, i)
-         });
-
-         legendEnter.append('text')
-         .attr("class", "legend");
-
-         legendEnter.append('text')
-         .attr("class", "legendLabel");
-
-         legendEnter.append('text')
-         .attr("class", "legendDescription");
-
-
-         var legendUpdate = legend.transition()
-         .duration(200)
-         .attr('transform', function (d, i) {
-         ++counter;
-         var height = legendRectSize;
-         var x = xPos;
-         var y = yPos + i * height;
-         return 'translate(' + x + ',' + y + ')';
-         });
-
-         legendUpdate.select('rect')
-         .attr('width', legendRectSize)
-         .attr('height', legendRectSize)
-         .style('fill', colorScale)
-         .style('stroke', colorScale);
-         */
-
         var svg = d3.select("body")
             .append("svg")
             .attr("width", 500)
@@ -5230,16 +5191,16 @@ if (!phyloXml) {
             .append("g")
             .attr("transform", "translate(200,200)");
 
-        var plate = _baseSvg.append("circle")
+        var plate = svg.append("circle")
             .attr("fill", defaultColor)
             .attr("stroke", "#fff")
             .attr("stroke-width", 4)
             .attr("r", 75)
-            .attr("cx", 200)
-            .attr("cy", 200 + 20 * i)
+            .attr("cx", 0)
+            .attr("cy", 0)
             .on("click", clicked);
 
-        _baseSvg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        svg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
             .selectAll("path")
             .data(pie)
             .enter()
@@ -5256,6 +5217,7 @@ if (!phyloXml) {
                 plate.attr("fill", fill);
             })
             .on("click", clicked);
+
     };
 
 
