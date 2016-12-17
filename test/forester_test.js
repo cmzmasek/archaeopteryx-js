@@ -316,7 +316,6 @@ function testReRoot1() {
     if (rr !== "(((a:0.1,b:0.2,c:0.3)abc:0.4,(d:0.5,e:0.6)de:0.7)abcde:0.8,f:0.9)r:1;") {
         return false;
     }
-
     return true;
 }
 
@@ -618,6 +617,8 @@ function testNewHampshire() {
     var nh18 = "((a:0.001,b:0.000001,c:1)abc:0.1[3.39472],d:0.1):2[1];";
     var nh19 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825[23.4],11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901[0],((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709[0.001],23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)'Strongylocentrotus purpuratus':0.34475):0.26168[1],(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898[-1],29_AEDAE:0.86398)Diptera:0.24915[1],30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134[0],8_BRAFL:0.58563)'Branchiostoma floridae':0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)'Nematostella vectensis':0.28437):0.09305,9_BRAFL:1.09612):0.54836[303.039],((3_BRAFL:0.48766,2_BRAFL:0.65293)'Branchiostoma floridae':0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)'Branchiostoma floridae':0.43438):0.18105)Metazoa[100];";
     var nh20 = "((((a,b)ab:3[2],c)[100],(d,e)de[1]):12[30.000002],f)r[100];";
+    var nh21 = "((((((a,b)ab[2]:3,c)[100]:12,(d,e)de)abcde:13[2],f):14[0]):0[0])[0]:0;";
+    var nh22 = ' ((( (((a[a] , b[12x])ab[2]:3, "c[z]")[+100]: 12,(d, "e")de)ab[]cde:13[2],[z]f):14[0]):0[0])[0]:0;';
 
     var phy0 = forester.parseNewHampshire(nh0);
     var phy1 = forester.parseNewHampshire(nh1);
@@ -640,7 +641,8 @@ function testNewHampshire() {
     var phy18 = forester.parseNewHampshire(nh18);
     var phy19 = forester.parseNewHampshire(nh19);
     var phy20 = forester.parseNewHampshire(nh20);
-
+    var phy21 = forester.parseNewHampshire(nh21);
+    var phy22 = forester.parseNewHampshire(nh22);
 
     if (forester.toNewHampshire(phy0) !== nh0) {
         return false;
@@ -705,7 +707,6 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy20, 8, true, true) !== nh20) {
         return false;
     }
-
     var n1 = forester.findByNodeName(phy20, "ab")[0];
     if (n1.confidences[0].value !== 2) {
         return false;
@@ -720,8 +721,56 @@ function testNewHampshire() {
     if (n2.parent.confidences[0].value !== 30.000002) {
         return false;
     }
-    var n2 = forester.findByNodeName(phy20, "r")[0];
+    n2 = forester.findByNodeName(phy20, "r")[0];
     if (n2.confidences[0].value !== 100) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy20, 8, true, true) !== '((((a,b)ab:3[2],c)[100],(d,e)de[1]):12[30.000002],f)r[100];') {
+        return false;
+    }
+    var n4 = forester.findByNodeName(phy21, "ab")[0];
+    if (n4.confidences[0].value !== 2) {
+        return false;
+    }
+    if (n4.branch_length !== 3) {
+        return false;
+    }
+    if (n4.parent.confidences[0].value !== 100) {
+        return false;
+    }
+    if (n4.parent.branch_length !== 12) {
+        return false;
+    }
+    var n5 = forester.findByNodeName(phy21, "abcde")[0];
+    if (n5.confidences[0].value !== 2) {
+        return false;
+    }
+    if (n5.branch_length !== 13) {
+        return false;
+    }
+    if (n5.parent.confidences[0].value !== 0) {
+        return false;
+    }
+    if (n5.parent.branch_length !== 14) {
+        return false;
+    }
+    if (n5.parent.parent.confidences[0].value !== 0) {
+        return false;
+    }
+    if (n5.parent.parent.branch_length !== 0) {
+        return false;
+    }
+    if (n5.parent.parent.parent.confidences[0].value !== 0) {
+        return false;
+    }
+    if (n5.parent.parent.parent.branch_length !== 0) {
+        return false;
+    }
+    var t = '((((((a,b)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];';
+    if (forester.toNewHampshire(phy21, 8, true, true) !== t) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy22, 8, true, true) !== t) {
         return false;
     }
     return true;

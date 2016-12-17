@@ -188,6 +188,8 @@ if (!phyloXml) {
     var LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
     var LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
 
+    var COLOR_PICKER = 'col_pick';
+
     var VK_ESC = 27;
     var VK_O = 79;
     var VK_R = 82;
@@ -258,6 +260,7 @@ if (!phyloXml) {
     var _legendShapeScales = {};
     var _legendSizeScales = {};
     var _showLegends = true;
+    var _showColorPicker = false;
 
 
     function branchLengthScaling(nodes, width) {
@@ -820,6 +823,110 @@ if (!phyloXml) {
         return counter;
     }
 
+
+    function addColorPicker() {
+        _showColorPicker = true;
+    }
+
+    function removeColorPicker() {
+        _showColorPicker = false;
+        _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
+    }
+
+
+    function makeColorPicker(id, xPos, yPos, colorScale, label, description) {
+
+        xPos = 260;
+        yPos = 20;
+        var colorScale = d3.scale.linear()
+            .domain([1, 2, 3, 4])
+            .range(["red", "white", "green", "blue"]);
+
+        var counter = 0;
+
+        var legendRectSize = 10;
+        var legendSpacing = 4;
+
+        var xCorrectionForLabel = -1;
+        var yFactorForLabel = -1.5;
+        var yFactorForDesc = -0.5;
+
+        var legend = _baseSvg.selectAll('g.' + id)
+            .data(colorScale.domain());
+
+        var legendEnter = legend.enter().append('g')
+            .attr('class', id);
+
+        legendEnter.append('rect')
+            .attr('width', null)
+            .attr('height', null)
+            .on('click', function (d, i) {
+                colorPickerClicked(d, i);
+
+            });
+
+        legendEnter.append('text')
+            .attr("class", "legend");
+
+        legendEnter.append('text')
+            .attr("class", "legendLabel");
+
+        legendEnter.append('text')
+            .attr("class", "legendDescription");
+
+        var legendUpdate = legend.transition()
+            .duration(0)
+            .attr('transform', function (d, i) {
+                ++counter;
+                var height = legendRectSize;
+                var x = xPos;
+                var y = yPos + i * height;
+                return 'translate(' + x + ',' + y + ')';
+            });
+
+        legendUpdate.select('rect')
+            .attr('width', legendRectSize)
+            .attr('height', legendRectSize)
+            .style('fill', colorScale)
+            .style('stroke', colorScale);
+
+        legendUpdate.select('text.legend')
+            .attr('x', legendRectSize + legendSpacing)
+            .attr('y', legendRectSize - legendSpacing)
+            .text(function (d, i) {
+                return d;
+            });
+
+        legendUpdate.select('text.legendLabel')
+            .style('font-weight', 'bold')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForLabel * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0) {
+                    return label;
+                }
+            });
+
+        legendUpdate.select('text.legendDescription')
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForDesc * legendRectSize)
+            .text(function (d, i) {
+                if (i === 0 && description) {
+                    return description;
+                }
+            });
+
+        legend.exit().remove();
+
+        return counter;
+    }
+
+    function colorPickerClicked(d, i) {
+        console.log('clicked: ' + d + ' ' + i);
+        removeColorPicker();
+    }
+
+
     function makeShapeLegend(id, xPos, yPos, shapeScale, label, description) {
 
         if (!label) {
@@ -1140,7 +1247,11 @@ if (!phyloXml) {
 
         if (_settings.enableNodeVisualizations) {
             addLegends();
+            if (_showColorPicker) {
+                makeColorPicker(COLOR_PICKER);
+            }
         }
+
 
         _treeFn = _treeFn.size([_displayHeight, _w]);
 
@@ -3362,6 +3473,9 @@ if (!phyloXml) {
 
     function legendShowClicked() {
         _showLegends = !_showLegends;
+        if (!_showLegends) {
+            removeColorPicker();
+        }
         update(null, 0);
     }
 
@@ -3379,11 +3493,13 @@ if (!phyloXml) {
         //////////////////////
         console.log('legendColorRectClicked:');
         console.log(' d=' + d + '  i=' + i);
+        addColorPicker();
+        update();
         /////////////////////////
-        var picker = new colorPicker("#00DB00");
-        picker.picked = function (color) {
-            alert(color);
-        };
+        // var picker = new colorPicker("#00DB00", null, d, i);
+        // picker.picked = function (color) {
+        //      alert(color);
+        // };
     }
 
     function setRadioButtonValue(id, value) {
@@ -5045,7 +5161,7 @@ if (!phyloXml) {
     // http://jsfiddle.net/cessor/NnH5Q/
     // --------------------------------------------------------------
 
-    var colorPicker = function (defaultColor, colorScale) {
+    var colorPicker = function (defaultColor, colorScale, d, i) {
         ////////////////////////////
         var self = this;
         var rainbow = ["#FFD300", "#FFFF00", "#A2F300", "#00DB00", "#00B7FF", "#1449C4", "#4117C7", "#820AC3", "#DB007C", "#FF0000", "#FF7400", "#FFAA00"];
@@ -5063,7 +5179,7 @@ if (!phyloXml) {
         };
 
         var pie = d3.layout.pie().sort(null);
-        var arc = d3.svg.arc().innerRadius(50).outerRadius(100);
+        var arc = d3.svg.arc().innerRadius(75).outerRadius(150);
 
         // _baseSvg = d3.select(id).append("svg")
         /*
@@ -5114,16 +5230,16 @@ if (!phyloXml) {
             .append("g")
             .attr("transform", "translate(200,200)");
 
-        var plate = svg.append("circle")
+        var plate = _baseSvg.append("circle")
             .attr("fill", defaultColor)
             .attr("stroke", "#fff")
             .attr("stroke-width", 4)
             .attr("r", 75)
-            .attr("cx", 0)
-            .attr("cy", 0)
+            .attr("cx", 200)
+            .attr("cy", 200 + 20 * i)
             .on("click", clicked);
 
-        svg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        _baseSvg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
             .selectAll("path")
             .data(pie)
             .enter()
