@@ -261,6 +261,7 @@ if (!phyloXml) {
     var _legendSizeScales = {};
     var _showLegends = true;
     var _showColorPicker = false;
+    var _colorPickerData = null;
 
 
     function branchLengthScaling(nodes, width) {
@@ -749,8 +750,8 @@ if (!phyloXml) {
         legendEnter.append('rect')
             .attr('width', null)
             .attr('height', null)
-            .on('click', function (d, i) {
-                legendColorRectClicked(d, i, colorScale);
+            .on('click', function (clickedName, clickedIndex) {
+                legendColorRectClicked(colorScale, label, description, clickedName, clickedIndex);
             });
 
         legendEnter.append('text')
@@ -823,32 +824,36 @@ if (!phyloXml) {
         return counter;
     }
 
-    var _targetScale = null;
 
-    function addColorPicker(targetScale) {
-        _targetScale = targetScale;
+    function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
+        _colorPickerData = {};
+        _colorPickerData.targetScale = targetScale;
+        _colorPickerData.legendLabel = legendLabel;
+        _colorPickerData.legendDescription = legendDescription;
+        _colorPickerData.clickedName = clickedName;
+        _colorPickerData.clickedIndex = clickedIndex;
         _showColorPicker = true;
     }
 
     function removeColorPicker() {
         _showColorPicker = false;
-        _targetScale = null;
+        _colorPickerData = null;
         _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
     }
 
 
-    function makeColorPicker(id, xPos, yPos, colorScale, label, description) {
-        console.log('targetScale:');
-        console.log(_targetScale);
+    function makeColorPicker(id, xPos, yPos) {
+        //console.log('targetScale:');
+        //console.log(_colorPickerData.targetScale);
         xPos = 260;
         yPos = 20;
-        var colorScale = d3.scale.linear()
-            .domain([1, 2, 3, 4, 5, 6, 7])
-            .range(["red", "white", "green", "blue", "pink", "black", "grey"]);
+        var colorPickerColors = d3.scale.linear()
+            .domain([1, 2, 3, 4, 5, 6, 7, 8])
+            .range(["red", "white", "green", "blue", "pink", "black", "grey", "purple"]);
 
         var counter = 0;
 
-        var legendRectSize = 10;
+        var legendRectSize = 15;
         var legendSpacing = 4;
 
         var xCorrectionForLabel = -1;
@@ -856,7 +861,7 @@ if (!phyloXml) {
         var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
-            .data(colorScale.domain());
+            .data(colorPickerColors.domain());
 
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
@@ -865,12 +870,7 @@ if (!phyloXml) {
             .attr('width', null)
             .attr('height', null)
             .on('click', function (d, i) {
-                console.log(colorScale(d));
-                //_targetScale = colorScale;
-                /// TODO
-                _legendColorScales[LEGEND_LABEL_COLOR] = colorScale;
-                ////
-                colorPickerClicked(d, i);
+                colorPickerClicked(colorPickerColors(d), d, i);
             });
 
         legendEnter.append('text')
@@ -895,8 +895,8 @@ if (!phyloXml) {
         legendUpdate.select('rect')
             .attr('width', legendRectSize)
             .attr('height', legendRectSize)
-            .style('fill', colorScale)
-            .style('stroke', colorScale);
+            .style('fill', colorPickerColors)
+            .style('stroke', colorPickerColors);
 
         legendUpdate.select('text.legend')
             .attr('x', legendRectSize + legendSpacing)
@@ -911,7 +911,7 @@ if (!phyloXml) {
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
                 if (i === 0) {
-                    return label;
+                    return 'label'; //TODO nothing is shown, why?
                 }
             });
 
@@ -919,8 +919,9 @@ if (!phyloXml) {
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
-                if (i === 0 && description) {
-                    return description;
+                if (i === 0) {
+                    return _colorPickerData.legendLabel + " for " + _colorPickerData.legendDescription + '=' +
+                        _colorPickerData.clickedName + ' [' + _colorPickerData.clickedIndex + "] ";
                 }
             });
 
@@ -929,9 +930,21 @@ if (!phyloXml) {
         return counter;
     }
 
-    function colorPickerClicked(d, i) {
-        console.log('clicked: ' + d + ' ' + i);
-        removeColorPicker();
+    function colorPickerClicked(colorPicked, d, i) {
+
+        /// TODO
+        //_legendColorScales[LEGEND_LABEL_COLOR] = colorScale;
+        //console.log('              d: ' + d );
+        console.log('');
+        console.log('               i: ' + i);
+        console.log('     colorPicked: ' + colorPicked);
+        //console.log(' currentLabelColorVisualization: ' + _currentLabelColorVisualization); // 'host', 'year', etc
+        //console.log('              legendColorScales: ' + _legendColorScales);
+        //console.log(_legendColorScales[LEGEND_LABEL_COLOR]); // is a function
+        //console.log(_); // is a function
+        // console.log(' colorScale(d) : ' + colorScale(d));
+        console.log(' ------------------------');
+        removeColorPicker(); //needs to be color when vis changed/removed //TODO
     }
 
 
@@ -1256,8 +1269,7 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations) {
             addLegends();
             if (_showColorPicker) {
-
-                makeColorPicker(COLOR_PICKER, 0, 0, null, '', '');
+                makeColorPicker(COLOR_PICKER, 0, 0);
 
             }
         }
@@ -3499,10 +3511,9 @@ if (!phyloXml) {
         _options.visualizationsLegendYpos = _options.visualizationsLegendYposOrig;
     }
 
-    function legendColorRectClicked(d, i, targetScale) {
-        console.log('legendColorRectClicked:');
-        console.log(' d=' + d + '  i=' + i);
-        addColorPicker(targetScale);
+    function legendColorRectClicked(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
+
+        addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex);
         update();
     }
 
@@ -3835,6 +3846,7 @@ if (!phyloXml) {
                 _currentLabelColorVisualization = null;
                 removeLegend(LEGEND_LABEL_COLOR);
             }
+            removeColorPicker();
             update(null, 0);
         });
 
@@ -3853,6 +3865,7 @@ if (!phyloXml) {
                 _currentNodeFillColorVisualization = null;
                 removeLegend(LEGEND_NODE_FILL_COLOR);
             }
+            removeColorPicker();
             update(null, 0);
         });
 
@@ -3876,6 +3889,7 @@ if (!phyloXml) {
             if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
                 removeLegend(LEGEND_NODE_BORDER_COLOR);
             }
+            removeColorPicker();
             update(null, 0);
         });
 
