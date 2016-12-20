@@ -849,8 +849,6 @@ if (!phyloXml) {
 
 
     function makeColorPicker(id, xPos, yPos) {
-        //console.log('targetScale:');
-        //console.log(_colorPickerData.targetScale);
         xPos = 260;
         yPos = 20;
         var colorPickerColors = d3.scale.linear()
@@ -937,22 +935,8 @@ if (!phyloXml) {
 
     function colorPickerClicked(colorPicked, d, i) {
 
-        /// TODO
-        //_legendColorScales[LEGEND_LABEL_COLOR] = colorScale;
-        console.log('              d: ' + d);
-        console.log('');
-        console.log('               i: ' + i);
-        console.log('     colorPicked: ' + colorPicked);
-        console.log('');
-        //console.log(_colorPickerData);
-        console.log('');
-        //  console.log(_visualizations.labelColor );
-
         var vis = _visualizations.labelColor[_colorPickerData.legendDescription];
         var mf = vis.mappingFn;
-        //console.log("vis");
-        //console.log(vis);
-        // console.log("-------");
 
         var scaleType = vis.scaleType;
 
@@ -962,7 +946,6 @@ if (!phyloXml) {
             var newColorRange = [];
             for (var di = 0; di < domain.length; ++di) {
                 var curName = domain[di];
-                console.log(curName);
                 if (curName === _colorPickerData.clickedName) {
                     newColorRange[di] = colorPicked;
                 }
@@ -978,7 +961,6 @@ if (!phyloXml) {
             var newColorRange = [];
             for (var di = 0; di < domain.length; ++di) {
                 var curName = domain[di];
-                console.log(curName);
                 if (curName === _colorPickerData.clickedName) {
                     newColorRange[di] = colorPicked;
                 }
@@ -989,9 +971,6 @@ if (!phyloXml) {
             mf.range(newColorRange);
         }
 
-        // console.log(mf);
-        // console.log(mf.range)
-        // console.log(mf.domain);
 
         ////
         /*var vis = createVisualization(label,
@@ -1006,19 +985,6 @@ if (!phyloXml) {
         //     _visualizations.nodeShape[vis.label] = vis;
         // }
 
-        ////
-
-        //  _legendColorScales[LEGEND_LABEL_COLOR]
-        //   _legendColorScales[LEGEND_NODE_FILL_COLOR] ||
-        //   _legendColorScales[LEGEND_NODE_BORDER_COLOR]
-
-
-        //console.log(' currentLabelColorVisualization: ' + _currentLabelColorVisualization); // 'host', 'year', etc
-        //console.log('              legendColorScales: ' + _legendColorScales);
-        //console.log(_legendColorScales[LEGEND_LABEL_COLOR]); // is a function
-        //console.log(_); // is a function
-        // console.log(' colorScale(d) : ' + colorScale(d));
-        console.log(' ------------------------');
         removeColorPicker(); //needs to be color when vis changed/removed //TODO
         update();
     }
@@ -5252,68 +5218,6 @@ if (!phyloXml) {
             saveAs(blob, _options.nameForPngDownload);
         });
     }
-
-    // --------------------------------------------------------------
-    // Color picker
-    // based on the work by Johannes Hofmeister
-    // http://jsfiddle.net/cessor/NnH5Q/
-    // --------------------------------------------------------------
-
-    var colorPickerNotUsed = function (defaultColor, colorScale, d, i) {
-        var self = this;
-        var rainbow = ["#FFD300", "#FFFF00", "#A2F300", "#00DB00", "#00B7FF", "#1449C4", "#4117C7", "#820AC3", "#DB007C", "#FF0000", "#FF7400", "#FFAA00"];
-        colorScale = colorScale || rainbow;
-        var color = function (i) {
-            return colorScale[i];
-        };
-        defaultColor = defaultColor || color(0);
-
-        self.pickedColor = defaultColor;
-        self.picked = function (color) {
-        };
-        var clicked = function () {
-            self.picked(self.pickedColor);
-        };
-
-        var pie = d3.layout.pie().sort(null);
-        var arc = d3.svg.arc().innerRadius(75).outerRadius(150);
-
-        var svg = d3.select("body")
-            .append("svg")
-            .attr("width", 500)
-            .attr("height", 500)
-            .append("g")
-            .attr("transform", "translate(200,200)");
-
-        var plate = svg.append("circle")
-            .attr("fill", defaultColor)
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 4)
-            .attr("r", 75)
-            .attr("cx", 0)
-            .attr("cy", 0)
-            .on("click", clicked);
-
-        svg.datum([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-            .selectAll("path")
-            .data(pie)
-            .enter()
-            .append("path")
-            .attr("fill", function (d, i) {
-                return color(i);
-            })
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 4)
-            .attr("d", arc)
-            .on("mouseover", function () {
-                var fill = d3.select(this).attr("fill");
-                self.pickedColor = fill;
-                plate.attr("fill", fill);
-            })
-            .on("click", clicked);
-
-    };
-
 
 // --------------------------------------------------------------
 // For exporting
