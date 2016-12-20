@@ -765,7 +765,7 @@ if (!phyloXml) {
 
 
         var legendUpdate = legend.transition()
-            .duration(200)
+            .duration(0)
             .attr('transform', function (d, i) {
                 ++counter;
                 var height = legendRectSize;
@@ -826,6 +826,12 @@ if (!phyloXml) {
 
 
     function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
+
+        console.log("legendLabel      :" + legendLabel);
+        console.log("legendDescription:" + legendDescription);
+        console.log("clickedName      :" + clickedName);
+        console.log("clickedIndex     :" + clickedIndex);
+
         _colorPickerData = {};
         _colorPickerData.targetScale = targetScale;
         _colorPickerData.legendLabel = legendLabel;
@@ -848,10 +854,10 @@ if (!phyloXml) {
         xPos = 260;
         yPos = 20;
         var colorPickerColors = d3.scale.linear()
-            .domain([1, 2, 3, 4, 5, 6, 7, 8])
-            .range(["red", "white", "green", "blue", "pink", "black", "grey", "purple"]);
+            .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+            .range(["red", "white", "green", "blue", "pink", "black", "grey", "purple",
+                "#990000", "#994C00", "#999900", "#4C9900", "#009900", "#00994C", "#009999", "#004C99"]);
 
-        var counter = 0;
 
         var legendRectSize = 15;
         var legendSpacing = 4;
@@ -885,10 +891,10 @@ if (!phyloXml) {
         var legendUpdate = legend.transition()
             .duration(0)
             .attr('transform', function (d, i) {
-                ++counter;
+
                 var height = legendRectSize;
-                var x = xPos;
-                var y = yPos + i * height;
+                var x = xPos + ( (i > 7) ? height : 0);
+                var y = yPos + ( (i > 7) ? i - 8 : i) * height;
                 return 'translate(' + x + ',' + y + ')';
             });
 
@@ -927,7 +933,6 @@ if (!phyloXml) {
 
         legend.exit().remove();
 
-        return counter;
     }
 
     function colorPickerClicked(colorPicked, d, i) {
@@ -963,6 +968,22 @@ if (!phyloXml) {
                 }
                 else {
                     newColorRange[di] = ord(curName);
+                }
+            }
+            mf.range(newColorRange);
+        }
+        else if (scaleType === LINEAR_SCALE) {
+            var lin = _colorPickerData.targetScale;
+            var domain = lin.domain();
+            var newColorRange = [];
+            for (var di = 0; di < domain.length; ++di) {
+                var curName = domain[di];
+                console.log(curName);
+                if (curName === _colorPickerData.clickedName) {
+                    newColorRange[di] = colorPicked;
+                }
+                else {
+                    newColorRange[di] = lin(curName);
                 }
             }
             mf.range(newColorRange);
@@ -1233,6 +1254,7 @@ if (!phyloXml) {
         var scaleType = '';
 
         if (_showLegends && _legendColorScales[LEGEND_LABEL_COLOR]) {
+            removeColorLegend(LEGEND_LABEL_COLOR);
             label = 'Label Color';
             desc = _currentLabelColorVisualization;
             scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
@@ -1249,6 +1271,7 @@ if (!phyloXml) {
         }
 
         if (_showLegends && _options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR]) {
+            removeColorLegend(LEGEND_NODE_FILL_COLOR);
             label = 'Node Fill';
             desc = _currentNodeFillColorVisualization;
             scaleType = _visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType;
@@ -1266,6 +1289,7 @@ if (!phyloXml) {
         }
 
         if (_showLegends && _options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+            removeColorLegend(LEGEND_NODE_BORDER_COLOR);
             label = 'Node Border';
             desc = _currentNodeBorderColorVisualization;
             scaleType = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization].scaleType;
@@ -3957,6 +3981,7 @@ if (!phyloXml) {
                 _currentNodeShapeVisualization = null;
                 removeLegendForShapes(LEGEND_NODE_SHAPE);
             }
+            removeColorPicker();
             resetVis();
             update(null, 0);
             update(null, 0);
@@ -3977,6 +4002,7 @@ if (!phyloXml) {
                 _currentNodeSizeVisualization = null;
                 removeLegendForSizes(LEGEND_NODE_SIZE);
             }
+            removeColorPicker();
             update(null, 0);
         });
 
@@ -5233,7 +5259,7 @@ if (!phyloXml) {
     // http://jsfiddle.net/cessor/NnH5Q/
     // --------------------------------------------------------------
 
-    var colorPicker = function (defaultColor, colorScale, d, i) {
+    var colorPickerNotUsed = function (defaultColor, colorScale, d, i) {
         var self = this;
         var rainbow = ["#FFD300", "#FFFF00", "#A2F300", "#00DB00", "#00B7FF", "#1449C4", "#4117C7", "#820AC3", "#DB007C", "#FF0000", "#FF7400", "#FFAA00"];
         colorScale = colorScale || rainbow;
