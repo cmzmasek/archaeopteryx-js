@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_78
+// v 0_79
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.78';
+    var VERSION = '0.79';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -849,19 +849,26 @@ if (!phyloXml) {
 
 
     function makeColorPicker(id, xPos, yPos) {
-        xPos = 260;
+        xPos = 280;
         yPos = 20;
-        var colorPickerColors = d3.scale.linear()
-            .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
-            .range(["red", "white", "green", "blue", "pink", "black", "grey", "purple",
-                "#990000", "#994C00", "#999900", "#4C9900", "#009900", "#00994C", "#009999", "#004C99"]);
 
+        var colorsAry = ["red", "white", "green", "blue", "pink", "black", "grey", "purple",
+            "#990000", "#994C00", "#999900", "#4C9900", "#009900", "#00994C", "#009999", "#004C99",
+            "#FF0000", "#FF4C00", "#99FF00", "#4CFF00", "#0099FF", "#FF994C", "#0099FF", "#FF4C99"
+        ];
+
+        var lbls = [];
+        for (var ii = 0; ii < colorsAry.length; ++ii) {
+            lbls[ii] = ii;
+        }
+
+        var colorPickerColors = d3.scale.linear()
+            .domain(lbls)
+            .range(colorsAry);
 
         var legendRectSize = 15;
-        var legendSpacing = 4;
 
         var xCorrectionForLabel = -1;
-        var yFactorForLabel = -1.5;
         var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
@@ -889,10 +896,26 @@ if (!phyloXml) {
         var legendUpdate = legend.transition()
             .duration(0)
             .attr('transform', function (d, i) {
-
                 var height = legendRectSize;
-                var x = xPos + ( (i > 7) ? height : 0);
-                var y = yPos + ( (i > 7) ? i - 8 : i) * height;
+                var x = xPos;
+                if (i > 15) {
+                    x += (2 * height);
+                }
+                else if (i > 7) {
+                    x += height;
+                }
+                var y = yPos;
+
+                if (i > 15) {
+                    y += (( i - 16 ) * height);
+                }
+                else if (i > 7) {
+                    y += (( i - 8 ) * height);
+                }
+                else {
+                    y += ( i * height);
+                }
+
                 return 'translate(' + x + ',' + y + ')';
             });
 
@@ -909,23 +932,24 @@ if (!phyloXml) {
          return d;
          });*/
 
-        legendUpdate.select('text.legendLabel')
-            .style('font-weight', 'bold')
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForLabel * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return 'label'; //TODO nothing is shown, why?
-                }
-            });
+        /* legendUpdate.select('text.legendLabel')
+         .style('font-weight', 'bold')
+         .attr('x', xCorrectionForLabel)
+         .attr('y', yFactorForLabel * legendRectSize)
+         .text(function (d, i) {
+         if (i === 0) {
+         return 'label'; //TODO nothing is shown, why?
+         }
+         });*/
 
         legendUpdate.select('text.legendDescription')
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
                 if (i === 0) {
-                    return _colorPickerData.legendLabel + " for " + _colorPickerData.legendDescription + '=' +
-                        _colorPickerData.clickedName + ' [' + _colorPickerData.clickedIndex + "] ";
+                    return 'Chose ' + _colorPickerData.legendLabel.toLowerCase() +
+                        ' for ' + _colorPickerData.legendDescription.toLowerCase() + ' "' +
+                        _colorPickerData.clickedName + '":';
                 }
             });
 
