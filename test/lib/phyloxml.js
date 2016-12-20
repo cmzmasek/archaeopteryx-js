@@ -22,7 +22,7 @@
 
 /**
  *
- * Version 0.910 20161102
+ * Version 0.912 20161213
  *
  * This requires sax-js from https://github.com/isaacs/sax-js
  *
@@ -208,7 +208,6 @@
     var SEQUENCE_LOCATION = 'location';
     var SEQUENCES = 'sequences';
 
-
     // Taxonomy
     var TAXONOMY = 'taxonomy';
     var TAXONOMY_ID_SOURCE_ATTR = 'id_source';
@@ -240,6 +239,14 @@
     var X_SIMPLE_CHARACTERISTIC_COUNTRY = 'Country';
     var X_SIMPLE_CHARACTERISTIC_YEAR = 'Year';
     var X_SIMPLE_CHARACTERISTIC_HOST = 'Host';
+    var X_SIMPLE_CHARACTERISTIC_HA = 'HA';
+    var X_SIMPLE_CHARACTERISTIC_NA = 'NA';
+
+    // appType (special for Virus BRC)
+    var APPTYPE = 'flu_type';
+
+    // Unknown source, id, confidence type:
+    var UNKNOWN = 'unknown';
 
     // --------------------------------------------------------------
     // Instance variables
@@ -270,7 +277,7 @@
         acc.source = getAttribute(ACCESSION_SOURCE_ATTR, tag.attributes);
         acc.comment = getAttribute(ACCESSION_COMMENT_ATTR, tag.attributes);
         if (!acc.source) {
-            acc.source = '?';
+            acc.source = UNKNOWN;
         }
         if (parent === SEQUENCE) {
             getCurrentObject().accession = acc;
@@ -547,6 +554,12 @@
         }
     }
 
+    function inAppType(text) {
+        if (getCurrentTag() === APPTYPE) {
+            getCurrentObject().desc = text;
+        }
+    }
+
     function inBranchColor(text) {
         if (getCurrentTag() === COLOR_RED) {
             getCurrentObject().red = parseIntNumber(text);
@@ -710,6 +723,12 @@
         }
         else if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_YEAR) {
             getCurrentObject().year = text;
+        }
+        else if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_HA) {
+            getCurrentObject().ha = text;
+        }
+        else if (getCurrentTag() === X_SIMPLE_CHARACTERISTIC_NA) {
+            getCurrentObject().na = text;
         }
     }
 
@@ -879,6 +898,9 @@
         if (currentTag === ACCESSION) {
             inAccession(text);
         }
+        else if (currentTag === APPTYPE) {
+            inAppType(text);
+        }
         else if (currentTag === CONFIDENCE) {
             inConfidence(text);
         }
@@ -903,7 +925,6 @@
     }
 
     function phyloxmlOnerror(error) {
-        console.error(error);
         throw error;
     }
 
@@ -1100,7 +1121,7 @@
                 for (i = 0; i < l; ++i) {
                     var conf = node[CONFIDENCES][i];
                     if (!conf[CONFIDENCE_TYPE_ATTR]) {
-                        conf[CONFIDENCE_TYPE_ATTR] = '?';
+                        conf[CONFIDENCE_TYPE_ATTR] = UNKNOWN;
                     }
                     addSingleElement(CONFIDENCE, conf.value, conf,
                         [CONFIDENCE_TYPE_ATTR, CONFIDENCE_STDDEV_ATTR]);
@@ -1126,7 +1147,7 @@
                     open(TAXONOMY, tax, [TAXONOMY_ID_SOURCE_ATTR]);
                     if (tax[ID]) {
                         if (!tax[ID][ID_PROVIDER_ATTR]) {
-                            tax[ID][ID_PROVIDER_ATTR] = '?';
+                            tax[ID][ID_PROVIDER_ATTR] = UNKNOWN;
                         }
                         addSingleElement(ID, tax[ID].value, tax[ID],
                             [ID_PROVIDER_ATTR]);
@@ -1154,7 +1175,7 @@
                     addSingleElement(SEQUENCE_SYMBOL, seq[SEQUENCE_SYMBOL]);
                     if (seq[ACCESSION]) {
                         if (!seq[ACCESSION][ACCESSION_SOURCE_ATTR]) {
-                            seq[ACCESSION][ACCESSION_SOURCE_ATTR] = '?';
+                            seq[ACCESSION][ACCESSION_SOURCE_ATTR] = UNKNOWN;
                         }
                         addSingleElement(ACCESSION, seq[ACCESSION].value, seq[ACCESSION],
                             [ACCESSION_SOURCE_ATTR, ACCESSION_COMMENT_ATTR]);
