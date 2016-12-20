@@ -898,12 +898,12 @@ if (!phyloXml) {
             .style('fill', colorPickerColors)
             .style('stroke', colorPickerColors);
 
-        legendUpdate.select('text.legend')
-            .attr('x', legendRectSize + legendSpacing)
-            .attr('y', legendRectSize - legendSpacing)
-            .text(function (d, i) {
-                return d;
-            });
+        /* legendUpdate.select('text.legend')
+         .attr('x', legendRectSize + legendSpacing)
+         .attr('y', legendRectSize - legendSpacing)
+         .text(function (d, i) {
+         return d;
+         });*/
 
         legendUpdate.select('text.legendLabel')
             .style('font-weight', 'bold')
@@ -934,10 +934,64 @@ if (!phyloXml) {
 
         /// TODO
         //_legendColorScales[LEGEND_LABEL_COLOR] = colorScale;
-        //console.log('              d: ' + d );
+        console.log('              d: ' + d);
         console.log('');
         console.log('               i: ' + i);
         console.log('     colorPicked: ' + colorPicked);
+        console.log('');
+        //console.log(_colorPickerData);
+        console.log('');
+        //  console.log(_visualizations.labelColor );
+
+        var vis = _visualizations.labelColor[_colorPickerData.legendDescription];
+        var mf = vis.mappingFn;
+        //console.log("vis");
+        //console.log(vis);
+        // console.log("-------");
+
+        var scaleType = vis.scaleType;
+
+        if (scaleType === ORDINAL_SCALE) {
+            var ord = _colorPickerData.targetScale;
+            var domain = ord.domain();
+            var newColorRange = [];
+            for (var di = 0; di < domain.length; ++di) {
+                var curName = domain[di];
+                console.log(curName);
+                if (curName === _colorPickerData.clickedName) {
+                    newColorRange[di] = colorPicked;
+                }
+                else {
+                    newColorRange[di] = ord(curName);
+                }
+            }
+            mf.range(newColorRange);
+        }
+
+        // console.log(mf);
+        // console.log(mf.range)
+        // console.log(mf.domain);
+
+        ////
+        /*var vis = createVisualization(label,
+         description,
+         field,
+         cladePropertyRef,
+         isRegex,
+         mapping,
+         mappingFn,
+         scaleType);*/
+        // if (vis) {
+        //     _visualizations.nodeShape[vis.label] = vis;
+        // }
+
+        ////
+
+        //  _legendColorScales[LEGEND_LABEL_COLOR]
+        //   _legendColorScales[LEGEND_NODE_FILL_COLOR] ||
+        //   _legendColorScales[LEGEND_NODE_BORDER_COLOR]
+
+
         //console.log(' currentLabelColorVisualization: ' + _currentLabelColorVisualization); // 'host', 'year', etc
         //console.log('              legendColorScales: ' + _legendColorScales);
         //console.log(_legendColorScales[LEGEND_LABEL_COLOR]); // is a function
@@ -945,6 +999,7 @@ if (!phyloXml) {
         // console.log(' colorScale(d) : ' + colorScale(d));
         console.log(' ------------------------');
         removeColorPicker(); //needs to be color when vis changed/removed //TODO
+        update();
     }
 
 
@@ -1270,7 +1325,6 @@ if (!phyloXml) {
             addLegends();
             if (_showColorPicker) {
                 makeColorPicker(COLOR_PICKER, 0, 0);
-
             }
         }
 
