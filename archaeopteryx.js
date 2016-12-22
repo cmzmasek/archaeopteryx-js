@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_79
+// v 0_80
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.79';
+    var VERSION = '0.80';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -68,6 +68,8 @@ if (!phyloXml) {
     var FONT_SIZE_MAX = 26;
     var FONT_SIZE_MIN = 2;
     var SLIDER_STEP = 0.5;
+
+    var OVERLAY = 'overlay';
 
     var KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
 
@@ -189,6 +191,8 @@ if (!phyloXml) {
     var LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
 
     var COLOR_PICKER = 'col_pick';
+    var COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
+    var COLOR_PICKER_BACKGROUND_BORDER_COLOR = '#808080';
 
     var VK_ESC = 27;
     var VK_O = 79;
@@ -262,6 +266,8 @@ if (!phyloXml) {
     var _showLegends = true;
     var _showColorPicker = false;
     var _colorPickerData = null;
+    var _usedColorCategories = new Set();
+    var _colorsForColorPicker = null;
 
 
     function branchLengthScaling(nodes, width) {
@@ -435,24 +441,27 @@ if (!phyloXml) {
                                     }
                                 }
 
-
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     scaleType = ORDINAL_SCALE;
                                     if (nodeVisualization.colors === 'category20') {
                                         colorScale = d3.scale.category20()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
+                                        _usedColorCategories.add('category20');
                                     }
                                     else if (nodeVisualization.colors === 'category20b') {
                                         colorScale = d3.scale.category20b()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
+                                        _usedColorCategories.add('category20b');
                                     }
                                     else if (nodeVisualization.colors === 'category20c') {
                                         colorScale = d3.scale.category20c()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
+                                        _usedColorCategories.add('category20c');
                                     }
                                     else if (nodeVisualization.colors === 'category10') {
                                         colorScale = d3.scale.category10()
                                             .domain(forester.setToArray(np[nodeVisualization.cladeRef]));
+                                        _usedColorCategories.add('category10');
                                     }
                                     else {
                                         throw 'do not know how to process ' + nodeVisualization.colors;
@@ -748,6 +757,7 @@ if (!phyloXml) {
             .attr('class', id);
 
         legendEnter.append('rect')
+            .style("cursor", "pointer")
             .attr('width', null)
             .attr('height', null)
             .on('click', function (clickedName, clickedIndex) {
@@ -825,6 +835,40 @@ if (!phyloXml) {
     }
 
 
+    function obtainPredefinedColors(name) {
+        var t = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        var colorScale = null;
+        var l = 0;
+        if (name === 'category20') {
+            l = 20;
+            colorScale = d3.scale.category20()
+                .domain(t);
+        }
+        else if (name === 'category20b') {
+            l = 20;
+            colorScale = d3.scale.category20b()
+                .domain(t);
+        }
+        else if (name === 'category20c') {
+            l = 20;
+            colorScale = d3.scale.category20c()
+                .domain(t);
+        }
+        else if (name === 'category10') {
+            l = 10;
+            colorScale = d3.scale.category10()
+                .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        }
+        else {
+            throw 'do not know ' + name;
+        }
+        var colors = [];
+        for (var i = 0; i < l; ++i) {
+            colors.push(colorScale(i));
+        }
+        return colors;
+    }
+
     function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
         _colorPickerData = {};
         _colorPickerData.targetScale = targetScale;
@@ -833,9 +877,6 @@ if (!phyloXml) {
         _colorPickerData.clickedName = clickedName;
         _colorPickerData.clickedIndex = clickedIndex;
         _colorPickerData.clickedOrigColor = targetScale(clickedName);
-
-        console.log("clickedOrigColor     :" + _colorPickerData.clickedOrigColor);
-
         _showColorPicker = true;
     }
 
@@ -846,10 +887,7 @@ if (!phyloXml) {
     }
 
 
-    function makeColorPicker(id, xPos, yPos) {
-        xPos = 280;
-        yPos = 20;
-
+    function prepareColorsForColorPicker() {
         var DEFAULT_COLORS_FOR_COLORPICKER = [
             // Red
             '#FFEBEE', '#FFCDD2', '#EF9A9A', '#E57373', '#EF5350', '#F44336', '#E53935', '#D32F2F', '#C62828', '#B71C1C', '#FF8A80', '#FF5252', '#FF1744', '#D50000',
@@ -892,43 +930,47 @@ if (!phyloXml) {
             // Basic
             '#FFFFFF', '#999999', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF', _options.backgroundColorDefault
         ];
-
-        var colorsForColorPicker = [];
-
-        var targetScale = _colorPickerData.targetScale;
-        var targetScaleDomain = targetScale.domain();
-
-        var targetScaleDomainLength = targetScaleDomain.length;
-        for (var i = 0; i < targetScaleDomainLength; ++i) {
-            colorsForColorPicker.push(targetScale(targetScaleDomain[i]));
-        }
+        _colorsForColorPicker = [];
 
         var dcpl = DEFAULT_COLORS_FOR_COLORPICKER.length;
         for (var dci = 0; dci < dcpl; ++dci) {
-            colorsForColorPicker.push(DEFAULT_COLORS_FOR_COLORPICKER[dci]);
+            _colorsForColorPicker.push(DEFAULT_COLORS_FOR_COLORPICKER[dci]);
+        }
+
+        _usedColorCategories.forEach(function (e) {
+            var cs = obtainPredefinedColors(e);
+            var csl = cs.length;
+            for (var csi = 0; csi < csl; ++csi) {
+                _colorsForColorPicker.push(cs[csi]);
+            }
+        });
+
+    }
+
+    function makeColorPicker(id) {
+
+        var xPos = 300;
+        var yPos = 20;
+
+        if (!_colorsForColorPicker) {
+            prepareColorsForColorPicker();
         }
 
         var clickedOrigColorIndex = -1;
 
         var lbls = [];
-        for (var ii = 0; ii < colorsForColorPicker.length; ++ii) {
+        for (var ii = 0; ii < _colorsForColorPicker.length; ++ii) {
             lbls[ii] = ii;
-            if (clickedOrigColorIndex < 0 && (colorToHex(colorsForColorPicker[ii]) === colorToHex(_colorPickerData.clickedOrigColor))) {
+            if (clickedOrigColorIndex < 0 && (colorToHex(_colorsForColorPicker[ii]) === colorToHex(_colorPickerData.clickedOrigColor))) {
                 clickedOrigColorIndex = ii;
             }
         }
 
-        if (clickedOrigColorIndex < 0) {
-            // alert('color not found!'); TODO //TODO
-        }
-
         var colorPickerColors = d3.scale.linear()
             .domain(lbls)
-            .range(colorsForColorPicker);
+            .range(_colorsForColorPicker);
 
-        //var colorPickerSize = Math.ceil(Math.sqrt(colorsForColorPicker.length));
-        var colorPickerSizeX = 14;
-        var colorPickerSizeY = 14;
+        var colorPickerSize = 14;
         var rectSize = 10;
 
         var xCorrectionForLabel = -1;
@@ -941,6 +983,7 @@ if (!phyloXml) {
             .attr('class', id);
 
         colorPickerEnter.append('rect')
+            .style("cursor", "pointer")
             .attr('width', null)
             .attr('height', null)
             .on('click', function (d, i) {
@@ -953,7 +996,6 @@ if (!phyloXml) {
         var colorPickerUpdate = colorPicker.transition()
             .duration(0)
             .attr('transform', function (d, i) {
-                var xx = 0;
                 if (i >= 234) {
                     i += 4;
                     if (i >= 248) {
@@ -962,14 +1004,27 @@ if (!phyloXml) {
                     if (i >= 262) {
                         i += 4;
                     }
-                    // colorPickerSizeY = 10;
-                    // xx = -224;
-                    // if (i=== 224 ) {
-
-                    // }
+                    if (i >= 276) {
+                        i += 4;
+                    }
+                    if (i >= 290) {
+                        i += 4;
+                    }
+                    if (i >= 304) {
+                        i += 4;
+                    }
+                    if (i >= 318) {
+                        i += 4;
+                    }
+                    if (i >= 332) {
+                        i += 4;
+                    }
+                    if (i >= 346) {
+                        i += 4;
+                    }
                 }
-                var x = xPos + Math.floor(( i / colorPickerSizeX )) * rectSize;
-                var y = yPos + (( (i + xx) % colorPickerSizeY ) * rectSize);
+                var x = xPos + Math.floor(( i / colorPickerSize )) * rectSize;
+                var y = yPos + (( i % colorPickerSize ) * rectSize);
                 return 'translate(' + x + ',' + y + ')';
             });
 
@@ -979,9 +1034,11 @@ if (!phyloXml) {
             .style('fill', colorPickerColors)
             .style('stroke',
                 function (d, i) {
-                    // TODO need some of border around "empty one"
-                    if (clickedOrigColorIndex === i) {
-                        return '#000000';
+                    if (i === clickedOrigColorIndex) {
+                        return COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR;
+                    }
+                    else if (i === 263) {
+                        return COLOR_PICKER_BACKGROUND_BORDER_COLOR;
                     }
                     return '#FFFFFF';
                 }
@@ -1085,7 +1142,7 @@ if (!phyloXml) {
             }
             mf.range(newColorRange);
         }
-        removeColorPicker(); //needs to be color when vis changed/removed //TODO
+        // removeColorPicker(); //TODO do users like this?
         update();
     }
 
@@ -1414,7 +1471,7 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations) {
             addLegends();
             if (_showColorPicker) {
-                makeColorPicker(COLOR_PICKER, 0, 0);
+                makeColorPicker(COLOR_PICKER);
             }
         }
 
@@ -2768,7 +2825,7 @@ if (!phyloXml) {
         _baseSvg = d3.select(id).append("svg")
             .attr("width", _displayWidth)
             .attr("height", _displayHeight)
-            .attr("class", "overlay")
+            .attr("class", OVERLAY)
             .call(_zoomListener);
 
         _svgGroup = _baseSvg.append("g");
@@ -2826,6 +2883,10 @@ if (!phyloXml) {
 
         function nodeClick(d) {
 
+            if (_showColorPicker === true) {
+                removeColorPicker();
+                update();
+            }
             function displayNodeData(n) {
 
                 var title = n.name ? "Node Data: " + n.name : "Node Data";
@@ -2964,6 +3025,7 @@ if (!phyloXml) {
                 var dialog = $("#node_data");
                 dialog.dialog("option", "modal", true);
                 dialog.dialog("option", "title", title);
+
                 update();
             }
 
@@ -3224,8 +3286,14 @@ if (!phyloXml) {
 
 
     $('html').click(function (d) {
-        if ((d.target.getAttribute("class") !== "nodeCircleOptions")) {
+        var attrClass = d.target.getAttribute("class");
+        if (( attrClass !== "nodeCircleOptions")) {
             removeTooltips();
+        }
+        if (attrClass === OVERLAY) {
+            if (_showColorPicker === true) {
+                removeColorPicker();
+            }
         }
     });
 
