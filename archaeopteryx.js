@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_80
+// v 0_81
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.80';
+    var VERSION = '0.81';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -910,7 +910,7 @@ if (!phyloXml) {
             // Green
             '#E8F5E9', '#C8E6C9', '#A5D6A7', '#81C784', '#66BB6A', '#4CAF50', '#43A047', '#388E3C', '#2E7D32', '#1B5E20', '#B9F6CA', '#69F0AE', '#00E676', '#00C853',
             // Light Green
-            '#F1F8E9', '#DCEDC8', '#C5E1A5', '#AED581', '#9CCC65', '#8BC34A', '#7CB342', '#689F38', '#558B2F', '#33691E', '#CCFF90', '#B2FF59', '#76FF03', '#64DD17', // Lime
+            '#F1F8E9', '#DCEDC8', '#C5E1A5', '#AED581', '#9CCC65', '#8BC34A', '#7CB342', '#689F38', '#558B2F', '#33691E', '#CCFF90', '#B2FF59', '#76FF03', '#64DD17',
             // Lime
             '#F9FBE7', '#F0F4C3', '#E6EE9C', '#DCE775', '#D4E157', '#CDDC39', '#C0CA33', '#AFB42B', '#9E9D24', '#827717', '#F4FF81', '#EEFF41', '#C6FF00', '#AEEA00',
             // Yellow
@@ -1061,11 +1061,8 @@ if (!phyloXml) {
     } // makeColorPicker
 
 
-    //////////
-    /*
-     From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
-     */
     function colorToRGBA(color) {
+        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
         // Returns the color as an array of [r, g, b, a] -- all range from 0 - 255
         // color must be a valid canvas fillStyle. This will cover most anything
         // you'd want to use.
@@ -1083,11 +1080,13 @@ if (!phyloXml) {
     }
 
     function byteToHex(num) {
+        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
         // Turns a number (0-255) into a 2-character hex number (00-ff)
         return ('0' + num.toString(16)).slice(-2);
     }
 
     function colorToHex(color) {
+        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
         // Convert any CSS color to a hex representation
         // Examples:
         // colorToHex('red')            # '#ff0000'
@@ -1101,9 +1100,6 @@ if (!phyloXml) {
         ).join('');
         return "#" + hex;
     }
-
-
-    //////////
 
     function colorPickerClicked(colorPicked, d, i) {
 
@@ -2131,7 +2127,6 @@ if (!phyloXml) {
         return _options.labelColorDefault;
     };
 
-    ////////////////////
     var makeVisLabelColorForSubtree = function (node) {
         var color = null;
         var success = true;
@@ -3890,16 +3885,11 @@ if (!phyloXml) {
 
             c0.append(makeSearchBoxes());
 
-            // c0.append(makeSearchControls22());
-
             $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
                 "direction": "horizontal"
             });
 
-            //c0.append('<br>');
-
             c0.append(makeAutoCollapse());
-
 
             if (_settings.enableDownloads) {
                 c0.append(makeDownloadSection());
@@ -3928,24 +3918,6 @@ if (!phyloXml) {
                 c1.append(makeVisualControls());
                 c1.append(makeLegendControl());
             }
-
-            //  c1.append(makeSearchControls());
-
-            //  $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
-            //      "direction": "horizontal",
-            //      "width": "120px"
-            //  });
-
-            // $('#' + VISUAL_CONTROLS).accordion({
-            //     collapsible: true,
-            //     heightStyle: "content"
-            // });
-
-            // $('#' + SEARCH_OPTIONS).accordion({
-            //     collapsible: true
-            // });
-
-
         }
 
         $('input:button')
@@ -4673,23 +4645,6 @@ if (!phyloXml) {
             return h;
         }
 
-        function makeSearchControls() {
-            var h = "";
-            // h = h.concat('<div id="' + SEARCH_OPTIONS + '">'); // Uncomment for accordion
-            // h = h.concat('<h3>Search Options</h3>');
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Search Options</legend>');
-            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
-            h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by space, underscore, slash, etc.) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxButton('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
-            h = h.concat(makeCheckboxButton('I', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
-            h = h.concat('</div>');
-            h = h.concat('</fieldset>');
-            // h = h.concat('</div>');
-            return h;
-        }
-
         function makeSearchBoxes() {
 
             var tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," +
@@ -4705,16 +4660,13 @@ if (!phyloXml) {
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat(makeSearchControls22());
+            h = h.concat(makeSearchControls());
             h = h.concat('</fieldset>');
             return h;
         }
 
-        function makeSearchControls22() {
+        function makeSearchControls() {
             var h = "";
-
-            // h = h.concat('<fieldset>');
-            //  h = h.concat('<legend>Search Options:</legend>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('Cas', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
             h = h.concat(makeCheckboxButton('Wrd', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
@@ -4724,36 +4676,26 @@ if (!phyloXml) {
             h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat(makeCheckboxButton('Reg', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
             h = h.concat('</div>');
-            //   h = h.concat('</fieldset>');
-
             return h;
         }
 
 
         function makeVisualControls() {
             var h = "";
-            // h = h.concat('<div id="' + VISUAL_CONTROLS + '">'); // Uncomment for accordion
-            // h = h.concat('<h3>Visualizations</h3>');
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
             h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
             h = h.concat('<br>');
-            //h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
-            // h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
             h = h.concat('<br>');
-            //h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
-            // h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Size:', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
-
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
-            // h = h.concat('</div>');
             return h;
         }
 
