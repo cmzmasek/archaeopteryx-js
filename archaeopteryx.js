@@ -881,15 +881,6 @@ if (!phyloXml) {
 
         legendEnter.append('path');
 
-        /*legendEnter.append('text')
-         .attr('class', 'legendShape');
-
-        legendEnter.append('text')
-         .attr('class', 'legendLabelShape');
-
-        legendEnter.append('text')
-         .attr('class', 'legendDescriptionShape');*/
-
         legendEnter.append('text')
             .attr('class', LEGEND);
 
@@ -898,8 +889,7 @@ if (!phyloXml) {
 
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION);
-
-
+        
         var legendUpdate = legend.transition()
             .duration(200)
             .attr('transform', function (d, i) {
@@ -913,7 +903,6 @@ if (!phyloXml) {
         var values = [];
 
         legendUpdate.select('text.' + LEGEND)
-        //legendUpdate.select('text.legendShape')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
             .style('font-family', _settings.controlsFont)
@@ -925,7 +914,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_LABEL)
-        //legendUpdate.select('text.legendLabelShape')
             .style('font-weight', 'bold')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
@@ -939,7 +927,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-        //legendUpdate.select('text.legendDescriptionShape')
             .style('font-weight', 'bold')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
@@ -1002,16 +989,6 @@ if (!phyloXml) {
 
         legendEnter.append('path');
 
-        /*legendEnter.append('text')
-         .attr('class', 'legendSize');
-
-        legendEnter.append('text')
-         .attr('class', 'legendLabelSize');
-
-        legendEnter.append('text')
-         .attr('class', 'legendDescriptionSize');*/
-
-
         legendEnter.append('text')
             .attr('class', LEGEND);
 
@@ -1034,7 +1011,6 @@ if (!phyloXml) {
         var values = [];
 
         legendUpdate.select('text.' + LEGEND)
-        //legendUpdate.select('text.legendSize')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
             .style('font-family', _settings.controlsFont)
@@ -1058,7 +1034,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_LABEL)
-        //legendUpdate.select('text.legendLabelSize')
             .style('font-weight', 'bold')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
@@ -1072,7 +1047,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-        //legendUpdate.select('text.legendDescriptionSize')
             .style('font-weight', 'bold')
             .style('color', _settings.controlsFontColor)
             .style('font-size', _settings.controlsFontSize)
