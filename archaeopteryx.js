@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.81';
+    var VERSION = '0.82';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -47,9 +47,11 @@ if (!phyloXml) {
     var VIEWERHEIGHT_DEFAULT = 600;
     var CONTROLS_0_LEFT_DEFAULT = '20px';
     var CONTROLS_0_TOP_DEFAULT = '60px';
-    var CONTROLS_1_WIDTH = 120; //220
+    var CONTROLS_1_WIDTH = 120;
     var CONTROLS_1_TOP_DEFAULT = '60px';
-    var MENU_FONT_SIZE_DEFAULT = '9px';
+    var CONTROLS_FONT_SIZE_DEFAULT = '5px'; //9
+    var CONTROLS_FONT_COLOR_DEFAULT = '#ff5050';
+    var CONTROLS_FONT_DEFAULT = 'Times';
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
@@ -194,6 +196,12 @@ if (!phyloXml) {
     var COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
     var COLOR_PICKER_BACKGROUND_BORDER_COLOR = '#808080';
 
+    var COLOR_PICKER_LABEL = 'colorPickerLabel';
+
+    var LEGEND = 'legend';
+    var LEGEND_LABEL = 'legendLabel';
+    var LEGEND_DESCRIPTION = 'legendDescription';
+
     var VK_ESC = 27;
     var VK_O = 79;
     var VK_R = 82;
@@ -299,7 +307,7 @@ if (!phyloXml) {
     }
 
     function zoom() {
-        _svgGroup.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+        _svgGroup.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
     }
 
     function centerNode(source, x) {
@@ -311,7 +319,7 @@ if (!phyloXml) {
         var y = 0;
         d3.select('g').transition()
             .duration(750)
-            .attr("transform", "translate(" + x + "," + y + ")scale(" + scale + ")");
+            .attr('transform', 'translate(' + x + "," + y + ')scale(' + scale + ')');
         _zoomListener.scale(scale);
         _zoomListener.translate([x, y]);
     }
@@ -331,11 +339,11 @@ if (!phyloXml) {
                                  mappingFn,
                                  scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
 
         if (!label || label.length < 1) {
-            throw( "need to have label");
+            throw( 'need to have label');
         }
         var visualization = {};
         visualization.label = label;
@@ -344,7 +352,7 @@ if (!phyloXml) {
         }
         if (field) {
             if (cladePropertyRef) {
-                throw( "need to have either field or clade property ref");
+                throw( 'need to have either field or clade property ref');
             }
             visualization.field = field;
         }
@@ -352,12 +360,12 @@ if (!phyloXml) {
             visualization.cladePropertyRef = cladePropertyRef;
         }
         else {
-            throw( "need to have either field or clade property ref");
+            throw( 'need to have either field or clade property ref');
         }
         visualization.isRegex = isRegex;
         if (mapping) {
             if (mappingFn) {
-                throw( "need to have either mapping or mappingFn");
+                throw( 'need to have either mapping or mappingFn');
             }
             visualization.mapping = mapping;
         }
@@ -366,13 +374,13 @@ if (!phyloXml) {
             if (scaleType === ORDINAL_SCALE) {
                 if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
                     var s = cladePropertyRef ? cladePropertyRef : field;
-                    console.log(WARNING + ": Ordinal scale mapping for " + label + " (" + s + "): domain > range: " +
-                        mappingFn.domain().length + " > " + mappingFn.range().length);
+                    console.log(WARNING + ': Ordinal scale mapping for ' + label + ' (' + s + '): domain > range: ' +
+                        mappingFn.domain().length + ' > ' + mappingFn.range().length);
                 }
             }
         }
         else {
-            throw( "need to have either mapping or mappingFn");
+            throw( 'need to have either mapping or mappingFn');
         }
         visualization.scaleType = scaleType;
         return visualization;
@@ -544,7 +552,7 @@ if (!phyloXml) {
                                       mappingFn,
                                       scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -577,7 +585,7 @@ if (!phyloXml) {
                                            mappingFn,
                                            scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -610,7 +618,7 @@ if (!phyloXml) {
                                              mappingFn,
                                              scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -644,7 +652,7 @@ if (!phyloXml) {
                                        mappingFn,
                                        scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -678,7 +686,7 @@ if (!phyloXml) {
                                         mappingFn,
                                         scaleType) {
         if (arguments.length != 8) {
-            throw( "expected 8 arguments, got " + arguments.length);
+            throw( 'expected 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -757,7 +765,7 @@ if (!phyloXml) {
             .attr('class', id);
 
         legendEnter.append('rect')
-            .style("cursor", "pointer")
+            .style('cursor', 'pointer')
             .attr('width', null)
             .attr('height', null)
             .on('click', function (clickedName, clickedIndex) {
@@ -765,13 +773,13 @@ if (!phyloXml) {
             });
 
         legendEnter.append('text')
-            .attr("class", "legend");
+            .attr('class', LEGEND);
 
         legendEnter.append('text')
-            .attr("class", "legendLabel");
+            .attr('class', LEGEND_LABEL);
 
         legendEnter.append('text')
-            .attr("class", "legendDescription");
+            .attr('class', LEGEND_DESCRIPTION);
 
 
         var legendUpdate = legend.transition()
@@ -790,7 +798,10 @@ if (!phyloXml) {
             .style('fill', colorScale)
             .style('stroke', colorScale);
 
-        legendUpdate.select('text.legend')
+        legendUpdate.select('text.' + LEGEND)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d, i) {
@@ -809,8 +820,11 @@ if (!phyloXml) {
                 return d;
             });
 
-        legendUpdate.select('text.legendLabel')
+        legendUpdate.select('text.' + LEGEND_LABEL)
             .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -819,7 +833,11 @@ if (!phyloXml) {
                 }
             });
 
-        legendUpdate.select('text.legendDescription')
+        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
+            .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -833,315 +851,6 @@ if (!phyloXml) {
 
         return counter;
     }
-
-
-    function obtainPredefinedColors(name) {
-        var t = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-        var colorScale = null;
-        var l = 0;
-        if (name === 'category20') {
-            l = 20;
-            colorScale = d3.scale.category20()
-                .domain(t);
-        }
-        else if (name === 'category20b') {
-            l = 20;
-            colorScale = d3.scale.category20b()
-                .domain(t);
-        }
-        else if (name === 'category20c') {
-            l = 20;
-            colorScale = d3.scale.category20c()
-                .domain(t);
-        }
-        else if (name === 'category10') {
-            l = 10;
-            colorScale = d3.scale.category10()
-                .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        }
-        else {
-            throw 'do not know ' + name;
-        }
-        var colors = [];
-        for (var i = 0; i < l; ++i) {
-            colors.push(colorScale(i));
-        }
-        return colors;
-    }
-
-    function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
-        _colorPickerData = {};
-        _colorPickerData.targetScale = targetScale;
-        _colorPickerData.legendLabel = legendLabel;
-        _colorPickerData.legendDescription = legendDescription;
-        _colorPickerData.clickedName = clickedName;
-        _colorPickerData.clickedIndex = clickedIndex;
-        _colorPickerData.clickedOrigColor = targetScale(clickedName);
-        _showColorPicker = true;
-    }
-
-    function removeColorPicker() {
-        _showColorPicker = false;
-        _colorPickerData = null;
-        _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
-    }
-
-
-    function prepareColorsForColorPicker() {
-        var DEFAULT_COLORS_FOR_COLORPICKER = [
-            // Red
-            '#FFEBEE', '#FFCDD2', '#EF9A9A', '#E57373', '#EF5350', '#F44336', '#E53935', '#D32F2F', '#C62828', '#B71C1C', '#FF8A80', '#FF5252', '#FF1744', '#D50000',
-            // Pink
-            '#FCE4EC', '#F8BBD0', '#F48FB1', '#F06292', '#EC407A', '#E91E63', '#D81B60', '#C2185B', '#AD1457', '#880E4F', '#FF80AB', '#FF4081', '#F50057', '#C51162',
-            // Purple
-            '#F3E5F5', '#E1BEE7', '#CE93D8', '#BA68C8', '#AB47BC', '#9C27B0', '#8E24AA', '#7B1FA2', '#6A1B9A', '#4A148C', '#EA80FC', '#E040FB', '#D500F9', '#AA00FF',
-            // Deep Purple
-            '#EDE7F6', '#D1C4E9', '#B39DDB', '#9575CD', '#7E57C2', '#673AB7', '#5E35B1', '#512DA8', '#4527A0', '#311B92', '#B388FF', '#7C4DFF', '#651FFF', '#6200EA',
-            // Indigo
-            '#E8EAF6', '#C5CAE9', '#9FA8DA', '#7986CB', '#5C6BC0', '#3F51B5', '#3949AB', '#303F9F', '#283593', '#1A237E', '#8C9EFF', '#536DFE', '#3D5AFE', '#304FFE',
-            // Blue
-            '#E3F2FD', '#BBDEFB', '#90CAF9', '#64B5F6', '#42A5F5', '#2196F3', '#1E88E5', '#1976D2', '#1565C0', '#0D47A1', '#82B1FF', '#448AFF', '#2979FF', '#2962FF',
-            // Light Blue
-            '#E1F5FE', '#B3E5FC', '#81D4FA', '#4FC3F7', '#29B6F6', '#03A9F4', '#039BE5', '#0288D1', '#0277BD', '#01579B', '#80D8FF', '#40C4FF', '#00B0FF', '#0091EA',
-            // Cyan
-            '#E0F7FA', '#B2EBF2', '#80DEEA', '#4DD0E1', '#26C6DA', '#00BCD4', '#00ACC1', '#0097A7', '#00838F', '#006064', '#84FFFF', '#18FFFF', '#00E5FF', '#00B8D4',
-            // Teal
-            '#E0F2F1', '#B2DFDB', '#80CBC4', '#4DB6AC', '#26A69A', '#009688', '#00897B', '#00796B', '#00695C', '#004D40', '#A7FFEB', '#64FFDA', '#1DE9B6', '#00BFA5',
-            // Green
-            '#E8F5E9', '#C8E6C9', '#A5D6A7', '#81C784', '#66BB6A', '#4CAF50', '#43A047', '#388E3C', '#2E7D32', '#1B5E20', '#B9F6CA', '#69F0AE', '#00E676', '#00C853',
-            // Light Green
-            '#F1F8E9', '#DCEDC8', '#C5E1A5', '#AED581', '#9CCC65', '#8BC34A', '#7CB342', '#689F38', '#558B2F', '#33691E', '#CCFF90', '#B2FF59', '#76FF03', '#64DD17',
-            // Lime
-            '#F9FBE7', '#F0F4C3', '#E6EE9C', '#DCE775', '#D4E157', '#CDDC39', '#C0CA33', '#AFB42B', '#9E9D24', '#827717', '#F4FF81', '#EEFF41', '#C6FF00', '#AEEA00',
-            // Yellow
-            '#FFFDE7', '#FFF9C4', '#FFF59D', '#FFF176', '#FFEE58', '#FFEB3B', '#FDD835', '#FBC02D', '#F9A825', '#F57F17', '#FFFF8D', '#FFFF00', '#FFEA00', '#FFD600',
-            // Amber
-            '#FFF8E1', '#FFECB3', '#FFE082', '#FFD54F', '#FFCA28', '#FFC107', '#FFB300', '#FFA000', '#FF8F00', '#FF6F00', '#FFE57F', '#FFD740', '#FFC400', '#FFAB00',
-            // Orange
-            '#FFF3E0', '#FFE0B2', '#FFCC80', '#FFB74D', '#FFA726', '#FF9800', '#FB8C00', '#F57C00', '#EF6C00', '#E65100', '#FFD180', '#FFAB40', '#FF9100', '#FF6D00',
-            // Deep Orange
-            '#FBE9E7', '#FFCCBC', '#FFAB91', '#FF8A65', '#FF7043', '#FF5722', '#F4511E', '#E64A19', '#D84315', '#BF360C', '#FF9E80', '#FF6E40', '#FF3D00', '#DD2C00',
-            // Brown
-            '#EFEBE9', '#D7CCC8', '#BCAAA4', '#A1887F', '#8D6E63', '#795548', '#6D4C41', '#5D4037', '#4E342E', '#3E2723',
-            // Grey
-            '#FAFAFA', '#F5F5F5', '#EEEEEE', '#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#616161', '#424242', '#212121',
-            // Blue Grey
-            '#ECEFF1', '#CFD8DC', '#B0BEC5', '#90A4AE', '#78909C', '#607D8B', '#546E7A', '#455A64', '#37474F', '#263238',
-            // Basic
-            '#FFFFFF', '#999999', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF', _options.backgroundColorDefault
-        ];
-        _colorsForColorPicker = [];
-
-        var dcpl = DEFAULT_COLORS_FOR_COLORPICKER.length;
-        for (var dci = 0; dci < dcpl; ++dci) {
-            _colorsForColorPicker.push(DEFAULT_COLORS_FOR_COLORPICKER[dci]);
-        }
-
-        _usedColorCategories.forEach(function (e) {
-            var cs = obtainPredefinedColors(e);
-            var csl = cs.length;
-            for (var csi = 0; csi < csl; ++csi) {
-                _colorsForColorPicker.push(cs[csi]);
-            }
-        });
-
-    }
-
-    function makeColorPicker(id) {
-
-        var xPos = 300;
-        var yPos = 20;
-
-        if (!_colorsForColorPicker) {
-            prepareColorsForColorPicker();
-        }
-
-        var clickedOrigColorIndex = -1;
-
-        var lbls = [];
-        for (var ii = 0; ii < _colorsForColorPicker.length; ++ii) {
-            lbls[ii] = ii;
-            if (clickedOrigColorIndex < 0 && (colorToHex(_colorsForColorPicker[ii]) === colorToHex(_colorPickerData.clickedOrigColor))) {
-                clickedOrigColorIndex = ii;
-            }
-        }
-
-        var colorPickerColors = d3.scale.linear()
-            .domain(lbls)
-            .range(_colorsForColorPicker);
-
-        var colorPickerSize = 14;
-        var rectSize = 10;
-
-        var xCorrectionForLabel = -1;
-        var yFactorForDesc = -0.5;
-
-        var colorPicker = _baseSvg.selectAll('g.' + id)
-            .data(colorPickerColors.domain());
-
-        var colorPickerEnter = colorPicker.enter().append('g')
-            .attr('class', id);
-
-        colorPickerEnter.append('rect')
-            .style("cursor", "pointer")
-            .attr('width', null)
-            .attr('height', null)
-            .on('click', function (d, i) {
-                colorPickerClicked(colorPickerColors(d), d, i);
-            });
-
-        colorPickerEnter.append('text')
-            .attr("class", "colorPickerLabel");
-
-        var colorPickerUpdate = colorPicker.transition()
-            .duration(0)
-            .attr('transform', function (d, i) {
-                if (i >= 234) {
-                    i += 4;
-                    if (i >= 248) {
-                        i += 4;
-                    }
-                    if (i >= 262) {
-                        i += 4;
-                    }
-                    if (i >= 276) {
-                        i += 4;
-                    }
-                    if (i >= 290) {
-                        i += 4;
-                    }
-                    if (i >= 304) {
-                        i += 4;
-                    }
-                    if (i >= 318) {
-                        i += 4;
-                    }
-                    if (i >= 332) {
-                        i += 4;
-                    }
-                    if (i >= 346) {
-                        i += 4;
-                    }
-                }
-                var x = xPos + Math.floor(( i / colorPickerSize )) * rectSize;
-                var y = yPos + (( i % colorPickerSize ) * rectSize);
-                return 'translate(' + x + ',' + y + ')';
-            });
-
-        colorPickerUpdate.select('rect')
-            .attr('width', rectSize)
-            .attr('height', rectSize)
-            .style('fill', colorPickerColors)
-            .style('stroke',
-                function (d, i) {
-                    if (i === clickedOrigColorIndex) {
-                        return COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR;
-                    }
-                    else if (i === 263) {
-                        return COLOR_PICKER_BACKGROUND_BORDER_COLOR;
-                    }
-                    return '#FFFFFF';
-                }
-            );
-
-        colorPickerUpdate.select('text.colorPickerLabel')
-            .style('font-weight', 'bold')
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForDesc * rectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return 'Choose ' + _colorPickerData.legendLabel.toLowerCase() +
-                        ' for ' + _colorPickerData.legendDescription.toLowerCase() + ' "' +
-                        _colorPickerData.clickedName + '":';
-                }
-            });
-
-        colorPicker.exit().remove();
-
-    } // makeColorPicker
-
-
-    function colorToRGBA(color) {
-        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
-        // Returns the color as an array of [r, g, b, a] -- all range from 0 - 255
-        // color must be a valid canvas fillStyle. This will cover most anything
-        // you'd want to use.
-        // Examples:
-        // colorToRGBA('red')  # [255, 0, 0, 255]
-        // colorToRGBA('#f00') # [255, 0, 0, 255]
-        var cvs, ctx;
-        cvs = document.createElement('canvas');
-        cvs.height = 1;
-        cvs.width = 1;
-        ctx = cvs.getContext('2d');
-        ctx.fillStyle = color;
-        ctx.fillRect(0, 0, 1, 1);
-        return ctx.getImageData(0, 0, 1, 1).data;
-    }
-
-    function byteToHex(num) {
-        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
-        // Turns a number (0-255) into a 2-character hex number (00-ff)
-        return ('0' + num.toString(16)).slice(-2);
-    }
-
-    function colorToHex(color) {
-        // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
-        // Convert any CSS color to a hex representation
-        // Examples:
-        // colorToHex('red')            # '#ff0000'
-        // colorToHex('rgb(255, 0, 0)') # '#ff0000'
-        var rgba, hex;
-        rgba = colorToRGBA(color);
-        hex = [0, 1, 2].map(
-            function (idx) {
-                return byteToHex(rgba[idx]);
-            }
-        ).join('');
-        return "#" + hex;
-    }
-
-    function colorPickerClicked(colorPicked, d, i) {
-
-        var vis = _visualizations.labelColor[_colorPickerData.legendDescription];
-        var mf = vis.mappingFn;
-
-        var scaleType = vis.scaleType;
-
-        if (scaleType === ORDINAL_SCALE) {
-            var ord = _colorPickerData.targetScale;
-            var domain = ord.domain();
-            var newColorRange = [];
-            for (var di = 0; di < domain.length; ++di) {
-                var curName = domain[di];
-                if (curName === _colorPickerData.clickedName) {
-                    newColorRange[di] = colorPicked;
-                }
-                else {
-                    newColorRange[di] = ord(curName);
-                }
-            }
-            mf.range(newColorRange);
-        }
-        else if (scaleType === LINEAR_SCALE) {
-            var lin = _colorPickerData.targetScale;
-            var domain = lin.domain();
-            var newColorRange = [];
-            for (var di = 0; di < domain.length; ++di) {
-                var curName = domain[di];
-                if (curName === _colorPickerData.clickedName) {
-                    newColorRange[di] = colorPicked;
-                }
-                else {
-                    newColorRange[di] = lin(curName);
-                }
-            }
-            mf.range(newColorRange);
-        }
-        // removeColorPicker(); //TODO do users like this?
-        update();
-    }
-
 
     function makeShapeLegend(id, xPos, yPos, shapeScale, label, description) {
 
@@ -1170,16 +879,26 @@ if (!phyloXml) {
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
-        legendEnter.append("path");
+        legendEnter.append('path');
+
+        /*legendEnter.append('text')
+         .attr('class', 'legendShape');
 
         legendEnter.append('text')
-            .attr("class", "legendShape");
+         .attr('class', 'legendLabelShape');
 
         legendEnter.append('text')
-            .attr("class", "legendLabelShape");
+         .attr('class', 'legendDescriptionShape');*/
 
         legendEnter.append('text')
-            .attr("class", "legendDescriptionShape");
+            .attr('class', LEGEND);
+
+        legendEnter.append('text')
+            .attr('class', LEGEND_LABEL);
+
+        legendEnter.append('text')
+            .attr('class', LEGEND_DESCRIPTION);
+
 
         var legendUpdate = legend.transition()
             .duration(200)
@@ -1193,7 +912,11 @@ if (!phyloXml) {
 
         var values = [];
 
-        legendUpdate.select('text.legendShape')
+        legendUpdate.select('text.' + LEGEND)
+        //legendUpdate.select('text.legendShape')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d) {
@@ -1201,8 +924,12 @@ if (!phyloXml) {
                 return d;
             });
 
-        legendUpdate.select('text.legendLabelShape')
+        legendUpdate.select('text.' + LEGEND_LABEL)
+        //legendUpdate.select('text.legendLabelShape')
             .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -1211,7 +938,12 @@ if (!phyloXml) {
                 }
             });
 
-        legendUpdate.select('text.legendDescriptionShape')
+        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
+        //legendUpdate.select('text.legendDescriptionShape')
+            .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -1268,16 +1000,26 @@ if (!phyloXml) {
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
-        legendEnter.append("path");
+        legendEnter.append('path');
+
+        /*legendEnter.append('text')
+         .attr('class', 'legendSize');
 
         legendEnter.append('text')
-            .attr("class", "legendSize");
+         .attr('class', 'legendLabelSize');
 
         legendEnter.append('text')
-            .attr("class", "legendLabelSize");
+         .attr('class', 'legendDescriptionSize');*/
+
 
         legendEnter.append('text')
-            .attr("class", "legendDescriptionSize");
+            .attr('class', LEGEND);
+
+        legendEnter.append('text')
+            .attr('class', LEGEND_LABEL);
+
+        legendEnter.append('text')
+            .attr('class', LEGEND_DESCRIPTION);
 
         var legendUpdate = legend.transition()
             .duration(200)
@@ -1291,7 +1033,11 @@ if (!phyloXml) {
 
         var values = [];
 
-        legendUpdate.select('text.legendSize')
+        legendUpdate.select('text.' + LEGEND)
+        //legendUpdate.select('text.legendSize')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d, i) {
@@ -1311,8 +1057,12 @@ if (!phyloXml) {
                 return d;
             });
 
-        legendUpdate.select('text.legendLabelSize')
+        legendUpdate.select('text.' + LEGEND_LABEL)
+        //legendUpdate.select('text.legendLabelSize')
             .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -1321,7 +1071,12 @@ if (!phyloXml) {
                 }
             });
 
-        legendUpdate.select('text.legendDescriptionSize')
+        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
+        //legendUpdate.select('text.legendDescriptionSize')
+            .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -1344,7 +1099,6 @@ if (!phyloXml) {
                 }))
             .style('fill', 'none')
             .style('stroke', _options.branchColorDefault);
-
 
         legend.exit().remove();
 
@@ -1448,6 +1202,312 @@ if (!phyloXml) {
 
     }
 
+
+    // --------------------------------------------------------------
+    // Functions for color picker
+    // --------------------------------------------------------------
+    function obtainPredefinedColors(name) {
+        var t = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        var colorScale = null;
+        var l = 0;
+        if (name === 'category20') {
+            l = 20;
+            colorScale = d3.scale.category20()
+                .domain(t);
+        }
+        else if (name === 'category20b') {
+            l = 20;
+            colorScale = d3.scale.category20b()
+                .domain(t);
+        }
+        else if (name === 'category20c') {
+            l = 20;
+            colorScale = d3.scale.category20c()
+                .domain(t);
+        }
+        else if (name === 'category10') {
+            l = 10;
+            colorScale = d3.scale.category10()
+                .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        }
+        else {
+            throw 'do not know ' + name;
+        }
+        var colors = [];
+        for (var i = 0; i < l; ++i) {
+            colors.push(colorScale(i));
+        }
+        return colors;
+    }
+
+    function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
+        _colorPickerData = {};
+        _colorPickerData.targetScale = targetScale;
+        _colorPickerData.legendLabel = legendLabel;
+        _colorPickerData.legendDescription = legendDescription;
+        _colorPickerData.clickedName = clickedName;
+        _colorPickerData.clickedIndex = clickedIndex;
+        _colorPickerData.clickedOrigColor = targetScale(clickedName);
+        _showColorPicker = true;
+    }
+
+    function removeColorPicker() {
+        _showColorPicker = false;
+        _colorPickerData = null;
+        _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
+    }
+
+    function prepareColorsForColorPicker() {
+        var DEFAULT_COLORS_FOR_COLORPICKER = [
+            // Red
+            '#FFEBEE', '#FFCDD2', '#EF9A9A', '#E57373', '#EF5350', '#F44336', '#E53935', '#D32F2F', '#C62828', '#B71C1C', '#FF8A80', '#FF5252', '#FF1744', '#D50000',
+            // Pink
+            '#FCE4EC', '#F8BBD0', '#F48FB1', '#F06292', '#EC407A', '#E91E63', '#D81B60', '#C2185B', '#AD1457', '#880E4F', '#FF80AB', '#FF4081', '#F50057', '#C51162',
+            // Purple
+            '#F3E5F5', '#E1BEE7', '#CE93D8', '#BA68C8', '#AB47BC', '#9C27B0', '#8E24AA', '#7B1FA2', '#6A1B9A', '#4A148C', '#EA80FC', '#E040FB', '#D500F9', '#AA00FF',
+            // Deep Purple
+            '#EDE7F6', '#D1C4E9', '#B39DDB', '#9575CD', '#7E57C2', '#673AB7', '#5E35B1', '#512DA8', '#4527A0', '#311B92', '#B388FF', '#7C4DFF', '#651FFF', '#6200EA',
+            // Indigo
+            '#E8EAF6', '#C5CAE9', '#9FA8DA', '#7986CB', '#5C6BC0', '#3F51B5', '#3949AB', '#303F9F', '#283593', '#1A237E', '#8C9EFF', '#536DFE', '#3D5AFE', '#304FFE',
+            // Blue
+            '#E3F2FD', '#BBDEFB', '#90CAF9', '#64B5F6', '#42A5F5', '#2196F3', '#1E88E5', '#1976D2', '#1565C0', '#0D47A1', '#82B1FF', '#448AFF', '#2979FF', '#2962FF',
+            // Light Blue
+            '#E1F5FE', '#B3E5FC', '#81D4FA', '#4FC3F7', '#29B6F6', '#03A9F4', '#039BE5', '#0288D1', '#0277BD', '#01579B', '#80D8FF', '#40C4FF', '#00B0FF', '#0091EA',
+            // Cyan
+            '#E0F7FA', '#B2EBF2', '#80DEEA', '#4DD0E1', '#26C6DA', '#00BCD4', '#00ACC1', '#0097A7', '#00838F', '#006064', '#84FFFF', '#18FFFF', '#00E5FF', '#00B8D4',
+            // Teal
+            '#E0F2F1', '#B2DFDB', '#80CBC4', '#4DB6AC', '#26A69A', '#009688', '#00897B', '#00796B', '#00695C', '#004D40', '#A7FFEB', '#64FFDA', '#1DE9B6', '#00BFA5',
+            // Green
+            '#E8F5E9', '#C8E6C9', '#A5D6A7', '#81C784', '#66BB6A', '#4CAF50', '#43A047', '#388E3C', '#2E7D32', '#1B5E20', '#B9F6CA', '#69F0AE', '#00E676', '#00C853',
+            // Light Green
+            '#F1F8E9', '#DCEDC8', '#C5E1A5', '#AED581', '#9CCC65', '#8BC34A', '#7CB342', '#689F38', '#558B2F', '#33691E', '#CCFF90', '#B2FF59', '#76FF03', '#64DD17',
+            // Lime
+            '#F9FBE7', '#F0F4C3', '#E6EE9C', '#DCE775', '#D4E157', '#CDDC39', '#C0CA33', '#AFB42B', '#9E9D24', '#827717', '#F4FF81', '#EEFF41', '#C6FF00', '#AEEA00',
+            // Yellow
+            '#FFFDE7', '#FFF9C4', '#FFF59D', '#FFF176', '#FFEE58', '#FFEB3B', '#FDD835', '#FBC02D', '#F9A825', '#F57F17', '#FFFF8D', '#FFFF00', '#FFEA00', '#FFD600',
+            // Amber
+            '#FFF8E1', '#FFECB3', '#FFE082', '#FFD54F', '#FFCA28', '#FFC107', '#FFB300', '#FFA000', '#FF8F00', '#FF6F00', '#FFE57F', '#FFD740', '#FFC400', '#FFAB00',
+            // Orange
+            '#FFF3E0', '#FFE0B2', '#FFCC80', '#FFB74D', '#FFA726', '#FF9800', '#FB8C00', '#F57C00', '#EF6C00', '#E65100', '#FFD180', '#FFAB40', '#FF9100', '#FF6D00',
+            // Deep Orange
+            '#FBE9E7', '#FFCCBC', '#FFAB91', '#FF8A65', '#FF7043', '#FF5722', '#F4511E', '#E64A19', '#D84315', '#BF360C', '#FF9E80', '#FF6E40', '#FF3D00', '#DD2C00',
+            // Brown
+            '#EFEBE9', '#D7CCC8', '#BCAAA4', '#A1887F', '#8D6E63', '#795548', '#6D4C41', '#5D4037', '#4E342E', '#3E2723',
+            // Grey
+            '#FAFAFA', '#F5F5F5', '#EEEEEE', '#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#616161', '#424242', '#212121',
+            // Blue Grey
+            '#ECEFF1', '#CFD8DC', '#B0BEC5', '#90A4AE', '#78909C', '#607D8B', '#546E7A', '#455A64', '#37474F', '#263238',
+            // Basic
+            '#FFFFFF', '#999999', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF', _options.backgroundColorDefault
+        ];
+        _colorsForColorPicker = [];
+
+        var dcpl = DEFAULT_COLORS_FOR_COLORPICKER.length;
+        for (var dci = 0; dci < dcpl; ++dci) {
+            _colorsForColorPicker.push(DEFAULT_COLORS_FOR_COLORPICKER[dci]);
+        }
+
+        _usedColorCategories.forEach(function (e) {
+            var cs = obtainPredefinedColors(e);
+            var csl = cs.length;
+            for (var csi = 0; csi < csl; ++csi) {
+                _colorsForColorPicker.push(cs[csi]);
+            }
+        });
+    }
+
+    function makeColorPicker(id) {
+
+        var xPos = 300;
+        var yPos = 20;
+
+        if (!_colorsForColorPicker) {
+            prepareColorsForColorPicker();
+        }
+
+        var clickedOrigColorIndex = -1;
+
+        var lbls = [];
+        for (var ii = 0; ii < _colorsForColorPicker.length; ++ii) {
+            lbls[ii] = ii;
+            if (clickedOrigColorIndex < 0 && (colorToHex(_colorsForColorPicker[ii]) === colorToHex(_colorPickerData.clickedOrigColor))) {
+                clickedOrigColorIndex = ii;
+            }
+        }
+
+        var colorPickerColors = d3.scale.linear()
+            .domain(lbls)
+            .range(_colorsForColorPicker);
+
+        var colorPickerSize = 14;
+        var rectSize = 10;
+
+        var xCorrectionForLabel = -1;
+        var yFactorForDesc = -0.5;
+
+        var colorPicker = _baseSvg.selectAll('g.' + id)
+            .data(colorPickerColors.domain());
+
+        var colorPickerEnter = colorPicker.enter().append('g')
+            .attr('class', id);
+
+        colorPickerEnter.append('rect')
+            .style('cursor', 'pointer')
+            .attr('width', null)
+            .attr('height', null)
+            .on('click', function (d, i) {
+                colorPickerClicked(colorPickerColors(d));
+            });
+
+        colorPickerEnter.append('text')
+            .attr('class', COLOR_PICKER_LABEL);
+
+        var colorPickerUpdate = colorPicker.transition()
+            .duration(0)
+            .attr('transform', function (d, i) {
+                if (i >= 234) {
+                    i += 4;
+                    if (i >= 248) {
+                        i += 4;
+                    }
+                    if (i >= 262) {
+                        i += 4;
+                    }
+                    if (i >= 276) {
+                        i += 4;
+                    }
+                    if (i >= 290) {
+                        i += 4;
+                    }
+                    if (i >= 304) {
+                        i += 4;
+                    }
+                    if (i >= 318) {
+                        i += 4;
+                    }
+                    if (i >= 332) {
+                        i += 4;
+                    }
+                    if (i >= 346) {
+                        i += 4;
+                    }
+                }
+                var x = xPos + Math.floor(( i / colorPickerSize )) * rectSize;
+                var y = yPos + (( i % colorPickerSize ) * rectSize);
+                return 'translate(' + x + ',' + y + ')';
+            });
+
+        colorPickerUpdate.select('rect')
+            .attr('width', rectSize)
+            .attr('height', rectSize)
+            .style('fill', colorPickerColors)
+            .style('stroke',
+                function (d, i) {
+                    if (i === clickedOrigColorIndex) {
+                        return COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR;
+                    }
+                    else if (i === 263) {
+                        return COLOR_PICKER_BACKGROUND_BORDER_COLOR;
+                    }
+                    return '#ffffff';
+                }
+            );
+
+        colorPickerUpdate.select('text.' + COLOR_PICKER_LABEL)
+            .style('font-weight', 'bold')
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+
+            .attr('x', xCorrectionForLabel)
+            .attr('y', yFactorForDesc * rectSize)
+            .text(function (d, i) {
+                if (i === 0) {
+                    return 'Choose ' + _colorPickerData.legendLabel.toLowerCase() +
+                        ' for ' + _colorPickerData.legendDescription.toLowerCase() + ' "' +
+                        _colorPickerData.clickedName + '":';
+                }
+            });
+
+        colorPicker.exit().remove();
+
+        function colorToHex(color) {
+            // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
+            // Convert any CSS color to a hex representation
+            var rgba, hex;
+            rgba = colorToRGBA(color);
+            hex = [0, 1, 2].map(
+                function (idx) {
+                    return byteToHex(rgba[idx]);
+                }
+            ).join('');
+            return '#' + hex;
+
+            function colorToRGBA(color) {
+                var cvs, ctx;
+                cvs = document.createElement('canvas');
+                cvs.height = 1;
+                cvs.width = 1;
+                ctx = cvs.getContext('2d');
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, 1, 1);
+                return ctx.getImageData(0, 0, 1, 1).data;
+            }
+
+            function byteToHex(num) {
+                return ('0' + num.toString(16)).slice(-2);
+            }
+        }
+
+    } // makeColorPicker
+
+
+    function colorPickerClicked(colorPicked) {
+
+        var vis = _visualizations.labelColor[_colorPickerData.legendDescription];
+        var mf = vis.mappingFn;
+
+        var scaleType = vis.scaleType;
+        var domain = null;
+        var newColorRange = null;
+        var curName = null;
+        if (scaleType === ORDINAL_SCALE) {
+            var ord = _colorPickerData.targetScale;
+            domain = ord.domain();
+            newColorRange = [];
+            for (var di = 0; di < domain.length; ++di) {
+                curName = domain[di];
+                if (curName === _colorPickerData.clickedName) {
+                    newColorRange[di] = colorPicked;
+                }
+                else {
+                    newColorRange[di] = ord(curName);
+                }
+            }
+            mf.range(newColorRange);
+        }
+        else if (scaleType === LINEAR_SCALE) {
+            var lin = _colorPickerData.targetScale;
+            domain = lin.domain();
+            newColorRange = [];
+            for (var dii = 0; dii < domain.length; ++dii) {
+                curName = domain[dii];
+                if (curName === _colorPickerData.clickedName) {
+                    newColorRange[dii] = colorPicked;
+                }
+                else {
+                    newColorRange[dii] = lin(curName);
+                }
+            }
+            mf.range(newColorRange);
+        }
+        // removeColorPicker(); //TODO do users like this?
+        update();
+    }
+
+    // --------------------------------------------------------------
+
+
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
         if (!source) {
@@ -1522,14 +1582,14 @@ if (!phyloXml) {
             });
 
         var nodeEnter = node.enter().append("g")
-            .attr("class", "node")
+            .attr('class', "node")
             .attr("transform", function () {
                 return "translate(" + source.y0 + "," + source.x0 + ")";
             })
-            .style("cursor", "default")
+            .style('cursor', "default")
             .on('click', _treeFn.clickEvent);
 
-        nodeEnter.append("path")
+        nodeEnter.append('path')
             .attr("d", "M0,0");
 
         nodeEnter.append("circle")
@@ -1537,7 +1597,7 @@ if (!phyloXml) {
             .attr("r", 0);
 
         nodeEnter.append("circle")
-            .style("cursor", "pointer")
+            .style('cursor', 'pointer')
             .style("opacity", "0")
             .attr('class', 'nodeCircleOptions')
             .attr("r", function (d) {
@@ -1547,35 +1607,35 @@ if (!phyloXml) {
                 return 0;
             });
 
-        nodeEnter.append("text")
-            .attr("class", "extlabel")
+        nodeEnter.append('text')
+            .attr('class', "extlabel")
             .attr("text-anchor", function (d) {
                 return d.children || d._children ? "end" : "start";
             })
             .style("fill-opacity", 0.5);
 
-        nodeEnter.append("text")
-            .attr("class", "bllabel");
+        nodeEnter.append('text')
+            .attr('class', "bllabel");
 
-        nodeEnter.append("text")
-            .attr("class", "conflabel")
+        nodeEnter.append('text')
+            .attr('class', "conflabel")
             .attr("text-anchor", "middle");
 
-        nodeEnter.append("text")
-            .attr("class", "brancheventlabel")
+        nodeEnter.append('text')
+            .attr('class', "brancheventlabel")
             .attr("text-anchor", "middle");
 
-        nodeEnter.append("text")
-            .attr("class", "collapsedText")
+        nodeEnter.append('text')
+            .attr('class', "collapsedText")
             .attr("dy", function (d) {
                 return 0.3 * _options.externalNodeFontSize + "px";
             });
 
         node.select("text.extlabel")
-            .style("font-size", function (d) {
+            .style('font-size', function (d) {
                 return d.children || d._children ? _options.internalNodeFontSize + "px" : _options.externalNodeFontSize + "px";
             })
-            .style("fill", makeLabelColor)
+            .style('fill', makeLabelColor)
             .attr("dy", function (d) {
                 return d.children || d._children ? 0.3 * _options.internalNodeFontSize + "px" : 0.3 * _options.externalNodeFontSize + "px";
             })
@@ -1594,7 +1654,7 @@ if (!phyloXml) {
             });
 
         node.select("text.bllabel")
-            .style("font-size", _options.branchDataFontSize + "px")
+            .style('font-size', _options.branchDataFontSize + "px")
             .attr("dy", "-.25em")
             .attr("x", function (d) {
                 if (d.parent) {
@@ -1606,7 +1666,7 @@ if (!phyloXml) {
             });
 
         node.select("text.conflabel")
-            .style("font-size", _options.branchDataFontSize + "px")
+            .style('font-size', _options.branchDataFontSize + "px")
             .attr("dy", _options.branchDataFontSize)
             .attr("x", function (d) {
                 if (d.parent) {
@@ -1618,7 +1678,7 @@ if (!phyloXml) {
             });
 
         node.select("text.brancheventlabel")
-            .style("font-size", _options.branchDataFontSize + "px")
+            .style('font-size', _options.branchDataFontSize + "px")
             .attr("dy", "-.25em")
             .attr("x", function (d) {
                 if (d.parent) {
@@ -1639,7 +1699,7 @@ if (!phyloXml) {
                 return makeNodeStrokeColor(d);
             })
             .style("stroke-width", _options.branchWidthDefault)
-            .style("fill", function (d) {
+            .style('fill', function (d) {
                 return ( _options.showNodeVisualizations || _options.showNodeEvents) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
             });
 
@@ -1653,7 +1713,7 @@ if (!phyloXml) {
                 return "translate(" + d.y + "," + d.x + ")";
             });
 
-        nodeUpdate.select("text")
+        nodeUpdate.select('text')
             .style("fill-opacity", 1);
 
         nodeUpdate.select("text.extlabel")
@@ -1672,10 +1732,10 @@ if (!phyloXml) {
         nodeUpdate.select("text.brancheventlabel")
             .text(_options.showBranchEvents ? makeBranchEventsLabel : null);
 
-        nodeUpdate.select("path")
+        nodeUpdate.select('path')
             .style("stroke", _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
             .style("stroke-width", _options.branchWidthDefault)
-            .style("fill", _options.showNodeVisualizations ? makeVisNodeFillColor : null)
+            .style('fill', _options.showNodeVisualizations ? makeVisNodeFillColor : null)
             .style("opacity", _options.nodeVisualizationsOpacity)
             .attr("d", _options.showNodeVisualizations ? makeNodeVisShape : null);
 
@@ -1693,21 +1753,21 @@ if (!phyloXml) {
                 d.avg = xlength;
                 var l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
                 var collapsedColor = makeCollapsedColor(d);
-                d3.select(this).select("path").transition().duration(transitionDuration)
+                d3.select(this).select('path').transition().duration(transitionDuration)
                     .attr("d", function () {
                         return "M" + start + "," + (-l) + "L" + xlength + "," + (-yl) + "L" + xlength + "," + (yl) + "L" + start + "," + l + "L" + start + "," + (-l);
                     })
                     .style("stroke", collapsedColor)
-                    .style("fill", collapsedColor);
+                    .style('fill', collapsedColor);
 
-                d3.select(this).select(".collapsedText").attr("font-size", function (d) {
+                d3.select(this).select(".collapsedText").attr('font-size', function (d) {
                     return _options.externalNodeFontSize + "px";
                 });
 
                 d3.select(this).select(".collapsedText").transition().duration(transitionDuration)
                     .style("fill-opacity", 1)
                     .text(makeCollapsedLabel(d, descs))
-                    .style("fill", function (d) {
+                    .style('fill', function (d) {
                         return makeLabelColorForCollapsed(d, collapsedColor);
                     })
                     .attr("dy", function (d) {
@@ -1729,7 +1789,7 @@ if (!phyloXml) {
             }
             if (d.children) {
                 if (!_options.showNodeVisualizations && makeNodeVisShape(d) === null) {
-                    d3.select(this).select("path").transition().duration(transitionDuration)
+                    d3.select(this).select('path').transition().duration(transitionDuration)
                         .attr("d", function () {
                             return "M0,0";
                         });
@@ -1753,7 +1813,7 @@ if (!phyloXml) {
         nodeExit.select("circle")
             .attr("r", 0);
 
-        nodeExit.select("text")
+        nodeExit.select('text')
             .style("fill-opacity", 0);
 
         var link = _svgGroup.selectAll("path.link")
@@ -1763,9 +1823,9 @@ if (!phyloXml) {
                 return d.target.id;
             });
 
-        link.enter().insert("path", "g")
-            .attr("class", "link")
-            .attr("fill", "none")
+        link.enter().insert('path', "g")
+            .attr('class', "link")
+            .attr('fill', "none")
             .attr("stroke-width", makeBranchWidth)
             .attr("stroke", makeBranchColor)
             .attr("d", function () {
@@ -1801,16 +1861,16 @@ if (!phyloXml) {
         if (_options.phylogram && _options.alignPhylogram && _options.showExternalLabels
             && ( _options.showNodeName || _options.showTaxonomy || _options.showSequence )) {
             var linkExtension = _svgGroup.append("g")
-                .selectAll("path")
+                .selectAll('path')
                 .data(links.filter(function (d) {
                     return (!d.target.children
                         && !( _options.dynahide && d.target.hide)
                     );
                 }));
 
-            linkExtension.enter().insert("path", "g")
-                .attr("class", "link")
-                .attr("fill", "none")
+            linkExtension.enter().insert('path', "g")
+                .attr('class', "link")
+                .attr('fill', "none")
                 .attr("stroke-width", 1)
                 .attr("stroke", _options.branchColorDefault)
                 .style("stroke-opacity", 0.25)
@@ -2512,8 +2572,8 @@ if (!phyloXml) {
     };
 
     var elbow = function (d) {
-        return "M" + d.source.y + "," + d.source.x
-            + "V" + d.target.x + "H" + d.target.y;
+        return 'M' + d.source.y + ',' + d.source.x
+            + 'V' + d.target.x + 'H' + d.target.y;
     };
 
     var connection = function (n) {
@@ -2525,8 +2585,8 @@ if (!phyloXml) {
             var y = n.x;
             var x = (n.y - _yScale(n.distToRoot) + _w );
             if ((x - x1) > 5) {
-                return "M" + x1 + "," + y
-                    + "L" + x + "," + y;
+                return 'M' + x1 + ',' + y
+                    + 'L' + x + ',' + y;
             }
         }
     };
@@ -2726,8 +2786,14 @@ if (!phyloXml) {
         if (!_settings.reCenterAfterCollapse) {
             _settings.reCenterAfterCollapse = RECENTER_AFTER_COLLAPSE_DEFAULT;
         }
-        if (!_settings.menuFontSize) {
-            _settings.menuFontSize = MENU_FONT_SIZE_DEFAULT;
+        if (!_settings.controlsFontSize) {
+            _settings.controlsFontSize = CONTROLS_FONT_SIZE_DEFAULT;
+        }
+        if (!_settings.controlsFontColor) {
+            _settings.controlsFontColor = CONTROLS_FONT_COLOR_DEFAULT;
+        }
+        if (!_settings.controlsFont) {
+            _settings.controlsFont = CONTROLS_FONT_DEFAULT;
         }
         if (!_settings.controlsBackgroundColor) {
             _settings.controlsBackgroundColor = CONTROLS_BACKGROUND_COLOR_DEFAULT;
@@ -2820,7 +2886,7 @@ if (!phyloXml) {
         _baseSvg = d3.select(id).append("svg")
             .attr("width", _displayWidth)
             .attr("height", _displayHeight)
-            .attr("class", OVERLAY)
+            .attr('class', OVERLAY)
             .call(_zoomListener);
 
         _svgGroup = _baseSvg.append("g");
@@ -3084,43 +3150,47 @@ if (!phyloXml) {
             removeTooltips();
 
             d3.select(this).append("rect")
-                .attr("class", "tooltipElem")
+                .attr('class', "tooltipElem")
                 .attr("x", 0)
-                .attr("y", 0)
+                .attr('y', 0)
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
                 .attr("rx", 10)
                 .attr("ry", 10)
                 .style("fill-opacity", 0.9)
-                .style("fill", "#606060");
+                .style('fill', "#606060");
 
             var rightPad = 10;
             var topPad = 20;
             var textSum = 0;
             var textInc = 20;
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', '#ffffff')
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent) {
                         textSum += textInc;
                         return "Display Node Data";
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     displayNodeData(d);
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
-                .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('fill', '#ffffff')
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent && d.parent.parent) {
                         if (d._children) {
@@ -3133,7 +3203,7 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     toggleCollapse(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
@@ -3142,12 +3212,14 @@ if (!phyloXml) {
                     update(d);
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', "white")
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     var cc = 0;
                     forester.preOrderTraversalAll(d, function (e) {
@@ -3160,7 +3232,7 @@ if (!phyloXml) {
                         return "Uncollapse All";
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     unCollapseAll(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
@@ -3169,12 +3241,14 @@ if (!phyloXml) {
                     update();
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', "white")
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent && ( d.children || d._children )) {
                         if (_superTreeRoots.length > 0 && d === _root.children[0]) {
@@ -3188,16 +3262,18 @@ if (!phyloXml) {
                     }
 
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     goToSubTree(d);
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', "white")
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent) {
                         if (d.children) {
@@ -3206,17 +3282,19 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     swapChildren(d);
                     update();
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', "white")
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent) {
                         if (d.children) {
@@ -3225,7 +3303,7 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     if (!_treeFn.visData) {
                         _treeFn.visData = {};
                     }
@@ -3237,19 +3315,21 @@ if (!phyloXml) {
                     update(null, 0);
                 });
 
-            d3.select(this).append("text")
-                .attr("class", "tooltipElem tooltipElemText")
-                .attr("y", topPad + textSum)
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
                 .attr("x", +rightPad)
-                .style("fill", "white")
-                .style("font-weight", "bold")
+                .style('fill', "white")
+                .style('font-weight', 'bold')
+                .style('font-size', _settings.controlsFontSize)
+                .style('font-family', _settings.controlsFont)
                 .text(function (d) {
                     if (d.parent && d.parent.parent && _superTreeRoots.length < 1) {
                         textSum += textInc;
                         return "Reroot";
                     }
                 })
-                .on("click", function (d) {
+                .on('click', function (d) {
                     forester.reRoot(tree, d, -1);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
@@ -3265,12 +3345,12 @@ if (!phyloXml) {
                 });
             };
             d3.select(this).moveToFront();
-            d3.select(this).selectAll(".tooltipElemText").each(function (d) {
-                d3.select(this).on("mouseover", function (d) {
-                    d3.select(this).transition().duration(50).style("fill", "black");
+            d3.select(this).selectAll('.tooltipElemText').each(function (d) {
+                d3.select(this).on('mouseover', function (d) {
+                    d3.select(this).transition().duration(50).style('fill', '#000000');
                 });
-                d3.select(this).on("mouseout", function (d) {
-                    d3.select(this).transition().duration(50).style("fill", "white");
+                d3.select(this).on('mouseout', function (d) {
+                    d3.select(this).transition().duration(50).style('fill', "#ffffff");
                 });
             });
 
@@ -3281,7 +3361,7 @@ if (!phyloXml) {
 
 
     $('html').click(function (d) {
-        var attrClass = d.target.getAttribute("class");
+        var attrClass = d.target.getAttribute('class');
         if (( attrClass !== "nodeCircleOptions")) {
             removeTooltips();
         }
@@ -3807,19 +3887,10 @@ if (!phyloXml) {
 
     function createGui() {
 
-        $("body").css({
-            'font-size': _settings.menuFontSize,
-            'font-family': 'Arial'
-        });
-
-
-        /*$('.' + LEGEND_LABEL_COLOR).css({ //TODO
-         'font-size': 16,
-         'font-family': 'Arial'
-         });
-         $('#' + "rect").css({
-         'stroke-width': 6
-         });*/
+        //    $("body").css({ //TODO is this needed?
+        //       'font-size': _settings.controlsFontSize,
+        //       'font-family': _settings.controlsFont
+        //   });
 
         var c0 = $('#' + CONTROLS_0);
 
@@ -3832,10 +3903,11 @@ if (!phyloXml) {
                 'top': _settings.controls0Top,
                 'padding': '0.1em',
                 'opacity': '0.85',
-                'background-color': _settings.controlsBackgroundColor,
-                'legend color': '#ff0000',
-                'font-size': _settings.menuFontSize,
-                'font-family': 'Arial'
+                'color': _settings.controlsFontColor,
+                'font-size': _settings.controlsFontSize,
+                'font-family': _settings.controlsFont,
+                'background-color': _settings.controlsBackgroundColor
+                // 'legend color': '#ff0000', //TODO what is this?
             });
 
             c0.draggable({containment: "parent"});
@@ -3853,7 +3925,8 @@ if (!phyloXml) {
                 pn.css({
                     'font-weight': 'bold',
                     'font-style': 'italic',
-                    'font-size': _settings.menuFontSize,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
                     'text-align': 'center',
                     'padding-top': '3px',
                     'padding-bottom': '5px'
@@ -3863,9 +3936,6 @@ if (!phyloXml) {
             $('a').css({
                 'color': LIGHT_BLUE,
                 'text-decoration': 'none'
-            });
-            $('a:hover').css({
-                'color': '#ff00ff'
             });
 
             $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
@@ -3908,8 +3978,8 @@ if (!phyloXml) {
                 'padding': '0.1em',
                 'opacity': '0.85',
                 'background-color': _settings.controlsBackgroundColor,
-                'font-size': _settings.menuFontSize,
-                'font-family': 'Arial'
+                'font-size': _settings.controlsFontSize,
+                'font-family': _settings.controlsFont
             });
 
             c1.draggable({containment: "parent"});
