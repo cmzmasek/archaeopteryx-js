@@ -53,6 +53,9 @@ if (!phyloXml) {
     var CONTROLS_FONT_COLOR_DEFAULT = '#ff5050';
     var CONTROLS_FONT_DEFAULT = 'Times';
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
+    var DUPLICATION_COLOR = '#ff0000';
+    var SPECIATION_COLOR = '#00ff00';
+    var DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
@@ -128,6 +131,8 @@ if (!phyloXml) {
     var INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
     var DEPTH_COLLAPSE_LABEL = 'depth_col_label';
     var BL_COLLAPSE_LABEL = 'bl_col_label';
+
+    var NODE_DATA = 'node_data_dialog';
 
     var COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
     var SPECIES_FEATURE = 'Species';
@@ -773,13 +778,31 @@ if (!phyloXml) {
             });
 
         legendEnter.append('text')
-            .attr('class', LEGEND);
+            .attr('class', LEGEND)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_LABEL);
+            .attr('class', LEGEND_LABEL)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION);
+            .attr('class', LEGEND_DESCRIPTION)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
 
         var legendUpdate = legend.transition()
@@ -799,9 +822,6 @@ if (!phyloXml) {
             .style('stroke', colorScale);
 
         legendUpdate.select('text.' + LEGEND)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d, i) {
@@ -821,10 +841,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_LABEL)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -834,10 +850,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -882,14 +894,32 @@ if (!phyloXml) {
         legendEnter.append('path');
 
         legendEnter.append('text')
-            .attr('class', LEGEND);
+            .attr('class', LEGEND)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_LABEL);
+            .attr('class', LEGEND_LABEL)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION);
-        
+            .attr('class', LEGEND_DESCRIPTION)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
+
         var legendUpdate = legend.transition()
             .duration(200)
             .attr('transform', function (d, i) {
@@ -903,9 +933,6 @@ if (!phyloXml) {
         var values = [];
 
         legendUpdate.select('text.' + LEGEND)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d) {
@@ -914,10 +941,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_LABEL)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -927,10 +950,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -990,13 +1009,31 @@ if (!phyloXml) {
         legendEnter.append('path');
 
         legendEnter.append('text')
-            .attr('class', LEGEND);
+            .attr('class', LEGEND)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_LABEL);
+            .attr('class', LEGEND_LABEL)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
         legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION);
+            .attr('class', LEGEND_DESCRIPTION)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
         var legendUpdate = legend.transition()
             .duration(200)
@@ -1011,9 +1048,6 @@ if (!phyloXml) {
         var values = [];
 
         legendUpdate.select('text.' + LEGEND)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', legendRectSize + legendSpacing)
             .attr('y', legendRectSize - legendSpacing)
             .text(function (d, i) {
@@ -1034,10 +1068,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_LABEL)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForLabel * legendRectSize)
             .text(function (d, i) {
@@ -1047,10 +1077,6 @@ if (!phyloXml) {
             });
 
         legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
@@ -1334,7 +1360,13 @@ if (!phyloXml) {
             });
 
         colorPickerEnter.append('text')
-            .attr('class', COLOR_PICKER_LABEL);
+            .attr('class', COLOR_PICKER_LABEL)
+            .style('color', _settings.controlsFontColor)
+            .style('font-size', _settings.controlsFontSize)
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'bold')
+            .style('text-decoration', 'none');
 
         var colorPickerUpdate = colorPicker.transition()
             .duration(0)
@@ -1388,11 +1420,6 @@ if (!phyloXml) {
             );
 
         colorPickerUpdate.select('text.' + COLOR_PICKER_LABEL)
-            .style('font-weight', 'bold')
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
-            .style('font-family', _settings.controlsFont)
-
             .attr('x', xCorrectionForLabel)
             .attr('y', yFactorForDesc * rectSize)
             .text(function (d, i) {
@@ -1519,9 +1546,7 @@ if (!phyloXml) {
         var gap = _options.nodeLabelGap;
 
         if (_options.phylogram === true) {
-            var extNodes = forester.getAllExternalNodes(_root);
-            //TODO could store these, probably...
-            _yScale = branchLengthScaling(extNodes, _w);
+            _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
         else {
             //TODO not needed?
@@ -1557,22 +1582,22 @@ if (!phyloXml) {
 
         var nodeEnter = node.enter().append("g")
             .attr('class', "node")
-            .attr("transform", function () {
+            .attr('transform', function () {
                 return "translate(" + source.y0 + "," + source.x0 + ")";
             })
-            .style('cursor', "default")
+            .style('cursor', 'default')
             .on('click', _treeFn.clickEvent);
 
         nodeEnter.append('path')
-            .attr("d", "M0,0");
+            .attr('d', 'M0,0');
 
-        nodeEnter.append("circle")
+        nodeEnter.append('circle')
             .attr('class', 'nodeCircle')
             .attr("r", 0);
 
-        nodeEnter.append("circle")
+        nodeEnter.append('circle')
             .style('cursor', 'pointer')
-            .style("opacity", "0")
+            .style('opacity', "0")
             .attr('class', 'nodeCircleOptions')
             .attr("r", function (d) {
                 if (d.parent) {
@@ -1583,37 +1608,58 @@ if (!phyloXml) {
 
         nodeEnter.append('text')
             .attr('class', "extlabel")
-            .attr("text-anchor", function (d) {
+            .attr('text-anchor', function (d) {
                 return d.children || d._children ? "end" : "start";
             })
-            .style("fill-opacity", 0.5);
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none')
+            .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
-            .attr('class', "bllabel");
+            .attr('class', "bllabel")
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none')
+            .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
             .attr('class', "conflabel")
-            .attr("text-anchor", "middle");
+            .attr('text-anchor', 'middle')
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         nodeEnter.append('text')
             .attr('class', "brancheventlabel")
-            .attr("text-anchor", "middle");
+            .attr('text-anchor', 'middle')
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         nodeEnter.append('text')
-            .attr('class', "collapsedText")
-            .attr("dy", function (d) {
-                return 0.3 * _options.externalNodeFontSize + "px";
-            });
+            .attr('class', 'collapsedText')
+            .attr('dy', function (d) {
+                return 0.3 * _options.externalNodeFontSize + 'px';
+            })
+            .style('font-family', _settings.controlsFont)
+            .style('font-style', 'normal')
+            .style('font-weight', 'normal')
+            .style('text-decoration', 'none');
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
-                return d.children || d._children ? _options.internalNodeFontSize + "px" : _options.externalNodeFontSize + "px";
+                return d.children || d._children ? _options.internalNodeFontSize + 'px' : _options.externalNodeFontSize + 'px';
             })
             .style('fill', makeLabelColor)
-            .attr("dy", function (d) {
-                return d.children || d._children ? 0.3 * _options.internalNodeFontSize + "px" : 0.3 * _options.externalNodeFontSize + "px";
+            .attr('dy', function (d) {
+                return d.children || d._children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
             })
-            .attr("x", function (d) {
+            .attr('x', function (d) {
                 if (!(d.children || d._children)) {
                     if (_options.phylogram && _options.alignPhylogram) {
                         return (-_yScale(d.distToRoot) + _w + gap);
@@ -1627,10 +1673,10 @@ if (!phyloXml) {
                 }
             });
 
-        node.select("text.bllabel")
-            .style('font-size', _options.branchDataFontSize + "px")
-            .attr("dy", "-.25em")
-            .attr("x", function (d) {
+        node.select('text.bllabel')
+            .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('dy', '-.25em')
+            .attr('x', function (d) {
                 if (d.parent) {
                     return (d.parent.y - d.y + 1);
                 }
@@ -1639,10 +1685,10 @@ if (!phyloXml) {
                 }
             });
 
-        node.select("text.conflabel")
-            .style('font-size', _options.branchDataFontSize + "px")
-            .attr("dy", _options.branchDataFontSize)
-            .attr("x", function (d) {
+        node.select('text.conflabel')
+            .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('dy', _options.branchDataFontSize)
+            .attr('x', function (d) {
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y) );
                 }
@@ -1651,17 +1697,17 @@ if (!phyloXml) {
                 }
             });
 
-        node.select("text.brancheventlabel")
-            .style('font-size', _options.branchDataFontSize + "px")
-            .attr("dy", "-.25em")
-            .attr("x", function (d) {
+        node.select('text.brancheventlabel')
+            .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('dy', '-.25em')
+            .attr('x', function (d) {
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y) );
                 }
             });
 
-        node.select("circle.nodeCircle")
-            .attr("r", function (d) {
+        node.select('circle.nodeCircle')
+            .attr('r', function (d) {
                 if (( (_options.showNodeVisualizations && !_options.showNodeEvents ) &&
                     (makeNodeStrokeColor(d) === _options.backgroundColorDefault &&
                     makeNodeFillColor(d) === _options.backgroundColorDefault ) )) {
@@ -1669,10 +1715,10 @@ if (!phyloXml) {
                 }
                 return makeNodeSize(d);
             })
-            .style("stroke", function (d) {
+            .style('stroke', function (d) {
                 return makeNodeStrokeColor(d);
             })
-            .style("stroke-width", _options.branchWidthDefault)
+            .style('stroke-width', _options.branchWidthDefault)
             .style('fill', function (d) {
                 return ( _options.showNodeVisualizations || _options.showNodeEvents) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
             });
@@ -1683,35 +1729,35 @@ if (!phyloXml) {
 
         var nodeUpdate = node.transition()
             .duration(transitionDuration)
-            .attr("transform", function (d) {
-                return "translate(" + d.y + "," + d.x + ")";
+            .attr('transform', function (d) {
+                return 'translate(' + d.y + ',' + d.x + ')';
             });
 
         nodeUpdate.select('text')
-            .style("fill-opacity", 1);
+            .style('fill-opacity', 1);
 
-        nodeUpdate.select("text.extlabel")
+        nodeUpdate.select('text.extlabel')
             .text(function (d) {
                 if (!_options.dynahide || !d.hide) {
                     return makeNodeLabel(d);
                 }
             });
 
-        nodeUpdate.select("text.bllabel")
+        nodeUpdate.select('text.bllabel')
             .text(_options.showBranchLengthValues ? makeBranchLengthLabel : null);
 
-        nodeUpdate.select("text.conflabel")
+        nodeUpdate.select('text.conflabel')
             .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
 
-        nodeUpdate.select("text.brancheventlabel")
+        nodeUpdate.select('text.brancheventlabel')
             .text(_options.showBranchEvents ? makeBranchEventsLabel : null);
 
         nodeUpdate.select('path')
-            .style("stroke", _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
-            .style("stroke-width", _options.branchWidthDefault)
+            .style('stroke', _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
+            .style('stroke-width', _options.branchWidthDefault)
             .style('fill', _options.showNodeVisualizations ? makeVisNodeFillColor : null)
-            .style("opacity", _options.nodeVisualizationsOpacity)
-            .attr("d", _options.showNodeVisualizations ? makeNodeVisShape : null);
+            .style('opacity', _options.nodeVisualizationsOpacity)
+            .attr('d', _options.showNodeVisualizations ? makeNodeVisShape : null);
 
 
         node.each(function (d) {
@@ -1728,26 +1774,26 @@ if (!phyloXml) {
                 var l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
                 var collapsedColor = makeCollapsedColor(d);
                 d3.select(this).select('path').transition().duration(transitionDuration)
-                    .attr("d", function () {
-                        return "M" + start + "," + (-l) + "L" + xlength + "," + (-yl) + "L" + xlength + "," + (yl) + "L" + start + "," + l + "L" + start + "," + (-l);
+                    .attr('d', function () {
+                        return 'M' + start + ',' + (-l) + 'L' + xlength + ',' + (-yl) + 'L' + xlength + ',' + (yl) + 'L' + start + ',' + l + 'L' + start + ',' + (-l);
                     })
-                    .style("stroke", collapsedColor)
+                    .style('stroke', collapsedColor)
                     .style('fill', collapsedColor);
 
-                d3.select(this).select(".collapsedText").attr('font-size', function (d) {
-                    return _options.externalNodeFontSize + "px";
+                d3.select(this).select('.collapsedText').attr('font-size', function (d) {
+                    return _options.externalNodeFontSize + 'px';
                 });
 
-                d3.select(this).select(".collapsedText").transition().duration(transitionDuration)
-                    .style("fill-opacity", 1)
+                d3.select(this).select('.collapsedText').transition().duration(transitionDuration)
+                    .style('fill-opacity', 1)
                     .text(makeCollapsedLabel(d, descs))
                     .style('fill', function (d) {
                         return makeLabelColorForCollapsed(d, collapsedColor);
                     })
-                    .attr("dy", function (d) {
-                        return 0.3 * _options.externalNodeFontSize + "px";
+                    .attr('dy', function (d) {
+                        return 0.3 * _options.externalNodeFontSize + 'px';
                     })
-                    .attr("x", function (d) {
+                    .attr('x', function (d) {
                         if (_options.phylogram && _options.alignPhylogram) {
                             var w = d;
                             while (w.children && w.children.length > 0) {
@@ -1764,45 +1810,45 @@ if (!phyloXml) {
             if (d.children) {
                 if (!_options.showNodeVisualizations && makeNodeVisShape(d) === null) {
                     d3.select(this).select('path').transition().duration(transitionDuration)
-                        .attr("d", function () {
-                            return "M0,0";
+                        .attr('d', function () {
+                            return 'M0,0';
                         });
                 }
-                d3.select(this).select(".collapsedText").transition().duration(transitionDuration)
-                    .attr("x", 0)
-                    .style("fill-opacity", 1e-6)
-                    .each("end", function () {
-                        d3.select(this).text("");
+                d3.select(this).select('.collapsedText').transition().duration(transitionDuration)
+                    .attr('x', 0)
+                    .style('fill-opacity', 1e-6)
+                    .each('end', function () {
+                        d3.select(this).text('');
                     });
             }
         });
 
         var nodeExit = node.exit().transition()
             .duration(transitionDuration)
-            .attr("transform", function () {
+            .attr('transform', function () {
                 return "translate(" + source.y + "," + source.x + ")";
             })
             .remove();
 
-        nodeExit.select("circle")
-            .attr("r", 0);
+        nodeExit.select('circle')
+            .attr('r', 0);
 
         nodeExit.select('text')
-            .style("fill-opacity", 0);
+            .style('fill-opacity', 0);
 
-        var link = _svgGroup.selectAll("path.link")
-            .attr("d", elbow)
-            .attr("stroke-width", makeBranchWidth)
+        var link = _svgGroup.selectAll('path.link')
+            .attr('d', elbow)
+            .attr('stroke-width', makeBranchWidth)
             .data(links, function (d) {
                 return d.target.id;
             });
 
-        link.enter().insert('path', "g")
-            .attr('class', "link")
-            .attr('fill', "none")
-            .attr("stroke-width", makeBranchWidth)
-            .attr("stroke", makeBranchColor)
-            .attr("d", function () {
+        link.enter().insert('path', 'g')
+            .attr('class', 'link')
+            .attr('fill', 'none')
+            .attr('stroke-width', makeBranchWidth)
+            .attr('stroke', makeBranchColor)
+            .attr('d', function () {
                 var o = {
                     x: source.x0,
                     y: source.y0
@@ -1816,10 +1862,10 @@ if (!phyloXml) {
 
         link.transition()
             .duration(transitionDuration)
-            .attr("d", elbow);
+            .attr('d', elbow);
 
         link.exit()
-            .attr("d", function () {
+            .attr('d', function () {
                 var o = {
                     x: source.x,
                     y: source.y
@@ -1845,8 +1891,8 @@ if (!phyloXml) {
             linkExtension.enter().insert('path', "g")
                 .attr('class', "link")
                 .attr('fill', "none")
-                .attr("stroke-width", 1)
-                .attr("stroke", _options.branchColorDefault)
+                .attr('stroke-width', 1)
+                .attr('stroke', _options.branchColorDefault)
                 .style("stroke-opacity", 0.25)
                 .attr("d", function (d) {
                     return connection(d.target);
@@ -1894,13 +1940,13 @@ if (!phyloXml) {
 
     function makeNodeEventsDependentColor(ev) {
         if (ev.duplications > 0 && ( !ev.speciations || ev.speciations <= 0 )) {
-            return '#ff0000';
+            return DUPLICATION_COLOR;
         }
         else if (ev.speciations > 0 && ( !ev.duplications || ev.duplications <= 0 )) {
-            return '#00ff00';
+            return SPECIATION_COLOR;
         }
         else if (ev.speciations > 0 && ev.duplications > 0) {
-            return '#ffff00';
+            return DUPLICATION_AND_SPECIATION_COLOR_COLOR;
         }
         return null;
     }
@@ -2923,7 +2969,6 @@ if (!phyloXml) {
                 update();
             }
             function displayNodeData(n) {
-
                 var title = n.name ? "Node Data: " + n.name : "Node Data";
                 var text = "";
                 if (n.name) {
@@ -3055,11 +3100,35 @@ if (!phyloXml) {
                 }
                 text += "Depth: " + forester.calcDepth(n) + "<br>";
 
+                var nodeData = document.getElementById(NODE_DATA);
+                if (nodeData && nodeData.outerHTML) {
+                    nodeData.outerHTML = '';
+                }
+                $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
+                var dialog = $('#' + NODE_DATA);
 
-                $("<div id='node_data'>" + text + "</div>").dialog();
-                var dialog = $("#node_data");
-                dialog.dialog("option", "modal", true);
-                dialog.dialog("option", "title", title);
+                $(".ui-dialog").css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'normal',
+                    'text-decoration': 'none'
+                });
+
+                $(".ui-dialog-titlebar").css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none'
+                });
+
+                dialog.dialog('option', 'modal', true);
+                dialog.dialog('option', 'title', title);
 
                 update();
             }
@@ -3131,7 +3200,7 @@ if (!phyloXml) {
                 .attr("height", rectHeight)
                 .attr("rx", 10)
                 .attr("ry", 10)
-                .style("fill-opacity", 0.9)
+                .style('fill-opacity', 0.9)
                 .style('fill', "#606060");
 
             var rightPad = 10;
@@ -3875,13 +3944,16 @@ if (!phyloXml) {
                 'position': 'absolute',
                 'left': _settings.controls0Left,
                 'top': _settings.controls0Top,
+                'text-align': 'left',
                 'padding': '0.1em',
                 'opacity': '0.85',
+                'background-color': _settings.controlsBackgroundColor,
                 'color': _settings.controlsFontColor,
                 'font-size': _settings.controlsFontSize,
                 'font-family': _settings.controlsFont,
-                'background-color': _settings.controlsBackgroundColor
-                // 'legend color': '#ff0000', //TODO what is this?
+                'font-style': 'normal',
+                'font-weight': 'normal',
+                'text-decoration': 'none'
             });
 
             c0.draggable({containment: "parent"});
@@ -3897,14 +3969,14 @@ if (!phyloXml) {
             var pn = $('.' + PROG_NAME);
             if (pn) {
                 pn.css({
-                    'font-weight': 'bold',
-                    'font-style': 'italic',
-                    'font-size': _settings.controlsFontSize,
-                    'font-family': _settings.controlsFont,
                     'text-align': 'center',
                     'padding-top': '3px',
-                    'padding-bottom': '5px'
-
+                    'padding-bottom': '5px',
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'italic',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none'
                 });
             }
             $('a').css({
@@ -3942,18 +4014,22 @@ if (!phyloXml) {
 
         var c1 = $('#' + CONTROLS_1);
         if (c1) {
-
             c1.css({
                 'position': 'absolute',
                 // 'width': '200px',
                 // 'height': '270px',
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top,
+                'text-align': 'left',
                 'padding': '0.1em',
                 'opacity': '0.85',
                 'background-color': _settings.controlsBackgroundColor,
+                'color': _settings.controlsFontColor,
                 'font-size': _settings.controlsFontSize,
-                'font-family': _settings.controlsFont
+                'font-family': _settings.controlsFont,
+                'font-style': 'normal',
+                'font-weight': 'normal',
+                'text-decoration': 'none'
             });
 
             c1.draggable({containment: "parent"});
@@ -3970,7 +4046,10 @@ if (!phyloXml) {
                 'width': '26px',
                 'text-align': 'center',
                 'outline': 'none',
-                'margin': '0px'
+                'margin': '0px',
+                'font-style': 'normal',
+                'font-weight': 'normal',
+                'text-decoration': 'none'
             });
 
         $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y)
@@ -4514,7 +4593,6 @@ if (!phyloXml) {
         // --------------------------------------------------------------
         // Functions to make GUI elements
         // --------------------------------------------------------------
-
 
         function makeProgramDesc() {
             var h = "";
