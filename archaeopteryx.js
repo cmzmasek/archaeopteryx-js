@@ -2033,7 +2033,6 @@ if (!phyloXml) {
             return color
         }
         if (_currentLabelColorVisualization) {
-            // var color = makeVisLabelColor(phynode);
             var color = makeVisLabelColorForSubtree(phynode);
             if (color) {
                 return color;
@@ -2911,9 +2910,7 @@ if (!phyloXml) {
 
         _baseSvg = d3.select(id).append('svg')
             .attr('width', _displayWidth)
-            .attr('height', _displayHeight)//////////
-            //.attr('cx', 0)
-            //.attr('cy', 0)
+            .attr('height', _displayHeight)
             .attr('class', OVERLAY)
             .style('background-color', 'yellow')//////////TODO
             .style("border", "1px solid black")
