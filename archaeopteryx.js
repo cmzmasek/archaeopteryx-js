@@ -381,7 +381,7 @@ if (!phyloXml) {
         }
         else if (mappingFn) {
             visualization.mappingFn = mappingFn;
-            if (scaleType === ORDINAL_SCALE) {/////
+            if (scaleType === ORDINAL_SCALE) {
                 if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
                     if (altMappingFn && altMappingFn.domain() && altMappingFn.range()) {
                         visualization.mappingFn = altMappingFn;
@@ -3031,8 +3031,9 @@ if (!phyloXml) {
                 if (n.branch_length) {
                     text += 'Distance to Parent: ' + n.branch_length + '<br>';
                 }
+                var i = 0;
                 if (n.confidences) {
-                    for (var i = 0; i < n.confidences.length; ++i) {
+                    for (i = 0; i < n.confidences.length; ++i) {
                         var c = n.confidences[i];
                         if (c.type) {
                             text += 'Confidence [' + c.type + ']: ' + c.value + '<br>';
@@ -3045,8 +3046,9 @@ if (!phyloXml) {
                         }
                     }
                 }
+
                 if (n.taxonomies) {
-                    for (var i = 0; i < n.taxonomies.length; ++i) {
+                    for (i = 0; i < n.taxonomies.length; ++i) {
                         text += 'Taxonomy<br>';
                         var t = n.taxonomies[i];
                         if (t.id) {
@@ -3072,7 +3074,7 @@ if (!phyloXml) {
                     }
                 }
                 if (n.sequences) {
-                    for (var i = 0; i < n.sequences.length; ++i) {
+                    for (i = 0; i < n.sequences.length; ++i) {
                         text += 'Sequence<br>';
                         var s = n.sequences[i];
                         if (s.accession) {
@@ -3105,7 +3107,7 @@ if (!phyloXml) {
                 }
                 if (n.distributions) {
                     var distributions = n.distributions;
-                    for (var i = 0; i < distributions.length; ++i) {
+                    for (i = 0; i < distributions.length; ++i) {
                         text += 'Distribution: ';
                         if (distributions[i].desc) {
                             text += distributions[i].desc + '<br>';
@@ -3137,7 +3139,7 @@ if (!phyloXml) {
                 }
                 if (n.properties && n.properties.length > 0) {
                     var propertiesLength = n.properties.length;
-                    for (var i = 0; i < propertiesLength; ++i) {
+                    for (i = 0; i < propertiesLength; ++i) {
                         var property = n.properties[i];
                         if (property.ref && property.value) {
                             if (property.unit) {
@@ -3158,9 +3160,10 @@ if (!phyloXml) {
                 if (nodeData && nodeData.outerHTML) {
                     nodeData.outerHTML = '';
                 }
-                $("<div id='" + NODE_DATA + ">" + text + "</div>").dialog();
+                $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
-
+                console.log("dialog");
+                console.log(dialog);
                 $('.ui-dialog').css({
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
