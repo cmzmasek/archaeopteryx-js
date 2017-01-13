@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_83
+// v 0_84
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.83';
+    var VERSION = '0.84';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -147,9 +147,9 @@ if (!phyloXml) {
     var NODE_SIZE_SELECT_MENU = 'nsizes_menu';
     var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
 
-    var VISUAL_CONTROLS = 'visual_controls';
+    //var VISUAL_CONTROLS = 'visual_controls';
 
-    var SEARCH_OPTIONS = 'search_options';
+    //var SEARCH_OPTIONS = 'search_options';
     var SEARCH_OPTIONS_GROUP = 'search_opts_g';
     var SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
     var SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
@@ -346,9 +346,10 @@ if (!phyloXml) {
                                  isRegex,
                                  mapping,
                                  mappingFn,
-                                 scaleType) {
-        if (arguments.length != 8) {
-            throw( 'expected 8 arguments, got ' + arguments.length);
+                                 scaleType,
+                                 altMappingFn) {
+        if (arguments.length < 8) {
+            throw( 'expected at least 8 arguments, got ' + arguments.length);
         }
 
         if (!label || label.length < 1) {
@@ -380,11 +381,17 @@ if (!phyloXml) {
         }
         else if (mappingFn) {
             visualization.mappingFn = mappingFn;
-            if (scaleType === ORDINAL_SCALE) {
+            if (scaleType === ORDINAL_SCALE) {/////
                 if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
-                    var s = cladePropertyRef ? cladePropertyRef : field;
-                    console.log(WARNING + ': Ordinal scale mapping for ' + label + ' (' + s + '): domain > range: ' +
-                        mappingFn.domain().length + ' > ' + mappingFn.range().length);
+                    if (altMappingFn && altMappingFn.domain() && altMappingFn.range()) {
+                        visualization.mappingFn = altMappingFn;
+                        scaleType = LINEAR_SCALE;
+                    }
+                    else {
+                        var s = cladePropertyRef ? cladePropertyRef : field;
+                        console.log(WARNING + ': Ordinal scale mapping for ' + label + ' (' + s + '): domain > range: ' +
+                            mappingFn.domain().length + ' > ' + mappingFn.range().length);
+                    }
                 }
             }
         }
@@ -440,6 +447,7 @@ if (!phyloXml) {
                         if (nodeVisualization.colors) {
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
                                 var colorScale = null;
+                                var altColorScale = null;
 
                                 if (Array.isArray(nodeVisualization.colors)) {
                                     scaleType = LINEAR_SCALE;
@@ -451,6 +459,23 @@ if (!phyloXml) {
                                     else if (nodeVisualization.colors.length === 2) {
                                         colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
+                                            .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                    }
+                                    else {
+                                        throw 'Number of colors has to be either 2 or 3';
+                                    }
+                                }
+
+                                if (Array.isArray(nodeVisualization.colorsAlt)) {
+
+                                    if (nodeVisualization.colorsAlt.length === 3) {
+                                        altColorScale = d3.scale.linear()
+                                            .range(nodeVisualization.colorsAlt)
+                                            .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                    }
+                                    else if (nodeVisualization.colorsAlt.length === 2) {
+                                        altColorScale = d3.scale.linear()
+                                            .range(nodeVisualization.colorsAlt)
                                             .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
                                     }
                                     else {
@@ -493,7 +518,8 @@ if (!phyloXml) {
                                         nodeVisualization.regex,
                                         null,
                                         colorScale,
-                                        scaleType);
+                                        scaleType,
+                                        altColorScale);
 
                                     addNodeFillColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -502,7 +528,8 @@ if (!phyloXml) {
                                         nodeVisualization.regex,
                                         null,
                                         colorScale,
-                                        scaleType);
+                                        scaleType,
+                                        altColorScale);
 
                                     addNodeBorderColorVisualization(nodeVisualization.label,
                                         nodeVisualization.description,
@@ -511,7 +538,8 @@ if (!phyloXml) {
                                         nodeVisualization.regex,
                                         null,
                                         colorScale,
-                                        scaleType);
+                                        scaleType,
+                                        altColorScale);
                                 }
                             }
                         }
@@ -592,9 +620,10 @@ if (!phyloXml) {
                                            isRegex,
                                            mapping,
                                            mappingFn,
-                                           scaleType) {
-        if (arguments.length != 8) {
-            throw( 'expected 8 arguments, got ' + arguments.length);
+                                           scaleType,
+                                           altMappingFn) {
+        if (arguments.length < 8) {
+            throw( 'expected at least 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -612,7 +641,8 @@ if (!phyloXml) {
             isRegex,
             mapping,
             mappingFn,
-            scaleType);
+            scaleType,
+            altMappingFn);
         if (vis) {
             _visualizations.nodeFillColor[vis.label] = vis;
         }
@@ -625,9 +655,10 @@ if (!phyloXml) {
                                              isRegex,
                                              mapping,
                                              mappingFn,
-                                             scaleType) {
-        if (arguments.length != 8) {
-            throw( 'expected 8 arguments, got ' + arguments.length);
+                                             scaleType,
+                                             altMappingFn) {
+        if (arguments.length < 8) {
+            throw( 'expected at least 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -645,7 +676,8 @@ if (!phyloXml) {
             isRegex,
             mapping,
             mappingFn,
-            scaleType);
+            scaleType,
+            altMappingFn);
         if (vis) {
             _visualizations.nodeBorderColor[vis.label] = vis;
         }
@@ -693,9 +725,10 @@ if (!phyloXml) {
                                         isRegex,
                                         mapping,
                                         mappingFn,
-                                        scaleType) {
-        if (arguments.length != 8) {
-            throw( 'expected 8 arguments, got ' + arguments.length);
+                                        scaleType,
+                                        altMappingFn) {
+        if (arguments.length < 8) {
+            throw( 'expected at least 8 arguments, got ' + arguments.length);
         }
         if (!_visualizations) {
             _visualizations = {};
@@ -713,7 +746,8 @@ if (!phyloXml) {
             isRegex,
             mapping,
             mappingFn,
-            scaleType);
+            scaleType,
+            altMappingFn);
         if (vis) {
             _visualizations.labelColor[vis.label] = vis;
         }
@@ -838,7 +872,7 @@ if (!phyloXml) {
                         return d + ' (max)';
                     }
                     else if (linearRangeLength === 3 && i === 1) {
-                        return d + ' (mean)';
+                        return preciseRound(d, 4) + ' (mean)';
                     }
                 }
                 return d;
@@ -1065,7 +1099,7 @@ if (!phyloXml) {
                         return d + ' (max)';
                     }
                     else if (linearRangeLength === 3 && i === 1) {
-                        return d + ' (mean)'; //TODO round?
+                        return preciseRound(d, 4) + ' (mean)';
                     }
                 }
                 return d;
@@ -1107,6 +1141,11 @@ if (!phyloXml) {
         legend.exit().remove();
 
         return counter;
+    }
+
+    function preciseRound(num, decimals) {
+        var t = Math.pow(10, decimals);
+        return (Math.round((num * t) + (decimals > 0 ? 1 : 0) * (Math.sign(num) * (10 / Math.pow(100, decimals)))) / t).toFixed(decimals);
     }
 
     function addLegends() {
@@ -5092,7 +5131,7 @@ if (!phyloXml) {
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
     }
-    
+
     function unCollapseAll(node) {
         forester.preOrderTraversal(node, function (n) {
             if (n._children) {

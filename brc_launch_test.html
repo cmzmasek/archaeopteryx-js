@@ -158,7 +158,8 @@
                 cladeRef: decorator + 'Year',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: ['#000000', '#00FF00'],
+                colors: 'category10',
+                colorsAlt: ['#FF0000', '#000000', '#00FF00'],
                 sizes: [60, 10, 60]
             };
 
@@ -292,7 +293,7 @@
              }else{
              loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&decorator=${param.decorator}&treeFile=${param.treeFile}';
              }*/
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_ird_phylo.xml';
+            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_ird_phylo2.xml';
             // loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_phylo.xml';
 
             jQuery.get(loc,
@@ -379,14 +380,7 @@
 </head>
 <body onload="load()">
 <div>
-    <style type="text/css">
-
-        #search_options fieldset {
-            height: auto !important;
-        }
-    </style>
-
-    <h2>Archaeopteryx.js Demo: v 0_83</h2>
+    <h2>Archaeopteryx.js Demo: v 0_84</h2>
     TEST
 
     <div id='phylogram1'></div>
