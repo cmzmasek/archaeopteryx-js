@@ -5092,8 +5092,7 @@ if (!phyloXml) {
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
     }
-
-
+    
     function unCollapseAll(node) {
         forester.preOrderTraversal(node, function (n) {
             if (n._children) {
