@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_81
+// v 0_83
 
 if (!d3) {
     throw "no d3.js";
@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.82';
+    var VERSION = '0.83';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -1684,7 +1684,7 @@ if (!phyloXml) {
                 if (d.parent) {
                     return (d.parent.y - d.y + 1);
                 }
-                else { //TODO could remove?
+                else {
                     return 0;
                 }
             });
@@ -1696,7 +1696,7 @@ if (!phyloXml) {
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y) );
                 }
-                else { //TODO could remove?
+                else {
                     return 0;
                 }
             });
@@ -1801,7 +1801,7 @@ if (!phyloXml) {
                         if (_options.phylogram && _options.alignPhylogram) {
                             var w = d;
                             while (w.children && w.children.length > 0) {
-                                w = w.children[0]; //TODO we can store these...
+                                w = w.children[0];
                             }
                             return (-_yScale(w.distToRoot) + _w + gap);
                         }

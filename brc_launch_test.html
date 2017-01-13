@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <title>Archaeopteryx.js Demo</title>
+    <title>Archaeopteryx.js Demo X</title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -64,6 +64,7 @@
             options.externalNodeFontSize = 10;
             options.internalNodeFontSize = 6;
             options.branchDataFontSize = 6;
+            options.defaultFont = 'Times';
             options.branchColorDefault = '#909090';
             options.labelColorDefault = '#202020';
             options.backgroundColorDefault = '#f0f0f0';
@@ -94,13 +95,14 @@
             settings.rootOffset = 180;
             settings.displayWidth = 1000;
             settings.displayHeight = 800;
-            settings.controls0Top = '50px';
-            settings.controls1Top = '50px';
+            settings.controls0Top = 10;
+            settings.controls1Top = 10;
             settings.reCenterAfterCollapse = false;
             settings.controlsFontColor = '#505050';
             settings.controlsFontSize = '9px';
             settings.controlsFont = 'Arial';
             settings.controlsBackgroundColor = '#e0e0e0';
+            settings.border = '1px solid #909090';
             settings.enableNodeVisualizations = true;
             settings.enableBranchVisualizations = false;
             settings.readSimpleCharacteristics = true;
@@ -320,19 +322,64 @@
                     });
         }
     </script>
+    <style>
+        body {
+            background-color: powderblue;
+        }
+
+        body {
+            font-size: 25pt;
+        }
+
+        body {
+            font-family: Garamond;
+        }
+
+        body {
+            font-style: italic;
+        }
+
+        body {
+            font-weight: bolder;
+        }
+
+        body {
+            text-decoration: underline
+        }
+
+        body {
+            text-align: center
+        }
+
+        body {
+            color: darkorange;
+        }
+
+        body {
+            border: double;
+        }
+
+        body {
+            border: #ff0411;
+        }
+
+        h1 {
+            color: blue;
+        }
+
+        h2 {
+            color: green;
+        }
+
+        p {
+            color: red;
+        }
+    </style>
 
 </head>
 <body onload="load()">
-
 <div>
     <style type="text/css">
-        .overlay {
-            background-color: #f0f0f0;
-        }
-
-        #dl_b {
-            margin-bottom: 3px;
-        }
 
         #search_options fieldset {
             height: auto !important;
@@ -340,6 +387,7 @@
     </style>
 
     <h2>Archaeopteryx.js Demo: v 0_83</h2>
+    TEST
 
     <div id='phylogram1'></div>
 
