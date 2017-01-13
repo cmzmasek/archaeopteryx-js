@@ -45,11 +45,11 @@ if (!phyloXml) {
     var ROOTOFFSET_DEFAULT = 30;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var VIEWERHEIGHT_DEFAULT = 600;
-    var CONTROLS_0_LEFT_DEFAULT = '20px';
-    var CONTROLS_0_TOP_DEFAULT = '60px';
+    var CONTROLS_0_LEFT_DEFAULT = 20;
+    var CONTROLS_0_TOP_DEFAULT = 20;
     var CONTROLS_1_WIDTH = 120;
-    var CONTROLS_1_TOP_DEFAULT = '60px';
-    var CONTROLS_FONT_SIZE_DEFAULT = '5px'; //9
+    var CONTROLS_1_TOP_DEFAULT = 20;
+    var CONTROLS_FONT_SIZE_DEFAULT = '9px';
     var CONTROLS_FONT_COLOR_DEFAULT = '#ff5050';
     var CONTROLS_FONT_DEFAULT = 'Times';
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
@@ -65,6 +65,9 @@ if (!phyloXml) {
     var BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
     var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
     var BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
+
+    var NODE_TOOLTIP_TEXT_COLOR = '#ffffff';
+    var NODE_TOOLTIP_BACKGROUND_COLOR = '#606060';
 
     var NODE_SIZE_MAX = 9;
     var NODE_SIZE_MIN = 1;
@@ -273,6 +276,7 @@ if (!phyloXml) {
     var _w = null;
     var _visualizations = null;
     var _id = null;
+    var _offsetTop = 0;
     var _legendColorScales = {};
     var _legendShapeScales = {};
     var _legendSizeScales = {};
@@ -2828,7 +2832,7 @@ if (!phyloXml) {
             _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;
         }
         if (!_settings.controls1Left) {
-            _settings.controls1Left = (_settings.displayWidth - CONTROLS_1_WIDTH ) + 'px';
+            _settings.controls1Left = _settings.displayWidth - CONTROLS_1_WIDTH;
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = false;
@@ -2896,6 +2900,7 @@ if (!phyloXml) {
         }
         _id = id;
 
+
         createGui(_basicTreeProperties);
 
         if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
@@ -2903,13 +2908,18 @@ if (!phyloXml) {
                 .on("mousedown", mouseDown);
         }
 
-        _baseSvg = d3.select(id).append("svg")
-            .attr("width", _displayWidth)
-            .attr("height", _displayHeight)
+
+        _baseSvg = d3.select(id).append('svg')
+            .attr('width', _displayWidth)
+            .attr('height', _displayHeight)//////////
+            //.attr('cx', 0)
+            //.attr('cy', 0)
             .attr('class', OVERLAY)
+            .style('background-color', 'yellow')//////////TODO
+            .style("border", "1px solid black")
             .call(_zoomListener);
 
-        _svgGroup = _baseSvg.append("g");
+        _svgGroup = _baseSvg.append('g');
 
         _treeFn = d3.layout.cluster()
             .size([_displayHeight, _displayWidth]);
@@ -3192,16 +3202,16 @@ if (!phyloXml) {
 
             removeTooltips();
 
-            d3.select(this).append("rect")
-                .attr('class', "tooltipElem")
-                .attr("x", 0)
+            d3.select(this).append('rect')
+                .attr('class', 'tooltipElem')
+                .attr('x', 0)
                 .attr('y', 0)
-                .attr("width", rectWidth)
-                .attr("height", rectHeight)
-                .attr("rx", 10)
-                .attr("ry", 10)
+                .attr('width', rectWidth)
+                .attr('height', rectHeight)
+                .attr('rx', 10)
+                .attr('ry', 10)
                 .style('fill-opacity', 0.9)
-                .style('fill', "#606060");
+                .style('fill', NODE_TOOLTIP_BACKGROUND_COLOR);
 
             var rightPad = 10;
             var topPad = 20;
@@ -3211,11 +3221,14 @@ if (!phyloXml) {
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', '#ffffff')
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent) {
                         textSum += textInc;
@@ -3230,10 +3243,13 @@ if (!phyloXml) {
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
                 .attr('x', +rightPad)
-                .style('fill', '#ffffff')
-                .style('font-weight', 'bold')
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent && d.parent.parent) {
                         if (d._children) {
@@ -3258,11 +3274,14 @@ if (!phyloXml) {
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', "white")
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     var cc = 0;
                     forester.preOrderTraversalAll(d, function (e) {
@@ -3287,11 +3306,14 @@ if (!phyloXml) {
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', "white")
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent && ( d.children || d._children )) {
                         if (_superTreeRoots.length > 0 && d === _root.children[0]) {
@@ -3312,11 +3334,14 @@ if (!phyloXml) {
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', "white")
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent) {
                         if (d.children) {
@@ -3333,11 +3358,14 @@ if (!phyloXml) {
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', "white")
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent) {
                         if (d.children) {
@@ -3358,14 +3386,22 @@ if (!phyloXml) {
                     update(null, 0);
                 });
 
+
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
-                .attr("x", +rightPad)
-                .style('fill', "white")
-                .style('font-weight', 'bold')
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('align', 'left')
+                .style('vertical-align', 'left')
+
+
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
                 .style('font-size', _settings.controlsFontSize)
                 .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
                 .text(function (d) {
                     if (d.parent && d.parent.parent && _superTreeRoots.length < 1) {
                         textSum += textInc;
@@ -3520,14 +3556,14 @@ if (!phyloXml) {
         if (c0) {
             c0.css({
                 'left': _settings.controls0Left,
-                'top': _settings.controls0Top
+                'top': _settings.controls0Top + _offsetTop
             });
         }
         var c1 = $('#' + CONTROLS_1);
         if (c1) {
             c1.css({
                 'left': _settings.controls1Left,
-                'top': _settings.controls1Top
+                'top': _settings.controls1Top + _offsetTop
             });
         }
     }
@@ -3935,15 +3971,22 @@ if (!phyloXml) {
         //       'font-family': _settings.controlsFont
         //   });
 
+        var d3selectId = d3.select(_id);
+        if (d3selectId && d3selectId[0]) {
+            var phyloDiv = d3selectId[0][0];
+            if (phyloDiv) {
+                _offsetTop = phyloDiv.offsetTop;
+                phyloDiv.style.textAlign = 'left';
+            }
+        }
+
         var c0 = $('#' + CONTROLS_0);
 
         if (c0) {
             c0.css({
-                //  'width': '120px',
-                // 'height': '580px',
                 'position': 'absolute',
                 'left': _settings.controls0Left,
-                'top': _settings.controls0Top,
+                'top': _settings.controls0Top + _offsetTop,
                 'text-align': 'left',
                 'padding': '0.1em',
                 'opacity': '0.85',
@@ -4016,10 +4059,8 @@ if (!phyloXml) {
         if (c1) {
             c1.css({
                 'position': 'absolute',
-                // 'width': '200px',
-                // 'height': '270px',
                 'left': _settings.controls1Left,
-                'top': _settings.controls1Top,
+                'top': _settings.controls1Top + _offsetTop,
                 'text-align': 'left',
                 'padding': '0.1em',
                 'opacity': '0.85',
@@ -4096,7 +4137,8 @@ if (!phyloXml) {
 
         if (downloadButton) {
             downloadButton.css({
-                'width': '60px'
+                'width': '60px',
+                'margin-bottom': '3px'
             });
         }
 
@@ -4306,7 +4348,7 @@ if (!phyloXml) {
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
-            .attr("disabled", "disabled")
+            .attr('disabled', 'disabled')
             .css({
                 'font': 'inherit',
                 'color': 'inherit',
@@ -5319,14 +5361,14 @@ if (!phyloXml) {
     function disableButton(b) {
         if (b) {
             b.prop('disabled', true);
-            b.css("background", _settings.controlsBackgroundColor);
+            b.css('background', _settings.controlsBackgroundColor);
         }
     }
 
     function enableButton(b) {
         if (b) {
             b.prop('disabled', false);
-            b.css("background", "");
+            b.css('background', '');
         }
     }
 
