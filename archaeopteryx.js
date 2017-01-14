@@ -36,7 +36,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '0.84';
+    var VERSION = '0.85';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
