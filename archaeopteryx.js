@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_84
+// v 0_85
 
 if (!d3) {
     throw "no d3.js";
@@ -1591,12 +1591,7 @@ if (!phyloXml) {
         if (_options.phylogram === true) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
-        else {
-            //TODO not needed?
-            //d3.scale.linear()
-            //     .domain([0, _w])
-            //     .range([0, _w]);
-        }
+
 
         if (_options.dynahide) {
             _dynahide_counter = 0;
@@ -3162,8 +3157,6 @@ if (!phyloXml) {
                 }
                 $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
-                console.log("dialog");
-                console.log(dialog);
                 $('.ui-dialog').css({
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
