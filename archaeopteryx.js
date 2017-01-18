@@ -957,8 +957,7 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var legendUpdate = legend/*.transition() //TODO
-         .duration(200)*/
+        var legendUpdate = legend
             .attr('transform', function (d, i) {
                 ++counter;
                 var height = legendRectSize;
@@ -1072,8 +1071,7 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var legendUpdate = legend/*.transition() //TODO
-         .duration(200)*/
+        var legendUpdate = legend
             .attr('transform', function (d, i) {
                 ++counter;
                 var height = legendRectSize;
@@ -1410,8 +1408,7 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var colorPickerUpdate = colorPicker/*.transition()
-         .duration(0)*/ //TODO
+        var colorPickerUpdate = colorPicker
             .attr('transform', function (d, i) {
                 if (i >= 234) {
                     i += 4;
