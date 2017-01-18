@@ -338,14 +338,13 @@ if (!phyloXml) {
         return _settings.rootOffset + _options.nodeLabelGap + ( _maxLabelLength * _options.externalNodeFontSize * 0.8 );
     }
 
-    // mappingFn is a scale
     function createVisualization(label,
                                  description,
                                  field,
                                  cladePropertyRef,
                                  isRegex,
                                  mapping,
-                                 mappingFn,
+                                 mappingFn, // mappingFn is a scale
                                  scaleType,
                                  altMappingFn) {
         if (arguments.length < 8) {
@@ -414,7 +413,7 @@ if (!phyloXml) {
                         var scaleType = '';
                         if (nodeVisualization.shapes &&
                             Array.isArray(nodeVisualization.shapes) &&
-                            (nodeVisualization.shapes.length > 0  )) {
+                            (nodeVisualization.shapes.length > 0 )) {
                             var shapeScale = null;
 
                             if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] &&
@@ -802,7 +801,7 @@ if (!phyloXml) {
         var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
-            .data(colorScale.domain());
+            .data(colorScale.domain().sort());
 
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
@@ -924,7 +923,7 @@ if (!phyloXml) {
         var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
-            .data(shapeScale.domain());
+            .data(shapeScale.domain().sort());
 
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
@@ -958,8 +957,8 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var legendUpdate = legend.transition()
-            .duration(200)
+        var legendUpdate = legend/*.transition() //TODO
+         .duration(200)*/
             .attr('transform', function (d, i) {
                 ++counter;
                 var height = legendRectSize;
@@ -1039,7 +1038,7 @@ if (!phyloXml) {
         var yFactorForDesc = -0.5;
 
         var legend = _baseSvg.selectAll('g.' + id)
-            .data(sizeScale.domain());
+            .data(sizeScale.domain().sort());
 
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
@@ -1073,8 +1072,8 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var legendUpdate = legend.transition()
-            .duration(200)
+        var legendUpdate = legend/*.transition() //TODO
+         .duration(200)*/
             .attr('transform', function (d, i) {
                 ++counter;
                 var height = legendRectSize;
@@ -1411,8 +1410,8 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
-        var colorPickerUpdate = colorPicker.transition()
-            .duration(0)
+        var colorPickerUpdate = colorPicker/*.transition()
+         .duration(0)*/ //TODO
             .attr('transform', function (d, i) {
                 if (i >= 234) {
                     i += 4;
@@ -2936,7 +2935,6 @@ if (!phyloXml) {
         }
         _id = id;
 
-
         createGui(_basicTreeProperties);
 
         if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
@@ -3466,10 +3464,10 @@ if (!phyloXml) {
             d3.select(this).moveToFront();
             d3.select(this).selectAll('.tooltipElemText').each(function (d) {
                 d3.select(this).on('mouseover', function (d) {
-                    d3.select(this).transition().duration(50).style('fill', '#000000');
+                    d3.select(this).transition().duration(50).style('fill', '#000000'); //TODO
                 });
                 d3.select(this).on('mouseout', function (d) {
-                    d3.select(this).transition().duration(50).style('fill', '#ffffff');
+                    d3.select(this).transition().duration(50).style('fill', '#ffffff'); //TODO
                 });
             });
 
@@ -3842,6 +3840,7 @@ if (!phyloXml) {
         }
         if (_options.visualizationsLegendYpos > 0) {
             _options.visualizationsLegendYpos -= x;
+            removeColorPicker();
             update(null, 0);
         }
     }
@@ -3852,6 +3851,7 @@ if (!phyloXml) {
         }
         if (_options.visualizationsLegendYpos < _settings.displayHeight) {
             _options.visualizationsLegendYpos += x;
+            removeColorPicker();
             update(null, 0);
         }
     }
@@ -3862,6 +3862,7 @@ if (!phyloXml) {
         }
         if (_options.visualizationsLegendXpos < _settings.displayWidth) {
             _options.visualizationsLegendXpos += x;
+            removeColorPicker();
             update(null, 0);
         }
     }
@@ -3872,19 +3873,21 @@ if (!phyloXml) {
         }
         if (_options.visualizationsLegendXpos > 0) {
             _options.visualizationsLegendXpos -= x;
+            removeColorPicker();
             update(null, 0);
         }
     }
 
     function moveLegendWithMouse(ev) {
         var x = ev.layerX;
-        var y = ev.layerY;
+        var y = ev.layerY - _offsetTop;
         if (x > 0 && x < _displayWidth) {
             _options.visualizationsLegendXpos = x;
         }
         if (y > 0 && y < _displayHeight) {
             _options.visualizationsLegendYpos = y;
         }
+        removeColorPicker();
         update(null, 0);
     }
 
@@ -4498,7 +4501,6 @@ if (!phyloXml) {
             downloadButton.mousedown(downloadButtonPressed);
         }
 
-
         $('#' + COLLAPSE_BY_FEATURE_SELECT)
             .select()
             .css({
@@ -4815,14 +4817,7 @@ if (!phyloXml) {
                 h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
                 h = h.concat('</fieldset>');
             }
-            if (_settings.enableCollapseByTaxonomyRank) {
-                /*h = h.concat('<fieldset>');
-                 h = h.concat('<legend>Collapse Rank</legend>');
-                 h = h.concat(makeButton('-', DECR_BL_COLLAPSE_LEVEL, 'to decrease the maximal subtree branch length threshold (wraps around)'));
-                 h = h.concat(makeTextInput(BL_COLLAPSE_LABEL, 'the current maximal subtree branch length threshold'));
-                 h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
-                 h = h.concat('</fieldset>');*/
-            }
+
 
             if (_settings.enableCollapseByFeature) {
                 h = h.concat('<fieldset>');
