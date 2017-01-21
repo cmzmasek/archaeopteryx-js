@@ -28,9 +28,6 @@
 // https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8
 
 
-
-
-
 if (!d3) {
     throw "no d3.js";
 }
@@ -826,7 +823,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -835,7 +832,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -844,7 +841,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -942,7 +939,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -951,7 +948,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -960,7 +957,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1056,7 +1053,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -1065,7 +1062,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1074,7 +1071,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1427,7 +1424,7 @@ if (!phyloXml) {
         colorPickerEnter.append('text')
             .attr('class', COLOR_PICKER_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize)
+            .style('font-size', _settings.controlsFontSize + 'px')
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
