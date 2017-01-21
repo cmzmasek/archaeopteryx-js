@@ -33,89 +33,6 @@
 
         function load() {
 
-            var nodeVisualizations = {};
-
-            nodeVisualizations['First'] = {
-                label: 'First',
-                description: 'First',
-                field: null,
-                cladeRef: 'test:first',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Second'] = {
-                label: 'Second',
-                description: 'Second',
-                field: null,
-                cladeRef: 'test:second',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Third'] = {
-                label: 'Third',
-                description: 'Third',
-                field: null,
-                cladeRef: 'test:third',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Forth'] = {
-                label: 'Forth',
-                description: 'Forth',
-                field: null,
-                cladeRef: 'test:forth',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Fifth'] = {
-                label: 'Fifth',
-                description: 'Fifth',
-                field: null,
-                cladeRef: 'test:fifth',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Sixth'] = {
-                label: 'Sixth',
-                description: 'Sixth',
-                field: null,
-                cladeRef: 'test:sixth',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Seventh'] = {
-                label: 'Seventh',
-                description: 'Seventh',
-                field: null,
-                cladeRef: 'test:seventh',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-            nodeVisualizations['Eight'] = {
-                label: 'Eight',
-                description: 'Eight',
-                field: null,
-                cladeRef: 'test:eight',
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
-
             var options = {};
             options.alignPhylogram = true;
             options.backgroundColorDefault = '#f0f0f0';
@@ -239,7 +156,7 @@
                         }
                         if (tree) {
                             try {
-                                archaeopteryx.launch('#phylogram1', tree, options, settings, nodeVisualizations);
+                                archaeopteryx.launch('#phylogram1', tree, options, settings);
                             }
                             catch (e) {
                                 alert("error while launching archaeopteryx: " + e);
