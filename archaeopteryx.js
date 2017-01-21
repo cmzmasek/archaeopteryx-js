@@ -21,6 +21,16 @@
 
 // v 1_00
 
+// Developer documentation:
+// https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
+
+// User documentation:
+// https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8
+
+
+
+
+
 if (!d3) {
     throw "no d3.js";
 }
