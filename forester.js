@@ -1,6 +1,6 @@
 /**
- *  Copyright (C) 2016 Christian M. Zmasek
- *  Copyright (C) 2016 J. Craig Venter Institute
+ *  Copyright (C) 2017 Christian M. Zmasek
+ *  Copyright (C) 2017 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -19,7 +19,7 @@
  *
  */
 
-// v 0_85
+// v 1_00
 
 (function forester() {
 
@@ -446,7 +446,17 @@
                 array.push(e);
             });
         }
-        return array
+        return array;
+    };
+
+    forester.setToSortedArray = function (set) {
+        var array = [];
+        if (set) {
+            set.forEach(function (e) {
+                array.push(e);
+            });
+        }
+        return array.sort();
     };
 
     forester.calcMinMaxInSet = function (set) {
@@ -474,7 +484,7 @@
         }
         array[0] = min;
         array[1] = max;
-        return array
+        return array;
     };
 
     forester.calcMinMeanMaxInSet = function (set) {
@@ -511,7 +521,7 @@
         array[0] = min;
         array[1] = mean;
         array[2] = max;
-        return array
+        return array;
     };
 
 
@@ -1150,10 +1160,10 @@
                                     var confValue1 = parseSupport(element);
                                     if (confValue1 != null) {
                                         x.confidences = [];
-                                        var conf = {};
-                                        conf.value = confValue1;
-                                        conf.type = 'unknown';
-                                        x.confidences.push(conf);
+                                        var conf1 = {};
+                                        conf1.value = confValue1;
+                                        conf1.type = 'unknown';
+                                        x.confidences.push(conf1);
                                     }
                                     var bl = parseFloat(element.substring(0, o1));
                                     if (forester.isNumber(bl)) {
