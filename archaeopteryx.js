@@ -47,6 +47,7 @@ if (!phyloXml) {
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
+    var PROGNAMELINK = 'prognamelink';
 
     var LIGHT_BLUE = '#2590FD';
     var WHITE = '#ffffff';
@@ -4085,16 +4086,50 @@ if (!phyloXml) {
                     'text-decoration': 'none'
                 });
             }
-            $('a').css({
-                'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                'text-decoration': 'none'
-            });
+            var pnl = $('.' + PROGNAMELINK);
+            if (pnl) {
+                pnl.css({
+                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'italic',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none',
+                    'border': 'none'
+                });
+                $('.' + PROGNAMELINK + ':hover').css({
+                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'italic',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none',
+                    'border': 'none'
+                });
+                $('.' + PROGNAMELINK + ':link').css({
+                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'italic',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none',
+                    'border': 'none'
+                });
+                $('.' + PROGNAMELINK + ':visited').css({
+                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                    'font-size': _settings.controlsFontSize,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'italic',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none',
+                    'border': 'none'
+                });
+            }
 
             $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
                 'direction': 'horizontal',
                 'width': '120px'
             });
-
 
             $('.' + DISPLAY_DATA_CONTROLGROUP).controlgroup({
                 'direction': 'vertical',
@@ -4701,7 +4736,7 @@ if (!phyloXml) {
         function makeProgramDesc() {
             var h = "";
             h = h.concat('<div class=' + PROG_NAME + '>');
-            h = h.concat('<a href="' + WEBSITE + '" target="_blank">' + NAME + ' ' + VERSION + '</a>');
+            h = h.concat('<a class="' + PROGNAMELINK + '" href="' + WEBSITE + '" target="_blank">' + NAME + ' ' + VERSION + '</a>');
             h = h.concat('</div>');
             return h;
         }
