@@ -258,16 +258,7 @@
                 sizes: null
             };
 
-
-            var loc;
-            /*if (${param.appType}===0||${param.appType}===0.1){
-             console.log(${param.appType});
-             loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&source=${param.source}&decorator=${param.decorator}&treeFile=${param.treeFile}&shortName=${param.shortName}';
-             }else{
-             loc = '/brc/jsTreeLoad.spg?method=loadTreeFile&ticketNumber=${param.ticketNumber}&decorator=${param.decorator}&treeFile=${param.treeFile}';
-             }*/
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_ird_phylo.xml';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_phylo.xml';
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/sample_ird_phylo.xml';
 
             jQuery.get(loc,
                     function (data) {

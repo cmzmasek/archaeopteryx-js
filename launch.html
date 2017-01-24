@@ -62,7 +62,6 @@
             options.searchUsesRegex = false;
             options.showBranchEvents = true;
             options.showBranchLengthValues = false;
-            options.showBranchVisualizations = false;
             options.showConfidenceValues = true;
             options.showDisributions = true;
             options.showExternalLabels = true;
@@ -71,7 +70,6 @@
             options.showInternalNodes = false;
             options.showNodeEvents = true;
             options.showNodeName = true;
-            options.showNodeVisualizations = true;
             options.showSequence = true;
             options.showSequenceAccession = true;
             options.showSequenceGeneSymbol = true;
@@ -83,15 +81,10 @@
             options.showTaxonomyRank = true;
             options.showTaxonomyScientificName = true;
             options.showTaxonomySynonyms = true;
-            options.showVisualizationsLegend = true;
-            options.visualizationsLegendOrientation = 'vertical';
-            options.visualizationsLegendXpos = 160;
-            options.visualizationsLegendYpos = 30;
 
             var settings = {};
             settings.border = '1px solid #909090';
             settings.controls0Top = 10;
-            settings.controls1Top = 10;
             settings.controlsBackgroundColor = '#e0e0e0';
             settings.controlsFont = 'Arial';
             settings.controlsFontColor = '#505050';
@@ -102,43 +95,12 @@
             settings.enableBranchVisualizations = false;
             settings.enableCollapseByBranchLenghts = false;
             settings.enableCollapseByFeature = true;
-            settings.enableNodeVisualizations = true;
+            settings.enableNodeVisualizations = false;
             settings.nhExportWriteConfidences = true;
-            settings.readSimpleCharacteristics = true; // To be deprecated
             settings.reCenterAfterCollapse = false;
             settings.rootOffset = 180;
-            //apaf
-            //apaf5
-            //amphi_frost
-            //AtNBSpos
-            //two_trees
-            //example_2
-            //phyloxml_test2
-            //bcl_2
-            //b
-            //pfam00046_2
-            //pfam00046
-            //m
-            //v1
-            //v1_2
-            //tol_156
-            //wnt_seed_seqs
-            //larger_example
-            //test1
-            //backwards
-            //sample
-            //sample_with_events
-            //bcl_2_branch_events
-            //prop_test_1
-            //RAxML_MajorityRuleConsensusTree.tre
-            var loc;
 
-            loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/bcl_2.xml';
-            //loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/test.tre';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/RAxML_MajorityRuleConsensusTree.tre';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/life.nh';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/apaf2.nh';
-            // loc = 'https://dl.dropboxusercontent.com/u/14456265/nh_trees/miyamoto_goodman_1986.nh';
+            var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/amphi_frost.xml';
 
             jQuery.get(loc,
                     function (data) {
