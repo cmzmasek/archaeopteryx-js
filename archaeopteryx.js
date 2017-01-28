@@ -20,6 +20,7 @@
  */
 
 // v 1_00
+// 2017-01-26
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -260,6 +261,8 @@ if (!phyloXml) {
     var _i = 0;
     var _zoomListener = null;
     var _yScale = null;
+    var _translate = null;
+    var _scale = null;
     var _foundNodes0 = new Set();
     var _foundNodes1 = new Set();
     var _foundSum = 0;
@@ -325,7 +328,24 @@ if (!phyloXml) {
     }
 
     function zoom() {
-        _svgGroup.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
+        if (d3.event.sourceEvent.shiftKey) {
+            if (_scale === null) {
+                _scale = _zoomListener.scale();
+                _translate = _zoomListener.translate();
+            }
+        }
+        else {
+            if (_scale !== null && _translate !== null) {
+                _zoomListener.scale(_scale);
+                _zoomListener.translate(_translate);
+                _svgGroup.attr('transform', 'translate(' + _translate + ')scale(' + _scale + ')');
+                _scale = null;
+                _translate = null;
+            }
+            else {
+                _svgGroup.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
+            }
+        }
     }
 
     function centerNode(source, x) {
@@ -335,9 +355,8 @@ if (!phyloXml) {
             x = x * scale + _displayWidth / 2;
         }
         var y = 0;
-        d3.select('g').transition()
-            .duration(750)
-            .attr('transform', 'translate(' + x + "," + y + ')scale(' + scale + ')');
+        d3.select('g')
+            .attr('transform', 'translate(' + x + ',' + y + ')scale(' + scale + ')');
         _zoomListener.scale(scale);
         _zoomListener.translate([x, y]);
     }
@@ -2940,7 +2959,7 @@ if (!phyloXml) {
 
         _treeData = phylo;
 
-        _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on("zoom", zoom);
+        _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
         if (nodeVisualizations) {
@@ -4696,6 +4715,7 @@ if (!phyloXml) {
                 decreaseFontSizes();
             }
         });
+
 
         $(document).on('mousewheel DOMMouseScroll', function (e) {
             if (e.shiftKey) {
