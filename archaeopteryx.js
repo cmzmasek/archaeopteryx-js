@@ -20,7 +20,7 @@
  */
 
 // v 1_00
-// 2017-01-26
+// 2017-01-30
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -63,7 +63,7 @@ if (!phyloXml) {
     var CONTROLS_0_TOP_DEFAULT = 20;
     var CONTROLS_1_WIDTH = 120;
     var CONTROLS_1_TOP_DEFAULT = 20;
-    var CONTROLS_FONT_SIZE_DEFAULT = '9px';
+    var CONTROLS_FONT_SIZE_DEFAULT = 9;
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     var CONTROLS_FONT_DEFAULT = 'Arial';
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
@@ -832,6 +832,8 @@ if (!phyloXml) {
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
+        var fs = _settings.controlsFontSize.toString() + 'px';
+
         legendEnter.append('rect')
             .style('cursor', 'pointer')
             .attr('width', null)
@@ -843,7 +845,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -852,7 +854,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -861,7 +863,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -954,12 +956,14 @@ if (!phyloXml) {
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
+        var fs = _settings.controlsFontSize.toString() + 'px';
+
         legendEnter.append('path');
 
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -968,7 +972,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -977,7 +981,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1068,12 +1072,14 @@ if (!phyloXml) {
         var legendEnter = legend.enter().append('g')
             .attr('class', id);
 
+        var fs = _settings.controlsFontSize.toString() + 'px';
+
         legendEnter.append('path');
 
         legendEnter.append('text')
             .attr('class', LEGEND)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
@@ -1082,7 +1088,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1091,7 +1097,7 @@ if (!phyloXml) {
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -1407,6 +1413,8 @@ if (!phyloXml) {
             prepareColorsForColorPicker();
         }
 
+        var fs = _settings.controlsFontSize.toString() + 'px';
+
         var clickedOrigColorIndex = -1;
 
         var lbls = [];
@@ -1444,7 +1452,7 @@ if (!phyloXml) {
         colorPickerEnter.append('text')
             .attr('class', COLOR_PICKER_LABEL)
             .style('color', _settings.controlsFontColor)
-            .style('font-size', _settings.controlsFontSize + 'px')
+            .style('font-size', fs)
             .style('font-family', _settings.controlsFont)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
@@ -2867,6 +2875,9 @@ if (!phyloXml) {
         if (!_options.showVisualizationsLegend === undefined) {
             _options.showVisualizationsLegend = true;
         }
+        _options.externalNodeFontSize = parseInt(_options.externalNodeFontSize);
+        _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
+        _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
 
     }
 
@@ -2934,6 +2945,7 @@ if (!phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
         }
+        _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
         intitializeDisplaySize();
     }
@@ -2956,6 +2968,7 @@ if (!phyloXml) {
     }
 
     archaeopteryx.launch = function (id, phylo, options, settings, nodeVisualizations) {
+
 
         _treeData = phylo;
 
@@ -3015,9 +3028,11 @@ if (!phyloXml) {
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
 
+
         initializeGui();
 
         update(null, 0);
+
         centerNode(_root, _settings.rootOffset);
     };
 
@@ -3200,10 +3215,12 @@ if (!phyloXml) {
                 $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
 
+                var fs = _settings.controlsFontSize.toString() + 'px';
+
                 $('.ui-dialog').css({
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': fs,
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'normal',
@@ -3213,7 +3230,7 @@ if (!phyloXml) {
                 $('.ui-dialog-titlebar').css({
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': fs,
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'bold',
@@ -3301,14 +3318,16 @@ if (!phyloXml) {
             var textSum = 0;
             var textInc = 20;
 
+            var fs = _settings.controlsFontSize.toString() + 'px';
+
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
-                .style('font-family', _settings.controlsFont)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
                 .style('text-decoration', 'none')
@@ -3328,7 +3347,7 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -3360,7 +3379,7 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -3392,7 +3411,7 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -3420,7 +3439,7 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -3444,7 +3463,7 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -3476,11 +3495,8 @@ if (!phyloXml) {
                 .attr('x', +rightPad)
                 .style('text-align', 'left')
                 .style('align', 'left')
-                .style('vertical-align', 'left')
-
-
                 .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', _settings.controlsFontSize)
+                .style('font-size', fs)
                 .style('font-family', _settings.controlsFont)
                 .style('font-style', 'normal')
                 .style('font-weight', 'bold')
@@ -4062,6 +4078,7 @@ if (!phyloXml) {
                 phyloDiv.style.textAlign = 'left';
             }
         }
+
 
         var c0 = $('#' + CONTROLS_0);
 
