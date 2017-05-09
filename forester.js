@@ -19,7 +19,8 @@
  *
  */
 
-// v 1_00
+// v 1_01
+// 2017-05-09
 
 (function forester() {
 
@@ -1070,7 +1071,6 @@
         }
     };
 
-
     forester.collapse = function (node) {
         if (node.children) {
             node._children = node.children;
@@ -1089,9 +1089,23 @@
      * To parse a New Hampshire (Newick) formatted tree.
      *
      * @param nhStr - A New Hampshire (Newick) formatted string.
+     * @param confidenceValuesInBrackets - Set to true if confidence values are in brackets (default: true)
+     *                                     Format is: name:distance[confidence]
+     *                                     Example: "bcl2:0.000393[95]"
+     * @param confidenceValuesAsInternalNames - Set to true if confidence values are represented by internal names (default: false).
      * @returns {{}} - A phylogenetic tree object.
      */
-    forester.parseNewHampshire = function (nhStr) {
+    forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        if (confidenceValuesInBrackets == undefined) {
+            confidenceValuesInBrackets = true;
+        }
+        if (confidenceValuesAsInternalNames == undefined) {
+            confidenceValuesAsInternalNames = false;
+        }
+        if ((confidenceValuesInBrackets === true ) && (confidenceValuesAsInternalNames === true)) {
+            throw ( "confidence values cannot be both in brackets and as internal node names" );
+        }
+
         var ancs = [];
         var x = {};
         var ss = nhStr.split(/\s*(;|\(|\)|,|:)\s*/);
@@ -1123,7 +1137,7 @@
                                 var o = element.indexOf('[');
                                 if (o > -1) {
                                     var confValue = parseSupport(element);
-                                    if (confValue != null) {
+                                    if ((confidenceValuesInBrackets === true) && (confValue != null)) {
                                         x.confidences = [];
                                         var conf = {};
                                         conf.value = confValue;
@@ -1158,7 +1172,7 @@
                                 var o1 = element.indexOf('[');
                                 if (o1 > -1) {
                                     var confValue1 = parseSupport(element);
-                                    if (confValue1 != null) {
+                                    if ((confidenceValuesInBrackets === true) && (confValue1 != null)) {
                                         x.confidences = [];
                                         var conf1 = {};
                                         conf1.value = confValue1;
@@ -1184,6 +1198,11 @@
         var phy = {};
         phy.children = [x];
         forester.addParents(phy);
+
+        if (confidenceValuesAsInternalNames === true) {
+            moveInternalNodeNamesToConfidenceValues(phy);
+        }
+
         return phy;
 
         function parseSupport(str) {
@@ -1198,6 +1217,27 @@
                 }
             }
             return null;
+        }
+
+        function moveInternalNodeNamesToConfidenceValues(node) {
+            forester.preOrderTraversalAll(node, function (n) {
+                if (n.children || n._children) {
+                    if (n.name) {
+                        var s = n.name;
+                        if (NUMBERS_ONLY_PATTERN.test(s)) {
+                            var confValue = parseFloat(s);
+                            if ((confValue != null) && (forester.isNumber(confValue))) {
+                                n.confidences = [];
+                                var conf1 = {};
+                                conf1.value = confValue;
+                                conf1.type = 'unknown';
+                                n.confidences.push(conf1);
+                                n.name = undefined;
+                            }
+                        }
+                    }
+                }
+            });
         }
     };
 

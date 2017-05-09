@@ -19,6 +19,9 @@
  *
  */
 
+// v 1_01
+// 2017-05-09
+
 "use strict";
 
 var fs = require('fs');
@@ -773,6 +776,55 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy22, 8, true, true) !== t) {
         return false;
     }
+
+    var nh30 = "((((((a,b)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];";
+    var phy30 = forester.parseNewHampshire(nh30, true);
+    if (forester.toNewHampshire(phy30, 8, true, true) !== nh30) {
+        return false;
+    }
+
+    var nh31 = "((((((aa,bb)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];";
+    var phy31 = forester.parseNewHampshire(nh31, true, false);
+    if (forester.toNewHampshire(phy31, 8, true, true) !== nh31) {
+        return false;
+    }
+
+    var nh32 = "((((((aaa,bbb)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];";
+    var phy32 = forester.parseNewHampshire(nh32);
+    if (forester.toNewHampshire(phy32, 8, true, true) !== nh32) {
+        return false;
+    }
+
+    var nh33 = "((((((a,b)ab[2]:3,c)[100]:12,(d,e)de)abcde:13[2],f):14[0]):0[0])[0]:0;";
+    var phy33 = forester.parseNewHampshire(nh33, false);
+    if (forester.toNewHampshire(phy33, 8, true, true) !== "((((((a,b)ab:3,c):12,(d,e)de)abcde:13,f):14):0):0;") {
+        return false;
+    }
+
+    var nh34 = "((((((aa,bb)ab[2]:3,c)[100]:12,(d,e)de)abcde:13[2],f):14[0]):0[0])[0]:0;";
+    var phy34 = forester.parseNewHampshire(nh34, false, true);
+    if (forester.toNewHampshire(phy34, 8, true, true) !== "((((((aa,bb)ab:3,c):12,(d,e)de)abcde:13,f):14):0):0;") {
+        return false;
+    }
+
+    var nh40 = "((((((aaa,bbb)2:3,c)100:12,(d,e)de)2:13,f)0:14)0:0)0.0:0;";
+    var phy40 = forester.parseNewHampshire(nh40, false, true);
+    if (forester.toNewHampshire(phy40, 8, true, true) !== "((((((aaa,bbb):3[2],c):12[100],(d,e)de):13[2],f):14[0]):0[0]):0[0];") {
+        return false;
+    }
+
+    var nh41 = "((((((a_a,b_b)2.0:3.5,c)100:12,(d,2:2)de)2:13,f)0:14)0:0)0.0:0;";
+    var phy41 = forester.parseNewHampshire(nh41, false, true);
+    if (forester.toNewHampshire(phy41, 8, true, true) !== "((((((a_a,b_b):3.5[2],c):12[100],(d,2:2)de):13[2],f):14[0]):0[0]):0[0];") {
+        return false;
+    }
+
+    var nh42 = "((((((a_a,b_b)2.0:3.5[2],c)100:12,(d[d],2:2)de)2:13,f)0:14)0:0)0.0:0;";
+    var phy42 = forester.parseNewHampshire(nh42, false, false);
+    if (forester.toNewHampshire(phy42, 8, true, true) !== "((((((a_a,b_b)2.0:3.5,c)100:12,(d,2:2)de)2:13,f)0:14)0:0)0.0:0;") {
+        return false;
+    }
+
     return true;
 }
 

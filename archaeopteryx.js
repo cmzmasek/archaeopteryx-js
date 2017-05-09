@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_00
-// 2017-01-30
+// v 1_01
+// 2017-05-09
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -44,7 +44,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.00';
+    var VERSION = '1.01';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -3040,10 +3040,9 @@ if (!phyloXml) {
         return phyloXml.parse(data, {trim: true, normalize: true})[0]
     };
 
-    archaeopteryx.parseNewHampshire = function (data) {
-        return forester.parseNewHampshire(data);
+    archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
     };
-
 
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
