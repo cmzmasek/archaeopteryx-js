@@ -277,7 +277,7 @@
                             if (loc.substr(-3, 3) === 'xml')
                                 tree = archaeopteryx.parsePhyloXML(data);
                             else
-                                tree = archaeopteryx.parseNewHampshire(data);
+                                tree = archaeopteryx.parseNewHampshire(data, true, false);
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
