@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_01
-// 2017-05-09
+// v 1_02alpha
+// 2017-0x-xx
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -44,7 +44,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.01';
+    var VERSION = '1.02a';
     var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -119,6 +119,7 @@ if (!phyloXml) {
     var EXTERNAL_NODES_CB = 'extn_cb';
     var NODE_VIS_CB = 'nodevis_cb';
     var BRANCH_VIS_CB = 'branchvis_cb';
+    var DYNAHIDE_CB = 'branchvis_cb';
 
     var ZOOM_IN_Y = 'zoomout_y';
     var ZOOM_OUT_Y = 'zoomin_y';
@@ -2714,7 +2715,7 @@ if (!phyloXml) {
             _options.alignPhylogram = false;
         }
         if (_options.dynahide === undefined) {
-            _options.dynahide = false;
+            _options.dynahide = true;
         }
         if (_options.showBranchLengthValues === undefined) {
             _options.showBranchLengthValues = false;
@@ -2879,6 +2880,7 @@ if (!phyloXml) {
         _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
         _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
 
+
     }
 
     function initializeSettings(settings) {
@@ -2911,7 +2913,7 @@ if (!phyloXml) {
             _settings.controls0 = CONTROLS_0;
             console.log('   controls0   : ' + _settings.controls0);
         }
-		if (!_settings.controls0Left) {
+        if (!_settings.controls0Left) {
             _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
             console.log('   controls0Left   : ' + _settings.controls0Left);
         }
@@ -2953,6 +2955,10 @@ if (!phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
         }
+        if (_settings.showDynahideButton === undefined) {
+            _settings.showDynahideButton = false;
+        }
+
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
         intitializeDisplaySize();
@@ -3050,6 +3056,37 @@ if (!phyloXml) {
 
     archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
         return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+    };
+
+    /**
+     * Convience method
+     *
+     * @param location
+     * @param data
+     * @param newHamphshireConfidenceValuesInBrackets
+     * @param newHamphshireConfidenceValuesAsInternalNames
+     * @returns {*}
+     */
+    archaeopteryx.parseTree = function (location,
+                                        data,
+                                        newHamphshireConfidenceValuesInBrackets,
+                                        newHamphshireConfidenceValuesAsInternalNames) {
+        if (newHamphshireConfidenceValuesInBrackets == undefined) {
+            newHamphshireConfidenceValuesInBrackets = true;
+        }
+        if (newHamphshireConfidenceValuesAsInternalNames == undefined) {
+            newHamphshireConfidenceValuesAsInternalNames = false;
+        }
+        var tree = null;
+        if (location.substr(-3, 3).toLowerCase() === 'xml') {
+            tree = archaeopteryx.parsePhyloXML(data);
+        }
+        else {
+            tree = archaeopteryx.parseNewHampshire(data,
+                newHamphshireConfidenceValuesInBrackets,
+                newHamphshireConfidenceValuesAsInternalNames);
+        }
+        return tree;
     };
 
     function calcMaxExtLabel() {
@@ -3828,6 +3865,13 @@ if (!phyloXml) {
         update(null, 0);
     }
 
+    function dynaHideCbClicked() {
+        _options.dynahide = getCheckboxValue(DYNAHIDE_CB);
+        resetVis();
+        update(null, 0);
+        update(null, 0);
+    }
+
     function downloadButtonPressed() {
         var s = $('#' + EXPORT_FORMAT_SELECT);
         if (s) {
@@ -4326,6 +4370,8 @@ if (!phyloXml) {
         $('#' + NODE_VIS_CB).click(nodeVisCbClicked);
 
         $('#' + BRANCH_VIS_CB).click(branchVisCbClicked);
+
+        $('#' + DYNAHIDE_CB).click(dynaHideCbClicked);
 
         $('#' + LABEL_COLOR_SELECT_MENU).on('change', function () {
             var v = this.value;
@@ -4837,6 +4883,9 @@ if (!phyloXml) {
             if (_settings.enableBranchVisualizations) {
                 h = h.concat(makeCheckboxButton('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
             }
+            if (_settings.showDynahideButton) {
+                h = h.concat(makeCheckboxButton('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
+            }
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -5068,6 +5117,7 @@ if (!phyloXml) {
         setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
         setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
         setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
+        setCheckboxValue(DYNAHIDE_CB, _options.dynahide);
         initializeVisualizationMenu();
         initializeSearchOptions();
     }

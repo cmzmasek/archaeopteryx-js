@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_01
-// 2017-05-09
+// v 1_02alpha
+// 2017-0x-xx
 
 (function forester() {
 

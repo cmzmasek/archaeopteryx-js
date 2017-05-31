@@ -27,10 +27,13 @@
         function load() {
             var options = {};
             options.backgroundColorDefault = '#f0f0f0';
+            options.dynahide = true;
 
             var settings = {};
             settings.displayHeight = 600;
             settings.displayWidth = 800;
+            settings.showDynahideButton = true;
+
 
             var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/apaf.xml';
 
@@ -38,12 +41,7 @@
                     function (data) {
                         var tree = null;
                         try {
-                            if (loc.substr(-3, 3) === 'xml') {
-                                tree = archaeopteryx.parsePhyloXML(data);
-                            }
-                            else {
-                                tree = archaeopteryx.parseNewHampshire(data, true, false);
-                            }
+                            tree = archaeopteryx.parseTree(loc, data);
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
