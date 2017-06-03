@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-0x-xx
+// 2017-06-02
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A

@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_01
-// 2017-05-09
+// v 1_02alpha
+// 2017-06-02
 
 "use strict";
 
@@ -39,6 +39,7 @@ console.log("getTreeRoot                : " + ( testGetTreeRoot() === true ? "pa
 console.log("preOrderTraversal          : " + ( testPreOrderTraversal() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversalAll       : " + ( testPreOrderTraversalAll() === true ? "pass" : "FAIL" ));
 console.log("NewHampshire               : " + ( testNewHampshire() === true ? "pass" : "FAIL" ));
+console.log("NewHampshire               : " + ( testNewHampshire2() === true ? "pass" : "FAIL" ));
 console.log("reRoot 1                   : " + ( testReRoot1() === true ? "pass" : "FAIL" ));
 console.log("reRoot 2                   : " + ( testReRoot2() === true ? "pass" : "FAIL" ));
 console.log("reRoot 3                   : " + ( testReRoot3() === true ? "pass" : "FAIL" ));
@@ -611,10 +612,10 @@ function testNewHampshire() {
     var nh9 = "(((a,b,c),(d,e)),f)r;";
     var nh10 = "((()));";
     var nh11 = "(((,),),);";
-    var nh12 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825,11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901,((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709,23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)'Strongylocentrotus purpuratus':0.34475):0.26168,(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898,29_AEDAE:0.86398)Diptera:0.24915,30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134,8_BRAFL:0.58563)'Branchiostoma floridae':0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)'Nematostella vectensis':0.28437):0.09305,9_BRAFL:1.09612):0.54836,((3_BRAFL:0.48766,2_BRAFL:0.65293)'Branchiostoma floridae':0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)'Branchiostoma floridae':0.43438):0.18105)Metazoa;";
+    var nh12 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825,11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901,((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709,23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)\"Strongylocentrotus purpuratus\":0.34475):0.26168,(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898,29_AEDAE:0.86398)Diptera:0.24915,30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134,8_BRAFL:0.58563)\"Branchiostoma floridae\":0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)\"Nematostella vectensis\":0.28437):0.09305,9_BRAFL:1.09612):0.54836,((3_BRAFL:0.48766,2_BRAFL:0.65293)\"Branchiostoma floridae\":0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)\"Branchiostoma floridae\":0.43438):0.18105)Metazoa;";
     var nh13 = "(a,b,c);";
     var nh14 = "((1,2,3)a,(4,5,6)b,(7,8,9)c);";
-    var nh15 = "(a a,b b,c c);";
+    var nh15 = '("a a","b b","c c");';
     var nh16 = "('a a','b b','c c');";
     var nh17 = "(((a,b,c)[100],(d,e)[1])[30.000002],f)r[100];";
     var nh18 = "((a:0.001,b:0.000001,c:1)abc:0.1[3.39472],d:0.1):2[1];";
@@ -642,7 +643,6 @@ function testNewHampshire() {
     var phy16 = forester.parseNewHampshire(nh16);
     var phy17 = forester.parseNewHampshire(nh17);
     var phy18 = forester.parseNewHampshire(nh18);
-    var phy19 = forester.parseNewHampshire(nh19);
     var phy20 = forester.parseNewHampshire(nh20);
     var phy21 = forester.parseNewHampshire(nh21);
     var phy22 = forester.parseNewHampshire(nh22);
@@ -692,19 +692,19 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy14) !== nh14) {
         return false;
     }
-    if (forester.toNewHampshire(phy15) !== "('a a','b b','c c');") {
+    if (forester.toNewHampshire(phy15) !== nh15) {
         return false;
     }
-    if (forester.toNewHampshire(phy16, 8, true, true) !== nh16) {
+    if (forester.toNewHampshire(phy16, 8, true, true) !== '(a_a,b_b,c_c);') {
+        return false;
+    }
+    if (forester.toNewHampshire(phy16) !== '("a a","b b","c c");') {
         return false;
     }
     if (forester.toNewHampshire(phy17, 8, true, true) !== nh17) {
         return false;
     }
     if (forester.toNewHampshire(phy18, 8, true, true) !== nh18) {
-        return false;
-    }
-    if (forester.toNewHampshire(phy19, 8, true, true) !== nh19) {
         return false;
     }
     if (forester.toNewHampshire(phy20, 8, true, true) !== nh20) {
@@ -769,11 +769,12 @@ function testNewHampshire() {
     if (n5.parent.parent.parent.branch_length !== 0) {
         return false;
     }
-    var t = '((((((a,b)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];';
-    if (forester.toNewHampshire(phy21, 8, true, true) !== t) {
+    var t21 = '((((((a,b)ab:3[2],c):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];';
+    if (forester.toNewHampshire(phy21, 8, true, true) !== t21) {
         return false;
     }
-    if (forester.toNewHampshire(phy22, 8, true, true) !== t) {
+    var t22 = '((((((a,b)ab:3[2],c_z_):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];';
+    if (forester.toNewHampshire(phy22, 8, true, true) !== t22) {
         return false;
     }
 
@@ -828,4 +829,170 @@ function testNewHampshire() {
     return true;
 }
 
+function testNewHampshire2() {
+
+    var nh0 = "(\"b\");";
+    var nh0r = "(b);";
+    var phy0 = forester.parseNewHampshire(nh0);
+    if (forester.toNewHampshire(phy0) !== nh0r) {
+        console.log("1");
+        console.log(forester.toNewHampshire(phy0));
+        return false;
+    }
+
+    var nh00 = "(b    '' \"\" ][x);";
+    var nh00r = "(b_x);";
+    var phy00 = forester.parseNewHampshire(nh00);
+    if (forester.toNewHampshire(phy00, 4, true, true) !== nh00r) {
+
+        console.log(forester.toNewHampshire(phy00, 4, true, true));
+        return false;
+    }
+
+    var nh1 = "(a,\"b\");";
+    var nh1r = "(a,b);";
+    var phy1 = forester.parseNewHampshire(nh1);
+    if (forester.toNewHampshire(phy1) !== nh1r) {
+        console.log(forester.toNewHampshire(phy1));
+        return false;
+    }
+
+    var nh2 = "(a,\"b:,;()q\");";
+    var nh2r = "(a,\"b:,;()q\");";
+    var phy2 = forester.parseNewHampshire(nh2);
+    if (forester.toNewHampshire(phy2) !== nh2r) {
+        console.log(forester.toNewHampshire(phy2));
+        return false;
+    }
+
+    var nh3 = '(A,x"y)z",e);';
+    var nh3r = '(A,"xy)z",e);';
+    var phy3 = forester.parseNewHampshire(nh3);
+    if (forester.toNewHampshire(phy3) !== nh3r) {
+        console.log(forester.toNewHampshire(phy3));
+        return false;
+    }
+
+    var nh4 = '(a,"x)y"z,e);';
+    var nh4r = '(a,"x)yz",e);';
+    var phy4 = forester.parseNewHampshire(nh4);
+    if (forester.toNewHampshire(phy4) !== nh4r) {
+        console.log(forester.toNewHampshire(phy4));
+        return false;
+    }
+
+
+    var nh100 = "('b');";
+    var nh100r = "(b);";
+    var phy100 = forester.parseNewHampshire(nh100);
+    if (forester.toNewHampshire(phy100) !== nh100r) {
+        console.log(forester.toNewHampshire(phy100));
+        return false;
+    }
+
+    var nh101 = "(a,'b');";
+    var nh101r = "(a,b);";
+    var phy101 = forester.parseNewHampshire(nh101);
+    if (forester.toNewHampshire(phy101) !== nh101r) {
+        console.log(forester.toNewHampshire(phy101));
+        return false;
+    }
+
+    var nh102 = "(a,'b:,;()q');";
+    var nh102r = "(a,\"b:,;()q\");";
+    var phy102 = forester.parseNewHampshire(nh102);
+    if (forester.toNewHampshire(phy102) !== nh102r) {
+        console.log(forester.toNewHampshire(phy102));
+        return false;
+    }
+
+    var nh103 = '(A,x\'y)z\',e);';
+    var nh103r = '(A,"xy)z",e);';
+    var phy103 = forester.parseNewHampshire(nh103);
+    if (forester.toNewHampshire(phy103) !== nh103r) {
+        console.log(forester.toNewHampshire(phy103));
+        return false;
+    }
+
+    var nh104 = '(a,\'x)y\'z,e);';
+    var nh104r = '(a,"x)yz",e);';
+    var phy104 = forester.parseNewHampshire(nh104);
+    if (forester.toNewHampshire(phy104) !== nh104r) {
+        console.log(forester.toNewHampshire(phy104));
+        return false;
+    }
+
+    var nh204 = '(a,\'x")y\'z,e);';
+    var nh204r = '(a,\'x")yz\',e);';
+    var phy204 = forester.parseNewHampshire(nh204);
+    if (forester.toNewHampshire(phy204) !== nh204r) {
+        console.log(forester.toNewHampshire(phy204));
+        return false;
+    }
+
+    var nh205 = '(a,\'x")"y\'z,e);';
+    var nh205r = '(a,\'x")"yz\',e);';
+    var phy205 = forester.parseNewHampshire(nh205);
+    if (forester.toNewHampshire(phy205) !== nh205r) {
+        console.log(forester.toNewHampshire(phy205));
+        return false;
+    }
+
+    var nh304 = '(a,"x\')y"z,e);';
+    var nh304r = '(a,"x\')yz",e);';
+    var phy304 = forester.parseNewHampshire(nh304);
+    if (forester.toNewHampshire(phy304) !== nh304r) {
+        console.log(forester.toNewHampshire(phy304));
+        return false;
+    }
+
+    var nh305 = '(a,"x\')\'y"z,e);';
+    var nh305r = '(a,"x\')\'yz",e);';
+    var phy305 = forester.parseNewHampshire(nh305);
+    if (forester.toNewHampshire(phy305) !== nh305r) {
+        console.log(forester.toNewHampshire(phy305));
+        return false;
+    }
+
+    var nh405 = '(a,Qq"x\')\'y"zZ,e);';
+    var nh405r = '(a,"Qqx\')\'yzZ",e);';
+    var phy405 = forester.parseNewHampshire(nh405);
+    if (forester.toNewHampshire(phy405) !== nh405r) {
+        console.log(forester.toNewHampshire(phy405));
+        return false;
+    }
+
+    var nh406 = '(a,Qq"x\')\'y"zZ,1\'e\'2,1\'q"  "     "\'2,1"q\'  \'     \'"2);';
+    var nh406r = '(a,"Qqx\')\'yzZ",1e2,\'1q"""2\',"1q\'\'\'2");';
+    var phy406 = forester.parseNewHampshire(nh406);
+    if (forester.toNewHampshire(phy406) !== nh406r) {
+        console.log(forester.toNewHampshire(phy406));
+        return false;
+    }
+
+
+    var nh502 = '(a,b)"a:b"[78.010];';
+    var nh502r = '(a,b)"a:b"[78.01];';
+    var phy502 = forester.parseNewHampshire(nh502);
+    if (forester.toNewHampshire(phy502, 8, false, true) !== nh502r) {
+        console.log(forester.toNewHampshire(phy502, 8, false, true));
+        return false;
+    }
+
+    var nh501 = '((((("a":1,"b,\'":2)A\'a,:)b\'B:3[99.0] , (\'c[CC]\',\"d\")c":"d[12.0])"abc:d"[78.0] ,((e:2,f,g)e\'\'fg[23.0],h)[12.0])"A:x":12[99.0],i),j\'(\')"r\'";';
+    var nh501r = '(((((a:1,"b,\'":2)"Aa,:)bB":3[99],("c[CC]",d)"c:d"[12])"abc:d"[78],((e:2,f,g)efg[23],h)[12])"A:x":12[99],i),"j(")"r\'";';
+    var phy501 = forester.parseNewHampshire(nh501);
+    var phy501nh = forester.toNewHampshire(phy501, 8, false, true);
+    if (phy501nh !== nh501r) {
+        console.log(phy501nh);
+        console.log(nh501r);
+        return false;
+    }
+    var phy501nhp = forester.parseNewHampshire(phy501nh);
+    var phy501nhnh = forester.toNewHampshire(phy501nhp, 8, false, true);
+    if (phy501nh !== phy501nhnh) {
+        return false;
+    }
+    return true;
+}
 

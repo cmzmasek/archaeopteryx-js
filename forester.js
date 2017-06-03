@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-0x-xx
+// 2017-06-02
 
 (function forester() {
 
@@ -407,7 +407,7 @@
 
     forester.getChildNodeIndex = function (parentNode, childNode) {
         if (!parentNode) {
-            throw "cannot get the child index for a root node";
+            throw ( "cannot get the child index for a root node" );
         }
         var c = parentNode.children.length;
         for (var i = 0; i < c; ++i) {
@@ -415,7 +415,7 @@
                 return i;
             }
         }
-        throw "unexpected exception: Could not determine the child index for a node";
+        throw ( "unexpected exception: Could not determine the child index for a node" );
     };
 
 
@@ -1108,91 +1108,140 @@
 
         var ancs = [];
         var x = {};
-        var ss = nhStr.split(/\s*(;|\(|\)|,|:)\s*/);
+        var ss = nhStr.split(/\s*(;|\(|\)|,|:|"|')\s*/);
         var ssl = ss.length;
+        var in_double_q = false;
+        var in_single_q = false;
+        var buffer = '';
         for (var i = 0; i < ssl; ++i) {
             var element = ss[i];
-            switch (element) {
-                case '(':
-                    var subtree1 = {};
-                    x.children = [subtree1];
-                    ancs.push(x);
-                    x = subtree1;
-                    break;
-                case ',':
-                    var subtree2 = {};
-                    ancs[ancs.length - 1].children.push(subtree2);
-                    x = subtree2;
-                    break;
-                case ')':
-                    x = ancs.pop();
-                    break;
-                case ':':
-                    break;
-                default:
-                    var e = ss[i - 1];
-                    if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
-                        if (element && element.length > 0) {
-                            if (element.charAt(element.length - 1) === "]") {
-                                var o = element.indexOf('[');
-                                if (o > -1) {
-                                    var confValue = parseSupport(element);
-                                    if ((confidenceValuesInBrackets === true) && (confValue != null)) {
-                                        x.confidences = [];
-                                        var conf = {};
-                                        conf.value = confValue;
-                                        conf.type = 'unknown';
-                                        x.confidences.push(conf);
+
+            if (element === '"' && !in_single_q) {
+                if (!in_double_q) {
+                    in_double_q = true;
+                }
+                else {
+                    in_double_q = false;
+                    if (x.name && x.name.length > 0) {
+                        x.name = x.name + buffer;
+                    }
+                    else {
+                        x.name = buffer;
+                    }
+                    buffer = '';
+                }
+            }
+            else if (element === "'" && !in_double_q) {
+                if (!in_single_q) {
+                    in_single_q = true;
+                }
+                else {
+                    in_single_q = false;
+                    if (x.name && x.name.length > 0) {
+                        x.name = x.name + buffer;
+                    }
+                    else {
+                        x.name = buffer;
+                    }
+                    buffer = '';
+                }
+            }
+            else {
+                if (in_double_q || in_single_q) {
+                    buffer += element;
+                }
+                else {
+                    if (element === '(') {
+                        var subtree1 = {};
+                        x.children = [subtree1];
+                        ancs.push(x);
+                        x = subtree1;
+                    }
+                    else if (element === ',') {
+                        var subtree2 = {};
+                        ancs[ancs.length - 1].children.push(subtree2);
+                        x = subtree2;
+                    }
+                    else if (element === ')') {
+                        x = ancs.pop();
+                    }
+                    else if (element === ':') {
+                    }
+                    else {
+                        var e = ss[i - 1];
+                        if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
+                            if (element && element.length > 0) {
+
+                                if (element.charAt(element.length - 1) === "]") {
+                                    var o = element.indexOf('[');
+                                    if (o > -1) {
+                                        if (confidenceValuesInBrackets === true) {
+                                            addConfidence(x, element);
+                                        }
+                                        x.name = element.substring(0, o);
                                     }
-                                    x.name = element.substring(0, o);
+                                    else {
+                                        x.name = element;
+                                    }
                                 }
                                 else {
                                     x.name = element;
-                                }
-                            }
-                            else {
-                                x.name = element;
-                                if ((x.name.charAt(0) === "'" && x.name.charAt(x.name.length - 1) === "'" )
-                                    || (x.name.charAt(0) === '"' && x.name.charAt(x.name.length - 1) === '"' )) {
-                                    x.name = x.name.substring(1, x.name.length - 1);
-                                }
-                                var op = x.name.indexOf('[');
-                                if (op > -1) {
-                                    var cl = x.name.indexOf(']');
-                                    if (cl > op) {
-                                        x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
+                                    var op = x.name.indexOf('[');
+                                    if (op > -1) {
+                                        var cl = x.name.indexOf(']');
+                                        if (cl > op) {
+                                            x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    else if (e === ':') {
-                        if (element && element.length > 0) {
-                            if (element.charAt(element.length - 1) === ']') {
-                                var o1 = element.indexOf('[');
-                                if (o1 > -1) {
-                                    var confValue1 = parseSupport(element);
-                                    if ((confidenceValuesInBrackets === true) && (confValue1 != null)) {
-                                        x.confidences = [];
-                                        var conf1 = {};
-                                        conf1.value = confValue1;
-                                        conf1.type = 'unknown';
-                                        x.confidences.push(conf1);
+                        else if (e === ':') {
+                            if (element && element.length > 0) {
+                                if (element.charAt(element.length - 1) === ']') {
+                                    var o1 = element.indexOf('[');
+                                    if (o1 > -1) {
+                                        if (confidenceValuesInBrackets === true) {
+                                            addConfidence(x, element);
+                                        }
+                                        var bl = parseFloat(element.substring(0, o1));
+                                        if (forester.isNumber(bl)) {
+                                            x.branch_length = bl;
+                                        }
                                     }
-                                    var bl = parseFloat(element.substring(0, o1));
-                                    if (forester.isNumber(bl)) {
-                                        x.branch_length = bl;
+                                }
+                                else {
+                                    var b = parseFloat(parseFloat(element));
+                                    if (forester.isNumber(b)) {
+                                        x.branch_length = b;
+                                    }
+                                    else {
+                                        throw ( 'New Hampshire (Newick) format error: Could not parse branch-length from "' + element + '"' );
                                     }
                                 }
                             }
-                            else {
-                                var b = parseFloat(parseFloat(element));
-                                if (forester.isNumber(b)) {
-                                    x.branch_length = b;
+                        }
+                        else if (e === '"' || e === "'") {
+                            if ((element && element.length > 0) && (x.name && x.name.length > 0 )) {
+                                if (element.charAt(element.length - 1) === "]") {
+                                    var opp = element.indexOf('[');
+                                    if (opp > -1) {
+                                        if (confidenceValuesInBrackets === true) {
+                                            addConfidence(x, element);
+                                        }
+                                        x.name = x.name + element.substring(0, opp);
+                                    }
+                                    else {
+                                        x.name = x.name + element;
+                                    }
+                                }
+                                else {
+                                    x.name = x.name + element;
                                 }
                             }
                         }
                     }
+                }
             }
         }
         var phy = {};
@@ -1205,7 +1254,19 @@
 
         return phy;
 
-        function parseSupport(str) {
+
+        function addConfidence(x, element) {
+            var confValue = parseConfidence(element);
+            if (confValue != null) {
+                x.confidences = [];
+                var conf = {};
+                conf.value = confValue;
+                conf.type = 'unknown';
+                x.confidences.push(conf);
+            }
+        }
+
+        function parseConfidence(str) {
             var o = str.indexOf('[');
             if (o > -1) {
                 var s = str.substring(o + 1, element.length - 1);
@@ -1471,7 +1532,7 @@
      *
      * @param phy - A phylogentic tree object.
      * @param decPointsMax - Maximal number of decimal points for branch lengths (optional)
-     * @param replaceChars - To replace (),:;
+     * @param replaceChars - To replace illegal characters (),:;"' instead of surrounding with quotation marks
      * @param writeConfidences - to write confidence values in brackets
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
@@ -1503,9 +1564,7 @@
                 nh += ")";
             }
             if (node.name && node.name.length > 0) {
-                if (replaceChars === true && ((node.name.indexOf(',') > -1) ||
-                    ( node.name.indexOf('(') > -1) || ( node.name.indexOf(')') > -1)
-                    || (node.name.indexOf(':') > -1) || ( node.name.indexOf(';') > -1))) {
+                if (replaceChars === true) {
                     var myName = replaceUnsafeChars(node.name);
                     if (myName.indexOf(' ') >= 0) {
                         nh += "'" + myName + "'";
@@ -1515,11 +1574,20 @@
                     }
                 }
                 else {
-                    if (node.name.indexOf(' ') >= 0) {
-                        nh += "'" + node.name + "'";
+                    var myNa = node.name.replace(/\s+/g, ' ');
+                    if (/[\s,():;'"\[\]]/.test(myNa)) {
+                        if ((myNa.indexOf('"') > -1) && (myNa.indexOf("'") > -1 )) {
+                            nh += '"' + myNa.replace(/"/g, "'") + '"';
+                        }
+                        else if (myNa.indexOf('"') > -1) {
+                            nh += "'" + myNa + "'";
+                        }
+                        else {
+                            nh += '"' + myNa + '"';
+                        }
                     }
                     else {
-                        nh += node.name;
+                        nh += myNa;
                     }
                 }
             }
@@ -1545,12 +1613,7 @@
         }
 
         function replaceUnsafeChars(str) {
-            return str
-                .replace(/,/g, "_")
-                .replace(/\(/g, "{")
-                .replace(/\)/g, "}")
-                .replace(/:/g, "_")
-                .replace(/;/g, "_");
+            return str.replace(/[\s,():;'"\[\]]+/g, '_');
         }
     };
 
