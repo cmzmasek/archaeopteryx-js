@@ -1565,29 +1565,23 @@
             }
             if (node.name && node.name.length > 0) {
                 if (replaceChars === true) {
-                    var myName = replaceUnsafeChars(node.name);
-                    if (myName.indexOf(' ') >= 0) {
-                        nh += "'" + myName + "'";
-                    }
-                    else {
-                        nh += myName;
-                    }
+                    nh += replaceUnsafeChars(node.name);
                 }
                 else {
-                    var myNa = node.name.replace(/\s+/g, ' ');
-                    if (/[\s,():;'"\[\]]/.test(myNa)) {
-                        if ((myNa.indexOf('"') > -1) && (myNa.indexOf("'") > -1 )) {
-                            nh += '"' + myNa.replace(/"/g, "'") + '"';
+                    var myNane = node.name.replace(/\s+/g, ' ');
+                    if (/[\s,():;'"\[\]]/.test(myNane)) {
+                        if ((myNane.indexOf('"') > -1) && (myNane.indexOf("'") > -1 )) {
+                            nh += '"' + myNane.replace(/"/g, "'") + '"';
                         }
-                        else if (myNa.indexOf('"') > -1) {
-                            nh += "'" + myNa + "'";
+                        else if (myNane.indexOf('"') > -1) {
+                            nh += "'" + myNane + "'";
                         }
                         else {
-                            nh += '"' + myNa + '"';
+                            nh += '"' + myNane + '"';
                         }
                     }
                     else {
-                        nh += myNa;
+                        nh += myNane;
                     }
                 }
             }
