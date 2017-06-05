@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-06-02
+// 2017-06-05
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -2958,6 +2958,10 @@ if (!phyloXml) {
         if (_settings.showDynahideButton === undefined) {
             _settings.showDynahideButton = false;
         }
+        if (_settings.nhExportReplaceIllegalChars === undefined) {
+            _settings.nhExportReplaceIllegalChars = true;
+        }
+
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
@@ -5656,7 +5660,7 @@ if (!phyloXml) {
     }
 
     function downloadAsNH() {
-        var nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
+        var nh = forester.toNewHampshire(_root, 9, _settings.nhExportReplaceIllegalChars, _settings.nhExportWriteConfidences);
         saveAs(new Blob([nh], {type: "application/txt"}), _options.nameForNhDownload);
     }
 
