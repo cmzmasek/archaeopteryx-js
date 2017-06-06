@@ -1591,20 +1591,20 @@
                     nh += replaceUnsafeChars(node.name);
                 }
                 else {
-                    var myNane = node.name.replace(/\s+/g, ' ');
-                    if (/[\s,():;'"\[\]]/.test(myNane)) {
-                        if ((myNane.indexOf('"') > -1) && (myNane.indexOf("'") > -1 )) {
-                            nh += '"' + myNane.replace(/"/g, "'") + '"';
+                    var myName = node.name.replace(/\s+/g, ' ');
+                    if (/[\s,():;'"\[\]]/.test(myName)) {
+                        if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1 )) {
+                            nh += '"' + myName.replace(/"/g, "'") + '"';
                         }
-                        else if (myNane.indexOf('"') > -1) {
-                            nh += "'" + myNane + "'";
+                        else if (myName.indexOf('"') > -1) {
+                            nh += "'" + myName + "'";
                         }
                         else {
-                            nh += '"' + myNane + '"';
+                            nh += '"' + myName + '"';
                         }
                     }
                     else {
-                        nh += myNane;
+                        nh += myName;
                     }
                 }
             }
