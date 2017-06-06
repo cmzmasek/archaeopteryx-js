@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-06-02
+// 2017-06-06
 
 (function forester() {
 
@@ -29,6 +29,7 @@
     var BRANCH_EVENT_REF = 'aptx:branch_event';
     var BRANCH_EVENT_DATATYPE = 'xsd:string';
     var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
+    var NH_FORMAT_ERR = 'New Hampshire (Newick) format error: ';
 
     var NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
 
@@ -1096,6 +1097,10 @@
      * @returns {{}} - A phylogenetic tree object.
      */
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+
+        var NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
+        var NH_FORMAT_ERR_CLOSE_PARENS = NH_FORMAT_ERR + 'likely cause: number of close parentheses is larger than number of open parentheses';
+
         if (confidenceValuesInBrackets == undefined) {
             confidenceValuesInBrackets = true;
         }
@@ -1108,13 +1113,13 @@
 
         var ancs = [];
         var x = {};
-        var ss = nhStr.split(/\s*(;|\(|\)|,|:|"|')\s*/);
+        var ss = nhStr.split(/(;|\(|\)|,|:|"|')/);
         var ssl = ss.length;
         var in_double_q = false;
         var in_single_q = false;
         var buffer = '';
         for (var i = 0; i < ssl; ++i) {
-            var element = ss[i];
+            var element = ss[i].replace(/\s+/g, '');
 
             if (element === '"' && !in_single_q) {
                 if (!in_double_q) {
@@ -1148,16 +1153,22 @@
             }
             else {
                 if (in_double_q || in_single_q) {
-                    buffer += element;
+                    buffer += ss[i].replace(/\s+/g, ' ');
                 }
                 else {
                     if (element === '(') {
+                        if (!x) {
+                            throw ( NH_FORMAT_ERR_CLOSE_PARENS );
+                        }
                         var subtree1 = {};
                         x.children = [subtree1];
                         ancs.push(x);
                         x = subtree1;
                     }
                     else if (element === ',') {
+                        if (ancs.length === 0) {
+                            throw (NH_FORMAT_ERR_CLOSE_PARENS);
+                        }
                         var subtree2 = {};
                         ancs[ancs.length - 1].children.push(subtree2);
                         x = subtree2;
@@ -1169,74 +1180,76 @@
                     }
                     else {
                         var e = ss[i - 1];
-                        if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
-                            if (element && element.length > 0) {
-
-                                if (element.charAt(element.length - 1) === "]") {
-                                    var o = element.indexOf('[');
-                                    if (o > -1) {
-                                        if (confidenceValuesInBrackets === true) {
-                                            addConfidence(x, element);
+                        if (e) {
+                            e = e.trim();
+                            if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
+                                if (element && element.length > 0) {
+                                    if (element.charAt(element.length - 1) === "]") {
+                                        var o = element.indexOf('[');
+                                        if (o > -1) {
+                                            if (confidenceValuesInBrackets === true) {
+                                                addConfidence(x, element);
+                                            }
+                                            x.name = element.substring(0, o);
                                         }
-                                        x.name = element.substring(0, o);
+                                        else {
+                                            x.name = element;
+                                        }
                                     }
                                     else {
                                         x.name = element;
-                                    }
-                                }
-                                else {
-                                    x.name = element;
-                                    var op = x.name.indexOf('[');
-                                    if (op > -1) {
-                                        var cl = x.name.indexOf(']');
-                                        if (cl > op) {
-                                            x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
+                                        var op = x.name.indexOf('[');
+                                        if (op > -1) {
+                                            var cl = x.name.indexOf(']');
+                                            if (cl > op) {
+                                                x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        else if (e === ':') {
-                            if (element && element.length > 0) {
-                                if (element.charAt(element.length - 1) === ']') {
-                                    var o1 = element.indexOf('[');
-                                    if (o1 > -1) {
-                                        if (confidenceValuesInBrackets === true) {
-                                            addConfidence(x, element);
+                            else if (e === ':') {
+                                if (element && element.length > 0) {
+                                    if (element.charAt(element.length - 1) === ']') {
+                                        var o1 = element.indexOf('[');
+                                        if (o1 > -1) {
+                                            if (confidenceValuesInBrackets === true) {
+                                                addConfidence(x, element);
+                                            }
+                                            var bl = parseFloat(element.substring(0, o1));
+                                            if (forester.isNumber(bl)) {
+                                                x.branch_length = bl;
+                                            }
                                         }
-                                        var bl = parseFloat(element.substring(0, o1));
-                                        if (forester.isNumber(bl)) {
-                                            x.branch_length = bl;
-                                        }
-                                    }
-                                }
-                                else {
-                                    var b = parseFloat(parseFloat(element));
-                                    if (forester.isNumber(b)) {
-                                        x.branch_length = b;
                                     }
                                     else {
-                                        throw ( 'New Hampshire (Newick) format error: Could not parse branch-length from "' + element + '"' );
+                                        var b = parseFloat(parseFloat(element));
+                                        if (forester.isNumber(b)) {
+                                            x.branch_length = b;
+                                        }
+                                        else {
+                                            throw ( NH_FORMAT_ERR + 'could not parse branch-length from "' + element + '"' );
+                                        }
                                     }
                                 }
                             }
-                        }
-                        else if (e === '"' || e === "'") {
-                            if ((element && element.length > 0) && (x.name && x.name.length > 0 )) {
-                                if (element.charAt(element.length - 1) === "]") {
-                                    var opp = element.indexOf('[');
-                                    if (opp > -1) {
-                                        if (confidenceValuesInBrackets === true) {
-                                            addConfidence(x, element);
+                            else if (e === '"' || e === "'") {
+                                if ((element && element.length > 0) && (x.name && x.name.length > 0 )) {
+                                    if (element.charAt(element.length - 1) === "]") {
+                                        var opp = element.indexOf('[');
+                                        if (opp > -1) {
+                                            if (confidenceValuesInBrackets === true) {
+                                                addConfidence(x, element);
+                                            }
+                                            x.name = x.name + element.substring(0, opp);
                                         }
-                                        x.name = x.name + element.substring(0, opp);
+                                        else {
+                                            x.name = x.name + element;
+                                        }
                                     }
                                     else {
                                         x.name = x.name + element;
                                     }
-                                }
-                                else {
-                                    x.name = x.name + element;
                                 }
                             }
                         }
@@ -1244,8 +1257,16 @@
                 }
             }
         }
+        if (ancs.length !== 0) {
+            throw ( NH_FORMAT_ERR_OPEN_PARENS );
+        }
+        if (!x) {
+            throw ( NH_FORMAT_ERR_CLOSE_PARENS );
+        }
+
         var phy = {};
         phy.children = [x];
+
         forester.addParents(phy);
 
         if (confidenceValuesAsInternalNames === true) {
@@ -1253,7 +1274,6 @@
         }
 
         return phy;
-
 
         function addConfidence(x, element) {
             var confValue = parseConfidence(element);
@@ -1274,6 +1294,9 @@
                     var confValue = parseFloat(s);
                     if (forester.isNumber(confValue)) {
                         return confValue;
+                    }
+                    else {
+                        throw ( NH_FORMAT_ERR + 'could not parse confidence value from "' + str + '"' );
                     }
                 }
             }
