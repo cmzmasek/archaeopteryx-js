@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-06-05
+// 2017-06-08
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
     "use strict";
 
     var VERSION = '1.02a';
-    var WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
+    var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
     var PROGNAMELINK = 'prognamelink';
@@ -65,7 +65,7 @@ if (!phyloXml) {
     var CONTROLS_1_TOP_DEFAULT = 20;
     var CONTROLS_FONT_SIZE_DEFAULT = 9;
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
-    var CONTROLS_FONT_DEFAULT = 'Arial';
+    var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Verdana', 'Sans-Serif'];
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var DUPLICATION_COLOR = '#ff0000';
     var SPECIATION_COLOR = '#00ff00';
@@ -91,6 +91,9 @@ if (!phyloXml) {
     var FONT_SIZE_MAX = 26;
     var FONT_SIZE_MIN = 2;
     var SLIDER_STEP = 0.5;
+
+    var LABEL_SIZE_CALC_FACTOR = 0.5;
+    var LABEL_SIZE_CALC_ADDITION = 40;
 
     var OVERLAY = 'overlay';
 
@@ -362,9 +365,8 @@ if (!phyloXml) {
         _zoomListener.translate([x, y]);
     }
 
-
     function calcMaxTreeLengthForDisplay() {
-        return _settings.rootOffset + _options.nodeLabelGap + ( _maxLabelLength * _options.externalNodeFontSize * 0.8 );
+        return _settings.rootOffset + _options.nodeLabelGap + LABEL_SIZE_CALC_ADDITION + ( _maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR );
     }
 
     function createVisualization(label,
@@ -1639,7 +1641,6 @@ if (!phyloXml) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
 
-
         if (_options.dynahide) {
             _dynahide_counter = 0;
             _dynahide_factor = Math.round(_options.externalNodeFontSize / ( ( 0.8 * _displayHeight) / uncollsed_nodes ));
@@ -1992,9 +1993,10 @@ if (!phyloXml) {
 
     var makeNodeSize = function (node) {
 
-        if (_options.showNodeEvents && node.events && node.children
+        if ((_options.showNodeEvents && node.events && node.children
             && ( node.events.duplications
-            || node.events.speciations)) {
+            || node.events.speciations))
+            || isNodeFound(node)) {
             return _options.nodeSizeDefault;
         }
 
@@ -2128,7 +2130,7 @@ if (!phyloXml) {
 
     var makeNodeVisShape = function (node) {
         if (_currentNodeShapeVisualization && _visualizations && !node._children && _visualizations.nodeShape
-            && _visualizations.nodeShape[_currentNodeShapeVisualization]) {
+            && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node)) {
             var vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
             if (vis.field) {
                 var fieldValue = node[vis.field];
@@ -2181,7 +2183,7 @@ if (!phyloXml) {
     };
 
     var makeVisNodeFillColor = function (node) {
-        if (_currentNodeFillColorVisualization && _visualizations && !node._children && _visualizations.nodeFillColor
+        if (_options.showNodeVisualizations && _currentNodeFillColorVisualization && _visualizations && !node._children && _visualizations.nodeFillColor
             && _visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
             var vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
             var color = makeVisColor(node, vis);
@@ -2259,21 +2261,23 @@ if (!phyloXml) {
     }
 
     var makeVisNodeBorderColor = function (node) {
-        if (!_currentNodeBorderColorVisualization) {
-            return _options.branchColorDefault;
-        }
-        if (_currentNodeBorderColorVisualization === SAME_AS_FILL) {
-            return makeVisNodeFillColor(node);
-        }
-        if (_currentNodeBorderColorVisualization === NONE) {
-            return _options.backgroundColorDefault;
-        }
-        if (_visualizations && !node._children && _visualizations.nodeBorderColor
-            && _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]) {
-            var vis = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization];
-            var color = makeVisColor(node, vis);
-            if (color) {
-                return color;
+        if (_options.showNodeVisualizations) {
+            if (!_currentNodeBorderColorVisualization) {
+                return _options.branchColorDefault;
+            }
+            if (_currentNodeBorderColorVisualization === SAME_AS_FILL) {
+                return makeVisNodeFillColor(node);
+            }
+            if (_currentNodeBorderColorVisualization === NONE) {
+                return _options.backgroundColorDefault;
+            }
+            if (_visualizations && !node._children && _visualizations.nodeBorderColor
+                && _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]) {
+                var vis = _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization];
+                var color = makeVisColor(node, vis);
+                if (color) {
+                    return color;
+                }
             }
         }
         return _options.branchColorDefault;
@@ -2472,9 +2476,21 @@ if (!phyloXml) {
         return null;
     }
 
+    function isNodeFound(phynode) {
+        if (!_options.searchNegateResult) {
+            if ((_foundNodes0 && _foundNodes0.has(phynode)) || (_foundNodes1 && _foundNodes1.has(phynode))) {
+                return true;
+            }
+        }
+        else if (forester.isHasNodeData(phynode)) {
+            if (((_foundNodes0 && !_searchBox0Empty) && !_foundNodes0.has(phynode)) || ((_foundNodes1 && !_searchBox1Empty) && !_foundNodes1.has(phynode))) {
+                return true
+            }
+        }
+        return false;
+    }
 
     var makeNodeLabel = function (phynode) {
-
         if (!_options.showExternalLabels && !( phynode.children || phynode._children)) {
             return null;
         }
@@ -2796,7 +2812,7 @@ if (!phyloXml) {
             _options.found0and1ColorDefault = "#0000ee";
         }
         if (!_options.defaultFont) {
-            _options.defaultFont = 'Arial';
+            _options.defaultFont = ['Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Verdana', 'Sans-Serif'];
         }
         if (!_options.nodeSizeDefault) {
             _options.nodeSizeDefault = 3;
@@ -2904,7 +2920,7 @@ if (!phyloXml) {
             _settings.controlsFontColor = CONTROLS_FONT_COLOR_DEFAULT;
         }
         if (!_settings.controlsFont) {
-            _settings.controlsFont = CONTROLS_FONT_DEFAULT;
+            _settings.controlsFont = CONTROLS_FONT_DEFAULTS;
         }
         if (!_settings.controlsBackgroundColor) {
             _settings.controlsBackgroundColor = CONTROLS_BACKGROUND_COLOR_DEFAULT;
@@ -3039,13 +3055,12 @@ if (!phyloXml) {
 
         _treeFn.clickEvent = getClickEventListenerNode(phylo);
 
-        calcMaxExtLabel();
-
         _root = phylo;
+
+        calcMaxExtLabel();
 
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
-
 
         initializeGui();
 
@@ -3095,7 +3110,7 @@ if (!phyloXml) {
 
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
-        forester.preOrderTraversal(_treeData, function (d) {
+        forester.preOrderTraversal(_root, function (d) {
             if (d._children) {
                 _maxLabelLength = Math.max((2 * _options.collapsedLabelLength) + 8, _maxLabelLength);
             }
@@ -3579,7 +3594,6 @@ if (!phyloXml) {
                     d3.select(this).transition().duration(50).style('fill', NODE_TOOLTIP_TEXT_COLOR);
                 });
             });
-
         }
 
         return nodeClick;
@@ -4399,6 +4413,8 @@ if (!phyloXml) {
                     _options.showExternalNodes = true;
                     setCheckboxValue(EXTERNAL_NODES_CB, true);
                 }
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
                 _currentNodeFillColorVisualization = v;
                 addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
             }
@@ -4421,6 +4437,8 @@ if (!phyloXml) {
                         _options.showExternalNodes = true;
                         setCheckboxValue(EXTERNAL_NODES_CB, true);
                     }
+                    _options.showNodeVisualizations = true;
+                    setCheckboxValue(NODE_VIS_CB, true);
                 }
             }
             else {
@@ -4439,6 +4457,8 @@ if (!phyloXml) {
             if (v && v != DEFAULT) {
                 _currentNodeShapeVisualization = v;
                 addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             }
             else {
                 _currentNodeShapeVisualization = null;
@@ -4460,6 +4480,8 @@ if (!phyloXml) {
                     _options.showExternalNodes = true;
                     setCheckboxValue(EXTERNAL_NODES_CB, true);
                 }
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             }
             else {
                 _currentNodeSizeVisualization = null;
@@ -5010,7 +5032,6 @@ if (!phyloXml) {
             h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
-            h = h.concat('<br>');
             h = h.concat(makeSearchControls());
             h = h.concat('</fieldset>');
             return h;
@@ -5026,6 +5047,17 @@ if (!phyloXml) {
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat(makeCheckboxButton('Reg', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat('</div>');
+            return h;
+        }
+
+        function makeSearchControlsCompact() {
+            var h = "";
+            h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
+            h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
+            h = h.concat(makeCheckboxButton('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat(makeCheckboxButton('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
             h = h.concat('</div>');
             return h;
         }
@@ -5279,6 +5311,10 @@ if (!phyloXml) {
         setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
+        if (!_basicTreeProperties.branchLengths) {
+            disableCheckbox('#' + PHYLOGRAM_BUTTON);
+            disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
+        }
     }
 
     function unCollapseAll(node) {
@@ -5542,6 +5578,17 @@ if (!phyloXml) {
             disableButton($('#' + LEGENDS_MOVE_LEFT_BTN));
             disableButton($('#' + LEGENDS_MOVE_RIGHT_BTN));
             disableButton($('#' + LEGENDS_RESET_BTN));
+        }
+    }
+
+    function disableCheckbox(cb) {
+        if (cb) {
+            var b = $(cb);
+            if (b) {
+                b.checkboxradio({
+                    disabled: true
+                });
+            }
         }
     }
 
