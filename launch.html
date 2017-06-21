@@ -60,15 +60,15 @@
             options.searchIsCaseSensitive = false;
             options.searchIsPartial = true;
             options.searchUsesRegex = false;
-            options.showBranchEvents = true;
+            options.showBranchEvents = false;
             options.showBranchLengthValues = false;
             options.showConfidenceValues = true;
-            options.showDisributions = true;
+            options.showDistributions = true;
             options.showExternalLabels = true;
             options.showExternalNodes = false;
             options.showInternalLabels = true;
             options.showInternalNodes = false;
-            options.showNodeEvents = true;
+            options.showNodeEvents = false;
             options.showNodeName = true;
             options.showSequence = true;
             options.showSequenceAccession = true;
@@ -103,7 +103,6 @@
 
 
             var loc = 'https://dl.dropboxusercontent.com/u/14456265/phyloxml_trees/amphi_frost.xml';
-
             jQuery.get(loc,
                     function (data) {
                         var tree = null;

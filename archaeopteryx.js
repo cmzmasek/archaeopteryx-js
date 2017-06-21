@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-06-08
+// 2017-06-20
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -1806,7 +1806,7 @@ if (!phyloXml) {
             })
             .style('stroke-width', _options.branchWidthDefault)
             .style('fill', function (d) {
-                return ( _options.showNodeVisualizations || _options.showNodeEvents) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
+                return ( _options.showNodeVisualizations || _options.showNodeEvents || isNodeFound(d)) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
             });
 
 
@@ -2130,7 +2130,9 @@ if (!phyloXml) {
 
     var makeNodeVisShape = function (node) {
         if (_currentNodeShapeVisualization && _visualizations && !node._children && _visualizations.nodeShape
-            && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node)) {
+            && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node)
+            && !(_options.showNodeEvents && ( node.events && (node.events.duplications
+            || node.events.speciations)))) {
             var vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
             if (vis.field) {
                 var fieldValue = node[vis.field];
@@ -3077,37 +3079,6 @@ if (!phyloXml) {
         return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
     };
 
-    /**
-     * Convience method
-     *
-     * @param location
-     * @param data
-     * @param newHamphshireConfidenceValuesInBrackets
-     * @param newHamphshireConfidenceValuesAsInternalNames
-     * @returns {*}
-     */
-    archaeopteryx.parseTree = function (location,
-                                        data,
-                                        newHamphshireConfidenceValuesInBrackets,
-                                        newHamphshireConfidenceValuesAsInternalNames) {
-        if (newHamphshireConfidenceValuesInBrackets == undefined) {
-            newHamphshireConfidenceValuesInBrackets = true;
-        }
-        if (newHamphshireConfidenceValuesAsInternalNames == undefined) {
-            newHamphshireConfidenceValuesAsInternalNames = false;
-        }
-        var tree = null;
-        if (location.substr(-3, 3).toLowerCase() === 'xml') {
-            tree = archaeopteryx.parsePhyloXML(data);
-        }
-        else {
-            tree = archaeopteryx.parseNewHampshire(data,
-                newHamphshireConfidenceValuesInBrackets,
-                newHamphshireConfidenceValuesAsInternalNames);
-        }
-        return tree;
-    };
-
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
         forester.preOrderTraversal(_root, function (d) {
@@ -3740,7 +3711,7 @@ if (!phyloXml) {
                 _foundNodes0 = search(my_query);
             }
         }
-        update(0, null, true);
+        update(null, 0, true);
     }
 
     function search1() {
@@ -3754,21 +3725,23 @@ if (!phyloXml) {
                 _foundNodes1 = search(my_query);
             }
         }
-        update(0, null, true);
+        update(null, 0, true);
     }
 
     function resetSearch0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
         $('#' + SEARCH_FIELD_0).val('');
-        update(0, null, true);
+        update(null, 0, true);
+        update(null, 0, true);
     }
 
     function resetSearch1() {
         _foundNodes1.clear();
         _searchBox1Empty = true;
         $('#' + SEARCH_FIELD_1).val('');
-        update(0, null, true);
+        update(null, 0, true);
+        update(null, 0, true);
     }
 
 
@@ -4108,7 +4081,7 @@ if (!phyloXml) {
             setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
             setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
             setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
-            update(0, null, true);
+            update(null, 0, true);
         }
     }
 
@@ -4132,7 +4105,7 @@ if (!phyloXml) {
             setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
             setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
             setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
-            update(0, null, true);
+            update(null, 0, true);
         }
     }
 
@@ -5727,6 +5700,82 @@ if (!phyloXml) {
             saveAs(blob, _options.nameForPngDownload);
         });
     }
+
+    // --------------------------------------------------------------
+    // Convenience methods for loading tree on HTML page
+    // --------------------------------------------------------------
+
+    /**
+     * Convenience method for loading tree on HTML page
+     *
+     * @param location
+     * @param data
+     * @param newHamphshireConfidenceValuesInBrackets
+     * @param newHamphshireConfidenceValuesAsInternalNames
+     * @returns {*}
+     */
+    archaeopteryx.parseTree = function (location,
+                                        data,
+                                        newHamphshireConfidenceValuesInBrackets,
+                                        newHamphshireConfidenceValuesAsInternalNames) {
+        if (newHamphshireConfidenceValuesInBrackets == undefined) {
+            newHamphshireConfidenceValuesInBrackets = true;
+        }
+        if (newHamphshireConfidenceValuesAsInternalNames == undefined) {
+            newHamphshireConfidenceValuesAsInternalNames = false;
+        }
+        var tree = null;
+        if (location.substr(-3, 3).toLowerCase() === 'xml') {
+            tree = archaeopteryx.parsePhyloXML(data);
+        }
+        else {
+            tree = archaeopteryx.parseNewHampshire(data,
+                newHamphshireConfidenceValuesInBrackets,
+                newHamphshireConfidenceValuesAsInternalNames);
+        }
+        return tree;
+    };
+
+    /**
+     *
+     *
+     *
+     * @param label
+     * @param location
+     * @param data
+     * @param options
+     * @param settings
+     * @param newHamphshireConfidenceValuesInBrackets
+     * @param newHamphshireConfidenceValuesAsInternalNames
+     */
+    archaeopteryx.launchArchaeopteryx = function (label,
+                                                  location,
+                                                  data,
+                                                  options,
+                                                  settings,
+                                                  newHamphshireConfidenceValuesInBrackets,
+                                                  newHamphshireConfidenceValuesAsInternalNames,
+                                                  nodeVisualizations) {
+        var tree = null;
+        try {
+            tree = archaeopteryx.parseTree(location,
+                data,
+                newHamphshireConfidenceValuesInBrackets,
+                newHamphshireConfidenceValuesAsInternalNames);
+        }
+        catch (e) {
+            alert('error while parsing tree: ' + e);
+        }
+        if (tree) {
+            try {
+                archaeopteryx.launch(label, tree, options, settings, nodeVisualizations);
+            }
+            catch (e) {
+                alert('error while launching archaeopteryx: ' + e);
+            }
+        }
+    };
+
 
 // --------------------------------------------------------------
 // For exporting
