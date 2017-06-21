@@ -20,7 +20,7 @@
  */
 
 // v 1_02alpha
-// 2017-06-20
+// 2017-06-21
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -332,7 +332,7 @@ if (!phyloXml) {
     }
 
     function zoom() {
-        if (d3.event.sourceEvent.shiftKey) {
+        if (d3.event.sourceEvent && d3.event.sourceEvent.shiftKey) {
             if (_scale === null) {
                 _scale = _zoomListener.scale();
                 _translate = _zoomListener.translate();
@@ -2929,11 +2929,9 @@ if (!phyloXml) {
         }
         if (!_settings.controls0) {
             _settings.controls0 = CONTROLS_0;
-            console.log('   controls0   : ' + _settings.controls0);
         }
         if (!_settings.controls0Left) {
             _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
-            console.log('   controls0Left   : ' + _settings.controls0Left);
         }
         if (!_settings.controls0Top) {
             _settings.controls0Top = CONTROLS_0_TOP_DEFAULT;
@@ -2943,14 +2941,9 @@ if (!phyloXml) {
         }
         if (!_settings.controls1) {
             _settings.controls1 = CONTROLS_1;
-            console.log('   controls1   : ' + _settings.controls1);
         }
         if (!_settings.controls1Left) {
             _settings.controls1Left = _settings.displayWidth - CONTROLS_1_WIDTH;
-            console.log('   displayWidth    : ' + _settings.displayWidth);
-            console.log('   CONTROLS_1_WIDTH: ' + CONTROLS_1_WIDTH);
-            console.log('-> controls1Left   : ' + _settings.controls1Left);
-
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = false;
