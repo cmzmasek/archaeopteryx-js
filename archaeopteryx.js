@@ -65,7 +65,7 @@ if (!phyloXml) {
     var CONTROLS_1_TOP_DEFAULT = 20;
     var CONTROLS_FONT_SIZE_DEFAULT = 9;
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
-    var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Verdana', 'Sans-Serif'];
+    var CONTROLS_FONT_DEFAULTS = ['Verdana', 'Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Sans-Serif'];
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var DUPLICATION_COLOR = '#ff0000';
     var SPECIATION_COLOR = '#00ff00';
@@ -123,6 +123,7 @@ if (!phyloXml) {
     var NODE_VIS_CB = 'nodevis_cb';
     var BRANCH_VIS_CB = 'branchvis_cb';
     var DYNAHIDE_CB = 'branchvis_cb';
+    var SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
 
     var ZOOM_IN_Y = 'zoomout_y';
     var ZOOM_OUT_Y = 'zoomin_y';
@@ -2969,6 +2970,11 @@ if (!phyloXml) {
         if (_settings.showDynahideButton === undefined) {
             _settings.showDynahideButton = false;
         }
+        //  if (_settings.showS === undefined) }TODO
+        //      _settings.showDynahideButton = false;
+        // }
+
+
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
         }
@@ -3853,6 +3859,12 @@ if (!phyloXml) {
         _options.dynahide = getCheckboxValue(DYNAHIDE_CB);
         resetVis();
         update(null, 0);
+        update(null, 0);
+    }
+
+    function dynaHideCbClicked() {
+        _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
+        resetVis();
         update(null, 0);
     }
 
@@ -4877,6 +4889,9 @@ if (!phyloXml) {
             }
             if (_settings.showDynahideButton) {
                 h = h.concat(makeCheckboxButton('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
+            }
+            if (_settings.showShortenNodeNamesButton) {
+                h = h.concat(makeCheckboxButton('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             }
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
