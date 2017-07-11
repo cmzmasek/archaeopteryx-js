@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_02alpha
-// 2017-06-21
+// v 1_02
+// 2017-07-11
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -44,7 +44,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.02a';
+    var VERSION = '1.02';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
     var PROG_NAME = 'progname';
@@ -2970,16 +2970,9 @@ if (!phyloXml) {
         if (_settings.showDynahideButton === undefined) {
             _settings.showDynahideButton = false;
         }
-        //  if (_settings.showS === undefined) }TODO
-        //      _settings.showDynahideButton = false;
-        // }
-
-
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
         }
-
-
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
         intitializeDisplaySize();
@@ -3862,11 +3855,11 @@ if (!phyloXml) {
         update(null, 0);
     }
 
-    function dynaHideCbClicked() {
-        _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
-        resetVis();
-        update(null, 0);
-    }
+    /*function shortenCbClicked() { //TODO
+     _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
+     resetVis();
+     update(null, 0);
+     }*/
 
     function downloadButtonPressed() {
         var s = $('#' + EXPORT_FORMAT_SELECT);
