@@ -2968,7 +2968,7 @@ if (!phyloXml) {
             _settings.nhExportWriteConfidences = false;
         }
         if (_settings.showDynahideButton === undefined) {
-            _settings.showDynahideButton = false;
+            _settings.showDynahideButton = true;
         }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
