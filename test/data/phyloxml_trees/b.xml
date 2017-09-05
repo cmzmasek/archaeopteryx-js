@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd"
+          xmlns="http://www.phyloxml.org">
+    <phylogeny rooted="true" rerootable="true">
+        <clade>
+            <branch_length>1.0</branch_length>
+            <confidence type="bootstrap">100</confidence>
+            <clade>
+                <branch_length>2.0</branch_length>
+                <confidence type="bootstrap">43</confidence>
+                <clade>
+                    <branch_length>3.0</branch_length>
+                    <confidence type="bootstrap">100</confidence>
+                    <confidence type="pp">0.981</confidence>
+                    <clade>
+                        <branch_length>5.0</branch_length>
+                        <confidence type="bootstrap">88</confidence>
+                        <clade>
+                            <name>22_MOUSE</name>
+                            <branch_length>5.0</branch_length>
+                            <taxonomy>
+                                <code>MOUSE</code>
+                            </taxonomy>
+                        </clade>
+                        <clade>
+                            <name>Apaf-1_HUMAN</name>
+                            <branch_length>6.0</branch_length>
+                            <taxonomy>
+                                <code>HUMAN</code>
+                            </taxonomy>
+                        </clade>
+                    </clade>
+                    <clade>
+                        <name>12_CANFA</name>
+                        <branch_length>2.0</branch_length>
+                        <taxonomy>
+                            <code>CANFA</code>
+                        </taxonomy>
+                    </clade>
+                </clade>
+                <clade>
+                    <name>11_CHICK</name>
+                    <branch_length>2.0</branch_length>
+                    <taxonomy>
+                        <code>CHICK</code>
+                    </taxonomy>
+                </clade>
+            </clade>
+            <clade>
+                <name>16_XENLA</name>
+                <branch_length>3.0</branch_length>
+                <taxonomy>
+                    <code>XENLA</code>
+                </taxonomy>
+            </clade>
+        </clade>
+    </phylogeny>
+</phyloxml>

@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.phyloxml.org"
+          xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
+    <phylogeny rooted="false">
+        <flu_type>A</flu_type>
+        <DynamicCharNames>
+            <Category>
+                <CharName>Region</CharName>
+            </Category>
+            <Category>
+                <CharName>Flu Season</CharName>
+                <ExtraInfo>
+                    <IsOrdered>true</IsOrdered>
+                </ExtraInfo>
+            </Category>
+            <Category>
+                <CharName>SFVT</CharName>
+                <ExtraInfo>
+                    <DisplayText>Sequence Feature ID</DisplayText>
+                </ExtraInfo>
+            </Category>
+            <Category>
+                <CharName>H5 Clade</CharName>
+            </Category>
+            <Category>
+                <CharName>Sequence Position</CharName>
+                <ExtraInfo>
+                    <DisplayText>Sequence Position</DisplayText>
+                </ExtraInfo>
+            </Category>
+            <Category>
+                <CharName>Reference Sequence Position</CharName>
+                <ExtraInfo>
+                    <DisplayText>Reference Sequence Acid Position</DisplayText>
+                </ExtraInfo>
+            </Category>
+        </DynamicCharNames>
+        <References>
+            <Reference>1|PB2|A/Viet Nam/1203/2004(H5N1)</Reference>
+            <Reference>2|PB1-F2|A/WSN/1933(H1N1)</Reference>
+            <Reference>2|PB1|A/WSN/1933(H1N1)</Reference>
+            <Reference>3|PA|A/WSN/1933(H1N1)</Reference>
+            <Reference>4|H1-A1|A/California/04/2009(H1N1)</Reference>
+            <Reference>4|H1-A2|A/California/04/2009(H1N1)</Reference>
+            <Reference>4|H2-A1|A/Japan/305/57(H2N2)</Reference>
+            <Reference>4|H2-A2|A/Japan/305/57(H2N2)</Reference>
+            <Reference>4|H3-A1|A/Aichi/2/1968(H3N2)</Reference>
+            <Reference>4|H3-A2|A/Aichi/2/1968(H3N2)</Reference>
+            <Reference>4|H4-A1|A/grey teal/Australia/2/1979</Reference>
+            <Reference>4|H4-A2|A/grey teal/Australia/2/1979</Reference>
+            <Reference>4|H5-A1|A/Viet Nam/1203/2004(H5N1)</Reference>
+            <Reference>4|H5-A2|A/Viet Nam/1203/2004(H5N1)</Reference>
+            <Reference>4|H7-A1|A/turkey/Italy/220158/2002(H7N3)</Reference>
+            <Reference>4|H7-A2|A/turkey/Italy/220158/2002(H7N3)</Reference>
+            <Reference>4|H9-A1|A/Hong Kong/1073/99(H9N2)</Reference>
+            <Reference>4|H9-A2|A/Hong Kong/1073/99(H9N2)</Reference>
+            <Reference>4|H12-A1|A/northern shoveler/Interior Alaska/1/2007(H12N5)</Reference>
+            <Reference>4|H12-A2|A/northern shoveler/Interior Alaska/1/2007(H12N5)</Reference>
+            <Reference>4|H13-A1|A/gull/Maryland/704/1977(H13N6)</Reference>
+            <Reference>4|H13-A2|A/gull/Maryland/704/1977(H13N6)</Reference>
+            <Reference>5|NP|A/WSN/1933(H1N1)</Reference>
+            <Reference>6|N1|A/California/07/2009(H1N1)</Reference>
+            <Reference>6|N2|A/Tokyo/3/67(H2N2)</Reference>
+            <Reference>7|M1|A/Udorn/72(H3N2)</Reference>
+            <Reference>7|M2|A/Udorn/72(H3N2)</Reference>
+            <Reference>8|NS2|A/Udorn/72(H3N2)</Reference>
+            <Reference>8|NS1|A/Udorn/72(H3N2)</Reference>
+        </References>
+        <clade>
+            <clade>
+                <branch_length>0.632667</branch_length>
+                <clade>
+                    <branch_length>0.025128</branch_length>
+                    <clade>
+                        <name>A/Asuncion/918/2001</name>
+                        <sequence>
+                            <accession>AJ457961</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2001</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">00-01</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+
+                    <clade>
+                        <name>X12000-2011</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2011</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2000-2011</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+                    <clade>
+                        <name>X2-2012</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2012</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">-2012</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+
+                    <clade>
+                        <name>X32013</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2013</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">01-13</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+
+                    <clade>
+                        <name>X42014</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Italy</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N7</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">6</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Crow</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">Europe</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">20</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">01-14</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+                    <clade>
+                        <name>X52015</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Chile</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+                    <clade>
+                        <name>X62016</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Argentina</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Mandrill</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South America</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+                    <clade>
+                        <name>X72017</name>
+                        <sequence>
+                            <accession>fkfpf</accession>
+                        </sequence>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2017</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">China</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Panda</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">Asia</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <Simple_Characteristics>
+                            <Country>Paraguay</Country>
+                            <Year>2001</Year>
+                            <HA>3</HA>
+                            <NA>2</NA>
+                            <Host>Human</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.002576</branch_length>
+                    </clade>
+
+                    <clade>
+                        <branch_length>0.023075</branch_length>
+                        <clade>
+                            <name>A/England/2/2002</name>
+                            <sequence>
+                                <accession>AJ457954</accession>
+                            </sequence>
+                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2002</property>
+                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">United Kingdom
+                            </property>
+                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                            <property ref="ird:H5Clade" datatype="xsd:string" applies_to="node">delta-like</property>
+                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">Europe</property>
+                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                            <Simple_Characteristics>
+                                <Country>United Kingdom</Country>
+                                <Year>2002</Year>
+                                <HA>1</HA>
+                                <NA>2</NA>
+                                <Host>Human</Host>
+                            </Simple_Characteristics>
+                            <branch_length>0.003805</branch_length>
+                        </clade>
+                        <clade>
+                            <name>A/Egypt/96/2003</name>
+                            <sequence>
+                                <accession>AJ457943</accession>
+                            </sequence>
+                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2003</property>
+                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">Egypt</property>
+                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                            <property ref="ird:H5Clade" datatype="xsd:string" applies_to="node">delta-like</property>
+                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">Africa</property>
+                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                            <Simple_Characteristics>
+                                <Country>Egypt</Country>
+                                <Year>2002</Year>
+                                <HA>1</HA>
+                                <NA>2</NA>
+                                <Host>Human</Host>
+                            </Simple_Characteristics>
+                            <branch_length>0.002504</branch_length>
+                        </clade>
+                    </clade>
+                </clade>
+                <clade>
+                    <name>A/swine/Illinois/A01797385/2004</name>
+                    <sequence>
+                        <accession>KU301002</accession>
+                    </sequence>
+                    <property ref="ird:H5Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2004</property>
+                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16</property>
+                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                    <Simple_Characteristics>
+                        <Country>USA</Country>
+                        <Year>2015</Year>
+                        <HA>1</HA>
+                        <NA>2</NA>
+                        <Host>Swine</Host>
+                    </Simple_Characteristics>
+                    <branch_length>0.027347</branch_length>
+                </clade>
+            </clade>
+            <clade>
+                <name>A/mallard duck/Netherlands/7/2005</name>
+                <sequence>
+                    <accession>KX978447</accession>
+                </sequence>
+                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2005</property>
+                <property ref="ird:Country" datatype="xsd:string" applies_to="node">Netherlands</property>
+                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N1</property>
+                <property ref="ird:H5Clade" datatype="xsd:string" applies_to="node">Other</property>
+                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Avian Mallard</property>
+                <property ref="ird:Region" datatype="xsd:string" applies_to="node">Europe</property>
+                <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
+                <Simple_Characteristics>
+                    <Country>Netherlands</Country>
+                    <Year>2012</Year>
+                    <HA>1</HA>
+                    <NA>1</NA>
+                    <Host>Avian Mallard</Host>
+                </Simple_Characteristics>
+                <branch_length>0.003388</branch_length>
+            </clade>
+            <clade>
+                <name>A/mallard duck/Netherlands/53/2006</name>
+                <sequence>
+                    <accession>KX977899</accession>
+                </sequence>
+                <property ref="ird:H5Clade" datatype="xsd:string" applies_to="node">Other</property>
+                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2006</property>
+                <property ref="ird:Country" datatype="xsd:string" applies_to="node">Netherlands</property>
+                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N1</property>
+                <property ref="ird:Region" datatype="xsd:string" applies_to="node">Europe</property>
+                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Avian Mallard</property>
+                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">10-11</property>
+                <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
+                <Simple_Characteristics>
+                    <Country>Netherlands</Country>
+                    <Year>2010</Year>
+                    <HA>1</HA>
+                    <NA>1</NA>
+                    <Host>Avian Mallard</Host>
+                </Simple_Characteristics>
+                <branch_length>0.005559</branch_length>
+            </clade>
+        </clade>
+    </phylogeny>
+</phyloxml>
