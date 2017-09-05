@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_02
-// 2017-07-11
+// v 1_03a
+// 2017-09-05
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -44,198 +44,206 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.02';
+    var VERSION = '1.03a';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
-    var PROG_NAME = 'progname';
-    var PROGNAMELINK = 'prognamelink';
 
+    // -----------------------------
+    // Named colors and orientations
+    // -----------------------------
     var LIGHT_BLUE = '#2590FD';
     var WHITE = '#ffffff';
+    var HORIZONTAL = 'horizontal';
+    var VERTICAL = 'vertical';
 
-    var COLOR_FOR_ACTIVE_ELEMENTS = LIGHT_BLUE;
-
-    var TRANSITION_DURATION_DEFAULT = 750;
-    var ROOTOFFSET_DEFAULT = 180;
-    var DISPLAY_WIDTH_DEFAULT = 800;
-    var VIEWERHEIGHT_DEFAULT = 600;
-    var CONTROLS_0_LEFT_DEFAULT = 20;
-    var CONTROLS_0_TOP_DEFAULT = 20;
-    var CONTROLS_1_WIDTH = 120;
-    var CONTROLS_1_TOP_DEFAULT = 20;
-    var CONTROLS_FONT_SIZE_DEFAULT = 9;
-    var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
-    var CONTROLS_FONT_DEFAULTS = ['Verdana', 'Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Sans-Serif'];
-    var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
-    var DUPLICATION_COLOR = '#ff0000';
-    var SPECIATION_COLOR = '#00ff00';
-    var DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
-    var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
-    var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
-    var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
-    var ZOOM_INTERVAL = 200;
-    var MOVE_INTERVAL = 150;
-    var BUTTON_ZOOM_IN_FACTOR = 1.1;
-    var BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
-    var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
-    var BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
-
-    var NODE_TOOLTIP_TEXT_COLOR = WHITE;
-    var NODE_TOOLTIP_TEXT_ACTIVE_COLOR = COLOR_FOR_ACTIVE_ELEMENTS;
-    var NODE_TOOLTIP_BACKGROUND_COLOR = '#606060';
-
-    var NODE_SIZE_MAX = 9;
-    var NODE_SIZE_MIN = 1;
-    var BRANCH_WIDTH_MAX = 9;
-    var BRANCH_WIDTH_MIN = 0.5;
-    var FONT_SIZE_MAX = 26;
-    var FONT_SIZE_MIN = 2;
-    var SLIDER_STEP = 0.5;
-
-    var LABEL_SIZE_CALC_FACTOR = 0.5;
-    var LABEL_SIZE_CALC_ADDITION = 40;
-
-    var OVERLAY = 'overlay';
-
-    var KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
-
-    var CONTROLS_0 = 'controls0';
-    var CONTROLS_1 = 'controls1';
-
-    var PHYLOGRAM_BUTTON = 'phy_b';
-    var PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
-    var CLADOGRAM_BUTTON = 'cla_b';
-
-    var PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
-    var DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
-
-    var NODE_NAME_CB = 'nn_cb';
-    var TAXONOMY_CB = 'tax_cb';
-    var SEQUENCE_CB = 'seq_cb';
-    var CONFIDENCE_VALUES_CB = 'conf_cb';
-    var BRANCH_LENGTH_VALUES_CB = 'bl_cb';
-    var NODE_EVENTS_CB = 'nevts_cb';
-    var BRANCH_EVENTS_CB = 'brevts_cb';
-    var INTERNAL_LABEL_CB = 'intl_cb';
-    var EXTERNAL_LABEL_CB = 'extl_cb';
-    var INTERNAL_NODES_CB = 'intn_cb';
-    var EXTERNAL_NODES_CB = 'extn_cb';
-    var NODE_VIS_CB = 'nodevis_cb';
-    var BRANCH_VIS_CB = 'branchvis_cb';
-    var DYNAHIDE_CB = 'branchvis_cb';
-    var SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
-
-    var ZOOM_IN_Y = 'zoomout_y';
-    var ZOOM_OUT_Y = 'zoomin_y';
-    var ZOOM_IN_X = 'zoomin_x';
-    var ZOOM_OUT_X = 'zoomout_x';
-    var ZOOM_TO_FIT = 'zoomtofit';
-
-    var INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
-    var EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
-    var BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
-    var BRANCH_WIDTH_SLIDER = 'bw_sl';
-    var NODE_SIZE_SLIDER = 'ns_sl';
-
-    var ORDER_BUTTON = 'ord_b';
-    var RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
-    var UNCOLLAPSE_ALL_BUTTON = 'unc_b';
-
-    var SEARCH_FIELD_0 = 'sf0';
-    var SEARCH_FIELD_1 = 'sf1';
-    var RESET_SEARCH_A_BTN = 'reset_s_a';
-    var RESET_SEARCH_B_BTN = 'reset_s_b';
-    var RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
-    var RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
-
-    var DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
-    var INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
-    var DECR_BL_COLLAPSE_LEVEL = 'decr_blcl';
-    var INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
-    var DEPTH_COLLAPSE_LABEL = 'depth_col_label';
-    var BL_COLLAPSE_LABEL = 'bl_col_label';
-
-    var NODE_DATA = 'node_data_dialog';
-
-    var COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
-    var SPECIES_FEATURE = 'Species';
-    var OFF_FEATURE = 'off';
-
-    var NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
-    var NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
-    var NODE_BORDER_COLOR_SELECT_MENU = 'nbcolors_menu';
-    var NODE_SIZE_SELECT_MENU = 'nsizes_menu';
-    var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
-
-    var SEARCH_OPTIONS_GROUP = 'search_opts_g';
-    var SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
-    var SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
-    var SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
-    var SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
-
-    var DOWNLOAD_BUTTON = 'dl_b';
-    var EXPORT_FORMAT_SELECT = 'exp_f_sel';
-    var PNG_EXPORT_FORMAT = 'PNG';
-    var SVG_EXPORT_FORMAT = 'SVG';
-    var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
-    var NH_EXPORT_FORMAT = 'Newick';
-    var PDF_EXPORT_FORMAT = 'PDF';
+    // ---------------------------
+    // Default values for options
+    // ---------------------------
+    var BACKGROUND_COLOR_DEFAULT = '#f0f0f0';
+    var BRANCH_COLOR_DEFAULT = '#aaaaaa';
+    var BRANCH_DATA_FONT_SIZE_DEFAULT = 7;
+    var BRANCH_WIDTH_DEFAULT = 1;
+    var COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
+    var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 10;
+    var FONT_DEFAULTS = ['Verdana', 'Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Sans-Serif'];
+    var FOUND0_COLOR_DEFAULT = '#66cc00';
+    var FOUND0AND1_COLOR_DEFAULT = '#0000ee';
+    var FOUND1_COLOR_DEFAULT = '#ff00ff';
+    var INTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
+    var LABEL_COLOR_DEFAULT = '#202020';
     var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx-js.nh';
     var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx-js.xml';
     var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.png';
     var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.svg';
-
-    var BRANCH_EVENT_REF = 'aptx:branch_event';
-    var BRANCH_EVENT_DATATYPE = 'xsd:string';
-    var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
-
-    var NONE = 'none';
-    var DEFAULT = 'default';
-    var SAME_AS_FILL = 'sameasfill';
-
-    var LEGEND_LABEL_COLOR = 'legendLabelColor';
-    var LEGEND_NODE_FILL_COLOR = 'legendNodeFillColor';
-    var LEGEND_NODE_BORDER_COLOR = 'legendNodeBorderColor';
-    var LEGEND_NODE_SHAPE = 'legendNodeShape';
-    var LEGEND_NODE_SIZE = 'legendNodeSize';
-
-    var ORDINAL_SCALE = 'ordinal';
-    var LINEAR_SCALE = 'linear';
-
-    var HORIZONTAL = 'horizontal';
-    var VERTICAL = 'vertical';
-
+    var NODE_LABEL_GAP_DEFAULT = 10;
+    var NODE_SIZE_DEFAULT_DEFAULT = 3;
+    var NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
+    var VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
     var VISUALIZATIONS_LEGEND_XPOS_DEFAULT = 160;
     var VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
-    var VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
 
-    var LEGENDS_SHOW_BTN = 'legends_show';
-    var LEGENDS_HORIZ_VERT_BTN = 'legends_horizvert';
-    var LEGENDS_MOVE_UP_BTN = 'legends_mup';
-    var LEGENDS_MOVE_LEFT_BTN = 'legends_mleft';
-    var LEGENDS_RESET_BTN = 'legends_rest';
-    var LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
-    var LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
+    // ---------------------------
+    // Default values for settings
+    // ---------------------------
+    var CONTROLS_0_LEFT_DEFAULT = 20;
+    var CONTROLS_0_TOP_DEFAULT = 20;
+    var CONTROLS_1_TOP_DEFAULT = 20;
+    var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
+    var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
+    var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Sans-Serif'];
+    var CONTROLS_FONT_SIZE_DEFAULT = 9;
+    var DISPLAY_WIDTH_DEFAULT = 800;
+    var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
+    var ROOTOFFSET_DEFAULT = 180;
+    var VIEWERHEIGHT_DEFAULT = 600;
 
-    var COLOR_PICKER = 'col_pick';
-    var COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
+    // ------------------------------
+    // Various constants and settings
+    // ------------------------------
+    var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
+    var BRANCH_EVENT_DATATYPE = 'xsd:string';
+    var BRANCH_EVENT_REF = 'aptx:branch_event';
+    var BRANCH_LENGTH_DIGITS_DEFAULT = 4;
+    var BRANCH_WIDTH_MAX = 9;
+    var BRANCH_WIDTH_MIN = 0.5;
+    var BUTTON_ZOOM_IN_FACTOR = 1.1;
+    var BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
+    var BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
+    var BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
+    var COLOR_FOR_ACTIVE_ELEMENTS = LIGHT_BLUE;
     var COLOR_PICKER_BACKGROUND_BORDER_COLOR = '#808080';
+    var COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
+    var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
+    var CONTROLS_1_WIDTH = 120;
+    var DEFAULT = 'default';
+    var DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
+    var DUPLICATION_COLOR = '#ff0000';
+    var FONT_SIZE_MAX = 26;
+    var FONT_SIZE_MIN = 2;
+    var KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
+    var LABEL_SIZE_CALC_ADDITION = 40;
+    var LABEL_SIZE_CALC_FACTOR = 0.5;
+    var LEGEND_LABEL_COLOR = 'legendLabelColor';
+    var LEGEND_NODE_BORDER_COLOR = 'legendNodeBorderColor';
+    var LEGEND_NODE_FILL_COLOR = 'legendNodeFillColor';
+    var LEGEND_NODE_SHAPE = 'legendNodeShape';
+    var LEGEND_NODE_SIZE = 'legendNodeSize';
+    var LINEAR_SCALE = 'linear';
+    var MOVE_INTERVAL = 150;
+    var NH_EXPORT_FORMAT = 'Newick';
+    var NODE_SIZE_MAX = 9;
+    var NODE_SIZE_MIN = 1;
+    var NODE_TOOLTIP_BACKGROUND_COLOR = '#606060';
+    var NODE_TOOLTIP_TEXT_ACTIVE_COLOR = COLOR_FOR_ACTIVE_ELEMENTS;
+    var NODE_TOOLTIP_TEXT_COLOR = WHITE;
+    var NONE = 'none';
+    var OFF_FEATURE = 'off';
+    var ORDINAL_SCALE = 'ordinal';
+    var OVERLAY = 'overlay';
+    var PDF_EXPORT_FORMAT = 'PDF';
+    var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
+    var PNG_EXPORT_FORMAT = 'PNG';
+    var RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
+    var RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
+    var SAME_AS_FILL = 'sameasfill';
+    var SHORTEN_NAME_MAX_LENGTH = 18;
+    var SLIDER_STEP = 0.5;
+    var SPECIATION_COLOR = '#00ff00';
+    var SPECIES_FEATURE = 'Species';
+    var SVG_EXPORT_FORMAT = 'SVG';
+    var TRANSITION_DURATION_DEFAULT = 750;
+    var WARNING = 'ArchaeopteryxJS: WARNING';
+    var ZOOM_INTERVAL = 200;
 
+    // ---------------------------
+    // Names for GUI elements
+    // ---------------------------
+    var BL_COLLAPSE_LABEL = 'bl_col_label';
+    var BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
+    var BRANCH_EVENTS_CB = 'brevts_cb';
+    var BRANCH_LENGTH_VALUES_CB = 'bl_cb';
+    var BRANCH_VIS_CB = 'branchvis_cb';
+    var BRANCH_WIDTH_SLIDER = 'bw_sl';
+    var CLADOGRAM_BUTTON = 'cla_b';
+    var COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
+    var COLOR_PICKER = 'col_pick';
     var COLOR_PICKER_LABEL = 'colorPickerLabel';
-
+    var CONFIDENCE_VALUES_CB = 'conf_cb';
+    var CONTROLS_0 = 'controls0';
+    var CONTROLS_1 = 'controls1';
+    var DECR_BL_COLLAPSE_LEVEL = 'decr_blcl';
+    var DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
+    var DEPTH_COLLAPSE_LABEL = 'depth_col_label';
+    var DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
+    var DOWNLOAD_BUTTON = 'dl_b';
+    var DYNAHIDE_CB = 'dynahide_cb';
+    var EXPORT_FORMAT_SELECT = 'exp_f_sel';
+    var EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
+    var EXTERNAL_LABEL_CB = 'extl_cb';
+    var EXTERNAL_NODES_CB = 'extn_cb';
+    var INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
+    var INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
+    var INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
+    var INTERNAL_LABEL_CB = 'intl_cb';
+    var INTERNAL_NODES_CB = 'intn_cb';
+    var LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     var LEGEND = 'legend';
-    var LEGEND_LABEL = 'legendLabel';
     var LEGEND_DESCRIPTION = 'legendDescription';
+    var LEGEND_LABEL = 'legendLabel';
+    var LEGENDS_HORIZ_VERT_BTN = 'legends_horizvert';
+    var LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
+    var LEGENDS_MOVE_LEFT_BTN = 'legends_mleft';
+    var LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
+    var LEGENDS_MOVE_UP_BTN = 'legends_mup';
+    var LEGENDS_RESET_BTN = 'legends_rest';
+    var LEGENDS_SHOW_BTN = 'legends_show';
+    var NODE_BORDER_COLOR_SELECT_MENU = 'nbcolors_menu';
+    var NODE_DATA = 'node_data_dialog';
+    var NODE_EVENTS_CB = 'nevts_cb';
+    var NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
+    var NODE_NAME_CB = 'nn_cb';
+    var NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
+    var NODE_SIZE_SELECT_MENU = 'nsizes_menu';
+    var NODE_SIZE_SLIDER = 'ns_sl';
+    var NODE_VIS_CB = 'nodevis_cb';
+    var ORDER_BUTTON = 'ord_b';
+    var PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
+    var PHYLOGRAM_BUTTON = 'phy_b';
+    var PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
+    var PROG_NAME = 'progname';
+    var PROGNAMELINK = 'prognamelink';
+    var RESET_SEARCH_A_BTN = 'reset_s_a';
+    var RESET_SEARCH_B_BTN = 'reset_s_b';
+    var RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
+    var SEARCH_FIELD_0 = 'sf0';
+    var SEARCH_FIELD_1 = 'sf1';
+    var SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
+    var SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
+    var SEARCH_OPTIONS_GROUP = 'search_opts_g';
+    var SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
+    var SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
+    var SEQUENCE_CB = 'seq_cb';
+    var SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
+    var TAXONOMY_CB = 'tax_cb';
+    var UNCOLLAPSE_ALL_BUTTON = 'unc_b';
+    var ZOOM_IN_X = 'zoomin_x';
+    var ZOOM_IN_Y = 'zoomout_y';
+    var ZOOM_OUT_X = 'zoomout_x';
+    var ZOOM_OUT_Y = 'zoomin_y';
+    var ZOOM_TO_FIT = 'zoomtofit';
 
+    // ---------------------------
+    // Key codes
+    // ---------------------------
     var VK_ESC = 27;
-    var VK_O = 79;
-    var VK_R = 82;
-    var VK_U = 85;
-    var VK_P = 80;
     var VK_A = 65;
-    var VK_S = 83;
-    var VK_L = 76;
     var VK_C = 67;
+    var VK_L = 76;
+    var VK_O = 79;
+    var VK_P = 80;
+    var VK_R = 82;
+    var VK_S = 83;
+    var VK_U = 85;
     var VK_DELETE = 46;
     var VK_BACKSPACE = 8;
     var VK_HOME = 36;
@@ -250,58 +258,58 @@ if (!phyloXml) {
     var VK_PAGE_UP = 33;
     var VK_PAGE_DOWN = 34;
 
-    var WARNING = 'ArchaeopteryxJS: WARNING';
-
+    // ---------------------------
     // "Instance variables"
-    var _root = null;
-    var _svgGroup = null;
+    // ---------------------------
     var _baseSvg = null;
-    var _treeFn = null;
-    var _superTreeRoots = [];
-    var _treeData = null;
-    var _options = null;
-    var _settings = null;
-    var _nodeVisualizations = null;
-    var _maxLabelLength = 0;
-    var _i = 0;
-    var _zoomListener = null;
-    var _yScale = null;
-    var _translate = null;
-    var _scale = null;
+    var _basicTreeProperties = null;
+    var _branch_length_collapse_data = {};
+    var _branch_length_collapse_level = -1;
+    var _colorPickerData = null;
+    var _colorsForColorPicker = null;
+    var _currentLabelColorVisualization = null;
+    var _currentNodeBorderColorVisualization = null;
+    var _currentNodeFillColorVisualization = null;
+    var _currentNodeShapeVisualization = null;
+    var _currentNodeSizeVisualization = null;
+    var _depth_collapse_level = -1;
+    var _displayHeight = 0;
+    var _displayWidth = 0;
+    var _dynahide_counter = 0;
+    var _dynahide_factor = 0;
+    var _external_nodes = 0;
     var _foundNodes0 = new Set();
     var _foundNodes1 = new Set();
     var _foundSum = 0;
-    var _totalSearchedWithData = 0;
-    var _searchBox0Empty = true;
-    var _searchBox1Empty = true;
-    var _displayWidth = 0;
-    var _displayHeight = 0;
-    var _intervalId = 0;
-    var _currentLabelColorVisualization = null;
-    var _currentNodeShapeVisualization = null;
-    var _currentNodeFillColorVisualization = null;
-    var _currentNodeBorderColorVisualization = null;
-    var _currentNodeSizeVisualization = null;
-    var _dynahide_counter = 0;
-    var _dynahide_factor = 0;
-    var _basicTreeProperties = null;
-    var _depth_collapse_level = -1;
-    var _rank_collapse_level = -1;
-    var _branch_length_collapse_level = -1;
-    var _branch_length_collapse_data = {};
-    var _external_nodes = 0;
-    var _w = null;
-    var _visualizations = null;
+    var _i = 0;
     var _id = null;
-    var _offsetTop = 0;
+    var _intervalId = 0;
     var _legendColorScales = {};
     var _legendShapeScales = {};
     var _legendSizeScales = {};
-    var _showLegends = true;
+    var _maxLabelLength = 0;
+    var _nodeVisualizations = null;
+    var _offsetTop = 0;
+    var _options = null;
+    var _rank_collapse_level = -1;
+    var _root = null;
+    var _scale = null;
+    var _searchBox0Empty = true;
+    var _searchBox1Empty = true;
+    var _settings = null;
     var _showColorPicker = false;
-    var _colorPickerData = null;
+    var _showLegends = true;
+    var _superTreeRoots = [];
+    var _svgGroup = null;
+    var _totalSearchedWithData = 0;
+    var _translate = null;
+    var _treeData = null;
+    var _treeFn = null;
     var _usedColorCategories = new Set();
-    var _colorsForColorPicker = null;
+    var _visualizations = null;
+    var _w = null;
+    var _yScale = null;
+    var _zoomListener = null;
 
 
     function branchLengthScaling(nodes, width) {
@@ -606,7 +614,6 @@ if (!phyloXml) {
                 }
             }
         }
-
     }
 
     function addNodeSizeVisualization(label,
@@ -2500,9 +2507,15 @@ if (!phyloXml) {
         if (!_options.showInternalLabels && ( phynode.children || phynode._children)) {
             return null;
         }
+
         var l = "";
-        if (_options.showNodeName) {
-            l = append(l, phynode.name);
+        if (_options.showNodeName && phynode.name) {
+            if (_options.shortenNodeNames && phynode.name.length > SHORTEN_NAME_MAX_LENGTH) {
+                l = append(l, shortenName(phynode.name, 8));
+            }
+            else {
+                l = append(l, phynode.name);
+            }
         }
         if (_options.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
             var t = phynode.taxonomies[0];
@@ -2584,6 +2597,11 @@ if (!phyloXml) {
                 }
             }
             return str1;
+        }
+
+        function shortenName(name, n) {
+            var nlength = name.length;
+            return name.substring(0, n) + '..' + name.substring(nlength - n, nlength);
         }
     };
 
@@ -2794,46 +2812,46 @@ if (!phyloXml) {
             _options.showExternalLabels = true;
         }
         if (!_options.branchWidthDefault) {
-            _options.branchWidthDefault = 1;
+            _options.branchWidthDefault = BRANCH_WIDTH_DEFAULT;
         }
         if (!_options.branchColorDefault) {
-            _options.branchColorDefault = "#aaaaaa";
+            _options.branchColorDefault = BRANCH_COLOR_DEFAULT;
         }
         if (!_options.labelColorDefault) {
-            _options.labelColorDefault = "#202020";
+            _options.labelColorDefault = LABEL_COLOR_DEFAULT;
         }
         if (!_options.backgroundColorDefault) {
-            _options.backgroundColorDefault = "#f0f0f0";
+            _options.backgroundColorDefault = BACKGROUND_COLOR_DEFAULT;
         }
         if (!_options.found0ColorDefault) {
-            _options.found0ColorDefault = "#66cc00";
+            _options.found0ColorDefault = FOUND0_COLOR_DEFAULT;
         }
         if (!_options.found1ColorDefault) {
-            _options.found1ColorDefault = "#ff00ff";
+            _options.found1ColorDefault = FOUND1_COLOR_DEFAULT;
         }
         if (!_options.found0and1ColorDefault) {
-            _options.found0and1ColorDefault = "#0000ee";
+            _options.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
         }
         if (!_options.defaultFont) {
-            _options.defaultFont = ['Arial', 'Helvetica', 'Tahoma', 'Geneva', 'Verdana', 'Sans-Serif'];
+            _options.defaultFont = FONT_DEFAULTS;
         }
         if (!_options.nodeSizeDefault) {
-            _options.nodeSizeDefault = 3;
+            _options.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
         }
         if (!_options.externalNodeFontSize) {
-            _options.externalNodeFontSize = 10;
+            _options.externalNodeFontSize = EXTERNAL_NODE_FONT_SIZE_DEFAULT;
         }
         if (!_options.internalNodeFontSize) {
-            _options.internalNodeFontSize = 9;
+            _options.internalNodeFontSize = INTERNAL_NODE_FONT_SIZE_DEFAULT;
         }
         if (!_options.branchDataFontSize) {
-            _options.branchDataFontSize = 7;
+            _options.branchDataFontSize = BRANCH_DATA_FONT_SIZE_DEFAULT;
         }
         if (!_options.collapsedLabelLength) {
-            _options.collapsedLabelLength = 7;
+            _options.collapsedLabelLength = COLLAPSED_LABEL_LENGTH_DEFAULT;
         }
         if (!_options.nodeLabelGap) {
-            _options.nodeLabelGap = 10;
+            _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
         }
         if (!_options.minBranchLengthValueToShow) {
             _options.minBranchLengthValueToShow = null;
@@ -2867,7 +2885,7 @@ if (!phyloXml) {
             _options.showBranchVisualizations = false;
         }
         if (_options.nodeVisualizationsOpacity === undefined) {
-            _options.nodeVisualizationsOpacity = 1;
+            _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
         }
         if (!_options.nameForNhDownload) {
             _options.nameForNhDownload = NAME_FOR_NH_DOWNLOAD_DEFAULT;
@@ -2898,8 +2916,6 @@ if (!phyloXml) {
         _options.externalNodeFontSize = parseInt(_options.externalNodeFontSize);
         _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
         _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
-
-
     }
 
     function initializeSettings(settings) {
@@ -2968,7 +2984,20 @@ if (!phyloXml) {
             _settings.nhExportWriteConfidences = false;
         }
         if (_settings.showDynahideButton === undefined) {
-            _settings.showDynahideButton = true;
+            if (_basicTreeProperties.externalNodesCount > 20) {
+                _settings.showDynahideButton = true;
+            }
+            else {
+                _settings.showDynahideButton = false;
+            }
+        }
+        if (_settings.showShortenNodeNamesButton === undefined) {
+            if (_basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH) {
+                _settings.showShortenNodeNamesButton = true;
+            }
+            else {
+                _settings.showShortenNodeNamesButton = false;
+            }
         }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
@@ -3855,11 +3884,11 @@ if (!phyloXml) {
         update(null, 0);
     }
 
-    /*function shortenCbClicked() { //TODO
-     _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
-     resetVis();
-     update(null, 0);
-     }*/
+    function shortenCbClicked() {
+        _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
+        resetVis();
+        update(null, 0);
+    }
 
     function downloadButtonPressed() {
         var s = $('#' + EXPORT_FORMAT_SELECT);
@@ -4362,6 +4391,8 @@ if (!phyloXml) {
 
         $('#' + DYNAHIDE_CB).click(dynaHideCbClicked);
 
+        $('#' + SHORTEN_NODE_NAME_CB).click(shortenCbClicked);
+
         $('#' + LABEL_COLOR_SELECT_MENU).on('change', function () {
             var v = this.value;
             if (v && v != DEFAULT) {
@@ -4539,7 +4570,7 @@ if (!phyloXml) {
                 'text-align': 'center',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '18px'
+                'width': '20px'
             });
 
         $('#' + ZOOM_IN_Y).mousedown(function () {
@@ -5134,91 +5165,91 @@ if (!phyloXml) {
 
 
     function initializeVisualizationMenu() {
-        if (true) {
-            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
-                .val(DEFAULT)
-                .html("default")
-            );
-            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
-                .val(DEFAULT)
-                .html("default")
-            );
-            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
-                .val(NONE)
-                .html("none")
-            );
-            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
-                .val(SAME_AS_FILL)
-                .html("same as fill")
-            );
 
-            $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
-                .val(DEFAULT)
-                .html("default")
-            );
-            $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
-                .val(DEFAULT)
-                .html("default")
-            );
-            $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
-                .val(DEFAULT)
-                .html("default")
-            );
+        $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
+            .val(DEFAULT)
+            .html("default")
+        );
+        $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
+            .val(DEFAULT)
+            .html("default")
+        );
+        $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
+            .val(NONE)
+            .html("none")
+        );
+        $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
+            .val(SAME_AS_FILL)
+            .html("same as fill")
+        );
+
+        $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
+            .val(DEFAULT)
+            .html("default")
+        );
+        $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
+            .val(DEFAULT)
+            .html("default")
+        );
+        $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
+            .val(DEFAULT)
+            .html("default")
+        );
 
 
-            if (_visualizations) {
-                if (_visualizations.labelColor) {
-                    for (var key in _visualizations.labelColor) {
-                        if (_visualizations.labelColor.hasOwnProperty(key)) {
-                            $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
-                                .val(key)
-                                .html(key)
-                            );
-                        }
+        if (_visualizations) {
+            if (_visualizations.labelColor) {
+                for (var key in _visualizations.labelColor) {
+                    if (_visualizations.labelColor.hasOwnProperty(key)) {
+                        $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
                     }
                 }
-                if (_visualizations.nodeShape) {
-                    for (var key in _visualizations.nodeShape) {
-                        if (_visualizations.nodeShape.hasOwnProperty(key)) {
-                            $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
-                                .val(key)
-                                .html(key)
-                            );
-                        }
+            }
+            if (_visualizations.nodeShape) {
+                for (var key in _visualizations.nodeShape) {
+                    if (_visualizations.nodeShape.hasOwnProperty(key)) {
+                        $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
                     }
                 }
-                if (_visualizations.nodeFillColor) {
-                    for (var key in _visualizations.nodeFillColor) {
-                        if (_visualizations.nodeFillColor.hasOwnProperty(key)) {
-                            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
-                                .val(key)
-                                .html(key)
-                            );
-                        }
+            }
+            if (_visualizations.nodeFillColor) {
+                for (var key in _visualizations.nodeFillColor) {
+                    if (_visualizations.nodeFillColor.hasOwnProperty(key)) {
+                        $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
                     }
                 }
-                if (_visualizations.nodeBorderColor) {
-                    for (var key in _visualizations.nodeBorderColor) {
-                        if (_visualizations.nodeBorderColor.hasOwnProperty(key)) {
-                            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
-                                .val(key)
-                                .html(key)
-                            );
-                        }
+            }
+            if (_visualizations.nodeBorderColor) {
+                for (var key in _visualizations.nodeBorderColor) {
+                    if (_visualizations.nodeBorderColor.hasOwnProperty(key)) {
+                        $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
                     }
                 }
-                if (_visualizations.nodeSize) {
-                    for (var key in _visualizations.nodeSize) {
-                        if (_visualizations.nodeSize.hasOwnProperty(key)) {
-                            $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
-                                .val(key)
-                                .html(key)
-                            );
-                        }
+            }
+            if (_visualizations.nodeSize) {
+                for (var key in _visualizations.nodeSize) {
+                    if (_visualizations.nodeSize.hasOwnProperty(key)) {
+                        $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
                     }
                 }
             }
         }
+
     }
 
     function initializeSearchOptions() {
@@ -5407,7 +5438,6 @@ if (!phyloXml) {
                 n[keyForCollapsedFeatureSpecialLabel] = undefined;
             }
         });
-
     }
 
     function collapseSpecificSubtrees(phy, nodePropertyRef, keyForCollapsedFeatureSpecialLabel) {
@@ -5740,7 +5770,6 @@ if (!phyloXml) {
     /**
      *
      *
-     *
      * @param label
      * @param location
      * @param data
@@ -5748,6 +5777,7 @@ if (!phyloXml) {
      * @param settings
      * @param newHamphshireConfidenceValuesInBrackets
      * @param newHamphshireConfidenceValuesAsInternalNames
+     * @param nodeVisualizations
      */
     archaeopteryx.launchArchaeopteryx = function (label,
                                                   location,

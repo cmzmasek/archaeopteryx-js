@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_02
-// 2017-07-11
+// v 1_03a
+// 2017-09-05
 
 (function forester() {
 
@@ -588,18 +588,26 @@
         var properties = {};
         properties.internalNodeData = false;
         properties.nodeNames = false;
+        properties.longestNodeName = 0;
         properties.branchLengths = false;
         properties.confidences = false;
         properties.nodeEvents = false;
         properties.sequences = false;
         properties.taxonomies = false;
+        properties.externalNodesCount = 0;
 
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
+                if (n.name.length > properties.longestNodeName) {
+                    properties.longestNodeName = n.name.length;
+                }
                 if (n.children || n._children) {
                     properties.internalNodeData = true;
                 }
+            }
+            if (!(n.children || n._children)) {
+                properties.externalNodesCount += 1;
             }
             if (n.branch_length && n.branch_length > 0) {
                 properties.branchLengths = true;
@@ -1641,6 +1649,7 @@
     forester.isString = function (s) {
         return (typeof s === 'string' || s instanceof String);
     };
+
 
     // --------------------------------------------------------------
     // For exporting

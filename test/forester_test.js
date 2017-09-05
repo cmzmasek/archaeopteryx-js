@@ -24,16 +24,17 @@
 
 "use strict";
 
-var fs = require('fs');
-var px = require('./lib/phyloxml').phyloXml;
+
 var forester = require('../forester').forester;
 
 if (!forester) {
     throw "no forester.js";
 }
 
-var t0 = require('path').join(__dirname, "./data/t0.xml");
-var t1 = require('path').join(__dirname, "./data/t1.xml");
+var pth = require('path');
+
+var t0 = pth.join(__dirname, "./data/t0.xml");
+var t1 = pth.join(__dirname, "./data/t1.xml");
 
 console.log("getTreeRoot                : " + ( testGetTreeRoot() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversal          : " + ( testPreOrderTraversal() === true ? "pass" : "FAIL" ));
@@ -45,10 +46,11 @@ console.log("reRoot 2                   : " + ( testReRoot2() === true ? "pass" 
 console.log("reRoot 3                   : " + ( testReRoot3() === true ? "pass" : "FAIL" ));
 
 function readPhyloXmlFromFile(fileName) {
+    var fs = require('fs');
+    var px = require('./lib/phyloxml').phyloXml;
     var text = fs.readFileSync(fileName, 'utf8');
     return px.parse(text, {trim: true, normalize: true});
 }
-
 
 function testGetTreeRoot() {
     var phy0 = readPhyloXmlFromFile(t0)[0];
