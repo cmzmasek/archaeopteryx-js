@@ -594,9 +594,12 @@
         properties.nodeEvents = false;
         properties.sequences = false;
         properties.taxonomies = false;
+        properties.alignedMolSeqs = true;
+        properties.maxMolSeqLength = 0;
         properties.externalNodesCount = 0;
 
         forester.preOrderTraversalAll(tree, function (n) {
+            var alignedMolSeq = false;
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.name.length > properties.longestNodeName) {
@@ -617,8 +620,18 @@
             }
             if (n.sequences && n.sequences.length > 0) {
                 properties.sequences = true;
+
                 if (n.children || n._children) {
                     properties.internalNodeData = true;
+                }
+                else {
+                    var s = n.sequences[0];
+                    if (s.mol_seq && s.mol_seq.value && s.mol_seq.is_aligned === true) {
+                        alignedMolSeq = true;
+                        if (s.mol_seq.value.length > properties.maxMolSeqLength) {
+                            properties.maxMolSeqLength = s.mol_seq.value.length;
+                        }
+                    }
                 }
             }
             if (n.taxonomies && n.taxonomies.length > 0) {
@@ -639,6 +652,10 @@
                         properties.branchEvents = true;
                     }
                 }
+            }
+            if (!(n.children || n._children) && !alignedMolSeq) {
+                properties.alignedMolSeqs = false;
+                properties.maxMolSeqLength = 0;
             }
         });
 
