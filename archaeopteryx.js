@@ -143,6 +143,7 @@ if (!phyloXml) {
     var PDF_EXPORT_FORMAT = 'PDF';
     var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     var PNG_EXPORT_FORMAT = 'PNG';
+    var MSA_RESIDUE = 'MSA Residue'; /////TODO
     var RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
     var RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
     var SAME_AS_FILL = 'sameasfill';
@@ -379,6 +380,11 @@ if (!phyloXml) {
         return _settings.rootOffset + _options.nodeLabelGap + LABEL_SIZE_CALC_ADDITION + ( _maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR );
     }
 
+    function enableMsaResidueVisualizations() {
+        return ( ( _settings.enableMsaResidueVisualizations === true ) && ( _basicTreeProperties.alignedMolSeqs === true )
+        && (_basicTreeProperties.maxMolSeqLength) );
+    }
+
     function createVisualization(label,
                                  description,
                                  field,
@@ -402,7 +408,7 @@ if (!phyloXml) {
         }
         if (field) {
             if (cladePropertyRef) {
-                throw( 'need to have either field or clade property ref');
+                throw( 'need to have either field or clade property ref (but not both)');
             }
             visualization.field = field;
         }
@@ -442,34 +448,37 @@ if (!phyloXml) {
         return visualization;
     }
 
-    function initializeNodeVisualizations(np) {
+    function initializeNodeVisualizations(nodeProperties) {
 
         if (_nodeVisualizations) {
             for (var key in _nodeVisualizations) {
+                console.log(key); //TODO
                 if (_nodeVisualizations.hasOwnProperty(key)) {
 
                     var nodeVisualization = _nodeVisualizations[key];
 
                     if (nodeVisualization.label) {
+                        console.log(nodeVisualization.label); //TODO
                         var scaleType = '';
                         if (nodeVisualization.shapes &&
                             Array.isArray(nodeVisualization.shapes) &&
                             (nodeVisualization.shapes.length > 0 )) {
                             var shapeScale = null;
-                            if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] &&
-                                forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
+                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] &&
+                                forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
                                 shapeScale = d3.scale.ordinal()
                                     .range(nodeVisualization.shapes)
-                                    .domain(forester.setToSortedArray(np[nodeVisualization.cladeRef]));
+                                    .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                 scaleType = ORDINAL_SCALE;
                             }
-                            else if (nodeVisualization.field && np[nodeVisualization.field] &&
-                                forester.setToArray(np[nodeVisualization.field]).length > 0) {
+                            else if (nodeVisualization.field && nodeProperties[nodeVisualization.field] &&
+                                forester.setToArray(nodeProperties[nodeVisualization.field]).length > 0) {
                                 shapeScale = d3.scale.ordinal()
                                     .range(nodeVisualization.shapes)
-                                    .domain(forester.setToSortedArray(np[nodeVisualization.field]));
+                                    .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.field]));
                                 scaleType = ORDINAL_SCALE;
                             }
+
                             if (shapeScale) {
                                 addNodeShapeVisualization(nodeVisualization.label,
                                     nodeVisualization.description,
@@ -484,7 +493,9 @@ if (!phyloXml) {
                         }
 
                         if (nodeVisualization.colors) {
-                            if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
+                            // Not dealing with nodeVisualization.field, yet.
+                            if ((nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0)
+                                || (nodeVisualization.label === MSA_RESIDUE)) {
                                 var colorScale = null;
                                 var altColorScale = null;
 
@@ -493,12 +504,12 @@ if (!phyloXml) {
                                     if (nodeVisualization.colors.length === 3) {
                                         colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
-                                            .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                            .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colors.length === 2) {
                                         colorScale = d3.scale.linear()
                                             .range(nodeVisualization.colors)
-                                            .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                            .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     }
                                     else {
                                         throw 'Number of colors has to be either 2 or 3';
@@ -509,12 +520,12 @@ if (!phyloXml) {
                                     if (nodeVisualization.colorsAlt.length === 3) {
                                         altColorScale = d3.scale.linear()
                                             .range(nodeVisualization.colorsAlt)
-                                            .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                            .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     }
                                     else if (nodeVisualization.colorsAlt.length === 2) {
                                         altColorScale = d3.scale.linear()
                                             .range(nodeVisualization.colorsAlt)
-                                            .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                            .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     }
                                     else {
                                         throw 'Number of colors has to be either 2 or 3';
@@ -523,28 +534,38 @@ if (!phyloXml) {
 
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     scaleType = ORDINAL_SCALE;
-                                    if (nodeVisualization.colors === 'category20') {
+                                    if (nodeVisualization.label === MSA_RESIDUE) {
                                         colorScale = d3.scale.category20()
-                                            .domain(forester.setToSortedArray(np[nodeVisualization.cladeRef]));
+                                            .domain(['a', 'c', 'g', 't', 'u', '-']);
                                         _usedColorCategories.add('category20');
-                                    }
-                                    else if (nodeVisualization.colors === 'category20b') {
-                                        colorScale = d3.scale.category20b()
-                                            .domain(forester.setToSortedArray(np[nodeVisualization.cladeRef]));
-                                        _usedColorCategories.add('category20b');
-                                    }
-                                    else if (nodeVisualization.colors === 'category20c') {
-                                        colorScale = d3.scale.category20c()
-                                            .domain(forester.setToSortedArray(np[nodeVisualization.cladeRef]));
-                                        _usedColorCategories.add('category20c');
-                                    }
-                                    else if (nodeVisualization.colors === 'category10') {
-                                        colorScale = d3.scale.category10()
-                                            .domain(forester.setToSortedArray(np[nodeVisualization.cladeRef]));
-                                        _usedColorCategories.add('category10');
+                                        nodeVisualization.cladeRef = 'dummy';
+                                        console.log(colorScale);
                                     }
                                     else {
-                                        throw 'do not know how to process ' + nodeVisualization.colors;
+
+                                        if (nodeVisualization.colors === 'category20') {
+                                            colorScale = d3.scale.category20()
+                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
+                                            _usedColorCategories.add('category20');
+                                        }
+                                        else if (nodeVisualization.colors === 'category20b') {
+                                            colorScale = d3.scale.category20b()
+                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
+                                            _usedColorCategories.add('category20b');
+                                        }
+                                        else if (nodeVisualization.colors === 'category20c') {
+                                            colorScale = d3.scale.category20c()
+                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
+                                            _usedColorCategories.add('category20c');
+                                        }
+                                        else if (nodeVisualization.colors === 'category10') {
+                                            colorScale = d3.scale.category10()
+                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
+                                            _usedColorCategories.add('category10');
+                                        }
+                                        else {
+                                            throw 'do not know how to process ' + nodeVisualization.colors;
+                                        }
                                     }
                                 }
 
@@ -580,21 +601,22 @@ if (!phyloXml) {
                                         altColorScale);
                                 }
                             }
+
                         }
 
                         if (nodeVisualization.sizes && Array.isArray(nodeVisualization.sizes) && (nodeVisualization.sizes.length > 0  )) {
-                            if (nodeVisualization.cladeRef && np[nodeVisualization.cladeRef] && forester.setToArray(np[nodeVisualization.cladeRef]).length > 0) {
+                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
                                 var sizeScale = null;
                                 var scaleType = LINEAR_SCALE;
                                 if (nodeVisualization.sizes.length === 3) {
                                     sizeScale = d3.scale.linear()
                                         .range(nodeVisualization.sizes)
-                                        .domain(forester.calcMinMeanMaxInSet(np[nodeVisualization.cladeRef]));
+                                        .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                 }
                                 else if (nodeVisualization.sizes.length === 2) {
                                     sizeScale = d3.scale.linear()
                                         .range(nodeVisualization.sizes)
-                                        .domain(forester.calcMinMaxInSet(np[nodeVisualization.cladeRef]));
+                                        .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                 }
                                 else {
                                     throw 'Number of sizes has to be either 2 or 3';
@@ -1214,6 +1236,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_LABEL_COLOR);
             label = 'Label Color';
             desc = _currentLabelColorVisualization;
+            console.log("_currentLabelColorVisualization=" + _currentLabelColorVisualization);
             scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
             counter = makeColorLegend(LEGEND_LABEL_COLOR,
                 xPos, yPos,
@@ -2222,6 +2245,9 @@ if (!phyloXml) {
     };
 
     var makeVisNodeFillColor = function (node) {
+        if (_currentNodeFillColorVisualization === MSA_RESIDUE) {
+            return makeMsaResidueVisualizationColor(node, _visualizations.nodeFillColor[MSA_RESIDUE]);
+        }
         if (_options.showNodeVisualizations && _currentNodeFillColorVisualization && _visualizations && !node._children && _visualizations.nodeFillColor
             && _visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
             var vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
@@ -2233,61 +2259,58 @@ if (!phyloXml) {
         return _options.backgroundColorDefault;
     };
 
-    var makeVisColor = function (node, vis) {
-        if (_currentSeqFeatPosition > 1) {
-            if (( _basicTreeProperties.alignedMolSeqs === true) && node.sequences && node.sequences.length) {
+    var makeMsaResidueVisualizationColor = function (node, vis) {
+        if (enableMsaResidueVisualizations()) {
+            if (node.sequences && node.sequences.length > 0) {
                 //////
                 var s = node.sequences[0];
                 if (s.mol_seq && s.mol_seq.value) {
-                    var x = s.mol_seq.value.substring(_currentSeqFeatPosition, _currentSeqFeatPosition + 1);
-                    if (x === 'a') {
-                        return '#000000';
-                    }
-                    else if (x === 'c') {
-                        return '#ff0000';
-                    }
-                    else if (x === 'g') {
-                        return '#00ff00';
-                    }
-                    else if (x === 't') {
-                        return '#0000ff';
-                    }
-                    else {
-                        return '#909090';
-                    }
+
+
+                    var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toLowerCase();
+//TODO
+                    return vis.mappingFn ? vis.mappingFn(res) : vis.mapping[res];
+
                 }
             }
         }
-        else {
-            if (vis.field) {
-                var fieldValue = node[vis.field];
-                if (fieldValue) {
-                    if (vis.isRegex) {
-                        for (var key in vis.mapping) {
-                            if (vis.mapping.hasOwnProperty(key)) {
-                                var re = new RegExp(key);
-                                if (re && fieldValue.search(re) > -1) {
-                                    return produceVis(vis, key);
-                                }
+        return null;
+    };
+
+
+    var makeVisColor = function (node, vis) {
+        console.log("vis in makeVisColor");
+        console.log(vis);
+        console.log("------------------------");
+        if (vis.field) {
+            var fieldValue = node[vis.field];
+            if (fieldValue) {
+                if (vis.isRegex) {
+                    for (var key in vis.mapping) {
+                        if (vis.mapping.hasOwnProperty(key)) {
+                            var re = new RegExp(key);
+                            if (re && fieldValue.search(re) > -1) {
+                                return produceVis(vis, key);
                             }
                         }
                     }
-                    else {
-                        return produceVis(vis, fieldValue);
-                    }
                 }
-            }
-            else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
-                var ref_name = vis.cladePropertyRef;
-                var propertiesLength = node.properties.length;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var p = node.properties[i];
-                    if (p.value && p.ref === ref_name) {
-                        return produceVis(vis, p.value);
-                    }
+                else {
+                    return produceVis(vis, fieldValue);
                 }
             }
         }
+        else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
+            var ref_name = vis.cladePropertyRef;
+            var propertiesLength = node.properties.length;
+            for (var i = 0; i < propertiesLength; ++i) {
+                var p = node.properties[i];
+                if (p.value && p.ref === ref_name) {
+                    return produceVis(vis, p.value);
+                }
+            }
+        }
+
         return null;
 
         function produceVis(vis, key) {
@@ -2333,6 +2356,9 @@ if (!phyloXml) {
             if (_currentNodeBorderColorVisualization === SAME_AS_FILL) {
                 return makeVisNodeFillColor(node);
             }
+            if (_currentNodeBorderColorVisualization === MSA_RESIDUE) {
+                return makeMsaResidueVisualizationColor(_visualizations.nodeBorderColor[MSA_RESIDUE]);
+            }
             if (_currentNodeBorderColorVisualization === NONE) {
                 return _options.backgroundColorDefault;
             }
@@ -2349,6 +2375,9 @@ if (!phyloXml) {
     };
 
     var makeVisLabelColor = function (node) {
+        if (_currentLabelColorVisualization === MSA_RESIDUE) {
+            return makeMsaResidueVisualizationColor(_visualizations.labelColor[MSA_RESIDUE]);
+        }
         if (_currentLabelColorVisualization && _visualizations && !node._children && _visualizations.labelColor
             && _visualizations.labelColor[_currentLabelColorVisualization]) {
             var vis = _visualizations.labelColor[_currentLabelColorVisualization];
@@ -3060,10 +3089,10 @@ if (!phyloXml) {
 
         //////////////
 
-        if (_settings.enableSeqFeatures === undefined //TODO
+        if (_settings.enableMsaResidueVisualizations === undefined //TODO
             && _basicTreeProperties.alignedMolSeqs === true
             && _basicTreeProperties.maxMolSeqLength > 1) {
-            _settings.enableSeqFeatures = true;
+            _settings.enableMsaResidueVisualizations = true;
         }
         //////////////
 
@@ -3071,6 +3100,7 @@ if (!phyloXml) {
 
         intitializeDisplaySize();
     }
+
 
     function intitializeDisplaySize() {
         _displayHeight = _settings.displayHeight;
@@ -3098,24 +3128,6 @@ if (!phyloXml) {
 
         if (nodeVisualizations) {
             _nodeVisualizations = nodeVisualizations;
-        }//////
-        //TODO
-        if ((_basicTreeProperties.alignedMolSeqs === true )
-            && ( _basicTreeProperties.maxMolSeqLength > 1 )
-            && ( settings.enableSeqFeatures === true )) {
-            if (_nodeVisualizations == null) {
-                _nodeVisualizations = {};
-            }
-            nodeVisualizations['Positions'] = {
-                label: 'Positions',
-                description: '',
-                field: null,
-                cladeRef: null,
-                regex: false,
-                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                colors: 'category20',
-                sizes: null
-            };
         }
 
         if (settings.readSimpleCharacteristics) {
@@ -3126,12 +3138,32 @@ if (!phyloXml) {
         initializeSettings(settings);
 
         if (settings.enableNodeVisualizations) {
-            var np = forester.collectProperties(_treeData, 'node', false);
-            initializeNodeVisualizations(np);
+            if ((_basicTreeProperties.alignedMolSeqs === true )
+                && ( _basicTreeProperties.maxMolSeqLength > 1 )
+                && ( settings.enableMsaResidueVisualizations === true )) {
+                if (_nodeVisualizations == null) {
+                    _nodeVisualizations = {};
+                }
+                console.log("  adding " + MSA_RESIDUE);
+                _nodeVisualizations[MSA_RESIDUE] = {
+                    label: MSA_RESIDUE, ////TODO
+                    description: '',
+                    field: null,
+                    cladeRef: null,
+                    regex: false,
+                    shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                    colors: 'category20',
+                    sizes: null
+                };
+            }
+            var nodeProperties = forester.collectProperties(_treeData, 'node', false);
+            initializeNodeVisualizations(nodeProperties);
+            //////
+            //TODO
         }
         _id = id;
 
-        createGui(_basicTreeProperties);
+        createGui();
 
         if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
             d3.select(window)
@@ -4371,7 +4403,7 @@ if (!phyloXml) {
                 c1.append(makeLegendControl());
             }
 
-            if (_settings.enableSeqFeatures) {
+            if (_settings.enableMsaResidueVisualizations) {
                 c1.append(makeSequenceFeaturesControl());
             }
         }
@@ -4537,7 +4569,6 @@ if (!phyloXml) {
             }
             else {
                 _currentNodeBorderColorVisualization = null;
-
             }
             if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
                 removeLegend(LEGEND_NODE_BORDER_COLOR);
@@ -5303,6 +5334,25 @@ if (!phyloXml) {
             .html("default")
         );
 
+        if (enableMsaResidueVisualizations()) {
+            $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
+                .val(MSA_RESIDUE)
+                .html('MSA Residue')  /////TODO
+            );
+            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
+                .val(MSA_RESIDUE)
+                .html('MSA Residue')
+            );
+            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
+                .val(MSA_RESIDUE)
+                .html('MSA Residue')
+            );
+            $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
+                .val(MSA_RESIDUE)
+                .html('MSA Residue')
+            );
+        }
+
 
         if (_visualizations) {
             if (_visualizations.labelColor) {
@@ -5359,7 +5409,7 @@ if (!phyloXml) {
 ///////////
         $('#' + "SEQ_FEAT_SLIDER_1").slider({
             min: 0,
-            max: _basicTreeProperties.maxMolSeqLength,
+            max: _basicTreeProperties.maxMolSeqLength - 1,
             step: 1,
             value: 0,
             animate: 'fast',
