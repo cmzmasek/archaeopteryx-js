@@ -2245,7 +2245,8 @@ if (!phyloXml) {
     };
 
     var makeVisNodeFillColor = function (node) {
-        if (_currentNodeFillColorVisualization === MSA_RESIDUE) {
+        if (
+            _currentNodeFillColorVisualization === MSA_RESIDUE) {
             return makeMsaResidueVisualizationColor(node, _visualizations.nodeFillColor[MSA_RESIDUE]);
         }
         if (_options.showNodeVisualizations && _currentNodeFillColorVisualization && _visualizations && !node._children && _visualizations.nodeFillColor
@@ -2265,12 +2266,9 @@ if (!phyloXml) {
                 //////
                 var s = node.sequences[0];
                 if (s.mol_seq && s.mol_seq.value) {
-
-
                     var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toLowerCase();
 //TODO
                     return vis.mappingFn ? vis.mappingFn(res) : vis.mapping[res];
-
                 }
             }
         }
@@ -2357,7 +2355,7 @@ if (!phyloXml) {
                 return makeVisNodeFillColor(node);
             }
             if (_currentNodeBorderColorVisualization === MSA_RESIDUE) {
-                return makeMsaResidueVisualizationColor(_visualizations.nodeBorderColor[MSA_RESIDUE]);
+                return makeMsaResidueVisualizationColor(node, _visualizations.nodeBorderColor[MSA_RESIDUE]);
             }
             if (_currentNodeBorderColorVisualization === NONE) {
                 return _options.backgroundColorDefault;
@@ -2376,12 +2374,19 @@ if (!phyloXml) {
 
     var makeVisLabelColor = function (node) {
         if (_currentLabelColorVisualization === MSA_RESIDUE) {
-            return makeMsaResidueVisualizationColor(_visualizations.labelColor[MSA_RESIDUE]);
+            return makeMsaResidueVisualizationColor(node, _visualizations.labelColor[MSA_RESIDUE]);//TODO maybe not needed, could use regular...
         }
         if (_currentLabelColorVisualization && _visualizations && !node._children && _visualizations.labelColor
             && _visualizations.labelColor[_currentLabelColorVisualization]) {
             var vis = _visualizations.labelColor[_currentLabelColorVisualization];
             var color = makeVisColor(node, vis);
+            //TODO maybe:
+            //if (_currentLabelColorVisualization === MSA_RESIDUE) {
+            //  color = makeMsaResidueVisualizationColor(node,_visualizations.labelColor[MSA_RESIDUE])
+            //}
+            //else {
+            // color = makeVisColor(node, vis);
+            //}
             if (color) {
                 return color;
             }
@@ -3146,7 +3151,7 @@ if (!phyloXml) {
                 }
                 console.log("  adding " + MSA_RESIDUE);
                 _nodeVisualizations[MSA_RESIDUE] = {
-                    label: MSA_RESIDUE, ////TODO
+                    label: MSA_RESIDUE,
                     description: '',
                     field: null,
                     cladeRef: null,
