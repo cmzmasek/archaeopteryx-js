@@ -233,6 +233,18 @@ if (!phyloXml) {
     var ZOOM_OUT_Y = 'zoomin_y';
     var ZOOM_TO_FIT = 'zoomtofit';
 
+
+    //////////////
+    //TODO new ones need to sort...
+    var SEQ_POS_SLIDER_1 = 'seq_pos_slider_1';
+    var SEQ_POS_DECR_POS = 'seq_pos_decr_pos';
+    var SEQ_POS_INCR_POS = 'seq_pos_incr_pos';
+    var SEQ_POS_LABEL_CURR_POS = 'seq_pos_label_curr_pos';
+
+
+    ///////////////
+
+
     // ---------------------------
     // Key codes
     // ---------------------------
@@ -258,6 +270,8 @@ if (!phyloXml) {
     var VK_MINUS_N = 109;
     var VK_PAGE_UP = 33;
     var VK_PAGE_DOWN = 34;
+    var VK_OPEN_BRACKET = 219;
+    var VK_CLOSE_BRACKET = 221;
 
     // ---------------------------
     // "Instance variables"
@@ -1697,6 +1711,9 @@ if (!phyloXml) {
         updateButtonEnabledState();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
             updateLegendButtonEnabledState();
+            if (_settings.enableMsaResidueVisualizations) {
+                updateMsaResidueCurrentPos();
+            }
         }
 
         var node = _svgGroup.selectAll("g.node")
@@ -2179,7 +2196,7 @@ if (!phyloXml) {
                         //////
                         var s = node.sequences[0];
                         if (s.mol_seq && s.mol_seq.value && (s.mol_seq.value.length > _currentSeqFeatPosition)) {
-                            var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toUpplerCase();
+                            var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toUpperCase();
                             if (res === ' ') {
                                 res = '-';
                             }
@@ -4213,6 +4230,7 @@ if (!phyloXml) {
         }
     }
 
+
     function increaseFontSizes() {
         var step = SLIDER_STEP * 2;
         var max = FONT_SIZE_MAX - step;
@@ -4405,12 +4423,12 @@ if (!phyloXml) {
 
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
                 c1.append(makeVisualControls());
+                if (_settings.enableMsaResidueVisualizations) {
+                    c1.append(makeSequenceFeaturesControl());
+                }
                 c1.append(makeLegendControl());
             }
 
-            if (_settings.enableMsaResidueVisualizations) {
-                c1.append(makeSequenceFeaturesControl());
-            }
         }
 
         $('input:button')
@@ -4762,6 +4780,9 @@ if (!phyloXml) {
 
         $('#' + UNCOLLAPSE_ALL_BUTTON).mousedown(uncollapseAllButtonPressed);
 
+        // Search Controls
+        // ---------------
+
         $('#' + SEARCH_OPTIONS_CASE_SENSITIVE_CB).click(searchOptionsCaseSenstiveCbClicked);
         $('#' + SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB).click(searchOptionsCompleteTermsOnlyCbClicked);
         $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
@@ -4769,6 +4790,9 @@ if (!phyloXml) {
 
         $('#' + RESET_SEARCH_A_BTN).mousedown(resetSearch0);
         $('#' + RESET_SEARCH_B_BTN).mousedown(resetSearch1);
+
+        // Visualization Legends
+        // ---------------------
 
         $('#' + LEGENDS_MOVE_UP_BTN).mousedown(function () {
             legendMoveUp(2);
@@ -4802,9 +4826,14 @@ if (!phyloXml) {
         $('#' + LEGENDS_SHOW_BTN).click(legendShowClicked);
         $('#' + LEGENDS_RESET_BTN).click(legendResetClicked);
 
+        // ----------------
+
         if (downloadButton) {
             downloadButton.mousedown(downloadButtonPressed);
         }
+
+        // Collapse
+        // ---------------
 
         $('#' + COLLAPSE_BY_FEATURE_SELECT)
             .select()
@@ -4829,6 +4858,12 @@ if (!phyloXml) {
                 }
             }
         });
+
+
+        // ---------------
+
+        // Visualizations
+        // ---------------
 
         $('#' + LABEL_COLOR_SELECT_MENU)
             .select()
@@ -4864,6 +4899,44 @@ if (!phyloXml) {
                 'font': 'inherit',
                 'color': 'inherit'
             });
+
+        // MSA residue visualization: Position control
+        // -------------------------------------------
+        $('#' + SEQ_POS_DECR_POS + ', #' + SEQ_POS_INCR_POS)
+            .css({
+                'width': '18px'
+            });
+
+        $('#' + SEQ_POS_LABEL_CURR_POS)
+            .button()
+            .off('keydown')
+            .off('mouseenter')
+            .off('mousedown')
+            .attr('disabled', 'disabled')
+            .css({
+                'font': 'inherit',
+                'color': 'inherit',
+                'text-align': 'center',
+                'outline': 'none',
+                'cursor': 'text',
+                'width': '20px'
+            });
+
+        $('#' + SEQ_POS_DECR_POS).mousedown(function () {
+            decrMsaResidueSeqPos();
+            _intervalId = setInterval(decrMsaResidueSeqPos, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+        $('#' + SEQ_POS_INCR_POS).mousedown(function () {
+            incrMsaResidueSeqPos();
+            _intervalId = setInterval(incrMsaResidueSeqPos, ZOOM_INTERVAL);
+        }).bind('mouseup mouseleave', function () {
+            clearTimeout(_intervalId);
+        });
+
+
+        // -------------------------------------------
 
         $(document).keyup(function (e) {
             if (e.altKey) {
@@ -5242,13 +5315,14 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>MSA Residue Pos.</legend>');
-            h = h.concat(makeSlider(null, 'SEQ_FEAT_SLIDER_1'));
-            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around) (Alt+A)'));
-            h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
-            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around) (Alt+S)'));
+            h = h.concat(makeSlider(null, SEQ_POS_SLIDER_1));
+            h = h.concat(makeButton('-', SEQ_POS_DECR_POS, 'to decrease current MSA residue position by 1 (wraps around) (Alt+[)'));
+            h = h.concat(makeTextInput(SEQ_POS_LABEL_CURR_POS, 'the current MSA residue position'));
+            h = h.concat(makeButton('+', SEQ_POS_INCR_POS, 'to increase current MSA residue position by 1 (wraps around) (Alt+])'));
             h = h.concat('</fieldset>');
             return h;
         }
+
 
         ///////////
 
@@ -5416,7 +5490,7 @@ if (!phyloXml) {
             }
         }
 ///////////
-        $('#' + "SEQ_FEAT_SLIDER_1").slider({
+        $('#' + SEQ_POS_SLIDER_1).slider({
             min: 0,
             max: _basicTreeProperties.maxMolSeqLength - 1,
             step: 1,
@@ -5579,6 +5653,29 @@ if (!phyloXml) {
         update(null, 0);
     }
 
+    function decrMsaResidueSeqPos() {
+        if (_currentSeqFeatPosition <= 0) {
+            _currentSeqFeatPosition = _basicTreeProperties.maxMolSeqLength - 1;
+        }
+        else {
+            _currentSeqFeatPosition -= 1;
+        }
+        setSliderValue(SEQ_POS_SLIDER_1, _currentSeqFeatPosition);
+        update(null, 0);
+    }
+
+    function incrMsaResidueSeqPos() {
+        if (_currentSeqFeatPosition >= ( _basicTreeProperties.maxMolSeqLength - 1)) {
+            _currentSeqFeatPosition = 0;
+        }
+        else {
+            _currentSeqFeatPosition += 1;
+        }
+        setSliderValue(SEQ_POS_SLIDER_1, _currentSeqFeatPosition);
+        update(null, 0);
+    }
+
+
     function updateDepthCollapseDepthDisplay() {
         var v = obtainDepthCollapseDepthValue();
         $('#' + DEPTH_COLLAPSE_LABEL)
@@ -5657,6 +5754,10 @@ if (!phyloXml) {
                 removeForCollapsedFeatureSpecialLabel(_root, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
             }
         }
+    }
+
+    function updateMsaResidueCurrentPos() {
+        $('#' + SEQ_POS_LABEL_CURR_POS).val(' ' + _currentSeqFeatPosition);
     }
 
     function updateButtonEnabledState() {
