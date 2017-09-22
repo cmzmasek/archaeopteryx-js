@@ -311,7 +311,7 @@ if (!phyloXml) {
     var _w = null;
     var _yScale = null;
     var _zoomListener = null;
-    var _currentSeqFeatPosition = -1;
+    var _currentSeqFeatPosition = 0;
 
 
     function branchLengthScaling(nodes, width) {
@@ -463,14 +463,13 @@ if (!phyloXml) {
                         if (nodeVisualization.shapes &&
                             Array.isArray(nodeVisualization.shapes) &&
                             (nodeVisualization.shapes.length > 0 )) {
-                            console.log("  shapes: " + key + " -> " + nodeVisualization.label);
+
                             var shapeScale = null;
                             if (nodeVisualization.label === MSA_RESIDUE) {
                                 shapeScale = d3.scale.ordinal()
                                     .range(nodeVisualization.shapes)
-                                    .domain(['a', 'c', 'g', 't', 'u', '-']); //TODO;
+                                    .domain(['A', 'C', 'G', 'T', 'U', '-']); //TODO;
                                 scaleType = ORDINAL_SCALE;
-                                nodeVisualization.cladeRef = 'dummy'; //TODO needed?
                             }
                             else if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] &&
                                 forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
@@ -544,7 +543,7 @@ if (!phyloXml) {
                                     scaleType = ORDINAL_SCALE;
                                     if (nodeVisualization.label === MSA_RESIDUE) {
                                         colorScale = d3.scale.category20()
-                                            .domain(['a', 'c', 'g', 't', 'u', '-']); //TODO
+                                            .domain(['A', 'C', 'G', 'T', 'U', '-']); //TODO
                                         _usedColorCategories.add('category20'); //TODO could add nodeVisualization.colors?
                                         nodeVisualization.cladeRef = 'dummy';
                                         //console.log(colorScale);
@@ -2174,29 +2173,22 @@ if (!phyloXml) {
             || node.events.speciations)))) {
             var vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
             if (_currentNodeShapeVisualization === MSA_RESIDUE) {
-                console.log("============================= makeNodeVisShape ");
-                if (( _basicTreeProperties.alignedMolSeqs === true) && node.sequences && node.sequences.length) {
-                    //////
-                    var s = node.sequences[0];
-                    if (s.mol_seq && s.mol_seq.value) {
-                        var x = s.mol_seq.value.substring(_currentSeqFeatPosition, _currentSeqFeatPosition + 1);
-                        if (x === 'a') {
-                            return makeShape(node, 'square');
-                        }
-                        else if (x === 'c') {
-                            return makeShape(node, 'diamond');
-                        }
-                        else if (x === 'g') {
-                            return makeShape(node, 'triangle-up');
-                        }
-                        else if (x === 't') {
-                            return makeShape(node, 'triangle-down');
-                        }
-                        else {
-                            return makeShape(node, 'circle');
+                /////////////////////////////////////////////
+                if (isCanDoMsaResidueVisualizations()) {
+                    if (node.sequences && node.sequences.length > 0) {
+                        //////
+                        var s = node.sequences[0];
+                        if (s.mol_seq && s.mol_seq.value && (s.mol_seq.value.length > _currentSeqFeatPosition)) {
+                            var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toUpplerCase();
+                            if (res === ' ') {
+                                res = '-';
+                            }
+//TODO
+                            return produceVis(vis, res);
                         }
                     }
                 }
+                return null;
             }
             else {
                 if (vis.field) {
@@ -2274,7 +2266,7 @@ if (!phyloXml) {
                 //////
                 var s = node.sequences[0];
                 if (s.mol_seq && s.mol_seq.value && s.mol_seq.value.length > _currentSeqFeatPosition) {
-                    var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toLowerCase();
+                    var res = s.mol_seq.value.charAt(_currentSeqFeatPosition).toUpperCase();
 //TODO
                     return vis.mappingFn ? vis.mappingFn(res) : vis.mapping[res];
                 }
@@ -3162,7 +3154,7 @@ if (!phyloXml) {
                     label: MSA_RESIDUE,
                     description: '',
                     field: null,
-                    cladeRef: null,
+                    cladeRef: 'na',
                     regex: false,
                     shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                     colors: 'category20',
@@ -5249,10 +5241,11 @@ if (!phyloXml) {
         function makeSequenceFeaturesControl() {
             var h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Seq Features</legend>');
-            h = h.concat(makeButton('Show', 'SEQ_FEAT_button1', 'to ...'));
-            h = h.concat('<br>');
-            h = h.concat(makeSlider('Position:', 'SEQ_FEAT_SLIDER_1'));
+            h = h.concat('<legend>MSA Residue Pos.</legend>');
+            h = h.concat(makeSlider(null, 'SEQ_FEAT_SLIDER_1'));
+            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around) (Alt+A)'));
+            h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
+            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around) (Alt+S)'));
             h = h.concat('</fieldset>');
             return h;
         }
@@ -5279,7 +5272,10 @@ if (!phyloXml) {
         }
 
         function makeSlider(label, id) {
-            return label + '<div id="' + id + '"></div>';
+            if (label) {
+                return label + '<div id="' + id + '"></div>';
+            }
+            return '<div id="' + id + '"></div>';
         }
 
         function makeTextInput(id, tooltip) {
