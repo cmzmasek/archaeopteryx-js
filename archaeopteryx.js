@@ -4924,13 +4924,16 @@ if (!phyloXml) {
 
         $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).keyup(function (e) {
             var keycode = e.keyCode;
-            if (((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD)) || (keycode === VK_BACKSPACE) || (keycode === VK_DELETE)) {
+            if ((((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD)) && (keycode <= VK_9_NUMPAD)) || (keycode === VK_BACKSPACE) || (keycode === VK_DELETE)) {
                 var i = 0;
-                if (_basicTreeProperties.maxMolSeqLength && (_msa_residue_vis_curr_res_pos >= (_basicTreeProperties.maxMolSeqLength - 1))) {
+                if ((((keycode >= VK_0) && (keycode <= VK_9))
+                    || ((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD)))
+                    && _basicTreeProperties.maxMolSeqLength
+                    && (_msa_residue_vis_curr_res_pos >= (_basicTreeProperties.maxMolSeqLength - 1))) {
                     if (((keycode >= VK_0) && (keycode <= VK_9))) {
                         i = keycode - 48;
                     }
-                    else if (((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD))) {
+                    else {
                         i = keycode - 96;
                     }
                 }
