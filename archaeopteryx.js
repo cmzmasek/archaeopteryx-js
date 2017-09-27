@@ -239,7 +239,7 @@ if (!phyloXml) {
     var MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
     var MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = 'seq_pos_decr_pos';
     var MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = 'seq_pos_incr_pos';
-    var MSA_RESIDUE_VIS_CURR_RES_POS_LBL = 'seq_pos_label_curr_pos';
+    var MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = 'seq_pos_label_curr_pos';
 
 
     ///////////////
@@ -257,6 +257,10 @@ if (!phyloXml) {
     var VK_R = 82;
     var VK_S = 83;
     var VK_U = 85;
+    var VK_0 = 48;
+    var VK_9 = 57;
+    var VK_0_NUMPAD = 96;
+    var VK_9_NUMPAD = 105;
     var VK_DELETE = 46;
     var VK_BACKSPACE = 8;
     var VK_HOME = 36;
@@ -4903,20 +4907,46 @@ if (!phyloXml) {
                 'width': '18px'
             });
 
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LBL)
+        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL)
             .button()
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
-            .attr('disabled', 'disabled')
             .css({
                 'font': 'inherit',
                 'color': 'inherit',
                 'text-align': 'center',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '20px'
+                'width': '28px'
             });
+
+
+        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).keyup(function (e) {
+            var keycode = e.keyCode;
+            if (((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD)) || (keycode === VK_BACKSPACE) || (keycode === VK_DELETE)) {
+                var val = $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).val();
+                var i = parseInt(val);
+                if ((i == null) || isNaN(i) || (i < 0)) {
+                    i = 0;
+                }
+                if (_basicTreeProperties.maxMolSeqLength && (_msa_residue_vis_curr_res_pos >= (_basicTreeProperties.maxMolSeqLength - 1))) {
+                    if (((keycode >= VK_0) && (keycode <= VK_9))) {
+                        i = keycode - 48;
+                    }
+                    if (((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD))) {
+                        i = keycode - 96;
+                    }
+                }
+                setMsaResidueVisCurrResPos(i);
+                updateMsaResidueVisCurrResPosLabel();
+                setSliderValue(MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1, _msa_residue_vis_curr_res_pos);
+                update(null, 0, true);
+            }
+            else {
+                update(null, 0, true);
+            }
+        });
 
         $('#' + MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN).mousedown(function () {
             decrMsaResidueVisCurrResPos();
@@ -5322,7 +5352,7 @@ if (!phyloXml) {
             h = h.concat('<legend>MSA Residue Pos.</legend>');
             h = h.concat(makeSlider(null, MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1));
             h = h.concat(makeButton('-', MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN, 'to decrease current MSA residue position by 1 (wraps around) (Alt+[)'));
-            h = h.concat(makeTextInput(MSA_RESIDUE_VIS_CURR_RES_POS_LBL, 'the current MSA residue position'));
+            h = h.concat(makeTextInput(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, 'the current MSA residue position'));
             h = h.concat(makeButton('+', MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, 'to increase current MSA residue position by 1 (wraps around) (Alt+])'));
             h = h.concat('</fieldset>');
             return h;
@@ -5762,7 +5792,19 @@ if (!phyloXml) {
     }
 
     function updateMsaResidueVisCurrResPosLabel() {
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LBL).val(' ' + _msa_residue_vis_curr_res_pos);
+        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).val(_msa_residue_vis_curr_res_pos);
+    }
+
+    function setMsaResidueVisCurrResPos(position) {
+        if (position <= 0) {
+            _msa_residue_vis_curr_res_pos = 0;
+        }
+        else if (_basicTreeProperties.maxMolSeqLength && (position >= (_basicTreeProperties.maxMolSeqLength - 1))) {
+            _msa_residue_vis_curr_res_pos = _basicTreeProperties.maxMolSeqLength - 1;
+        }
+        else {
+            _msa_residue_vis_curr_res_pos = position;
+        }
     }
 
     function updateButtonEnabledState() {
