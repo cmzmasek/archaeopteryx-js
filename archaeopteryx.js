@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_03a
-// 2017-09-27
+// v 1_03a1
+// 2017-09-28
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -44,7 +44,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03a';
+    var VERSION = '1.03a1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -2082,13 +2082,15 @@ if (!phyloXml) {
 
         /////////////////
         //TODO
-        if (_options.showBranchVisualizations) {
-            if (( _currentLabelColorVisualization === MSA_RESIDUE
+        var n = link.target;
+        if (_options.showBranchVisualizations && n) {
+            if (
+                ( _currentLabelColorVisualization === MSA_RESIDUE
                     || _currentNodeBorderColorVisualization === MSA_RESIDUE
                     || _currentNodeFillColorVisualization === MSA_RESIDUE
                 ) && isCanDoMsaResidueVisualizations()) {
 
-                var exts = forester.getAllExternalNodes(link.target);
+                var exts = forester.getAllExternalNodes(n);
                 var l = exts.length;
                 var residue = null;
                 for (var i = 0; i < l; ++i) {
@@ -2113,14 +2115,10 @@ if (!phyloXml) {
                         }
                     }
                 }
-
                 if (residue != null && residue != ' ' && residue != '-' && residue != '.' && residue != '?') {
                     var vis = _visualizations.nodeFillColor[MSA_RESIDUE];
                     return vis.mappingFn ? vis.mappingFn(residue) : vis.mapping[residue];
                 }
-                //return makeMsaResidueVisualizationColor(exts[0],);
-                return _options.branchColorDefault;
-
             }
         }
         if (link.target.color) {
