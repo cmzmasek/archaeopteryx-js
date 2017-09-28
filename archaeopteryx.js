@@ -5456,27 +5456,7 @@ if (!phyloXml) {
             .val(DEFAULT)
             .html("default")
         );
-
-        if (isCanDoMsaResidueVisualizations()) {
-            $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
-                .val(MSA_RESIDUE)
-                .html('MSA Residue')  /////TODO
-            );
-            $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
-                .val(MSA_RESIDUE)
-                .html('MSA Residue')
-            );
-            $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
-                .val(MSA_RESIDUE)
-                .html('MSA Residue')
-            );
-            $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
-                .val(MSA_RESIDUE)
-                .html('MSA Residue')
-            );
-        }
-
-
+        
         if (_visualizations) {
             if (_visualizations.labelColor) {
                 for (var key in _visualizations.labelColor) {
