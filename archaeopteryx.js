@@ -20,7 +20,7 @@
  */
 
 // v 1_03a
-// 2017-09-05
+// 2017-09-27
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -2008,6 +2008,7 @@ if (!phyloXml) {
 
         link.transition()
             .duration(transitionDuration)
+            .attr('stroke', makeBranchColor)
             .attr('d', elbow);
 
         link.exit()
@@ -2078,9 +2079,53 @@ if (!phyloXml) {
     };
 
     var makeBranchColor = function (link) {
+
+        /////////////////
+        //TODO
+        if (_options.showBranchVisualizations) {
+            if (( _currentLabelColorVisualization === MSA_RESIDUE
+                    || _currentNodeBorderColorVisualization === MSA_RESIDUE
+                    || _currentNodeFillColorVisualization === MSA_RESIDUE
+                ) && isCanDoMsaResidueVisualizations()) {
+
+                var exts = forester.getAllExternalNodes(link.target);
+                var l = exts.length;
+                var residue = null;
+                for (var i = 0; i < l; ++i) {
+                    var ext = exts[i];
+                    //console.log(ext.name);
+                    if (ext.sequences && ext.sequences.length > 0) {
+                        var s = ext.sequences[0];
+                        if (s.mol_seq && s.mol_seq.value && (s.mol_seq.value.length > _msa_residue_vis_curr_res_pos)) {
+                            var res = s.mol_seq.value.charAt(_msa_residue_vis_curr_res_pos).toUpperCase();
+                            //  if (res === ' ') {
+                            //      res = '-';
+                            //  }
+                            if (residue != null) {
+                                if (residue != res) {
+                                    residue = null;
+                                    break;
+                                }
+                            }
+                            else {
+                                residue = res;
+                            }
+                        }
+                    }
+                }
+
+                if (residue != null && residue != ' ' && residue != '-' && residue != '.' && residue != '?') {
+                    var vis = _visualizations.nodeFillColor[MSA_RESIDUE];
+                    return vis.mappingFn ? vis.mappingFn(residue) : vis.mapping[residue];
+                }
+                //return makeMsaResidueVisualizationColor(exts[0],);
+                return _options.branchColorDefault;
+
+            }
+        }
         if (link.target.color) {
             var c = link.target.color;
-            return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
+            return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
         }
         return _options.branchColorDefault;
     };
@@ -5420,6 +5465,7 @@ if (!phyloXml) {
         setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
         setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _options.dynahide);
+        setCheckboxValue(SHORTEN_NODE_NAME_CB, _options.shortenNodeNames);
         initializeVisualizationMenu();
         initializeSearchOptions();
     }
@@ -5456,7 +5502,7 @@ if (!phyloXml) {
             .val(DEFAULT)
             .html("default")
         );
-        
+
         if (_visualizations) {
             if (_visualizations.labelColor) {
                 for (var key in _visualizations.labelColor) {
