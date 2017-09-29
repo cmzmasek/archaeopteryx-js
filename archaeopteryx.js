@@ -5771,9 +5771,7 @@ if (!phyloXml) {
 
             _currentLabelColorVisualization = MSA_RESIDUE;
             $('#' + LABEL_COLOR_SELECT_MENU).val(MSA_RESIDUE);
-            // if (_showLegends) {
             addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
-            // }
             if (_settings.enableBranchVisualizations) {
                 _options.showBranchVisualizations = true;
                 setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
@@ -5784,12 +5782,9 @@ if (!phyloXml) {
             && (_currentNodeBorderColorVisualization != MSA_RESIDUE)
             && (_currentNodeShapeVisualization != MSA_RESIDUE)
             && isCanDoMsaResidueVisualizations()) {
-
             _currentNodeFillColorVisualization = MSA_RESIDUE;
             $('#' + NODE_FILL_COLOR_SELECT_MENU).val(MSA_RESIDUE);
-            // if (_showLegends) {
             addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-            //  }
             if (_settings.enableBranchVisualizations) {
                 _options.showBranchVisualizations = true;
                 setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
@@ -5800,12 +5795,9 @@ if (!phyloXml) {
             && (_currentNodeBorderColorVisualization == null || _currentNodeBorderColorVisualization === DEFAULT)
             && (_currentNodeShapeVisualization != MSA_RESIDUE)
             && isCanDoMsaResidueVisualizations()) {
-
             _currentNodeBorderColorVisualization = MSA_RESIDUE;
             $('#' + NODE_BORDER_COLOR_SELECT_MENU).val(MSA_RESIDUE);
-            //  if (_showLegends) { //TODO
             addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
-            //  }
             if (_settings.enableBranchVisualizations) {
                 _options.showBranchVisualizations = true;
                 setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
@@ -5816,12 +5808,9 @@ if (!phyloXml) {
             && (_currentNodeBorderColorVisualization != MSA_RESIDUE)
             && (_currentNodeShapeVisualization == null || _currentNodeShapeVisualization === DEFAULT)
             && isCanDoMsaResidueVisualizations()) {
-
             _currentNodeShapeVisualization = MSA_RESIDUE;
             $('#' + NODE_SHAPE_SELECT_MENU).val(MSA_RESIDUE);
-            //  if (_showLegends) {
             addLegend(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-            //  }
         }
 
     }
