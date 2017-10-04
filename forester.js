@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_03a1
-// 2017-09-28
+// v 1_03a2
+// 2017-10-023
 
 (function forester() {
 
@@ -32,6 +32,35 @@
     var NH_FORMAT_ERR = 'New Hampshire (Newick) format error: ';
 
     var NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
+
+    var MSA_RESIDUE_SORT_MAP = new Map();
+    MSA_RESIDUE_SORT_MAP.set('A', 0);
+    MSA_RESIDUE_SORT_MAP.set('C', 1);
+    MSA_RESIDUE_SORT_MAP.set('D', 2);
+    MSA_RESIDUE_SORT_MAP.set('E', 3);
+    MSA_RESIDUE_SORT_MAP.set('F', 4);
+    MSA_RESIDUE_SORT_MAP.set('G', 5);
+    MSA_RESIDUE_SORT_MAP.set('H', 6);
+    MSA_RESIDUE_SORT_MAP.set('I', 7);
+    MSA_RESIDUE_SORT_MAP.set('K', 8);
+    MSA_RESIDUE_SORT_MAP.set('L', 9);
+    MSA_RESIDUE_SORT_MAP.set('M', 10);
+    MSA_RESIDUE_SORT_MAP.set('N', 11);
+    MSA_RESIDUE_SORT_MAP.set('P', 12);
+    MSA_RESIDUE_SORT_MAP.set('Q', 13);
+    MSA_RESIDUE_SORT_MAP.set('R', 14);
+    MSA_RESIDUE_SORT_MAP.set('S', 15);
+    MSA_RESIDUE_SORT_MAP.set('T', 16);
+    MSA_RESIDUE_SORT_MAP.set('U', 17);// Uracil
+    MSA_RESIDUE_SORT_MAP.set('V', 18);
+    MSA_RESIDUE_SORT_MAP.set('W', 19);
+    MSA_RESIDUE_SORT_MAP.set('Y', 20);
+    MSA_RESIDUE_SORT_MAP.set('B', 21);// Asparagine or aspartic acid
+    MSA_RESIDUE_SORT_MAP.set('Z', 22);// Glutamine or glutamic acid
+    MSA_RESIDUE_SORT_MAP.set('X', 23);
+    MSA_RESIDUE_SORT_MAP.set('?', 24);
+    MSA_RESIDUE_SORT_MAP.set('-', 25);
+    MSA_RESIDUE_SORT_MAP.set('.', 26);
 
 
     /**
@@ -597,9 +626,10 @@
         properties.alignedMolSeqs = true;
         properties.maxMolSeqLength = 0;
         properties.externalNodesCount = 0;
-
+        properties.molSeqResiduesPerPosition = null;
+        var molSeqs = [];
         forester.preOrderTraversalAll(tree, function (n) {
-            var alignedMolSeq = false;
+            //  var alignedMolSeq = false;
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.name.length > properties.longestNodeName) {
@@ -626,10 +656,15 @@
                 }
                 else {
                     var s = n.sequences[0];
-                    if (s.mol_seq && s.mol_seq.value && s.mol_seq.is_aligned === true) {
-                        alignedMolSeq = true;
+                    if (s.mol_seq && s.mol_seq.value) {
                         if (s.mol_seq.value.length > properties.maxMolSeqLength) {
                             properties.maxMolSeqLength = s.mol_seq.value.length;
+                        }
+                        if (!s.mol_seq.is_aligned) {
+                            properties.alignedMolSeqs = false;
+                        }
+                        else {
+                            molSeqs.push(s.mol_seq.value);
                         }
                     }
                 }
@@ -653,12 +688,32 @@
                     }
                 }
             }
-            if (!(n.children || n._children) && !alignedMolSeq) {
-                properties.alignedMolSeqs = false;
-                properties.maxMolSeqLength = 0;
-            }
+
         });
 
+        if (properties.alignedMolSeqs) {
+            properties.molSeqResiduesPerPosition = [];
+            for (var p = 0, maxLen = properties.maxMolSeqLength; p < maxLen; ++p) {
+                var mySet = new Set();
+                for (var i = 0, seqsLen = molSeqs.length; i < seqsLen; ++i) {
+                    var molSeq = molSeqs[i];
+                    var c = molSeq[p];
+                    if (c) {
+                        c = c.toUpperCase();
+                        mySet.add(c);
+                        if (!MSA_RESIDUE_SORT_MAP.has(c)) {
+                            throw ( "Unknown MSA residue '" + c + "'" );
+                        }
+                    }
+
+                }
+                var myArray = forester.setToArray(mySet);
+                myArray.sort(function (a, b) {
+                    return MSA_RESIDUE_SORT_MAP.get(a) - MSA_RESIDUE_SORT_MAP.get(b);
+                });
+                properties.molSeqResiduesPerPosition.push(myArray);
+            }
+        }
         return properties;
     };
 
