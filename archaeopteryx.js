@@ -14,6 +14,7 @@
  *  Lesser General Public License for more details.
  *
  *  You should have received a copy of the GNU Lesser General Public
+ *
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  *
@@ -140,7 +141,6 @@ if (!phyloXml) {
     var NONE = 'none';
     var OFF_FEATURE = 'off';
     var ORDINAL_SCALE = 'ordinal';
-    var OVERLAY = 'overlay';
     var PDF_EXPORT_FORMAT = 'PDF';
     var PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     var PNG_EXPORT_FORMAT = 'PNG';
@@ -3238,7 +3238,6 @@ if (!phyloXml) {
         _baseSvg = d3.select(id).append('svg')
             .attr('width', _displayWidth)
             .attr('height', _displayHeight)
-            .attr('class', OVERLAY)
             .style('border', function () {
                 if (_settings.border) {
                     return _settings.border;
@@ -3777,7 +3776,7 @@ if (!phyloXml) {
         if (( attrClass !== 'nodeCircleOptions')) {
             removeTooltips();
         }
-        if (attrClass === OVERLAY) {
+        if (attrClass === BASE_BACKGROUND) {
             if (_showColorPicker === true) {
                 removeColorPicker();
             }
