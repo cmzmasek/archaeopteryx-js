@@ -40,7 +40,7 @@
             options.branchDataFontSize = 6;
             options.branchWidthDefault = 1;
             options.collapasedLabelLength = 7;
-            options.defaultFont = ['Georgia', 'Times'];
+            options.defaultFont = ['Arial', 'Helvetica', 'Times'];
             options.dynahide = true;
             options.externalNodeFontSize = 10;
             options.found0and1ColorDefault = '#0000ff';
@@ -101,7 +101,8 @@
             settings.rootOffset = 180;
 
             //var loc = 'test/data/phyloxml_trees/phyloWithConfidences.xml';
-            var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/phyloWithConfidences.xml';
+            //var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/phyloWithConfidences.xml';
+            var loc = 'test/data/phyloxml_trees/dna_pol.xml';
 
             jQuery.get(loc,
                     function (data) {

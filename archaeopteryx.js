@@ -67,16 +67,16 @@ if (!phyloXml) {
     var BRANCH_WIDTH_DEFAULT = 1;
     var COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
     var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 10;
-    var FONT_DEFAULTS = ['Verdana', 'Arial', 'Helvetica', 'Tahoma', 'Sans-Serif'];
+    var FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     var FOUND0_COLOR_DEFAULT = '#66cc00';
     var FOUND0AND1_COLOR_DEFAULT = '#0000ee';
     var FOUND1_COLOR_DEFAULT = '#ff00ff';
     var INTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
     var LABEL_COLOR_DEFAULT = '#202020';
-    var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx-js.nh';
-    var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx-js.xml';
-    var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.png';
-    var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx-js.svg';
+    var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js.nh';
+    var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js.xml';
+    var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js.png';
+    var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js.svg';
     var NODE_LABEL_GAP_DEFAULT = 10;
     var NODE_SIZE_DEFAULT_DEFAULT = 3;
     var NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
@@ -92,7 +92,7 @@ if (!phyloXml) {
     var CONTROLS_1_TOP_DEFAULT = 20;
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
-    var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Tahoma', 'Sans-Serif'];
+    var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     var CONTROLS_FONT_SIZE_DEFAULT = 9;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
@@ -153,6 +153,7 @@ if (!phyloXml) {
     var SPECIATION_COLOR = '#00ff00';
     var SPECIES_FEATURE = 'Species';
     var SVG_EXPORT_FORMAT = 'SVG';
+    var TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
     var ZOOM_INTERVAL = 200;
@@ -376,13 +377,15 @@ if (!phyloXml) {
         }
     }
 
-    function centerNode(source, x) {
+    function centerNode(source, x, y) {
         var scale = _zoomListener.scale();
         if (!x) {
             x = -source.y0;
             x = x * scale + _displayWidth / 2;
         }
-        var y = 0;
+        if (!y) {
+            y = 0;
+        }
         d3.select('g')
             .attr('transform', 'translate(' + x + ',' + y + ')scale(' + scale + ')');
         _zoomListener.scale(scale);
@@ -1681,7 +1684,7 @@ if (!phyloXml) {
             }
         }
 
-        _treeFn = _treeFn.size([_displayHeight, _w]);
+        _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT), _w]);
 
         _treeFn = _treeFn.separation(function separation(a, b) {
             return a.parent == b.parent ? 1 : 1;
@@ -1739,13 +1742,13 @@ if (!phyloXml) {
 
         nodeEnter.append('circle')
             .attr('class', 'nodeCircle')
-            .attr("r", 0);
+            .attr('r', 0);
 
         nodeEnter.append('circle')
             .style('cursor', 'pointer')
             .style('opacity', '0')
             .attr('class', 'nodeCircleOptions')
-            .attr("r", function (d) {
+            .attr('r', function (d) {
                 if (d.parent) {
                     return 5;
                 }
@@ -3267,7 +3270,7 @@ if (!phyloXml) {
 
         update(null, 0);
 
-        centerNode(_root, _settings.rootOffset);
+        centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
     };
 
     archaeopteryx.parsePhyloXML = function (data) {
@@ -3840,7 +3843,7 @@ if (!phyloXml) {
             removeColorPicker();
             _zoomListener.scale(1);
             update(_root, 0);
-            centerNode(_root, _settings.rootOffset);
+            centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
         }
     }
 
@@ -5489,7 +5492,10 @@ if (!phyloXml) {
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _options.shortenNodeNames);
         initializeVisualizationMenu();
         initializeSearchOptions();
+        makeBackgorund();
+    }
 
+    function makeBackgorund() {
         _baseSvg.append('rect')
             .attr('width', '100%')
             .attr('height', '100%')
@@ -5497,6 +5503,7 @@ if (!phyloXml) {
             .attr('class', BASE_BACKGROUND)
             .attr('fill', _options.backgroundColorDefault);
     }
+
 
     function initializeVisualizationMenu() {
 
