@@ -1,6 +1,6 @@
 /**
- *  Copyright (C) 2016 Christian M. Zmasek
- *  Copyright (C) 2016 J. Craig Venter Institute
+ *  Copyright (C) 2017 Christian M. Zmasek
+ *  Copyright (C) 2017 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
