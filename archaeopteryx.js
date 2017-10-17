@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03a5
-// 2017-10-11
+// v 1_03a6
+// 2017-10-17
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03a5';
+    var VERSION = '1.03a6';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -57,13 +57,21 @@ if (!phyloXml) {
     var HORIZONTAL = 'horizontal';
     var VERTICAL = 'vertical';
 
+    // ------------------------------
+    // File suffixes
+    // ------------------------------
+    var NH_SUFFIX = '.tre';
+    var PNG_SUFFIX = '.png';
+    var SVG_SUFFIX = '.svg';
+    var XML_SUFFIX = '.xml';
+
     // ---------------------------
     // Default values for options
     // ---------------------------
     var BACKGROUND_COLOR_DEFAULT = '#f0f0f0';
     var BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT = '#ffffff';
-    var BRANCH_COLOR_DEFAULT = '#aaaaaa';
-    var BRANCH_DATA_FONT_SIZE_DEFAULT = 7;
+    var BRANCH_COLOR_DEFAULT = '#909090';
+    var BRANCH_DATA_FONT_SIZE_DEFAULT = 6;
     var BRANCH_WIDTH_DEFAULT = 1;
     var COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
     var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 10;
@@ -71,12 +79,12 @@ if (!phyloXml) {
     var FOUND0_COLOR_DEFAULT = '#66cc00';
     var FOUND0AND1_COLOR_DEFAULT = '#0000ee';
     var FOUND1_COLOR_DEFAULT = '#ff00ff';
-    var INTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
+    var INTERNAL_NODE_FONT_SIZE_DEFAULT = 6;
     var LABEL_COLOR_DEFAULT = '#202020';
-    var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js.nh';
-    var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js.xml';
-    var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js.png';
-    var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js.svg';
+    var NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
+    var NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
+    var NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
+    var NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + SVG_SUFFIX;
     var NODE_LABEL_GAP_DEFAULT = 10;
     var NODE_SIZE_DEFAULT_DEFAULT = 3;
     var NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
@@ -90,14 +98,15 @@ if (!phyloXml) {
     var CONTROLS_0_LEFT_DEFAULT = 20;
     var CONTROLS_0_TOP_DEFAULT = 20;
     var CONTROLS_1_TOP_DEFAULT = 20;
+    var CONTROLS_1_WIDTH_DEFAULT = 160;
     var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
-    var CONTROLS_FONT_SIZE_DEFAULT = 9;
+    var CONTROLS_FONT_SIZE_DEFAULT = 8;
+    var DISPLY_HEIGHT_DEFAULT = 600;
     var DISPLAY_WIDTH_DEFAULT = 800;
-    var RECENTER_AFTER_COLLAPSE_DEFAULT = false;
     var ROOTOFFSET_DEFAULT = 180;
-    var VIEWERHEIGHT_DEFAULT = 600;
+
 
     // ------------------------------
     // Various constants and settings
@@ -116,7 +125,6 @@ if (!phyloXml) {
     var COLOR_PICKER_BACKGROUND_BORDER_COLOR = '#808080';
     var COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
     var CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
-    var CONTROLS_1_WIDTH = 120;
     var DEFAULT = 'default';
     var DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
     var DUPLICATION_COLOR = '#ff0000';
@@ -2659,6 +2667,10 @@ if (!phyloXml) {
         if (!_options.showInternalLabels && ( phynode.children || phynode._children)) {
             return null;
         }
+        if (!phynode.parent) {
+            // Do not show root data
+            return null;
+        }
 
         var l = "";
         if (_options.showNodeName && phynode.name) {
@@ -2919,10 +2931,10 @@ if (!phyloXml) {
             _options.showTaxonomy = false;
         }
         if (_options.showTaxonomyCode === undefined) {
-            _options.showTaxonomyCode = true;
+            _options.showTaxonomyCode = false;
         }
         if (_options.showTaxonomyScientificName === undefined) {
-            _options.showTaxonomyScientificName = true;
+            _options.showTaxonomyScientificName = false;
         }
         if (_options.showTaxonomyCommonName === undefined) {
             _options.showTaxonomyCommonName = false;
@@ -2937,10 +2949,10 @@ if (!phyloXml) {
             _options.showSequence = false;
         }
         if (_options.showSequenceSymbol === undefined) {
-            _options.showSequenceSymbol = true;
+            _options.showSequenceSymbol = false;
         }
         if (_options.showSequenceName === undefined) {
-            _options.showSequenceName = true;
+            _options.showSequenceName = false;
         }
         if (_options.showSequenceGeneSymbol === undefined) {
             _options.showSequenceGeneSymbol = false;
@@ -3042,17 +3054,46 @@ if (!phyloXml) {
         if (_options.nodeVisualizationsOpacity === undefined) {
             _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
         }
+        if (_options.treeName) {
+            _options.treeName = _options.treeName.trim().replace(/\W+/g, '_');
+        }
+        else if (_treeData.name) {
+            _options.treeName = _treeData.name.trim().replace(/\W+/g, '_');
+        }
+        else {
+            _options.treeName = null;
+        }
         if (!_options.nameForNhDownload) {
-            _options.nameForNhDownload = NAME_FOR_NH_DOWNLOAD_DEFAULT;
+            if (_options.treeName) {
+                _options.nameForNhDownload = _options.treeName + NH_SUFFIX;
+            }
+            else {
+                _options.nameForNhDownload = NAME_FOR_NH_DOWNLOAD_DEFAULT;
+            }
         }
         if (!_options.nameForPhyloXmlDownload) {
-            _options.nameForPhyloXmlDownload = NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
+            if (_options.treeName) {
+                _options.nameForPhyloXmlDownload = _options.treeName + XML_SUFFIX;
+            }
+            else {
+                _options.nameForPhyloXmlDownload = NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
+            }
         }
         if (!_options.nameForPngDownload) {
-            _options.nameForPngDownload = NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+            if (_options.treeName) {
+                _options.nameForPngDownload = _options.treeName + PNG_SUFFIX;
+            }
+            else {
+                _options.nameForPngDownload = NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+            }
         }
         if (!_options.nameForSvgDownload) {
-            _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
+            if (_options.treeName) {
+                _options.nameForSvgDownload = _options.treeName + SVG_SUFFIX;
+            }
+            else {
+                _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
+            }
         }
         if (!_options.visualizationsLegendXpos) {
             _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
@@ -3073,6 +3114,10 @@ if (!phyloXml) {
 
     function initializeSettings(settings) {
         _settings = settings ? settings : {};
+
+        if (!_settings.controls1Width) {
+            _settings.controls1Width = CONTROLS_1_WIDTH_DEFAULT;
+        }
         if (!_settings.rootOffset) {
             _settings.rootOffset = ROOTOFFSET_DEFAULT;
         }
@@ -3080,10 +3125,7 @@ if (!phyloXml) {
             _settings.displayWidth = DISPLAY_WIDTH_DEFAULT;
         }
         if (!_settings.displayHeight) {
-            _settings.displayHeight = VIEWERHEIGHT_DEFAULT;
-        }
-        if (!_settings.reCenterAfterCollapse) {
-            _settings.reCenterAfterCollapse = RECENTER_AFTER_COLLAPSE_DEFAULT;
+            _settings.displayHeight = DISPLY_HEIGHT_DEFAULT;
         }
         if (!_settings.controlsFontSize) {
             _settings.controlsFontSize = CONTROLS_FONT_SIZE_DEFAULT;
@@ -3113,7 +3155,7 @@ if (!phyloXml) {
             _settings.controls1 = CONTROLS_1;
         }
         if (!_settings.controls1Left) {
-            _settings.controls1Left = _settings.displayWidth - CONTROLS_1_WIDTH;
+            _settings.controls1Left = _settings.displayWidth - _settings.controls1Width;
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = false;
@@ -3208,8 +3250,7 @@ if (!phyloXml) {
 
         if (settings.enableNodeVisualizations) {
             if ((_basicTreeProperties.alignedMolSeqs === true )
-                && ( _basicTreeProperties.maxMolSeqLength && _basicTreeProperties.maxMolSeqLength > 1 )
-            ) {
+                && ( _basicTreeProperties.maxMolSeqLength && _basicTreeProperties.maxMolSeqLength > 1 )) {
                 if (_nodeVisualizations == null) {
                     _nodeVisualizations = {};
                 }
@@ -3269,8 +3310,7 @@ if (!phyloXml) {
         _svgGroup = _baseSvg.append('g');
 
         update(null, 0);
-
-        centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+        zoomToFit();
     };
 
     archaeopteryx.parsePhyloXML = function (data) {
@@ -3487,7 +3527,7 @@ if (!phyloXml) {
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
-                        zoomFit();
+                        zoomToFit();
                     }
                     else if (node.parent.parent) {
                         _superTreeRoots.push(_root);
@@ -3506,7 +3546,7 @@ if (!phyloXml) {
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
-                        zoomFit();
+                        zoomToFit();
                     }
                 }
             }
@@ -3751,7 +3791,7 @@ if (!phyloXml) {
                     resetBranchLengthCollapseValue();
                     resetCollapseByFeature();
                     unCollapseAll(_root);
-                    zoomFit();
+                    zoomToFit();
                 });
 
             d3.selection.prototype.moveToFront = function () {
@@ -3835,7 +3875,7 @@ if (!phyloXml) {
         update(null, 0);
     }
 
-    function zoomFit() {
+    function zoomToFit() {
         if (_root) {
             calcMaxExtLabel();
             intitializeDisplaySize();
@@ -3853,7 +3893,7 @@ if (!phyloXml) {
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
-            zoomFit();
+            zoomToFit();
         }
     }
 
@@ -3878,7 +3918,7 @@ if (!phyloXml) {
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
             resetCollapseByFeature();
-            zoomFit();
+            zoomToFit();
         }
     }
 
@@ -3886,7 +3926,7 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
             legendReset();
         }
-        zoomFit();
+        zoomToFit();
         var c0 = $('#' + _settings.controls0);
         if (c0) {
             c0.css({
@@ -4363,8 +4403,9 @@ if (!phyloXml) {
                 'left': _settings.controls0Left,
                 'top': _settings.controls0Top + _offsetTop,
                 'text-align': 'left',
-                'padding': '0.1em',
-                'opacity': '0.85',
+                'padding': '0px',
+                'margin': '0 0 0 0',
+                'opacity': 0.80,
                 'background-color': _settings.controlsBackgroundColor,
                 'color': _settings.controlsFontColor,
                 'font-size': _settings.controlsFontSize,
@@ -4471,8 +4512,9 @@ if (!phyloXml) {
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top + _offsetTop,
                 'text-align': 'left',
-                'padding': '0.1em',
-                'opacity': '0.85',
+                'padding': '0px',
+                'margin': '0 0 0 0',
+                'opacity': 0.80,
                 'background-color': _settings.controlsBackgroundColor,
                 'color': _settings.controlsFontColor,
                 'font-size': _settings.controlsFontSize,
@@ -4834,7 +4876,7 @@ if (!phyloXml) {
             clearTimeout(_intervalId);
         });
 
-        $('#' + ZOOM_TO_FIT).mousedown(zoomFit);
+        $('#' + ZOOM_TO_FIT).mousedown(zoomToFit);
 
         $('#' + RETURN_TO_SUPERTREE_BUTTON).mousedown(returnToSupertreeButtonPressed);
 
@@ -5050,7 +5092,7 @@ if (!phyloXml) {
                 }
                 else if (e.keyCode === VK_C || e.keyCode === VK_DELETE
                     || e.keyCode === VK_BACKSPACE || e.keyCode === VK_HOME) {
-                    zoomFit();
+                    zoomToFit();
                 }
                 else if (e.keyCode === VK_P) {
                     cycleDisplay();
@@ -5070,7 +5112,7 @@ if (!phyloXml) {
                 }
             }
             else if (e.keyCode === VK_HOME) {
-                zoomFit();
+                zoomToFit();
             }
             else if (e.keyCode === VK_ESC) {
                 escPressed();
