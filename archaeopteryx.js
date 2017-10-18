@@ -21,7 +21,7 @@
  */
 
 // v 1_03a6
-// 2017-10-17
+// 2017-10-18
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -1764,49 +1764,33 @@ if (!phyloXml) {
             });
 
         nodeEnter.append('text')
-            .attr('class', "extlabel")
+            .attr('class', 'extlabel')
             .attr('text-anchor', function (d) {
                 return d.children || d._children ? "end" : "start";
             })
             .style('font-family', _options.defaultFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none')
             .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
-            .attr('class', "bllabel")
+            .attr('class', 'bllabel')
             .style('font-family', _options.defaultFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none')
             .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
-            .attr('class', "conflabel")
+            .attr('class', 'conflabel')
             .attr('text-anchor', 'middle')
-            .style('font-family', _options.defaultFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
+            .style('font-family', _options.defaultFont);
 
         nodeEnter.append('text')
-            .attr('class', "brancheventlabel")
-            .attr('text-anchor', 'middle')
-            .style('font-family', _options.defaultFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
+            .attr('class', 'brancheventlabel')
+            .attr('text-anchor', 'middle');
 
         nodeEnter.append('text')
             .attr('class', 'collapsedText')
             .attr('dy', function (d) {
                 return 0.3 * _options.externalNodeFontSize + 'px';
             })
-            .style('font-family', _options.defaultFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
+            .style('font-family', _options.defaultFont);
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
@@ -2091,7 +2075,6 @@ if (!phyloXml) {
     };
 
     var makeBranchColor = function (link) {
-
 
         var n = link.target;
         if (_options.showBranchVisualizations && n) {
@@ -4394,6 +4377,13 @@ if (!phyloXml) {
             }
         }
 
+        var containter = $('#' + _id.replace('#', ''));
+
+        containter.css({
+            'font-style': 'normal',
+            'font-weight': 'normal',
+            'text-decoration': 'none'
+        });
 
         var c0 = $('#' + _settings.controls0);
 
@@ -4528,7 +4518,7 @@ if (!phyloXml) {
 
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
                 c1.append(makeVisualControls());
-                if (_settings.enableMsaResidueVisualizations) {
+                if (isCanDoMsaResidueVisualizations()) {
                     c1.append(makeMsaResidueVisCurrResPositionControl());
                 }
                 c1.append(makeLegendControl());

@@ -26,15 +26,12 @@
 
         function load() {
             var options = {};
-            options.backgroundColorDefault = '#f0f0f0';
-            options.dynahide = true;
+            options.showTaxonomyCode = true;
 
             var settings = {};
             settings.displayHeight = 600;
             settings.displayWidth = 800;
-            settings.showDynahideButton = true;
 
-            //var loc = 'test/data/phyloxml_trees/apaf.xml';
             var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/apaf.xml';
 
             jQuery.get(loc,

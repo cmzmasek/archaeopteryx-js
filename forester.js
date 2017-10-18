@@ -20,7 +20,7 @@
  */
 
 // v 1_03a6
-// 2017-10-17
+// 2017-10-18
 
 (function forester() {
 
@@ -629,13 +629,12 @@
         properties.molSeqResiduesPerPosition = null;
         var molSeqs = [];
         forester.preOrderTraversalAll(tree, function (n) {
-            //  var alignedMolSeq = false;
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.name.length > properties.longestNodeName) {
                     properties.longestNodeName = n.name.length;
                 }
-                if (n.children || n._children) {
+                if ((n.children || n._children) && ( n.parent )) {
                     properties.internalNodeData = true;
                 }
             }
