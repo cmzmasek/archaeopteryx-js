@@ -46,12 +46,13 @@
             options.defaultFont = ['Arial', 'Helvetica', 'Times'];
             options.minBranchLengthValueToShow = 0.001;
             options.phylogram = true; // We should launch with "regular" phylogram.
+            //options.showBranchVisualizations = true; // For MSA residue visualization.
             options.showConfidenceValues = true;
             options.showExternalLabels = true;
             options.showNodeName = true;
             options.showNodeVisualizations = true;
             options.showSequence = false; // Do not show "Sequence" upon launch.
-            options.showSequenceAccession = true;
+            options.showSequenceAccession = true; // If user turns on "Sequence" display, accession will be shown.
             options.showVisualizationsLegend = true;
             options.visualizationsLegendOrientation = 'vertical';
             options.visualizationsLegendXpos = 160;
@@ -63,11 +64,13 @@
             settings.controls1Top = 10; // Should have both boxes in line.
             settings.displayHeight = 700;
             settings.displayWidth = 1200;
-            settings.enableDownloads = true;
+            //settings.enableBranchVisualizations = true; // For MSA residue visualization.
             settings.enableCollapseByFeature = true;
+            settings.enableDownloads = true;
+            //settings.enableMsaResidueVisualizations = true; // For MSA residue visualization.
             settings.enableNodeVisualizations = true;
             settings.nhExportWriteConfidences = true;
-            settings.readSimpleCharacteristics = true; // To be deprecated
+            settings.readSimpleCharacteristics = true; // To be deprecated!
 
             var decoratorSetter = 'influenza';
             var decorator;
@@ -256,7 +259,6 @@
                 colors: 'category20',
                 sizes: null
             };
-
 
             var loc = '../test/data/phyloxml_trees/t.xml';
 

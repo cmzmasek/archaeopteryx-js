@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03a6
-// 2017-10-18
+// v 1_03b1
+// 2017-10-19
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03a6';
+    var VERSION = '1.03b1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -74,7 +74,7 @@ if (!phyloXml) {
     var BRANCH_DATA_FONT_SIZE_DEFAULT = 6;
     var BRANCH_WIDTH_DEFAULT = 1;
     var COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
-    var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 10;
+    var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
     var FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     var FOUND0_COLOR_DEFAULT = '#66cc00';
     var FOUND0AND1_COLOR_DEFAULT = '#0000ee';
@@ -3232,7 +3232,7 @@ if (!phyloXml) {
         initializeSettings(settings);
 
         if (settings.enableNodeVisualizations) {
-            if ((_basicTreeProperties.alignedMolSeqs === true )
+            if (settings.enableMsaResidueVisualizations && (_basicTreeProperties.alignedMolSeqs === true )
                 && ( _basicTreeProperties.maxMolSeqLength && _basicTreeProperties.maxMolSeqLength > 1 )) {
                 if (_nodeVisualizations == null) {
                     _nodeVisualizations = {};
