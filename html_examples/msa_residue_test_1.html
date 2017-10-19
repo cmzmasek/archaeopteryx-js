@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <title>Archaeopteryx.js Demo</title>
+    <title>Archaeopteryx.js Demo 1.00</title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -23,8 +23,8 @@
 
     <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
     <script src="http://www.phyloxml.org/js/phyloxml_0_912.js"></script>
-    <script src="forester.js"></script>
-    <script src="archaeopteryx.js"></script>
+    <script src="../forester.js"></script>
+    <script src="../archaeopteryx.js"></script>
 
     <!-- CSS for jQuery UI: -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
@@ -38,8 +38,10 @@
             options.phylogram = true;
             options.showExternalLabels = true;
             options.showNodeName = true;
+            options.showNodeVisualizations = true;
             options.showSequence = false;
-            options.showSequenceAccession = true;
+            options.showSequenceName = true;
+            options.showVisualizationsLegend = true;
             options.visualizationsLegendOrientation = 'vertical';
             options.visualizationsLegendXpos = 160;
             options.visualizationsLegendYpos = 30;
@@ -51,13 +53,13 @@
             settings.displayHeight = 700;
             settings.displayWidth = 800;
             settings.enableDownloads = true;
+            settings.enableMsaResidueVisualizations = true;
             settings.enableCollapseByFeature = true;
+            settings.enableNodeVisualizations = true;
             settings.nhExportWriteConfidences = true;
-            settings.readSimpleCharacteristics = true; // To be deprecated
 
-            //var loc = 'test/data/phyloxml_trees/phyloWithConfidences.xml';
-            //var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/phyloWithConfidences.xml';
-            var loc = 'test/data/phyloxml_trees/dna_pol.xml';
+            var loc = '../test/data/phyloxml_trees/bunya_glyco.xml';
+            //var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/seq_feat_1.xml';
 
             jQuery.get(loc,
                     function (data) {
@@ -84,15 +86,17 @@
         }
     </script>
 
-
 </head>
 <body onload="load()">
-
 <div>
-    <h2>Archaeopteryx.js Demo: v 1_00</h2>
+    <style type="text/css">
+        h2 {
+            text-align: center;
+        }
+    </style>
+    <h2>Archaeopteryx.js MSA Residue Visualization Test: Bunya Glycoprotein</h2>
     <div id='phylogram1'></div>
     <div id='controls0' class='ui-widget-content'></div>
+    <div id='controls1' class='ui-widget-content'></div>
 </div>
-
-
 </body>

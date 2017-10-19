@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <title>Archaeopteryx.js Basic Demo</title>
+
+    <!-- For MS IE/Edge compatibility:-->
+    <meta http-equiv="X-UA-Compatible" content="IE=100">
+
+    <!-- D3.js, jQuery, and jQuery UI:-->
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+    <!-- SAX XML parser:-->
+    <script src="http://www.phyloxml.org/js/dependencies/sax.js"></script>
+
+    <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
+    <script src="http://www.phyloxml.org/js/phyloxml_0_912.js"></script>
+    <script src="../forester.js"></script>
+    <script src="../archaeopteryx.js"></script>
+
+    <!-- CSS for jQuery UI: -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+
+    <script>
+
+        function load() {
+            var optionsA = {};
+            optionsA.backgroundColorDefault = '#f0f0f0';
+            var optionsB = {};
+            optionsB.backgroundColorDefault = '#f0f0f0';
+
+            var settingsA = {};
+            settingsA.controls0 = 'controls0A';
+            settingsA.displayHeight = 400;
+            settingsA.displayWidth = 400;
+
+            var settingsB = {};
+            settingsB.controls0 = 'controls0B';
+            settingsB.displayHeight = 300;
+            settingsB.displayWidth = 300;
+
+            var locA = 'test/data/phyloxml_trees/apaf.xml';
+            var locB = 'test/data/phyloxml_trees/b.xml';
+            jQuery.get(locA,
+                    function (data) {
+                        var treeA = null;
+
+                        try {
+                            treeA = archaeopteryx.parseTree(locA, data);
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (treeA) {
+                            try {
+                                archaeopteryx.launch('#phylogramA', treeA, optionsA, settingsA);
+
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
+                    },
+                    "text")
+                    .fail(function () {
+                                alert("error: failed to read tree(s) from \"" + loc + "\"");
+                            }
+                    );
+
+
+            jQuery.get(locB,
+                    function (data) {
+
+                        var treeB = null;
+                        try {
+
+                            treeB = archaeopteryx.parseTree(locB, data);
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (treeB) {
+                            try {
+
+                                archaeopteryx.launch('#phylogramB', treeB, optionsB, settingsB);
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
+                    },
+                    "text")
+                    .fail(function () {
+                                alert("error: failed to read tree(s) from \"" + loc + "\"");
+                            }
+                    );
+
+
+        }
+    </script>
+
+</head>
+
+<body onload="load()">
+
+<table>
+    <tr>
+        <td>
+            <div>
+                <h2>Archaeopteryx.js A</h2>
+                <div id='phylogramA'></div>
+                <div id='controls0A' class='ui-widget-content'></div>
+            </div>
+        </td>
+        <td>
+            <div>
+                <h2>Archaeopteryx.js B</h2>
+
+
+                <div id='phylogramB'></div>
+                <div id='controls0B' class='ui-widget-content'></div>
+            </div>
+        </td>
+    </tr>
+</table>
+</body>

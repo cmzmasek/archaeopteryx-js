@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <head>
-    <title>Archaeopteryx.js Demo</title>
+    <title>Archaeopteryx.js Demo 1.00</title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -23,8 +23,8 @@
 
     <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
     <script src="http://www.phyloxml.org/js/phyloxml_0_912.js"></script>
-    <script src="forester.js"></script>
-    <script src="archaeopteryx.js"></script>
+    <script src="../forester.js"></script>
+    <script src="../archaeopteryx.js"></script>
 
     <!-- CSS for jQuery UI: -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
@@ -34,70 +34,36 @@
         function load() {
 
             var options = {};
-            options.alignPhylogram = true;
-            options.backgroundColorDefault = '#000000';
-            options.branchColorDefault = '#ffffff';
-            options.branchDataFontSize = 6;
-            options.branchWidthDefault = 1;
-            options.collapasedLabelLength = 7;
-            options.defaultFont = ['Times'];
-            options.externalNodeFontSize = 9;
-            options.found0and1ColorDefault = '#ff00ff';
-            options.found0ColorDefault = '#00ffff';
-            options.found1ColorDefault = '#0000ff';
-            options.internalNodeFontSize = 6;
-            options.labelColorDefault = '#00ee00';
-            options.minBranchLengthValueToShow = 0.01;
-            options.minConfidenceValueToShow = 0.5;
-            options.nodeSizeDefault = 2;
-            options.nodeVisualizationsOpacity = 1.0;
+            options.minBranchLengthValueToShow = 0.001;
             options.phylogram = true;
-            options.searchIsCaseSensitive = false;
-            options.searchIsPartial = true;
-            options.searchUsesRegex = false;
-            options.showBranchEvents = true;
-            options.showBranchLengthValues = false;
-            options.showConfidenceValues = true;
-            options.showDistributions = true;
             options.showExternalLabels = true;
-            options.showExternalNodes = false;
-            options.showInternalLabels = true;
-            options.showInternalNodes = false;
-            options.showNodeEvents = true;
             options.showNodeName = true;
-            options.showSequence = true;
+            options.showNodeVisualizations = true;
+            options.showSequence = false;
             options.showSequenceAccession = true;
-            options.showSequenceGeneSymbol = true;
-            options.showSequenceName = true;
-            options.showSequenceSymbol = true;
-            options.showTaxonomy = true;
-            options.showTaxonomyCode = false;
-            options.showTaxonomyCommonName = true;
-            options.showTaxonomyRank = true;
-            options.showTaxonomyScientificName = true;
-            options.showTaxonomySynonyms = false;
+            options.showVisualizationsLegend = true;
+            options.visualizationsLegendOrientation = 'vertical';
+            options.visualizationsLegendXpos = 160;
+            options.visualizationsLegendYpos = 30;
 
             var settings = {};
-            settings.border = '1px solid #00ff00';
+            settings.border = '1px solid #909090';
             settings.controls0Top = 10;
             settings.controls1Top = 10;
-            settings.controlsBackgroundColor = '#e0e0e0';
-            settings.controlsFontColor = '#505050';
-            settings.controlsFontSize = 9;
-            settings.displayHeight = 800;
-            settings.displayWidth = 1200;
+            settings.displayHeight = 700;
+            settings.displayWidth = 800;
             settings.enableDownloads = true;
-            settings.enableBranchVisualizations = false;
-            settings.enableCollapseByBranchLenghts = true;
+            settings.enableMsaResidueVisualizations = true;
             settings.enableCollapseByFeature = true;
             settings.enableNodeVisualizations = true;
-            settings.nhExportReplaceIllegalChars = false;
             settings.nhExportWriteConfidences = true;
-            settings.reCenterAfterCollapse = false;
-            settings.rootOffset = 180;
-            settings.showDynahideButton = true;
+            settings.readSimpleCharacteristics = true; // To be deprecated
 
-            var decorator = 'ird:';
+            //--------------------------------------
+            //REMOVE ME -> For CZ's testing only(!):
+            decorator = 'ird:';
+            //decorator = 'vipr:';
+            //-------------------------------------
 
             var nodeVisualizations = {};
 
@@ -234,23 +200,30 @@
                 sizes: null
             };
 
-            //  var loc = 'test/data/phyloxml_trees/bcl_2_vis2.xml';
-            var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/bcl_2_vis2.xml';
+            var loc = '../test/data/phyloxml_trees/msa_pos_1.xml';
+            //var loc = '../test/data/phyloxml_trees/t.xml';
 
             jQuery.get(loc,
                     function (data) {
-                        archaeopteryx.launchArchaeopteryx('#phylogram1',
-                                loc,
-                                data,
-                                options,
-                                settings,
-                                true,
-                                false,
-                                nodeVisualizations)
+                        var tree = null;
+                        try {
+                            tree = archaeopteryx.parseTree(loc, data, true, false);
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (tree) {
+                            try {
+                                archaeopteryx.launch('#phylogram1', tree, options, settings, nodeVisualizations);
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
                     },
-                    'text')
+                    "text")
                     .fail(function () {
-                        alert('error: failed to read tree(s) from "' + loc + '"');
+                        alert("error: failed to read tree(s) from \"" + loc + "\"");
                     });
         }
     </script>
@@ -258,13 +231,22 @@
 
 </head>
 <body onload="load()">
-
 <div>
-    <h2>Archaeopteryx.js Demo: v1.03</h2>
-    <div id='phylogram1'></div>
-    <div id='controls0' class='ui-widget-content'></div>
-    <div id='controls1' class='ui-widget-content'></div>
-</div>
+    <style type="text/css">
+        h2 {
+            text-align: center;
+        }
+    </style>
+    <h2>Archaeopteryx.js MSA Residue Visualization Test</h2>
 
+
+    <div id='phylogram1'></div>
+
+    <div id='controls0' class='ui-widget-content'></div>
+
+
+    <div id='controls1' class='ui-widget-content'></div>
+
+</div>
 
 </body>

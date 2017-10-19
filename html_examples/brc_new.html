@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+
+<script type="text/javascript">
+    if (typeof jQuery != 'undefined') {
+        // make sure the jQuery will work with prototype
+        // to call function$ in jQuery use jQuery instead
+        jQuery.noConflict();
+    }
+</script>
+
 <head>
-    <title>Archaeopteryx.js Demo</title>
+    <title><title>Archaeopteryx Phylogenetic Tree Viewer</title></title>
 
     <!-- For MS IE/Edge compatibility:-->
     <meta http-equiv="X-UA-Compatible" content="IE=100">
@@ -23,24 +32,25 @@
 
     <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
     <script src="http://www.phyloxml.org/js/phyloxml_0_912.js"></script>
-    <script src="forester.js"></script>
-    <script src="archaeopteryx.js"></script>
+    <script src="../forester.js"></script>
+    <script src="../archaeopteryx.js"></script>
 
     <!-- CSS for jQuery UI: -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
 
     <script>
-
         function load() {
 
             var options = {};
+            options.alignPhylogram = false; // We should launch with "regular" phylogram.
+            options.defaultFont = ['Arial', 'Helvetica', 'Times'];
             options.minBranchLengthValueToShow = 0.001;
-            options.phylogram = true;
+            options.phylogram = true; // We should launch with "regular" phylogram.
             options.showConfidenceValues = true;
             options.showExternalLabels = true;
             options.showNodeName = true;
             options.showNodeVisualizations = true;
-            options.showSequence = false;
+            options.showSequence = false; // Do not show "Sequence" upon launch.
             options.showSequenceAccession = true;
             options.showVisualizationsLegend = true;
             options.visualizationsLegendOrientation = 'vertical';
@@ -50,17 +60,16 @@
             var settings = {};
             settings.border = '1px solid #909090';
             settings.controls0Top = 10;
-            settings.controls1Top = 10;
-            settings.displayHeight = 600;
-            settings.displayWidth = 1000;
+            settings.controls1Top = 10; // Should have both boxes in line.
+            settings.displayHeight = 700;
+            settings.displayWidth = 1200;
             settings.enableDownloads = true;
-            settings.enableMsaResidueVisualizations = true;
             settings.enableCollapseByFeature = true;
             settings.enableNodeVisualizations = true;
             settings.nhExportWriteConfidences = true;
             settings.readSimpleCharacteristics = true; // To be deprecated
 
-            var decoratorSetter = '${param.decorator}';
+            var decoratorSetter = 'influenza';
             var decorator;
             if (decoratorSetter == 'influenza') {
                 decorator = 'ird:';
@@ -68,12 +77,6 @@
             else {
                 decorator = 'vipr:';
             }
-
-            //--------------------------------------
-            //REMOVE ME -> For CZ's testing only(!):
-            decorator = 'ird:';
-            //decorator = 'vipr:';
-            //-------------------------------------
 
             var nodeVisualizations = {};
 
@@ -99,16 +102,27 @@
                 sizes: null
             };
 
+            nodeVisualizations['USAState'] = {
+                label: 'USA State',
+                description: 'the state the virus is from',
+                field: null,
+                cladeRef: decorator + 'USAState',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20c',
+                sizes: null
+            };
+
             nodeVisualizations['Year'] = {
                 label: 'Year',
-                description: 'the year of the virus',
+                description: 'the year',
                 field: null,
                 cladeRef: decorator + 'Year',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
-                colorsAlt: ['#FF0000', '#000000', '#00FF00'],
-                sizes: [20, 60]
+                colorsAlt: ['#000000', '#00FF00'],
+                sizes: [10, 40]
             };
 
             nodeVisualizations['Region'] = {
@@ -133,11 +147,44 @@
                 sizes: null
             };
 
+            nodeVisualizations['Clade'] = {
+                label: 'Clade',
+                description: 'the Clade',
+                field: null,
+                cladeRef: decorator + 'Clade',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+
             nodeVisualizations['H5 Clade'] = {
                 label: 'H5 Clade',
-                description: 'the H5 clade',
+                description: 'The H5 clade',
                 field: null,
                 cladeRef: decorator + 'H5Clade',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+
+            nodeVisualizations['US Swine H1 Clade'] = {
+                label: 'US Swine H1 Clade',
+                description: 'The US Swine H1 clade',
+                field: null,
+                cladeRef: decorator + 'H1Clade',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category20',
+                sizes: null
+            };
+
+            nodeVisualizations['Global Swine H1 Clade'] = {
+                label: 'Global Swine H1 Clade',
+                description: 'The Global Swine H1 clade',
+                field: null,
+                cladeRef: decorator + 'GlobalH1Clade',
                 regex: false,
                 shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
                 colors: 'category20',
@@ -210,14 +257,20 @@
                 sizes: null
             };
 
-            //var loc = 'test/data/phyloxml_trees/sample_ird_phylo.xml';
-            var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/sample_ird_phylo.xml';
+
+            var loc = '../test/data/phyloxml_trees/t.xml';
 
             jQuery.get(loc,
                     function (data) {
                         var tree = null;
                         try {
-                            tree = archaeopteryx.parseTree(loc, data, true, false);
+                            if (loc.substr(-3, 3) === 'xml') {
+                                tree = archaeopteryx.parsePhyloXML(data);
+                            } else {
+                                var confValsInBrackets = false;
+                                var confValsAsInternalNodeNames = true;
+                                tree = archaeopteryx.parseNewHampshire(data, confValsInBrackets, confValsAsInternalNodeNames);
+                            }
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
@@ -237,27 +290,13 @@
                     });
         }
     </script>
-
 </head>
+
 <body onload="load()">
-
 <div>
-    <style type="text/css">
-        #search_options fieldset {
-            height: auto !important;
-        }
-    </style>
-
-    <h2>Archaeopteryx.js Demo: v 1_03</h2>
-
-    <div id='phylogram1'></div>
-
     <div id="controls0" class="ui-widget-content"></div>
-
-    <!-- <c:if test="${param.appType eq '4' or param.appType eq '4.1'}"> -->
     <div id="controls1" class="ui-widget-content"></div>
-    <!-- </c:if> -->
-
+    <div id='phylogram1'></div>
 </div>
-
 </body>
+

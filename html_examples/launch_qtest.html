@@ -14,10 +14,17 @@
     <!-- SAX XML parser:-->
     <script src="http://www.phyloxml.org/js/dependencies/sax.js"></script>
 
+    <!-- The following five libraries are needed for download/export of images and files:-->
+    <script src="http://www.phyloxml.org/js/dependencies/rgbcolor.js"></script>
+    <script src="http://www.phyloxml.org/js/dependencies/Blob.js"></script>
+    <script src="http://www.phyloxml.org/js/dependencies/canvas-toBlob.js"></script>
+    <script src="http://www.phyloxml.org/js/dependencies/canvg.js"></script>
+    <script src="http://www.phyloxml.org/js/dependencies/FileSaver.js"></script>
+
     <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
     <script src="http://www.phyloxml.org/js/phyloxml_0_912.js"></script>
-    <script src="forester.js"></script>
-    <script src="archaeopteryx.js"></script>
+    <script src="../forester.js"></script>
+    <script src="../archaeopteryx.js"></script>
 
     <!-- CSS for jQuery UI: -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
@@ -26,19 +33,28 @@
 
         function load() {
             var options = {};
-            options.showTaxonomyCode = true;
+            options.backgroundColorDefault = '#ffffee';
+            options.externalNodeFontSize = 6;
+            options.internalNodeFontSize = 5;
 
             var settings = {};
             settings.displayHeight = 600;
-            settings.displayWidth = 800;
+            settings.displayWidth = 1000;
+            settings.showDynahideButton = true;
+            settings.enableDownloads = true;
+            settings.enableBranchVisualizations = false;
+            settings.nhExportReplaceIllegalChars = true;
+            settings.nhExportWriteConfidences = true;
+            settings.rootOffset = 180;
 
-            var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/apaf.xml';
+
+            var loc = '../test/data/nh_trees/unifiedTree0.tog.tre';
 
             jQuery.get(loc,
                     function (data) {
                         var tree = null;
                         try {
-                            tree = archaeopteryx.parseTree(loc, data);
+                            tree = archaeopteryx.parseTree(loc, data, false, true);
                         }
                         catch (e) {
                             alert("error while parsing tree: " + e);
