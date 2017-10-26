@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03b1
-// 2017-10-19
+// v 1_03b2
+// 2017-10-26
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b1';
+    var VERSION = '1.03b2';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -99,7 +99,7 @@ if (!phyloXml) {
     var CONTROLS_0_TOP_DEFAULT = 20;
     var CONTROLS_1_TOP_DEFAULT = 20;
     var CONTROLS_1_WIDTH_DEFAULT = 160;
-    var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#e0e0e0';
+    var CONTROLS_BACKGROUND_COLOR_DEFAULT = '#c0c0c0';
     var CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     var CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     var CONTROLS_FONT_SIZE_DEFAULT = 8;
@@ -4377,12 +4377,14 @@ if (!phyloXml) {
             }
         }
 
-        var containter = $('#' + _id.replace('#', ''));
+        var containter = $(_id);
 
         containter.css({
             'font-style': 'normal',
             'font-weight': 'normal',
-            'text-decoration': 'none'
+            'text-decoration': 'none',
+            'text-align': 'left',
+            'borderColor': 'pink'
         });
 
         var c0 = $('#' + _settings.controls0);
@@ -4469,13 +4471,11 @@ if (!phyloXml) {
             }
 
             $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
-                'direction': 'horizontal',
-                'width': '120px'
+                'direction': 'horizontal'
             });
 
             $('.' + DISPLAY_DATA_CONTROLGROUP).controlgroup({
-                'direction': 'vertical',
-                'width': '120px'
+                'direction': 'vertical'
             });
 
             c0.append(makeControlButtons());
@@ -5202,7 +5202,7 @@ if (!phyloXml) {
         }
 
         function makePhylogramControl() {
-            var radioGroup = 'radio-1';
+            var radioGroup = 'phylogram_control_radio';
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + '">');
