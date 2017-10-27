@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b2';
+    var VERSION = '1.03bX';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3959,7 +3959,7 @@ if (!phyloXml) {
     function resetSearch0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
-        $('#' + SEARCH_FIELD_0).val('');
+        // $('#' + SEARCH_FIELD_0).val(''); //TODO
         update(null, 0, true);
         update(null, 0, true);
     }
