@@ -3938,7 +3938,7 @@ if (!phyloXml) {
                 _foundNodes0 = search(my_query);
             }
         }
-        // update(null, 0, true);
+        update(null, 0, true);
     }
 
     function search1() {
@@ -4595,7 +4595,7 @@ if (!phyloXml) {
             icon: false
         });
 
-        $('#' + SEARCH_FIELD_0).keyup(search0);
+        $('#' + SEARCH_FIELD_0).keyup();
 
         $('#' + SEARCH_FIELD_1).keyup(search1);
 
