@@ -139,6 +139,7 @@ if (!phyloXml) {
     var LEGEND_NODE_SHAPE = 'legendNodeShape';
     var LEGEND_NODE_SIZE = 'legendNodeSize';
     var LINEAR_SCALE = 'linear';
+    var MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL = 10;
     var MOVE_INTERVAL = 150;
     var NH_EXPORT_FORMAT = 'Newick';
     var NODE_SIZE_MAX = 9;
@@ -5356,7 +5357,12 @@ if (!phyloXml) {
                 var refs = forester.collectPropertyRefs(_treeData, 'node', false);
                 if (refs) {
                     refs.forEach(function (v) {
-                        h = h.concat('<option value="' + v + '">' + v + '</option>');
+                        var label = v;
+                        label = label.replace(/^.+:/, '');
+                        if (label.length > (MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL + 2)) {
+                            label = label.substring(0, MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL) + "..";
+                        }
+                        h = h.concat('<option value="' + v + '">' + label + '</option>');
                     });
                 }
                 h = h.concat('</select>');
