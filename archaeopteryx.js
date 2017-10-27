@@ -3938,7 +3938,7 @@ if (!phyloXml) {
                 _foundNodes0 = search(my_query);
             }
         }
-        update(null, 0, true);
+        // update(null, 0, true);
     }
 
     function search1() {
