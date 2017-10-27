@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03bY';
+    var VERSION = '1.03b$';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -5395,7 +5395,7 @@ if (!phyloXml) {
             /*h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
              h = h.concat('<br>');*/
-            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
+            h = h.concat(makeTextInput("SEARCH_FIELD_1", tooltip));//TODO
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
             h = h.concat(makeSearchControls());
