@@ -20,7 +20,7 @@
  *
  */
 
-// v 1_03b2
+// v 1_03b3
 // 2017-10-26
 
 // Developer documentation:
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b^';
+    var VERSION = '1.03b3';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3927,7 +3927,6 @@ if (!phyloXml) {
     }
 
     function search0() {
-        console.log("search0 called");//TODO
         _foundNodes0.clear();
         _searchBox0Empty = true;
         var query = $('#' + SEARCH_FIELD_0).val();
@@ -3942,7 +3941,6 @@ if (!phyloXml) {
     }
 
     function search1() {
-        console.log("search1 called");//TODO
         _foundNodes1.clear();
         _searchBox1Empty = true;
         var query = $('#' + SEARCH_FIELD_1).val();
@@ -4787,7 +4785,6 @@ if (!phyloXml) {
         });
 
         $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
-        //.button()
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
@@ -4797,7 +4794,8 @@ if (!phyloXml) {
                 'text-align': 'left',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '38px'
+                'width': '38px',
+                'height': '10px'
             });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
@@ -5004,7 +5002,6 @@ if (!phyloXml) {
             });
 
         $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL)
-            .button()
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
@@ -5014,7 +5011,8 @@ if (!phyloXml) {
                 'text-align': 'center',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '28px'
+                'width': '28px',
+                'height': '10px'
             });
 
 
