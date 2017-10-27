@@ -3927,6 +3927,7 @@ if (!phyloXml) {
     }
 
     function search0() {
+        console.log("search0 called");//TODO
         _foundNodes0.clear();
         _searchBox0Empty = true;
         var query = $('#' + SEARCH_FIELD_0).val();
