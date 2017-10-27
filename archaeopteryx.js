@@ -3942,6 +3942,7 @@ if (!phyloXml) {
     }
 
     function search1() {
+        console.log("search1 called");//TOD
         _foundNodes1.clear();
         _searchBox1Empty = true;
         var query = $('#' + SEARCH_FIELD_1).val();
@@ -4595,7 +4596,7 @@ if (!phyloXml) {
             icon: false
         });
 
-        $('#' + SEARCH_FIELD_0).keyup();
+        //$('#' + SEARCH_FIELD_0).keyup();
 
         $('#' + SEARCH_FIELD_1).keyup(search1);
 
