@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b$$';
+    var VERSION = '1.03b^';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3959,7 +3959,7 @@ if (!phyloXml) {
     function resetSearch0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
-        // $('#' + SEARCH_FIELD_0).val(''); //TODO
+        $('#' + SEARCH_FIELD_0).val('');
         update(null, 0, true);
         update(null, 0, true);
     }
@@ -4596,7 +4596,7 @@ if (!phyloXml) {
             icon: false
         });
 
-        //$('#' + SEARCH_FIELD_0).keyup();
+        $('#' + SEARCH_FIELD_0).keyup(search0);
 
         $('#' + SEARCH_FIELD_1).keyup(search1);
 
@@ -4786,8 +4786,8 @@ if (!phyloXml) {
             change: changeBranchDataFontSize
         });
 
-        /* $('#' + SEARCH_FIELD_0)
-            .button()
+        $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
+        //.button()
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
@@ -4798,21 +4798,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '38px'
-         });*/
-
-        /* $('#' + SEARCH_FIELD_1)
-            .button()
-            .off('keydown')
-            .off('mouseenter')
-            .off('mousedown')
-            .css({
-                'font': 'inherit',
-                'color': 'inherit',
-                'text-align': 'left',
-                'outline': 'none',
-                'cursor': 'text',
-                'width': '38px'
-         });*/
+            });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
             .button()
@@ -5392,10 +5378,10 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
-            /*h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
+            h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
-             h = h.concat('<br>');*/
-            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));//TODO
+            h = h.concat('<br>');
+            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
             h = h.concat(makeSearchControls());
