@@ -21,7 +21,7 @@
  */
 
 // v 1_03b3
-// 2017-10-26
+// 2017-10-27
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -161,6 +161,7 @@ if (!phyloXml) {
     var SPECIATION_COLOR = '#00ff00';
     var SPECIES_FEATURE = 'Species';
     var SVG_EXPORT_FORMAT = 'SVG';
+    var TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
     var TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
@@ -4795,7 +4796,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '38px',
-                'height': '10px'
+                'height': TEXT_INPUT_FIELD_DEFAULT_HEIGHT
             });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
@@ -5012,9 +5013,8 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '28px',
-                'height': '10px'
+                'height': TEXT_INPUT_FIELD_DEFAULT_HEIGHT
             });
-
 
         $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).keyup(function (e) {
             var keycode = e.keyCode;
