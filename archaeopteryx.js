@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03bX';
+    var VERSION = '1.03bY';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3942,7 +3942,7 @@ if (!phyloXml) {
     }
 
     function search1() {
-        console.log("search1 called");//TOD
+        console.log("search1 called");//TODO
         _foundNodes1.clear();
         _searchBox1Empty = true;
         var query = $('#' + SEARCH_FIELD_1).val();
@@ -4786,7 +4786,21 @@ if (!phyloXml) {
             change: changeBranchDataFontSize
         });
 
-        $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
+        $('#' + SEARCH_FIELD_0)
+            .button()
+            .off('keydown')
+            .off('mouseenter')
+            .off('mousedown')
+            .css({
+                'font': 'inherit',
+                'color': 'inherit',
+                'text-align': 'left',
+                'outline': 'none',
+                'cursor': 'text',
+                'width': '38px'
+            });
+
+        $('#' + SEARCH_FIELD_1)
             .button()
             .off('keydown')
             .off('mouseenter')
