@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b$';
+    var VERSION = '1.03b$$';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -4800,7 +4800,7 @@ if (!phyloXml) {
                 'width': '38px'
          });*/
 
-        $('#' + SEARCH_FIELD_1)
+        /* $('#' + SEARCH_FIELD_1)
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -4812,7 +4812,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '38px'
-            });
+         });*/
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
             .button()
@@ -5395,7 +5395,7 @@ if (!phyloXml) {
             /*h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
              h = h.concat('<br>');*/
-            h = h.concat(makeTextInput("SEARCH_FIELD_1", tooltip));//TODO
+            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));//TODO
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
             h = h.concat(makeSearchControls());
