@@ -4786,7 +4786,7 @@ if (!phyloXml) {
             change: changeBranchDataFontSize
         });
 
-        $('#' + SEARCH_FIELD_0)
+        /* $('#' + SEARCH_FIELD_0)
             .button()
             .off('keydown')
             .off('mouseenter')
@@ -4798,7 +4798,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '38px'
-            });
+         });*/
 
         $('#' + SEARCH_FIELD_1)
             .button()
@@ -5392,9 +5392,9 @@ if (!phyloXml) {
             var h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
-            h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
+            /*h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
-            h = h.concat('<br>');
+             h = h.concat('<br>');*/
             h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
