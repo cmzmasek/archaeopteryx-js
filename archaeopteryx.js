@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03b3
-// 2017-10-27
+// v 1_03b4
+// 2017-11-10
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b3';
+    var VERSION = '1.03b4';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -95,6 +95,7 @@ if (!phyloXml) {
     // ---------------------------
     // Default values for settings
     // ---------------------------
+    var COLLAPSE_LABEL_WIDTH_DEFAULT = '20px';
     var CONTROLS_0_LEFT_DEFAULT = 20;
     var CONTROLS_0_TOP_DEFAULT = 20;
     var CONTROLS_1_TOP_DEFAULT = 20;
@@ -106,7 +107,7 @@ if (!phyloXml) {
     var DISPLY_HEIGHT_DEFAULT = 600;
     var DISPLAY_WIDTH_DEFAULT = 800;
     var ROOTOFFSET_DEFAULT = 180;
-
+    var SEARCH_FIELD_WIDTH_DEFAULT = '38px';
 
     // ------------------------------
     // Various constants and settings
@@ -3163,6 +3164,12 @@ if (!phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
         }
+        if (_settings.searchFieldWidth === undefined) {
+            _settings.searchFieldWidth = SEARCH_FIELD_WIDTH_DEFAULT;
+        }
+        if (_settings.collapseLabelWidth === undefined) {
+            _settings.collapseLabelWidth = COLLAPSE_LABEL_WIDTH_DEFAULT;
+        }
         if (_settings.showDynahideButton === undefined) {
             if (_basicTreeProperties.externalNodesCount > 20) {
                 _settings.showDynahideButton = true;
@@ -4796,7 +4803,7 @@ if (!phyloXml) {
                 'text-align': 'left',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '38px',
+                'width': _settings.searchFieldWidth,
                 'height': TEXT_INPUT_FIELD_DEFAULT_HEIGHT
             });
 
@@ -4812,7 +4819,7 @@ if (!phyloXml) {
                 'text-align': 'center',
                 'outline': 'none',
                 'cursor': 'text',
-                'width': '20px'
+                'width': _settings.collapseLabelWidth
             });
 
         $('#' + ZOOM_IN_Y).mousedown(function () {
