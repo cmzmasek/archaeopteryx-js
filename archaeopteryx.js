@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03b4
-// 2017-11-10
+// v 1_03b5
+// 2017-11-13
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03b4';
+    var VERSION = '1.03b5';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -108,6 +108,7 @@ if (!phyloXml) {
     var DISPLAY_WIDTH_DEFAULT = 800;
     var ROOTOFFSET_DEFAULT = 180;
     var SEARCH_FIELD_WIDTH_DEFAULT = '38px';
+    var TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
     // ------------------------------
     // Various constants and settings
@@ -163,7 +164,6 @@ if (!phyloXml) {
     var SPECIATION_COLOR = '#00ff00';
     var SPECIES_FEATURE = 'Species';
     var SVG_EXPORT_FORMAT = 'SVG';
-    var TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
     var TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
@@ -3167,6 +3167,9 @@ if (!phyloXml) {
         if (_settings.searchFieldWidth === undefined) {
             _settings.searchFieldWidth = SEARCH_FIELD_WIDTH_DEFAULT;
         }
+        if (_settings.textFieldHeight === undefined) {
+            _settings.textFieldHeight = TEXT_INPUT_FIELD_DEFAULT_HEIGHT;
+        }
         if (_settings.collapseLabelWidth === undefined) {
             _settings.collapseLabelWidth = COLLAPSE_LABEL_WIDTH_DEFAULT;
         }
@@ -4804,7 +4807,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': _settings.searchFieldWidth,
-                'height': TEXT_INPUT_FIELD_DEFAULT_HEIGHT
+                'height': _settings.textFieldHeight
             });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
@@ -5021,7 +5024,7 @@ if (!phyloXml) {
                 'outline': 'none',
                 'cursor': 'text',
                 'width': '28px',
-                'height': TEXT_INPUT_FIELD_DEFAULT_HEIGHT
+                'height': _settings.textFieldHeight
             });
 
         $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).keyup(function (e) {
