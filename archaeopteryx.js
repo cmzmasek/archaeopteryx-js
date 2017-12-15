@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_03
-// 2017-11-17
+// v 1_04a1
+// 2017-12-15
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.03';
+    var VERSION = '1.04a1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -212,6 +212,7 @@ if (!phyloXml) {
     var LEGENDS_MOVE_UP_BTN = 'legends_mup';
     var LEGENDS_RESET_BTN = 'legends_rest';
     var LEGENDS_SHOW_BTN = 'legends_show';
+    var MIDPOINT_ROOT_BUTTON = 'midpointr_b';
     var MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = 'seq_pos_label_curr_pos';
     var MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
     var MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = 'seq_pos_decr_pos';
@@ -259,6 +260,7 @@ if (!phyloXml) {
     var VK_A = 65;
     var VK_C = 67;
     var VK_L = 76;
+    var VK_M = 77;
     var VK_O = 79;
     var VK_P = 80;
     var VK_R = 82;
@@ -3780,12 +3782,12 @@ if (!phyloXml) {
                     }
                 })
                 .on('click', function (d) {
+                    unCollapseAll(_root);
                     forester.reRoot(tree, d, -1);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
                     resetBranchLengthCollapseValue();
                     resetCollapseByFeature();
-                    unCollapseAll(_root);
                     zoomToFit();
                 });
 
@@ -3915,6 +3917,16 @@ if (!phyloXml) {
             resetCollapseByFeature();
             zoomToFit();
         }
+    }
+
+    function midpointRootButtonPressed() {
+        unCollapseAll(_root);
+        forester.midpointRoot(_root);
+        resetDepthCollapseDepthValue();
+        resetRankCollapseRankValue();
+        resetBranchLengthCollapseValue();
+        resetCollapseByFeature();
+        zoomToFit();
     }
 
     function escPressed() {
@@ -4886,6 +4898,8 @@ if (!phyloXml) {
 
         $('#' + UNCOLLAPSE_ALL_BUTTON).mousedown(uncollapseAllButtonPressed);
 
+        $('#' + MIDPOINT_ROOT_BUTTON).mousedown(midpointRootButtonPressed);
+
         // Search Controls
         // ---------------
 
@@ -5090,6 +5104,9 @@ if (!phyloXml) {
                 }
                 else if (e.keyCode === VK_U) {
                     uncollapseAllButtonPressed();
+                }
+                else if (e.keyCode === VK_M) {
+                    midpointRootButtonPressed();
                 }
                 else if (e.keyCode === VK_C || e.keyCode === VK_DELETE
                     || e.keyCode === VK_BACKSPACE || e.keyCode === VK_HOME) {
@@ -5297,7 +5314,9 @@ if (!phyloXml) {
             h = h.concat('<div>');
             h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
             h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the super-tree (if in sub-tree) (Alt+R)'));
+            h = h.concat('<br>');
             h = h.concat(makeButton('U', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all (Alt+U)'));
+            h = h.concat(makeButton('M', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;

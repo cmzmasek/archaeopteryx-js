@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_03
-// 2017-11-17
+// v 1_04a1
+// 2017-12-15
 
 (function forester() {
 
@@ -368,6 +368,82 @@
         }
     };
 
+    forester.midpointRoot = function (phy) {
+        var root = forester.getTreeRoot(phy);
+        var extNodes = forester.getAllExternalNodes(root);
+        if (( extNodes.length < 2 ) || ( forester.calcMaxBranchLength(root) <= 0 )) {
+            return;
+        }
+        var counter = 0;
+        var totalNodes = forester.getAllNodes(phy).length;
+        while (true) {
+            if (++counter > (totalNodes + 1)) {
+                throw( 'this should not have happened: midpoint rooting does not converge' );
+            }
+            var a = null;
+            var da = 0;
+            var db = 0;
+            var cl = forester.getTreeRoot(phy).children.length;
+            for (var i = 0; i < cl; ++i) {
+                var f = forester.getFurthestDescendant(forester.getTreeRoot(phy).children[i]);
+                var df = forester.getDistance(f, forester.getTreeRoot(phy));
+                if (df > 0) {
+                    if (df > da) {
+                        db = da;
+                        da = df;
+                        a = f;
+                    }
+                    else if (df > db) {
+                        db = df;
+                    }
+                }
+            }
+            var diff = da - db;
+            if (diff < 0.0001) {
+                break;
+            }
+            var x = da - ( diff / 2.0 );
+            while (( x > a.branch_length ) && a.parent) {
+                x -= ( a.branch_length > 0 ? a.branch_length : 0 );
+                a = a.parent;
+            }
+            forester.reRoot(phy, a, x);
+        }
+    };
+
+    forester.getFurthestDescendant = function (node) {
+        var children = forester.getAllExternalNodes(node);
+        var farthest = null;
+        var longest = -1000000;
+        var l = children.length;
+        for (var i = 0; i < l; ++i) {
+            var dist = forester.getDistance(children[i], node);
+            if (dist > longest) {
+                farthest = children[i];
+                longest = dist;
+            }
+        }
+        return farthest;
+    };
+
+    /**
+     * Calculates the distance between PhylogenyNodes n1 and n2.
+     * PRECONDITION: n1 is a descendant of n2.
+     *
+     * @param n1 a descendant of n2
+     * @param n2
+     * @returns {number} distance between n1 and n2
+     */
+    forester.getDistance = function (n1, n2) {
+        var d = 0.0;
+        while (n1 !== n2) {
+            if (n1.branch_length > 0.0) {
+                d += n1.branch_length;
+            }
+            n1 = n1.parent;
+        }
+        return d;
+    };
 
     forester.removeChildNode = function (parentNode, i) {
         if (!parentNode.children) {
@@ -611,6 +687,8 @@
         });
         return propertyRefs;
     };
+
+    forester;
 
 
     forester.collectBasicTreeProperties = function (tree) {
@@ -1023,6 +1101,14 @@
             if (!n.children && !n._children) {
                 nodes.push(n);
             }
+        });
+        return nodes;
+    };
+
+    forester.getAllNodes = function (phy) {
+        var nodes = [];
+        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+            nodes.push(n);
         });
         return nodes;
     };
