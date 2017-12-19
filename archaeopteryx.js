@@ -21,7 +21,7 @@
  */
 
 // v 1_04a1
-// 2017-12-18
+// 2017-12-19
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -167,6 +167,7 @@ if (!phyloXml) {
     var TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
+    var MESSAGE = 'ArchaeopteryxJS: ';
     var ZOOM_INTERVAL = 200;
 
     // ---------------------------
@@ -2906,6 +2907,20 @@ if (!phyloXml) {
         if (_options.dynahide === undefined) {
             _options.dynahide = true;
         }
+        if (_options.searchAinitialValue && (typeof _options.searchAinitialValue === 'string' || _options.searchAinitialValue instanceof String) && _options.searchAinitialValue.trim().length > 0) {
+            _options.searchAinitialValue = _options.searchAinitialValue.trim();
+            console.log(MESSAGE + 'Setting initial search value for A to: ' + _options.searchAinitialValue);
+        }
+        else {
+            _options.searchAinitialValue = null;
+        }
+        if (_options.searchBinitialValue && (typeof _options.searchBinitialValue === 'string' || _options.searchBinitialValue instanceof String) && _options.searchBinitialValue.trim().length > 0) {
+            _options.searchBinitialValue = _options.searchBinitialValue.trim();
+            console.log(MESSAGE + 'Setting initial search value for B to: ' + _options.searchBinitialValue);
+        }
+        else {
+            _options.searchBinitialValue = null;
+        }
         if (_options.showBranchLengthValues === undefined) {
             _options.showBranchLengthValues = false;
         }
@@ -3305,6 +3320,14 @@ if (!phyloXml) {
         initializeGui();
 
         _svgGroup = _baseSvg.append('g');
+
+
+        if (_options.searchAinitialValue) {
+            search0();
+        }
+        if (_options.searchBinitialValue) {
+            search1();
+        }
 
         update(null, 0);
         zoomToFit();
@@ -3951,6 +3974,14 @@ if (!phyloXml) {
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top + _offsetTop
             });
+        }
+        if (_options.searchAinitialValue) {
+            $('#' + SEARCH_FIELD_0).val(_options.searchAinitialValue);
+            search0();
+        }
+        if (_options.searchBinitialValue) {
+            $('#' + SEARCH_FIELD_1).val(_options.searchBinitialValue);
+            search1();
         }
     }
 
@@ -5685,6 +5716,13 @@ if (!phyloXml) {
         setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
         setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
         setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _options.searchNegateResult);
+
+        if (_options.searchAinitialValue) {
+            $('#' + SEARCH_FIELD_0).val(_options.searchAinitialValue);
+        }
+        if (_options.searchBinitialValue) {
+            $('#' + SEARCH_FIELD_1).val(_options.searchBinitialValue);
+        }
     }
 
 
