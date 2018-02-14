@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_05a2
-// 2018-02-13
+// v 1_05
+// 2018-02-14
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.05a2';
+    var VERSION = '1.05';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3507,15 +3507,12 @@ if (!phyloXml) {
                     text += 'Number of External Nodes: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
-                var nodeData = document.getElementById(NODE_DATA);
-                if (nodeData && nodeData.outerHTML) {
-                    nodeData.outerHTML = '';
-                }
+                $('#' + NODE_DATA).dialog("destroy");
 
                 $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
 
-                var fs = _settings.controlsFontSize.toString() + 'px';
+                var fs = (_settings.controlsFontSize + 4).toString() + 'px';
 
                 $('.ui-dialog').css({
                     'text-align': 'left',
@@ -3524,7 +3521,10 @@ if (!phyloXml) {
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'normal',
-                    'text-decoration': 'none'
+                    'text-decoration': 'none',
+                    'width': 400,
+                    'height': 400,
+                    'overflow': 'auto'
                 });
 
                 $('.ui-dialog-titlebar').css({
@@ -3554,7 +3554,7 @@ if (!phyloXml) {
                 var text_all = '';
 
 
-                var ext_nodes = forester.getAllExternalNodes(node);
+                var ext_nodes = forester.getAllExternalNodes(node).reverse();
 
                 var title = 'External Node Data for ' + ext_nodes.length + ' Nodes';
 
@@ -3632,15 +3632,12 @@ if (!phyloXml) {
                     }
                 }
 
-                var nodeData = document.getElementById(NODE_DATA);
-                if (nodeData && nodeData.outerHTML) {
-                    nodeData.outerHTML = '';
-                }
+                $('#' + NODE_DATA).dialog("destroy");
 
                 $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
 
-                var fs = _settings.controlsFontSize.toString() + 'px';
+                var fs = (_settings.controlsFontSize + 2).toString() + 'px';
 
                 $('.ui-dialog').css({
                     'text-align': 'left',
@@ -3650,7 +3647,9 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 600
+                    'width': 600,
+                    'height': 400,
+                    'overflow': 'auto'
                 });
 
                 $('.ui-dialog-titlebar').css({
@@ -3679,7 +3678,7 @@ if (!phyloXml) {
                 };
                 var text_all = '';
 
-                var ext_nodes = forester.getAllExternalNodes(node);
+                var ext_nodes = forester.getAllExternalNodes(node).reverse();
                 var title = 'Sequences in Fasta-format for ' + ext_nodes.length + ' Nodes';
 
                 for (var j = 0, l = ext_nodes.length; j < l; ++j) {
@@ -3703,15 +3702,12 @@ if (!phyloXml) {
                     }
                 }
 
-                var nodeData = document.getElementById(NODE_DATA);
-                if (nodeData && nodeData.outerHTML) {
-                    nodeData.outerHTML = '';
-                }
+                $('#' + NODE_DATA).dialog("destroy");
 
                 $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
                 var dialog = $('#' + NODE_DATA);
 
-                var fs = _settings.controlsFontSize.toString() + 'px';
+                var fs = (_settings.controlsFontSize + 2).toString() + 'px';
 
                 $('.ui-dialog').css({
                     'text-align': 'left',
@@ -3721,7 +3717,9 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 600
+                    'width': 600,
+                    'height': 400,
+                    'overflow': 'auto'
                 });
 
                 $('.ui-dialog-titlebar').css({
