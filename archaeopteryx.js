@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_04
-// 2018-01-16
+// v 1_05a2
+// 2018-02-13
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.04';
+    var VERSION = '1.05a2';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -74,6 +74,7 @@ if (!phyloXml) {
     var BRANCH_DATA_FONT_SIZE_DEFAULT = 6;
     var BRANCH_WIDTH_DEFAULT = 1;
     var COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
+    var DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
     var EXTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
     var FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     var FOUND0_COLOR_DEFAULT = '#66cc00';
@@ -968,7 +969,7 @@ if (!phyloXml) {
                         return d + ' (max)';
                     }
                     else if (linearRangeLength === 3 && i === 1) {
-                        return preciseRound(d, 4) + ' (mean)';
+                        return preciseRound(d, _options.decimalsForLinearRangeMeanValue) + ' (mean)';
                     }
                 }
                 return d;
@@ -1204,7 +1205,7 @@ if (!phyloXml) {
                         return d + ' (max)';
                     }
                     else if (linearRangeLength === 3 && i === 1) {
-                        return preciseRound(d, 4) + ' (mean)';
+                        return preciseRound(d, _options.decimalsForLinearRangeMeanValue) + ' (mean)';
                     }
                 }
                 return d;
@@ -3057,6 +3058,9 @@ if (!phyloXml) {
         if (_options.nodeVisualizationsOpacity === undefined) {
             _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
         }
+        if (_options.decimalsForLinearRangeMeanValue === undefined) {
+            _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
+        }
         if (_options.treeName) {
             _options.treeName = _options.treeName.trim().replace(/\W+/g, '_');
         }
@@ -3503,7 +3507,6 @@ if (!phyloXml) {
                     text += 'Number of External Nodes: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
-
                 var nodeData = document.getElementById(NODE_DATA);
                 if (nodeData && nodeData.outerHTML) {
                     nodeData.outerHTML = '';
@@ -3522,6 +3525,203 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none'
+                });
+
+                $('.ui-dialog-titlebar').css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': fs,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none'
+                });
+
+                dialog.dialog('option', 'modal', true);
+                dialog.dialog('option', 'title', title);
+
+                update();
+            }
+
+            function listExternalNodeData(node) {
+
+                var addSep = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
+                var text_all = '';
+
+
+                var ext_nodes = forester.getAllExternalNodes(node);
+
+                var title = 'External Node Data for ' + ext_nodes.length + ' Nodes';
+
+                for (var j = 0, l = ext_nodes.length; j < l; ++j) {
+                    var text = '';
+                    var n = ext_nodes[j];
+                    if (_options.showNodeName && n.name) {
+                        text += n.name
+                    }
+                    if (_options.showTaxonomy && n.taxonomies) {
+                        for (var i = 0; i < n.taxonomies.length; ++i) {
+                            var t = n.taxonomies[i];
+                            if (t.id) {
+                                if (t.id.provider) {
+                                    text = addSep(text);
+                                    text += '[' + t.id.provider + ']:' + t.id.value;
+                                }
+                                else {
+                                    text = addSep(text);
+                                    text += t.id.value;
+                                }
+                            }
+                            if (_options.showTaxonomyCode && t.code) {
+                                text = addSep(text);
+                                text += t.code;
+                            }
+                            if (_options.showTaxonomyScientificName && t.scientific_name) {
+                                text = addSep(text);
+                                text += t.scientific_name;
+                            }
+                            if (_options.showTaxonomyCommonName && t.common_name) {
+                                text = addSep(text);
+                                text += t.common_name;
+                            }
+                            if (_options.showTaxonomyRank && t.rank) {
+                                text = addSep(text);
+                                text += t.rank;
+                            }
+                        }
+                    }
+                    if (_options.showSequence && n.sequences) {
+                        for (i = 0; i < n.sequences.length; ++i) {
+                            var s = n.sequences[i];
+                            if (_options.showSequenceAccession && s.accession) {
+                                if (s.accession.source) {
+                                    text = addSep(text);
+                                    text += '[' + s.accession.source + ']:' + s.accession.value;
+                                }
+                                else {
+                                    text = addSep(text);
+                                    text += s.accession.value;
+                                }
+
+                            }
+                            if (_options.showSequenceSymbol && s.symbol) {
+                                text = addSep(text);
+                                text += s.symbol;
+                            }
+                            if (_options.showSequenceName && s.name) {
+                                text = addSep(text);
+                                text += s.name;
+                            }
+                            if (s.gene_name) {
+                                text = addSep(text);
+                                text += s.gene_name;
+                            }
+                            if (s.location) {
+                                text = addSep(text);
+                                text += s.location;
+                            }
+                        }
+                    }
+                    if (text.length > 0) {
+                        text_all += text + '<br>';
+                    }
+                }
+
+                var nodeData = document.getElementById(NODE_DATA);
+                if (nodeData && nodeData.outerHTML) {
+                    nodeData.outerHTML = '';
+                }
+
+                $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
+                var dialog = $('#' + NODE_DATA);
+
+                var fs = _settings.controlsFontSize.toString() + 'px';
+
+                $('.ui-dialog').css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': fs,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'normal',
+                    'text-decoration': 'none',
+                    'width': 600
+                });
+
+                $('.ui-dialog-titlebar').css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': fs,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'bold',
+                    'text-decoration': 'none'
+                });
+
+                dialog.dialog('option', 'modal', true);
+                dialog.dialog('option', 'title', title);
+
+                update();
+            }
+
+            function listMolecularSequences(node) {
+
+                var addSep = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
+                var text_all = '';
+
+                var ext_nodes = forester.getAllExternalNodes(node);
+                var title = 'Sequences in Fasta-format for ' + ext_nodes.length + ' Nodes';
+
+                for (var j = 0, l = ext_nodes.length; j < l; ++j) {
+                    var n = ext_nodes[j];
+                    if (n.sequences) {
+                        for (var i = 0; i < n.sequences.length; ++i) {
+                            var s = n.sequences[i];
+                            if (s.mol_seq && s.mol_seq.value && s.mol_seq.value.length > 0) {
+                                var seq = s.mol_seq.value;
+                                var seqname = j;
+                                if (s.name && s.name.length > 0) {
+                                    seqname = s.name
+                                }
+                                else if (n.name && n.length > 0) {
+                                    seqname = n.name
+                                }
+                                var fasta = '>' + seqname + '<br>' + seq;
+                                text_all += fasta + '<br>';
+                            }
+                        }
+                    }
+                }
+
+                var nodeData = document.getElementById(NODE_DATA);
+                if (nodeData && nodeData.outerHTML) {
+                    nodeData.outerHTML = '';
+                }
+
+                $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
+                var dialog = $('#' + NODE_DATA);
+
+                var fs = _settings.controlsFontSize.toString() + 'px';
+
+                $('.ui-dialog').css({
+                    'text-align': 'left',
+                    'color': _settings.controlsFontColor,
+                    'font-size': fs,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'normal',
+                    'text-decoration': 'none',
+                    'width': 600
                 });
 
                 $('.ui-dialog-titlebar').css({
@@ -3593,9 +3793,8 @@ if (!phyloXml) {
                 }
             }
 
-
-            var rectWidth = 120;
-            var rectHeight = 150;
+            var rectWidth = 130;
+            var rectHeight = 190;
 
             removeTooltips();
 
@@ -3813,6 +4012,48 @@ if (!phyloXml) {
                     resetBranchLengthCollapseValue();
                     resetCollapseByFeature();
                     zoomToFit();
+                });
+
+
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent) {
+                        textSum += textInc;
+                        return 'List External Node Data';
+                    }
+                })
+                .on('click', function (d) {
+                    listExternalNodeData(d);
+                });
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent && _basicTreeProperties.sequences && (_basicTreeProperties.maxMolSeqLength && ( _basicTreeProperties.maxMolSeqLength > 0))) {
+                        textSum += textInc;
+                        return 'List Sequences in Fasta';
+                    }
+                })
+                .on('click', function (d) {
+                    listMolecularSequences(d);
                 });
 
             d3.selection.prototype.moveToFront = function () {
