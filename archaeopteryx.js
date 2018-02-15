@@ -3648,7 +3648,7 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 600,
+                    'width': 740,
                     'height': 400,
                     'overflow': 'auto'
                 });
@@ -3719,7 +3719,7 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 680,
+                    'width': 700,
                     'height': 400,
                     'overflow': 'auto'
                 });
