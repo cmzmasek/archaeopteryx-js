@@ -21,7 +21,7 @@
  */
 
 // v 1_05
-// 2018-02-14
+// 2018-02-15
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -107,6 +107,7 @@ if (!phyloXml) {
     var CONTROLS_FONT_SIZE_DEFAULT = 8;
     var DISPLY_HEIGHT_DEFAULT = 600;
     var DISPLAY_WIDTH_DEFAULT = 800;
+    var MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Lucida Console', 'Monaco', 'Arial', 'Helvetica', 'Times'];
     var ROOTOFFSET_DEFAULT = 180;
     var SEARCH_FIELD_WIDTH_DEFAULT = '38px';
     var TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
@@ -3643,7 +3644,7 @@ if (!phyloXml) {
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
-                    'font-family': _settings.controlsFont,
+                    'font-family': MOLSEQ_FONT_DEFAULTS,
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
@@ -3670,12 +3671,6 @@ if (!phyloXml) {
 
             function listMolecularSequences(node) {
 
-                var addSep = function (t) {
-                    if (t.length > 0) {
-                        t += ', ';
-                    }
-                    return t;
-                };
                 var text_all = '';
 
                 var ext_nodes = forester.getAllExternalNodes(node).reverse();
@@ -3695,8 +3690,15 @@ if (!phyloXml) {
                                 else if (n.name && n.length > 0) {
                                     seqname = n.name
                                 }
-                                var fasta = '>' + seqname + '<br>' + seq;
-                                text_all += fasta + '<br>';
+
+                                var split_seq_ary = seq.match(/.{1,80}/g);
+                                var split_seq = '';
+                                for (var ii = 0; ii < split_seq_ary.length; ++ii) {
+                                    split_seq += split_seq_ary[ii] + '<br>';
+                                }
+
+                                var fasta = '>' + seqname + '<br>' + split_seq;
+                                text_all += fasta;
                             }
                         }
                     }
@@ -3713,11 +3715,11 @@ if (!phyloXml) {
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
-                    'font-family': _settings.controlsFont,
+                    'font-family': MOLSEQ_FONT_DEFAULTS,
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 600,
+                    'width': 680,
                     'height': 400,
                     'overflow': 'auto'
                 });
