@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_05
-// 2018-02-15
+// v 1_06a1
+// 2018-02-20
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.05';
+    var VERSION = '1.06a1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -394,10 +394,13 @@ if (!phyloXml) {
     }
 
     function centerNode(source, x, y) {
+
+        //~~~~
+
         var scale = _zoomListener.scale();
         if (!x) {
             x = -source.y0;
-            x = x * scale + _displayWidth / 2;
+            x = x * scale + (_baseSvg.attr("width")) / 2;
         }
         if (!y) {
             y = 0;
@@ -406,6 +409,19 @@ if (!phyloXml) {
             .attr('transform', 'translate(' + x + ',' + y + ')scale(' + scale + ')');
         _zoomListener.scale(scale);
         _zoomListener.translate([x, y]);
+
+        /*var scale = _zoomListener.scale();
+         if (!x) {
+         x = -source.y0;
+         x = x * scale + _displayWidth / 2;
+         }
+         if (!y) {
+         y = 0;
+         }
+         d3.select('g')
+         .attr('transform', 'translate(' + x + ',' + y + ')scale(' + scale + ')');
+         _zoomListener.scale(scale);
+         _zoomListener.translate([x, y]);*/
     }
 
     function calcMaxTreeLengthForDisplay() {
@@ -3223,6 +3239,9 @@ if (!phyloXml) {
         else {
             _settings.enableMsaResidueVisualizations === false;
         }
+        if (_settings.zoomToFitUponWindowResize === undefined) {
+            _settings.zoomToFitUponWindowResize = true;
+        }
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
@@ -3231,8 +3250,15 @@ if (!phyloXml) {
 
 
     function intitializeDisplaySize() {
-        _displayHeight = _settings.displayHeight;
-        _displayWidth = _settings.displayWidth;
+        //~~~
+        if (_baseSvg) {
+            _displayHeight = _baseSvg.attr('height');
+            _displayWidth = _baseSvg.attr('width');
+        }
+        else {
+            _displayHeight = _settings.displayHeight;
+            _displayWidth = _settings.displayWidth;
+        }
     }
 
     function mouseDown() {
@@ -3309,6 +3335,68 @@ if (!phyloXml) {
             })
             .call(_zoomListener);
 
+
+        d3.select(window)
+        //~~~~
+            .on('resize', function () {
+
+                var w = window,
+                    d = document,
+                    e = d.documentElement,
+                    g = d.getElementsByTagName('body')[0];
+                // x = w.innerWidth || e.clientWidth || g.clientWidth,
+                // y = w.innerHeight|| e.clientHeight|| g.clientHeight;
+
+                var id = _id.replace('#', '');
+
+                var element = d3.select(_id).node();
+
+                // var hx =  element.getComputedStyle().height;
+                var wx = element.getBoundingClientRect().width;
+                var top = element.getBoundingClientRect().top;
+                var hx = w.innerHeight - ( top + 40 );
+                console.log(w.innerHeight);
+                console.log(w.outerHeight);
+                console.log("top=" + top);
+
+
+                var container = document.getElementById(id);
+                //var $img = $('img');
+                console.log(w);
+                var ma = $(_id).css('margin-top');
+                var pa = $(_id).css('padding-top');
+                var bo = $(_id).css('border-top');
+
+
+                //console.log($(_id).css());
+
+                console.log("?=" + ma);
+                console.log("?=" + pa);
+                console.log("?=" + bo);
+
+                // var width = container.clientWidth;
+                //  var hx = container.clientHeight - container.scrollTop;
+                //console.log(container);
+
+                // console.log("container.clientHeight=" + hx);
+                // var aspect = _displayWidth / _displayHeight;
+                _baseSvg.attr('width', wx);
+                // _baseSvg.attr('height', wx / aspect);
+                _baseSvg.attr('height', hx);
+                if (_settings.zoomToFitUponWindowResize === true && _zoomListener.scale() === 1) {
+                    zoomToFit();
+                }
+
+                if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
+                    var c1 = $('#' + _settings.controls1);
+                    if (c1) {
+                        c1.css({
+                            'left': wx - _settings.controls1Width
+                        });
+                    }
+                }
+
+            });
 
         _treeFn = d3.layout.cluster()
             .size([_displayHeight, _displayWidth]);
@@ -3687,7 +3775,7 @@ if (!phyloXml) {
                                 if (s.name && s.name.length > 0) {
                                     seqname = s.name
                                 }
-                                else if (n.name && n.length > 0) {
+                                else if (n.name && n.name.length > 0) {
                                     seqname = n.name
                                 }
 
@@ -4141,7 +4229,7 @@ if (!phyloXml) {
         if (_root) {
             calcMaxExtLabel();
             intitializeDisplaySize();
-            initializeSettings(_settings);
+            //initializeSettings(_settings); //TODO why is/was this called here?
             removeColorPicker();
             _zoomListener.scale(1);
             update(_root, 0);
@@ -4198,23 +4286,44 @@ if (!phyloXml) {
     }
 
     function escPressed() {
+        //~~~
+
+        var id = _id.replace('#', '');
+        var container = document.getElementById(id);
+        var width = container.clientWidth;
+        var height = container.clientHeight;
+
+
+        // if (_baseSvg) {
+        //     _displayHeight = _baseSvg.attr('height');
+        //     _displayWidth = _baseSvg.attr('width');
+        // }
+        // else {
+        _displayHeight = height;
+        _displayWidth = width;
+        // }
+        //~~~
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
             legendReset();
         }
         zoomToFit();
-        var c0 = $('#' + _settings.controls0);
-        if (c0) {
-            c0.css({
-                'left': _settings.controls0Left,
-                'top': _settings.controls0Top + _offsetTop
-            });
-        }
-        var c1 = $('#' + _settings.controls1);
-        if (c1) {
-            c1.css({
-                'left': _settings.controls1Left,
-                'top': _settings.controls1Top + _offsetTop
-            });
+        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) { //TODO new ~~~
+            var c0 = $('#' + _settings.controls0);
+            if (c0) {
+                c0.css({
+                    'left': _settings.controls0Left,
+                    'top': _settings.controls0Top + _offsetTop
+                });
+            }
+            var c1 = $('#' + _settings.controls1);
+            if (c1) {
+                c1.css({
+                    'left': width - _settings.controls1Width,
+                    'top': _settings.controls1Top + _offsetTop
+                });
+            }
+
+
         }
         if (_options.searchAinitialValue) {
             $('#' + SEARCH_FIELD_0).val(_options.searchAinitialValue);
@@ -4677,14 +4786,14 @@ if (!phyloXml) {
             }
         }
 
-        var containter = $(_id);
+        var container = $(_id);
 
-        containter.css({
+        container.css({
             'font-style': 'normal',
             'font-weight': 'normal',
             'text-decoration': 'none',
             'text-align': 'left',
-            'borderColor': 'pink'
+            'borderColor': 'LightGray'
         });
 
         var c0 = $('#' + _settings.controls0);
