@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06a1
-// 2018-02-20
+// v 1_06a2
+// 2018-02-22
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.06a1';
+    var VERSION = '1.06a2';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -319,6 +319,7 @@ if (!phyloXml) {
     var _legendShapeScales = {};
     var _legendSizeScales = {};
     var _maxLabelLength = 0;
+    var _msa_residue_vis_curr_res_pos = 0;
     var _nodeVisualizations = null;
     var _offsetTop = 0;
     var _options = null;
@@ -341,7 +342,7 @@ if (!phyloXml) {
     var _w = null;
     var _yScale = null;
     var _zoomListener = null;
-    var _msa_residue_vis_curr_res_pos = 0;
+    var _zoomed_x_or_y = false;
 
 
     function branchLengthScaling(nodes, width) {
@@ -3340,50 +3341,18 @@ if (!phyloXml) {
         //~~~~
             .on('resize', function () {
 
-                var w = window,
-                    d = document,
-                    e = d.documentElement,
-                    g = d.getElementsByTagName('body')[0];
-                // x = w.innerWidth || e.clientWidth || g.clientWidth,
-                // y = w.innerHeight|| e.clientHeight|| g.clientHeight;
-
-                var id = _id.replace('#', '');
-
                 var element = d3.select(_id).node();
 
-                // var hx =  element.getComputedStyle().height;
-                var wx = element.getBoundingClientRect().width;
+                var width = element.getBoundingClientRect().width;
                 var top = element.getBoundingClientRect().top;
-                var hx = w.innerHeight - ( top + 40 );
-                console.log(w.innerHeight);
-                console.log(w.outerHeight);
-                console.log("top=" + top);
+                var height = window.innerHeight - ( top + 40 );
 
+                _baseSvg.attr('width', width);
+                _baseSvg.attr('height', height);
 
-                var container = document.getElementById(id);
-                //var $img = $('img');
-                console.log(w);
-                var ma = $(_id).css('margin-top');
-                var pa = $(_id).css('padding-top');
-                var bo = $(_id).css('border-top');
-
-
-                //console.log($(_id).css());
-
-                console.log("?=" + ma);
-                console.log("?=" + pa);
-                console.log("?=" + bo);
-
-                // var width = container.clientWidth;
-                //  var hx = container.clientHeight - container.scrollTop;
-                //console.log(container);
-
-                // console.log("container.clientHeight=" + hx);
-                // var aspect = _displayWidth / _displayHeight;
-                _baseSvg.attr('width', wx);
-                // _baseSvg.attr('height', wx / aspect);
-                _baseSvg.attr('height', hx);
-                if (_settings.zoomToFitUponWindowResize === true && _zoomListener.scale() === 1) {
+                if ((_settings.zoomToFitUponWindowResize === true)
+                    && ( _zoomed_x_or_y == false )
+                    && (Math.abs(_zoomListener.scale() - 1.0) < 0.001)) {
                     zoomToFit();
                 }
 
@@ -3391,7 +3360,7 @@ if (!phyloXml) {
                     var c1 = $('#' + _settings.controls1);
                     if (c1) {
                         c1.css({
-                            'left': wx - _settings.controls1Width
+                            'left': width - _settings.controls1Width
                         });
                     }
                 }
@@ -4178,6 +4147,7 @@ if (!phyloXml) {
 
 
     function zoomInX(zoomInFactor) {
+        _zoomed_x_or_y = true;
         if (zoomInFactor) {
             _displayWidth = _displayWidth * zoomInFactor;
         }
@@ -4188,6 +4158,7 @@ if (!phyloXml) {
     }
 
     function zoomInY(zoomInFactor) {
+        _zoomed_x_or_y = true;
         if (zoomInFactor) {
             _displayHeight = _displayHeight * zoomInFactor;
         }
@@ -4198,6 +4169,7 @@ if (!phyloXml) {
     }
 
     function zoomOutX(zoomOutFactor) {
+        _zoomed_x_or_y = true;
         var newDisplayWidth;
         if (zoomOutFactor) {
             newDisplayWidth = _displayWidth * zoomOutFactor;
@@ -4212,6 +4184,7 @@ if (!phyloXml) {
     }
 
     function zoomOutY(zoomOutFactor) {
+        _zoomed_x_or_y = true;
         if (zoomOutFactor) {
             _displayHeight = _displayHeight * zoomOutFactor;
         }
@@ -4226,6 +4199,7 @@ if (!phyloXml) {
     }
 
     function zoomToFit() {
+        _zoomed_x_or_y = false;
         if (_root) {
             calcMaxExtLabel();
             intitializeDisplaySize();
