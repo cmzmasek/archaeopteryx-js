@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06a3
-// 2018-02-22
+// v 1_06a4
+// 2018-02-23
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -45,7 +45,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.06a3';
+    var VERSION = '1.06a4';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -4200,7 +4200,7 @@ if (!phyloXml) {
         else {
             _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
         }
-        var min = 0.25 * _settings.displayHeight;
+        var min = 40;
         if (_displayHeight < min) {
             _displayHeight = min;
         }
@@ -4591,7 +4591,7 @@ if (!phyloXml) {
         if (!x) {
             x = 10;
         }
-        if (_options.visualizationsLegendYpos < _settings.displayHeight) {
+        if (_options.visualizationsLegendYpos < _displayHeight) {
             _options.visualizationsLegendYpos += x;
             removeColorPicker();
             update(null, 0);
@@ -4602,7 +4602,7 @@ if (!phyloXml) {
         if (!x) {
             x = 10;
         }
-        if (_options.visualizationsLegendXpos < _settings.displayWidth) {
+        if (_options.visualizationsLegendXpos < ( _displayWidth - 20 )) {
             _options.visualizationsLegendXpos += x;
             removeColorPicker();
             update(null, 0);
