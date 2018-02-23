@@ -171,6 +171,7 @@ if (!phyloXml) {
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
     var MESSAGE = 'ArchaeopteryxJS: ';
+    var WIDTH_OFFSET = 14; // Needed in Firefox Quantum (2018-02-22)
     var ZOOM_INTERVAL = 200;
 
     // ---------------------------
@@ -3263,7 +3264,7 @@ if (!phyloXml) {
             }
             else {
                 var element = d3.select(_id).node();
-                var width = element.getBoundingClientRect().width;
+                var width = element.getBoundingClientRect().width - WIDTH_OFFSET;
                 var top = element.getBoundingClientRect().top;
                 var height = window.innerHeight - ( top + HEIGHT_OFFSET );
                 _displayHeight = height;
@@ -3354,7 +3355,7 @@ if (!phyloXml) {
             d3.select(window)
                 .on('resize', function () {
                     var element = d3.select(_id).node();
-                    var width = element.getBoundingClientRect().width;
+                    var width = element.getBoundingClientRect().width - WIDTH_OFFSET;
                     var top = element.getBoundingClientRect().top;
                     var height = window.innerHeight - ( top + HEIGHT_OFFSET );
                     _baseSvg.attr('width', width);
