@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_06a4
-// 2018-02-23
+// v 1_06a5
+// 2018-02-28
 
 (function forester() {
 
@@ -687,9 +687,6 @@
         });
         return propertyRefs;
     };
-
-    forester;
-
 
     forester.collectBasicTreeProperties = function (tree) {
         var properties = {};

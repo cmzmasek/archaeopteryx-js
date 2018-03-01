@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06a4
-// 2018-02-23
+// v 1_06a5
+// 2018-02-28
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -41,11 +41,12 @@ if (!forester) {
 if (!phyloXml) {
     throw "no phyloxml.js";
 }
+
 (function archaeopteryx() {
 
     "use strict";
 
-    var VERSION = '1.06a4';
+    var VERSION = '1.06a5';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3244,6 +3245,13 @@ if (!phyloXml) {
         if (_settings.zoomToFitUponWindowResize === undefined) {
             _settings.zoomToFitUponWindowResize = true;
         }
+        if (_settings.dynamicallyAddNodeVisualizations === undefined) {
+            _settings.dynamicallyAddNodeVisualizations = false;
+        }
+        if (_settings.propertiesToIgnoreForNodeVisualization === undefined) {
+            _settings.propertiesToIgnoreForNodeVisualization = null;
+        }
+
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
@@ -3289,7 +3297,11 @@ if (!phyloXml) {
         }
     }
 
-    archaeopteryx.launch = function (id, phylo, options, settings, nodeVisualizations) {
+    archaeopteryx.launch = function (id,
+                                     phylo,
+                                     options,
+                                     settings,
+                                     nodeVisualizations) {
 
         _treeData = phylo;
         _id = id;
@@ -3313,7 +3325,6 @@ if (!phyloXml) {
                 if (_nodeVisualizations == null) {
                     _nodeVisualizations = {};
                 }
-
                 _nodeVisualizations[MSA_RESIDUE] = {
                     label: MSA_RESIDUE,
                     description: '',
@@ -3325,9 +3336,36 @@ if (!phyloXml) {
                     sizes: null
                 };
             }
+
+            if (_settings.dynamicallyAddNodeVisualizations === true) {
+                var refsSet = forester.collectPropertyRefs(_treeData, 'node', false);
+                var re = new RegExp('.*:(.+)'); // For extracting the substring after the ':'
+
+                refsSet.forEach(function (value) {
+                    var arr = re.exec(value);
+                    var propertyName = arr[1]; // The substring after the ':'
+
+                    if ((!_nodeVisualizations.hasOwnProperty(propertyName))
+                        &&
+                        (!_settings.propertiesToIgnoreForNodeVisualization || !_settings.propertiesToIgnoreForNodeVisualization.includes(propertyName))) {
+
+                        _nodeVisualizations[propertyName] = {
+                            label: propertyName,
+                            description: 'the ' + propertyName,
+                            field: null,
+                            cladeRef: value,
+                            regex: false,
+                            shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                            colors: 'category20',
+                            sizes: null
+                        };
+                        console.log('Dynamically added property: ' + value + ' as ' + propertyName);
+                    }
+                });
+            }
+
             var nodeProperties = forester.collectProperties(_treeData, 'node', false);
             initializeNodeVisualizations(nodeProperties);
-
         }
 
 
