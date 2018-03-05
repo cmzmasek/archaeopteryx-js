@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06a5
-// 2018-02-28
+// v 1_06a6
+// 2018-03-05
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.06a5';
+    var VERSION = '1.06a6';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -5793,10 +5793,12 @@ if (!phyloXml) {
                     refs.forEach(function (v) {
                         var label = v;
                         label = label.replace(/^.+:/, '');
-                        if (label.length > (MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL + 2)) {
-                            label = label.substring(0, MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL) + "..";
+                        if (!_settings.propertiesToIgnoreForNodeVisualization || !_settings.propertiesToIgnoreForNodeVisualization.includes(label)) {
+                            if (label.length > (MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL + 2)) {
+                                label = label.substring(0, MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL) + "..";
+                            }
+                            h = h.concat('<option value="' + v + '">' + label + '</option>');
                         }
-                        h = h.concat('<option value="' + v + '">' + label + '</option>');
                     });
                 }
                 h = h.concat('</select>');
