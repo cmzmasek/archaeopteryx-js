@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06a6
-// 2018-03-05
+// v 1_06
+// 2018-03-06
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.06a6';
+    var VERSION = '1.06';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -180,6 +180,7 @@ if (!phyloXml) {
     // ---------------------------
     var BASE_BACKGROUND = 'basebackground';
     var BL_COLLAPSE_LABEL = 'bl_col_label';
+    var BRANCH_COLORS_CB = 'brnch_col_cb';
     var BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
     var BRANCH_EVENTS_CB = 'brevts_cb';
     var BRANCH_LENGTH_VALUES_CB = 'bl_cb';
@@ -2128,7 +2129,7 @@ if (!phyloXml) {
                 }
             }
         }
-        if (!_options.showBranchVisualizations && link.target.color) {
+        if (!_options.showBranchVisualizations && _options.showBranchColors && link.target.color) {
             var c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
         }
@@ -2181,7 +2182,7 @@ if (!phyloXml) {
         else if (_options.showNodeVisualizations) {
             return makeVisNodeBorderColor(phynode);
         }
-        else if (phynode.color) {
+        else if (_options.showBranchColors && phynode.color) {
             var c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -2197,7 +2198,7 @@ if (!phyloXml) {
         if (c) {
             return c;
         }
-        if (node.color) {
+        if (_options.showBranchColors && node.color) {
             return "rgb(" + node.color.red + "," + node.color.green + "," + node.color.blue + ")";
         }
         return _options.branchColorDefault;
@@ -2214,7 +2215,7 @@ if (!phyloXml) {
                 return color;
             }
         }
-        if (phynode.color) {
+        if (_options.showBranchColors && phynode.color) {
             var c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -2231,7 +2232,7 @@ if (!phyloXml) {
                 return ncolor;
             }
         }
-        if (phynode.color) {
+        if (_options.showBranchColors && phynode.color) {
             var c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -3068,6 +3069,9 @@ if (!phyloXml) {
         if (_options.nodeVisualizationsOpacity === undefined) {
             _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
         }
+        if (_options.showBranchColors === undefined) {
+            _options.showBranchColors = true;
+        }
         if (_options.decimalsForLinearRangeMeanValue === undefined) {
             _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
         }
@@ -3213,6 +3217,9 @@ if (!phyloXml) {
         }
         if (_settings.collapseLabelWidth === undefined) {
             _settings.collapseLabelWidth = COLLAPSE_LABEL_WIDTH_DEFAULT;
+        }
+        if (_settings.showBranchColorsButton === undefined) {
+            _settings.showBranchColorsButton = false;
         }
         if (_settings.showDynahideButton === undefined) {
             if (_basicTreeProperties.externalNodesCount > 20) {
@@ -4511,6 +4518,11 @@ if (!phyloXml) {
         update(null, 0);
     }
 
+    function branchColorsCbClicked() {
+        _options.showBranchColors = getCheckboxValue(BRANCH_COLORS_CB);
+        update(null, 0);
+    }
+
     function dynaHideCbClicked() {
         _options.dynahide = getCheckboxValue(DYNAHIDE_CB);
         resetVis();
@@ -5058,6 +5070,8 @@ if (!phyloXml) {
         $('#' + NODE_VIS_CB).click(nodeVisCbClicked);
 
         $('#' + BRANCH_VIS_CB).click(branchVisCbClicked);
+
+        $('#' + BRANCH_COLORS_CB).click(branchColorsCbClicked);
 
         $('#' + DYNAHIDE_CB).click(dynaHideCbClicked);
 
@@ -5680,6 +5694,9 @@ if (!phyloXml) {
             h = h.concat(makeCheckboxButton('External Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
             h = h.concat(makeCheckboxButton('Internal Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
 
+            if (_settings.showBranchColorsButton) {
+                h = h.concat(makeCheckboxButton('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
+            }
             if (_settings.enableNodeVisualizations) {
                 h = h.concat(makeCheckboxButton('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
             }
@@ -5960,6 +5977,7 @@ if (!phyloXml) {
         setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
         setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
         setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
+        setCheckboxValue(BRANCH_COLORS_CB, _options.showBranchColors);
         setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
         setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _options.dynahide);
