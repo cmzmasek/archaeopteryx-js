@@ -21,7 +21,7 @@
  */
 
 // v 1_06
-// 2018-03-06
+// 2018-03-08
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -3354,7 +3354,7 @@ if (!phyloXml) {
 
                     if ((!_nodeVisualizations.hasOwnProperty(propertyName))
                         &&
-                        (!_settings.propertiesToIgnoreForNodeVisualization || !_settings.propertiesToIgnoreForNodeVisualization.includes(propertyName))) {
+                        (!_settings.propertiesToIgnoreForNodeVisualization || ( _settings.propertiesToIgnoreForNodeVisualization.indexOf(propertyName) < 0 ))) {
 
                         _nodeVisualizations[propertyName] = {
                             label: propertyName,
@@ -5810,7 +5810,7 @@ if (!phyloXml) {
                     refs.forEach(function (v) {
                         var label = v;
                         label = label.replace(/^.+:/, '');
-                        if (!_settings.propertiesToIgnoreForNodeVisualization || !_settings.propertiesToIgnoreForNodeVisualization.includes(label)) {
+                        if (!_settings.propertiesToIgnoreForNodeVisualization || ( _settings.propertiesToIgnoreForNodeVisualization.indexOf(label) < 0 )) {
                             if (label.length > (MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL + 2)) {
                                 label = label.substring(0, MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL) + "..";
                             }
