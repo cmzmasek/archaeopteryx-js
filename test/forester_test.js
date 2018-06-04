@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_07a1
-// 2018-06-01
+// v 1_07
+// 2018-06-04
 
 "use strict";
 
@@ -1015,7 +1015,6 @@ function testCollectProperties() {
 function testDeleteSubtree() {
     var p = forester.parseNewHampshire("((((a,b,c)abc,(c,d,e)cde),x,y,z),R)r");
 
-
     forester.deleteSubtree(p, forester.findByNodeName(p, "a")[0]);
     forester.deleteSubtree(p, forester.findByNodeName(p, "e")[0]);
     forester.deleteSubtree(p, forester.findByNodeName(p, "x")[0]);
@@ -1031,6 +1030,21 @@ function testDeleteSubtree() {
     if (x2 !== "(z,R)r;") {
         return false;
     }
+
+    var p2 = forester.parseNewHampshire("(((a:3.1,b:2.1):1.1,c),(d,e))");
+    forester.deleteSubtree(p2, forester.findByNodeName(p2, "a")[0]);
+    var x3 = forester.toNewHampshire(p2, 8, false, true);
+    if (x3 !== "((b:3.2,c),(d,e));") {
+        return false;
+    }
+
+    var p3 = forester.parseNewHampshire("(((a:3.1,b:2.1),c),(d,e))");
+    forester.deleteSubtree(p3, forester.findByNodeName(p3, "a")[0]);
+    var x4 = forester.toNewHampshire(p3, 8, false, true);
+    if (x4 !== "((b:2.1,c),(d,e));") {
+        return false;
+    }
+
     return true;
 }
 

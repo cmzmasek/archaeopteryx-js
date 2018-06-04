@@ -21,7 +21,7 @@
  */
 
 // v 1_07a1
-// 2018-06-01
+// 2018-06-04
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -116,6 +116,10 @@ if (!phyloXml) {
     // ------------------------------
     // Various constants and settings
     // ------------------------------
+    var ACC_GENBANK = "GENBANK";
+    var ACC_REFSEQ = "REFSEQ";
+    var ACC_UNIPROT = "UNIPROT";
+    var ACC_UNIPROTKB = "UNIPROTKB";
     var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
     var BRANCH_EVENT_DATATYPE = 'xsd:string';
     var BRANCH_EVENT_REF = 'aptx:branch_event';
@@ -3242,6 +3246,13 @@ if (!phyloXml) {
             _settings.nhExportReplaceIllegalChars = true;
         }
 
+        if (_settings.enableSubtreeDeletion === undefined) {
+            _settings.enableSubtreeDeletion = true;
+        }
+        if (_settings.enableAccessToDatabases === undefined) {
+            _settings.enableAccessToDatabases = true;
+        }
+
         if (_settings.enableMsaResidueVisualizations === true
             && _basicTreeProperties.alignedMolSeqs === true
             && _basicTreeProperties.maxMolSeqLength > 1) {
@@ -3793,6 +3804,43 @@ if (!phyloXml) {
                 update();
             }
 
+
+            function accessDatabase(node) {
+                if (node.sequences) {
+                    for (var i = 0; i < node.sequences.length; ++i) {
+                        var s = node.sequences[i];
+                        if (s.accession && s.accession.value && s.accession.source) {
+                            var value = s.accession.value;
+                            var source = s.accession.source.toUpperCase();
+                            var url = null;
+                            if (source === ACC_GENBANK) {
+                                var reProt = new RegExp('^[A-Z]{3}\\d+$');
+                                var reNuc = new RegExp('^[a-zA-Z]{1,2}\\d+$');
+                                if (reProt.test(value)) {
+                                    url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
+                                }
+                                else if (reNuc.test(value)) {
+                                    url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                                }
+                            }
+                            else if (source === ACC_REFSEQ) {
+                                url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                            }
+                            else if (source === ACC_UNIPROT || source === ACC_UNIPROTKB) {
+                                url = 'https://www.uniprot.org/uniprot/' + value;
+                            }
+                            if (url) {
+                                var win = window.open(url, '_blank');
+                                win.focus();
+                            }
+                            else {
+                                alert("Don't know how to interpret sequence accession \'" + value + "\'");
+                            }
+                        }
+                    }
+                }
+            }
+
             function listMolecularSequences(node) {
 
                 var text_all = '';
@@ -3918,7 +3966,7 @@ if (!phyloXml) {
             }
 
             var rectWidth = 130;
-            var rectHeight = 190;
+            var rectHeight = 230;
 
             removeTooltips();
 
@@ -4159,6 +4207,7 @@ if (!phyloXml) {
                 .on('click', function (d) {
                     listExternalNodeData(d);
                 });
+
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
@@ -4180,45 +4229,82 @@ if (!phyloXml) {
                     listMolecularSequences(d);
                 });
 
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent && d.parent.parent && d.parent.parent.parent && _superTreeRoots.length < 1) {
-                        textSum += textInc;
-                        if (d.children || d._children) {
-                            if (( d.children ) && (d.children.length > 1 )) {
-                                return 'Delete Subtree';
+            if (_settings.enableAccessToDatabases === true) {
+                d3.select(this).append('text')
+                    .attr('class', 'tooltipElem tooltipElemText')
+                    .attr('y', topPad + textSum)
+                    .attr('x', +rightPad)
+                    .style('text-align', 'left')
+                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                    .style('font-size', fs)
+                    .style('font-family', 'Helvetica')
+                    .style('font-style', 'normal')
+                    .style('font-weight', 'bold')
+                    .style('text-decoration', 'none')
+                    .text(function (d) {
+                            var show = false;
+                            if (d.sequences) {
+                                for (var i = 0; i < d.sequences.length; ++i) {
+                                    var s = d.sequences[i];
+                                    if (s.accession && s.accession.value && s.accession.source) {
+                                        var source = s.accession.source.toUpperCase();
+                                        if (source === ACC_GENBANK || source === ACC_REFSEQ || source === ACC_UNIPROT || source === ACC_UNIPROTKB) {
+                                            show = true;
+                                            break;
+                                        }
+                                    }
+                                }
                             }
-                            else if (( d._children ) && (d._children.length > 1 )) {
-                                return 'Delete Collapsed Subtree';
+                            if (show) {
+                                textSum += textInc;
+                                return 'Access Seq DB';
                             }
                         }
-                        else {
-                            return 'Delete External Node';
-                        }
-                    }
-                })
-                .on('click', function (d) {
-                    unCollapseAll(_root);
-                    forester.deleteSubtree(tree, d);
-                    resetDepthCollapseDepthValue();
-                    resetRankCollapseRankValue();
-                    resetBranchLengthCollapseValue();
-                    resetCollapseByFeature();
-                    zoomToFit();
-                });
+                    )
+                    .on('click', function (d) {
+                        accessDatabase(d);
+                    });
+            }
 
+            if (_settings.enableSubtreeDeletion === true) {
+                d3.select(this).append('text')
+                    .attr('class', 'tooltipElem tooltipElemText')
+                    .attr('y', topPad + textSum)
+                    .attr('x', +rightPad)
+                    .style('text-align', 'left')
+                    .style('align', 'left')
+                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                    .style('font-size', fs)
+                    .style('font-family', _settings.controlsFont)
+                    .style('font-style', 'normal')
+                    .style('font-weight', 'bold')
+                    .style('text-decoration', 'none')
+                    .text(function (d) {
+                        if (d.parent && d.parent.parent && d.parent.parent.parent && _superTreeRoots.length < 1) {
+                            textSum += textInc;
+                            if (d.children || d._children) {
+                                if (( d.children ) && (d.children.length > 1 )) {
+                                    return 'Delete Subtree';
+                                }
+                                else if (( d._children ) && (d._children.length > 1 )) {
+                                    return 'Delete Collapsed Subtree';
+                                }
+                            }
+                            else {
+                                return 'Delete External Node';
+                            }
+                        }
+                    })
+                    .on('click', function (d) {
+                        unCollapseAll(_root);
+                        forester.deleteSubtree(tree, d);
+                        resetDepthCollapseDepthValue();
+                        resetRankCollapseRankValue();
+                        resetBranchLengthCollapseValue();
+                        resetCollapseByFeature();
+                        zoomToFit();
+                    });
+            }
 
             d3.selection.prototype.moveToFront = function () {
                 return this.each(function () {
