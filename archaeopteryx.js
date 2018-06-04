@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_06
-// 2018-03-08
+// v 1_07a1
+// 2018-06-01
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.06';
+    var VERSION = '1.07a1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -172,6 +172,7 @@ if (!phyloXml) {
     var TRANSITION_DURATION_DEFAULT = 750;
     var WARNING = 'ArchaeopteryxJS: WARNING';
     var MESSAGE = 'ArchaeopteryxJS: ';
+    var ERROR = 'ArchaeopteryxJS: ERROR: ';
     var WIDTH_OFFSET = 14; // Needed in Firefox Quantum (2018-02-22)
     var ZOOM_INTERVAL = 200;
 
@@ -3310,6 +3311,18 @@ if (!phyloXml) {
                                      settings,
                                      nodeVisualizations) {
 
+
+        if (phylo === undefined || phylo === null) {
+            console.log(ERROR + 'input tree is undefined or null');
+            alert(ERROR + 'input tree is undefined or null');
+            return;
+        }
+        if ((!phylo.children) || ( phylo.children.length < 1)) {
+            console.log(ERROR + 'input tree is empty or illegally formatted');
+            alert(ERROR + 'input tree is empty or illegally formatted');
+            return;
+        }
+
         _treeData = phylo;
         _id = id;
         _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
@@ -4166,6 +4179,46 @@ if (!phyloXml) {
                 .on('click', function (d) {
                     listMolecularSequences(d);
                 });
+
+
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', _settings.controlsFont)
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent && d.parent.parent && d.parent.parent.parent && _superTreeRoots.length < 1) {
+                        textSum += textInc;
+                        if (d.children || d._children) {
+                            if (( d.children ) && (d.children.length > 1 )) {
+                                return 'Delete Subtree';
+                            }
+                            else if (( d._children ) && (d._children.length > 1 )) {
+                                return 'Delete Collapsed Subtree';
+                            }
+                        }
+                        else {
+                            return 'Delete External Node';
+                        }
+                    }
+                })
+                .on('click', function (d) {
+                    unCollapseAll(_root);
+                    forester.deleteSubtree(tree, d);
+                    resetDepthCollapseDepthValue();
+                    resetRankCollapseRankValue();
+                    resetBranchLengthCollapseValue();
+                    resetCollapseByFeature();
+                    zoomToFit();
+                });
+
 
             d3.selection.prototype.moveToFront = function () {
                 return this.each(function () {
@@ -6751,14 +6804,14 @@ if (!phyloXml) {
                 newHamphshireConfidenceValuesAsInternalNames);
         }
         catch (e) {
-            alert('error while parsing tree: ' + e);
+            alert(ERROR + 'error while parsing tree: ' + e);
         }
         if (tree) {
             try {
                 archaeopteryx.launch(label, tree, options, settings, nodeVisualizations);
             }
             catch (e) {
-                alert('error while launching archaeopteryx: ' + e);
+                alert(ERROR + 'error while launching archaeopteryx: ' + e);
             }
         }
     };

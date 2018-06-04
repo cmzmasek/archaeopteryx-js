@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_06
-// 2018-03-08
+// v 1_07a1
+// 2018-06-01
 
 (function forester() {
 
@@ -180,6 +180,59 @@
             }
         });
         return found;
+    };
+
+    /**
+     * To delete a sub-tree or external node.
+     *
+     * @param phy
+     * @param nodeToDelete
+     */
+    forester.deleteSubtree = function (phy, nodeToDelete) {
+        if (!phy) {
+            throw ( "cannot delete null tree" );
+        }
+        if (!nodeToDelete) {
+            throw ( "cannot delete null node" );
+        }
+        if (!nodeToDelete.parent || !nodeToDelete.parent.parent) {
+            throw ( "cannot delete root" );
+        }
+        if (!nodeToDelete.parent.parent.parent) {
+            throw ( "cannot delete direct child of root" );
+        }
+
+        var p = nodeToDelete.parent;
+
+        if ((p.children) && (p.children.length > 1)) {
+            var i = p.children.indexOf(nodeToDelete);
+            if (i !== -1) {
+                p.children.splice(i, 1);
+            }
+        }
+        if ((p._children) && (p._children.length > 1)) {
+            var ii = p._children.indexOf(nodeToDelete);
+            if (ii !== -1) {
+                p._children.splice(ii, 1);
+            }
+        }
+
+        if (p.children.length === 1) {
+            var pp = p.parent;
+            var cni = forester.getChildNodeIndex(pp, p);
+            if ((cni < 0) || (cni > ( pp.children.length - 1 ) )) {
+                throw ( "this should never have happened, child node index = " + cni );
+            }
+            var x = p.children[0];
+            var nbl = undefined;
+            if (x.branch_length || p.branch_length) {
+                nbl = ( x.branch_length > 0 ? x.branch_length : 0 ) + ( p.branch_length > 0 ? p.branch_length : 0  );
+            }
+            x.parent = pp;
+            pp.children[cni] = x;
+            x.branch_length = nbl;
+        }
+
     };
 
 

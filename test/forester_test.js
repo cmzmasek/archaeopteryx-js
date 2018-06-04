@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_02alpha
-// 2017-06-02
+// v 1_07a1
+// 2018-06-01
 
 "use strict";
 
@@ -35,6 +35,7 @@ var pth = require('path');
 
 var t0 = pth.join(__dirname, "./data/t0.xml");
 var t1 = pth.join(__dirname, "./data/t1.xml");
+var t_properties = pth.join(__dirname, "./data/properties.xml");
 
 console.log("getTreeRoot                : " + ( testGetTreeRoot() === true ? "pass" : "FAIL" ));
 console.log("preOrderTraversal          : " + ( testPreOrderTraversal() === true ? "pass" : "FAIL" ));
@@ -44,6 +45,9 @@ console.log("NewHampshire               : " + ( testNewHampshire2() === true ? "
 console.log("reRoot 1                   : " + ( testReRoot1() === true ? "pass" : "FAIL" ));
 console.log("reRoot 2                   : " + ( testReRoot2() === true ? "pass" : "FAIL" ));
 console.log("reRoot 3                   : " + ( testReRoot3() === true ? "pass" : "FAIL" ));
+console.log("collectProperties          : " + ( testCollectProperties() === true ? "pass" : "FAIL" ));
+console.log("delete subtree             : " + ( testDeleteSubtree() === true ? "pass" : "FAIL" ));
+
 
 function readPhyloXmlFromFile(fileName) {
     var fs = require('fs');
@@ -993,6 +997,38 @@ function testNewHampshire2() {
     var phy501nhp = forester.parseNewHampshire(phy501nh);
     var phy501nhnh = forester.toNewHampshire(phy501nhp, 8, false, true);
     if (phy501nh !== phy501nhnh) {
+        return false;
+    }
+    return true;
+}
+
+function testCollectProperties() {
+    var phy = readPhyloXmlFromFile(t_properties)[0];
+    var appliesTo = "node"; // Only use properties which apply to "node".
+    var externalOnly = true; // Only look at external nodes.
+    var appliesTo = "node"; // Only use properties which apply to "node".
+    var externalOnly = true; // Only look at external nodes.
+    var refs_set = forester.collectPropertyRefs(phy, appliesTo, externalOnly);
+    return true;
+}
+
+function testDeleteSubtree() {
+    var p = forester.parseNewHampshire("((((a,b,c)abc,(c,d,e)cde),x,y,z),R)r");
+
+
+    forester.deleteSubtree(p, forester.findByNodeName(p, "a")[0]);
+    forester.deleteSubtree(p, forester.findByNodeName(p, "e")[0]);
+    forester.deleteSubtree(p, forester.findByNodeName(p, "x")[0]);
+    var x1 = forester.toNewHampshire(p, 8, false, true);
+    if (x1 !== "((((b,c)abc,(c,d)cde),y,z),R)r;") {
+        return false;
+    }
+    forester.deleteSubtree(p, forester.findByNodeName(p, "abc")[0]);
+    forester.deleteSubtree(p, forester.findByNodeName(p, "d")[0]);
+    forester.deleteSubtree(p, forester.findByNodeName(p, "c")[0]);
+    forester.deleteSubtree(p, forester.findByNodeName(p, "y")[0]);
+    var x2 = forester.toNewHampshire(p, 8, false, true);
+    if (x2 !== "(z,R)r;") {
         return false;
     }
     return true;
