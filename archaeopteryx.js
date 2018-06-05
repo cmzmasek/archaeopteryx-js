@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07a1
-// 2018-06-04
+// v 1_07a2
+// 2018-06-05
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07a1';
+    var VERSION = '1.07a2';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3916,6 +3916,7 @@ if (!phyloXml) {
                 if (node.parent && ( node.children || node._children )) {
                     if (_superTreeRoots.length > 0 && node === _root.children[0]) {
                         _root = _superTreeRoots.pop();
+                        updateNodeVisualizationsAndLegends(_root);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
@@ -3935,6 +3936,7 @@ if (!phyloXml) {
                             node.children = node._children;
                             node._children = null;
                         }
+                        updateNodeVisualizationsAndLegends(_root);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
@@ -4088,11 +4090,11 @@ if (!phyloXml) {
                     if (d.parent && ( d.children || d._children )) {
                         if (_superTreeRoots.length > 0 && d === _root.children[0]) {
                             textSum += textInc;
-                            return 'Return to Super-tree';
+                            return 'Return to Supertree';
                         }
                         else if (d.parent.parent) {
                             textSum += textInc;
-                            return 'Go to Sub-tree';
+                            return 'Go to Subtree';
                         }
                     }
 
@@ -4298,6 +4300,8 @@ if (!phyloXml) {
                     .on('click', function (d) {
                         unCollapseAll(_root);
                         forester.deleteSubtree(tree, d);
+                        _treeData = tree;
+                        updateNodeVisualizationsAndLegends(_treeData);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
@@ -4337,6 +4341,41 @@ if (!phyloXml) {
             }
         }
     });
+
+
+    function updateNodeVisualizationsAndLegends(tree) {
+        _visualizations = null;
+        var nodeProperties = forester.collectProperties(tree, 'node', false);
+        initializeNodeVisualizations(nodeProperties);
+
+        if ((_showLegends && ( _settings.enableNodeVisualizations || _settings.enableBranchVisualizations ) && ( _legendColorScales[LEGEND_LABEL_COLOR] ||
+            (_options.showNodeVisualizations && ( _legendColorScales[LEGEND_NODE_FILL_COLOR] ||
+            _legendColorScales[LEGEND_NODE_BORDER_COLOR] ||
+            _legendShapeScales[LEGEND_NODE_SHAPE] ||
+            _legendSizeScales[LEGEND_NODE_SIZE]))))) {
+            if (_legendColorScales[LEGEND_LABEL_COLOR]) {
+                removeLegend(LEGEND_LABEL_COLOR);
+                addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
+            }
+            if (_legendColorScales[LEGEND_NODE_FILL_COLOR]) {
+                removeLegend(LEGEND_NODE_FILL_COLOR);
+                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
+            }
+
+            if (_legendColorScales[LEGEND_NODE_BORDER_COLOR]) {
+                removeLegend(LEGEND_NODE_BORDER_COLOR);
+                addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
+            }
+            if (_legendShapeScales[LEGEND_NODE_SHAPE]) {
+                removeShapeLegend(LEGEND_NODE_SHAPE);
+                addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
+            }
+            if (_legendSizeScales[LEGEND_NODE_SIZE]) {
+                removeSizeLegend(LEGEND_NODE_SIZE);
+                addLegendForSizes(LEGEND_NODE_SIZE, _visualizations.nodeSize[_currentNodeSizeVisualization]);
+            }
+        }
+    }
 
 
     function zoomInX(zoomInFactor) {
@@ -4407,6 +4446,7 @@ if (!phyloXml) {
     function returnToSupertreeButtonPressed() {
         if (_root && _superTreeRoots.length > 0) {
             _root = _superTreeRoots.pop();
+            updateNodeVisualizationsAndLegends(_root);
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
@@ -5874,7 +5914,7 @@ if (!phyloXml) {
             h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
             h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
-            h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the super-tree (if in sub-tree) (Alt+R)'));
+            h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the supertree (if in subtree) (Alt+R)'));
             h = h.concat('<br>');
             h = h.concat(makeButton('U', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all (Alt+U)'));
             h = h.concat(makeButton('M', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
