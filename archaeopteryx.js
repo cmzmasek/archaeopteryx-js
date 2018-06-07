@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07a2
-// 2018-06-05
+// v 1_07a4
+// 2018-06-07
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07a2';
+    var VERSION = '1.07a4';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -297,6 +297,16 @@ if (!phyloXml) {
     var VK_PAGE_DOWN = 34;
     var VK_OPEN_BRACKET = 219;
     var VK_CLOSE_BRACKET = 221;
+
+
+    // ---------------------------
+    // Regular Expressions
+    // ---------------------------
+    var RE_GENBANK_PROT = new RegExp('^[a-zA-Z]{3}[0-9\\\\.]+$');
+    var RE_GENBANK_NUC = new RegExp('^[a-zA-Z]{1,2}[0-9\\\\.]+$');
+    var RE_REFSEQ = new RegExp('^[A-Z]{2}_[0-9\\\\.]+$');
+    var RE_UNIPROTKB = new RegExp('^[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$');
+
 
     // ---------------------------
     // "Instance variables"
@@ -3806,6 +3816,7 @@ if (!phyloXml) {
 
 
             function accessDatabase(node) {
+
                 if (node.sequences) {
                     for (var i = 0; i < node.sequences.length; ++i) {
                         var s = node.sequences[i];
@@ -3814,12 +3825,10 @@ if (!phyloXml) {
                             var source = s.accession.source.toUpperCase();
                             var url = null;
                             if (source === ACC_GENBANK) {
-                                var reProt = new RegExp('^[A-Z]{3}\\d+$');
-                                var reNuc = new RegExp('^[a-zA-Z]{1,2}\\d+$');
-                                if (reProt.test(value)) {
+                                if (RE_GENBANK_PROT.test(value)) {
                                     url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
                                 }
-                                else if (reNuc.test(value)) {
+                                else if (RE_GENBANK_NUC.test(value)) {
                                     url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
                                 }
                             }
@@ -3828,6 +3837,20 @@ if (!phyloXml) {
                             }
                             else if (source === ACC_UNIPROT || source === ACC_UNIPROTKB) {
                                 url = 'https://www.uniprot.org/uniprot/' + value;
+                            }
+                            else if (source === 'UNKNOWN' || source === '?') {
+                                if (RE_GENBANK_PROT.test(value)) {
+                                    url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
+                                }
+                                else if (RE_GENBANK_NUC.test(value)) {
+                                    url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                                }
+                                else if (RE_REFSEQ.test(value)) {
+                                    url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                                }
+                                else if (RE_UNIPROTKB.test(value)) {
+                                    url = 'https://www.uniprot.org/uniprot/' + value;
+                                }
                             }
                             if (url) {
                                 var win = window.open(url, '_blank');
@@ -3916,10 +3939,13 @@ if (!phyloXml) {
                 if (node.parent && ( node.children || node._children )) {
                     if (_superTreeRoots.length > 0 && node === _root.children[0]) {
                         _root = _superTreeRoots.pop();
+                        _basicTreeProperties = forester.collectBasicTreeProperties(_root);
                         updateNodeVisualizationsAndLegends(_root);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
+                        search0();
+                        search1();
                         zoomToFit();
                     }
                     else if (node.parent.parent) {
@@ -3936,10 +3962,13 @@ if (!phyloXml) {
                             node.children = node._children;
                             node._children = null;
                         }
+                        _basicTreeProperties = forester.collectBasicTreeProperties(_root);
                         updateNodeVisualizationsAndLegends(_root);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
+                        search0();
+                        search1();
                         zoomToFit();
                     }
                 }
@@ -4250,7 +4279,8 @@ if (!phyloXml) {
                                     var s = d.sequences[i];
                                     if (s.accession && s.accession.value && s.accession.source) {
                                         var source = s.accession.source.toUpperCase();
-                                        if (source === ACC_GENBANK || source === ACC_REFSEQ || source === ACC_UNIPROT || source === ACC_UNIPROTKB) {
+                                        if (source === ACC_GENBANK || source === ACC_REFSEQ || source === ACC_UNIPROT
+                                            || source === ACC_UNIPROTKB || source === 'UNKNOWN' || source === '?') {
                                             show = true;
                                             break;
                                         }
@@ -4301,11 +4331,14 @@ if (!phyloXml) {
                         unCollapseAll(_root);
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
+                        _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
                         updateNodeVisualizationsAndLegends(_treeData);
                         resetDepthCollapseDepthValue();
                         resetRankCollapseRankValue();
                         resetBranchLengthCollapseValue();
                         resetCollapseByFeature();
+                        search0();
+                        search1();
                         zoomToFit();
                     });
             }
@@ -4446,10 +4479,13 @@ if (!phyloXml) {
     function returnToSupertreeButtonPressed() {
         if (_root && _superTreeRoots.length > 0) {
             _root = _superTreeRoots.pop();
+            _basicTreeProperties = forester.collectBasicTreeProperties(_root);
             updateNodeVisualizationsAndLegends(_root);
             resetDepthCollapseDepthValue();
             resetRankCollapseRankValue();
             resetBranchLengthCollapseValue();
+            search0();
+            search1();
             zoomToFit();
         }
     }
@@ -4588,7 +4624,7 @@ if (!phyloXml) {
 
     function search(query) {
         return forester.searchData(query,
-            _treeData,
+            _root,
             _options.searchIsCaseSensitive,
             _options.searchIsPartial,
             _options.searchUsesRegex);
