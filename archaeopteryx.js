@@ -120,6 +120,8 @@ if (!phyloXml) {
     var ACC_REFSEQ = "REFSEQ";
     var ACC_UNIPROT = "UNIPROT";
     var ACC_UNIPROTKB = "UNIPROTKB";
+    var ACC_SWISSPROT = "SWISSPROT";
+    var ACC_TREMBL = "TREMBL";
     var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
     var BRANCH_EVENT_DATATYPE = 'xsd:string';
     var BRANCH_EVENT_REF = 'aptx:branch_event';
@@ -302,8 +304,10 @@ if (!phyloXml) {
     // ---------------------------
     // Regular Expressions
     // ---------------------------
-    var RE_GENBANK_PROT = new RegExp('^[a-zA-Z]{3}[0-9\\\\.]+$');
-    var RE_GENBANK_NUC = new RegExp('^[a-zA-Z]{1,2}[0-9\\\\.]+$');
+    var RE_SWISSPROT_TREMBL = new RegExp('^[A-Z0-9]{1,10}_[A-Z0-9]{1,5}$');
+    var RE_SWISSPROT_TREMBL_PFAM = new RegExp('^([A-Z0-9]{1,10}_[A-Z0-9]{1,5})/.+$');
+    var RE_GENBANK_PROT = new RegExp('^[A-Z]{3}[0-9\\\\.]+$');
+    var RE_GENBANK_NUC = new RegExp('^[A-Z]{1,2}[0-9\\\\.]+$');
     var RE_REFSEQ = new RegExp('^[A-Z]{2}_[0-9\\\\.]+$');
     var RE_UNIPROTKB = new RegExp('^[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$');
 
@@ -3816,14 +3820,14 @@ if (!phyloXml) {
 
 
             function accessDatabase(node) {
-
+                var url = null;
                 if (node.sequences) {
                     for (var i = 0; i < node.sequences.length; ++i) {
                         var s = node.sequences[i];
                         if (s.accession && s.accession.value && s.accession.source) {
                             var value = s.accession.value;
                             var source = s.accession.source.toUpperCase();
-                            var url = null;
+
                             if (source === ACC_GENBANK) {
                                 if (RE_GENBANK_PROT.test(value)) {
                                     url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
@@ -3836,6 +3840,9 @@ if (!phyloXml) {
                                 url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
                             }
                             else if (source === ACC_UNIPROT || source === ACC_UNIPROTKB) {
+                                url = 'https://www.uniprot.org/uniprot/' + value;
+                            }
+                            else if (source === ACC_SWISSPROT || source === ACC_TREMBL) {
                                 url = 'https://www.uniprot.org/uniprot/' + value;
                             }
                             else if (source === 'UNKNOWN' || source === '?') {
@@ -3851,17 +3858,34 @@ if (!phyloXml) {
                                 else if (RE_UNIPROTKB.test(value)) {
                                     url = 'https://www.uniprot.org/uniprot/' + value;
                                 }
-                            }
-                            if (url) {
-                                var win = window.open(url, '_blank');
-                                win.focus();
-                            }
-                            else {
-                                alert("Don't know how to interpret sequence accession \'" + value + "\'");
+                                else if (RE_SWISSPROT_TREMBL.test(value)) {
+                                    url = 'https://www.uniprot.org/uniprot/' + value;
+                                }
+                                else if (RE_SWISSPROT_TREMBL_PFAM.test(value)) {
+                                    url = 'https://www.uniprot.org/uniprot/' + RE_SWISSPROT_TREMBL_PFAM.exec(value)[1];
+                                }
                             }
                         }
                     }
                 }
+                if (node.name) {
+                    if (RE_SWISSPROT_TREMBL.test(node.name)) {
+                        url = 'https://www.uniprot.org/uniprot/' + node.name;
+                    }
+                    else if (RE_SWISSPROT_TREMBL_PFAM.test(node.name)) {
+                        url = 'https://www.uniprot.org/uniprot/' + RE_SWISSPROT_TREMBL_PFAM.exec(node.name)[1];
+                    }
+                }
+
+                if (url) {
+                    var win = window.open(url, '_blank');
+                    win.focus();
+                }
+                else {
+                    alert("Don't know how to interpret sequence accession \'" + value + "\'");
+                }
+
+
             }
 
             function listMolecularSequences(node) {
@@ -4274,22 +4298,37 @@ if (!phyloXml) {
                     .style('text-decoration', 'none')
                     .text(function (d) {
                             var show = false;
+                        var value = null;
                             if (d.sequences) {
                                 for (var i = 0; i < d.sequences.length; ++i) {
                                     var s = d.sequences[i];
                                     if (s.accession && s.accession.value && s.accession.source) {
                                         var source = s.accession.source.toUpperCase();
                                         if (source === ACC_GENBANK || source === ACC_REFSEQ || source === ACC_UNIPROT
-                                            || source === ACC_UNIPROTKB || source === 'UNKNOWN' || source === '?') {
+                                            || source === ACC_UNIPROTKB
+                                            || source === ACC_SWISSPROT
+                                            || source === ACC_TREMBL
+                                            || source === 'UNKNOWN' || source === '?') {
                                             show = true;
+                                            value = s.accession.value;
                                             break;
                                         }
                                     }
                                 }
                             }
+                        if (d.name) {
+                            if (RE_SWISSPROT_TREMBL.test(d.name)) {
+                                show = true;
+                                value = d.name;
+                            }
+                            else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
+                                show = true;
+                                value = RE_SWISSPROT_TREMBL_PFAM.exec(d.name)[1];
+                                }
+                            }
                             if (show) {
                                 textSum += textInc;
-                                return 'Access Seq DB';
+                                return 'Access DB [' + value + ']';
                             }
                         }
                     )
