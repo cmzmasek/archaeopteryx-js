@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07a4
-// 2018-06-07
+// v 1_07b1
+// 2018-06-08
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07a4';
+    var VERSION = '1.07b1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -304,8 +304,9 @@ if (!phyloXml) {
     // ---------------------------
     // Regular Expressions
     // ---------------------------
-    var RE_SWISSPROT_TREMBL = new RegExp('^[A-Z0-9]{1,10}_[A-Z0-9]{1,5}$');
-    var RE_SWISSPROT_TREMBL_PFAM = new RegExp('^([A-Z0-9]{1,10}_[A-Z0-9]{1,5})/.+$');
+
+    var RE_SWISSPROT_TREMBL = new RegExp('^(?=.*[A-Z].*_.*[A-Z].*)[A-Z0-9]{2,10}_[A-Z0-9]{3,5}$');
+    var RE_SWISSPROT_TREMBL_PFAM = new RegExp('^((?=.*[A-Z].*_.*[A-Z].*)[A-Z0-9]{2,10}_[A-Z0-9]{3,5})/[0-9]+-[0-9]+$');
     var RE_GENBANK_PROT = new RegExp('^[A-Z]{3}[0-9\\\\.]+$');
     var RE_GENBANK_NUC = new RegExp('^[A-Z]{1,2}[0-9\\\\.]+$');
     var RE_REFSEQ = new RegExp('^[A-Z]{2}_[0-9\\\\.]+$');
