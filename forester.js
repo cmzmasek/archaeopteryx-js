@@ -19,8 +19,8 @@
  *
  */
 
-// v 1_07b1
-// 2018-06-08
+// v 1_07b3
+// 2018-08-16
 
 (function forester() {
 
@@ -1177,6 +1177,7 @@
     };
 
     forester.calcDepth = function (node) {
+
         var steps = 0;
         while (node.parent && node.parent.parent) {
             steps++;

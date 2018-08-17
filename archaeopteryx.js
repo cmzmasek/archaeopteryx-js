@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07b1
-// 2018-06-08
+// v 1_07b3
+// 2018-08-16
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07b1';
+    var VERSION = '1.07b3';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -1706,7 +1706,6 @@ if (!phyloXml) {
 
     // --------------------------------------------------------------
 
-
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
         if (!source) {
@@ -1715,6 +1714,7 @@ if (!phyloXml) {
         if (transitionDuration === undefined) {
             transitionDuration = TRANSITION_DURATION_DEFAULT;
         }
+
 
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             _w = _displayWidth - calcMaxTreeLengthForDisplay();
@@ -1738,7 +1738,6 @@ if (!phyloXml) {
 
         _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
         var uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
-
         var nodes = _treeFn.nodes(_root).reverse();
         var links = _treeFn.links(nodes);
         var gap = _options.nodeLabelGap;
@@ -2038,7 +2037,6 @@ if (!phyloXml) {
                 });
             });
 
-
         link.transition()
             .duration(transitionDuration)
             .attr('stroke', makeBranchColor)
@@ -2168,7 +2166,6 @@ if (!phyloXml) {
         }
         return null;
     }
-
 
     var makeNodeFillColor = function (phynode) {
         var foundColor = getFoundColor(phynode);
@@ -3148,6 +3145,14 @@ if (!phyloXml) {
             _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
         }
 
+        if (!_options.initialCollapseFeature) {
+            _options.initialCollapseFeature = null;
+        }
+
+        if (!_options.initialCollapseDepth) {
+            _options.initialCollapseDepth = -1;
+        }
+
         _options.externalNodeFontSize = parseInt(_options.externalNodeFontSize);
         _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
         _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
@@ -3414,7 +3419,6 @@ if (!phyloXml) {
             initializeNodeVisualizations(nodeProperties);
         }
 
-
         createGui();
 
         if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
@@ -3476,7 +3480,6 @@ if (!phyloXml) {
 
         _svgGroup = _baseSvg.append('g');
 
-
         if (_options.searchAinitialValue) {
             search0();
         }
@@ -3484,12 +3487,51 @@ if (!phyloXml) {
             search1();
         }
 
+        if (_options.initialCollapseFeature) {
+            var feature = _options.initialCollapseFeature;
+            var refs = forester.collectPropertyRefs(_root, 'node', false);
+            var found = false;
+            if (refs) {
+                refs.forEach(function (v) {
+                    if (v == feature) {
+                        found = true;
+                    }
+                });
+            }
+            if (found) {
+                console.log(MESSAGE + 'Setting initial value for collapse by feature to: ' + feature);
+                collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
+                var s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+                if (s) {
+                    s.val(feature);
+                }
+            }
+            else {
+                console.log(WARNING + ' initial value for collapse by feature [' + feature + '] not present');
+            }
+        }
+        else if (_options.initialCollapseDepth > 0) {
+            _depth_collapse_level = _options.initialCollapseDepth;
+            var max_depth = forester.calcMaxDepth(_root);
+            if (_depth_collapse_level >= max_depth) {
+                console.log(WARNING + ' initial value for collapse depth [' + _depth_collapse_level + '] is larger than or equal to maximum depth [' + max_depth + ']');
+                _depth_collapse_level = max_depth - 1;
+            }
+            console.log(MESSAGE + 'Setting initial value for collapse depth to: ' + _depth_collapse_level);
+            forester.collapseToDepth(_root, _depth_collapse_level);
+            updateDepthCollapseDepthDisplay();
+        }
+
         update(null, 0);
+
         zoomToFit();
+
     };
 
     archaeopteryx.parsePhyloXML = function (data) {
-        return phyloXml.parse(data, {trim: true, normalize: true})[0]
+        var phy = phyloXml.parse(data, {trim: true, normalize: true})[0];
+        forester.addParents(phy);
+        return phy;
     };
 
     archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
@@ -3703,7 +3745,6 @@ if (!phyloXml) {
                     return t;
                 };
                 var text_all = '';
-
 
                 var ext_nodes = forester.getAllExternalNodes(node).reverse();
 
@@ -6582,7 +6623,6 @@ if (!phyloXml) {
             $('#' + NODE_SHAPE_SELECT_MENU).val(MSA_RESIDUE);
             addLegend(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
         }
-
     }
 
 
