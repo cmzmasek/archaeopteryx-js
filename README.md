@@ -6,6 +6,8 @@ https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 
 Examples:
 
+http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
+
 http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html
 
 http://www.phyloxml.org/archaeopteryx-js/amphi_frost_js.html
