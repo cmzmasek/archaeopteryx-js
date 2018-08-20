@@ -10,7 +10,8 @@ http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
 
 http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html
 
-http://www.phyloxml.org/archaeopteryx-js/amphi_frost_js.html
+http://www.phyloxml.org/archaeopteryx-js/influenza_ha_js.html
+
 
 
 
