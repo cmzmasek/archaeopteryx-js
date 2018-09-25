@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07b3
-// 2018-08-16
+// v 1_07
+// 2018-09-25
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07b3';
+    var VERSION = '1.07';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
