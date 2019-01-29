@@ -2308,12 +2308,11 @@ if (!phyloXml) {
                         var p = node.properties[i];
                         if (p.value && p.ref === ref_name) {
                             if (_settings.valuesToIgnoreForNodeVisualization) {
-                                var ignore = _settings.valuesToIgnoreForNodeVisualization;
-                                if (p.ref in ignore) {
-                                    var toIgnores = ignore[p.ref];
-                                    var arrayLength = toIgnores.length;
+                                if (p.ref in _settings.valuesToIgnoreForNodeVisualization) {
+                                    var ignoreValues = _settings.valuesToIgnoreForNodeVisualization[p.ref];
+                                    var arrayLength = ignoreValues.length;
                                     for (var i = 0; i < arrayLength; i++) {
-                                        if (p.value === toIgnores[i]) {
+                                        if (p.value === ignoreValues[i]) {
                                             return null;
                                         }
                                     }
@@ -3362,16 +3361,16 @@ if (!phyloXml) {
         }
     }
 
-    function extracted(ignore, nodeProperties) {
+    function deleteValuesFromNodeProperties(valuesToIgnoreForNodeVisualization, nodeProperties) {
         for (var key in nodeProperties) {
-            if (key in ignore) {
-                var toIgnores = ignore[key];
-                var arrayLength = toIgnores.length;
+            if (key in valuesToIgnoreForNodeVisualization) {
+                var ignoreValues = valuesToIgnoreForNodeVisualization[key];
+                var arrayLength = ignoreValues.length;
                 for (var i = 0; i < arrayLength; i++) {
-                    var toIgnore = toIgnores[i];
-                    var x = nodeProperties[key].delete(toIgnore);
-                    if (x === true) {
-                        console.log(MESSAGE + 'Ignoring \"' + key + '=' + toIgnore + '\" for visualizations');
+                    var ignoreValue = ignoreValues[i];
+                    var deleted = nodeProperties[key].delete(ignoreValue);
+                    if (deleted === true) {
+                        console.log(MESSAGE + 'Ignoring \"' + key + '=' + ignoreValue + '\" for visualizations');
                     }
                 }
             }
@@ -3458,9 +3457,8 @@ if (!phyloXml) {
             }
 
             var nodeProperties = forester.collectProperties(_treeData, 'node', false);
-            //~~~~
             if (settings.valuesToIgnoreForNodeVisualization) {
-                extracted(settings.valuesToIgnoreForNodeVisualization, nodeProperties);
+                deleteValuesFromNodeProperties(settings.valuesToIgnoreForNodeVisualization, nodeProperties);
             }
 
 
@@ -4510,7 +4508,7 @@ if (!phyloXml) {
         var nodeProperties = forester.collectProperties(tree, 'node', false);
 
         if (_settings.valuesToIgnoreForNodeVisualization) {
-            extracted(_settings.valuesToIgnoreForNodeVisualization, nodeProperties);
+            deleteValuesFromNodeProperties(_settings.valuesToIgnoreForNodeVisualization, nodeProperties);
         }
         initializeNodeVisualizations(nodeProperties);
 
