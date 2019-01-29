@@ -20,8 +20,8 @@
  *
  */
 
-// v 1_07
-// 2018-09-25
+// v 1_08b1
+// 2019-01-29
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -46,7 +46,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.07';
+    var VERSION = '1.08b1';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -489,6 +489,7 @@ if (!phyloXml) {
             visualization.mapping = mapping;
         }
         else if (mappingFn) {
+
             visualization.mappingFn = mappingFn;
             if (scaleType === ORDINAL_SCALE) {
                 if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
@@ -512,10 +513,8 @@ if (!phyloXml) {
     }
 
     function initializeNodeVisualizations(nodeProperties) {
-
         if (_nodeVisualizations) {
             for (var key in _nodeVisualizations) {
-
                 if (_nodeVisualizations.hasOwnProperty(key)) {
 
                     var nodeVisualization = _nodeVisualizations[key];
@@ -2308,6 +2307,18 @@ if (!phyloXml) {
                     for (var i = 0; i < propertiesLength; ++i) {
                         var p = node.properties[i];
                         if (p.value && p.ref === ref_name) {
+                            if (_settings.valuesToIgnoreForNodeVisualization) {
+                                var ignore = _settings.valuesToIgnoreForNodeVisualization;
+                                if (p.ref in ignore) {
+                                    var toIgnores = ignore[p.ref];
+                                    var arrayLength = toIgnores.length;
+                                    for (var i = 0; i < arrayLength; i++) {
+                                        if (p.value === toIgnores[i]) {
+                                            return null;
+                                        }
+                                    }
+                                }
+                            }
                             return produceVis(vis, p.value);
                         }
                     }
@@ -2374,7 +2385,6 @@ if (!phyloXml) {
 
 
     var makeVisColor = function (node, vis) {
-
         if (vis.field) {
             var fieldValue = node[vis.field];
             if (fieldValue) {
@@ -2399,6 +2409,19 @@ if (!phyloXml) {
             for (var i = 0; i < propertiesLength; ++i) {
                 var p = node.properties[i];
                 if (p.value && p.ref === ref_name) {
+                    if (_settings.valuesToIgnoreForNodeVisualization) {
+                        var ignore = _settings.valuesToIgnoreForNodeVisualization;
+                        // for (var key in nodeProperties) {
+                        if (p.ref in ignore) {
+                            var toIgnores = ignore[p.ref];
+                            var arrayLength = toIgnores.length;
+                            for (var i = 0; i < arrayLength; i++) {
+                                if (p.value === toIgnores[i]) {
+                                    return null;
+                                }
+                            }
+                        }
+                    }
                     return produceVis(vis, p.value);
                 }
             }
@@ -3290,6 +3313,9 @@ if (!phyloXml) {
         if (_settings.propertiesToIgnoreForNodeVisualization === undefined) {
             _settings.propertiesToIgnoreForNodeVisualization = null;
         }
+        if (_settings.valuesToIgnoreForNodeVisualization === undefined) {
+            _settings.valuesToIgnoreForNodeVisualization = null;
+        }
 
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
@@ -3332,6 +3358,22 @@ if (!phyloXml) {
                 _legendShapeScales[LEGEND_NODE_SHAPE] ||
                 _legendSizeScales[LEGEND_NODE_SIZE]))))) {
                 moveLegendWithMouse(d3.event);
+            }
+        }
+    }
+
+    function extracted(ignore, nodeProperties) {
+        for (var key in nodeProperties) {
+            if (key in ignore) {
+                var toIgnores = ignore[key];
+                var arrayLength = toIgnores.length;
+                for (var i = 0; i < arrayLength; i++) {
+                    var toIgnore = toIgnores[i];
+                    var x = nodeProperties[key].delete(toIgnore);
+                    if (x === true) {
+                        console.log(MESSAGE + 'Ignoring \"' + key + '=' + toIgnore + '\" for visualizations');
+                    }
+                }
             }
         }
     }
@@ -3410,12 +3452,18 @@ if (!phyloXml) {
                             colors: 'category20',
                             sizes: null
                         };
-                        console.log('Dynamically added property: ' + value + ' as ' + propertyName);
+                        console.log(MESSAGE + 'Dynamically added property: ' + value + ' as ' + propertyName);
                     }
                 });
             }
 
             var nodeProperties = forester.collectProperties(_treeData, 'node', false);
+            //~~~~
+            if (settings.valuesToIgnoreForNodeVisualization) {
+                extracted(settings.valuesToIgnoreForNodeVisualization, nodeProperties);
+            }
+
+
             initializeNodeVisualizations(nodeProperties);
         }
 
@@ -4362,11 +4410,11 @@ if (!phyloXml) {
                             if (RE_SWISSPROT_TREMBL.test(d.name)) {
                                 show = true;
                                 value = d.name;
-                            }
+                                }
                             else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
                                 show = true;
                                 value = RE_SWISSPROT_TREMBL_PFAM.exec(d.name)[1];
-                                }
+                            }
                             }
                             if (show) {
                                 textSum += textInc;
@@ -4460,6 +4508,10 @@ if (!phyloXml) {
     function updateNodeVisualizationsAndLegends(tree) {
         _visualizations = null;
         var nodeProperties = forester.collectProperties(tree, 'node', false);
+
+        if (_settings.valuesToIgnoreForNodeVisualization) {
+            extracted(_settings.valuesToIgnoreForNodeVisualization, nodeProperties);
+        }
         initializeNodeVisualizations(nodeProperties);
 
         if ((_showLegends && ( _settings.enableNodeVisualizations || _settings.enableBranchVisualizations ) && ( _legendColorScales[LEGEND_LABEL_COLOR] ||
