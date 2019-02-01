@@ -1,6 +1,7 @@
 /**
- *  Copyright (C) 2018 Christian M. Zmasek
- *  Copyright (C) 2018 J. Craig Venter Institute
+ *  Copyright (C) 2019 Christian M. Zmasek
+ *  Copyright (C) 2019 Yun Zhang
+ *  Copyright (C) 2019 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -20,7 +21,7 @@
  *
  */
 
-// v 1_08b1
+// v 1_08b2
 // 2019-01-29
 
 // Developer documentation:
@@ -46,7 +47,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.08b1';
+    var VERSION = '1.08b2';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3377,6 +3378,76 @@ if (!phyloXml) {
         }
     }
 
+
+    function groupYears(phy, sourceRef, targetRef) {
+        ////////~~~~
+        var years = [];
+        var min_year = 10000;
+        var max_year = -10000;
+        forester.preOrderTraversalAll(phy, function (n) {
+
+            if (n.properties && n.properties.length > 0) {
+                var propertiesLength = n.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var property = n.properties[i];
+                    if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === 'node') {
+                        if (property.ref === sourceRef) {
+                            var year = property.value.trim();
+                            if (year != 1111) {
+                                years.push(year);
+                                if (year > max_year) {
+                                    max_year = year;
+                                }
+                                if (year < min_year) {
+                                    min_year = year;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+
+        var d = parseInt((max_year - min_year) / 10);
+
+        console.log("min" + min_year);
+        console.log("max" + max_year);
+        console.log("  d" + d);
+
+        forester.preOrderTraversalAll(phy, function (n) {
+
+            if (n.properties && n.properties.length > 0) {
+                var propertiesLength = n.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var property = n.properties[i];
+                    if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === 'node') {
+                        if (property.ref === sourceRef) {
+                            var year = property.value.trim();
+                            if (year != 1111) {
+                                var x = parseInt((year - min_year) / d);
+                                console.log('x=' + x);
+
+                                var newProp = {};
+                                newProp.ref = targetRef;
+
+                                var lb = parseInt(min_year) + ( x * d );
+                                var hb = parseInt(min_year) + ((x + 1) * d);
+                                console.log("lb = " + lb);
+                                newProp.value = lb + "-" + hb;
+
+                                newProp.datatype = property.datatype;
+                                newProp.applies_to = property.applies_to;
+                                n.properties.push(newProp);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+
     archaeopteryx.launch = function (id,
                                      phylo,
                                      options,
@@ -3399,6 +3470,10 @@ if (!phyloXml) {
         _id = id;
         _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
+
+        forester.shortenProperties(_treeData, 'node', true, 'vipr:ViralSpecies', 'vipr:SpeciesGroup');
+
+        groupYears(_treeData, 'vipr:Year', 'vipr:YearGroup');
 
         if (nodeVisualizations) {
             _nodeVisualizations = nodeVisualizations;

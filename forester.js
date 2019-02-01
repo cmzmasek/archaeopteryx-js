@@ -1,6 +1,7 @@
 /**
- *  Copyright (C) 2018 Christian M. Zmasek
- *  Copyright (C) 2018 J. Craig Venter Institute
+ *  Copyright (C) 2019 Christian M. Zmasek
+ *  Copyright (C) 2019 Yun Zhang
+ *  Copyright (C) 2019 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -19,7 +20,7 @@
  *
  */
 
-// v 1_08b1
+// v 1_08b2
 // 2019-01-29
 
 
@@ -740,6 +741,38 @@
             }
         });
         return propertyRefs;
+    };
+
+
+    forester.shortenProperties = function (phy, appliesTo, externalOnly, sourceRef, targetRef) {
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
+                if (n.properties && n.properties.length > 0) {
+                    var propertiesLength = n.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        var property = n.properties[i];
+                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
+                            if (property.ref === sourceRef) {
+                                var s = property.value.trim().split(/\s+/);
+                                if (s && s.length > 1) {
+                                    var newProp = {};
+                                    newProp.ref = targetRef;
+                                    if (s.length == 2) {
+                                        newProp.value = s[0];
+                                    }
+                                    else {
+                                        newProp.value = s[0] + ' ' + s[1];
+                                    }
+                                    newProp.datatype = property.datatype;
+                                    newProp.applies_to = property.applies_to;
+                                    n.properties.push(newProp);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
     };
 
     forester.collectBasicTreeProperties = function (tree) {
