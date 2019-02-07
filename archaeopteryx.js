@@ -21,8 +21,8 @@
  *
  */
 
-// v 1_08b2
-// 2019-01-29
+// v 1_08b3
+// 2019-02-06
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -47,7 +47,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.08b2';
+    var VERSION = '1.08b3';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3316,7 +3316,12 @@ if (!phyloXml) {
         if (_settings.valuesToIgnoreForNodeVisualization === undefined) {
             _settings.valuesToIgnoreForNodeVisualization = null;
         }
-
+        if (_settings.groupSpecies === undefined) {
+            _settings.groupSpecies = null;
+        }
+        if (_settings.groupYears === undefined) {
+            _settings.groupYears = null;
+        }
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
@@ -3379,27 +3384,26 @@ if (!phyloXml) {
     }
 
 
-    function groupYears(phy, sourceRef, targetRef) {
-        ////////~~~~
-        var years = [];
-        var min_year = 10000;
-        var max_year = -10000;
-        forester.preOrderTraversalAll(phy, function (n) {
+    function groupYears(phy, sourceRef, targetRef, yearsToIgnore, yearsPerGroup) {
 
+        //var yearsSet = new Set();
+        var minYear = 1000000;
+        var maxYear = -1000000;
+        forester.preOrderTraversalAll(phy, function (n) {
             if (n.properties && n.properties.length > 0) {
                 var propertiesLength = n.properties.length;
                 for (var i = 0; i < propertiesLength; ++i) {
                     var property = n.properties[i];
                     if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === 'node') {
                         if (property.ref === sourceRef) {
-                            var year = property.value.trim();
-                            if (year != 1111) {
-                                years.push(year);
-                                if (year > max_year) {
-                                    max_year = year;
+                            var year = property.value;
+                            if (yearsToIgnore.indexOf(year) < 0) {
+                                //yearsSet.add(year);
+                                if (year > maxYear) {
+                                    maxYear = year;
                                 }
-                                if (year < min_year) {
-                                    min_year = year;
+                                if (year < minYear) {
+                                    minYear = year;
                                 }
                             }
                         }
@@ -3408,12 +3412,29 @@ if (!phyloXml) {
             }
         });
 
+        // var numberOfYears = yearsSet.size;
+        // numberOfYears = 20;
 
-        var d = parseInt((max_year - min_year) / 10);
+        // if (numberOfYears < avgYearsPerGroup) {
+        //     return;
+        //  }
 
-        console.log("min" + min_year);
-        console.log("max" + max_year);
-        console.log("  d" + d);
+        var d = 5;
+        var t = yearsPerGroup * 20;
+        if (( maxYear - minYear ) < t) {
+            d = yearsPerGroup;
+        }
+        else {
+            d = parseInt((maxYear - minYear) / 20);
+        }
+
+        // var groups = parseInt(numberOfYears / avgYearsPerGroup);
+        // if (groups > 20) {
+        //      groups = 20;
+        // }
+
+
+        //  var d = parseInt((maxYear - minYear) / groups);
 
         forester.preOrderTraversalAll(phy, function (n) {
 
@@ -3423,19 +3444,18 @@ if (!phyloXml) {
                     var property = n.properties[i];
                     if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === 'node') {
                         if (property.ref === sourceRef) {
-                            var year = property.value.trim();
-                            if (year != 1111) {
-                                var x = parseInt((year - min_year) / d);
-                                console.log('x=' + x);
-
+                            var year = property.value;
+                            if (yearsToIgnore.indexOf(year) < 0) {
+                                var x = parseInt((year - minYear) / d);
+                                minYear = parseInt(minYear);
                                 var newProp = {};
                                 newProp.ref = targetRef;
-
-                                var lb = parseInt(min_year) + ( x * d );
-                                var hb = parseInt(min_year) + ((x + 1) * d);
-                                console.log("lb = " + lb);
+                                var lb = minYear + ( x * d );
+                                var hb = minYear + ((x + 1) * d);
                                 newProp.value = lb + "-" + hb;
-
+                                if (( year < lb ) || ( year > hb )) {
+                                    alert(ERROR + year + ' not in ' + newProp.value);
+                                }
                                 newProp.datatype = property.datatype;
                                 newProp.applies_to = property.applies_to;
                                 n.properties.push(newProp);
@@ -3471,10 +3491,26 @@ if (!phyloXml) {
         _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
-        forester.shortenProperties(_treeData, 'node', true, 'vipr:ViralSpecies', 'vipr:SpeciesGroup');
 
-        groupYears(_treeData, 'vipr:Year', 'vipr:YearGroup');
+        if (settings.groupSpecies) {
+            if (settings.groupSpecies.source && settings.groupSpecies.target) {
+                console.log(MESSAGE + ' Grouping species from \"' + settings.groupSpecies.source
+                    + '\" to \"' + settings.groupSpecies.target);
+                forester.shortenProperties(_treeData, 'node', true, settings.groupSpecies.source, settings.groupSpecies.target);
+            }
+        }
 
+        if (settings.groupYears) {
+            if (settings.groupYears.source && settings.groupYears.target && settings.groupYears.ignore && settings.groupYears.groupsize) {
+                console.log(MESSAGE + ' Grouping years from \"' + settings.groupYears.source
+                    + '\" to \"' + settings.groupYears.target + '\", ignoring ' + settings.groupYears.ignore +
+                    ', avg. group size ' + settings.groupYears.groupsize);
+                groupYears(_treeData, settings.groupYears.source,
+                    settings.groupYears.target,
+                    settings.groupYears.ignore,
+                    settings.groupYears.groupsize);
+            }
+        }
         if (nodeVisualizations) {
             _nodeVisualizations = nodeVisualizations;
         }
