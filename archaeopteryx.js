@@ -21,7 +21,7 @@
  *
  */
 
-// v 1_08b3
+// v 1_08b4
 // 2019-02-06
 
 // Developer documentation:
@@ -47,7 +47,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.08b3';
+    var VERSION = '1.08b4';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -3386,9 +3386,8 @@ if (!phyloXml) {
 
     function groupYears(phy, sourceRef, targetRef, yearsToIgnore, yearsPerGroup) {
 
-        //var yearsSet = new Set();
-        var minYear = 1000000;
-        var maxYear = -1000000;
+        var minYear = 10000000;
+        var maxYear = -10000000;
         forester.preOrderTraversalAll(phy, function (n) {
             if (n.properties && n.properties.length > 0) {
                 var propertiesLength = n.properties.length;
@@ -3398,7 +3397,6 @@ if (!phyloXml) {
                         if (property.ref === sourceRef) {
                             var year = property.value;
                             if (yearsToIgnore.indexOf(year) < 0) {
-                                //yearsSet.add(year);
                                 if (year > maxYear) {
                                     maxYear = year;
                                 }
@@ -3412,29 +3410,17 @@ if (!phyloXml) {
             }
         });
 
-        // var numberOfYears = yearsSet.size;
-        // numberOfYears = 20;
+        var MAX_COLORS = 20;
 
-        // if (numberOfYears < avgYearsPerGroup) {
-        //     return;
-        //  }
-
-        var d = 5;
-        var t = yearsPerGroup * 20;
-        if (( maxYear - minYear ) < t) {
+        var d;
+        if (( maxYear - minYear ) < (yearsPerGroup * MAX_COLORS)) {
             d = yearsPerGroup;
         }
         else {
-            d = parseInt((maxYear - minYear) / 20);
+            d = parseInt((maxYear - minYear) / MAX_COLORS);
         }
 
-        // var groups = parseInt(numberOfYears / avgYearsPerGroup);
-        // if (groups > 20) {
-        //      groups = 20;
-        // }
-
-
-        //  var d = parseInt((maxYear - minYear) / groups);
+        console.log(MESSAGE + ' year group range:' + d);
 
         forester.preOrderTraversalAll(phy, function (n) {
 
@@ -3451,7 +3437,7 @@ if (!phyloXml) {
                                 var newProp = {};
                                 newProp.ref = targetRef;
                                 var lb = minYear + ( x * d );
-                                var hb = minYear + ((x + 1) * d);
+                                var hb = minYear + ((x + 1) * d) - 1;
                                 newProp.value = lb + "-" + hb;
                                 if (( year < lb ) || ( year > hb )) {
                                     alert(ERROR + year + ' not in ' + newProp.value);
@@ -3504,7 +3490,7 @@ if (!phyloXml) {
             if (settings.groupYears.source && settings.groupYears.target && settings.groupYears.ignore && settings.groupYears.groupsize) {
                 console.log(MESSAGE + ' Grouping years from \"' + settings.groupYears.source
                     + '\" to \"' + settings.groupYears.target + '\", ignoring ' + settings.groupYears.ignore +
-                    ', avg. group size ' + settings.groupYears.groupsize);
+                    ', range ' + settings.groupYears.groupsize);
                 groupYears(_treeData, settings.groupYears.source,
                     settings.groupYears.target,
                     settings.groupYears.ignore,
