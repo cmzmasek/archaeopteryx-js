@@ -21,8 +21,8 @@
  *
  */
 
-// v 1_08b4
-// 2019-02-06
+// v 1_08
+// 2019-04-16
 
 // Developer documentation:
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
@@ -47,7 +47,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    var VERSION = '1.08b4';
+    var VERSION = '1.08';
     var WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     var NAME = 'Archaeopteryx.js';
 
@@ -109,7 +109,9 @@ if (!phyloXml) {
     var CONTROLS_FONT_SIZE_DEFAULT = 8;
     var DISPLY_HEIGHT_DEFAULT = 600;
     var DISPLAY_WIDTH_DEFAULT = 800;
-    var MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Lucida Console', 'Monaco', 'Arial', 'Helvetica', 'Times'];
+    // var MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Lucida Console', 'Monaco', 'Arial', 'Helvetica', 'Times'];
+    var MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Arial', 'Helvetica', 'Times'];
+
     var ROOTOFFSET_DEFAULT = 180;
     var SEARCH_FIELD_WIDTH_DEFAULT = '38px';
     var TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
