@@ -8,6 +8,9 @@ https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 ### npm
 https://www.npmjs.com/package/archaeopteryx
 
+### GitHub
+https://github.com/cmzmasek/archaeopteryx-js
+
 
 ### Examples
 
@@ -29,8 +32,6 @@ https://www.npmjs.com/package/archaeopteryx
   * [H3N2](http://www.phyloxml.org/archaeopteryx-js/h3n2_search_js.html)
 * Grouping of species and years for visualization:
   * [Viral Strains](http://www.phyloxml.org/archaeopteryx-js/many_species_js.html)
-
-
 
 
 
@@ -57,6 +58,79 @@ download/export, the following five libraries are required as well:
  
 Additionally, Archaeopteryx.js also requires the following CSS:
  * jquery-ui.css: https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css
+
+
+## Basic Example of HTML for launching Archaeopteryx.js
+
+Example of HTML page to launch a basic Archaeopteryx.js instance:
+```
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+   <title>Archaeopteryx.js Basic Demo</title>
+
+   <!-- For MS IE/Edge compatibility:-->
+   <meta http-equiv="X-UA-Compatible" content="IE=100">
+
+   <!-- D3.js, jQuery, and jQuery UI:-->
+   <script src="http://d3js.org/d3.v3.min.js"></script>
+   <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+   <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+   <!-- SAX XML parser:-->
+   <script src="http://www.phyloxml.org/js/dependencies/sax.js"></script>
+
+   <!-- Archaeopteryx.js requires forester.js and phyloxml.js:-->
+   <script src="http://path/to/phyloxml.js"></script>
+   <script src="http://path/to/forester.js"></script>
+   <script src="http://path/to/archaeopteryx.js"></script>
+
+   <!-- CSS for jQuery UI: -->
+   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+
+   <script>
+       function load() {
+           var options = {};
+           options.backgroundColorDefault = '#f0f0f0';
+           var settings = {};
+           var loc = 'https://raw.githubusercontent.com/cmzmasek/archaeopteryx-js/master/test/data/phyloxml_trees/apaf.xml';
+
+           jQuery.get(loc,
+                   function (data) {
+                       var tree = null;
+                       try {
+                           tree = archaeopteryx.parseTree(loc, data, true, false);
+                       }
+                       catch (e) {
+                           alert("error while parsing tree: " + e);
+                       }
+                       if (tree) {
+                           try {
+                               archaeopteryx.launch('#phylogram1', tree, options, settings);
+                           }
+                           catch (e) {
+                               alert("error while launching archaeopteryx: " + e);
+                           }
+                       }
+                   },
+                   "text")
+                   .fail(function () {
+                               alert("error: failed to read tree(s) from \"" + loc + "\"");
+                           }
+                   );
+       }
+   </script>
+</head>
+
+<body onload="load()">
+<div>
+   <h2>Archaeopteryx.js Basic Demo</h2>
+   <div id='phylogram1'></div>
+   <div id='controls0' class='ui-widget-content'></div>
+</div>
+</body>
+```
+
 
 
 
