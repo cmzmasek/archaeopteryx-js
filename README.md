@@ -1,22 +1,49 @@
 # archaeopteryx-js
 Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.
 
-Website:
+
+## Website
 https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 
-Examples:
 
-http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
+## Examples
 
-http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html
+* http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
 
-http://www.phyloxml.org/archaeopteryx-js/influenza_ha_js.html
+* http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html
+
+* http://www.phyloxml.org/archaeopteryx-js/influenza_ha_js.html
+
+
+## Detailed developer documentation:
+https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/edit
+
+
+## Dependencies
+Archaeopteryx.js has the following dependencies:
+* d3.js 
+* jQuery
+* jQuery UI
+* sax.js
+* phyloxml.js
+* forester.js
+
+For file (Newick/New Hampshire, phyloXML) and graphics (PNG, SVG) download/export, the following five libraries are required as well:
+* canvg
+* rgbcolor
+* Blob
+* canvas-toBlob (needed in some versions of Internet Explorer and Opera)
+* FileSaver
+
+Additionally, Archaeopteryx.js also requires the following CSS:
+* jquery-ui.css
+
 
 
 # forester
 forester is a general suite for dealing with phylogenetic trees.
 
-## Example
+## forester Example
 
 This basic example shows how to parse a New Hampshire formatted String
 into to a object representing a phylogenetic tree.
