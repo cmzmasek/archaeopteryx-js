@@ -24,22 +24,23 @@ https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/
 
 ### Dependencies
 Archaeopteryx.js has the following dependencies:
-* d3.js 
-* jQuery
-* jQuery UI
-* sax.js
-* phyloxml.js
-* forester.js
-
-For file (Newick/New Hampshire, phyloXML) and graphics (PNG, SVG) download/export, the following five libraries are required as well:
-* canvg
-* rgbcolor
-* Blob
-* canvas-toBlob (needed in some versions of Internet Explorer and Opera)
-* FileSaver
-
+ * forester.js: https://www.npmjs.com/package/archaeopteryx
+ * phyloxml.js: https://www.npmjs.com/package/phyloxml
+ * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
+ * jQuery (1.12.4): https://www.npmjs.com/package/jquery/v/1.12.4
+ * jQuery UI (1.12.1): https://www.npmjs.com/package/jquery-ui/v/1.12.1
+ * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
+ 
+For file (Newick/New Hampshire, phyloXML) and graphics (PNG, SVG)
+download/export, the following five libraries are required as well:
+ * canvg: https://www.npmjs.com/package/canvg
+ * rgbcolor: https://www.npmjs.com/package/rgbcolor
+ * Blob.js: https://github.com/eligrey/Blob.js
+ * canvas-toBlob.js (needed in some versions of Internet Explorer and Opera): https://github.com/eligrey/canvas-toBlob.js
+ * FileSaver.js: https://github.com/eligrey/FileSaver.js
+ 
 Additionally, Archaeopteryx.js also requires the following CSS:
-* jquery-ui.css
+ * jquery-ui.css: https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css
 
 
 
