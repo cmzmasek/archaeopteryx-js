@@ -5,6 +5,9 @@ Archaeopteryx.js is a software tool for the visualization and analysis of highly
 ### Website
 https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 
+### npm
+https://www.npmjs.com/package/archaeopteryx
+
 
 ### Examples
 
