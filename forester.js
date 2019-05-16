@@ -20,9 +20,47 @@
  *
  */
 
-// v 1_08
-// 2019-04-16
-
+// v 1.8.1
+// 2019-05-16
+//
+// forester.js is a general suite for dealing with phylogenetic trees.
+// 
+// forester.js is used by Archaeopteryx.js:
+//   https://github.com/cmzmasek/archaeopteryx-js
+//   https://www.npmjs.com/package/archaeopteryx
+//
+// Availability:
+//   https://github.com/cmzmasek/archaeopteryx-js
+//   https://www.npmjs.com/package/archaeopteryx
+//
+// Dependencies: none
+//
+//
+// In the following is a basic example shows how to parse a New Hampshire formatted String
+// into to a object representing a phylogenetic tree.
+// Followed by pre- and post-order traversal,
+// and writing back to a New Hampshire formatted String.
+//
+// Change './forester' to 'forester' if you use this code outside of this package
+//
+// var forester = require('./forester').forester;
+//
+// var newHampshireFormattedString = "(((a:1,b:1,c:1)N:2,(d:1,e:1)M:4)O:4,f:1)R:1;";
+// var phylogeneticTree = forester.parseNewHampshire(newHampshireFormattedString);
+//
+// console.log('Pre-order traversal:');
+// forester.preOrderTraversalAll(forester.getTreeRoot(phylogeneticTree), function (n) {
+//     console.log(n.name + ':' + n.branch_length);
+// });
+//
+// console.log('Post-order traversal:');
+// forester.postOrderTraversalAll(forester.getTreeRoot(phylogeneticTree), function (n) {
+//     console.log(n.name + ':' + n.branch_length);
+// });
+//
+// console.log('In New Hampshire format:');
+// var nh = forester.toNewHampshire(phylogeneticTree);
+// console.log(nh);
 
 (function forester() {
 
