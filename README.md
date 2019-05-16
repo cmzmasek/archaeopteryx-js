@@ -1,4 +1,4 @@
-# archaeopteryx-js
+# Archaeopteryx.js
 Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.
 
 
@@ -44,10 +44,10 @@ Additionally, Archaeopteryx.js also requires the following CSS:
 
 
 
-# forester
-forester is a general suite for dealing with phylogenetic trees.
+# forester.js
+forester.js is a general suite for dealing with phylogenetic trees.
 
-## forester Example
+## forester.js Example
 
 This basic example shows how to parse a New Hampshire formatted String
 into to a object representing a phylogenetic tree.
