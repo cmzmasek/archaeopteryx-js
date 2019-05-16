@@ -11,11 +11,27 @@ https://www.npmjs.com/package/archaeopteryx
 
 ### Examples
 
-* http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
+* [Bcl-2 gene family](http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html)
+* Eukaryotic tree of life:
+  * [collapsed with initial depth = 5](http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html)
+  * [uncollapsed](http://www.phyloxml.org/archaeopteryx-js/euk_tol_js.html)
+* [Influenza HA H3 collapsed by Country](http://www.phyloxml.org/archaeopteryx-js/influenza_collapsed.html)
+* [Amphibian phylogeny](http://www.phyloxml.org/archaeopteryx-js/amphi_frost_js.html)
+* Visualizations:
+  * [Herpesviridae DNA polymerases](http://www.phyloxml.org/archaeopteryx-js/hg1001_js.html)
+* RAxML examples:
+  * [bipartitions](http://www.phyloxml.org/archaeopteryx-js/raxml_bipartitions_bcl2_js.html)
+  * [bipartitionsBranchLabels](http://www.phyloxml.org/archaeopteryx-js/raxml_bipartitions_branchlabels_bcl2_js.html)
+* MSA Residue Visualization:
+  * [Bunyaviridae Glycoprotein](http://www.phyloxml.org/archaeopteryx-js/bunya_glycoprotein.html)
+  * [Bcl-2 protein](http://www.phyloxml.org/archaeopteryx-js/bcl2_msa.html)
+* Preset search fields:
+  * [H3N2](http://www.phyloxml.org/archaeopteryx-js/h3n2_search_js.html)
+* Grouping of species and years for visualization:
+  * [Viral Strains](http://www.phyloxml.org/archaeopteryx-js/many_species_js.html)
 
-* http://www.phyloxml.org/archaeopteryx-js/bcl2_js.html
 
-* http://www.phyloxml.org/archaeopteryx-js/influenza_ha_js.html
+
 
 
 ### Detailed developer documentation
