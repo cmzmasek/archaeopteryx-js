@@ -2,11 +2,11 @@
 Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.
 
 
-## Website
+### Website
 https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 
 
-## Examples
+### Examples
 
 * http://www.phyloxml.org/archaeopteryx-js/euk_tol_collapsed_js.html
 
@@ -15,11 +15,11 @@ https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js
 * http://www.phyloxml.org/archaeopteryx-js/influenza_ha_js.html
 
 
-## Detailed developer documentation:
+### Detailed developer documentation
 https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/edit
 
 
-## Dependencies
+### Dependencies
 Archaeopteryx.js has the following dependencies:
 * d3.js 
 * jQuery
