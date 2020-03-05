@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.8.1
-// 2019-05-16
+// v 1.8.2b1
+// 2020-03-04
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -66,14 +66,14 @@
 
     "use strict";
 
-    var BRANCH_EVENT_REF = 'aptx:branch_event';
-    var BRANCH_EVENT_DATATYPE = 'xsd:string';
-    var BRANCH_EVENT_APPLIES_TO = 'parent_branch';
-    var NH_FORMAT_ERR = 'New Hampshire (Newick) format error: ';
+    const BRANCH_EVENT_REF = 'aptx:branch_event';
+    const BRANCH_EVENT_DATATYPE = 'xsd:string';
+    const BRANCH_EVENT_APPLIES_TO = 'parent_branch';
+    const NH_FORMAT_ERR = 'New Hampshire (Newick) format error: ';
 
-    var NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
+    const NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
 
-    var MSA_RESIDUE_SORT_MAP = new Map();
+    const MSA_RESIDUE_SORT_MAP = new Map();
     MSA_RESIDUE_SORT_MAP.set('A', 0);
     MSA_RESIDUE_SORT_MAP.set('C', 1);
     MSA_RESIDUE_SORT_MAP.set('D', 2);
@@ -827,6 +827,9 @@
         properties.maxMolSeqLength = 0;
         properties.externalNodesCount = 0;
         properties.molSeqResiduesPerPosition = null;
+        properties.averageBranchLength = 0;
+        var bl_counter = 0;
+        var bl_sum = 0;
         var molSeqs = [];
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.name && n.name.length > 0) {
@@ -843,6 +846,8 @@
             }
             if (n.branch_length && n.branch_length > 0) {
                 properties.branchLengths = true;
+                bl_sum += n.branch_length;
+                bl_counter += 1;
             }
             if (n.events) {
                 properties.nodeEvents = true;
@@ -913,6 +918,12 @@
                 properties.molSeqResiduesPerPosition.push(myArray);
             }
         }
+
+        if (bl_counter > 0) {
+            properties.averageBranchLength = bl_sum / bl_counter;
+        }
+
+
         return properties;
     };
 
