@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.2b1
-// 2020-03-04
+// v 1.8.2b2
+// 2020-03-05
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -349,105 +349,105 @@ if (!phyloXml) {
 
     const col_category50 = [
         // 1 Red
-        '#B71C1C',
+        '#FF1744',
         // 2 Pink
-        '#880E4F',
+        '#F50057',
         // 3 Purple
-        '#4A148C',
+        '#D500F9',
         // 4 Deep Purple
-        '#311B92',
+        '#651FFF',
         // 5 Indigo
-        '#1A237E',
+        '#3D5AFE',
         // 6 Blue
-        '#0D47A1',
+        '#2979FF',
         // 7 Cyan
-        '#006064',
+        '#00E5FF',
         // 8 Teal
-        '#004D40',
+        '#1DE9B6',
         // 9 Green
-        '#1B5E20',
+        '#00E676',
         // 10 Light Green
-        '#33691E',
+        '#76FF03',
         // 11 Lime
-        '#827717',
+        '#C6FF00',
         // 12 Yellow
-        '#F57F17',
+        '#FFEA00',
         // 13 Amber
-        '#FF6F00',
+        '#FFC400',
         // 14 Orange
-        '#E65100',
+        '#FF9100',
         // 15 Deep Orange
-        '#BF360C',
+        '#FF3D00',
         // 16 Brown
-        '#3E2723',
+        '#6D4C41',
         // 17 Grey
-        '#212121',
+        '#757575',
         //
         // 18 Red
-        '#E57373',
+        '#B71C1C',
         // 19 Pink
-        '#F06292',
+        '#880E4F',
         // 20 Purple
-        '#BA68C8',
+        '#4A148C',
         // 21 Deep Purple
-        '#9575CD',
+        '#311B92',
         // 22 Indigo
-        '#7986CB',
+        '#1A237E',
         // 23 Blue
-        '#64B5F6',
+        '#0D47A1',
         // 24 Cyan
-        '#4DD0E1',
+        '#006064',
         // 25 Teal
-        '#4DB6AC',
+        '#004D40',
         // 26 Green
-        '#81C784',
+        '#1B5E20',
         // 27 Light Green
-        '#AED581',
+        '#33691E',
         // 28 Lime
-        '#DCE775',
+        '#827717',
         // 29 Yellow
-        '#FFF176',
+        '#F57F17',
         // 30 Amber
-        '#FFD54F',
+        '#FF6F00',
         // 31 Orange
-        '#FFB74D',
+        '#E65100',
         // 32 Deep Orange
-        '#FF8A65',
+        '#BF360C',
         // 33 Brown
-        '#A1887F',
+        '#4E342E',
         // 34 Grey
-        '#9E9E9E',
+        '#424242',
         //
         // 35 Red
-        '#FFCDD2',
+        '#EF9A9A',
         // 36 Pink
-        '#F8BBD0',
+        '#F48FB1',
         // 37 Purple
-        '#E1BEE7',
+        '#CE93D8',
         // 38 Deep Purple
-        '#D1C4E9',
+        '#B39DDB',
         // 39 Indigo
-        '#C5CAE9',
+        '#9FA8DA',
         // 40 Blue
-        '#BBDEFB',
+        '#90CAF9',
         // 41 Cyan
-        '#B2EBF2',
+        '#80DEEA',
         // 42 Teal
-        '#B2DFDB',
+        '#80CBC4',
         // 43 Green
-        '#C8E6C9',
+        '#A5D6A7',
         // 44 Light Green
-        '#DCEDC8',
+        '#C5E1A5',
         // 45 Lime
-        '#F0F4C3',
+        '#E6EE9C',
         // 46 Amber
-        '#FFECB3',
+        '#FFE082',
         // 47 Orange
-        '#FFE0B2',
+        '#FFCC80',
         // 48 Deep Orange
-        '#FFCCBC',
+        '#FFAB91',
         // 49 Brown
-        '#D7CCC8',
+        '#BCAAA4',
         // 50 Grey
         '#E0E0E0'
     ];
