@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.2b2
-// 2020-03-05
+// v 1.8.3b1
+// 2020-08-19
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.2b2';
+    const VERSION = '1.8.3b1';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -3736,6 +3736,17 @@ if (!phyloXml) {
 
         initializeOptions(options);
         initializeSettings(settings);
+
+        if (settings.specialProcessing && settings.specialProcessing.includes('ird_split_avian_host')) {
+            var avianFound = forester.splitProperty(_treeData, 'Avian', 'ird:Host', 'ird:HostGroup');
+            if (!avianFound) {
+                delete _nodeVisualizations.HostGroup;
+                console.log(MESSAGE + 'Deactivated Host Group visualization for Avian issue in IRD')
+            }
+            else {
+                console.log(MESSAGE + 'Activated Host Group visualization for Avian issue in IRD')
+            }
+        }
 
         if (settings.enableNodeVisualizations) {
             if (settings.enableMsaResidueVisualizations && (_basicTreeProperties.alignedMolSeqs === true )

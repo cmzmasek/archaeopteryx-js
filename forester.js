@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.8.2b2
-// 2020-03-05
+// v 1.8.3b1
+// 2020-08-19
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -760,6 +760,48 @@
             }
         });
         return props;
+    };
+
+
+    /**
+     *
+     * Special method for IRD database.
+     * Returns true if at least one 'ird:Host' property with 'Avian' found
+     *
+     * @param phy
+     * @param targetValue
+     * @param fromRef
+     * @param toRef
+     * @returns {boolean}
+     */
+    forester.splitProperty = function (phy, targetValue, fromRef, toRef) {
+        var found = false;
+        var targetValue_ = targetValue + ' ';
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n.properties && n.properties.length > 0) {
+                var propertiesLength = n.properties.length;
+                for (var i = 0; i < propertiesLength; ++i) {
+                    var property = n.properties[i];
+                    if (property.ref === fromRef && property.value) {
+                        var newValue = '';
+                        if (property.value.startsWith(targetValue_)) {
+                            newValue = targetValue;
+                            found = true;
+                        }
+                        else {
+                            newValue = property.value;
+                        }
+                        var newproperty = {};
+                        newproperty.ref = toRef;
+                        newproperty.value = newValue;
+                        newproperty.datatype = 'xsd:string';
+                        newproperty.applies_to = 'node';
+                        n.properties.push(newproperty);
+                    }
+                }
+            }
+        });
+        return found;
     };
 
     forester.collectPropertyRefs = function (phy, appliesTo, externalOnly) {
