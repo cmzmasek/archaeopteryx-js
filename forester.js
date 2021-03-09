@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.8.3
-// 2021-01-25
+// v 1.8.4a4
+// 2021-03-08
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -974,7 +974,8 @@
                                     phy,
                                     caseSensitive,
                                     partial,
-                                    regex) {
+                                    regex,
+                                    searchProperties) {
         var nodes = new Set();
         if (!phy || !query || query.length < 1) {
             return nodes;
@@ -1120,6 +1121,23 @@
                                 regex)) {
                             lmatch = true;
                         }
+                        else if (( ( ndf === null ) && ( searchProperties === true ) ) && node.properties
+                            && node.properties.length > 0) {
+
+                            var propertiesLength = node.properties.length;
+                            for (var i = 0; i < propertiesLength; ++i) {
+                                var p = node.properties[i];
+                                if (p.value && matchme(p.value,
+                                        mq,
+                                        caseSensitive,
+                                        partial,
+                                        regex)) {
+                                    lmatch = true;
+                                    break;
+                                }
+                            }
+                        }
+
                         if (!lmatch) {
                             match = false;
                             break;
@@ -1177,7 +1195,7 @@
                 return ( my_s.indexOf(my_query) > -1 );
             }
             else {
-                var np = new RegExp("(\\b|_)" + escapeRegExp(my_query) + "(\\b|_)");
+                var np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
                 if (np) {
                     return ( my_s.search(np) > -1 );
                 }
