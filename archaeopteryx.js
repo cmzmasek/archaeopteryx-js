@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.4a4
-// 2021-03-08
+// v 1.8.4a5
+// 2021-03-09
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.4a4';
+    const VERSION = '1.8.4a5';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -2456,6 +2456,23 @@ if (!phyloXml) {
                             return _visualizations2_color;
                         }
                     }
+                    else if (n.properties[p].ref === 'vipr:PANGO_Lineage'
+                        && n.properties[p].datatype === 'xsd:string'
+                        && n.properties[p].applies_to === 'node') {
+                        var viz = null;
+                        if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
+                            vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
+                        }
+                        else if (_visualizations.nodeFillColor[_currentLabelColorVisualization]) {
+                            vis = _visualizations.nodeFillColor[_currentLabelColorVisualization];
+                        }
+                        if (vis != null) {
+                            const color = makeVisColor(n, vis);
+                            if (color) {
+                                return color;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2807,18 +2824,18 @@ if (!phyloXml) {
         /*if (_options.showNodeVisualizations) {
 
          if (!_currentNodeBorderColorVisualization) {
-                return _options.branchColorDefault;
-            }
+         return _options.branchColorDefault;
+         }
 
-            if (_currentNodeBorderColorVisualization === SAME_AS_FILL) {
-                return makeVisNodeFillColor(node);
-            }
-            if (_currentNodeBorderColorVisualization === MSA_RESIDUE) {
-                return makeMsaResidueVisualizationColor(node, _visualizations.nodeBorderColor[MSA_RESIDUE]);
-            }
-            if (_currentNodeBorderColorVisualization === NONE) {
-                return _options.backgroundColorDefault;
-            }
+         if (_currentNodeBorderColorVisualization === SAME_AS_FILL) {
+         return makeVisNodeFillColor(node);
+         }
+         if (_currentNodeBorderColorVisualization === MSA_RESIDUE) {
+         return makeMsaResidueVisualizationColor(node, _visualizations.nodeBorderColor[MSA_RESIDUE]);
+         }
+         if (_currentNodeBorderColorVisualization === NONE) {
+         return _options.backgroundColorDefault;
+         }
          if (!node._children) {
          if (_visualizations && _visualizations.nodeBorderColor
          && _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]) {
@@ -2828,7 +2845,7 @@ if (!phyloXml) {
          return color;
          }
          //~~~~~~~~~~~~~
-                }
+         }
          else if (node.properties != null) { //~~
          //~~~~~
          const l = node.properties.length;
@@ -2849,8 +2866,8 @@ if (!phyloXml) {
          }
          }
          }
-            }
-        }
+         }
+         }
          return _options.branchColorDefault;*/
     };
 
@@ -6125,99 +6142,104 @@ if (!phyloXml) {
         });
 
 
-        $('#' + NODE_BORDER_COLOR_SELECT_MENU).on('change', function () {
-            const v = this.value;
-            if (isAddVisualization2()) {
-                setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_2, DEFAULT);
-            }
-            if (isAddVisualization3()) {
-                setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_3, DEFAULT);
-            }
-            if (v && v != DEFAULT) {
-                _currentNodeBorderColorVisualization = v;
-                if ((v != SAME_AS_FILL ) && (v != NONE)) {
-                    addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
-                    if (!_options.showExternalNodes && !_options.showInternalNodes
-                        && ( _currentNodeShapeVisualization == null )) {
-                        _options.showExternalNodes = true;
-                        setCheckboxValue(EXTERNAL_NODES_CB, true);
-                    }
-                    _options.showNodeVisualizations = true;
-                    setCheckboxValue(NODE_VIS_CB, true);
-                }
-            }
-            else {
-                _currentNodeBorderColorVisualization = null;
-            }
-            if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
-                removeLegend(LEGEND_NODE_BORDER_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
+        /*
+         $('#' + NODE_BORDER_COLOR_SELECT_MENU).on('change', function () {
+         const v = this.value;
+         if (isAddVisualization2()) {
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_2, DEFAULT);
+         }
+         if (isAddVisualization3()) {
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_3, DEFAULT);
+         }
+         if (v && v != DEFAULT) {
+         _currentNodeBorderColorVisualization = v;
+         if ((v != SAME_AS_FILL ) && (v != NONE)) {
+         addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
+         if (!_options.showExternalNodes && !_options.showInternalNodes
+         && ( _currentNodeShapeVisualization == null )) {
+         _options.showExternalNodes = true;
+         setCheckboxValue(EXTERNAL_NODES_CB, true);
+         }
+         _options.showNodeVisualizations = true;
+         setCheckboxValue(NODE_VIS_CB, true);
+         }
+         }
+         else {
+         _currentNodeBorderColorVisualization = null;
+         }
+         if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
+         removeLegend(LEGEND_NODE_BORDER_COLOR);
+         }
+         removeColorPicker();
+         update(null, 0);
+         });
+         */
 
+        /*
+         $('#' + NODE_BORDER_COLOR_SELECT_MENU_2).on('change', function () {
+         const v = this.value;
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU, DEFAULT);
+         if (isAddVisualization3()) {
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_3, DEFAULT);
+         }
+         if (v && v != DEFAULT) {
+         _currentNodeBorderColorVisualization = v;
+         if ((v != SAME_AS_FILL ) && (v != NONE)) {
+         //addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
+         //if (!_options.showExternalNodes && !_options.showInternalNodes
+         //&& ( _currentNodeShapeVisualization == null )) {
+         _options.showExternalNodes = true;
+         setCheckboxValue(EXTERNAL_NODES_CB, true);
+         _options.showInternalNodes = true;
+         setCheckboxValue(INTERNAL_NODES_CB, true);
+         // }
+         _options.showNodeVisualizations = true;
+         setCheckboxValue(NODE_VIS_CB, true);
+         }
+         }
+         else {
+         _currentNodeBorderColorVisualization = null;
+         }
+         if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
+         removeLegend(LEGEND_NODE_BORDER_COLOR);
+         }
+         removeColorPicker();
+         update(null, 0);
+         });
+         */
 
-        $('#' + NODE_BORDER_COLOR_SELECT_MENU_2).on('change', function () {
-            const v = this.value;
-            setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU, DEFAULT);
-            if (isAddVisualization3()) {
-                setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_3, DEFAULT);
-            }
-            if (v && v != DEFAULT) {
-                _currentNodeBorderColorVisualization = v;
-                if ((v != SAME_AS_FILL ) && (v != NONE)) {
-                    //addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
-                    //if (!_options.showExternalNodes && !_options.showInternalNodes
-                    //&& ( _currentNodeShapeVisualization == null )) {
-                    _options.showExternalNodes = true;
-                    setCheckboxValue(EXTERNAL_NODES_CB, true);
-                    _options.showInternalNodes = true;
-                    setCheckboxValue(INTERNAL_NODES_CB, true);
-                    // }
-                    _options.showNodeVisualizations = true;
-                    setCheckboxValue(NODE_VIS_CB, true);
-                }
-            }
-            else {
-                _currentNodeBorderColorVisualization = null;
-            }
-            if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
-                removeLegend(LEGEND_NODE_BORDER_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
-
-        $('#' + NODE_BORDER_COLOR_SELECT_MENU_3).on('change', function () {
-            const v = this.value;
-            setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU, DEFAULT);
-            if (isAddVisualization2()) {
-                setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_2, DEFAULT);
-            }
-            if (v && v != DEFAULT) {
-                _currentNodeBorderColorVisualization = v;
-                if ((v != SAME_AS_FILL ) && (v != NONE)) {
-                    //addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
-                    //if (!_options.showExternalNodes && !_options.showInternalNodes
-                    //&& ( _currentNodeShapeVisualization == null )) {
-                    _options.showExternalNodes = true;
-                    setCheckboxValue(EXTERNAL_NODES_CB, true);
-                    _options.showInternalNodes = true;
-                    setCheckboxValue(INTERNAL_NODES_CB, true);
-                    // }
-                    _options.showNodeVisualizations = true;
-                    setCheckboxValue(NODE_VIS_CB, true);
-                }
-            }
-            else {
-                _currentNodeBorderColorVisualization = null;
-            }
-            if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
-                removeLegend(LEGEND_NODE_BORDER_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
+        /*
+         $('#' + NODE_BORDER_COLOR_SELECT_MENU_3).on('change', function () {
+         const v = this.value;
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU, DEFAULT);
+         if (isAddVisualization2()) {
+         setSelectMenuValue(NODE_BORDER_COLOR_SELECT_MENU_2, DEFAULT);
+         }
+         if (v && v != DEFAULT) {
+         _currentNodeBorderColorVisualization = v;
+         if ((v != SAME_AS_FILL ) && (v != NONE)) {
+         //addLegend(LEGEND_NODE_BORDER_COLOR, _visualizations.nodeBorderColor[_currentNodeBorderColorVisualization]);
+         //if (!_options.showExternalNodes && !_options.showInternalNodes
+         //&& ( _currentNodeShapeVisualization == null )) {
+         _options.showExternalNodes = true;
+         setCheckboxValue(EXTERNAL_NODES_CB, true);
+         _options.showInternalNodes = true;
+         setCheckboxValue(INTERNAL_NODES_CB, true);
+         // }
+         _options.showNodeVisualizations = true;
+         setCheckboxValue(NODE_VIS_CB, true);
+         }
+         }
+         else {
+         _currentNodeBorderColorVisualization = null;
+         }
+         if ((v == DEFAULT ) || (v == SAME_AS_FILL ) || (v == NONE)) {
+         removeLegend(LEGEND_NODE_BORDER_COLOR);
+         }
+         removeColorPicker();
+         update(null, 0);
+         });
+         */
 
         $('#' + NODE_SHAPE_SELECT_MENU).on('change', function () {
             var v = this.value;
@@ -7009,8 +7031,8 @@ if (!phyloXml) {
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
-            h = h.concat('<br>');
+            //  h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU, 'colorize the node border according to a property'));
+            //  h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Size:', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
@@ -7027,8 +7049,8 @@ if (!phyloXml) {
             h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_2, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_2, 'colorize the node fill according to a property'));
-            h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU_2, 'colorize the node border according to a property'));
+            //  h = h.concat('<br>');
+            // h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU_2, 'colorize the node border according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
@@ -7042,8 +7064,8 @@ if (!phyloXml) {
             h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_3, 'colorize the node label according to a property'));
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_3, 'colorize the node fill according to a property'));
-            h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU_3, 'colorize the node border according to a property'));
+            // h = h.concat('<br>');
+            // h = h.concat(makeSelectMenu('Node Border Color:', '<br>', NODE_BORDER_COLOR_SELECT_MENU_3, 'colorize the node border according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
