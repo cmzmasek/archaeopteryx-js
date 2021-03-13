@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2019 Christian M. Zmasek
- *  Copyright (C) 2019 Yun Zhang
- *  Copyright (C) 2019 J. Craig Venter Institute
+ *  Copyright (C) 2021 Christian M. Zmasek
+ *  Copyright (C) 2021 Yun Zhang
+ *  Copyright (C) 2021 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or

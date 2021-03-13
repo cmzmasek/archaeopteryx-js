@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2019 Christian M. Zmasek
- *  Copyright (C) 2019 Yun Zhang
- *  Copyright (C) 2019 J. Craig Venter Institute
+ *  Copyright (C) 2021 Christian M. Zmasek
+ *  Copyright (C) 2021 Yun Zhang
+ *  Copyright (C) 2021 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -22,7 +22,7 @@
  */
 
 // v 1.8.5b1
-// 2021-03-12
+// 2021-03-13
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -358,106 +358,106 @@ if (!phyloXml) {
     const col_category50 = [
         // 1 Red
         '#FF1744',
-        // 2 Pink
-        '#F50057',
-        // 3 Purple
+        // 2 Purple
         '#D500F9',
-        // 4 Deep Purple
+        // 3 Deep Purple
         '#651FFF',
-        // 5 Indigo
+        // 4 Indigo
         '#3D5AFE',
-        // 6 Blue
+        // 5 Blue
         '#2979FF',
-        // 7 Cyan
+        // 6 Cyan
         '#00E5FF',
-        // 8 Teal
+        // 7 Teal
         '#1DE9B6',
-        // 9 Green
+        // 8 Green
         '#00E676',
-        // 10 Light Green
+        // 9 Light Green
         '#76FF03',
-        // 11 Lime
+        // 10 Lime
         '#C6FF00',
-        // 12 Yellow
+        // 11 Yellow
         '#FFEA00',
-        // 13 Amber
+        // 12 Amber
         '#FFC400',
-        // 14 Orange
+        // 13 Orange
         '#FF9100',
-        // 15 Deep Orange
+        // 13 Deep Orange
         '#FF3D00',
-        // 16 Brown
+        // 15 Brown
         '#6D4C41',
-        // 17 Grey
+        // 16 Grey
         '#757575',
         //
-        // 18 Red
+        // 17 Red
         '#B71C1C',
-        // 19 Pink
+        // 18 Pink
         '#880E4F',
-        // 20 Purple
+        // 19 Purple
         '#4A148C',
-        // 21 Deep Purple
+        // 20 Deep Purple
         '#311B92',
-        // 22 Indigo
+        // 21 Indigo
         '#1A237E',
-        // 23 Blue
+        // 22 Blue
         '#0D47A1',
-        // 24 Cyan
+        // 23 Cyan
         '#006064',
-        // 25 Teal
+        // 24 Teal
         '#004D40',
-        // 26 Green
+        // 25 Green
         '#1B5E20',
-        // 27 Light Green
+        // 26 Light Green
         '#33691E',
-        // 28 Lime
+        // 27 Lime
         '#827717',
-        // 29 Yellow
+        // 28 Yellow
         '#F57F17',
-        // 30 Amber
+        // 29 Amber
         '#FF6F00',
-        // 31 Orange
+        // 30 Orange
         '#E65100',
-        // 32 Deep Orange
+        // 31 Deep Orange
         '#BF360C',
-        // 33 Brown
+        // 32 Brown
         '#4E342E',
-        // 34 Grey
+        // 33 Grey
         '#424242',
         //
-        // 35 Red
+        // 34 Red
         '#EF9A9A',
-        // 36 Pink
+        // 35 Pink
         '#F48FB1',
-        // 37 Purple
+        // 36 Purple
         '#CE93D8',
-        // 38 Deep Purple
+        // 37 Deep Purple
         '#B39DDB',
-        // 39 Indigo
+        // 38 Indigo
         '#9FA8DA',
-        // 40 Blue
+        // 39 Blue
         '#90CAF9',
-        // 41 Cyan
+        // 40 Cyan
         '#80DEEA',
-        // 42 Teal
+        // 41 Teal
         '#80CBC4',
-        // 43 Green
+        // 42 Green
         '#A5D6A7',
-        // 44 Light Green
+        // 43 Light Green
         '#C5E1A5',
-        // 45 Lime
+        // 44 Lime
         '#E6EE9C',
-        // 46 Amber
+        // 45 Amber
         '#FFE082',
-        // 47 Orange
+        // 46 Orange
         '#FFCC80',
-        // 48 Deep Orange
+        // 47 Deep Orange
         '#FFAB91',
-        // 49 Brown
+        // 48 Brown
         '#BCAAA4',
+        // 49 Grey
+        '#E0E0E0',
         // 50 Grey
-        '#E0E0E0'
+        '#505050'
     ];
 
 
