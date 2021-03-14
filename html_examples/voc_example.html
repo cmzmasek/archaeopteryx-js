@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <title>my title</title>
+
+    <!-- For MS IE/Edge compatibility:-->
+    <meta http-equiv="X-UA-Compatible" content="IE=100">
+
+    <!-- D3.js, jQuery, and jQuery UI:-->
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+    <!-- SAX XML parser:-->
+    <script src="http://path/to/js/dependencies/sax.js"></script>
+
+    <!-- The following five libraries are needed for download/export of images and files:-->
+    <script src="http://path/to/js/dependencies/rgbcolor.js"></script>
+    <script src="http://path/to/js/dependencies/Blob.js"></script>
+    <script src="http://path/to/js/dependencies/canvas-toBlob.js"></script>
+    <script src="http://path/to/js/dependencies/canvg.js"></script>
+    <script src="http://path/to/js/dependencies/FileSaver.js"></script>
+
+    <!-- Archaeopteryx.js requires forester.js and phyloxml_parser.js:-->
+    <script src="http://path/to/js/js/phyloxml_0_912.js"></script>
+    <script src="http://path/to/js/forester_1_8_5_b1.js"></script>
+    <script src="http://path/to/js/archaeopteryx_1_8_5_b1.js"></script>
+
+    <!-- CSS for jQuery UI: -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+
+    <script>
+
+        function load() {
+
+            var options = {};
+            options.alignPhylogram = false; // We should launch with "regular" phylogram.
+            options.defaultFont = ['Arial', 'Helvetica', 'Times'];
+            options.minBranchLengthValueToShow = 0.001;
+            options.minConfidenceValueToShow = 50;
+            options.phylogram = true; // We should launch with "regular" phylogram.
+            //options.searchAinitialValue = '#';
+            options.showBranchVisualizations = true; // For MSA residue visualization.
+            options.showConfidenceValues = true;
+            options.showExternalLabels = true;
+            options.showNodeName = true;
+            options.showNodeVisualizations = true;
+            options.showSequence = false; // Do not show "Sequence" upon launch.
+            options.showSequenceAccession = true; // If user turns on "Sequence" display, accession will be shown.
+            options.searchProperties = true;
+            options.showVisualizationsLegend = true;
+            options.visualizationsLegendOrientation = 'vertical';
+            options.visualizationsLegendXpos = 160;
+            options.visualizationsLegendYpos = 30;
+
+            var settings = {};
+
+            settings.border = '1px solid #909090';
+            settings.controls0Top = 10;
+            settings.controls1Top = 10; // Should have both boxes in line.
+            // settings.displayHeight = 700;
+            // settings.displayWidth = 1200;
+            settings.enableAccessToDatabases = true;
+            settings.enableBranchVisualizations = true; // For MSA residue visualization.
+            settings.enableCollapseByFeature = true;
+            settings.enableDownloads = true;
+            settings.enableMsaResidueVisualizations = true; // For MSA residue visualization.
+            settings.enableNodeVisualizations = true;
+            settings.enableDynamicSizing = true;
+            settings.enableSpecialVisualizations2 = true;
+            settings.enableSpecialVisualizations3 = false;
+            settings.nhExportWriteConfidences = true;
+            //settings.readSimpleCharacteristics = true; // To be deprecated!
+            settings.searchFieldWidth = '50px';
+            settings.collapseLabelWidth = '36px';
+            settings.textFieldHeight = '16px';
+            settings.showShortenNodeNamesButton = false;
+            settings.showDynahideButton = false;
+            settings.showSearchPropertiesButton = true;
+
+            settings.dynamicallyAddNodeVisualizations = true;
+
+            settings.propertiesToIgnoreForNodeVisualization = ['AccessionNumber'];
+
+            settings.valuesToIgnoreForNodeVisualization = {
+                'vipr:Year': ['1111'],
+                'ird:Year': ['1111'],
+                'vipr:Country': ['-N/A-'],
+                'ird:Country': ['-N/A-']
+            };
+
+            var decorator = 'vipr:';
+
+            var nodeVisualizations = {};
+
+            nodeVisualizations['PANGO_Lineage'] = {
+                label: 'PANGO Lineage',
+                description: 'the PANGO Lineage',
+                field: null,
+                cladeRef: decorator + 'PANGO_Lineage',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                sizes: null
+            };
+
+            nodeVisualizations['PANGO_Lineage_L0'] = {
+                label: 'PANGO Lineage Lvl 0',
+                description: 'the PANGO Lineage Level 0',
+                field: null,
+                cladeRef: decorator + 'PANGO_Lineage_L0',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                sizes: null
+            };
+
+            nodeVisualizations['PANGO_Lineage_L1'] = {
+                label: 'PANGO Lineage Lvl 1',
+                description: 'the PANGO Lineage Level 1',
+                field: null,
+                cladeRef: decorator + 'PANGO_Lineage_L1',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                sizes: null
+            };
+
+            nodeVisualizations['Host'] = {
+                label: 'Host',
+                description: 'the host of the virus',
+                field: null,
+                cladeRef: decorator + 'Host',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category10',
+                sizes: null
+            };
+
+            nodeVisualizations['Country'] = {
+                label: 'Country',
+                description: 'the country of the virus',
+                field: null,
+                cladeRef: decorator + 'Country',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                sizes: null
+            };
+
+            nodeVisualizations['Year'] = {
+                label: 'Year',
+                description: 'the year of the virus',
+                field: null,
+                cladeRef: decorator + 'Year',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                colorsAlt: ['#000000', '#00FF00'],
+                sizes: [10, 40]
+            };
+
+            nodeVisualizations['Region'] = {
+                label: 'Region',
+                description: 'the region of change',
+                field: null,
+                cladeRef: decorator + 'Region',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category50',
+                sizes: null
+            };
+
+            var specialVisualizations = {};
+
+            specialVisualizations['Mutations'] = {
+                label: 'Mutations',
+                applies_to_ref: 'vipr:Mutation',
+                property_datatype: 'xsd:string',
+                property_applies_to: 'node',
+                color: '#0000FF',
+                property_values: []
+
+            };
+
+            /*
+             specialVisualizations['Convergent_Mutations'] = {
+             label: 'Convergent Mutations',
+             applies_to_ref: 'vipr:Mutation',
+             property_datatype: 'xsd:string',
+             property_applies_to: 'node',
+             color: '#FF0000',
+             property_values: ['S:E484K', 'N:G93I']
+             };
+             */
+
+            var loc = 'http://path/to/my_tree.xml';
+
+            jQuery.get(loc,
+                    function (data) {
+                        var tree = null;
+                        try {
+                            tree = archaeopteryx.parsePhyloXML(data);
+                        }
+                        catch (e) {
+                            alert("error while parsing tree: " + e);
+                        }
+                        if (tree) {
+                            try {
+                                archaeopteryx.launch('#phylogram1', tree, options, settings, nodeVisualizations, specialVisualizations);
+                            }
+                            catch (e) {
+                                alert("error while launching archaeopteryx: " + e);
+                            }
+                        }
+                    },
+                    "text")
+                    .fail(function () {
+                        alert("error: failed to read tree(s) from \"" + loc + "\"");
+                    });
+        }
+
+    </script>
+
+</head>
+<body onload="load()">
+
+<div>
+    <style type="text/css">
+        #search_options fieldset {
+            height: auto !important;
+        }
+
+        div.node_mouseover_tooltip {
+            position: absolute;
+            text-align: center;
+            font: 10px sans-serif;
+            pointer-events: none;
+        }
+    </style>
+    <h2>My title</h2>
+
+    <div id='phylogram1'></div>
+
+    <div id="controls0" class="ui-widget-content"></div>
+
+    <div id="controls1" class="ui-widget-content"></div>
+
+</div>
+
+</body>
