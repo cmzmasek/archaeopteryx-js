@@ -68,7 +68,7 @@
             settings.enableNodeVisualizations = true;
             settings.enableDynamicSizing = true;
             settings.enableSpecialVisualizations2 = true;
-            settings.enableSpecialVisualizations3 = false;
+            settings.enableSpecialVisualizations3 = true;
             settings.nhExportWriteConfidences = true;
             //settings.readSimpleCharacteristics = true; // To be deprecated!
             settings.searchFieldWidth = '50px';
@@ -179,20 +179,21 @@
                 property_datatype: 'xsd:string',
                 property_applies_to: 'node',
                 color: '#0000FF',
-                property_values: []
-
+                property_values: ['S:H69-', 'S:V70-', 'S:N501Y', 'S:A570D', 'S:D614G', 'S:P681H', 'S:T716I', 'S:S982A',
+                    'S:D1118H', 'S:L18F', 'S:D80A', 'S:D215G', 'S:L242-', 'S:A243-', 'S:L244-', 'S:R246I', 'S:K417N',
+                    'S:E484K', 'S:N501Y', 'S:D614G', 'S:A701V', 'S:L18F', 'S:T20N', 'S:P26S', 'S:D138Y', 'S:R190S',
+                    'S:K417T', 'S:E484K', 'S:N501Y', 'S:D614G', 'S:H655Y', 'S:T1027I', 'S:V1176F', 'S:S13I',
+                    'S:W152C', 'S:L452R', 'S:D614G', 'S:H69-', 'S:V70-', 'S:D614G']
             };
 
-            /*
-             specialVisualizations['Convergent_Mutations'] = {
-             label: 'Convergent Mutations',
-             applies_to_ref: 'vipr:Mutation',
-             property_datatype: 'xsd:string',
-             property_applies_to: 'node',
-             color: '#FF0000',
-             property_values: ['S:E484K', 'N:G93I']
-             };
-             */
+            specialVisualizations['Convergent_Mutations'] = {
+                label: 'Convergent Mutations',
+                applies_to_ref: 'vipr:Mutation',
+                property_datatype: 'xsd:string',
+                property_applies_to: 'node',
+                color: '#FF0000',
+                property_values: ['S:H69-', 'S:V70-', 'S:N501Y', 'S:D614G', 'S:L18F', 'S:K417N', 'S:E484K', 'S:K417T']
+            };
 
             var loc = 'http://path/to/my_tree.xml';
 
