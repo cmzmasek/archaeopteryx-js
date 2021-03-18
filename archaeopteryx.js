@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.5b2
-// 2021-03-16
+// v 1.8.5b3
+// 2021-03-18
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.5b2';
+    const VERSION = '1.8.5b3';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -683,20 +683,36 @@ if (!phyloXml) {
             .style('opacity', 1);
     }
 
-    function mousemove(d) {
-        var txt = "";
+    function mousemove(d) { //~~
+        var txt = '';
         if (d.name != null) {
             txt = d.name;
         }
         const l = d.properties.length;
+        var mut = '';
+        var first = true;
         for (var p = 0; p < l; ++p) {
             if (d.properties[p].ref === 'vipr:PANGO_Lineage'
                 && d.properties[p].datatype === 'xsd:string'
                 && d.properties[p].applies_to === 'node') {
-                txt = txt + " [" + d.properties[p].value + "]";
-                break;
+                txt = txt + ' [' + d.properties[p].value + ']';
+            }
+            if (d.properties[p].ref === 'vipr:Mutation'
+                && d.properties[p].datatype === 'xsd:string'
+                && d.properties[p].applies_to === 'node') {
+                if (first) {
+                    mut = d.properties[p].value;
+                    first = false;
+                }
+                else {
+                    mut = mut + ' ' + d.properties[p].value
+                }
             }
         }
+        if (mut.length > 0) {
+            txt = txt + ' {' + mut + '}'
+        }
+
         _node_mouseover_div
             .text(txt)
             .style('left', (d3.event.pageX ) + 'px')
@@ -6042,7 +6058,7 @@ if (!phyloXml) {
             }
             else {
                 _currentLabelColorVisualization = null;
-                removeLegend(LEGEND_LABEL_COLOR);
+                //removeLegend(LEGEND_LABEL_COLOR);
             }
             removeColorPicker();
             update(null, 0);
@@ -6067,7 +6083,7 @@ if (!phyloXml) {
             }
             else {
                 _currentLabelColorVisualization = null;
-                removeLegend(LEGEND_LABEL_COLOR);
+                //removeLegend(LEGEND_LABEL_COLOR);
             }
             removeColorPicker();
             update(null, 0);
