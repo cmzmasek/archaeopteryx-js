@@ -69,6 +69,7 @@
             settings.enableDynamicSizing = true;
             settings.enableSpecialVisualizations2 = true;
             settings.enableSpecialVisualizations3 = true;
+            settings.enableSpecialVisualizations4 = true;
             settings.nhExportWriteConfidences = true;
             //settings.readSimpleCharacteristics = true; // To be deprecated!
             settings.searchFieldWidth = '50px';
@@ -192,6 +193,15 @@
                 property_applies_to: 'node',
                 color: '#FF0000',
                 property_values: ['S:D614G', 'S:E484K', 'S:H69-', 'S:K417N', 'S:K417T', 'S:L18F', 'S:N501Y', 'S:V70-']
+            };
+
+            specialVisualizations['vipr:PANGO_Lineage'] = {
+                label: 'Lineages of Concern',
+                applies_to_ref: 'vipr:PANGO_Lineage',
+                property_datatype: 'xsd:string',
+                property_applies_to: 'node',
+                color: '#FF0000',
+                property_values: ['B.1.1.7', 'B.1.351', 'B.1.1.28', 'B.1.429', 'B.1.375']
             };
 
             var loc = 'http://path/to/my_tree.xml';

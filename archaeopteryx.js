@@ -21,7 +21,7 @@
  *
  */
 
-// v 1.8.5b3
+// v 1.8.5b4
 // 2021-03-18
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.5b3';
+    const VERSION = '1.8.5b4';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -303,6 +303,9 @@ if (!phyloXml) {
 
     const LABEL_COLOR_SELECT_MENU_3 = 'lcs_3_menu';
     const NODE_FILL_COLOR_SELECT_MENU_3 = 'nfcolors_3_menu';
+
+    const LABEL_COLOR_SELECT_MENU_4 = 'lcs_4_menu';
+    const NODE_FILL_COLOR_SELECT_MENU_4 = 'nfcolors_4_menu';
 
 
     // ---------------------------
@@ -576,12 +579,16 @@ if (!phyloXml) {
     var _node_mouseover_div;
     var _visualizations2_color = null;
     var _visualizations3_color = null;
+    var _visualizations4_color = null;
     var _visualizations2_applies_to_ref = null;
     var _visualizations3_applies_to_ref = null;
+    var _visualizations4_applies_to_ref = null;
     var _visualizations2_property_datatype = null;
     var _visualizations3_property_datatype = null;
+    var _visualizations4_property_datatype = null;
     var _visualizations2_property_applies_to = null;
     var _visualizations3_property_applies_to = null;
+    var _visualizations4_property_applies_to = null;
 
     function branchLengthScaling(nodes, width) {
 
@@ -671,6 +678,10 @@ if (!phyloXml) {
 
     function isAddVisualization3() { //~~~
         return _settings.enableSpecialVisualizations3;
+    }
+
+    function isAddVisualization4() { //~~~
+        return _settings.enableSpecialVisualizations4;
     }
 
     // ----------------------------
@@ -2459,11 +2470,21 @@ if (!phyloXml) {
                     return vis.mappingFn ? vis.mappingFn(residue) : vis.mapping[residue];
                 }
             }
-            else if (( isAddVisualization2() || isAddVisualization3() ) && ( _specialVisualizations != null ) && (n.properties != null)) {
+            else if (( isAddVisualization2() || isAddVisualization3() || isAddVisualization4() ) && ( _specialVisualizations != null ) && (n.properties != null)) {
                 //~~
                 const l = n.properties.length;
                 for (var p = 0; p < l; ++p) {
-                    if (n.properties[p].ref === _visualizations3_applies_to_ref
+                    if (n.properties[p].ref === _visualizations4_applies_to_ref
+                        && n.properties[p].datatype === _visualizations4_property_datatype
+                        && n.properties[p].applies_to === _visualizations4_property_applies_to) {
+                        if (_currentNodeFillColorVisualization === n.properties[p].value
+                            || _currentLabelColorVisualization === n.properties[p].value
+                            || _currentNodeBorderColorVisualization === n.properties[p].value
+                        ) {
+                            return _visualizations4_color;
+                        }
+                    }
+                    else if (n.properties[p].ref === _visualizations3_applies_to_ref
                         && n.properties[p].datatype === _visualizations3_property_datatype
                         && n.properties[p].applies_to === _visualizations3_property_applies_to) {
                         if (_currentNodeFillColorVisualization === n.properties[p].value
@@ -2754,7 +2775,14 @@ if (!phyloXml) {
                 //~~~~~
                 const l = node.properties.length;
                 for (var p = 0; p < l; ++p) {
-                    if (node.properties[p].ref === _visualizations3_applies_to_ref
+                    if (node.properties[p].ref === _visualizations4_applies_to_ref
+                        && node.properties[p].datatype === _visualizations4_property_datatype
+                        && node.properties[p].applies_to === _visualizations4_property_applies_to) {
+                        if (_currentNodeFillColorVisualization === node.properties[p].value) {
+                            return _visualizations4_color;
+                        }
+                    }
+                    else if (node.properties[p].ref === _visualizations3_applies_to_ref
                         && node.properties[p].datatype === _visualizations3_property_datatype
                         && node.properties[p].applies_to === _visualizations3_property_applies_to) {
                         if (_currentNodeFillColorVisualization === node.properties[p].value) {
@@ -2901,7 +2929,14 @@ if (!phyloXml) {
                 //~~~~~
                 const l = node.properties.length;
                 for (var p = 0; p < l; ++p) {
-                    if (node.properties[p].ref === _visualizations3_applies_to_ref
+                    if (node.properties[p].ref === _visualizations4_applies_to_ref
+                        && node.properties[p].datatype === _visualizations4_property_datatype
+                        && node.properties[p].applies_to === _visualizations4_property_applies_to) {
+                        if (_currentLabelColorVisualization === node.properties[p].value) {
+                            return _visualizations4_color;
+                        }
+                    }
+                    else if (node.properties[p].ref === _visualizations3_applies_to_ref
                         && node.properties[p].datatype === _visualizations3_property_datatype
                         && node.properties[p].applies_to === _visualizations3_property_applies_to) {
                         if (_currentLabelColorVisualization === node.properties[p].value) {
@@ -3743,6 +3778,9 @@ if (!phyloXml) {
         }
         if (_settings.enableSpecialVisualizations3 === undefined) {
             _settings.enableSpecialVisualizations3 = false;
+        }
+        if (_settings.enableSpecialVisualizations4 === undefined) {
+            _settings.enableSpecialVisualizations4 = false;
         }
         if (_settings.showSearchPropertiesButton === undefined) {
             _settings.showSearchPropertiesButton = false;
@@ -5903,6 +5941,23 @@ if (!phyloXml) {
                     }
                 }
 
+                if (isAddVisualization4() && _specialVisualizations != null) { //~~
+                    if ('vipr:PANGO_Lineage' in _specialVisualizations) {
+                        const lineages = _specialVisualizations['vipr:PANGO_Lineage'];
+                        if (lineages != null) {
+                            c1.append(makeVisualization4(lineages.label));
+                            _visualizations4_color = lineages.color;
+                            _visualizations4_applies_to_ref = lineages.applies_to_ref;
+                            _visualizations4_property_datatype = lineages.property_datatype;
+                            _visualizations4_property_applies_to = lineages.property_applies_to;
+                            console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations4_applies_to_ref);
+                            console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations4_property_applies_to);
+                            console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations4_property_datatype);
+                            console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations4_color);
+                        }
+                    }
+                }
+
                 c1.append(makeLegendControl());
             }
         }
@@ -6026,6 +6081,9 @@ if (!phyloXml) {
             if (isAddVisualization3()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_3, DEFAULT);
             }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU_4, DEFAULT);
+            }
 
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
@@ -6046,6 +6104,9 @@ if (!phyloXml) {
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization3()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_3, DEFAULT);
+            }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU_4, DEFAULT);
             }
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
@@ -6070,6 +6131,36 @@ if (!phyloXml) {
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
+            }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU_4, DEFAULT);
+            }
+            if (v && v != DEFAULT) {
+                _currentLabelColorVisualization = v;
+                _options.showNodeName = true;
+                setCheckboxValue(NODE_NAME_CB, true);
+                _options.showExternalLabels = true;
+                setCheckboxValue(EXTERNAL_LABEL_CB, true);
+                _options.showInternalLabels = true;
+                setCheckboxValue(INTERNAL_LABEL_CB, true);
+
+            }
+            else {
+                _currentLabelColorVisualization = null;
+                //removeLegend(LEGEND_LABEL_COLOR);
+            }
+            removeColorPicker();
+            update(null, 0);
+        });
+
+        $('#' + LABEL_COLOR_SELECT_MENU_4).on('change', function () {
+            const v = this.value;
+            setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
+            if (isAddVisualization2()) {
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
+            }
+            if (isAddVisualization3()) {
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU_3, DEFAULT);
             }
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
@@ -6097,6 +6188,9 @@ if (!phyloXml) {
             if (isAddVisualization3()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
             }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
+            }
             if (v && v != DEFAULT) {
                 if (!_options.showExternalNodes && !_options.showInternalNodes
                     && ( _currentNodeShapeVisualization == null )) {
@@ -6123,6 +6217,9 @@ if (!phyloXml) {
             if (isAddVisualization3()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
             }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
+            }
             if (v && v != DEFAULT) {
                 _options.showExternalNodes = true;
                 setCheckboxValue(EXTERNAL_NODES_CB, true);
@@ -6147,6 +6244,37 @@ if (!phyloXml) {
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
+            }
+            if (isAddVisualization4()) {
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
+            }
+            if (v && v != DEFAULT) {
+                _options.showExternalNodes = true;
+                setCheckboxValue(EXTERNAL_NODES_CB, true);
+                _options.showInternalNodes = true;
+                setCheckboxValue(INTERNAL_NODES_CB, true);
+
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
+                _currentNodeFillColorVisualization = v;
+
+            }
+            else {
+                _currentNodeFillColorVisualization = null;
+                removeLegend(LEGEND_NODE_FILL_COLOR);
+            }
+            removeColorPicker();
+            update(null, 0);
+        });
+
+        $('#' + NODE_FILL_COLOR_SELECT_MENU_4).on('change', function () {
+            const v = this.value;
+            setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
+            if (isAddVisualization2()) {
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
+            }
+            if (isAddVisualization3()) {
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
             }
             if (v && v != DEFAULT) {
                 _options.showExternalNodes = true;
@@ -6486,6 +6614,20 @@ if (!phyloXml) {
             });
 
         $('#' + NODE_FILL_COLOR_SELECT_MENU_3)
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + LABEL_COLOR_SELECT_MENU_4) //~~~
+            .select()
+            .css({
+                'font': 'inherit',
+                'color': 'inherit'
+            });
+
+        $('#' + NODE_FILL_COLOR_SELECT_MENU_4)
             .select()
             .css({
                 'font': 'inherit',
@@ -6975,6 +7117,19 @@ if (!phyloXml) {
             return h;
         }
 
+        function makeVisualization4(title) { //~~~
+            var h = "";
+            h = h.concat('<form action="#">');
+            h = h.concat('<fieldset>');
+            h = h.concat('<legend>' + title + '</legend>');
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_4, 'colorize the node label according to a property'));
+            h = h.concat('<br>');
+            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_4, 'colorize the node fill according to a property'));
+            h = h.concat('</fieldset>');
+            h = h.concat('</form>');
+            return h;
+        }
+
         function makeMsaResidueVisCurrResPositionControl() {
             var h = "";
             h = h.concat('<fieldset>');
@@ -7120,6 +7275,16 @@ if (!phyloXml) {
             .html('default')
         );
 
+        $('select#' + NODE_FILL_COLOR_SELECT_MENU_4).append($('<option>')
+            .val(DEFAULT)
+            .html('default')
+        );
+
+        $('select#' + LABEL_COLOR_SELECT_MENU_4).append($('<option>')
+            .val(DEFAULT)
+            .html('default')
+        );
+
         //
 
         if (_visualizations) {
@@ -7209,6 +7374,26 @@ if (!phyloXml) {
                             .html(key)
                         );
                         $('select#' + NODE_FILL_COLOR_SELECT_MENU_3).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
+                    }
+                }
+            }
+
+            if ('vipr:PANGO_Lineage' in _specialVisualizations) {
+                const lineages = _specialVisualizations['vipr:PANGO_Lineage'];
+
+                if (lineages != null && lineages.property_values != null) {
+                    const properties = lineages.property_values;
+                    const arrayLength = properties.length;
+                    for (var i = 0; i < arrayLength; i++) {
+                        const key = properties[i];
+                        $('select#' + LABEL_COLOR_SELECT_MENU_4).append($('<option>')
+                            .val(key)
+                            .html(key)
+                        );
+                        $('select#' + NODE_FILL_COLOR_SELECT_MENU_4).append($('<option>')
                             .val(key)
                             .html(key)
                         );
