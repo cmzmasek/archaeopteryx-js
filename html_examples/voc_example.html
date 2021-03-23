@@ -52,9 +52,10 @@
             options.visualizationsLegendOrientation = 'vertical';
             options.visualizationsLegendXpos = 160;
             options.visualizationsLegendYpos = 30;
+            options.initialNodeFillColorVisualization = 'PANGO Lineage of Concern';
+            options.initialLabelColorVisualization = null;
 
             var settings = {};
-
             settings.border = '1px solid #909090';
             settings.controls0Top = 10;
             settings.controls1Top = 10; // Should have both boxes in line.
@@ -78,16 +79,18 @@
             settings.showShortenNodeNamesButton = false;
             settings.showDynahideButton = false;
             settings.showSearchPropertiesButton = true;
-
             settings.dynamicallyAddNodeVisualizations = true;
-
             settings.propertiesToIgnoreForNodeVisualization = ['AccessionNumber', 'Mutation'];
-
             settings.valuesToIgnoreForNodeVisualization = {
                 'vipr:Year': ['1111'],
                 'ird:Year': ['1111'],
                 'vipr:Country': ['-N/A-'],
                 'ird:Country': ['-N/A-']
+            };
+            settings.filterValues = {
+                source: 'vipr:PANGO_Lineage',
+                target: 'vipr:PANGO_Lineage_of_Concern',
+                pass: ['B.1.1.7', 'B.1.351', 'B.1.1.28', 'B.1.429', 'B.1.375']
             };
 
             var decorator = 'vipr:';
@@ -172,11 +175,22 @@
                 sizes: null
             };
 
+            nodeVisualizations['PANGO_Lineage_of_Concern'] = {
+                label: 'PANGO Lineage of Concern',
+                description: 'PANGO Lineage of Concern',
+                field: null,
+                cladeRef: decorator + 'PANGO_Lineage_of_Concern',
+                regex: false,
+                shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
+                colors: 'category10',
+                sizes: null
+            };
+
             var specialVisualizations = {};
 
             specialVisualizations['Mutations'] = {
                 label: 'Mutations',
-                applies_to_ref: 'vipr:Mutation',
+                applies_to_ref: decorator + 'Mutation',
                 property_datatype: 'xsd:string',
                 property_applies_to: 'node',
                 color: '#0000FF',
@@ -188,23 +202,24 @@
 
             specialVisualizations['Convergent_Mutations'] = {
                 label: 'Convergent Mutations',
-                applies_to_ref: 'vipr:Mutation',
+                applies_to_ref: decorator + 'Mutation',
                 property_datatype: 'xsd:string',
                 property_applies_to: 'node',
                 color: '#FF0000',
                 property_values: ['S:D614G', 'S:E484K', 'S:H69-', 'S:K417N', 'S:K417T', 'S:L18F', 'S:N501Y', 'S:V70-']
             };
 
-            specialVisualizations['vipr:PANGO_Lineage'] = {
+            specialVisualizations[decorator + 'PANGO_Lineage'] = {
                 label: 'Lineages of Concern',
-                applies_to_ref: 'vipr:PANGO_Lineage',
+                applies_to_ref: decorator + 'PANGO_Lineage',
                 property_datatype: 'xsd:string',
                 property_applies_to: 'node',
                 color: '#FF0000',
                 property_values: ['B.1.1.7', 'B.1.351', 'B.1.1.28', 'B.1.429', 'B.1.375']
             };
 
-            var loc = 'http://path/to/my_tree.xml';
+
+            var loc = 'path/to/tree.xml';
 
             jQuery.get(loc,
                     function (data) {
@@ -251,7 +266,7 @@
             border-radius: 8px;
         }
     </style>
-    <h2>My title</h2>
+    <h2>header</h2>
 
     <div id='phylogram1'></div>
 
