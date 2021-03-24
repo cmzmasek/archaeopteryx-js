@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.5b5
-// 2021-03-22
+// v 1.8.5b6
+// 2021-03-23
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.5b5';
+    const VERSION = '1.8.5b6';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -696,32 +696,34 @@ if (!phyloXml) {
 
     function mousemove(d) {
         var txt = '';
-        if (d.name != null) {
+        if (d.name && d.name != null) {
             txt = d.name;
         }
-        const l = d.properties.length;
-        var mut = '';
-        var first = true;
-        for (var p = 0; p < l; ++p) {
-            if (d.properties[p].ref === 'vipr:PANGO_Lineage'
-                && d.properties[p].datatype === 'xsd:string'
-                && d.properties[p].applies_to === 'node') {
-                txt = txt + ' [' + d.properties[p].value + ']';
-            }
-            if (d.properties[p].ref === 'vipr:Mutation'
-                && d.properties[p].datatype === 'xsd:string'
-                && d.properties[p].applies_to === 'node') {
-                if (first) {
-                    mut = d.properties[p].value;
-                    first = false;
+        if (d.properties && d.properties != null) {
+            const l = d.properties.length;
+            var mut = '';
+            var first = true;
+            for (var p = 0; p < l; ++p) {
+                if (d.properties[p].ref === 'vipr:PANGO_Lineage'
+                    && d.properties[p].datatype === 'xsd:string'
+                    && d.properties[p].applies_to === 'node') {
+                    txt = txt + ' [' + d.properties[p].value + ']';
                 }
-                else {
-                    mut = mut + ' ' + d.properties[p].value
+                if (d.properties[p].ref === 'vipr:Mutation'
+                    && d.properties[p].datatype === 'xsd:string'
+                    && d.properties[p].applies_to === 'node') {
+                    if (first) {
+                        mut = d.properties[p].value;
+                        first = false;
+                    }
+                    else {
+                        mut = mut + ' ' + d.properties[p].value
+                    }
                 }
             }
-        }
-        if (mut.length > 0) {
-            txt = txt + ' {' + mut + '}'
+            if (mut.length > 0) {
+                txt = txt + ' {' + mut + '}'
+            }
         }
 
         _node_mouseover_div
@@ -5237,6 +5239,20 @@ if (!phyloXml) {
             _zoomListener.scale(1);
             update(_root, 0);
             centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+        }
+    }
+
+    function returnToSupertreeButtonPressedOLD() {
+        if (_root && _superTreeRoots.length > 0) {
+            _root = _superTreeRoots.pop();
+            _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+            updateNodeVisualizationsAndLegends(_root);
+            resetDepthCollapseDepthValue();
+            resetRankCollapseRankValue();
+            resetBranchLengthCollapseValue();
+            search0();
+            search1();
+            zoomToFit();
         }
     }
 
