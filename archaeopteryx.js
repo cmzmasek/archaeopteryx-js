@@ -57,7 +57,6 @@
 // User documentation:
 // https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8
 
-
 if (!d3) {
     throw "no d3.js";
 }
