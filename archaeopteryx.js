@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.5b6
-// 2021-03-23
+// v 1.8.5b7
+// 2021-04-06
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -74,7 +74,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.5b6';
+    const VERSION = '1.8.5b7';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
@@ -156,7 +156,7 @@ if (!phyloXml) {
     const BRANCH_EVENT_APPLIES_TO = 'parent_branch';
     const BRANCH_EVENT_DATATYPE = 'xsd:string';
     const BRANCH_EVENT_REF = 'aptx:branch_event';
-    const BRANCH_LENGTH_DIGITS_DEFAULT = 4;
+    const BRANCH_LENGTH_DIGITS_DEFAULT = 6;
     const BRANCH_WIDTH_MAX = 9;
     const BRANCH_WIDTH_MIN = 0.5;
     const BUTTON_ZOOM_IN_FACTOR = 1.1;
@@ -4235,7 +4235,9 @@ if (!phyloXml) {
 
 
     function removeTooltips() {
-        _svgGroup.selectAll('.tooltipElem').remove();
+        if (_svgGroup != null) {
+            _svgGroup.selectAll('.tooltipElem').remove();
+        }
     }
 
 
