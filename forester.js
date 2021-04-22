@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.8.5b7
-// 2021-04-06
+// v 1.8.6a1
+// 2021-04-21
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -222,6 +222,45 @@
         });
         return found;
     };
+
+
+    forester.filterByNodeProperty = function (positive, phy, propertyMap) {
+        if (!phy) {
+            throw ( "cannot delete null tree" );
+        }
+        if (!propertyMap) {
+            throw ( "property list is null" );
+        }
+        const toDelete = [];
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (!n.children && !n._children) {
+                if (n.properties && n.properties.length > 0) {
+                    const propertiesLength = n.properties.length;
+                    for (var i = 0; i < propertiesLength; ++i) {
+                        const property = n.properties[i];
+                        if (property.ref && property.value && property.applies_to === 'node') {
+                            if (positive) {
+                                if (property.ref in propertyMap && !propertyMap[property.ref].includes(property.value)) {
+                                    toDelete.push(n);
+                                }
+                            }
+                            else {
+                                if (property.ref in propertyMap && propertyMap[property.ref].includes(property.value)) {
+                                    toDelete.push(n);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const l = toDelete.length;
+        console.log(toDelete);
+        for (var i = 0; i < l; ++i) {
+            forester.deleteSubtree(phy, toDelete[i]);
+        }
+    };
+
 
     /**
      * To delete a sub-tree or external node.
