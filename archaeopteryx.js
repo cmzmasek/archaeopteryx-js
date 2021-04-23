@@ -2146,7 +2146,8 @@ if (!phyloXml) {
 
         nodeEnter.append('text')
             .attr('class', 'brancheventlabel')
-            .attr('text-anchor', 'middle');
+            .attr('text-anchor', 'middle')
+            .style('font-family', _options.defaultFont);
 
         nodeEnter.append('text')
             .attr('class', 'collapsedText')
@@ -3356,7 +3357,7 @@ if (!phyloXml) {
                         str = phynode.properties[p].value;
                     }
                     else {
-                        str += ( ' | ' + phynode.properties[p].value );
+                        str += ( ', ' + phynode.properties[p].value );
                     }
                 }
             }
@@ -4087,19 +4088,8 @@ if (!phyloXml) {
             if (settings.valuesToIgnoreForNodeVisualization) {
                 deleteValuesFromNodeProperties(settings.valuesToIgnoreForNodeVisualization, nodeProperties);
             }
-
-
             initializeNodeVisualizations(nodeProperties);
-
-
         }
-
-
-        ////////////////////////////////////////////////////////////////
-        var keep = {'vipr:Country': ['Germany', 'Chile', 'Peru', 'India']};
-        forester.filterByNodeProperty(_treeData, keep);
-
-        //////////////////////////////////////////////////////////////////////
 
         createGui();
 
@@ -4211,6 +4201,27 @@ if (!phyloXml) {
         update(null, 0);
 
         zoomToFit();
+
+
+        ////////////////////////////////////////////////////////////////
+        // var filter = {'vipr:Country': [ 'Chile', 'Peru']};
+        // forester.filterByNodeProperty(true, _treeData, filter);
+
+        //   var filter = {'vipr:Country': [ 'USA', 'China']};
+        //  forester.filterByNodeProperty(false, _treeData, filter);
+
+        // var filter = {'vipr:Host': [ 'Human']};
+        //  forester.filterByNodeProperty(false, _treeData, filter);
+
+
+        updateNodeVisualizationsAndLegends(_root);
+        resetDepthCollapseDepthValue();
+        resetRankCollapseRankValue();
+        resetBranchLengthCollapseValue();
+        search0();
+        search1();
+
+        //////////////////////////////////////////////////////////////////////
 
     };
 
