@@ -74,7 +74,7 @@ if (!phyloXml) {
     "use strict";
 
     const VERSION = '1.8.6b1';
-    const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
+    const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
     // -----------------------------
