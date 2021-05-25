@@ -21,7 +21,7 @@
  *
  */
 
-// v 1.8.6a1
+// v 1.8.6b1
 // 2021-04-21
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.6a1';
+    const VERSION = '1.8.6b1';
     const WEBSITE = 'https://sites.google.com/site/cmzmasek/home/software/archaeopteryx-js';
     const NAME = 'Archaeopteryx.js';
 
