@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.6b1
-// 2021-04-21
+// v 1.8.7b1
+// 2021-05-30
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.6b1';
+    const VERSION = '1.8.7b1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -266,6 +266,8 @@ if (!phyloXml) {
     const NODE_EVENTS_CB = 'nevts_cb';
     const NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
     const NODE_NAME_CB = 'nn_cb';
+    const CUSTOM_DATA_1_CB = 'custom_data_1_cb';
+    const CUSTOM_DATA_2_CB = 'custom_data_2_cb';
     const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
     const NODE_SIZE_SELECT_MENU = 'nsizes_menu';
     const NODE_SIZE_SLIDER = 'ns_sl';
@@ -2383,7 +2385,8 @@ if (!phyloXml) {
 
 
         if (_options.phylogram && _options.alignPhylogram && _options.showExternalLabels
-            && ( _options.showNodeName || _options.showTaxonomy || _options.showSequence )) {
+            && ( _options.showNodeName || _options.showTaxonomy || _options.showSequence
+            || _options.showLineage || _options.showMutations )) {
             var linkExtension = _svgGroup.append("g")
                 .selectAll('path')
                 .data(links.filter(function (d) {
@@ -3172,6 +3175,45 @@ if (!phyloXml) {
                 l = append(l, phynode.name);
             }
         }
+        if (_options.showLineage) {
+            if (phynode.properties && phynode.properties != null) {
+                const props_length = phynode.properties.length;
+                if (props_length > 0) {
+                    var lin_text = '';
+                    for (var pl = 0; pl < props_length; ++pl) {
+                        if (phynode.properties[pl].ref === 'vipr:PANGO_Lineage'
+                            && phynode.properties[pl].datatype === 'xsd:string'
+                            && phynode.properties[pl].applies_to === 'node') {
+                            if (lin_text.length > 0) {
+                                lin_text += ', '
+                            }
+                            lin_text += phynode.properties[pl].value;
+                        }
+                    }
+                    l = append(l, lin_text)
+                }
+            }
+
+        }
+        if (_options.showMutations) {
+            if (phynode.properties && phynode.properties != null) {
+                const props_length = phynode.properties.length;
+                if (props_length > 0) {
+                    var mut_text = '';
+                    for (var pm = 0; pm < props_length; ++pm) {
+                        if (phynode.properties[pm].ref === 'vipr:Mutation'
+                            && phynode.properties[pm].datatype === 'xsd:string'
+                            && phynode.properties[pm].applies_to === 'node') {
+                            if (mut_text.length > 0) {
+                                mut_text += ', '
+                            }
+                            mut_text += phynode.properties[pm].value;
+                        }
+                    }
+                    l = append(l, mut_text)
+                }
+            }
+        }
         if (_options.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
             var t = phynode.taxonomies[0];
             if (_options.showTaxonomyCode) {
@@ -3431,6 +3473,12 @@ if (!phyloXml) {
         }
         if (_options.showNodeName === undefined) {
             _options.showNodeName = true;
+        }
+        if (_options.showLineage === undefined) {
+            _options.showLineage = false;
+        }
+        if (_options.showMutations === undefined) {
+            _options.showMutations = false;
         }
         if (_options.showTaxonomy === undefined) {
             _options.showTaxonomy = false;
@@ -3720,6 +3768,12 @@ if (!phyloXml) {
         }
         if (_settings.showBranchColorsButton === undefined) {
             _settings.showBranchColorsButton = false;
+        }
+        if (_settings.showLineageButton === undefined) {
+            _settings.showLineageButton = false;
+        }
+        if (_settings.showMutationsButton === undefined) {
+            _settings.showMutationsButton = false;
         }
         if (_settings.showDynahideButton === undefined) {
             if (_basicTreeProperties.externalNodesCount > 20) {
@@ -4455,68 +4509,101 @@ if (!phyloXml) {
                     if (_options.showNodeName && n.name) {
                         text += n.name
                     }
+                    if (_options.showLineage) {
+                        var lin_text = '';
+                        if (n.properties && n.properties != null) {
+                            const l = n.properties.length;
+                            for (var pl = 0; pl < l; ++pl) {
+                                if (n.properties[pl].ref === 'vipr:PANGO_Lineage'
+                                    && n.properties[pl].datatype === 'xsd:string'
+                                    && n.properties[pl].applies_to === 'node') {
+                                    lin_text = addSep(lin_text);
+                                    lin_text += n.properties[pl].value;
+                                }
+                            }
+                        }
+                        text = text + '\t' + lin_text;
+                    }
+                    if (_options.showMutations) {
+                        var mut_text = '';
+                        if (n.properties && n.properties != null) {
+                            const l = n.properties.length;
+                            for (var pm = 0; pm < l; ++pm) {
+                                if (n.properties[pm].ref === 'vipr:Mutation'
+                                    && n.properties[pm].datatype === 'xsd:string'
+                                    && n.properties[pm].applies_to === 'node') {
+                                    mut_text = addSep(mut_text);
+                                    mut_text += n.properties[pm].value;
+                                }
+                            }
+                        }
+                        text = text + '\t' + mut_text;
+                    }
                     if (_options.showTaxonomy && n.taxonomies) {
+                        var tax_text = '';
                         for (var i = 0; i < n.taxonomies.length; ++i) {
                             var t = n.taxonomies[i];
                             if (t.id) {
                                 if (t.id.provider) {
-                                    text = addSep(text);
-                                    text += '[' + t.id.provider + ']:' + t.id.value;
+                                    tax_text = addSep(tax_text);
+                                    tax_text += '[' + t.id.provider + ']:' + t.id.value;
                                 }
                                 else {
-                                    text = addSep(text);
-                                    text += t.id.value;
+                                    tax_text = addSep(tax_text);
+                                    tax_text += t.id.value;
                                 }
                             }
                             if (_options.showTaxonomyCode && t.code) {
-                                text = addSep(text);
-                                text += t.code;
+                                tax_text = addSep(tax_text);
+                                tax_text += t.code;
                             }
                             if (_options.showTaxonomyScientificName && t.scientific_name) {
-                                text = addSep(text);
-                                text += t.scientific_name;
+                                tax_text = addSep(tax_text);
+                                tax_text += t.scientific_name;
                             }
                             if (_options.showTaxonomyCommonName && t.common_name) {
-                                text = addSep(text);
-                                text += t.common_name;
+                                tax_text = addSep(tax_text);
+                                tax_text += t.common_name;
                             }
                             if (_options.showTaxonomyRank && t.rank) {
-                                text = addSep(text);
-                                text += t.rank;
+                                tax_text = addSep(tax_text);
+                                tax_text += t.rank;
                             }
                         }
+                        text = text + '\t' + tax_text;
                     }
                     if (_options.showSequence && n.sequences) {
+                        var seq_text = '';
                         for (i = 0; i < n.sequences.length; ++i) {
                             var s = n.sequences[i];
                             if (_options.showSequenceAccession && s.accession) {
                                 if (s.accession.source) {
-                                    text = addSep(text);
-                                    text += '[' + s.accession.source + ']:' + s.accession.value;
+                                    seq_text = addSep(seq_text);
+                                    seq_text += '[' + s.accession.source + ']:' + s.accession.value;
                                 }
                                 else {
-                                    text = addSep(text);
-                                    text += s.accession.value;
+                                    seq_text = addSep(seq_text);
+                                    seq_text += s.accession.value;
                                 }
-
                             }
                             if (_options.showSequenceSymbol && s.symbol) {
-                                text = addSep(text);
-                                text += s.symbol;
+                                seq_text = addSep(seq_text);
+                                seq_text += s.symbol;
                             }
                             if (_options.showSequenceName && s.name) {
-                                text = addSep(text);
-                                text += s.name;
+                                seq_text = addSep(seq_text);
+                                seq_text += s.name;
                             }
                             if (s.gene_name) {
-                                text = addSep(text);
-                                text += s.gene_name;
+                                seq_text = addSep(seq_text);
+                                seq_text += s.gene_name;
                             }
                             if (s.location) {
-                                text = addSep(text);
-                                text += s.location;
+                                seq_text = addSep(seq_text);
+                                seq_text += s.location;
                             }
                         }
+                        text = text + '\t' + seq_text;
                     }
                     if (text.length > 0) {
                         text_all += text + '<br>';
@@ -5461,6 +5548,24 @@ if (!phyloXml) {
         update();
     }
 
+    function customData1CbClicked() {
+        _options.showLineage = getCheckboxValue(CUSTOM_DATA_1_CB);
+        if (_options.showLineage) {
+            _options.showExternalLabels = true;
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
+        }
+        update();
+    }
+
+    function customData2CbClicked() {
+        _options.showMutations = getCheckboxValue(CUSTOM_DATA_2_CB);
+        if (_options.showMutations) {
+            _options.showExternalLabels = true;
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
+        }
+        update();
+    }
+
     function taxonomyCbClicked() {
         _options.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
         if (_options.showTaxonomy) {
@@ -6134,6 +6239,10 @@ if (!phyloXml) {
 
         $('#' + NODE_NAME_CB).click(nodeNameCbClicked);
 
+        $('#' + CUSTOM_DATA_1_CB).click(customData1CbClicked);
+
+        $('#' + CUSTOM_DATA_2_CB).click(customData2CbClicked);
+
         $('#' + TAXONOMY_CB).click(taxonomyCbClicked);
 
         $('#' + SEQUENCE_CB).click(sequenceCbClicked);
@@ -6201,16 +6310,11 @@ if (!phyloXml) {
             }
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
-                _options.showNodeName = true;
-                setCheckboxValue(NODE_NAME_CB, true);
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
-                _options.showInternalLabels = true;
-                setCheckboxValue(INTERNAL_LABEL_CB, true);
             }
             else {
                 _currentLabelColorVisualization = null;
-                //removeLegend(LEGEND_LABEL_COLOR);
             }
             removeColorPicker();
             update(null, 0);
@@ -6228,17 +6332,11 @@ if (!phyloXml) {
             }
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
-                _options.showNodeName = true;
-                setCheckboxValue(NODE_NAME_CB, true);
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
-                _options.showInternalLabels = true;
-                setCheckboxValue(INTERNAL_LABEL_CB, true);
-
             }
             else {
                 _currentLabelColorVisualization = null;
-                //removeLegend(LEGEND_LABEL_COLOR);
             }
             removeColorPicker();
             update(null, 0);
@@ -6255,17 +6353,11 @@ if (!phyloXml) {
             }
             if (v && v != DEFAULT) {
                 _currentLabelColorVisualization = v;
-                _options.showNodeName = true;
-                setCheckboxValue(NODE_NAME_CB, true);
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
-                _options.showInternalLabels = true;
-                setCheckboxValue(INTERNAL_LABEL_CB, true);
-
             }
             else {
                 _currentLabelColorVisualization = null;
-                //removeLegend(LEGEND_LABEL_COLOR);
             }
             removeColorPicker();
             update(null, 0);
@@ -6956,6 +7048,12 @@ if (!phyloXml) {
             if (_basicTreeProperties.nodeNames) {
                 h = h.concat(makeCheckboxButton('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
             }
+            if (_settings.showLineageButton) {
+                h = h.concat(makeCheckboxButton('Lineage', CUSTOM_DATA_1_CB, 'to show/hide lineage information'));
+            }
+            if (_settings.showMutationsButton) {
+                h = h.concat(makeCheckboxButton('Mutations', CUSTOM_DATA_2_CB, 'to show/hide mutation information'));
+            }
             if (_basicTreeProperties.taxonomies) {
                 h = h.concat(makeCheckboxButton('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
             }
@@ -7296,6 +7394,8 @@ if (!phyloXml) {
         setCheckboxValue(NODE_NAME_CB, _options.showNodeName);
         setCheckboxValue(TAXONOMY_CB, _options.showTaxonomy);
         setCheckboxValue(SEQUENCE_CB, _options.showSequence);
+        setCheckboxValue(CUSTOM_DATA_1_CB, _options.showLineage);
+        setCheckboxValue(CUSTOM_DATA_2_CB, _options.showMutations);
         setCheckboxValue(CONFIDENCE_VALUES_CB, _options.showConfidenceValues);
         setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _options.showBranchLengthValues);
         setCheckboxValue(NODE_EVENTS_CB, _options.showNodeEvents);
