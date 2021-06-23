@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.7b1
-// 2021-05-30
+// v 1.8.7b2
+// 2021-06-23
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.7b1';
+    const VERSION = '1.8.7b2';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -7121,7 +7121,7 @@ if (!phyloXml) {
             h = h.concat('<div>');
             h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
             h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to the supertree (if in subtree) (Alt+R)'));
-            h = h.concat('<br>');
+            //h = h.concat('<br>');
             h = h.concat(makeButton('U', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all (Alt+U)'));
             h = h.concat(makeButton('M', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
             h = h.concat('</div>');
@@ -7134,7 +7134,7 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<input type="button" value="Download" name="' + DOWNLOAD_BUTTON + '" title="download/export tree in a selected format" id="' + DOWNLOAD_BUTTON + '">');
-            h = h.concat('<br>');
+            //h = h.concat('<br>');
             h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT + '">');
             h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
@@ -7226,7 +7226,7 @@ if (!phyloXml) {
             h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
             h = h.concat('<br>');
-            h = h.concat(makeSearchControls());
+            h = h.concat(makeSearchControlsCompact());
             h = h.concat('</fieldset>');
             return h;
         }
@@ -7239,11 +7239,11 @@ if (!phyloXml) {
             h = h.concat('</div>');
             h = h.concat('<br>');
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat(makeCheckboxButton('Reg', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
             if (_settings.showSearchPropertiesButton === true) {
                 h = h.concat(makeCheckboxButton('Prp', SEARCH_OPTIONS_PROPERTIES_CB, 'to search (hidden) properties'));
             }
+            h = h.concat(makeCheckboxButton('Neg', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             return h;
         }
@@ -7253,8 +7253,11 @@ if (!phyloXml) {
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
             h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
             h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxButton('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat(makeCheckboxButton('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            if (_settings.showSearchPropertiesButton === true) {
+                h = h.concat(makeCheckboxButton('P', SEARCH_OPTIONS_PROPERTIES_CB, 'to search (hidden) properties'));
+            }
+            h = h.concat(makeCheckboxButton('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             return h;
         }
