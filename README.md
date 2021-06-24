@@ -32,7 +32,8 @@ https://github.com/cmzmasek/archaeopteryx-js
   * [H3N2](http://www.phyloxml.org/archaeopteryx-js/h3n2_search_js.html)
 * Grouping of species and years for visualization:
   * [Viral Strains](http://www.phyloxml.org/archaeopteryx-js/many_species_js.html)
-
+* SARS-CoV-2 with mutations and PANGO lineages:
+  * [SARS-CoV-2](http://www.phyloxml.org/archaeopteryx-js/sars_cov_3.html)
 
 
 ### Detailed developer documentation
