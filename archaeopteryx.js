@@ -21,7 +21,7 @@
  *
  */
 
-// v 1.8.7b2
+// v 1.8.7b3
 // 2021-06-23
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.7b2';
+    const VERSION = '1.8.7b3';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -4052,18 +4052,21 @@ if (!phyloXml) {
         }
 
         if (settings.filterValues) {
-            if (settings.filterValues.source
-                && settings.filterValues.target
-                && settings.filterValues.pass
-                && settings.filterValues.pass.length > 0) {
-                console.log(MESSAGE + ' Filtering values from \"' + settings.filterValues.source
-                    + '\" to \"' + settings.filterValues.target +
-                    ', allowed values ' + settings.filterValues.pass);
-                filterValues(_treeData,
-                    settings.filterValues.source,
-                    settings.filterValues.target,
-                    settings.filterValues.pass);
-            }
+            settings.filterValues.forEach(function (e) {
+                if (e
+                    && e.source
+                    && e.target
+                    && e.pass
+                    && e.pass.length > 0) {
+                    console.log(MESSAGE + ' Filtering values from \"' + e.source
+                        + '\" to \"' + e.target +
+                        ', allowed values ' + e.pass);
+                    filterValues(_treeData,
+                        e.source,
+                        e.target,
+                        e.pass);
+                }
+            });
         }
 
         if (nodeVisualizations) {
