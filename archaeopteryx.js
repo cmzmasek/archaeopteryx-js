@@ -21,8 +21,8 @@
  *
  */
 
-// v 1.8.7b3
-// 2021-06-23
+// v 1.8.7b4
+// 2021-06-28
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '1.8.7b3';
+    const VERSION = '1.8.7b4';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -4649,6 +4649,338 @@ if (!phyloXml) {
                 update();
             }
 
+            function downloadExternalNodeDataAll(node) {
+
+                var addSep = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
+                var text_all = '';
+
+                const ext_nodes = forester.getAllExternalNodes(node).reverse();
+
+                var filename = '';
+                if (ext_nodes.length == 1 && ext_nodes[0].name) {
+                    filename = 'External_Node_Data_for_Node_' + ext_nodes[0].name.replace(/\W/g, '_') + '.txt';
+                }
+                else {
+                    filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.txt';
+                }
+
+                for (var j = 0, l = ext_nodes.length; j < l; ++j) {
+                    var text = '';
+                    var n = ext_nodes[j];
+                    if (n.name) {
+                        text += n.name
+                    }
+                    //
+                    var lin_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:PANGO_Lineage'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                lin_text = addSep(lin_text);
+                                lin_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + lin_text;
+
+                    var mut_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pm = 0; pm < l; ++pm) {
+                            if (n.properties[pm].ref === 'vipr:Mutation'
+                                && n.properties[pm].datatype === 'xsd:string'
+                                && n.properties[pm].applies_to === 'node') {
+                                mut_text = addSep(mut_text);
+                                mut_text += n.properties[pm].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + mut_text;
+
+                    var year_month_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:Year_Month'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                year_month_text = addSep(year_month_text);
+                                year_month_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + year_month_text;
+
+                    var year_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:Year'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                year_text = addSep(year_text);
+                                year_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + year_text;
+
+                    var country_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:Country'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                country_text = addSep(country_text);
+                                country_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + country_text;
+
+                    var region_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:Region'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                region_text = addSep(region_text);
+                                region_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + region_text;
+
+                    var host_text = '';
+                    if (n.properties && n.properties != null) {
+                        const l = n.properties.length;
+                        for (var pl = 0; pl < l; ++pl) {
+                            if (n.properties[pl].ref === 'vipr:Host'
+                                && n.properties[pl].datatype === 'xsd:string'
+                                && n.properties[pl].applies_to === 'node') {
+                                host_text = addSep(host_text);
+                                host_text += n.properties[pl].value;
+                            }
+                        }
+                    }
+                    text = text + '\t' + host_text;
+
+                    if (n.taxonomies) {
+                        var tax_text = '';
+                        for (var i = 0; i < n.taxonomies.length; ++i) {
+                            var t = n.taxonomies[i];
+                            if (t.id) {
+                                if (t.id.provider) {
+                                    tax_text = addSep(tax_text);
+                                    tax_text += '[' + t.id.provider + ']:' + t.id.value;
+                                }
+                                else {
+                                    tax_text = addSep(tax_text);
+                                    tax_text += t.id.value;
+                                }
+                            }
+                            if (_options.showTaxonomyCode && t.code) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.code;
+                            }
+                            if (_options.showTaxonomyScientificName && t.scientific_name) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.scientific_name;
+                            }
+                            if (_options.showTaxonomyCommonName && t.common_name) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.common_name;
+                            }
+                            if (_options.showTaxonomyRank && t.rank) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.rank;
+                            }
+                        }
+                        text = text + '\t' + tax_text;
+                    }
+                    if (n.sequences) {
+                        var seq_text = '';
+                        for (i = 0; i < n.sequences.length; ++i) {
+                            var s = n.sequences[i];
+                            if (_options.showSequenceAccession && s.accession) {
+                                if (s.accession.source) {
+                                    seq_text = addSep(seq_text);
+                                    seq_text += '[' + s.accession.source + ']:' + s.accession.value;
+                                }
+                                else {
+                                    seq_text = addSep(seq_text);
+                                    seq_text += s.accession.value;
+                                }
+                            }
+                            if (_options.showSequenceSymbol && s.symbol) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.symbol;
+                            }
+                            if (_options.showSequenceName && s.name) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.name;
+                            }
+                            if (s.gene_name) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.gene_name;
+                            }
+                            if (s.location) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.location;
+                            }
+                        }
+                        text = text + '\t' + seq_text;
+                    }
+                    if (text.length > 0) {
+                        text_all += text + '\n';
+                    }
+                }
+
+                saveAs(new Blob([text_all], {type: "application/txt"}), filename);
+
+                update();
+            }
+
+            function downloadExternalNodeData(node) {
+
+                var addSep = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
+                var text_all = '';
+
+                const ext_nodes = forester.getAllExternalNodes(node).reverse();
+
+                var filename = '';
+                if (ext_nodes.length == 1 && ext_nodes[0].name) {
+                    filename = 'External_Node_Data_for_Node_' + ext_nodes[0].name.replace(/\W/g, '_') + '.txt';
+                }
+                else {
+                    filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.txt';
+                }
+                for (var j = 0, l = ext_nodes.length; j < l; ++j) {
+                    var text = '';
+                    var n = ext_nodes[j];
+                    if (_options.showNodeName && n.name) {
+                        text += n.name
+                    }
+                    if (_options.showLineage) {
+                        var lin_text = '';
+                        if (n.properties && n.properties != null) {
+                            const l = n.properties.length;
+                            for (var pl = 0; pl < l; ++pl) {
+                                if (n.properties[pl].ref === 'vipr:PANGO_Lineage'
+                                    && n.properties[pl].datatype === 'xsd:string'
+                                    && n.properties[pl].applies_to === 'node') {
+                                    lin_text = addSep(lin_text);
+                                    lin_text += n.properties[pl].value;
+                                }
+                            }
+                        }
+                        text = text + '\t' + lin_text;
+                    }
+                    if (_options.showMutations) {
+                        var mut_text = '';
+                        if (n.properties && n.properties != null) {
+                            const l = n.properties.length;
+                            for (var pm = 0; pm < l; ++pm) {
+                                if (n.properties[pm].ref === 'vipr:Mutation'
+                                    && n.properties[pm].datatype === 'xsd:string'
+                                    && n.properties[pm].applies_to === 'node') {
+                                    mut_text = addSep(mut_text);
+                                    mut_text += n.properties[pm].value;
+                                }
+                            }
+                        }
+                        text = text + '\t' + mut_text;
+                    }
+                    if (_options.showTaxonomy && n.taxonomies) {
+                        var tax_text = '';
+                        for (var i = 0; i < n.taxonomies.length; ++i) {
+                            var t = n.taxonomies[i];
+                            if (t.id) {
+                                if (t.id.provider) {
+                                    tax_text = addSep(tax_text);
+                                    tax_text += '[' + t.id.provider + ']:' + t.id.value;
+                                }
+                                else {
+                                    tax_text = addSep(tax_text);
+                                    tax_text += t.id.value;
+                                }
+                            }
+                            if (_options.showTaxonomyCode && t.code) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.code;
+                            }
+                            if (_options.showTaxonomyScientificName && t.scientific_name) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.scientific_name;
+                            }
+                            if (_options.showTaxonomyCommonName && t.common_name) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.common_name;
+                            }
+                            if (_options.showTaxonomyRank && t.rank) {
+                                tax_text = addSep(tax_text);
+                                tax_text += t.rank;
+                            }
+                        }
+                        text = text + '\t' + tax_text;
+                    }
+                    if (_options.showSequence && n.sequences) {
+                        var seq_text = '';
+                        for (i = 0; i < n.sequences.length; ++i) {
+                            var s = n.sequences[i];
+                            if (_options.showSequenceAccession && s.accession) {
+                                if (s.accession.source) {
+                                    seq_text = addSep(seq_text);
+                                    seq_text += '[' + s.accession.source + ']:' + s.accession.value;
+                                }
+                                else {
+                                    seq_text = addSep(seq_text);
+                                    seq_text += s.accession.value;
+                                }
+                            }
+                            if (_options.showSequenceSymbol && s.symbol) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.symbol;
+                            }
+                            if (_options.showSequenceName && s.name) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.name;
+                            }
+                            if (s.gene_name) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.gene_name;
+                            }
+                            if (s.location) {
+                                seq_text = addSep(seq_text);
+                                seq_text += s.location;
+                            }
+                        }
+                        text = text + '\t' + seq_text;
+                    }
+                    if (text.length > 0) {
+                        text_all += text + '\n';
+                    }
+                }
+
+                saveAs(new Blob([text_all], {type: "application/txt"}), filename);
+
+                update();
+            }
+
 
             function accessDatabase(node) {
                 var url = null;
@@ -5095,6 +5427,49 @@ if (!phyloXml) {
                     listExternalNodeData(d);
                 });
 
+
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent) {
+                        textSum += textInc;
+                        return 'Download Ext Node Data';
+                    }
+                })
+                .on('click', function (d) {
+                    downloadExternalNodeData(d);
+                });
+
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent) {
+                        textSum += textInc;
+                        return 'Download All Ext Node Data';
+                    }
+                })
+                .on('click', function (d) {
+                    downloadExternalNodeDataAll(d);
+                });
+
             d3.select(this).append('text')
                 .attr('class', 'tooltipElem tooltipElemText')
                 .attr('y', topPad + textSum)
@@ -5368,6 +5743,42 @@ if (!phyloXml) {
     function returnToSupertreeButtonPressed() {
         if (_root && _superTreeRoots.length > 0) {
             _root = _superTreeRoots.pop();
+            _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+            updateNodeVisualizationsAndLegends(_root);
+            resetDepthCollapseDepthValue();
+            resetRankCollapseRankValue();
+            resetBranchLengthCollapseValue();
+            search0();
+            search1();
+            zoomToFit();
+        }
+    }
+
+    function returnToSupertreeButtonPressedBad() { //~~
+
+        if (_root && _superTreeRoots.length > 0) {
+            //console.log(_root);
+            var prev_root = _root.children[0];
+            _root = _superTreeRoots[0];
+            console.log("root:");
+            console.log(_root);
+            var found = null;
+            forester.preOrderTraversalAll(_root, function (n) {
+                if (n.id === prev_root.id) {
+                    found = n;
+                }
+            });
+            console.log("found:");
+            console.log(found);
+
+
+            _root = found;
+
+
+            //console.log(_root);
+
+
+            //console.log(_root);
             _basicTreeProperties = forester.collectBasicTreeProperties(_root);
             updateNodeVisualizationsAndLegends(_root);
             resetDepthCollapseDepthValue();
