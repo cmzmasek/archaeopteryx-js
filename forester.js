@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.8.7b4
-// 2021-06-28
+// v 1.9.0a1
+// 2021-09-15
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -168,8 +168,7 @@
             for (var i = node.children.length - 1; i >= 0; --i) {
                 forester.preOrderTraversalAll(node.children[i], fn);
             }
-        }
-        else if (node._children) {
+        } else if (node._children) {
             for (var ii = node._children.length - 1; ii >= 0; --ii) {
                 forester.preOrderTraversalAll(node._children[ii], fn);
             }
@@ -182,8 +181,7 @@
             for (var i = 0; i < l; ++i) {
                 forester.postOrderTraversalAll(node.children[i], fn);
             }
-        }
-        else if (node._children) {
+        } else if (node._children) {
             var ll = node._children.length;
             for (var ii = 0; ii < ll; ++ii) {
                 forester.postOrderTraversalAll(node._children[ii], fn);
@@ -226,10 +224,10 @@
 
     forester.filterByNodeProperty = function (positive, phy, propertyMap) {
         if (!phy) {
-            throw ( "cannot delete null tree" );
+            throw ("cannot delete null tree");
         }
         if (!propertyMap) {
-            throw ( "property list is null" );
+            throw ("property list is null");
         }
         const toDelete = [];
         forester.preOrderTraversalAll(phy, function (n) {
@@ -243,8 +241,7 @@
                                 if (property.ref in propertyMap && !propertyMap[property.ref].includes(property.value)) {
                                     toDelete.push(n);
                                 }
-                            }
-                            else {
+                            } else {
                                 if (property.ref in propertyMap && propertyMap[property.ref].includes(property.value)) {
                                     toDelete.push(n);
                                 }
@@ -270,16 +267,16 @@
      */
     forester.deleteSubtree = function (phy, nodeToDelete) {
         if (!phy) {
-            throw ( "cannot delete null tree" );
+            throw ("cannot delete null tree");
         }
         if (!nodeToDelete) {
-            throw ( "cannot delete null node" );
+            throw ("cannot delete null node");
         }
         if (!nodeToDelete.parent || !nodeToDelete.parent.parent) {
-            throw ( "cannot delete root" );
+            throw ("cannot delete root");
         }
         if (!nodeToDelete.parent.parent.parent) {
-            throw ( "cannot delete direct child of root" );
+            throw ("cannot delete direct child of root");
         }
 
         var p = nodeToDelete.parent;
@@ -300,13 +297,13 @@
         if (p.children.length === 1) {
             var pp = p.parent;
             var cni = forester.getChildNodeIndex(pp, p);
-            if ((cni < 0) || (cni > ( pp.children.length - 1 ) )) {
-                throw ( "this should never have happened, child node index = " + cni );
+            if ((cni < 0) || (cni > (pp.children.length - 1))) {
+                throw ("this should never have happened, child node index = " + cni);
             }
             var x = p.children[0];
             var nbl = undefined;
             if (x.branch_length || p.branch_length) {
-                nbl = ( x.branch_length > 0 ? x.branch_length : 0 ) + ( p.branch_length > 0 ? p.branch_length : 0  );
+                nbl = (x.branch_length > 0 ? x.branch_length : 0) + (p.branch_length > 0 ? p.branch_length : 0);
             }
             x.parent = pp;
             pp.children[cni] = x;
@@ -326,10 +323,10 @@
      */
     forester.reRoot = function (phy, node, branchLength) {
         if (!phy) {
-            throw ( "cannot re-root null tree" );
+            throw ("cannot re-root null tree");
         }
         if (!node) {
-            throw ( "cannot re-root on null node" );
+            throw ("cannot re-root on null node");
         }
         if (!branchLength) {
             branchLength = -1;
@@ -338,8 +335,7 @@
             var nodes = forester.findByNodeName(phy, node);
             if (nodes.length > 1) {
                 throw ("node name '" + node + "' is not unique");
-            }
-            else if (nodes.length < 1) {
+            } else if (nodes.length < 1) {
                 throw ("node name '" + node + "' is not found");
             }
             node = nodes[0];
@@ -350,24 +346,21 @@
 
         if (!node.parent || !node.parent.parent) {
             //do noting
-        }
-        else if (!node.parent.parent.parent) {
-            if (( node.parent.children.length === 2 ) && ( branchLength >= 0 )) {
+        } else if (!node.parent.parent.parent) {
+            if ((node.parent.children.length === 2) && (branchLength >= 0)) {
                 var d = node.parent.children[0].branch_length
                     + node.parent.children[1].branch_length;
                 var other;
                 if (node.parent.children[0] === node) {
                     other = node.parent.children[1];
-                }
-                else {
+                } else {
                     other = node.parent.children[0];
                 }
                 node.branch_length = branchLength;
                 var dm = d - branchLength;
                 if (dm >= 0) {
                     other.branch_length = dm;
-                }
-                else {
+                } else {
                     other.branch_length = 0;
                 }
             }
@@ -390,12 +383,10 @@
                     var dnmp = dn - branchLength;
                     if (dnmp >= 0) {
                         prev_root.branch_length = dnmp;
-                    }
-                    else {
+                    } else {
                         prev_root.branch_length = 0;
                     }
-                }
-                else {
+                } else {
                     if (dn >= 0) {
                         var dn2 = dn / 2.0;
                         node.branch_length = dn2;
@@ -403,8 +394,7 @@
                     }
                 }
             }
-        }
-        else {
+        } else {
             var a = node;
             var new_root = {};
             var distance1;
@@ -430,14 +420,12 @@
             // New root is always placed in the middle of the branch:
             if (!a.branch_length) {
                 b.branch_length = undefined;
-            }
-            else {
+            } else {
                 if (branchLength >= 0.0) {
                     var diff = a.branch_length - branchLength;
                     a.branch_length = branchLength;
-                    b.branch_length = ( diff >= 0.0 ? diff : 0.0 );
-                }
-                else {
+                    b.branch_length = (diff >= 0.0 ? diff : 0.0);
+                } else {
                     var d2 = a.branch_length / 2.0;
                     a.branch_length = d2;
                     b.branch_length = d2;
@@ -462,13 +450,12 @@
             if (c.children.length == 2) {
                 var node2 = c.children[1 - forester.getChildNodeIndex(c, b)];
                 node2.parent = b;
-                if (( !c.branch_length  )
-                    && ( !node2.branch_length  )) {
+                if ((!c.branch_length)
+                    && (!node2.branch_length)) {
                     node2.branch_length = undefined;
-                }
-                else {
-                    node2.branch_length = ( c.branch_length >= 0.0 ? c.branch_length : 0.0 )
-                        + ( node2.branch_length >= 0.0 ? node2.branch_length : 0.0 );
+                } else {
+                    node2.branch_length = (c.branch_length >= 0.0 ? c.branch_length : 0.0)
+                        + (node2.branch_length >= 0.0 ? node2.branch_length : 0.0);
                 }
                 var cbd = forester.getBranchData(c);
                 if (cbd) {
@@ -481,8 +468,7 @@
                         break;
                     }
                 }
-            }
-            else {
+            } else {
                 c.parent = b;
                 forester.removeChildNode(c, forester.getChildNodeIndex(c, b));
             }
@@ -494,8 +480,7 @@
         function setChildNodeOnly(parentNode, i, node) {
             if (parentNode.children.length <= i) {
                 parentNode.children.push(node);
-            }
-            else {
+            } else {
                 parentNode.children[i] = node;
             }
         }
@@ -504,14 +489,14 @@
     forester.midpointRoot = function (phy) {
         var root = forester.getTreeRoot(phy);
         var extNodes = forester.getAllExternalNodes(root);
-        if (( extNodes.length < 2 ) || ( forester.calcMaxBranchLength(root) <= 0 )) {
+        if ((extNodes.length < 2) || (forester.calcMaxBranchLength(root) <= 0)) {
             return;
         }
         var counter = 0;
         var totalNodes = forester.getAllNodes(phy).length;
         while (true) {
             if (++counter > (totalNodes + 1)) {
-                throw( 'this should not have happened: midpoint rooting does not converge' );
+                throw('this should not have happened: midpoint rooting does not converge');
             }
             var a = null;
             var da = 0;
@@ -525,8 +510,7 @@
                         db = da;
                         da = df;
                         a = f;
-                    }
-                    else if (df > db) {
+                    } else if (df > db) {
                         db = df;
                     }
                 }
@@ -535,9 +519,9 @@
             if (diff < 0.0001) {
                 break;
             }
-            var x = da - ( diff / 2.0 );
-            while (( x > a.branch_length ) && a.parent) {
-                x -= ( a.branch_length > 0 ? a.branch_length : 0 );
+            var x = da - (diff / 2.0);
+            while ((x > a.branch_length) && a.parent) {
+                x -= (a.branch_length > 0 ? a.branch_length : 0);
                 a = a.parent;
             }
             forester.reRoot(phy, a, x);
@@ -580,11 +564,11 @@
 
     forester.removeChildNode = function (parentNode, i) {
         if (!parentNode.children) {
-            throw ( "cannot remove the child node for a external node" );
+            throw ("cannot remove the child node for a external node");
         }
-        if (( i >= parentNode.children.length ) || ( i < 0 )) {
-            throw ( "attempt to get child node " + i + " of a node with "
-            + parentNode.children.length + " child nodes." );
+        if ((i >= parentNode.children.length) || (i < 0)) {
+            throw ("attempt to get child node " + i + " of a node with "
+                + parentNode.children.length + " child nodes.");
         }
         parentNode.children[i].parent = undefined;
         parentNode.children.splice(i, 1);
@@ -601,8 +585,7 @@
         node.parent = parentNode;
         if (parentNode.children.length <= i) {
             parentNode.children.push(node);
-        }
-        else {
+        } else {
             parentNode.children[i] = node;
         }
     };
@@ -646,7 +629,7 @@
 
     forester.getChildNodeIndex = function (parentNode, childNode) {
         if (!parentNode) {
-            throw ( "cannot get the child index for a root node" );
+            throw ("cannot get the child index for a root node");
         }
         var c = parentNode.children.length;
         for (var i = 0; i < c; ++i) {
@@ -654,7 +637,7 @@
                 return i;
             }
         }
-        throw ( "unexpected exception: Could not determine the child index for a node" );
+        throw ("unexpected exception: Could not determine the child index for a node");
     };
 
 
@@ -711,8 +694,7 @@
                     first = false;
                     min = e;
                     max = e;
-                }
-                else {
+                } else {
                     if (e < min) {
                         min = e;
                     }
@@ -744,8 +726,7 @@
                     first = false;
                     min = e;
                     max = e;
-                }
-                else {
+                } else {
                     if (e < min) {
                         min = e;
                     }
@@ -827,8 +808,7 @@
                         if (property.value.startsWith(targetValue_)) {
                             newValue = targetValue;
                             found = true;
-                        }
-                        else {
+                        } else {
                             newValue = property.value;
                         }
                         var newproperty = {};
@@ -879,8 +859,7 @@
                                     newProp.ref = targetRef;
                                     if (s.length == 2) {
                                         newProp.value = s[0];
-                                    }
-                                    else {
+                                    } else {
                                         newProp.value = s[0] + ' ' + s[1];
                                     }
                                     newProp.datatype = property.datatype;
@@ -919,7 +898,7 @@
                 if (n.name.length > properties.longestNodeName) {
                     properties.longestNodeName = n.name.length;
                 }
-                if ((n.children || n._children) && ( n.parent )) {
+                if ((n.children || n._children) && (n.parent)) {
                     properties.internalNodeData = true;
                 }
             }
@@ -939,8 +918,7 @@
 
                 if (n.children || n._children) {
                     properties.internalNodeData = true;
-                }
-                else {
+                } else {
                     var s = n.sequences[0];
                     if (s.mol_seq && s.mol_seq.value) {
                         if (s.mol_seq.value.length > properties.maxMolSeqLength) {
@@ -948,8 +926,7 @@
                         }
                         if (!s.mol_seq.is_aligned) {
                             properties.alignedMolSeqs = false;
-                        }
-                        else {
+                        } else {
                             molSeqs.push(s.mol_seq.value);
                         }
                     }
@@ -988,7 +965,7 @@
                         c = c.toUpperCase();
                         mySet.add(c);
                         if (!MSA_RESIDUE_SORT_MAP.has(c)) {
-                            throw ( "Unknown MSA residue '" + c + "'" );
+                            throw ("Unknown MSA residue '" + c + "'");
                         }
                     }
 
@@ -1032,10 +1009,9 @@
 
         var queries = [];
 
-        if (!regex && ( my_query.indexOf(",") >= 0 )) {
+        if (!regex && (my_query.indexOf(",") >= 0)) {
             queries = my_query.split(",");
-        }
-        else {
+        } else {
             queries.push(my_query);
         }
         var queriesLength = queries.length;
@@ -1055,10 +1031,9 @@
 
         function matcher(node) {
             var mqueries = [];
-            if (!regex && ( q.indexOf("+") >= 0 )) {
+            if (!regex && (q.indexOf("+") >= 0)) {
                 mqueries = q.split("+");
-            }
-            else {
+            } else {
                 mqueries.push(q);
             }
             var mqueriesLength = mqueries.length;
@@ -1069,18 +1044,17 @@
                     mq = mq.trim();
                     if (mq.length > 0) {
                         var ndf = null;
-                        if (( mq.length > 3 ) && ( mq.indexOf(":") === 2 )) {
+                        if ((mq.length > 3) && (mq.indexOf(":") === 2)) {
                             ndf = makeNDF(mq);
                             if (ndf) {
                                 mq = mq.substring(3);
                             }
                         }
                         var lmatch = false;
-                        if (( ( ndf === null ) || ( ndf === "NN" ) )
+                        if (((ndf === null) || (ndf === "NN"))
                             && matchme(node.name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "TC" ) ) && node.taxonomies
+                        } else if (((ndf === null) || (ndf === "TC")) && node.taxonomies
                             && node.taxonomies.length > 0
                             && matchme(node.taxonomies[0].code,
                                 mq,
@@ -1088,8 +1062,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "TS" ) ) && node.taxonomies
+                        } else if (((ndf === null) || (ndf === "TS")) && node.taxonomies
                             && node.taxonomies.length > 0
                             && matchme(node.taxonomies[0].scientific_name,
                                 mq,
@@ -1097,8 +1070,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "TN" ) ) && node.taxonomies
+                        } else if (((ndf === null) || (ndf === "TN")) && node.taxonomies
                             && node.taxonomies.length > 0
                             && matchme(node.taxonomies[0].common_name,
                                 mq,
@@ -1106,8 +1078,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "SY" ) ) && node.taxonomies
+                        } else if (((ndf === null) || (ndf === "SY")) && node.taxonomies
                             && node.taxonomies.length > 0
                             && matchme(node.taxonomies[0].synonym,
                                 mq,
@@ -1115,8 +1086,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "TI" ) ) && node.taxonomies
+                        } else if (((ndf === null) || (ndf === "TI")) && node.taxonomies
                             && node.taxonomies.length > 0 && node.taxonomies[0].id
                             && matchme(node.taxonomies[0].id.value,
                                 mq,
@@ -1124,8 +1094,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "SN" ) ) && node.sequences
+                        } else if (((ndf === null) || (ndf === "SN")) && node.sequences
                             && node.sequences.length > 0
                             && matchme(node.sequences[0].name,
                                 mq,
@@ -1133,8 +1102,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "GN" ) ) && node.sequences
+                        } else if (((ndf === null) || (ndf === "GN")) && node.sequences
                             && node.sequences.length > 0
                             && matchme(node.sequences[0].gene_name,
                                 mq,
@@ -1142,8 +1110,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "SS" ) ) && node.sequences
+                        } else if (((ndf === null) || (ndf === "SS")) && node.sequences
                             && node.sequences.length > 0
                             && matchme(node.sequences[0].symbol,
                                 mq,
@@ -1151,8 +1118,7 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) || ( ndf === "SA" ) ) && node.sequences
+                        } else if (((ndf === null) || (ndf === "SA")) && node.sequences
                             && node.sequences.length > 0 && node.sequences[0].accession
                             && matchme(node.sequences[0].accession.value,
                                 mq,
@@ -1160,18 +1126,17 @@
                                 partial,
                                 regex)) {
                             lmatch = true;
-                        }
-                        else if (( ( ndf === null ) && ( searchProperties === true ) ) && node.properties
+                        } else if (((ndf === null) && (searchProperties === true)) && node.properties
                             && node.properties.length > 0) {
 
                             var propertiesLength = node.properties.length;
                             for (var i = 0; i < propertiesLength; ++i) {
                                 var p = node.properties[i];
                                 if (p.value && matchme(p.value,
-                                        mq,
-                                        caseSensitive,
-                                        partial,
-                                        regex)) {
+                                    mq,
+                                    caseSensitive,
+                                    partial,
+                                    regex)) {
                                     lmatch = true;
                                     break;
                                 }
@@ -1216,30 +1181,24 @@
                 try {
                     if (caseSensitive) {
                         re = new RegExp(my_query);
-                    }
-                    else {
+                    } else {
                         re = new RegExp(my_query, 'i');
                     }
-                }
-                catch (err) {
+                } catch (err) {
                     return false;
                 }
                 if (re) {
-                    return ( my_s.search(re) > -1 );
-                }
-                else {
+                    return (my_s.search(re) > -1);
+                } else {
                     return false;
                 }
-            }
-            else if (partial) {
-                return ( my_s.indexOf(my_query) > -1 );
-            }
-            else {
+            } else if (partial) {
+                return (my_s.indexOf(my_query) > -1);
+            } else {
                 var np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
                 if (np) {
-                    return ( my_s.search(np) > -1 );
-                }
-                else {
+                    return (my_s.search(np) > -1);
+                } else {
                     return false;
                 }
             }
@@ -1265,8 +1224,7 @@
                 || str === "XR"
                 || str === "MS") {
                 return str;
-            }
-            else {
+            } else {
                 return null;
             }
         }
@@ -1407,10 +1365,10 @@
 
 
     forester.isHasNodeData = function (node) {
-        return ( (node.name && node.name.length > 0 ) ||
-        (node.taxonomies && node.taxonomies.length > 0) ||
-        (node.sequences && node.sequences.length > 0) ||
-        (node.properties && node.properties.length > 0) );
+        return ((node.name && node.name.length > 0) ||
+            (node.taxonomies && node.taxonomies.length > 0) ||
+            (node.sequences && node.sequences.length > 0) ||
+            (node.properties && node.properties.length > 0));
     };
 
 
@@ -1439,8 +1397,7 @@
             var max = n.max;
             if (max < branchLength) {
                 forester.collapse(n);
-            }
-            else {
+            } else {
                 forester.unCollapse(n);
                 for (var i = n.children.length - 1; i >= 0; i--) {
                     collapseToBranchLengthHelper(n.children[i], branchLength);
@@ -1460,8 +1417,7 @@
             }
             if (d >= depth) {
                 forester.collapse(n);
-            }
-            else {
+            } else {
                 forester.unCollapse(n);
                 ++d;
                 for (var i = n.children.length - 1; i >= 0; i--) {
@@ -1506,8 +1462,8 @@
         if (confidenceValuesAsInternalNames == undefined) {
             confidenceValuesAsInternalNames = false;
         }
-        if ((confidenceValuesInBrackets === true ) && (confidenceValuesAsInternalNames === true)) {
-            throw ( "confidence values cannot be both in brackets and as internal node names" );
+        if ((confidenceValuesInBrackets === true) && (confidenceValuesAsInternalNames === true)) {
+            throw ("confidence values cannot be both in brackets and as internal node names");
         }
 
         var ancs = [];
@@ -1523,65 +1479,54 @@
             if (element === '"' && !in_single_q) {
                 if (!in_double_q) {
                     in_double_q = true;
-                }
-                else {
+                } else {
                     in_double_q = false;
                     if (x.name && x.name.length > 0) {
                         x.name = x.name + buffer;
-                    }
-                    else {
+                    } else {
                         x.name = buffer;
                     }
                     buffer = '';
                 }
-            }
-            else if (element === "'" && !in_double_q) {
+            } else if (element === "'" && !in_double_q) {
                 if (!in_single_q) {
                     in_single_q = true;
-                }
-                else {
+                } else {
                     in_single_q = false;
                     if (x.name && x.name.length > 0) {
                         x.name = x.name + buffer;
-                    }
-                    else {
+                    } else {
                         x.name = buffer;
                     }
                     buffer = '';
                 }
-            }
-            else {
+            } else {
                 if (in_double_q || in_single_q) {
                     buffer += ss[i].replace(/\s+/g, ' ');
-                }
-                else {
+                } else {
                     if (element === '(') {
                         if (!x) {
-                            throw ( NH_FORMAT_ERR_CLOSE_PARENS );
+                            throw (NH_FORMAT_ERR_CLOSE_PARENS);
                         }
                         var subtree1 = {};
                         x.children = [subtree1];
                         ancs.push(x);
                         x = subtree1;
-                    }
-                    else if (element === ',') {
+                    } else if (element === ',') {
                         if (ancs.length === 0) {
                             throw (NH_FORMAT_ERR_CLOSE_PARENS);
                         }
                         var subtree2 = {};
                         ancs[ancs.length - 1].children.push(subtree2);
                         x = subtree2;
-                    }
-                    else if (element === ')') {
+                    } else if (element === ')') {
                         x = ancs.pop();
-                    }
-                    else if (element === ':') {
-                    }
-                    else {
+                    } else if (element === ':') {
+                    } else {
                         var e = ss[i - 1];
                         if (e) {
                             e = e.trim();
-                            if (( e === ')' ) || ( e === '(' ) || ( e === ',')) {
+                            if ((e === ')') || (e === '(') || (e === ',')) {
                                 if (element && element.length > 0) {
                                     if (element.charAt(element.length - 1) === "]") {
                                         var o = element.indexOf('[');
@@ -1590,12 +1535,10 @@
                                                 addConfidence(x, element);
                                             }
                                             x.name = element.substring(0, o);
-                                        }
-                                        else {
+                                        } else {
                                             x.name = element;
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         x.name = element;
                                         var op = x.name.indexOf('[');
                                         if (op > -1) {
@@ -1606,8 +1549,7 @@
                                         }
                                     }
                                 }
-                            }
-                            else if (e === ':') {
+                            } else if (e === ':') {
                                 if (element && element.length > 0) {
                                     if (element.charAt(element.length - 1) === ']') {
                                         var o1 = element.indexOf('[');
@@ -1620,20 +1562,17 @@
                                                 x.branch_length = bl;
                                             }
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         var b = parseFloat(parseFloat(element));
                                         if (forester.isNumber(b)) {
                                             x.branch_length = b;
-                                        }
-                                        else {
-                                            throw ( NH_FORMAT_ERR + 'could not parse branch-length from "' + element + '"' );
+                                        } else {
+                                            throw (NH_FORMAT_ERR + 'could not parse branch-length from "' + element + '"');
                                         }
                                     }
                                 }
-                            }
-                            else if (e === '"' || e === "'") {
-                                if ((element && element.length > 0) && (x.name && x.name.length > 0 )) {
+                            } else if (e === '"' || e === "'") {
+                                if ((element && element.length > 0) && (x.name && x.name.length > 0)) {
                                     if (element.charAt(element.length - 1) === "]") {
                                         var opp = element.indexOf('[');
                                         if (opp > -1) {
@@ -1641,12 +1580,10 @@
                                                 addConfidence(x, element);
                                             }
                                             x.name = x.name + element.substring(0, opp);
-                                        }
-                                        else {
+                                        } else {
                                             x.name = x.name + element;
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         x.name = x.name + element;
                                     }
                                 }
@@ -1657,10 +1594,10 @@
             }
         }
         if (ancs.length !== 0) {
-            throw ( NH_FORMAT_ERR_OPEN_PARENS );
+            throw (NH_FORMAT_ERR_OPEN_PARENS);
         }
         if (!x) {
-            throw ( NH_FORMAT_ERR_CLOSE_PARENS );
+            throw (NH_FORMAT_ERR_CLOSE_PARENS);
         }
 
         var phy = {};
@@ -1693,9 +1630,8 @@
                     var confValue = parseFloat(s);
                     if (forester.isNumber(confValue)) {
                         return confValue;
-                    }
-                    else {
-                        throw ( NH_FORMAT_ERR + 'could not parse confidence value from "' + str + '"' );
+                    } else {
+                        throw (NH_FORMAT_ERR + 'could not parse confidence value from "' + str + '"');
                     }
                 }
             }
@@ -1749,8 +1685,7 @@
                     sawTax = true;
                     if (code === null) {
                         code = tax.code;
-                    }
-                    else if (code != tax.code) {
+                    } else if (code != tax.code) {
                         result = false;
                         return;
                     }
@@ -1759,8 +1694,7 @@
                     sawTax = true;
                     if (sn === null) {
                         sn = tax.scientific_name;
-                    }
-                    else if (sn != tax.scientific_name) {
+                    } else if (sn != tax.scientific_name) {
                         result = false;
                         return;
                     }
@@ -1769,8 +1703,7 @@
                     sawTax = true;
                     if (cn === null) {
                         cn = tax.common_name;
-                    }
-                    else if (cn != tax.common_name) {
+                    } else if (cn != tax.common_name) {
                         result = false;
                         return;
                     }
@@ -1780,20 +1713,17 @@
                     var myid;
                     if (tax.id.provider && tax.id.provider.length > 0) {
                         myid = tax.id.provider + ':' + tax.id.value;
-                    }
-                    else {
+                    } else {
                         myid = tax.id.value;
                     }
                     if (id === null) {
                         id = myid;
-                    }
-                    else if (id != myid) {
+                    } else if (id != myid) {
                         result = false;
 
                     }
                 }
-            }
-            else if (!n.children && !n._children) {
+            } else if (!n.children && !n._children) {
                 // If an external node lacks taxonomy, return false.
                 result = false;
             }
@@ -1805,14 +1735,11 @@
 
             if (sn) {
                 return sn;
-            }
-            else if (code) {
+            } else if (code) {
                 return code;
-            }
-            else if (cn) {
+            } else if (cn) {
                 return cn;
-            }
-            else if (id) {
+            } else if (id) {
                 return id;
             }
         }
@@ -1828,11 +1755,10 @@
                 var gotIt = false;
                 for (var i = 0; i < propertiesLength; ++i) {
                     var property = n.properties[i];
-                    if (property.ref && property.value && (property.applies_to === 'node') && ( property.ref === propertyRef) && ( property.value.length > 0)) {
+                    if (property.ref && property.value && (property.applies_to === 'node') && (property.ref === propertyRef) && (property.value.length > 0)) {
                         if (propValue === null) {
                             propValue = property.value;
-                        }
-                        else if (propValue != property.value) {
+                        } else if (propValue != property.value) {
                             result = false;
                             return;
                         }
@@ -1851,8 +1777,7 @@
         }
         if (result === true) {
             return propValue;
-        }
-        else {
+        } else {
             return null;
         }
     };
@@ -1867,8 +1792,7 @@
         var apptype;
         if (phy.desc) {
             apptype = 'ird:'
-        }
-        else {
+        } else {
             apptype = 'vipr:'
         }
 
@@ -1928,6 +1852,7 @@
                 n.simple_characteristics = undefined;
             }
         });
+
         function addProperties(n, props) {
             if (props) {
                 if (!n.properties) {
@@ -1976,8 +1901,7 @@
                     toNewHampshireHelper(node.children[i], i === l - 1);
                 }
                 nh += ")";
-            }
-            else if (node._children) {
+            } else if (node._children) {
                 var ll = node._children.length;
                 nh += "(";
                 for (var ii = 0; ii < ll; ++ii) {
@@ -1988,21 +1912,17 @@
             if (node.name && node.name.length > 0) {
                 if (replaceChars === true) {
                     nh += replaceUnsafeChars(node.name);
-                }
-                else {
+                } else {
                     var myName = node.name.replace(/\s+/g, ' ');
                     if (/[\s,():;'"\[\]]/.test(myName)) {
-                        if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1 )) {
+                        if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1)) {
                             nh += '"' + myName.replace(/"/g, "'") + '"';
-                        }
-                        else if (myName.indexOf('"') > -1) {
+                        } else if (myName.indexOf('"') > -1) {
                             nh += "'" + myName + "'";
-                        }
-                        else {
+                        } else {
                             nh += '"' + myName + '"';
                         }
-                    }
-                    else {
+                    } else {
                         nh += myName;
                     }
                 }
@@ -2010,16 +1930,14 @@
             if (node.branch_length !== undefined && node.branch_length !== null) {
                 if (decPointsMax && decPointsMax > 0) {
                     nh += ":" + forester.roundNumber(node.branch_length, decPointsMax);
-                }
-                else {
+                } else {
                     nh += ":" + node.branch_length;
                 }
             }
             if (writeConfidences && node.confidences && node.confidences.length === 1 && node.confidences[0].value !== undefined && node.confidences[0].value !== null) {
                 if (decPointsMax && decPointsMax > 0) {
                     nh += "[" + forester.roundNumber(node.confidences[0].value, decPointsMax) + "]";
-                }
-                else {
+                } else {
                     nh += "[" + node.confidences[0].value + "]";
                 }
             }
