@@ -20,8 +20,8 @@
  *
  */
 
-// v 1.9.0a1
-// 2021-09-15
+// v 1.9.0b1
+// 2021-10-01
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -43,10 +43,10 @@
 //
 // Change './forester' to 'forester' if you use this code outside of this package
 //
-// var forester = require('./forester').forester;
+// let forester = require('./forester').forester;
 //
-// var newHampshireFormattedString = "(((a:1,b:1,c:1)N:2,(d:1,e:1)M:4)O:4,f:1)R:1;";
-// var phylogeneticTree = forester.parseNewHampshire(newHampshireFormattedString);
+// let newHampshireFormattedString = "(((a:1,b:1,c:1)N:2,(d:1,e:1)M:4)O:4,f:1)R:1;";
+// let phylogeneticTree = forester.parseNewHampshire(newHampshireFormattedString);
 //
 // console.log('Pre-order traversal:');
 // forester.preOrderTraversalAll(forester.getTreeRoot(phylogeneticTree), function (n) {
@@ -59,7 +59,7 @@
 // });
 //
 // console.log('In New Hampshire format:');
-// var nh = forester.toNewHampshire(phylogeneticTree);
+// let nh = forester.toNewHampshire(phylogeneticTree);
 // console.log(nh);
 
 
@@ -112,8 +112,8 @@
      */
     forester.addParents = function (phy) {
         if (phy.children) {
-            for (var i = phy.children.length - 1; i >= 0; --i) {
-                var c = phy.children[i];
+            for (let i = phy.children.length - 1; i >= 0; --i) {
+                let c = phy.children[i];
                 c.parent = phy;
                 forester.addParents(c);
             }
@@ -129,7 +129,7 @@
      * @returns {*} - The real tree root node.
      */
     forester.getTreeRoot = function (phy) {
-        var root = phy;
+        let root = phy;
         if (!root.parent && root.children && root.children.length === 1) {
             root = root.children[0];
         }
@@ -149,7 +149,7 @@
     forester.preOrderTraversal = function (node, fn) {
         fn(node);
         if (node.children) {
-            for (var i = node.children.length - 1; i >= 0; --i) {
+            for (let i = node.children.length - 1; i >= 0; --i) {
                 forester.preOrderTraversal(node.children[i], fn);
             }
         }
@@ -165,11 +165,11 @@
     forester.preOrderTraversalAll = function (node, fn) {
         fn(node);
         if (node.children) {
-            for (var i = node.children.length - 1; i >= 0; --i) {
+            for (let i = node.children.length - 1; i >= 0; --i) {
                 forester.preOrderTraversalAll(node.children[i], fn);
             }
         } else if (node._children) {
-            for (var ii = node._children.length - 1; ii >= 0; --ii) {
+            for (let ii = node._children.length - 1; ii >= 0; --ii) {
                 forester.preOrderTraversalAll(node._children[ii], fn);
             }
         }
@@ -177,13 +177,13 @@
 
     forester.postOrderTraversalAll = function (node, fn) {
         if (node.children) {
-            var l = node.children.length;
-            for (var i = 0; i < l; ++i) {
+            let l = node.children.length;
+            for (let i = 0; i < l; ++i) {
                 forester.postOrderTraversalAll(node.children[i], fn);
             }
         } else if (node._children) {
-            var ll = node._children.length;
-            for (var ii = 0; ii < ll; ++ii) {
+            let ll = node._children.length;
+            for (let ii = 0; ii < ll; ++ii) {
                 forester.postOrderTraversalAll(node._children[ii], fn);
             }
         }
@@ -192,7 +192,7 @@
 
 
     forester.findByNodeName = function (node, name) {
-        var found = [];
+        let found = [];
         forester.preOrderTraversalAll(node, function (n) {
             if (n.name === name) {
                 found.push(n);
@@ -202,7 +202,7 @@
     };
 
     forester.findByTaxonomyCode = function (node, code) {
-        var found = [];
+        let found = [];
         forester.preOrderTraversalAll(node, function (n) {
             if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].code === code) {
                 found.push(n);
@@ -212,7 +212,7 @@
     };
 
     forester.findByTaxonomyScientificName = function (node, scientificName) {
-        var found = [];
+        let found = [];
         forester.preOrderTraversalAll(node, function (n) {
             if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].scientific_name === scientificName) {
                 found.push(n);
@@ -234,7 +234,7 @@
             if (!n.children && !n._children) {
                 if (n.properties && n.properties.length > 0) {
                     const propertiesLength = n.properties.length;
-                    for (var i = 0; i < propertiesLength; ++i) {
+                    for (let i = 0; i < propertiesLength; ++i) {
                         const property = n.properties[i];
                         if (property.ref && property.value && property.applies_to === 'node') {
                             if (positive) {
@@ -253,7 +253,7 @@
         });
         const l = toDelete.length;
         console.log(toDelete);
-        for (var i = 0; i < l; ++i) {
+        for (let i = 0; i < l; ++i) {
             forester.deleteSubtree(phy, toDelete[i]);
         }
     };
@@ -279,29 +279,29 @@
             throw ("cannot delete direct child of root");
         }
 
-        var p = nodeToDelete.parent;
+        let p = nodeToDelete.parent;
 
         if ((p.children) && (p.children.length > 1)) {
-            var i = p.children.indexOf(nodeToDelete);
+            let i = p.children.indexOf(nodeToDelete);
             if (i !== -1) {
                 p.children.splice(i, 1);
             }
         }
         if ((p._children) && (p._children.length > 1)) {
-            var ii = p._children.indexOf(nodeToDelete);
+            let ii = p._children.indexOf(nodeToDelete);
             if (ii !== -1) {
                 p._children.splice(ii, 1);
             }
         }
 
         if (p.children.length === 1) {
-            var pp = p.parent;
-            var cni = forester.getChildNodeIndex(pp, p);
+            let pp = p.parent;
+            let cni = forester.getChildNodeIndex(pp, p);
             if ((cni < 0) || (cni > (pp.children.length - 1))) {
                 throw ("this should never have happened, child node index = " + cni);
             }
-            var x = p.children[0];
-            var nbl = undefined;
+            let x = p.children[0];
+            let nbl = undefined;
             if (x.branch_length || p.branch_length) {
                 nbl = (x.branch_length > 0 ? x.branch_length : 0) + (p.branch_length > 0 ? p.branch_length : 0);
             }
@@ -332,7 +332,7 @@
             branchLength = -1;
         }
         if (forester.isString(node)) {
-            var nodes = forester.findByNodeName(phy, node);
+            let nodes = forester.findByNodeName(phy, node);
             if (nodes.length > 1) {
                 throw ("node name '" + node + "' is not unique");
             } else if (nodes.length < 1) {
@@ -342,22 +342,22 @@
         }
 
         phy.rooted = true;
-        var root = forester.getTreeRoot(phy);
+        let root = forester.getTreeRoot(phy);
 
         if (!node.parent || !node.parent.parent) {
             //do noting
         } else if (!node.parent.parent.parent) {
             if ((node.parent.children.length === 2) && (branchLength >= 0)) {
-                var d = node.parent.children[0].branch_length
+                let d = node.parent.children[0].branch_length
                     + node.parent.children[1].branch_length;
-                var other;
+                let other;
                 if (node.parent.children[0] === node) {
                     other = node.parent.children[1];
                 } else {
                     other = node.parent.children[0];
                 }
                 node.branch_length = branchLength;
-                var dm = d - branchLength;
+                let dm = d - branchLength;
                 if (dm >= 0) {
                     other.branch_length = dm;
                 } else {
@@ -365,11 +365,11 @@
                 }
             }
             if (node.parent.children.length > 2) {
-                var index = forester.getChildNodeIndex(node.parent, node);
-                var dn = node.branch_length;
-                var prev_root = root;
+                let index = forester.getChildNodeIndex(node.parent, node);
+                let dn = node.branch_length;
+                let prev_root = root;
                 prev_root.children.splice(index, 1);
-                var nr = {};
+                let nr = {};
                 nr.children = [];
                 forester.setChildNode(nr, 0, node);
                 forester.setChildNode(nr, 1, prev_root);
@@ -380,7 +380,7 @@
                 nr.parent = phy;
                 if (branchLength >= 0) {
                     node.branch_length = branchLength;
-                    var dnmp = dn - branchLength;
+                    let dnmp = dn - branchLength;
                     if (dnmp >= 0) {
                         prev_root.branch_length = dnmp;
                     } else {
@@ -388,21 +388,21 @@
                     }
                 } else {
                     if (dn >= 0) {
-                        var dn2 = dn / 2.0;
+                        let dn2 = dn / 2.0;
                         node.branch_length = dn2;
                         prev_root.branch_length = dn2;
                     }
                 }
             }
         } else {
-            var a = node;
-            var new_root = {};
-            var distance1;
-            var distance2 = 0.0;
-            var branch_data_1;
-            var branch_data_2 = null;
-            var b = a.parent;
-            var c = b.parent;
+            let a = node;
+            let new_root = {};
+            let distance1;
+            let distance2 = 0.0;
+            let branch_data_1;
+            let branch_data_2 = null;
+            let b = a.parent;
+            let c = b.parent;
 
             new_root.children = [];
             forester.setChildNode(new_root, 0, a);
@@ -422,11 +422,11 @@
                 b.branch_length = undefined;
             } else {
                 if (branchLength >= 0.0) {
-                    var diff = a.branch_length - branchLength;
+                    let diff = a.branch_length - branchLength;
                     a.branch_length = branchLength;
                     b.branch_length = (diff >= 0.0 ? diff : 0.0);
                 } else {
-                    var d2 = a.branch_length / 2.0;
+                    let d2 = a.branch_length / 2.0;
                     a.branch_length = d2;
                     b.branch_length = d2;
                 }
@@ -447,8 +447,8 @@
                 branch_data_1 = branch_data_2;
             }
             // removing the old root:
-            if (c.children.length == 2) {
-                var node2 = c.children[1 - forester.getChildNodeIndex(c, b)];
+            if (c.children.length === 2) {
+                let node2 = c.children[1 - forester.getChildNodeIndex(c, b)];
                 node2.parent = b;
                 if ((!c.branch_length)
                     && (!node2.branch_length)) {
@@ -457,12 +457,12 @@
                     node2.branch_length = (c.branch_length >= 0.0 ? c.branch_length : 0.0)
                         + (node2.branch_length >= 0.0 ? node2.branch_length : 0.0);
                 }
-                var cbd = forester.getBranchData(c);
+                let cbd = forester.getBranchData(c);
                 if (cbd) {
                     forester.setBranchData(node2, cbd);
                 }
-                var l = b.children.length;
-                for (var i = 0; i < l; ++i) {
+                let l = b.children.length;
+                for (let i = 0; i < l; ++i) {
                     if (b.children[i] === c) {
                         setChildNodeOnly(b, i, node2);
                         break;
@@ -487,24 +487,24 @@
     };
 
     forester.midpointRoot = function (phy) {
-        var root = forester.getTreeRoot(phy);
-        var extNodes = forester.getAllExternalNodes(root);
+        let root = forester.getTreeRoot(phy);
+        let extNodes = forester.getAllExternalNodes(root);
         if ((extNodes.length < 2) || (forester.calcMaxBranchLength(root) <= 0)) {
             return;
         }
-        var counter = 0;
-        var totalNodes = forester.getAllNodes(phy).length;
+        let counter = 0;
+        let totalNodes = forester.getAllNodes(phy).length;
         while (true) {
             if (++counter > (totalNodes + 1)) {
                 throw('this should not have happened: midpoint rooting does not converge');
             }
-            var a = null;
-            var da = 0;
-            var db = 0;
-            var cl = forester.getTreeRoot(phy).children.length;
-            for (var i = 0; i < cl; ++i) {
-                var f = forester.getFurthestDescendant(forester.getTreeRoot(phy).children[i]);
-                var df = forester.getDistance(f, forester.getTreeRoot(phy));
+            let a = null;
+            let da = 0;
+            let db = 0;
+            let cl = forester.getTreeRoot(phy).children.length;
+            for (let i = 0; i < cl; ++i) {
+                let f = forester.getFurthestDescendant(forester.getTreeRoot(phy).children[i]);
+                let df = forester.getDistance(f, forester.getTreeRoot(phy));
                 if (df > 0) {
                     if (df > da) {
                         db = da;
@@ -515,11 +515,11 @@
                     }
                 }
             }
-            var diff = da - db;
+            let diff = da - db;
             if (diff < 0.0001) {
                 break;
             }
-            var x = da - (diff / 2.0);
+            let x = da - (diff / 2.0);
             while ((x > a.branch_length) && a.parent) {
                 x -= (a.branch_length > 0 ? a.branch_length : 0);
                 a = a.parent;
@@ -529,12 +529,12 @@
     };
 
     forester.getFurthestDescendant = function (node) {
-        var children = forester.getAllExternalNodes(node);
-        var farthest = null;
-        var longest = -1000000;
-        var l = children.length;
-        for (var i = 0; i < l; ++i) {
-            var dist = forester.getDistance(children[i], node);
+        let children = forester.getAllExternalNodes(node);
+        let farthest = null;
+        let longest = -1000000;
+        let l = children.length;
+        for (let i = 0; i < l; ++i) {
+            let dist = forester.getDistance(children[i], node);
             if (dist > longest) {
                 farthest = children[i];
                 longest = dist;
@@ -552,7 +552,7 @@
      * @returns {number} distance between n1 and n2
      */
     forester.getDistance = function (n1, n2) {
-        var d = 0.0;
+        let d = 0.0;
         while (n1 !== n2) {
             if (n1.branch_length > 0.0) {
                 d += n1.branch_length;
@@ -592,7 +592,7 @@
 
 
     forester.getBranchData = function (node) {
-        var branchData = null;
+        let branchData = null;
         if (node.width || node.color || node.confidences) {
             branchData = {};
             branchData.width = node.width;
@@ -631,8 +631,8 @@
         if (!parentNode) {
             throw ("cannot get the child index for a root node");
         }
-        var c = parentNode.children.length;
-        for (var i = 0; i < c; ++i) {
+        let c = parentNode.children.length;
+        for (let i = 0; i < c; ++i) {
             if (parentNode.children[i] === childNode) {
                 return i;
             }
@@ -647,12 +647,12 @@
 
 
     forester.calcAverageTreeHeight = function (node, externalDescendants) {
-        var c = externalDescendants ? externalDescendants : forester.getAllExternalNodes(node);
-        var l = c.length;
-        var s = 0;
-        for (var i = 0; i < l; ++i) {
-            var cc = c[i];
-            while (cc != node) {
+        let c = externalDescendants ? externalDescendants : forester.getAllExternalNodes(node);
+        let l = c.length;
+        let s = 0;
+        for (let i = 0; i < l; ++i) {
+            let cc = c[i];
+            while (cc !== node) {
                 if (cc.branch_length > 0) {
                     s += cc.branch_length;
                 }
@@ -663,7 +663,7 @@
     };
 
     forester.setToArray = function (set) {
-        var array = [];
+        let array = [];
         if (set) {
             set.forEach(function (e) {
                 array.push(e);
@@ -673,7 +673,7 @@
     };
 
     forester.setToSortedArray = function (set) {
-        var array = [];
+        let array = [];
         if (set) {
             set.forEach(function (e) {
                 array.push(e);
@@ -683,10 +683,10 @@
     };
 
     forester.calcMinMaxInSet = function (set) {
-        var array = [];
-        var first = true;
-        var min = 0;
-        var max = 0;
+        let array = [];
+        let first = true;
+        let min = 0;
+        let max = 0;
         if (set) {
             set.forEach(function (e) {
                 e = parseFloat(e);
@@ -710,13 +710,13 @@
     };
 
     forester.calcMinMeanMaxInSet = function (set) {
-        var array = [];
-        var first = true;
-        var min = 0;
-        var max = 0;
-        var mean = 0;
-        var sum = 0;
-        var n = 0;
+        let array = [];
+        let first = true;
+        let min = 0;
+        let max = 0;
+        let mean = 0;
+        let sum = 0;
+        let n = 0;
         if (set) {
             set.forEach(function (e) {
                 e = parseFloat(e);
@@ -761,16 +761,16 @@
      * @returns {{}}
      */
     forester.collectProperties = function (phy, appliesTo, externalOnly) {
-        var props = {};
+        let props = {};
         forester.preOrderTraversalAll(phy, function (n) {
 
             if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
                 if (n.properties && n.properties.length > 0) {
-                    var propertiesLength = n.properties.length;
-                    for (var i = 0; i < propertiesLength; ++i) {
-                        var property = n.properties[i];
+                    let propertiesLength = n.properties.length;
+                    for (let i = 0; i < propertiesLength; ++i) {
+                        let property = n.properties[i];
                         if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
-                            var ref = property.ref;
+                            let ref = property.ref;
                             if (!props[ref]) {
                                 props[ref] = new Set();
                             }
@@ -796,22 +796,22 @@
      * @returns {boolean}
      */
     forester.splitProperty = function (phy, targetValue, fromRef, toRef) {
-        var found = false;
-        var targetValue_ = targetValue + ' ';
+        let found = false;
+        let targetValue_ = targetValue + ' ';
         forester.preOrderTraversalAll(phy, function (n) {
             if (n.properties && n.properties.length > 0) {
-                var propertiesLength = n.properties.length;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var property = n.properties[i];
+                let propertiesLength = n.properties.length;
+                for (let i = 0; i < propertiesLength; ++i) {
+                    let property = n.properties[i];
                     if (property.ref === fromRef && property.value) {
-                        var newValue = '';
+                        let newValue = '';
                         if (property.value.startsWith(targetValue_)) {
                             newValue = targetValue;
                             found = true;
                         } else {
                             newValue = property.value;
                         }
-                        var newproperty = {};
+                        let newproperty = {};
                         newproperty.ref = toRef;
                         newproperty.value = newValue;
                         newproperty.datatype = 'xsd:string';
@@ -825,14 +825,14 @@
     };
 
     forester.collectPropertyRefs = function (phy, appliesTo, externalOnly) {
-        var propertyRefs = new Set();
+        let propertyRefs = new Set();
         forester.preOrderTraversalAll(phy, function (n) {
 
             if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
                 if (n.properties && n.properties.length > 0) {
-                    var propertiesLength = n.properties.length;
-                    for (var i = 0; i < propertiesLength; ++i) {
-                        var property = n.properties[i];
+                    let propertiesLength = n.properties.length;
+                    for (let i = 0; i < propertiesLength; ++i) {
+                        let property = n.properties[i];
                         if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
                             propertyRefs.add(property.ref);
                         }
@@ -848,16 +848,16 @@
         forester.preOrderTraversalAll(phy, function (n) {
             if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
                 if (n.properties && n.properties.length > 0) {
-                    var propertiesLength = n.properties.length;
-                    for (var i = 0; i < propertiesLength; ++i) {
-                        var property = n.properties[i];
+                    let propertiesLength = n.properties.length;
+                    for (let i = 0; i < propertiesLength; ++i) {
+                        let property = n.properties[i];
                         if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
                             if (property.ref === sourceRef) {
-                                var s = property.value.trim().split(/\s+/);
+                                let s = property.value.trim().split(/\s+/);
                                 if (s && s.length > 1) {
-                                    var newProp = {};
+                                    let newProp = {};
                                     newProp.ref = targetRef;
-                                    if (s.length == 2) {
+                                    if (s.length === 2) {
                                         newProp.value = s[0];
                                     } else {
                                         newProp.value = s[0] + ' ' + s[1];
@@ -875,7 +875,7 @@
     };
 
     forester.collectBasicTreeProperties = function (tree) {
-        var properties = {};
+        let properties = {};
         properties.internalNodeData = false;
         properties.nodeNames = false;
         properties.longestNodeName = 0;
@@ -889,9 +889,9 @@
         properties.externalNodesCount = 0;
         properties.molSeqResiduesPerPosition = null;
         properties.averageBranchLength = 0;
-        var bl_counter = 0;
-        var bl_sum = 0;
-        var molSeqs = [];
+        let bl_counter = 0;
+        let bl_sum = 0;
+        let molSeqs = [];
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
@@ -919,7 +919,7 @@
                 if (n.children || n._children) {
                     properties.internalNodeData = true;
                 } else {
-                    var s = n.sequences[0];
+                    let s = n.sequences[0];
                     if (s.mol_seq && s.mol_seq.value) {
                         if (s.mol_seq.value.length > properties.maxMolSeqLength) {
                             properties.maxMolSeqLength = s.mol_seq.value.length;
@@ -942,8 +942,8 @@
                 properties.confidences = true;
             }
             if (n.properties && n.properties.length > 0) {
-                var l = n.properties.length;
-                for (var p = 0; p < l; ++p) {
+                let l = n.properties.length;
+                for (let p = 0; p < l; ++p) {
                     if (n.properties[p].ref === BRANCH_EVENT_REF
                         && n.properties[p].datatype === BRANCH_EVENT_DATATYPE
                         && n.properties[p].applies_to === BRANCH_EVENT_APPLIES_TO) {
@@ -956,11 +956,11 @@
 
         if (properties.alignedMolSeqs) {
             properties.molSeqResiduesPerPosition = [];
-            for (var p = 0, maxLen = properties.maxMolSeqLength; p < maxLen; ++p) {
-                var mySet = new Set();
-                for (var i = 0, seqsLen = molSeqs.length; i < seqsLen; ++i) {
-                    var molSeq = molSeqs[i];
-                    var c = molSeq[p];
+            for (let p = 0, maxLen = properties.maxMolSeqLength; p < maxLen; ++p) {
+                let mySet = new Set();
+                for (let i = 0, seqsLen = molSeqs.length; i < seqsLen; ++i) {
+                    let molSeq = molSeqs[i];
+                    let c = molSeq[p];
                     if (c) {
                         c = c.toUpperCase();
                         mySet.add(c);
@@ -970,7 +970,7 @@
                     }
 
                 }
-                var myArray = forester.setToArray(mySet);
+                let myArray = forester.setToArray(mySet);
                 myArray.sort(function (a, b) {
                     return MSA_RESIDUE_SORT_MAP.get(a) - MSA_RESIDUE_SORT_MAP.get(b);
                 });
@@ -993,11 +993,11 @@
                                     partial,
                                     regex,
                                     searchProperties) {
-        var nodes = new Set();
+        let nodes = new Set();
         if (!phy || !query || query.length < 1) {
             return nodes;
         }
-        var my_query = query.trim();
+        let my_query = query.trim();
         if (my_query.length < 1) {
             return nodes;
         }
@@ -1007,17 +1007,17 @@
             my_query = my_query.replace(/\+\++/g, '+');
         }
 
-        var queries = [];
+        let queries = [];
 
         if (!regex && (my_query.indexOf(",") >= 0)) {
             queries = my_query.split(",");
         } else {
             queries.push(my_query);
         }
-        var queriesLength = queries.length;
-
-        for (var i = 0; i < queriesLength; ++i) {
-            var q = queries[i];
+        let queriesLength = queries.length;
+        let q;
+        for (let i = 0; i < queriesLength; ++i) {
+            q = queries[i];
             if (q) {
                 q = q.trim();
                 if (q.length > 0) {
@@ -1028,29 +1028,28 @@
 
         return nodes;
 
-
         function matcher(node) {
-            var mqueries = [];
+            let mqueries = [];
             if (!regex && (q.indexOf("+") >= 0)) {
                 mqueries = q.split("+");
             } else {
                 mqueries.push(q);
             }
-            var mqueriesLength = mqueries.length;
-            var match = true;
-            for (var i = 0; i < mqueriesLength; ++i) {
-                var mq = mqueries[i];
+            let mqueriesLength = mqueries.length;
+            let match = true;
+            for (let i = 0; i < mqueriesLength; ++i) {
+                let mq = mqueries[i];
                 if (mq) {
                     mq = mq.trim();
                     if (mq.length > 0) {
-                        var ndf = null;
+                        let ndf = null;
                         if ((mq.length > 3) && (mq.indexOf(":") === 2)) {
                             ndf = makeNDF(mq);
                             if (ndf) {
                                 mq = mq.substring(3);
                             }
                         }
-                        var lmatch = false;
+                        let lmatch = false;
                         if (((ndf === null) || (ndf === "NN"))
                             && matchme(node.name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
@@ -1129,9 +1128,9 @@
                         } else if (((ndf === null) && (searchProperties === true)) && node.properties
                             && node.properties.length > 0) {
 
-                            var propertiesLength = node.properties.length;
-                            for (var i = 0; i < propertiesLength; ++i) {
-                                var p = node.properties[i];
+                            let propertiesLength = node.properties.length;
+                            for (let i = 0; i < propertiesLength; ++i) {
+                                let p = node.properties[i];
                                 if (p.value && matchme(p.value,
                                     mq,
                                     caseSensitive,
@@ -1156,7 +1155,7 @@
                 else {
                     match = false;
                 }
-            } //  for (var i = 0; i < mqueriesLength; ++i)
+            } //  for (let i = 0; i < mqueriesLength; ++i)
             if (match) {
                 nodes.add(node);
             }
@@ -1170,14 +1169,14 @@
             if (!s || !query) {
                 return false;
             }
-            var my_s = s.trim();
-            var my_query = query.trim();
+            let my_s = s.trim();
+            let my_query = query.trim();
             if (!caseSensitive && !regex) {
                 my_s = my_s.toLowerCase();
                 my_query = my_query.toLowerCase();
             }
             if (regex) {
-                var re = null;
+                let re = null;
                 try {
                     if (caseSensitive) {
                         re = new RegExp(my_query);
@@ -1195,7 +1194,7 @@
             } else if (partial) {
                 return (my_s.indexOf(my_query) > -1);
             } else {
-                var np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
+                let np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
                 if (np) {
                     return (my_s.search(np) > -1);
                 } else {
@@ -1209,7 +1208,7 @@
         }
 
         function makeNDF(query) {
-            var str = query.substring(0, 2);
+            let str = query.substring(0, 2);
             if (str === "NN"
                 || str === "TC"
                 || str === "TN"
@@ -1240,7 +1239,7 @@
      * @returns {number} - The sum of external descendants.
      */
     forester.calcSumOfExternalDescendants = function (node) {
-        var nodes = 0;
+        let nodes = 0;
         forester.preOrderTraversal(node, function (n) {
             if (!n.children) {
                 ++nodes;
@@ -1258,7 +1257,7 @@
      * @returns {number} - The sum of all external descendants.
      */
     forester.calcSumOfAllExternalDescendants = function (node) {
-        var nodes = 0;
+        let nodes = 0;
         forester.preOrderTraversalAll(node, function (n) {
             if (!(n.children || n._children)) {
                 ++nodes;
@@ -1276,7 +1275,7 @@
      * collapsed
      */
     forester.isHasCollapsedNodes = function (node) {
-        var collapsed = false;
+        let collapsed = false;
         forester.preOrderTraversalAll(node, function (n) {
             if (n._children) {
                 collapsed = true;
@@ -1287,7 +1286,7 @@
     };
 
     forester.getAllExternalNodes = function (node) {
-        var nodes = [];
+        let nodes = [];
         forester.preOrderTraversalAll(node, function (n) {
             if (!n.children && !n._children) {
                 nodes.push(n);
@@ -1297,7 +1296,7 @@
     };
 
     forester.getAllNodes = function (phy) {
-        var nodes = [];
+        let nodes = [];
         forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
             nodes.push(n);
         });
@@ -1305,10 +1304,10 @@
     };
 
     forester.calcMaxDepth = function (node) {
-        var max = 0;
+        let max = 0;
         forester.preOrderTraversalAll(node, function (n) {
             if (!n.children && !n._children) {
-                var steps = forester.calcDepth(n);
+                let steps = forester.calcDepth(n);
                 if (steps > max) {
                     max = steps;
                 }
@@ -1319,7 +1318,7 @@
 
     forester.calcDepth = function (node) {
 
-        var steps = 0;
+        let steps = 0;
         while (node.parent && node.parent.parent) {
             steps++;
             node = node.parent;
@@ -1329,12 +1328,12 @@
 
 
     forester.calcBranchLengthSimpleStatistics = function (node) {
-        var stats = {};
+        let stats = {};
         stats.mean = 0;
         stats.min = Number.MAX_VALUE;
         stats.max = 0;
         stats.n = 0;
-        var sum = 0;
+        let sum = 0;
         forester.preOrderTraversalAll(node, function (n) {
             if (n !== node && n.branch_length && n.branch_length >= 0) {
                 ++stats.n;
@@ -1354,7 +1353,7 @@
     };
 
     forester.calcMaxBranchLength = function (node) {
-        var max = 0;
+        let max = 0;
         forester.preOrderTraversalAll(node, function (n) {
             if (n !== node && n.branch_length && (n.branch_length > max)) {
                 max = n.branch_length;
@@ -1394,12 +1393,12 @@
             if (!n.max) {
                 n.max = forester.calcMaxBranchLength(n);
             }
-            var max = n.max;
+            let max = n.max;
             if (max < branchLength) {
                 forester.collapse(n);
             } else {
                 forester.unCollapse(n);
-                for (var i = n.children.length - 1; i >= 0; i--) {
+                for (let i = n.children.length - 1; i >= 0; i--) {
                     collapseToBranchLengthHelper(n.children[i], branchLength);
                 }
             }
@@ -1420,7 +1419,7 @@
             } else {
                 forester.unCollapse(n);
                 ++d;
-                for (var i = n.children.length - 1; i >= 0; i--) {
+                for (let i = n.children.length - 1; i >= 0; i--) {
                     collapseToDepthHelper(n.children[i], d, depth);
                 }
             }
@@ -1453,28 +1452,28 @@
      */
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
 
-        var NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
-        var NH_FORMAT_ERR_CLOSE_PARENS = NH_FORMAT_ERR + 'likely cause: number of close parentheses is larger than number of open parentheses';
+        let NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
+        let NH_FORMAT_ERR_CLOSE_PARENS = NH_FORMAT_ERR + 'likely cause: number of close parentheses is larger than number of open parentheses';
 
-        if (confidenceValuesInBrackets == undefined) {
+        if (confidenceValuesInBrackets === undefined) {
             confidenceValuesInBrackets = true;
         }
-        if (confidenceValuesAsInternalNames == undefined) {
+        if (confidenceValuesAsInternalNames === undefined) {
             confidenceValuesAsInternalNames = false;
         }
         if ((confidenceValuesInBrackets === true) && (confidenceValuesAsInternalNames === true)) {
             throw ("confidence values cannot be both in brackets and as internal node names");
         }
 
-        var ancs = [];
-        var x = {};
-        var ss = nhStr.split(/(;|\(|\)|,|:|"|')/);
-        var ssl = ss.length;
-        var in_double_q = false;
-        var in_single_q = false;
-        var buffer = '';
-        for (var i = 0; i < ssl; ++i) {
-            var element = ss[i].replace(/\s+/g, '');
+        let ancs = [];
+        let x = {};
+        let ss = nhStr.split(/(;|\(|\)|,|:|"|')/);
+        let ssl = ss.length;
+        let in_double_q = false;
+        let in_single_q = false;
+        let buffer = '';
+        for (let i = 0; i < ssl; ++i) {
+            let element = ss[i].replace(/\s+/g, '');
 
             if (element === '"' && !in_single_q) {
                 if (!in_double_q) {
@@ -1508,7 +1507,7 @@
                         if (!x) {
                             throw (NH_FORMAT_ERR_CLOSE_PARENS);
                         }
-                        var subtree1 = {};
+                        let subtree1 = {};
                         x.children = [subtree1];
                         ancs.push(x);
                         x = subtree1;
@@ -1516,20 +1515,20 @@
                         if (ancs.length === 0) {
                             throw (NH_FORMAT_ERR_CLOSE_PARENS);
                         }
-                        var subtree2 = {};
+                        let subtree2 = {};
                         ancs[ancs.length - 1].children.push(subtree2);
                         x = subtree2;
                     } else if (element === ')') {
                         x = ancs.pop();
                     } else if (element === ':') {
                     } else {
-                        var e = ss[i - 1];
+                        let e = ss[i - 1];
                         if (e) {
                             e = e.trim();
                             if ((e === ')') || (e === '(') || (e === ',')) {
                                 if (element && element.length > 0) {
                                     if (element.charAt(element.length - 1) === "]") {
-                                        var o = element.indexOf('[');
+                                        let o = element.indexOf('[');
                                         if (o > -1) {
                                             if (confidenceValuesInBrackets === true) {
                                                 addConfidence(x, element);
@@ -1540,9 +1539,9 @@
                                         }
                                     } else {
                                         x.name = element;
-                                        var op = x.name.indexOf('[');
+                                        let op = x.name.indexOf('[');
                                         if (op > -1) {
-                                            var cl = x.name.indexOf(']');
+                                            let cl = x.name.indexOf(']');
                                             if (cl > op) {
                                                 x.name = x.name.substring(0, op) + x.name.substring(cl + 1, x.name.length);
                                             }
@@ -1552,18 +1551,18 @@
                             } else if (e === ':') {
                                 if (element && element.length > 0) {
                                     if (element.charAt(element.length - 1) === ']') {
-                                        var o1 = element.indexOf('[');
+                                        let o1 = element.indexOf('[');
                                         if (o1 > -1) {
                                             if (confidenceValuesInBrackets === true) {
                                                 addConfidence(x, element);
                                             }
-                                            var bl = parseFloat(element.substring(0, o1));
+                                            let bl = parseFloat(element.substring(0, o1));
                                             if (forester.isNumber(bl)) {
                                                 x.branch_length = bl;
                                             }
                                         }
                                     } else {
-                                        var b = parseFloat(parseFloat(element));
+                                        let b = parseFloat(element);
                                         if (forester.isNumber(b)) {
                                             x.branch_length = b;
                                         } else {
@@ -1574,7 +1573,7 @@
                             } else if (e === '"' || e === "'") {
                                 if ((element && element.length > 0) && (x.name && x.name.length > 0)) {
                                     if (element.charAt(element.length - 1) === "]") {
-                                        var opp = element.indexOf('[');
+                                        let opp = element.indexOf('[');
                                         if (opp > -1) {
                                             if (confidenceValuesInBrackets === true) {
                                                 addConfidence(x, element);
@@ -1600,7 +1599,7 @@
             throw (NH_FORMAT_ERR_CLOSE_PARENS);
         }
 
-        var phy = {};
+        let phy = {};
         phy.children = [x];
 
         forester.addParents(phy);
@@ -1612,26 +1611,26 @@
         return phy;
 
         function addConfidence(x, element) {
-            var confValue = parseConfidence(element);
+            let confValue = parseConfidence(element);
             if (confValue != null) {
                 x.confidences = [];
-                var conf = {};
+                let conf = {};
                 conf.value = confValue;
                 conf.type = 'unknown';
                 x.confidences.push(conf);
             }
         }
 
-        function parseConfidence(str) {
-            var o = str.indexOf('[');
+        function parseConfidence(element) {
+            let o = element.indexOf('[');
             if (o > -1) {
-                var s = str.substring(o + 1, element.length - 1);
+                let s = element.substring(o + 1, element.length - 1);
                 if (NUMBERS_ONLY_PATTERN.test(s)) {
-                    var confValue = parseFloat(s);
+                    let confValue = parseFloat(s);
                     if (forester.isNumber(confValue)) {
                         return confValue;
                     } else {
-                        throw (NH_FORMAT_ERR + 'could not parse confidence value from "' + str + '"');
+                        throw (NH_FORMAT_ERR + 'could not parse confidence value from "' + element + '"');
                     }
                 }
             }
@@ -1642,12 +1641,12 @@
             forester.preOrderTraversalAll(node, function (n) {
                 if (n.children || n._children) {
                     if (n.name) {
-                        var s = n.name;
+                        let s = n.name;
                         if (NUMBERS_ONLY_PATTERN.test(s)) {
-                            var confValue = parseFloat(s);
+                            let confValue = parseFloat(s);
                             if ((confValue != null) && (forester.isNumber(confValue))) {
                                 n.confidences = [];
-                                var conf1 = {};
+                                let conf1 = {};
                                 conf1.value = confValue;
                                 conf1.type = 'unknown';
                                 n.confidences.push(conf1);
@@ -1664,7 +1663,7 @@
         if (v === undefined || v === null) {
             return false;
         }
-        if (v !== v) {
+        if (v != v) {
             // This can only be true if the v is NaN
             return false;
         }
@@ -1672,20 +1671,20 @@
     };
 
     forester.getOneDistinctTaxonomy = function (node) {
-        var id = null;
-        var code = null;
-        var sn = null;
-        var cn = null;
-        var result = true;
-        var sawTax = false;
+        let id = null;
+        let code = null;
+        let sn = null;
+        let cn = null;
+        let result = true;
+        let sawTax = false;
         forester.preOrderTraversalAll(node, function (n) {
             if (n.taxonomies && n.taxonomies.length === 1) {
-                var tax = n.taxonomies[0];
+                let tax = n.taxonomies[0];
                 if (tax.code && tax.code.length > 0) {
                     sawTax = true;
                     if (code === null) {
                         code = tax.code;
-                    } else if (code != tax.code) {
+                    } else if (code !== tax.code) {
                         result = false;
                         return;
                     }
@@ -1694,7 +1693,7 @@
                     sawTax = true;
                     if (sn === null) {
                         sn = tax.scientific_name;
-                    } else if (sn != tax.scientific_name) {
+                    } else if (sn !== tax.scientific_name) {
                         result = false;
                         return;
                     }
@@ -1703,14 +1702,14 @@
                     sawTax = true;
                     if (cn === null) {
                         cn = tax.common_name;
-                    } else if (cn != tax.common_name) {
+                    } else if (cn !== tax.common_name) {
                         result = false;
                         return;
                     }
                 }
                 if (tax.id && tax.id.value && tax.id.value.length > 0) {
                     sawTax = true;
-                    var myid;
+                    let myid;
                     if (tax.id.provider && tax.id.provider.length > 0) {
                         myid = tax.id.provider + ':' + tax.id.value;
                     } else {
@@ -1718,7 +1717,7 @@
                     }
                     if (id === null) {
                         id = myid;
-                    } else if (id != myid) {
+                    } else if (id !== myid) {
                         result = false;
 
                     }
@@ -1747,18 +1746,18 @@
     };
 
     forester.getOneDistinctNodePropertyValue = function (node, propertyRef) {
-        var propValue = null;
-        var result = true;
+        let propValue = null;
+        let result = true;
         forester.preOrderTraversalAll(node, function (n) {
             if (n.properties && n.properties.length > 0) {
-                var propertiesLength = n.properties.length;
-                var gotIt = false;
-                for (var i = 0; i < propertiesLength; ++i) {
-                    var property = n.properties[i];
+                let propertiesLength = n.properties.length;
+                let gotIt = false;
+                for (let i = 0; i < propertiesLength; ++i) {
+                    let property = n.properties[i];
                     if (property.ref && property.value && (property.applies_to === 'node') && (property.ref === propertyRef) && (property.value.length > 0)) {
                         if (propValue === null) {
                             propValue = property.value;
-                        } else if (propValue != property.value) {
+                        } else if (propValue !== property.value) {
                             result = false;
                             return;
                         }
@@ -1789,26 +1788,26 @@
      * @returns {{}}
      */
     forester.moveSimpleCharacteristicsToProperties = function (phy) {
-        var apptype;
+        let apptype;
         if (phy.desc) {
             apptype = 'ird:'
         } else {
             apptype = 'vipr:'
         }
 
-        var HOST = apptype + 'Host';
-        var COUNTRY = apptype + 'Country';
-        var YEAR = apptype + 'Year';
-        var HA = apptype + 'HA';
-        var NA = apptype + 'NA';
-        var NODE = 'node';
-        var STRING = 'xsd:string';
-        var INT = 'xsd:integer';
+        let HOST = apptype + 'Host';
+        let COUNTRY = apptype + 'Country';
+        let YEAR = apptype + 'Year';
+        let HA = apptype + 'HA';
+        let NA = apptype + 'NA';
+        let NODE = 'node';
+        let STRING = 'xsd:string';
+        let INT = 'xsd:integer';
 
         forester.preOrderTraversalAll(phy, function (n) {
             if (n.simple_characteristics) {
-                var sc = n.simple_characteristics;
-                var props;
+                let sc = n.simple_characteristics;
+                let props;
                 if (sc.country && sc.country.length > 0) {
                     props = {};
                     props.ref = COUNTRY;
@@ -1858,9 +1857,9 @@
                 if (!n.properties) {
                     n.properties = [];
                 }
-                var alreadyHave = false;
-                var l = n.properties.length;
-                for (var i = 0; i < l; ++i) {
+                let alreadyHave = false;
+                let l = n.properties.length;
+                for (let i = 0; i < l; ++i) {
                     if (n.properties[i].ref === props.ref) {
                         alreadyHave = true;
                         break;
@@ -1884,7 +1883,7 @@
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
     forester.toNewHampshire = function (phy, decPointsMax, replaceChars, writeConfidences) {
-        var nh = "";
+        let nh = "";
         if (phy.children && phy.children.length === 1) {
             toNewHampshireHelper(phy.children[0], true);
         }
@@ -1895,16 +1894,16 @@
 
         function toNewHampshireHelper(node, last) {
             if (node.children) {
-                var l = node.children.length;
+                let l = node.children.length;
                 nh += "(";
-                for (var i = 0; i < l; ++i) {
+                for (let i = 0; i < l; ++i) {
                     toNewHampshireHelper(node.children[i], i === l - 1);
                 }
                 nh += ")";
             } else if (node._children) {
-                var ll = node._children.length;
+                let ll = node._children.length;
                 nh += "(";
-                for (var ii = 0; ii < ll; ++ii) {
+                for (let ii = 0; ii < ll; ++ii) {
                     toNewHampshireHelper(node._children[ii], ii === ll - 1);
                 }
                 nh += ")";
@@ -1913,7 +1912,7 @@
                 if (replaceChars === true) {
                     nh += replaceUnsafeChars(node.name);
                 } else {
-                    var myName = node.name.replace(/\s+/g, ' ');
+                    let myName = node.name.replace(/\s+/g, ' ');
                     if (/[\s,():;'"\[\]]/.test(myName)) {
                         if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1)) {
                             nh += '"' + myName.replace(/"/g, "'") + '"';
