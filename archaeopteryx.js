@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.0a1
-// 2022-02-09
+// v 2.0.0a2
+// 2022-02-18
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.0a1';
+    const VERSION = '2.0.0a2';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -5488,31 +5488,31 @@ if (!phyloXml) {
                     .style('font-weight', 'bold')
                     .style('text-decoration', 'none')
                     .text(function (d) {
-                        let show = false;
-                        let value = null;
-                        if (d.sequences) {
-                            for (let i = 0; i < d.sequences.length; ++i) {
-                                let s = d.sequences[i];
-                                if (s.accession && s.accession.value && s.accession.source) {
-                                    let source = s.accession.source.toUpperCase();
-                                    if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ || source === ACC_UNIPROT
-                                        || source === ACC_UNIPROTKB
-                                        || source === ACC_SWISSPROT
-                                        || source === ACC_TREMBL
-                                        || source === 'UNKNOWN' || source === '?') {
-                                        show = true;
-                                        value = s.accession.value;
-                                        break;
+                            let show = false;
+                            let value = null;
+                            if (d.sequences) {
+                                for (let i = 0; i < d.sequences.length; ++i) {
+                                    let s = d.sequences[i];
+                                    if (s.accession && s.accession.value && s.accession.source) {
+                                        let source = s.accession.source.toUpperCase();
+                                        if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ || source === ACC_UNIPROT
+                                            || source === ACC_UNIPROTKB
+                                            || source === ACC_SWISSPROT
+                                            || source === ACC_TREMBL
+                                            || source === 'UNKNOWN' || source === '?') {
+                                            show = true;
+                                            value = s.accession.value;
+                                            break;
+                                        }
                                     }
                                 }
                             }
-                        }
-                        if (d.name) {
-                            if (RE_SWISSPROT_TREMBL.test(d.name)) {
-                                show = true;
-                                value = d.name;
-                            } else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
-                                show = true;
+                            if (d.name) {
+                                if (RE_SWISSPROT_TREMBL.test(d.name)) {
+                                    show = true;
+                                    value = d.name;
+                                } else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
+                                    show = true;
                                     value = RE_SWISSPROT_TREMBL_PFAM.exec(d.name)[1];
                                 }
                             }
@@ -6076,7 +6076,9 @@ if (!phyloXml) {
     }
 
     function submitSelectedPressed() {
-        console.log('selected :' + _selectedNodes);
+        console.log('submitSelectedPressed called')
+        const event = new Event('submit_selected_nodes_event');
+        document.dispatchEvent(event);
     }
 
     function changeBaseBackgoundColor(color) {
