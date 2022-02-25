@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.0a2
-// 2022-02-18
+// v 2.0.0a3
+// 2022-02-25
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.0a2';
+    const VERSION = '2.0.0a3';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -5119,6 +5119,8 @@ if (!phyloXml) {
                     _selectedNodes.add(node);
                 }
                 update(null, 0, true);
+                const event = new Event('selected_nodes_changed_event');
+                document.dispatchEvent(event);
             }
 
             function selectDeselectNodeExtNodes(node) { //~~~~
@@ -5132,6 +5134,8 @@ if (!phyloXml) {
                     }
                 }
                 update(null, 0, true);
+                const event = new Event('selected_nodes_changed_event');
+                document.dispatchEvent(event);
             }
 
             let rectWidth = 130;
@@ -6488,7 +6492,7 @@ if (!phyloXml) {
             c0.append(makeAutoCollapse());
 
             if (_settings.allowManualNodeSelection) {
-                c0.append(makeSubmitSection());
+                //c0.append(makeSubmitSection()); //~~~
             }
 
             if (_settings.enableDownloads) {
