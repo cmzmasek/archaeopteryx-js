@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2021 Christian M. Zmasek
- *  Copyright (C) 2021 Yun Zhang
- *  Copyright (C) 2021 J. Craig Venter Institute
+ *  Copyright (C) 2022 Christian M. Zmasek
+ *  Copyright (C) 2022 Yun Zhang
+ *  Copyright (C) 2022 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.0a3
-// 2022-02-25
+// v 2.0.0a4
+// 2022-03-15
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.0a3';
+    const VERSION = '2.0.0a4';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -3795,7 +3795,9 @@ if (!phyloXml) {
         if (_settings.allowManualNodeSelection === undefined) {
             _settings.allowManualNodeSelection = false;
         }
-
+        if (_settings.orderTree === undefined) {
+            _settings.orderTree = false;
+        }
 
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
@@ -4167,6 +4169,10 @@ if (!phyloXml) {
 
         _svgGroup = _baseSvg.append('g');
 
+
+        if (_settings.orderTree) {
+            orderSubtree(_root, true);
+        }
         if (_options.searchAinitialValue) {
             search0();
         }
