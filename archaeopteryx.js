@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.0a5
-// 2022-08-19
+// v 2.0.0a6
+// 2022-12-20
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.0a5';
+    const VERSION = '2.0.0a6';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -6288,6 +6288,7 @@ if (!phyloXml) {
     }
 
     function setSelectMenuValue(id, valueToSelect) {
+        console.log("setSelectMenuValue");
         const element = document.getElementById(id);
         if (element != null) {
             element.value = valueToSelect;
@@ -6729,7 +6730,9 @@ if (!phyloXml) {
         }
 
         $('#' + LABEL_COLOR_SELECT_MENU).on('change', function () {
-            const v = this.value;
+            console.log("LABEL_COLOR_SELECT_MENU" + "changed");
+            let v = this.value;
+            console.log("v=" + v);
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
             }
@@ -6754,7 +6757,7 @@ if (!phyloXml) {
         });
 
         $('#' + LABEL_COLOR_SELECT_MENU_2).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization3()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_3, DEFAULT);
@@ -6775,7 +6778,7 @@ if (!phyloXml) {
 
 
         $('#' + LABEL_COLOR_SELECT_MENU_3).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -6795,7 +6798,7 @@ if (!phyloXml) {
         });
 
         $('#' + LABEL_COLOR_SELECT_MENU_4).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -6845,7 +6848,7 @@ if (!phyloXml) {
 
 
         $('#' + NODE_FILL_COLOR_SELECT_MENU_2).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization3()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
@@ -6872,7 +6875,7 @@ if (!phyloXml) {
         });
 
         $('#' + NODE_FILL_COLOR_SELECT_MENU_3).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -6899,7 +6902,7 @@ if (!phyloXml) {
         });
 
         $('#' + NODE_FILL_COLOR_SELECT_MENU_4).on('change', function () {
-            const v = this.value;
+            let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -7884,6 +7887,12 @@ if (!phyloXml) {
 
 
     function initializeVisualizationMenu() {
+
+        _currentLabelColorVisualization = DEFAULT;
+        _currentNodeSizeVisualization = DEFAULT;
+        _currentNodeFillColorVisualization = DEFAULT;
+        _currentNodeSizeVisualization = DEFAULT;
+        _currentNodeBorderColorVisualization = DEFAULT;
 
         $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
             .val(DEFAULT)
