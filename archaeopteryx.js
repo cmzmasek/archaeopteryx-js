@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2022 Christian M. Zmasek
- *  Copyright (C) 2022 Yun Zhang
- *  Copyright (C) 2022 J. Craig Venter Institute
+ *  Copyright (C) 2023 Christian M. Zmasek
+ *  Copyright (C) 2023 Yun Zhang
+ *  Copyright (C) 2023 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.0a8
-// 2023-04-21
+// v 2.0.1
+// 2023-04-22
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.0a6';
+    const VERSION = '2.0.1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -4367,6 +4367,12 @@ if (!phyloXml) {
                     }
                     return t;
                 };
+                let addSepSame = function (t) {
+                    if (t.length > 0) {
+                        t += ' ';
+                    }
+                    return t;
+                };
                 let text_all = '';
 
                 let ext_nodes = forester.getAllExternalNodes(node).reverse();
@@ -4380,28 +4386,34 @@ if (!phyloXml) {
                         text += n.name
                     }
 
-                    let properties_text = '';
                     if (_nodeLabels && n.properties) {
                         const sorted_properties = n.properties.concat().sort();
                         const props_length = sorted_properties.length;
                         if (props_length > 0) {
+                            let properties_text = '';
                             for (const [key, value] of Object.entries(_nodeLabels)) {
                                 if (value.selected === true && value.propertyRef) {
+                                    let prev_propertyRef = null;
                                     for (let pm = 0; pm < props_length; ++pm) {
                                         if (sorted_properties[pm].ref === value.propertyRef
-                                            && sorted_properties[pm].datatype === 'xsd:string'
                                             && sorted_properties[pm].applies_to === 'node') {
-                                            properties_text = addSep(properties_text);
+                                            if (value.propertyRef === prev_propertyRef) {
+                                                properties_text = addSepSame(properties_text);
+                                            } else {
+                                                prev_propertyRef = value.propertyRef;
+                                                properties_text = addSep(properties_text);
+                                            }
                                             properties_text += sorted_properties[pm].value;
                                         }
                                     }
                                 }
                             }
+                            if (properties_text.length > 0) {
+                                text = addSep(text);
+                                text += properties_text;
+                            }
                         }
                     }
-
-                    text = addSep(text);
-                    text += properties_text;
 
                     if (_options.showTaxonomy && n.taxonomies) {
                         let tax_text = '';
@@ -4433,7 +4445,8 @@ if (!phyloXml) {
                                 tax_text += t.rank;
                             }
                         }
-                        text = text + '\t' + tax_text;
+                        text = addSep(text);
+                        text += tax_text;
                     }
                     if (_options.showSequence && n.sequences) {
                         let seq_text = '';
@@ -4465,7 +4478,8 @@ if (!phyloXml) {
                                 seq_text += s.location;
                             }
                         }
-                        text = text + '\t' + seq_text;
+                        text = addSep(text);
+                        text += seq_text;
                     }
                     if (text.length > 0) {
                         text_all += text + '<br>';
@@ -4516,6 +4530,13 @@ if (!phyloXml) {
                     }
                     return t;
                 };
+
+                let addSepSame = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
                 let text_all = '';
 
                 const ext_nodes = forester.getAllExternalNodes(node).reverse();
@@ -4534,20 +4555,27 @@ if (!phyloXml) {
                         text += n.name
                     }
 
-                    let properties_text = '';
-                    if (n.properties) {
+                    if (n.properties && (n.properties.length > 0)) {
                         const sorted_properties = n.properties.concat().sort();
                         const l = sorted_properties.length;
+                        let properties_text = '';
+                        let prev_property_ref = null;
                         for (let pl = 0; pl < l; ++pl) {
                             if (sorted_properties[pl].applies_to === 'node') {
-                                properties_text = addSep(properties_text);
+                                if (sorted_properties[pl].ref === prev_property_ref) {
+                                    properties_text = addSepSame(properties_text);
+                                } else {
+                                    prev_property_ref = sorted_properties[pl].ref;
+                                    properties_text = addSep(properties_text);
+                                }
                                 properties_text += sorted_properties[pl].value;
                             }
                         }
+                        if (properties_text.length > 0) {
+                            text = addSep(text);
+                            text += properties_text;
+                        }
                     }
-
-                    text = addSep(text);
-                    text += properties_text;
 
                     if (n.taxonomies) {
                         let tax_text = '';
@@ -4579,7 +4607,8 @@ if (!phyloXml) {
                                 tax_text += t.rank;
                             }
                         }
-                        text = text + '\t' + tax_text;
+                        text = addSep(text);
+                        text += tax_text;
                     }
                     if (n.sequences) {
                         let seq_text = '';
@@ -4611,7 +4640,8 @@ if (!phyloXml) {
                                 seq_text += s.location;
                             }
                         }
-                        text = text + '\t' + seq_text;
+                        text = addSep(text);
+                        text += seq_text;
                     }
                     if (text.length > 0) {
                         text_all += text + '\n';
@@ -4631,6 +4661,13 @@ if (!phyloXml) {
                     }
                     return t;
                 };
+                let addSepSame = function (t) {
+                    if (t.length > 0) {
+                        t += ', ';
+                    }
+                    return t;
+                };
+
                 let text_all = '';
 
                 const ext_nodes = forester.getAllExternalNodes(node).reverse();
@@ -4647,27 +4684,35 @@ if (!phyloXml) {
                     if (_options.showNodeName && n.name) {
                         text += n.name
                     }
-                    let properties_text = '';
-                    if (_nodeLabels && n.properties) {
+
+                    if (_nodeLabels && n.properties && (n.properties.length > 0)) {
+                        let properties_text = '';
                         const sorted_properties = n.properties.concat().sort();
                         const props_length = sorted_properties.length;
                         if (props_length > 0) {
                             for (const [key, value] of Object.entries(_nodeLabels)) {
                                 if (value.selected === true && value.propertyRef) {
+                                    let prev_property_ref = null;
                                     for (let pm = 0; pm < props_length; ++pm) {
                                         if (sorted_properties[pm].ref === value.propertyRef
                                             && sorted_properties[pm].applies_to === 'node') {
-                                            properties_text = addSep(properties_text);
+                                            if (sorted_properties[pm].ref === prev_property_ref) {
+                                                properties_text = addSepSame(properties_text);
+                                            } else {
+                                                prev_property_ref = sorted_properties[pm].ref;
+                                                properties_text = addSep(properties_text);
+                                            }
                                             properties_text += sorted_properties[pm].value;
                                         }
                                     }
                                 }
                             }
                         }
+                        if (properties_text.length > 0) {
+                            text = addSep(text);
+                            text += properties_text;
+                        }
                     }
-
-                    text = addSep(text);
-                    text += properties_text;
 
                     if (_options.showTaxonomy && n.taxonomies) {
                         let tax_text = '';
@@ -4699,7 +4744,8 @@ if (!phyloXml) {
                                 tax_text += t.rank;
                             }
                         }
-                        text = text + '\t' + tax_text;
+                        text = addSep(text);
+                        text += tax_text;
                     }
                     if (_options.showSequence && n.sequences) {
                         let seq_text = '';
@@ -4731,7 +4777,8 @@ if (!phyloXml) {
                                 seq_text += s.location;
                             }
                         }
-                        text = text + '\t' + seq_text;
+                        text = addSep(text);
+                        text += seq_text;
                     }
                     if (text.length > 0) {
                         text_all += text + '\n';

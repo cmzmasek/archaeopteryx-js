@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2021 Christian M. Zmasek
- *  Copyright (C) 2021 Yun Zhang
- *  Copyright (C) 2021 J. Craig Venter Institute
+ *  Copyright (C) 2023 Christian M. Zmasek
+ *  Copyright (C) 2023 Yun Zhang
+ *  Copyright (C) 2023 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
  *
  */
 
-// v 2.0.0a5
-// 2022-08-19
+// v 2.0.1
+// 2023-04-22
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
