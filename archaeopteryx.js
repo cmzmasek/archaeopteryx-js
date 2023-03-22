@@ -4379,6 +4379,30 @@ if (!phyloXml) {
                     if (_options.showNodeName && n.name) {
                         text += n.name
                     }
+
+                    let properties_text = '';
+                    if (_nodeLabels && n.properties) {
+                        const sorted_properties = n.properties.concat().sort();
+                        const props_length = sorted_properties.length;
+                        if (props_length > 0) {
+                            for (const [key, value] of Object.entries(_nodeLabels)) {
+                                if (value.selected === true && value.propertyRef) {
+                                    for (let pm = 0; pm < props_length; ++pm) {
+                                        if (sorted_properties[pm].ref === value.propertyRef
+                                            && sorted_properties[pm].datatype === 'xsd:string'
+                                            && sorted_properties[pm].applies_to === 'node') {
+                                            properties_text = addSep(properties_text);
+                                            properties_text += sorted_properties[pm].value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    text = addSep(text);
+                    text += properties_text;
+
                     if (_options.showTaxonomy && n.taxonomies) {
                         let tax_text = '';
                         for (let i = 0; i < n.taxonomies.length; ++i) {
@@ -4515,8 +4539,7 @@ if (!phyloXml) {
                         const sorted_properties = n.properties.concat().sort();
                         const l = sorted_properties.length;
                         for (let pl = 0; pl < l; ++pl) {
-                            if (sorted_properties[pl].datatype === 'xsd:string'
-                                && sorted_properties[pl].applies_to === 'node') {
+                            if (sorted_properties[pl].applies_to === 'node') {
                                 properties_text = addSep(properties_text);
                                 properties_text += sorted_properties[pl].value;
                             }
@@ -4624,23 +4647,16 @@ if (!phyloXml) {
                     if (_options.showNodeName && n.name) {
                         text += n.name
                     }
-                    /////////////////////
                     let properties_text = '';
-
                     if (_nodeLabels && n.properties) {
                         const sorted_properties = n.properties.concat().sort();
                         const props_length = sorted_properties.length;
                         if (props_length > 0) {
                             for (const [key, value] of Object.entries(_nodeLabels)) {
                                 if (value.selected === true && value.propertyRef) {
-                                    let prop_text = '';
                                     for (let pm = 0; pm < props_length; ++pm) {
                                         if (sorted_properties[pm].ref === value.propertyRef
-                                            && sorted_properties[pm].datatype === 'xsd:string'
                                             && sorted_properties[pm].applies_to === 'node') {
-                                            if (prop_text.length > 0) {
-                                                prop_text += ', '
-                                            }
                                             properties_text = addSep(properties_text);
                                             properties_text += sorted_properties[pm].value;
                                         }
