@@ -39,6 +39,8 @@ https://github.com/cmzmasek/archaeopteryx-js
 ### Detailed developer documentation
 https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/edit
 
+### Version History
+https://github.com/cmzmasek/archaeopteryx-js/wiki/Archaeopteryx.js-Version-History
 
 ### Dependencies
 Archaeopteryx.js has the following dependencies:
