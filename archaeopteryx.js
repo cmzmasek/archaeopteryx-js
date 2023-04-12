@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.1
-// 2023-04-22
+// v 2.0.2a1
+// 2023-04-12
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.1';
+    const VERSION = '2.0.1a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -92,6 +92,8 @@ if (!phyloXml) {
     const PNG_SUFFIX = '.png';
     const SVG_SUFFIX = '.svg';
     const XML_SUFFIX = '.xml';
+    const FASTA_SUFFIX = '.fasta';
+
 
     // ---------------------------
     // Default values for options
@@ -115,6 +117,7 @@ if (!phyloXml) {
     const NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
     const NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
     const NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + SVG_SUFFIX;
+    const NAME_FOR_FASTA_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + FASTA_SUFFIX;
     const NODE_LABEL_GAP_DEFAULT = 10;
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
@@ -169,6 +172,7 @@ if (!phyloXml) {
     const DEFAULT = 'default';
     const DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
     const DUPLICATION_COLOR = '#ff0000';
+    const FASTA_EXPORT_FORMAT = 'Fasta';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
     const KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
@@ -3530,6 +3534,11 @@ if (!phyloXml) {
                 _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
             }
         }
+        if (_options.treeName) {
+            _options.nameForFastaDownload = _options.treeName + FASTA_SUFFIX;
+        } else {
+            _options.nameForFastaDownload = NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
+        }
         if (!_options.visualizationsLegendXpos) {
             _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
         }
@@ -4790,6 +4799,18 @@ if (!phyloXml) {
                 update();
             }
 
+            function downloadExternalNodeMolecularSequenceAsFasta(node) {
+                const text_all = forester.getMolecularSequencesAsFasta(node, '\n');
+                const ext_nodes = forester.getAllExternalNodes(node);
+                let filename;
+                if (ext_nodes.length === 1 && ext_nodes[0].name) {
+                    filename = 'Sequence_for_Node_' + ext_nodes[0].name.replace(/\W/g, '_') + FASTA_SUFFIX;
+                } else {
+                    filename = 'Sequences_for_' + ext_nodes.length + '_Nodes' + FASTA_SUFFIX;
+                }
+                saveAs(new Blob([text_all], {type: "application/txt"}), filename);
+                update();
+            }
 
             function accessDatabase(node) {
                 let url = null;
@@ -4804,8 +4825,8 @@ if (!phyloXml) {
                                 if (RE_GENBANK_PROT.test(value)) {
                                     url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
                                 } else if (RE_GENBANK_NUC.test(value)) {
-                                    //url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value; //TODO
-                                    url = 'https://www.viprbrc.org/brc/viprStrainDetails.spg?ncbiAccession=' + value;
+                                    url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                                    //url = 'https://www.viprbrc.org/brc/viprStrainDetails.spg?ncbiAccession=' + value; //TODO
                                 }
                             } else if (source === ACC_REFSEQ) {
                                 url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
@@ -4849,39 +4870,14 @@ if (!phyloXml) {
 
             }
 
+
             function listMolecularSequences(node) {
 
-                let text_all = '';
+                let text_all = forester.getMolecularSequencesAsFasta(node, '<br>');
 
-                let ext_nodes = forester.getAllExternalNodes(node).reverse();
+                let ext_nodes = forester.getAllExternalNodes(node);
                 let title = 'Sequences in Fasta-format for ' + ext_nodes.length + ' Nodes';
 
-                for (let j = 0, l = ext_nodes.length; j < l; ++j) {
-                    let n = ext_nodes[j];
-                    if (n.sequences) {
-                        for (let i = 0; i < n.sequences.length; ++i) {
-                            let s = n.sequences[i];
-                            if (s.mol_seq && s.mol_seq.value && s.mol_seq.value.length > 0) {
-                                let seq = s.mol_seq.value;
-                                let seqname = j;
-                                if (s.name && s.name.length > 0) {
-                                    seqname = s.name
-                                } else if (n.name && n.name.length > 0) {
-                                    seqname = n.name
-                                }
-
-                                let split_seq_ary = seq.match(/.{1,80}/g);
-                                let split_seq = '';
-                                for (let ii = 0; ii < split_seq_ary.length; ++ii) {
-                                    split_seq += split_seq_ary[ii] + '<br>';
-                                }
-
-                                let fasta = '>' + seqname + '<br>' + split_seq;
-                                text_all += fasta;
-                            }
-                        }
-                    }
-                }
 
                 $('#' + NODE_DATA).dialog("destroy");
 
@@ -5342,6 +5338,27 @@ if (!phyloXml) {
                 })
                 .on('click', function (d) {
                     listMolecularSequences(d);
+                });
+
+            d3.select(this).append('text')
+                .attr('class', 'tooltipElem tooltipElemText')
+                .attr('y', topPad + textSum)
+                .attr('x', +rightPad)
+                .style('text-align', 'left')
+                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
+                .style('font-size', fs)
+                .style('font-family', 'Helvetica')
+                .style('font-style', 'normal')
+                .style('font-weight', 'bold')
+                .style('text-decoration', 'none')
+                .text(function (d) {
+                    if (d.parent && _basicTreeProperties.sequences && (_basicTreeProperties.maxMolSeqLength && (_basicTreeProperties.maxMolSeqLength > 0))) {
+                        textSum += textInc;
+                        return 'Download Sequences in Fasta';
+                    }
+                })
+                .on('click', function (d) {
+                    downloadExternalNodeMolecularSequenceAsFasta(d);
                 });
 
             if (_settings.enableAccessToDatabases === true) {
@@ -7405,6 +7422,7 @@ if (!phyloXml) {
             h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
+            h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
             // h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
@@ -8438,6 +8456,8 @@ if (!phyloXml) {
             changeBaseBackgoundColor(_options.backgroundColorForPrintExportDefault);
             downloadAsPdf();
             changeBaseBackgoundColor(_options.backgroundColorDefault);
+        } else if (format === FASTA_EXPORT_FORMAT) {
+            downloadAsFastaAll();
         }
     }
 
@@ -8454,6 +8474,12 @@ if (!phyloXml) {
     function downloadAsSVG() {
         let svg = getTreeAsSvg();
         saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
+    }
+
+    function downloadAsFastaAll() {
+        let fasta_text = forester.getMolecularSequencesAsFasta(_root, '\n');
+        console.log(fasta_text);
+        saveAs(new Blob([fasta_text], {type: "application/txt"}), _options.nameForFastaDownload);
     }
 
     function downloadAsPdf() {

@@ -20,8 +20,8 @@
  *
  */
 
-// v 2.0.1
-// 2023-04-22
+// v 2.0.2a1
+// 2023-04-12
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -1949,6 +1949,37 @@
             return str.replace(/[\s,():;'"\[\]]+/g, '_');
         }
     };
+
+    forester.getMolecularSequencesAsFasta = function (node, sep) {
+        let fasta_all = '';
+        let ext_nodes = forester.getAllExternalNodes(node).reverse();
+        for (let j = 0, l = ext_nodes.length; j < l; ++j) {
+            let n = ext_nodes[j];
+            if (n.sequences) {
+                for (let i = 0; i < n.sequences.length; ++i) {
+                    let s = n.sequences[i];
+                    if (s.mol_seq && s.mol_seq.value && s.mol_seq.value.length > 0) {
+                        let seq = s.mol_seq.value;
+                        let seqname = j;
+                        if (s.name && s.name.length > 0) {
+                            seqname = s.name
+                        } else if (n.name && n.name.length > 0) {
+                            seqname = n.name
+                        }
+                        let split_seq_ary = seq.match(/.{1,80}/g);
+                        let split_seq = '';
+                        for (let ii = 0; ii < split_seq_ary.length; ++ii) {
+                            split_seq += split_seq_ary[ii] + sep;
+                        }
+
+                        let fasta = '>' + seqname + sep + split_seq;
+                        fasta_all += fasta;
+                    }
+                }
+            }
+        }
+        return fasta_all;
+    }
 
     forester.roundNumber = function (num, dec) {
         return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
