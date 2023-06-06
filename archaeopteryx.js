@@ -3719,7 +3719,7 @@ if (!phyloXml) {
             _settings.enableSpecialVisualizations4 = false;
         }
         if (_settings.showSearchPropertiesButton === undefined) {
-            _settings.showSearchPropertiesButton = false;
+            _settings.showSearchPropertiesButton = true;
         }
         if (_settings.allowManualNodeSelection === undefined) {
             _settings.allowManualNodeSelection = false;
