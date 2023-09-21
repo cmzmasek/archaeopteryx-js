@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.2a1
-// 2023-04-12
+// v 2.0.3a1
+// 2023-09-21
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.2a1';
+    const VERSION = '2.0.3a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -693,44 +693,158 @@ if (!phyloXml) {
     function mouseover() {
         _node_mouseover_div.transition()
             .duration(300)
-            .style('opacity', 1);
+            .style('opacity', 0.95)
+            .style('text-align', 'left')
+            .style('position', 'absolute')
+            .style('font', '12px sans-serif')
+            .style('pointer-events', 'none')
+            .style('background', '#dddddd')
+            .style('border', 'solid 1px #aaa')
+            .style('border-radius', '4px')
     }
 
     function mousemove(d) {
-        let txt = '';
+
+        let mo_text = '';
         if (d.name) {
-            txt = d.name;
+            mo_text += 'Name: ' + d.name + '<br>';
         }
-        if (d.properties) {
-            const l = d.properties.length;
-            //let mut = '';
-            let first = true;
-            for (let p = 0; p < l; ++p) {
-                //TODO do something like this for all properties:
-                //
-                // if (d.properties[p].ref === 'vipr:Mutation'
-                //     && d.properties[p].datatype === 'xsd:string'
-                //     && d.properties[p].applies_to === 'node') {
-                //     if (first) {
-                //         mut = d.properties[p].value;
-                //         first = false;
-                //     } else {
-                //         mut = mut + ' ' + d.properties[p].value
-                //     }
-                // }
+        if (d.branch_length) {
+            mo_text += 'Distance to Parent: ' + d.branch_length + '<br>';
+        }
+        mo_text += 'Depth: ' + forester.calcDepth(d) + '<br>';
+        let i = 0;
+        if (d.confidences) {
+            for (i = 0; i < d.confidences.length; ++i) {
+                let c = d.confidences[i];
+                if (c.type) {
+                    mo_text += 'Confidence [' + c.type + ']: ' + c.value + '<br>';
+                } else {
+                    mo_text += 'Confidence: ' + c.value + '<br>';
+                }
+                if (c.stddev) {
+                    mo_text += '- stdev: ' + c.stddev + '<br>';
+                }
             }
-            // if (mut.length > 0) {
-            //     txt = txt + ' {' + mut + '}'
-            // }
+        }
+        if (d.taxonomies) {
+            for (i = 0; i < d.taxonomies.length; ++i) {
+                mo_text += 'Taxonomy<br>';
+                let t = d.taxonomies[i];
+                if (t.id) {
+                    if (t.id.provider) {
+                        mo_text += '- Id [' + t.id.provider + ']: ' + t.id.value + '<br>';
+                    } else {
+                        mo_text += '- Id: ' + t.id.value + '<br>';
+                    }
+                }
+                if (t.code) {
+                    mo_text += '- Code: ' + t.code + '<br>';
+                }
+                if (t.scientific_name) {
+                    mo_text += '- Scientific name: ' + t.scientific_name + '<br>';
+                }
+                if (t.common_name) {
+                    mo_text += '- Common name: ' + t.common_name + '<br>';
+                }
+                if (t.rank) {
+                    mo_text += '- Rank: ' + t.rank + '<br>';
+                }
+            }
+        }
+        if (d.sequences) {
+            for (i = 0; i < d.sequences.length; ++i) {
+                mo_text += 'Sequence<br>';
+                let s = d.sequences[i];
+                if (s.accession) {
+                    if (s.accession.source) {
+                        mo_text += '- Accession [' + s.accession.source + ']: ' + s.accession.value + '<br>';
+                    } else {
+                        mo_text += '- Accession: ' + s.accession.value + '<br>';
+                    }
+                    if (s.accession.comment) {
+                        mo_text += '-- comment: ' + s.accession.comment + '<br>';
+                    }
+                }
+                if (s.symbol) {
+                    mo_text += '- Symbol: ' + s.symbol + '<br>';
+                }
+                if (s.name) {
+                    mo_text += '- Name: ' + s.name + '<br>';
+                }
+                if (s.gene_name) {
+                    mo_text += '- Gene name: ' + s.gene_name + '<br>';
+                }
+                if (s.location) {
+                    mo_text += '- Location: ' + s.location + '<br>';
+                }
+                if (s.type) {
+                    mo_text += '- Type: ' + s.type + '<br>';
+                }
+            }
+        }
+        if (d.distributions) {
+            let distributions = d.distributions;
+            for (i = 0; i < distributions.length; ++i) {
+                mo_text += 'Distribution: ';
+                if (distributions[i].desc) {
+                    mo_text += distributions[i].desc + '<br>';
+                }
+            }
+        }
+        if (d.date) {
+            mo_text += 'Date: ';
+            let date = d.date;
+            if (date.desc) {
+                mo_text += date.desc + '<br>';
+            }
+        }
+        if (d.events) {
+            mo_text += 'Events<br>';
+            let ev = d.events;
+            if (ev.type && ev.type.length > 0) {
+                mo_text += '- Type: ' + ev.type + '<br>';
+            }
+            if (ev.duplications && ev.duplications > 0) {
+                mo_text += '- Duplications: ' + ev.duplications + '<br>';
+            }
+            if (ev.speciations && ev.speciations > 0) {
+                mo_text += '- Speciations: ' + ev.speciations + '<br>';
+            }
+            if (ev.losses && ev.losses > 0) {
+                mo_text += '- Losses: ' + ev.losses + '<br>';
+            }
+        }
+        if (d.properties && d.properties.length > 0) {
+            let propertiesLength = d.properties.length;
+            for (i = 0; i < propertiesLength; ++i) {
+                let property = d.properties[i];
+                if (property.ref && property.value) {
+                    let prop_ref = property.ref
+                    if (prop_ref.indexOf(':') > 0) {
+                        prop_ref = prop_ref.substring(prop_ref.indexOf(':') + 1)
+                    }
+                    if (property.unit) {
+                        mo_text += prop_ref + ': ' + property.value + property.unit + '<br>';
+                    } else {
+                        mo_text += prop_ref + ': ' + property.value + '<br>';
+                    }
+                }
+            }
+        }
+        if (d.children || d._children) {
+            mo_text += 'Number of External Nodes: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
         }
 
         _node_mouseover_div
-            .text(txt)
+            .html(mo_text)
             .style('left', (d3.event.pageX) + 'px')
             .style('top', (d3.event.pageY) + 'px');
     }
 
     function mouseout() {
+        _node_mouseover_div
+            .html('')
         _node_mouseover_div.transition()
             .duration(300)
             .style('opacity', 1e-6);
