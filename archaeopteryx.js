@@ -4074,15 +4074,6 @@ if (!phyloXml) {
         initializeOptions(options);
         initializeSettings(settings);
 
-        if (settings.specialProcessing && settings.specialProcessing.includes('ird_split_avian_host')) {
-            let avianFound = forester.splitProperty(_treeData, 'Avian', 'ird:Host', 'ird:HostGroup');
-            if (!avianFound) {
-                delete _nodeVisualizations.HostGroup;
-                console.log(MESSAGE + 'Deactivated Host Group visualization for Avian issue in IRD')
-            } else {
-                console.log(MESSAGE + 'Activated Host Group visualization for Avian issue in IRD')
-            }
-        }
 
         if (settings.enableNodeVisualizations) {
             if (settings.enableMsaResidueVisualizations && (_basicTreeProperties.alignedMolSeqs === true)
@@ -4928,7 +4919,6 @@ if (!phyloXml) {
                                     url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
                                 } else if (RE_GENBANK_NUC.test(value)) {
                                     url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
-                                    //url = 'https://www.viprbrc.org/brc/viprStrainDetails.spg?ncbiAccession=' + value; //TODO
                                 }
                             } else if (source === ACC_REFSEQ) {
                                 url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
@@ -6038,7 +6028,6 @@ if (!phyloXml) {
     }
 
     function submitSelectedPressed() {
-        console.log('submitSelectedPressed called')
         const event = new Event('submit_selected_nodes_event');
         document.dispatchEvent(event);
     }
@@ -6240,7 +6229,6 @@ if (!phyloXml) {
     }
 
     function setSelectMenuValue(id, valueToSelect) {
-        console.log("setSelectMenuValue");
         const element = document.getElementById(id);
         if (element != null) {
             element.value = valueToSelect;
@@ -6676,9 +6664,7 @@ if (!phyloXml) {
         }
 
         $('#' + LABEL_COLOR_SELECT_MENU).on('change', function () {
-            console.log("LABEL_COLOR_SELECT_MENU" + "changed");
             let v = this.value;
-            console.log("v=" + v);
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
             }
@@ -8580,7 +8566,6 @@ if (!phyloXml) {
 
     function downloadAsFastaAll() {
         let fasta_text = forester.getMolecularSequencesAsFasta(_root, '\n');
-        console.log(fasta_text);
         saveAs(new Blob([fasta_text], {type: "application/txt"}), _options.nameForFastaDownload);
     }
 
