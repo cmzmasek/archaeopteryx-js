@@ -1120,9 +1120,9 @@ if (!phyloXml) {
         if (!_visualizations.nodeSize) {
             _visualizations.nodeSize = {};
         }
-        //  if (_visualizations.nodeSize[label]) { // removed because causes error on BVBRC
-        //      throw('node size visualization for "' + label + '" already exists');
-        //  }
+        if (_visualizations.nodeSize[label]) {
+            console.log(MESSAGE + 'node size visualization for "' + label + '" already exists');
+        }
         let vis = createVisualization(label,
             description,
             field,
@@ -1154,9 +1154,9 @@ if (!phyloXml) {
         if (!_visualizations.nodeFillColor) {
             _visualizations.nodeFillColor = {};
         }
-        //   if (_visualizations.nodeFillColor[label]) { // removed because causes error on BVBRC
-        //      throw('node fill color visualization for "' + label + '" already exists');
-        //   }
+        if (_visualizations.nodeFillColor[label]) {
+            console.log(MESSAGE + 'node fill color visualization for "' + label + '" already exists');
+        }
         let vis = createVisualization(label,
             description,
             field,
@@ -1190,9 +1190,9 @@ if (!phyloXml) {
         if (!_visualizations.nodeBorderColor) {
             _visualizations.nodeBorderColor = {};
         }
-        //if (_visualizations.nodeBorderColor[label]) { // removed because causes error on BVBRC
-        //     throw('node border color visualization for "' + label + '" already exists');
-        // }
+        if (_visualizations.nodeBorderColor[label]) {
+            console.log(MESSAGE + 'node border color visualization for "' + label + '" already exists');
+        }
         let vis = createVisualization(label,
             description,
             field,
@@ -1224,9 +1224,9 @@ if (!phyloXml) {
         if (!_visualizations.nodeShape) {
             _visualizations.nodeShape = {};
         }
-        // if (_visualizations.nodeShape[label]) { // removed because causes error on BVBRC
-        //     throw('node shape visualization for "' + label + '" already exists');
-        //  }
+        if (_visualizations.nodeShape[label]) {
+            console.log(MESSAGE + 'node shape visualization for "' + label + '" already exists');
+        }
         let vis = createVisualization(label,
             description,
             field,
@@ -1258,9 +1258,9 @@ if (!phyloXml) {
         if (!_visualizations.labelColor) {
             _visualizations.labelColor = {};
         }
-        // if (_visualizations.labelColor[label]) { // removed because causes error on BVBRC
-        //     throw('label color visualization for "' + label + '" already exists');
-        // }
+        if (_visualizations.labelColor[label]) {
+            console.log(MESSAGE + 'label color visualization for "' + label + '" already exists');
+        }
         let vis = createVisualization(label,
             description,
             field,
@@ -2138,11 +2138,7 @@ if (!phyloXml) {
             _dynahide_counter = 0;
             _dynahide_factor = Math.round(_options.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
             forester.preOrderTraversal(_root, function (n) {
-                if (!n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0)) {
-                    n.hide = true;
-                } else {
-                    n.hide = false;
-                }
+                n.hide = !n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0);
             });
         }
 
@@ -3238,7 +3234,7 @@ if (!phyloXml) {
         }
 
 
-        if (_nodeLabels && phynode.properties && phynode.properties != null) {
+        if (_nodeLabels && phynode.properties) {
             const props_length = phynode.properties.length;
             if (props_length > 0) {
                 for (const [key, value] of Object.entries(_nodeLabels)) {
@@ -3775,18 +3771,10 @@ if (!phyloXml) {
             _settings.showSequenceButton = true;
         }
         if (_settings.showDynahideButton === undefined) {
-            if (_basicTreeProperties.externalNodesCount > 20) {
-                _settings.showDynahideButton = true;
-            } else {
-                _settings.showDynahideButton = false;
-            }
+            _settings.showDynahideButton = _basicTreeProperties.externalNodesCount > 20;
         }
         if (_settings.showShortenNodeNamesButton === undefined) {
-            if (_basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH) {
-                _settings.showShortenNodeNamesButton = true;
-            } else {
-                _settings.showShortenNodeNamesButton = false;
-            }
+            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
         }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
@@ -6406,38 +6394,38 @@ if (!phyloXml) {
             if (pnl) {
                 pnl.css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': _settings.controlsFontSize + 3,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'none',
+                    'text-decoration': 'underline',
                     'border': 'none'
                 });
                 $('.' + PROGNAMELINK + ':hover').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': _settings.controlsFontSize + 3,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'none',
+                    'text-decoration': 'underline',
                     'border': 'none'
                 });
                 $('.' + PROGNAMELINK + ':link').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': _settings.controlsFontSize + 3,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'none',
+                    'text-decoration': 'underline',
                     'border': 'none'
                 });
                 $('.' + PROGNAMELINK + ':visited').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': _settings.controlsFontSize + 3,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'none',
+                    'text-decoration': 'underline',
                     'border': 'none'
                 });
             }
