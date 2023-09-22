@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.3a1
-// 2023-09-21
+// v 2.0.3a2
+// 2023-09-22
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.3a1';
+    const VERSION = '2.0.3a2';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -833,7 +833,7 @@ if (!phyloXml) {
             }
         }
         if (d.children || d._children) {
-            mo_text += 'Number of External Nodes: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
+            mo_text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
         }
 
         _node_mouseover_div
@@ -4422,7 +4422,7 @@ if (!phyloXml) {
                     }
                 }
                 if (n.children || n._children) {
-                    text += 'Number of External Nodes: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
+                    text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
                 $('#' + NODE_DATA).dialog("destroy");
@@ -6382,7 +6382,7 @@ if (!phyloXml) {
             if (pnl) {
                 pnl.css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 3,
+                    'font-size': _settings.controlsFontSize + 2,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
@@ -6391,7 +6391,7 @@ if (!phyloXml) {
                 });
                 $('.' + PROGNAMELINK + ':hover').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 3,
+                    'font-size': _settings.controlsFontSize + 2,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
@@ -6400,7 +6400,7 @@ if (!phyloXml) {
                 });
                 $('.' + PROGNAMELINK + ':link').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 3,
+                    'font-size': _settings.controlsFontSize + 2,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
@@ -6409,7 +6409,7 @@ if (!phyloXml) {
                 });
                 $('.' + PROGNAMELINK + ':visited').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 3,
+                    'font-size': _settings.controlsFontSize + 2,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
