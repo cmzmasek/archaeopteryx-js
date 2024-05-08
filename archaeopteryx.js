@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.3a2
-// 2023-09-22
+// v 2.0.4a1
+// 2024-05-07
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.3a2';
+    const VERSION = '2.0.4a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -217,98 +217,98 @@ if (!phyloXml) {
     // ---------------------------
     // Names for GUI elements
     // ---------------------------
-    const BASE_BACKGROUND = 'basebackground';
-    const BL_COLLAPSE_LABEL = 'bl_col_label';
-    const BRANCH_COLORS_CB = 'brnch_col_cb';
-    const BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
-    const BRANCH_EVENTS_CB = 'brevts_cb';
-    const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
-    const BRANCH_VIS_CB = 'branchvis_cb';
-    const BRANCH_WIDTH_SLIDER = 'bw_sl';
-    const CLADOGRAM_BUTTON = 'cla_b';
-    const COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
-    const COLOR_PICKER = 'col_pick';
-    const COLOR_PICKER_LABEL = 'colorPickerLabel';
-    const CONFIDENCE_VALUES_CB = 'conf_cb';
-    const CONTROLS_0 = 'controls0';
-    const CONTROLS_1 = 'controls1';
-    const DECR_BL_COLLAPSE_LEVEL = 'decr_blcl';
-    const DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
-    const DEPTH_COLLAPSE_LABEL = 'depth_col_label';
-    const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
-    const DOWNLOAD_BUTTON = 'dl_b';
-    const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
-    const DYNAHIDE_CB = 'dynahide_cb';
-    const EXPORT_FORMAT_SELECT = 'exp_f_sel';
-    const EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
-    const EXTERNAL_LABEL_CB = 'extl_cb';
-    const EXTERNAL_NODES_CB = 'extn_cb';
-    const INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
-    const INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
-    const INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
-    const INTERNAL_LABEL_CB = 'intl_cb';
-    const INTERNAL_NODES_CB = 'intn_cb';
-    const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
-    const LEGEND = 'legend';
-    const LEGEND_DESCRIPTION = 'legendDescription';
-    const LEGEND_LABEL = 'legendLabel';
-    const LEGENDS_HORIZ_VERT_BTN = 'legends_horizvert';
-    const LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
-    const LEGENDS_MOVE_LEFT_BTN = 'legends_mleft';
-    const LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
-    const LEGENDS_MOVE_UP_BTN = 'legends_mup';
-    const LEGENDS_RESET_BTN = 'legends_rest';
-    const LEGENDS_SHOW_BTN = 'legends_show';
-    const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
-    const MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = 'seq_pos_label_curr_pos';
-    const MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
-    const MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = 'seq_pos_decr_pos';
-    const MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = 'seq_pos_incr_pos';
-    const NODE_BORDER_COLOR_SELECT_MENU = 'nbcolors_menu';
-    const NODE_DATA = 'node_data_dialog';
-    const NODE_EVENTS_CB = 'nevts_cb';
-    const NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
-    const NODE_NAME_CB = 'nn_cb';
-    const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
-    const NODE_SIZE_SELECT_MENU = 'nsizes_menu';
-    const NODE_SIZE_SLIDER = 'ns_sl';
-    const NODE_VIS_CB = 'nodevis_cb';
-    const ORDER_BUTTON = 'ord_b';
-    const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
-    const PHYLOGRAM_BUTTON = 'phy_b';
-    const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
-    const PROG_NAME = 'progname';
-    const PROGNAMELINK = 'prognamelink';
-    const RESET_SEARCH_A_BTN = 'reset_s_a';
-    const RESET_SEARCH_B_BTN = 'reset_s_b';
-    const RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
-    const RETURN_TO_SUPERTREE_BUTTON_BY_ONE = 'ret1_b';
-    const SEARCH_FIELD_0 = 'sf0';
-    const SEARCH_FIELD_1 = 'sf1';
-    const SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
-    const SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
-    const SEARCH_OPTIONS_PROPERTIES_CB = 'so_prp_cb';
-    const SEARCH_OPTIONS_GROUP = 'search_opts_g';
-    const SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
-    const SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
-    const SEQUENCE_CB = 'seq_cb';
-    const SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
-    const TAXONOMY_CB = 'tax_cb';
-    const UNCOLLAPSE_ALL_BUTTON = 'unc_b';
-    const ZOOM_IN_X = 'zoomin_x';
-    const ZOOM_IN_Y = 'zoomout_y';
-    const ZOOM_OUT_X = 'zoomout_x';
-    const ZOOM_OUT_Y = 'zoomin_y';
-    const ZOOM_TO_FIT = 'zoomtofit';
+    let BASE_BACKGROUND = '';
+    let BL_COLLAPSE_LABEL = '';
+    let BRANCH_COLORS_CB = '';
+    let BRANCH_DATA_FONT_SIZE_SLIDER = '';
+    let BRANCH_EVENTS_CB = '';
+    let BRANCH_LENGTH_VALUES_CB = '';
+    let BRANCH_VIS_CB = '';
+    let BRANCH_WIDTH_SLIDER = '';
+    let CLADOGRAM_BUTTON = '';
+    let COLLAPSE_BY_FEATURE_SELECT = '';
+    let COLOR_PICKER = '';
+    let COLOR_PICKER_LABEL = '';
+    let CONFIDENCE_VALUES_CB = '';
+    let CONTROLS_0 = '';
+    let CONTROLS_1 = '';
+    let DECR_BL_COLLAPSE_LEVEL = '';
+    let DECR_DEPTH_COLLAPSE_LEVEL = '';
+    let DEPTH_COLLAPSE_LABEL = '';
+    let DISPLAY_DATA_CONTROLGROUP = '';
+    let DOWNLOAD_BUTTON = '';
+    let SUBMIT_SELECTED_NODES_BUTTON = '';
+    let DYNAHIDE_CB = '';
+    let EXPORT_FORMAT_SELECT = '';
+    let EXTERNAL_FONT_SIZE_SLIDER = '';
+    let EXTERNAL_LABEL_CB = '';
+    let EXTERNAL_NODES_CB = '';
+    let INCR_BL_COLLAPSE_LEVEL = '';
+    let INCR_DEPTH_COLLAPSE_LEVEL = '';
+    let INTERNAL_FONT_SIZE_SLIDER = '';
+    let INTERNAL_LABEL_CB = '';
+    let INTERNAL_NODES_CB = '';
+    let LABEL_COLOR_SELECT_MENU = '';
+    let LEGEND = '';
+    let LEGEND_DESCRIPTION = '';
+    let LEGEND_LABEL = '';
+    let LEGENDS_HORIZ_VERT_BTN = '';
+    let LEGENDS_MOVE_DOWN_BTN = '';
+    let LEGENDS_MOVE_LEFT_BTN = '';
+    let LEGENDS_MOVE_RIGHT_BTN = '';
+    let LEGENDS_MOVE_UP_BTN = '';
+    let LEGENDS_RESET_BTN = '';
+    let LEGENDS_SHOW_BTN = '';
+    let MIDPOINT_ROOT_BUTTON = '';
+    let MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = '';
+    let MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = '';
+    let MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = '';
+    let MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = '';
+    let NODE_BORDER_COLOR_SELECT_MENU = '';
+    let NODE_DATA = '';
+    let NODE_EVENTS_CB = '';
+    let NODE_FILL_COLOR_SELECT_MENU = '';
+    let NODE_NAME_CB = '';
+    let NODE_SHAPE_SELECT_MENU = '';
+    let NODE_SIZE_SELECT_MENU = '';
+    let NODE_SIZE_SLIDER = '';
+    let NODE_VIS_CB = '';
+    let ORDER_BUTTON = '';
+    let PHYLOGRAM_ALIGNED_BUTTON = '';
+    let PHYLOGRAM_BUTTON = '';
+    let PHYLOGRAM_CLADOGRAM_CONTROLGROUP = '';
+    let PROG_NAME = '';
+    let PROGNAMELINK = '';
+    let RESET_SEARCH_A_BTN = '';
+    let RESET_SEARCH_B_BTN = '';
+    let RETURN_TO_SUPERTREE_BUTTON = '';
+    let RETURN_TO_SUPERTREE_BUTTON_BY_ONE = '';
+    let SEARCH_FIELD_0 = '';
+    let SEARCH_FIELD_1 = '';
+    let SEARCH_OPTIONS_CASE_SENSITIVE_CB = '';
+    let SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = '';
+    let SEARCH_OPTIONS_PROPERTIES_CB = '';
+    let SEARCH_OPTIONS_GROUP = '';
+    let SEARCH_OPTIONS_NEGATE_RES_CB = '';
+    let SEARCH_OPTIONS_REGEX_CB = '';
+    let SEQUENCE_CB = '';
+    let SHORTEN_NODE_NAME_CB = '';
+    let TAXONOMY_CB = '';
+    let UNCOLLAPSE_ALL_BUTTON = '';
+    let ZOOM_IN_X = '';
+    let ZOOM_IN_Y = '';
+    let ZOOM_OUT_X = '';
+    let ZOOM_OUT_Y = '';
+    let ZOOM_TO_FIT = '';
 
-    const LABEL_COLOR_SELECT_MENU_2 = 'lcs_2_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_2 = 'nfcolors_2_menu';
+    let LABEL_COLOR_SELECT_MENU_2 = 'lcs_2_menu';
+    let NODE_FILL_COLOR_SELECT_MENU_2 = 'nfcolors_2_menu';
 
-    const LABEL_COLOR_SELECT_MENU_3 = 'lcs_3_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_3 = 'nfcolors_3_menu';
+    let LABEL_COLOR_SELECT_MENU_3 = 'lcs_3_menu';
+    let NODE_FILL_COLOR_SELECT_MENU_3 = 'nfcolors_3_menu';
 
-    const LABEL_COLOR_SELECT_MENU_4 = 'lcs_4_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_4 = 'nfcolors_4_menu';
+    let LABEL_COLOR_SELECT_MENU_4 = 'lcs_4_menu';
+    let NODE_FILL_COLOR_SELECT_MENU_4 = 'nfcolors_4_menu';
 
 
     // ---------------------------
@@ -527,6 +527,7 @@ if (!phyloXml) {
     // ---------------------------
     // "Instance variables"
     // ---------------------------
+    let _uid = '';
     let _baseSvg = null;
     let _basicTreeProperties = null;
     let _branch_length_collapse_data = {};
@@ -3713,9 +3714,6 @@ if (!phyloXml) {
         if (!_settings.controlsBackgroundColor) {
             _settings.controlsBackgroundColor = CONTROLS_BACKGROUND_COLOR_DEFAULT;
         }
-        if (!_settings.controls0) {
-            _settings.controls0 = CONTROLS_0;
-        }
         if (!_settings.controls0Left) {
             _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
         }
@@ -3724,9 +3722,6 @@ if (!phyloXml) {
         }
         if (!_settings.controls1Top) {
             _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;
-        }
-        if (!_settings.controls1) {
-            _settings.controls1 = CONTROLS_1;
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = false;
@@ -5796,7 +5791,7 @@ if (!phyloXml) {
         }
         zoomToFit();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            let c0 = $('#' + _settings.controls0);
+            let c0 = $('#' + CONTROLS_0);
             if (c0) {
                 c0.css({
                     'left': _settings.controls0Left,
@@ -6335,7 +6330,7 @@ if (!phyloXml) {
             .style("opacity", 1e-6);
 
 
-        let c0 = $('#' + _settings.controls0);
+        let c0 = $('#' + CONTROLS_0);
 
         if (c0) {
             c0.css({
@@ -8638,7 +8633,8 @@ if (!phyloXml) {
      * @param newHamphshireConfidenceValuesAsInternalNames
      * @param nodeVisualizations
      */
-    archaeopteryx.launchArchaeopteryx = function (label,
+    archaeopteryx.launchArchaeopteryx = function (uid,
+                                                  label,
                                                   location,
                                                   data,
                                                   options,
@@ -8646,7 +8642,106 @@ if (!phyloXml) {
                                                   newHamphshireConfidenceValuesInBrackets,
                                                   newHamphshireConfidenceValuesAsInternalNames,
                                                   nodeVisualizations) {
+
+        _uid = uid;
         let tree = null;
+
+        // ---------------------------
+        // Names for GUI elements
+        // ---------------------------
+        BASE_BACKGROUND = _uid + 'basebackground';
+        BL_COLLAPSE_LABEL = _uid + 'bl_col_label';
+        BRANCH_COLORS_CB = _uid + 'brnch_col_cb';
+        BRANCH_DATA_FONT_SIZE_SLIDER = _uid + 'bdfs_sl';
+        BRANCH_EVENTS_CB = _uid + 'brevts_cb';
+        BRANCH_LENGTH_VALUES_CB = 'bl_cb';
+        BRANCH_VIS_CB = _uid + 'branchvis_cb';
+        BRANCH_WIDTH_SLIDER = _uid + 'bw_sl';
+        CLADOGRAM_BUTTON = _uid + 'cla_b';
+        COLLAPSE_BY_FEATURE_SELECT = _uid + 'coll_by_feat_sel';
+        COLOR_PICKER = _uid + 'col_pick';
+        COLOR_PICKER_LABEL = _uid + 'colorPickerLabel';
+        CONFIDENCE_VALUES_CB = _uid + 'conf_cb';
+        CONTROLS_0 = _uid + 'controls0';
+        CONTROLS_1 = _uid + 'controls1';
+        DECR_BL_COLLAPSE_LEVEL = _uid + 'decr_blcl';
+        DECR_DEPTH_COLLAPSE_LEVEL = _uid + 'decr_dcl';
+        DEPTH_COLLAPSE_LABEL = _uid + 'depth_col_label';
+        DISPLAY_DATA_CONTROLGROUP = _uid + 'display_data_g';
+        DOWNLOAD_BUTTON = _uid + 'dl_b';
+        SUBMIT_SELECTED_NODES_BUTTON = _uid + 'submit_sel_nodes_b';
+        DYNAHIDE_CB = _uid + 'dynahide_cb';
+        EXPORT_FORMAT_SELECT = _uid + 'exp_f_sel';
+        EXTERNAL_FONT_SIZE_SLIDER = _uid + 'entfs_sl';
+        EXTERNAL_LABEL_CB = _uid + 'extl_cb';
+        EXTERNAL_NODES_CB = _uid + 'extn_cb';
+        INCR_BL_COLLAPSE_LEVEL = _uid + 'incr_blcl';
+        INCR_DEPTH_COLLAPSE_LEVEL = _uid + 'incr_dcl';
+        INTERNAL_FONT_SIZE_SLIDER = _uid + 'intfs_sl';
+        INTERNAL_LABEL_CB = _uid + 'intl_cb';
+        INTERNAL_NODES_CB = _uid + 'intn_cb';
+        LABEL_COLOR_SELECT_MENU = _uid + 'lcs_menu';
+        LEGEND = _uid + 'legend';
+        LEGEND_DESCRIPTION = _uid + 'legendDescription';
+        LEGEND_LABEL = _uid + 'legendLabel';
+        LEGENDS_HORIZ_VERT_BTN = _uid + 'legends_horizvert';
+        LEGENDS_MOVE_DOWN_BTN = _uid + 'legends_mdown';
+        LEGENDS_MOVE_LEFT_BTN = _uid + 'legends_mleft';
+        LEGENDS_MOVE_RIGHT_BTN = _uid + 'legends_mright';
+        LEGENDS_MOVE_UP_BTN = _uid + 'legends_mup';
+        LEGENDS_RESET_BTN = _uid + 'legends_rest';
+        LEGENDS_SHOW_BTN = _uid + 'legends_show';
+        MIDPOINT_ROOT_BUTTON = _uid + 'midpointr_b';
+        MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = _uid + 'seq_pos_label_curr_pos';
+        MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = _uid + 'seq_pos_slider_1';
+        MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = _uid + 'seq_pos_decr_pos';
+        MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = _uid + 'seq_pos_incr_pos';
+        NODE_BORDER_COLOR_SELECT_MENU = _uid + 'nbcolors_menu';
+        NODE_DATA = _uid + 'node_data_dialog';
+        NODE_EVENTS_CB = _uid + 'nevts_cb';
+        NODE_FILL_COLOR_SELECT_MENU = _uid + 'nfcolors_menu';
+        NODE_NAME_CB = _uid + 'nn_cb';
+        NODE_SHAPE_SELECT_MENU = _uid + 'nshapes_menu';
+        NODE_SIZE_SELECT_MENU = _uid + 'nsizes_menu';
+        NODE_SIZE_SLIDER = _uid + 'ns_sl';
+        NODE_VIS_CB = _uid + 'nodevis_cb';
+        ORDER_BUTTON = _uid + 'ord_b';
+        PHYLOGRAM_ALIGNED_BUTTON = _uid + 'phya_b';
+        PHYLOGRAM_BUTTON = _uid + 'phy_b';
+        PHYLOGRAM_CLADOGRAM_CONTROLGROUP = _uid + 'phy_cla_g';
+        PROG_NAME = _uid + 'progname';
+        PROGNAMELINK = _uid + 'prognamelink';
+        RESET_SEARCH_A_BTN = _uid + 'reset_s_a';
+        RESET_SEARCH_B_BTN = _uid + 'reset_s_b';
+        RETURN_TO_SUPERTREE_BUTTON = _uid + 'ret_b';
+        RETURN_TO_SUPERTREE_BUTTON_BY_ONE = _uid + 'ret1_b';
+        SEARCH_FIELD_0 = _uid + 'sf0';
+        SEARCH_FIELD_1 = _uid + 'sf1';
+        SEARCH_OPTIONS_CASE_SENSITIVE_CB = _uid + 'so_cs_cb';
+        SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = _uid + 'so_cto_cb';
+        SEARCH_OPTIONS_PROPERTIES_CB = _uid + 'so_prp_cb';
+        SEARCH_OPTIONS_GROUP = _uid + 'search_opts_g';
+        SEARCH_OPTIONS_NEGATE_RES_CB = _uid + 'so_neg_cb';
+        SEARCH_OPTIONS_REGEX_CB = _uid + 'so_regex_cb';
+        SEQUENCE_CB = _uid + 'seq_cb';
+        SHORTEN_NODE_NAME_CB = _uid + 'shortennodename_cb';
+        TAXONOMY_CB = _uid + 'tax_cb';
+        UNCOLLAPSE_ALL_BUTTON = _uid + 'unc_b';
+        ZOOM_IN_X = _uid + 'zoomin_x';
+        ZOOM_IN_Y = _uid + 'zoomout_y';
+        ZOOM_OUT_X = _uid + 'zoomout_x';
+        ZOOM_OUT_Y = _uid + 'zoomin_y';
+        ZOOM_TO_FIT = _uid + 'zoomtofit';
+
+        LABEL_COLOR_SELECT_MENU_2 = _uid + 'lcs_2_menu';
+        NODE_FILL_COLOR_SELECT_MENU_2 = _uid + 'nfcolors_2_menu';
+
+        LABEL_COLOR_SELECT_MENU_3 = _uid + 'lcs_3_menu';
+        NODE_FILL_COLOR_SELECT_MENU_3 = _uid + 'nfcolors_3_menu';
+
+        LABEL_COLOR_SELECT_MENU_4 = _uid + 'lcs_4_menu';
+        NODE_FILL_COLOR_SELECT_MENU_4 = _uid + 'nfcolors_4_menu';
+
         try {
             tree = archaeopteryx.parseTree(location,
                 data,
