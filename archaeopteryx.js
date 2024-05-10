@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.3a2
-// 2023-09-22
+// v 2.0.3a3
+// 2024-05-10
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.3a2';
+    const VERSION = '2.0.3a3';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -4907,7 +4907,31 @@ if (!phyloXml) {
 
             function accessDatabase(node) {
                 let url = null;
-                if (node.sequences) {
+                if (node.properties && node.properties.length > 0) {
+                    let propertiesLength = node.properties.length;
+                    for (let i = 0; i < propertiesLength; ++i) {
+                        let p = node.properties[i];
+                        if (p.value && p.ref.toLowerCase().indexOf("accession") >= 0) {
+                            let value = p.value;
+                            if (RE_GENBANK_PROT.test(value)) {
+                                url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
+                            } else if (RE_GENBANK_NUC.test(value)) {
+                                url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                            } else if (RE_REFSEQ.test(value)) {
+                                url = 'https://www.ncbi.nlm.nih.gov/nuccore/' + value;
+                            } else if (RE_UNIPROTKB.test(value)) {
+                                url = 'https://www.uniprot.org/uniprot/' + value;
+                            } else if (RE_SWISSPROT_TREMBL.test(value)) {
+                                url = 'https://www.uniprot.org/uniprot/' + value;
+                            } else if (RE_SWISSPROT_TREMBL_PFAM.test(value)) {
+                                url = 'https://www.uniprot.org/uniprot/' + RE_SWISSPROT_TREMBL_PFAM.exec(value)[1];
+                            }
+                            if (url) {
+                                break;
+                            }
+                        }
+                    }
+                } else if (node.sequences) {
                     for (let i = 0; i < node.sequences.length; ++i) {
                         let s = node.sequences[i];
                         if (s.accession && s.accession.value && s.accession.source) {
@@ -4943,8 +4967,7 @@ if (!phyloXml) {
                             }
                         }
                     }
-                }
-                if (node.name) {
+                } else if (node.name) {
                     if (RE_SWISSPROT_TREMBL.test(node.name)) {
                         url = 'https://www.uniprot.org/uniprot/' + node.name;
                     } else if (RE_SWISSPROT_TREMBL_PFAM.test(node.name)) {
@@ -5466,18 +5489,37 @@ if (!phyloXml) {
                     .style('font-weight', 'bold')
                     .style('text-decoration', 'none')
                     .text(function (d) {
-                            let show = false;
-                            let value = null;
-                            if (d.sequences) {
-                                for (let i = 0; i < d.sequences.length; ++i) {
-                                    let s = d.sequences[i];
-                                    if (s.accession && s.accession.value && s.accession.source) {
-                                        let source = s.accession.source.toUpperCase();
-                                        if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ || source === ACC_UNIPROT
-                                            || source === ACC_UNIPROTKB
-                                            || source === ACC_SWISSPROT
-                                            || source === ACC_TREMBL
-                                            || source === 'UNKNOWN' || source === '?') {
+                        let show = false;
+                        let value = null;
+
+                        if (d.properties && d.properties.length > 0) {
+                            let propertiesLength = d.properties.length;
+                            for (let i = 0; i < propertiesLength; ++i) {
+                                let p = d.properties[i];
+                                if (p.value && p.ref.toLowerCase().indexOf("accession") >= 0) {
+                                    if (RE_SWISSPROT_TREMBL_PFAM.test(p.value)
+                                        || RE_GENBANK_PROT.test(p.value)
+                                        || RE_GENBANK_NUC.test(p.value)
+                                        || RE_REFSEQ.test(p.value)
+                                        || RE_UNIPROTKB.test(p.value)
+                                        || RE_SWISSPROT_TREMBL.test(p.value)) {
+                                        show = true;
+                                        value = p.value;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (d.sequences) {
+                            for (let i = 0; i < d.sequences.length; ++i) {
+                                let s = d.sequences[i];
+                                if (s.accession && s.accession.value && s.accession.source) {
+                                    let source = s.accession.source.toUpperCase();
+                                    if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ || source === ACC_UNIPROT
+                                        || source === ACC_UNIPROTKB
+                                        || source === ACC_SWISSPROT
+                                        || source === ACC_TREMBL
+                                        || source === 'UNKNOWN' || source === '?') {
                                             show = true;
                                             value = s.accession.value;
                                             break;
@@ -8330,7 +8372,7 @@ if (!phyloXml) {
     }
 
     function updateButtonEnabledState() {
-        if (_in_subtree) { //~~
+        if (_in_subtree) {
             enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
             enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
         } else {
