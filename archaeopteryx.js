@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2023 Christian M. Zmasek
- *  Copyright (C) 2023 Yun Zhang
- *  Copyright (C) 2023 J. Craig Venter Institute
+ *  Copyright (C) 2024 Christian M. Zmasek
+ *  Copyright (C) 2024 Yun Zhang
+ *  Copyright (C) 2024 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -21,7 +21,7 @@
  *
  */
 
-// v 2.0.3a3
+// v 2.0.3a1
 // 2024-05-10
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.3a3';
+    const VERSION = '2.0.3a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
