@@ -20,8 +20,8 @@
  *
  */
 
-// v 2.0.3a2
-// 2023-09-22
+// v 2.1.0.a1
+// 2024-06-04
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -348,8 +348,7 @@
             //do noting
         } else if (!node.parent.parent.parent) {
             if ((node.parent.children.length === 2) && (branchLength >= 0)) {
-                let d = node.parent.children[0].branch_length
-                    + node.parent.children[1].branch_length;
+                let d = node.parent.children[0].branch_length + node.parent.children[1].branch_length;
                 let other;
                 if (node.parent.children[0] === node) {
                     other = node.parent.children[1];
@@ -450,12 +449,10 @@
             if (c.children.length === 2) {
                 let node2 = c.children[1 - forester.getChildNodeIndex(c, b)];
                 node2.parent = b;
-                if ((!c.branch_length)
-                    && (!node2.branch_length)) {
+                if ((!c.branch_length) && (!node2.branch_length)) {
                     node2.branch_length = undefined;
                 } else {
-                    node2.branch_length = (c.branch_length >= 0.0 ? c.branch_length : 0.0)
-                        + (node2.branch_length >= 0.0 ? node2.branch_length : 0.0);
+                    node2.branch_length = (c.branch_length >= 0.0 ? c.branch_length : 0.0) + (node2.branch_length >= 0.0 ? node2.branch_length : 0.0);
                 }
                 let cbd = forester.getBranchData(c);
                 if (cbd) {
@@ -567,8 +564,7 @@
             throw ("cannot remove the child node for a external node");
         }
         if ((i >= parentNode.children.length) || (i < 0)) {
-            throw ("attempt to get child node " + i + " of a node with "
-                + parentNode.children.length + " child nodes.");
+            throw ("attempt to get child node " + i + " of a node with " + parentNode.children.length + " child nodes.");
         }
         parentNode.children[i].parent = undefined;
         parentNode.children.splice(i, 1);
@@ -944,9 +940,7 @@
             if (n.properties && n.properties.length > 0) {
                 let l = n.properties.length;
                 for (let p = 0; p < l; ++p) {
-                    if (n.properties[p].ref === BRANCH_EVENT_REF
-                        && n.properties[p].datatype === BRANCH_EVENT_DATATYPE
-                        && n.properties[p].applies_to === BRANCH_EVENT_APPLIES_TO) {
+                    if (n.properties[p].ref === BRANCH_EVENT_REF && n.properties[p].datatype === BRANCH_EVENT_DATATYPE && n.properties[p].applies_to === BRANCH_EVENT_APPLIES_TO) {
                         properties.branchEvents = true;
                     }
                 }
@@ -987,12 +981,7 @@
     };
 
 
-    forester.searchData = function (query,
-                                    phy,
-                                    caseSensitive,
-                                    partial,
-                                    regex,
-                                    searchProperties) {
+    forester.searchData = function (query, phy, caseSensitive, partial, regex, searchProperties) {
         let nodes = new Set();
         if (!phy || !query || query.length < 1) {
             return nodes;
@@ -1050,92 +1039,32 @@
                             }
                         }
                         let lmatch = false;
-                        if (((ndf === null) || (ndf === "NN"))
-                            && matchme(node.name, mq, caseSensitive, partial, regex)) {
+                        if (((ndf === null) || (ndf === "NN")) && matchme(node.name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TC")) && node.taxonomies
-                            && node.taxonomies.length > 0
-                            && matchme(node.taxonomies[0].code,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "TC")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].code, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TS")) && node.taxonomies
-                            && node.taxonomies.length > 0
-                            && matchme(node.taxonomies[0].scientific_name,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "TS")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].scientific_name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TN")) && node.taxonomies
-                            && node.taxonomies.length > 0
-                            && matchme(node.taxonomies[0].common_name,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "TN")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].common_name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SY")) && node.taxonomies
-                            && node.taxonomies.length > 0
-                            && matchme(node.taxonomies[0].synonym,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "SY")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].synonym, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TI")) && node.taxonomies
-                            && node.taxonomies.length > 0 && node.taxonomies[0].id
-                            && matchme(node.taxonomies[0].id.value,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "TI")) && node.taxonomies && node.taxonomies.length > 0 && node.taxonomies[0].id && matchme(node.taxonomies[0].id.value, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SN")) && node.sequences
-                            && node.sequences.length > 0
-                            && matchme(node.sequences[0].name,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "SN")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "GN")) && node.sequences
-                            && node.sequences.length > 0
-                            && matchme(node.sequences[0].gene_name,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "GN")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].gene_name, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SS")) && node.sequences
-                            && node.sequences.length > 0
-                            && matchme(node.sequences[0].symbol,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "SS")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].symbol, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SA")) && node.sequences
-                            && node.sequences.length > 0 && node.sequences[0].accession
-                            && matchme(node.sequences[0].accession.value,
-                                mq,
-                                caseSensitive,
-                                partial,
-                                regex)) {
+                        } else if (((ndf === null) || (ndf === "SA")) && node.sequences && node.sequences.length > 0 && node.sequences[0].accession && matchme(node.sequences[0].accession.value, mq, caseSensitive, partial, regex)) {
                             lmatch = true;
-                        } else if (((ndf === null) && (searchProperties === true)) && node.properties
-                            && node.properties.length > 0) {
+                        } else if (((ndf === null) && (searchProperties === true)) && node.properties && node.properties.length > 0) {
 
                             let propertiesLength = node.properties.length;
                             for (let i = 0; i < propertiesLength; ++i) {
                                 let p = node.properties[i];
-                                if (p.value && matchme(p.value,
-                                    mq,
-                                    caseSensitive,
-                                    partial,
-                                    regex)) {
+                                if (p.value && matchme(p.value, mq, caseSensitive, partial, regex)) {
                                     lmatch = true;
                                     break;
                                 }
@@ -1161,11 +1090,7 @@
             }
         }
 
-        function matchme(s,
-                         query,
-                         caseSensitive,
-                         partial,
-                         regex) {
+        function matchme(s, query, caseSensitive, partial, regex) {
             if (!s || !query) {
                 return false;
             }
@@ -1209,19 +1134,7 @@
 
         function makeNDF(query) {
             let str = query.substring(0, 2);
-            if (str === "NN"
-                || str === "TC"
-                || str === "TN"
-                || str === "TS"
-                || str === "TI"
-                || str === "SY"
-                || str === "SN"
-                || str === "GN"
-                || str === "SS"
-                || str === "SA"
-                || str === "AN"
-                || str === "XR"
-                || str === "MS") {
+            if (str === "NN" || str === "TC" || str === "TN" || str === "TS" || str === "TI" || str === "SY" || str === "SN" || str === "GN" || str === "SS" || str === "SA" || str === "AN" || str === "XR" || str === "MS") {
                 return str;
             } else {
                 return null;
@@ -1364,10 +1277,7 @@
 
 
     forester.isHasNodeData = function (node) {
-        return ((node.name && node.name.length > 0) ||
-            (node.taxonomies && node.taxonomies.length > 0) ||
-            (node.sequences && node.sequences.length > 0) ||
-            (node.properties && node.properties.length > 0));
+        return ((node.name && node.name.length > 0) || (node.taxonomies && node.taxonomies.length > 0) || (node.sequences && node.sequences.length > 0) || (node.properties && node.properties.length > 0));
     };
 
 
@@ -1993,11 +1903,6 @@
     // --------------------------------------------------------------
     // For exporting
     // --------------------------------------------------------------
-    if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser)
-        module.exports.forester = forester;
-    else if (typeof window !== "undefined")
-        window.forester = forester;
-    else
-        this.forester = forester;
+    if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser) module.exports.forester = forester; else if (typeof window !== "undefined") window.forester = forester; else this.forester = forester;
 })();
     

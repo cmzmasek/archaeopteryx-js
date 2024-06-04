@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.0.4a1
-// 2024-05-21
+// v 2.1.0.a1
+// 2024-06-04
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.0.4a1';
+    const VERSION = '2.1.0.a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -122,7 +122,7 @@ if (!phyloXml) {
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
     const VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
-    const VISUALIZATIONS_LEGEND_XPOS_DEFAULT = 160;
+    const VISUALIZATIONS_LEGEND_XPOS_DEFAULT = 220;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
 
     // ---------------------------
@@ -130,9 +130,9 @@ if (!phyloXml) {
     // ---------------------------
     const COLLAPSE_LABEL_WIDTH_DEFAULT = '20px';
     const CONTROLS_0_LEFT_DEFAULT = 20;
-    const CONTROLS_0_TOP_DEFAULT = 20;
-    const CONTROLS_1_TOP_DEFAULT = 20;
-    const CONTROLS_1_WIDTH_DEFAULT = 160;
+    const CONTROLS_0_TOP_DEFAULT = 10;
+    const CONTROLS_1_TOP_DEFAULT = 10;
+    const CONTROLS_1_WIDTH_DEFAULT = 120;
     const CONTROLS_BACKGROUND_COLOR_DEFAULT = '#c0c0c0';
     const CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     const CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
@@ -140,8 +140,7 @@ if (!phyloXml) {
     const DISPLY_HEIGHT_DEFAULT = 600;
     const DISPLAY_WIDTH_DEFAULT = 800;
     const MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Arial', 'Helvetica', 'Times'];
-
-    const ROOTOFFSET_DEFAULT = 180;
+    const ROOTOFFSET_DEFAULT = 220;
     const SEARCH_FIELD_WIDTH_DEFAULT = '38px';
     const TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
@@ -176,7 +175,7 @@ if (!phyloXml) {
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
     const KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
-    const LABEL_SIZE_CALC_ADDITION = 40;
+    const LABEL_SIZE_CALC_ADDITION = 80;
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_BORDER_COLOR = 'legendNodeBorderColor';
@@ -279,6 +278,7 @@ if (!phyloXml) {
     const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
     const PROG_NAME = 'progname';
     const PROGNAMELINK = 'prognamelink';
+    const TREE_DESC = 'tree_desc';
     const RESET_SEARCH_A_BTN = 'reset_s_a';
     const RESET_SEARCH_B_BTN = 'reset_s_b';
     const RETURN_TO_SUPERTREE_BUTTON = 'ret_b';
@@ -3776,10 +3776,27 @@ if (!phyloXml) {
         if (_settings.showShortenNodeNamesButton === undefined) {
             _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
         }
+        if (_settings.showExternalLabelsButton === undefined) {
+            _settings.showExternalLabelsButton = true;
+        }
+        if (_settings.showInternalLabelsButton === undefined) {
+            _settings.showInternalLabelsButton = true;
+        }
+        if (_settings.showExternalNodesButton === undefined) {
+            _settings.showExternalNodesButton = true;
+        }
+        if (_settings.showInternalNodesButton === undefined) {
+            _settings.showInternalNodesButton = true;
+        }
+        if (_settings.showShortenNodeNamesButton === undefined) {
+            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
+        }
+        if (_settings.showShortenNodeNamesButton === undefined) {
+            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
+        }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
         }
-
         if (_settings.enableSubtreeDeletion === undefined) {
             _settings.enableSubtreeDeletion = true;
         }
@@ -3791,7 +3808,7 @@ if (!phyloXml) {
             && _basicTreeProperties.maxMolSeqLength > 1) {
             _settings.enableMsaResidueVisualizations = true;
         } else {
-            _settings.enableMsaResidueVisualizations === false;
+            _settings.enableMsaResidueVisualizations = false;
         }
         if (_settings.zoomToFitUponWindowResize === undefined) {
             _settings.zoomToFitUponWindowResize = true;
@@ -3990,6 +4007,69 @@ if (!phyloXml) {
         });
     }
 
+    function initialize() {
+        initializeGui();
+
+        _svgGroup = _baseSvg.append('g');
+
+        if (_settings.orderTree) {
+            orderSubtree(_root, true);
+        }
+        if (_options.searchAinitialValue) {
+            search0();
+        }
+        if (_options.searchBinitialValue) {
+            search1();
+        }
+
+        if (_options.initialNodeFillColorVisualization || _options.initialLabelColorVisualization) {
+            initializeInitialVisualization();
+        }
+
+        if (_options.initialCollapseFeature) {
+            let feature = _options.initialCollapseFeature;
+            let refs = forester.collectPropertyRefs(_root, 'node', false);
+            let found = false;
+            if (refs) {
+                refs.forEach(function (v) {
+                    if (v === feature) {
+                        found = true;
+                    }
+                });
+            }
+            if (found) {
+                console.log(MESSAGE + 'Setting initial value for collapse by feature to: ' + feature);
+                collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
+                let s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+                if (s) {
+                    s.val(feature);
+                }
+            } else {
+                console.log(WARNING + ' initial value for collapse by feature [' + feature + '] not present');
+            }
+        } else if (_options.initialCollapseDepth > 0) {
+            _depth_collapse_level = _options.initialCollapseDepth;
+            let max_depth = forester.calcMaxDepth(_root);
+            if (_depth_collapse_level >= max_depth) {
+                console.log(WARNING + ' initial value for collapse depth [' + _depth_collapse_level + '] is larger than or equal to maximum depth [' + max_depth + ']');
+                _depth_collapse_level = max_depth - 1;
+            }
+            console.log(MESSAGE + 'Setting initial value for collapse depth to: ' + _depth_collapse_level);
+            forester.collapseToDepth(_root, _depth_collapse_level);
+            updateDepthCollapseDepthDisplay();
+        }
+
+        update(null, 0);
+
+        zoomToFit();
+
+        updateNodeVisualizationsAndLegends(_root);
+        resetDepthCollapseDepthValue();
+        resetRankCollapseRankValue();
+        resetBranchLengthCollapseValue();
+        search0();
+        search1();
+    }
 
     archaeopteryx.launch = function (id,
                                      phylo,
@@ -4016,25 +4096,6 @@ if (!phyloXml) {
         _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
-        if (settings.groupSpecies) {
-            if (settings.groupSpecies.source && settings.groupSpecies.target) {
-                console.log(MESSAGE + ' Grouping species from \"' + settings.groupSpecies.source
-                    + '\" to \"' + settings.groupSpecies.target);
-                forester.shortenProperties(_treeData, 'node', true, settings.groupSpecies.source, settings.groupSpecies.target);
-            }
-        }
-
-        if (settings.groupYears) {
-            if (settings.groupYears.source && settings.groupYears.target && settings.groupYears.ignore && settings.groupYears.groupsize) {
-                console.log(MESSAGE + ' Grouping years from \"' + settings.groupYears.source
-                    + '\" to \"' + settings.groupYears.target + '\", ignoring ' + settings.groupYears.ignore +
-                    ', range ' + settings.groupYears.groupsize);
-                groupYears(_treeData, settings.groupYears.source,
-                    settings.groupYears.target,
-                    settings.groupYears.ignore,
-                    settings.groupYears.groupsize);
-            }
-        }
 
         if (settings.filterValues) {
             settings.filterValues.forEach(function (e) {
@@ -4064,10 +4125,6 @@ if (!phyloXml) {
 
         if (specialVisualizations) {
             _specialVisualizations = specialVisualizations;
-        }
-
-        if (settings.readSimpleCharacteristics) {
-            forester.moveSimpleCharacteristicsToProperties(_treeData);
         }
 
 
@@ -4186,70 +4243,7 @@ if (!phyloXml) {
 
         _root.x0 = _displayHeight / 2;
         _root.y0 = 0;
-
-        initializeGui();
-
-        _svgGroup = _baseSvg.append('g');
-
-
-        if (_settings.orderTree) {
-            orderSubtree(_root, true);
-        }
-        if (_options.searchAinitialValue) {
-            search0();
-        }
-        if (_options.searchBinitialValue) {
-            search1();
-        }
-
-        if (_options.initialNodeFillColorVisualization || _options.initialLabelColorVisualization) {
-            initializeInitialVisualization();
-        }
-
-        if (_options.initialCollapseFeature) {
-            let feature = _options.initialCollapseFeature;
-            let refs = forester.collectPropertyRefs(_root, 'node', false);
-            let found = false;
-            if (refs) {
-                refs.forEach(function (v) {
-                    if (v === feature) {
-                        found = true;
-                    }
-                });
-            }
-            if (found) {
-                console.log(MESSAGE + 'Setting initial value for collapse by feature to: ' + feature);
-                collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-                let s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
-                if (s) {
-                    s.val(feature);
-                }
-            } else {
-                console.log(WARNING + ' initial value for collapse by feature [' + feature + '] not present');
-            }
-        } else if (_options.initialCollapseDepth > 0) {
-            _depth_collapse_level = _options.initialCollapseDepth;
-            let max_depth = forester.calcMaxDepth(_root);
-            if (_depth_collapse_level >= max_depth) {
-                console.log(WARNING + ' initial value for collapse depth [' + _depth_collapse_level + '] is larger than or equal to maximum depth [' + max_depth + ']');
-                _depth_collapse_level = max_depth - 1;
-            }
-            console.log(MESSAGE + 'Setting initial value for collapse depth to: ' + _depth_collapse_level);
-            forester.collapseToDepth(_root, _depth_collapse_level);
-            updateDepthCollapseDepthDisplay();
-        }
-
-        update(null, 0);
-
-        zoomToFit();
-
-
-        updateNodeVisualizationsAndLegends(_root);
-        resetDepthCollapseDepthValue();
-        resetRankCollapseRankValue();
-        resetBranchLengthCollapseValue();
-        search0();
-        search1();
+        initialize();
 
         //////////////////////////////////////////////////////////////////////
 
@@ -4440,19 +4434,27 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 400,
-                    'height': 400,
-                    'overflow': 'auto'
+                    'width': 260,
+                    'height': 260,
+                    'overflow': 'auto',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#F0F8FF',
+                    'border-style': 'groove',
+                    'border-color': '#AAAAAA'
                 });
 
                 $('.ui-dialog-titlebar').css({
                     'text-align': 'left',
-                    'color': _settings.controlsFontColor,
+                    'color': '#FFFFFF',
                     'font-size': fs,
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'bold',
-                    'text-decoration': 'none'
+                    'text-decoration': 'none',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#AAAAAA'
                 });
 
                 dialog.dialog('option', 'modal', true);
@@ -4593,9 +4595,11 @@ if (!phyloXml) {
                 $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
                 let dialog = $('#' + NODE_DATA);
 
-                let fs = (_settings.controlsFontSize + 2).toString() + 'px';
+                let fs = (_settings.controlsFontSize + 1).toString() + 'px';
 
                 $('.ui-dialog').css({
+                    'position': 'absolute',
+                    'top': '120px',
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
@@ -4603,9 +4607,14 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 740,
-                    'height': 400,
-                    'overflow': 'auto'
+                    'width': 400,
+                    'height': 260,
+                    'overflow': 'auto',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#F0F8FF',
+                    'border-style': 'groove',
+                    'border-color': '#AAAAAA'
                 });
 
                 $('.ui-dialog-titlebar').css({
@@ -4615,7 +4624,10 @@ if (!phyloXml) {
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'bold',
-                    'text-decoration': 'none'
+                    'text-decoration': 'none',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#AAAAAA'
                 });
 
                 dialog.dialog('option', 'modal', true);
@@ -4999,9 +5011,11 @@ if (!phyloXml) {
                 $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
                 let dialog = $('#' + NODE_DATA);
 
-                let fs = (_settings.controlsFontSize + 2).toString() + 'px';
+                let fs = (_settings.controlsFontSize - 1).toString() + 'px';
 
                 $('.ui-dialog').css({
+                    'position': 'absolute',
+                    'top': '120px',
                     'text-align': 'left',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
@@ -5009,9 +5023,14 @@ if (!phyloXml) {
                     'font-style': 'normal',
                     'font-weight': 'normal',
                     'text-decoration': 'none',
-                    'width': 700,
-                    'height': 400,
-                    'overflow': 'auto'
+                    'width': 400,
+                    'height': 260,
+                    'overflow': 'auto',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#F0F8FF',
+                    'border-style': 'groove',
+                    'border-color': '#AAAAAA'
                 });
 
                 $('.ui-dialog-titlebar').css({
@@ -5021,7 +5040,10 @@ if (!phyloXml) {
                     'font-family': _settings.controlsFont,
                     'font-style': 'normal',
                     'font-weight': 'bold',
-                    'text-decoration': 'none'
+                    'text-decoration': 'none',
+                    'opacity': 0.95,
+                    'z-index': 10,
+                    'background-color': '#AAAAAA'
                 });
 
                 dialog.dialog('option', 'modal', true);
@@ -5115,7 +5137,7 @@ if (!phyloXml) {
             }
 
             let rectWidth = 130;
-            let rectHeight = 230;
+            let rectHeight = 260;
 
             removeTooltips();
 
@@ -5520,16 +5542,16 @@ if (!phyloXml) {
                                         || source === ACC_SWISSPROT
                                         || source === ACC_TREMBL
                                         || source === 'UNKNOWN' || source === '?') {
-                                            show = true;
-                                            value = s.accession.value;
-                                            break;
-                                        }
+                                        show = true;
+                                        value = s.accession.value;
+                                        break;
                                     }
                                 }
                             }
-                            if (d.name) {
-                                if (RE_SWISSPROT_TREMBL.test(d.name)) {
-                                    show = true;
+                        }
+                        if (d.name) {
+                            if (RE_SWISSPROT_TREMBL.test(d.name)) {
+                                show = true;
                                     value = d.name;
                                 } else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
                                     show = true;
@@ -5824,6 +5846,8 @@ if (!phyloXml) {
     }
 
     function escPressed() {
+
+        initialize();
         let width = 0;
         if (_settings.enableDynamicSizing) {
             let container = document.getElementById(_id.replace('#', ''));
@@ -6401,19 +6425,39 @@ if (!phyloXml) {
 
             c0.append(makeProgramDesc());
 
+            if ((_treeData.name && _treeData.name.length > 0)
+                || (_treeData.description && _treeData.description.length > 0)) {
+                c0.append(makeTreeDesc());
+            }
+
             c0.append(makePhylogramControl());
 
             c0.append(makeDisplayControl());
 
             c0.append(makeZoomControl());
 
+            let treedesc = $('.' + TREE_DESC);
+            if (treedesc) {
+                treedesc.css({
+                    'text-align': 'left',
+                    'padding-top': '1px',
+                    'padding-bottom': '1px',
+                    'font-size': _settings.controlsFontSize + 2,
+                    'font-family': _settings.controlsFont,
+                    'font-style': 'normal',
+                    'font-weight': 'normal',
+                    'text-decoration': 'none'
+                });
+            }
+
+
             let pn = $('.' + PROG_NAME);
             if (pn) {
                 pn.css({
                     'text-align': 'center',
-                    'padding-top': '3px',
+                    'padding-top': '5px',
                     'padding-bottom': '5px',
-                    'font-size': _settings.controlsFontSize,
+                    'font-size': _settings.controlsFontSize + 4,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
@@ -6424,16 +6468,16 @@ if (!phyloXml) {
             if (pnl) {
                 pnl.css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 2,
+                    'font-size': _settings.controlsFontSize + 4,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'underline',
+                    'text-decoration': 'none',
                     'border': 'none'
                 });
                 $('.' + PROGNAMELINK + ':hover').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 2,
+                    'font-size': _settings.controlsFontSize + 4,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
@@ -6442,20 +6486,20 @@ if (!phyloXml) {
                 });
                 $('.' + PROGNAMELINK + ':link').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 2,
+                    'font-size': _settings.controlsFontSize + 4,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'underline',
+                    'text-decoration': 'normal',
                     'border': 'none'
                 });
                 $('.' + PROGNAMELINK + ':visited').css({
                     'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 2,
+                    'font-size': _settings.controlsFontSize + 4,
                     'font-family': _settings.controlsFont,
                     'font-style': 'italic',
                     'font-weight': 'bold',
-                    'text-decoration': 'underline',
+                    'text-decoration': 'normal',
                     'border': 'none'
                 });
             }
@@ -6583,6 +6627,7 @@ if (!phyloXml) {
                 'text-decoration': 'none'
             });
 
+
         $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y)
             .css({
                 'width': '78px'
@@ -6592,7 +6637,6 @@ if (!phyloXml) {
             .css({
                 'height': '16px'
             });
-
 
         $('#' + DECR_DEPTH_COLLAPSE_LEVEL + ', #' + INCR_DEPTH_COLLAPSE_LEVEL + ', #' + DECR_BL_COLLAPSE_LEVEL + ', #' + INCR_BL_COLLAPSE_LEVEL)
             .css({
@@ -6622,7 +6666,6 @@ if (!phyloXml) {
                 'height': '16px'
             });
 
-
         const downloadButton = $('#' + DOWNLOAD_BUTTON);
 
         if (downloadButton) {
@@ -6646,8 +6689,9 @@ if (!phyloXml) {
         });
 
         $(':checkbox').checkboxradio({
-            icon: false
+            icon: false,
         });
+
 
         $('#' + SEARCH_FIELD_0).keyup(search0);
 
@@ -7427,6 +7471,26 @@ if (!phyloXml) {
             return h;
         }
 
+        function makeTreeDesc() {
+            let h = "";
+            h = h.concat('<fieldset>');
+            h = h.concat('<div class=' + TREE_DESC + '>');
+            let f = false;
+            if (_treeData.name && _treeData.name.length > 0) {
+                h = h.concat(_treeData.name);
+                f = true;
+            }
+            if (_treeData.description && _treeData.description.length > 0) {
+                if (f) {
+                    h = h.concat('<br>');
+                }
+                h = h.concat('Desc: ' + _treeData.description);
+            }
+            h = h.concat('</div>');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
         function makePhylogramControl() {
             let radioGroup = 'phylogram_control_radio';
             let h = "";
@@ -7446,17 +7510,30 @@ if (!phyloXml) {
 
         function makeDisplayControl() {
             let h = "";
+            let counter = 0;
 
             h = h.concat('<fieldset><legend>Display Data</legend>');
-            h = h.concat('<div class="' + DISPLAY_DATA_CONTROLGROUP + '">');
+            h = h.concat('<div>');
+
             if (_settings.showNodeNameButton && _basicTreeProperties.nodeNames) {
-                h = h.concat(makeCheckboxButton('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
+                h = h.concat(makeCheckboxButtonTableData('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
+                counter += 1;
             }
+
             if (_settings.showTaxonomyButton && _basicTreeProperties.taxonomies) {
-                h = h.concat(makeCheckboxButton('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
+                h = h.concat(makeCheckboxButtonTableData('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
+
             if (_settings.showSequenceButton && _basicTreeProperties.sequences) {
-                h = h.concat(makeCheckboxButton('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
+                h = h.concat(makeCheckboxButtonTableData('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
 
             if (_nodeLabels) {
@@ -7464,50 +7541,99 @@ if (!phyloXml) {
                     if (value.label && value.propertyRef && value.description) {
                         const cb_id = makeIdForCustomCheckboxButton(key);
                         if (value.showButton === true) {
-                            h = h.concat(makeCheckboxButton(value.label, cb_id, value.description));
+                            h = h.concat(makeCheckboxButtonTableData(value.label, cb_id, value.description));
+                            counter += 1;
+                            if (counter % 2 === 0) {
+                                h = h.concat('</br>');
+                            }
                         }
                         value.cb_id = cb_id;
                     }
                 }
+                if (counter % 2 === 1) {
+                    h = h.concat('</br>');
+                }
             }
 
-
+            counter = 0;
             if (_basicTreeProperties.confidences) {
-                h = h.concat(makeCheckboxButton('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
+                h = h.concat(makeCheckboxButtonTableData('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
-            if (_basicTreeProperties.branchLengths) {
-                h = h.concat(makeCheckboxButton('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
-            }
-            if (_basicTreeProperties.nodeEvents) {
-                h = h.concat(makeCheckboxButton('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
-            }
-            if (_basicTreeProperties.branchEvents) {
-                h = h.concat(makeCheckboxButton('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
-            }
-            h = h.concat(makeCheckboxButton('External Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
-            if (_basicTreeProperties.internalNodeData) {
-                h = h.concat(makeCheckboxButton('Internal Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
-            }
-            h = h.concat(makeCheckboxButton('External Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
-            h = h.concat(makeCheckboxButton('Internal Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
 
-            if (_settings.showBranchColorsButton) {
-                h = h.concat(makeCheckboxButton('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
+            if (_basicTreeProperties.branchLengths) {
+                h = h.concat(makeCheckboxButtonTableData('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
+                h = h.concat('</br>');
             }
+
+            if (_basicTreeProperties.nodeEvents) {
+                h = h.concat(makeCheckboxButtonTableData('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
+            }
+
+            if (_basicTreeProperties.branchEvents) {
+                h = h.concat(makeCheckboxButtonTableData('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
+            }
+            if (_basicTreeProperties.nodeEvents || _basicTreeProperties.branchEvents) {
+                h = h.concat('</br>');
+            }
+
+            if (_settings.showExternalLabelsButton || _settings.showInternalLabelsButton) {
+                if (_settings.showExternalLabelsButton) {
+                    h = h.concat(makeCheckboxButtonTableData('External Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
+                }
+                if (_basicTreeProperties.internalNodeData && _settings.showInternalLabelsButton) {
+                    h = h.concat(makeCheckboxButtonTableData('Internal Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
+                }
+                h = h.concat('</br>');
+            }
+
+            if (_settings.showExternalNodesButton || _settings.showInternalNodesButton) {
+                if (_settings.showExternalNodesButton) {
+                    h = h.concat(makeCheckboxButtonTableData('External Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
+                }
+                if (_settings.showInternalNodesButton) {
+                    h = h.concat(makeCheckboxButtonTableData('Internal Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
+                }
+                h = h.concat('</br>');
+            }
+
+            counter = 0;
+            if (_settings.showBranchColorsButton) {
+                h = h.concat(makeCheckboxButtonTableData('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
+            }
+
             if (_settings.enableNodeVisualizations) {
-                h = h.concat(makeCheckboxButton('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
+                h = h.concat(makeCheckboxButtonTableData('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
             if (_settings.enableBranchVisualizations) {
-                h = h.concat(makeCheckboxButton('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
+                h = h.concat(makeCheckboxButtonTableData('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
             if (_settings.showDynahideButton) {
-                h = h.concat(makeCheckboxButton('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
+                h = h.concat(makeCheckboxButtonTableData('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
+                counter += 1;
+                if (counter % 2 === 0) {
+                    h = h.concat('</br>');
+                }
             }
             if (_settings.showShortenNodeNamesButton) {
-                h = h.concat(makeCheckboxButton('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
+                h = h.concat(makeCheckboxButtonTableData('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             }
-            h = h.concat('</div>');
-            h = h.concat('</fieldset>');
+            h = h.concat('</div></fieldset>');
             return h;
         }
 
@@ -7785,7 +7911,15 @@ if (!phyloXml) {
         }
 
         function makeCheckboxButton(label, id, tooltip) {
-            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input type="checkbox" name="' + id + '" id="' + id + '">';
+            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input  type="checkbox" name="' + id + '" id="' + id + '">';
+        }
+
+        function makeCheckboxButtonTableData(label, id, tooltip) {
+            const n = 15;
+            if (label.length > n) {
+                label = label.substring(0, n);
+            }
+            return '<label style="width:68px;text-align: left" for="' + id + '" title="' + tooltip + '">' + label + '</label><input  type="checkbox" name="' + id + '" id="' + id + '">';
         }
 
         function makeRadioButton(label, id, radioGroup, tooltip) {
@@ -7805,10 +7939,6 @@ if (!phyloXml) {
 
         function makeTextInput(id, tooltip) {
             return '<input title="' + tooltip + '" type="text" name="' + id + '" id="' + id + '">';
-        }
-
-        function makeTextInputWithLabel(label, sep, id, tooltip) {
-            return label + sep + '<input title="' + tooltip + '" type="text" name="' + id + '" id="' + id + '">';
         }
 
     } // function createGui()
@@ -7903,15 +8033,17 @@ if (!phyloXml) {
             .html('default')
         );
 
-        //
-
         if (_visualizations) {
             if (_visualizations.labelColor) {
                 for (let key in _visualizations.labelColor) {
                     if (_visualizations.labelColor.hasOwnProperty(key)) {
+                        let key_html = key;
+                        if (key_html.length > 15) {
+                            key_html = key_html.substring(0, 15);
+                        }
                         $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
                             .val(key)
-                            .html(key)
+                            .html(key_html)
                         );
                     }
                 }
@@ -7919,9 +8051,13 @@ if (!phyloXml) {
             if (_visualizations.nodeShape) {
                 for (let key in _visualizations.nodeShape) {
                     if (_visualizations.nodeShape.hasOwnProperty(key)) {
+                        let key_html = key;
+                        if (key_html.length > 15) {
+                            key_html = key_html.substring(0, 15);
+                        }
                         $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
                             .val(key)
-                            .html(key)
+                            .html(key_html)
                         );
                     }
                 }
@@ -7929,9 +8065,13 @@ if (!phyloXml) {
             if (_visualizations.nodeFillColor) {
                 for (let key in _visualizations.nodeFillColor) {
                     if (_visualizations.nodeFillColor.hasOwnProperty(key)) {
+                        let key_html = key;
+                        if (key_html.length > 15) {
+                            key_html = key_html.substring(0, 15);
+                        }
                         $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
                             .val(key)
-                            .html(key)
+                            .html(key_html)
                         );
                     }
                 }
@@ -7939,9 +8079,13 @@ if (!phyloXml) {
             if (_visualizations.nodeBorderColor) {
                 for (let key in _visualizations.nodeBorderColor) {
                     if (_visualizations.nodeBorderColor.hasOwnProperty(key)) {
+                        let key_html = key;
+                        if (key_html.length > 15) {
+                            key_html = key_html.substring(0, 15);
+                        }
                         $('select#' + NODE_BORDER_COLOR_SELECT_MENU).append($('<option>')
                             .val(key)
-                            .html(key)
+                            .html(key_html)
                         );
                     }
                 }
@@ -7949,9 +8093,13 @@ if (!phyloXml) {
             if (_visualizations.nodeSize) {
                 for (let key in _visualizations.nodeSize) {
                     if (_visualizations.nodeSize.hasOwnProperty(key)) {
+                        let key_html = key;
+                        if (key_html.length > 15) {
+                            key_html = key_html.substring(0, 15);
+                        }
                         $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
                             .val(key)
-                            .html(key)
+                            .html(key_html)
                         );
                     }
                 }
