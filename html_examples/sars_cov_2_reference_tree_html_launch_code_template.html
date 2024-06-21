@@ -37,7 +37,7 @@
             options.alignPhylogram = false; // We should launch with "regular" phylogram.
             options.branchDataFontSize = 9;
             options.defaultFont = ['Arial', 'Helvetica', 'Times'];
-            options.initialNodeFillColorVisualization = 'PANGO Select Lineages';
+            options.initialNodeFillColorVisualization = 'PANGO Select';
             options.minBranchLengthValueToShow = 0.000001;
             options.minConfidenceValueToShow = 50;
             options.phylogram = true; // We should launch with "regular" phylogram.
@@ -52,7 +52,7 @@
             options.showBranchEvents = false;
             options.showVisualizationsLegend = true;
             options.visualizationsLegendOrientation = 'vertical';
-            options.visualizationsLegendXpos = 170;
+            options.visualizationsLegendXpos = 240;
             options.visualizationsLegendYpos = 30;
 
 
@@ -83,7 +83,7 @@
                     target: 'vipr:PANGO_Select_Lineage',
                     pass: ['B.1.1.7', 'B.1.351', 'B.1.1.529', 'B.1.617.2', 'BA.1', 'BA.2', 'BA.2.12.1', 'BA.2.75', 'BA.2.86', 'BA.2.3.20', 'BA.3',
                         'BA.4', 'BA.4.6', 'BA.5', 'BF.7', 'BQ.1', 'BQ.1.1', 'DV.7.1', 'EG.5.1', 'FL.1.5.2', 'FL.1.5.1', 'GW.5', 'GW.5.1', 'HK.2', 'HK.3', 'HK.3.2', 'HV.1', 'JD.1.1',
-                        'JD.1.1.1', 'JF.1', 'JG.3', 'JN.1', 'JN.4', 'P.1', 'XB', 'XBB.1', 'XBB.1.5',
+                        'JD.1.1.1', 'JF.1', 'JG.3', 'JN.1', 'JN.4', 'KP.3', 'P.1', 'XB', 'XBB.1', 'XBB.1.5',
                         'XBB.1.16', 'XBB.1.9.1', 'XBB.2.3']
                 }];
 
@@ -92,7 +92,7 @@
             var nodeVisualizations = {};
 
             nodeVisualizations['PANGO_Lineage'] = {
-                label: 'PANGO Lineage',
+                label: 'PANGO Lin',
                 description: 'the PANGO lineage',
                 field: null,
                 cladeRef: decorator + 'PANGO_Lineage',
@@ -103,7 +103,7 @@
             };
 
             nodeVisualizations['PANGO_Lineage_L0'] = {
-                label: 'PANGO Lineage Lvl 0',
+                label: 'PANGO Lin Lvl 0',
                 description: 'the PANGO lineage level 0',
                 field: null,
                 cladeRef: decorator + 'PANGO_Lineage_L0',
@@ -114,7 +114,7 @@
             };
 
             nodeVisualizations['PANGO_Lineage_L1'] = {
-                label: 'PANGO Lineage Lvl 1',
+                label: 'PANGO Lin Lvl 1',
                 description: 'the PANGO lineage level 1',
                 field: null,
                 cladeRef: decorator + 'PANGO_Lineage_L1',
@@ -124,9 +124,8 @@
                 sizes: null
             };
 
-
             nodeVisualizations['PANGO_Select_Lineage'] = {
-                label: 'PANGO Select Lineages',
+                label: 'PANGO Select',
                 description: 'PANGO select lineages',
                 field: null,
                 cladeRef: decorator + 'PANGO_Select_Lineage',
@@ -202,7 +201,7 @@
                 color: '#FF0000',
                 property_values: ['B.1.1.7', 'B.1.351', 'B.1.1.529', 'B.1.617.2', 'BA.1', 'BA.2', 'BA.2.12.1', 'BA.2.75', 'BA.2.86', 'BA.2.3.20', 'BA.3',
                     'BA.4', 'BA.4.6', 'BA.5', 'BF.7', 'BQ.1', 'BQ.1.1', 'DV.7.1', 'EG.5.1', 'FL.1.5.2', 'FL.1.5.1', 'GW.5', 'GW.5.1', 'HK.2', 'HK.3', 'HK.3.2', 'HV.1', 'JD.1.1',
-                    'JD.1.1.1', 'JF.1', 'JG.3', 'JN.1', 'JN.4', 'P.1', 'XB', 'XBB.1', 'XBB.1.5',
+                    'JD.1.1.1', 'JF.1', 'JG.3', 'JN.1', 'JN.4', 'KP.3', 'P.1', 'XB', 'XBB.1', 'XBB.1.5',
                     'XBB.1.16', 'XBB.1.9.1', 'XBB.2.3']
             };
 
@@ -258,7 +257,7 @@
                 showButton: true
             };
 
-            var loc = 'path/to/SARS2_AUG23_29400_09999_cdh_pango_4_MAFFT_05_GTR_fme_pdvxv.xml';
+            var loc = 'path/to/SARS2_REF_TREE.xml';
 
             jQuery.get(loc,
                 function (data) {
