@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.1.0.a2
-// 2024-06-05
+// v 2.1.1.a1
+// 2024-06-25
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.1.0.a2';
+    const VERSION = '2.1.1.a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -298,6 +298,7 @@ if (!phyloXml) {
     const ZOOM_OUT_X = 'zoomout_x';
     const ZOOM_OUT_Y = 'zoomin_y';
     const ZOOM_TO_FIT = 'zoomtofit';
+    const ZOOM_TO_EXPAND_Y = 'zoomtoexpandy';
 
     const LABEL_COLOR_SELECT_MENU_2 = 'lcs_2_menu';
     const NODE_FILL_COLOR_SELECT_MENU_2 = 'nfcolors_2_menu';
@@ -3836,7 +3837,7 @@ if (!phyloXml) {
             }
 
             function displayNodeData(n) {
-                let title = n.name ? 'Node Data: ' + n.name : 'Node Data';
+                let title = 'Node Data';
                 let text = '';
                 if (n.name) {
                     text += 'Name: ' + n.name + '<br>';
@@ -3980,17 +3981,18 @@ if (!phyloXml) {
                     'font-weight': 'normal',
                     'text-decoration': 'none',
                     'width': 260,
-                    'height': 260,
+                    'height': 300,
                     'overflow': 'auto',
                     'opacity': 0.95,
                     'z-index': 10,
                     'background-color': '#F0F8FF',
                     'border-style': 'groove',
                     'border-color': '#AAAAAA'
+
                 });
 
                 $('.ui-dialog-titlebar').css({
-                    'text-align': 'left',
+                    'text-align': 'center',
                     'color': '#FFFFFF',
                     'font-size': fs,
                     'font-family': _settings.controlsFont,
@@ -4162,7 +4164,7 @@ if (!phyloXml) {
                 });
 
                 $('.ui-dialog-titlebar').css({
-                    'text-align': 'left',
+                    'text-align': 'center',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
                     'font-family': _settings.controlsFont,
@@ -4546,7 +4548,7 @@ if (!phyloXml) {
                 let text_all = forester.getMolecularSequencesAsFasta(node, '<br>');
 
                 let ext_nodes = forester.getAllExternalNodes(node);
-                let title = 'Sequences in Fasta-format for ' + ext_nodes.length + ' Nodes';
+                let title = 'Sequences in for ' + ext_nodes.length + ' Nodes';
 
 
                 $('#' + NODE_DATA).dialog("destroy");
@@ -4577,7 +4579,7 @@ if (!phyloXml) {
                 });
 
                 $('.ui-dialog-titlebar').css({
-                    'text-align': 'left',
+                    'text-align': 'center',
                     'color': _settings.controlsFontColor,
                     'font-size': fs,
                     'font-family': _settings.controlsFont,
@@ -5265,6 +5267,23 @@ if (!phyloXml) {
             _zoomListener.scale(1);
             update(_root, 0);
             centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+        }
+    }
+
+    function zoomToExpandY() {
+        if (_root) {
+            calcMaxExtLabel();
+            intitializeDisplaySize();
+            _zoomListener.scale(1);
+            update(_root, 0);
+            _zoomed_x_or_y = true;
+            const uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
+            _displayHeight = _options.externalNodeFontSize * (uncollsed_nodes * 1.3);
+            const min = 40;
+            if (_displayHeight < min) {
+                _displayHeight = min;
+            }
+            update(null, 0);
         }
     }
 
@@ -6182,10 +6201,11 @@ if (!phyloXml) {
 
         $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y)
             .css({
-                'width': '78px'
+                'width': '104px'
             });
 
-        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X)
+        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT +
+            ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y)
             .css({
                 'height': '16px'
             });
@@ -6663,6 +6683,8 @@ if (!phyloXml) {
 
         $('#' + ZOOM_TO_FIT).mousedown(zoomToFit);
 
+        $('#' + ZOOM_TO_EXPAND_Y).mousedown(zoomToExpandY);
+
         $('#' + RETURN_TO_SUPERTREE_BUTTON).mousedown(returnToSupertreeButtonPressed);
 
         $('#' + RETURN_TO_SUPERTREE_BUTTON_BY_ONE).mousedown(returnToSupertreeButtonByOnePressed);
@@ -7077,32 +7099,29 @@ if (!phyloXml) {
                         value.cb_id = cb_id;
                     }
                 }
-                if (counter % 2 === 1) {
-                    h = h.concat('</br>');
-                }
             }
 
-            if (_basicTreeProperties.confidences) {
-                h = h.concat(makeCheckboxButtonTableData('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
-            }
-
-            if (_basicTreeProperties.branchLengths) {
-                h = h.concat(makeCheckboxButtonTableData('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
+            if (counter % 2 === 1) {
                 h = h.concat('</br>');
             }
 
-            if (_basicTreeProperties.nodeEvents) {
-                h = h.concat(makeCheckboxButtonTableData('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
+            if (_basicTreeProperties.confidences || _basicTreeProperties.branchLengths) {
+                if (_basicTreeProperties.confidences) {
+                    h = h.concat(makeCheckboxButtonTableData('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
+                }
+                if (_basicTreeProperties.branchLengths) {
+                    h = h.concat(makeCheckboxButtonTableData('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
+                }
+                h = h.concat('</br>');
             }
 
-            if (_basicTreeProperties.branchEvents) {
-                h = h.concat(makeCheckboxButtonTableData('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
-            }
             if (_basicTreeProperties.nodeEvents || _basicTreeProperties.branchEvents) {
+                if (_basicTreeProperties.nodeEvents) {
+                    h = h.concat(makeCheckboxButtonTableData('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
+                }
+                if (_basicTreeProperties.branchEvents) {
+                    h = h.concat(makeCheckboxButtonTableData('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
+                }
                 h = h.concat('</br>');
             }
 
@@ -7130,9 +7149,6 @@ if (!phyloXml) {
             if (_settings.showBranchColorsButton) {
                 h = h.concat(makeCheckboxButtonTableData('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
                 counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
             }
 
             if (_settings.enableNodeVisualizations) {
@@ -7171,6 +7187,7 @@ if (!phyloXml) {
             h = h.concat('<br>');
             h = h.concat(makeButton('X-', ZOOM_OUT_X, 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)'));
             h = h.concat(makeButton('F', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
+            h = h.concat(makeButton('E', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
             h = h.concat(makeButton('X+', ZOOM_IN_X, 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)'));
             h = h.concat('<br>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
@@ -7254,7 +7271,6 @@ if (!phyloXml) {
                 h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
                 h = h.concat('</fieldset>');
             }
-
 
             if (_settings.enableCollapseByFeature) {
                 h = h.concat('<fieldset>');
