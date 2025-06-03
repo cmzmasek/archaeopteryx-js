@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2023 Christian M. Zmasek
- *  Copyright (C) 2023 Yun Zhang
- *  Copyright (C) 2023 J. Craig Venter Institute
+ *  Copyright (C) 2025 Christian M. Zmasek
+ *  Copyright (C) 2025 Yun Zhang
+ *  Copyright (C) 2025 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
  *
  */
 
-// v 2.1.0.a2
-// 2024-06-05
+// v 2.2.0.a1
+// 2025-06-03
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -979,169 +979,6 @@
 
         return properties;
     };
-
-
-    forester.searchData = function (query, phy, caseSensitive, partial, regex, searchProperties) {
-        let nodes = new Set();
-        if (!phy || !query || query.length < 1) {
-            return nodes;
-        }
-        let my_query = query.trim();
-        if (my_query.length < 1) {
-            return nodes;
-        }
-        my_query = my_query.replace(/\s\s+/g, ' ');
-
-        if (!regex) {
-            my_query = my_query.replace(/\+\++/g, '+');
-        }
-
-        let queries = [];
-
-        if (!regex && (my_query.indexOf(",") >= 0)) {
-            queries = my_query.split(",");
-        } else {
-            queries.push(my_query);
-        }
-        let queriesLength = queries.length;
-        let q;
-        for (let i = 0; i < queriesLength; ++i) {
-            q = queries[i];
-            if (q) {
-                q = q.trim();
-                if (q.length > 0) {
-                    forester.preOrderTraversalAll(phy, matcher);
-                }
-            }
-        }
-
-        return nodes;
-
-        function matcher(node) {
-            let mqueries = [];
-            if (!regex && (q.indexOf("+") >= 0)) {
-                mqueries = q.split("+");
-            } else {
-                mqueries.push(q);
-            }
-            let mqueriesLength = mqueries.length;
-            let match = true;
-            for (let i = 0; i < mqueriesLength; ++i) {
-                let mq = mqueries[i];
-                if (mq) {
-                    mq = mq.trim();
-                    if (mq.length > 0) {
-                        let ndf = null;
-                        if ((mq.length > 3) && (mq.indexOf(":") === 2)) {
-                            ndf = makeNDF(mq);
-                            if (ndf) {
-                                mq = mq.substring(3);
-                            }
-                        }
-                        let lmatch = false;
-                        if (((ndf === null) || (ndf === "NN")) && matchme(node.name, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TC")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].code, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TS")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].scientific_name, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TN")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].common_name, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SY")) && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].synonym, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "TI")) && node.taxonomies && node.taxonomies.length > 0 && node.taxonomies[0].id && matchme(node.taxonomies[0].id.value, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SN")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].name, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "GN")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].gene_name, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SS")) && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].symbol, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) || (ndf === "SA")) && node.sequences && node.sequences.length > 0 && node.sequences[0].accession && matchme(node.sequences[0].accession.value, mq, caseSensitive, partial, regex)) {
-                            lmatch = true;
-                        } else if (((ndf === null) && (searchProperties === true)) && node.properties && node.properties.length > 0) {
-
-                            let propertiesLength = node.properties.length;
-                            for (let i = 0; i < propertiesLength; ++i) {
-                                let p = node.properties[i];
-                                if (p.value && matchme(p.value, mq, caseSensitive, partial, regex)) {
-                                    lmatch = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!lmatch) {
-                            match = false;
-                            break;
-                        }
-
-                    } // if (mq.length > 0)
-                    else {
-                        match = false;
-                    }
-                } // if (mq)
-                else {
-                    match = false;
-                }
-            } //  for (let i = 0; i < mqueriesLength; ++i)
-            if (match) {
-                nodes.add(node);
-            }
-        }
-
-        function matchme(s, query, caseSensitive, partial, regex) {
-            if (!s || !query) {
-                return false;
-            }
-            let my_s = s.trim();
-            let my_query = query.trim();
-            if (!caseSensitive && !regex) {
-                my_s = my_s.toLowerCase();
-                my_query = my_query.toLowerCase();
-            }
-            if (regex) {
-                let re = null;
-                try {
-                    if (caseSensitive) {
-                        re = new RegExp(my_query);
-                    } else {
-                        re = new RegExp(my_query, 'i');
-                    }
-                } catch (err) {
-                    return false;
-                }
-                if (re) {
-                    return (my_s.search(re) > -1);
-                } else {
-                    return false;
-                }
-            } else if (partial) {
-                return (my_s.indexOf(my_query) > -1);
-            } else {
-                let np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
-                if (np) {
-                    return (my_s.search(np) > -1);
-                } else {
-                    return false;
-                }
-            }
-        }
-
-        function escapeRegExp(str) {
-            return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-        }
-
-        function makeNDF(query) {
-            let str = query.substring(0, 2);
-            if (str === "NN" || str === "TC" || str === "TN" || str === "TS" || str === "TI" || str === "SY" || str === "SN" || str === "GN" || str === "SS" || str === "SA" || str === "AN" || str === "XR" || str === "MS") {
-                return str;
-            } else {
-                return null;
-            }
-        }
-    };
-
 
     /**
      * This calculates the sum of the external
