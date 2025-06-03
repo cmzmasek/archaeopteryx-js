@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2024 Christian M. Zmasek
- *  Copyright (C) 2024 Yun Zhang
- *  Copyright (C) 2024 J. Craig Venter Institute
+ *  Copyright (C) 2025 Christian M. Zmasek
+ *  Copyright (C) 2025 Yun Zhang
+ *  Copyright (C) 2025 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.1.1.a1
-// 2024-06-25
+// v 2.2.0.a1
+// 2025-06-03
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,7 +73,7 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.1.1.a1';
+    const VERSION = '2.2.0.a1';
     const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
     const NAME = 'Archaeopteryx.js';
 
@@ -2958,6 +2958,100 @@ if (!phyloXml) {
     };
 
 
+    let makeNodeLabelForSearch = function (phynode) {
+        if (!_options.showExternalLabels && !(phynode.children || phynode._children)) {
+            return null;
+        }
+        if (!_options.showInternalLabels && (phynode.children || phynode._children)) {
+            return null;
+        }
+
+        let l = "";
+        if (_options.showNodeName && phynode.name) {
+            l = append(l, phynode.name);
+        }
+
+        if (_options.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
+            let t = phynode.taxonomies[0];
+            if (_options.showTaxonomyCode) {
+                l = append(l, t.code);
+            }
+            if (_options.showTaxonomyScientificName) {
+                l = append(l, t.scientific_name);
+            }
+            if (_options.showTaxonomyCommonName) {
+                l = append(l, t.common_name);
+            }
+            if (_options.showTaxonomyRank) {
+                l = append(l, t.rank);
+            }
+            if (_options.showTaxonomySynonyms) {
+                if (t.synonyms && t.synonyms.length > 0) {
+                    let syn = t.synonyms;
+                    for (let i = 0; i < syn.length; ++i) {
+                        l = append(l, syn[i]);
+                    }
+                }
+            }
+        }
+        if (_options.showSequence && phynode.sequences && phynode.sequences.length > 0) {
+            let s = phynode.sequences[0];
+            if (_options.showSequenceSymbol) {
+                l = append(l, s.symbol);
+            }
+            if (_options.showSequenceName) {
+                l = append(l, s.name);
+            }
+            if (_options.showSequenceGeneSymbol) {
+                l = append(l, s.gene_name);
+            }
+            if (_options.showSequenceAccession && s.accession && s.accession.value) {
+                l = append(l, s.accession.value);
+            }
+        }
+
+        if (_nodeLabels && phynode.properties) {
+            const props_length = phynode.properties.length;
+            if (props_length > 0) {
+                for (const [key, value] of Object.entries(_nodeLabels)) {
+                    if (value.selected === true && value.propertyRef) {
+                        let prop_text = '';
+                        for (let pm = 0; pm < props_length; ++pm) {
+                            if (phynode.properties[pm].ref === value.propertyRef && phynode.properties[pm].datatype === 'xsd:string' && phynode.properties[pm].applies_to === 'node') {
+                                if (prop_text.length > 0) {
+                                    prop_text += ' | '
+                                }
+                                prop_text += phynode.properties[pm].value;
+                            }
+                        }
+                        l = append(l, prop_text);
+                    }
+                }
+            }
+        }
+
+        if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
+            let d = phynode.distributions;
+            for (let ii = 0; i < d.length; ++ii) {
+                l = append(l, d[ii].desc);
+            }
+        }
+        console.log(l)
+        return l;
+
+        function append(str1, str2) {
+            if (str2 && str2.length > 0) {
+                if (str1.length > 0) {
+                    str1 += (' | ' + str2);
+                } else {
+                    str1 = str2;
+                }
+            }
+            return str1;
+        }
+    };
+
+
     let makeCollapsedLabel = function (node, descs) {
         if (node.hide) {
             return;
@@ -5520,7 +5614,172 @@ if (!phyloXml) {
 
 
     function search(query) {
-        return forester.searchData(query, _root, _options.searchIsCaseSensitive, _options.searchIsPartial, _options.searchUsesRegex, _options.searchProperties);
+        return searchData(query, _root, _options.searchIsCaseSensitive, _options.searchIsPartial, _options.searchUsesRegex, _options.searchProperties);
+    }
+
+    function searchData(query, phy, caseSensitive, partial, regex, searchProperties) {
+        let nodes = new Set();
+        if (!phy || !query || query.length < 1) {
+            return nodes;
+        }
+        let my_query = query.trim();
+        if (my_query.length < 1) {
+            return nodes;
+        }
+        my_query = my_query.replace(/\s\s+/g, ' ');
+
+        if (!regex) {
+            my_query = my_query.replace(/\+\++/g, '+');
+        }
+
+        let queries = [];
+
+        if (!regex && (my_query.indexOf(",") >= 0)) {
+            queries = my_query.split(",");
+        } else {
+            queries.push(my_query);
+        }
+        let queriesLength = queries.length;
+        let q;
+        for (let i = 0; i < queriesLength; ++i) {
+            q = queries[i];
+            if (q) {
+                q = q.trim();
+                if (q.length > 0) {
+                    forester.preOrderTraversalAll(phy, matcher);
+                }
+            }
+        }
+
+        return nodes;
+
+        function matcher(node) {
+            let mqueries = [];
+            if (!regex && (q.indexOf("+") >= 0)) {
+                mqueries = q.split("+");
+            } else {
+                mqueries.push(q);
+            }
+            let mqueriesLength = mqueries.length;
+            let match = true;
+            for (let i = 0; i < mqueriesLength; ++i) {
+                let mq = mqueries[i];
+                if (mq) {
+                    mq = mq.trim();
+                    if (mq.length > 0) {
+                        let ndf = null;
+                        if ((mq.length > 3) && (mq.indexOf(":") === 2)) {
+                            ndf = makeNDF(mq);
+                            if (ndf) {
+                                mq = mq.substring(3);
+                            }
+                        }
+                        let lmatch = false;
+                        if (ndf === null) {
+                            if (matchme(makeNodeLabelForSearch(node), mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((searchProperties === true) && node.properties && node.properties.length > 0) {
+                                let propertiesLength = node.properties.length;
+                                for (let i = 0; i < propertiesLength; ++i) {
+                                    let p = node.properties[i];
+                                    if (p.value && matchme(p.value, mq, caseSensitive, partial, regex)) {
+                                        lmatch = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            if ((ndf === "NN") && node.name && matchme(node.name, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "TC") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].code, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "TS") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].scientific_name, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "TN") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].common_name, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "SY") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].synonym, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "TI") && node.taxonomies && node.taxonomies.length > 0 && node.taxonomies[0].id && matchme(node.taxonomies[0].id.value, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "SN") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].name, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "GN") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].gene_name, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "SS") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].symbol, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            } else if ((ndf === "SA") && node.sequences && node.sequences.length > 0 && node.sequences[0].accession && matchme(node.sequences[0].accession.value, mq, caseSensitive, partial, regex)) {
+                                lmatch = true;
+                            }
+                        }
+                        if (!lmatch) {
+                            match = false;
+                            break;
+                        }
+
+                    } // if (mq.length > 0)
+                    else {
+                        match = false;
+                    }
+                } // if (mq)
+                else {
+                    match = false;
+                }
+            } //  for (let i = 0; i < mqueriesLength; ++i)
+            if (match) {
+                nodes.add(node);
+            }
+        }
+
+        function matchme(s, query, caseSensitive, partial, regex) {
+            if (!s || !query) {
+                return false;
+            }
+            let my_s = s.trim();
+            let my_query = query.trim();
+            if (!caseSensitive && !regex) {
+                my_s = my_s.toLowerCase();
+                my_query = my_query.toLowerCase();
+            }
+            if (regex) {
+                let re = null;
+                try {
+                    if (caseSensitive) {
+                        re = new RegExp(my_query);
+                    } else {
+                        re = new RegExp(my_query, 'i');
+                    }
+                } catch (err) {
+                    return false;
+                }
+                if (re) {
+                    return (my_s.search(re) > -1);
+                } else {
+                    return false;
+                }
+            } else if (partial) {
+                return (my_s.indexOf(my_query) > -1);
+            } else {
+                let np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
+                if (np) {
+                    return (my_s.search(np) > -1);
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        function escapeRegExp(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+        }
+
+        function makeNDF(query) {
+            let str = query.substring(0, 2);
+            if (str === "NN" || str === "TC" || str === "TN" || str === "TS" || str === "TI" || str === "SY" || str === "SN" || str === "GN" || str === "SS" || str === "SA" || str === "AN" || str === "XR" || str === "MS") {
+                return str;
+            } else {
+                return null;
+            }
+        }
     }
 
 
@@ -5551,6 +5810,8 @@ if (!phyloXml) {
             _options.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
+        search0();
+        search1();
         update();
     }
 
@@ -5565,6 +5826,8 @@ if (!phyloXml) {
                     }
                 }
             }
+            search0();
+            search1();
             update();
         }
     }
@@ -5575,6 +5838,8 @@ if (!phyloXml) {
             _options.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
+        search0();
+        search1();
         update();
     }
 
@@ -5584,11 +5849,15 @@ if (!phyloXml) {
             _options.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
+        search0();
+        search1();
         update();
     }
 
     function confidenceValuesCbClicked() {
         _options.showConfidenceValues = getCheckboxValue(CONFIDENCE_VALUES_CB);
+        search0();
+        search1();
         update();
     }
 
@@ -5599,31 +5868,43 @@ if (!phyloXml) {
 
     function nodeEventsCbClicked() {
         _options.showNodeEvents = getCheckboxValue(NODE_EVENTS_CB);
+        search0();
+        search1();
         update();
     }
 
     function branchEventsCbClicked() {
         _options.showBranchEvents = getCheckboxValue(BRANCH_EVENTS_CB);
+        search0();
+        search1();
         update();
     }
 
     function internalLabelsCbClicked() {
         _options.showInternalLabels = getCheckboxValue(INTERNAL_LABEL_CB);
+        search0();
+        search1();
         update();
     }
 
     function externalLabelsCbClicked() {
         _options.showExternalLabels = getCheckboxValue(EXTERNAL_LABEL_CB);
+        search0();
+        search1();
         update();
     }
 
     function internalNodesCbClicked() {
         _options.showInternalNodes = getCheckboxValue(INTERNAL_NODES_CB);
+        search0();
+        search1();
         update();
     }
 
     function externalNodesCbClicked() {
         _options.showExternalNodes = getCheckboxValue(EXTERNAL_NODES_CB);
+        search0();
+        search1();
         update();
     }
 
@@ -5649,6 +5930,8 @@ if (!phyloXml) {
     function dynaHideCbClicked() {
         _options.dynahide = getCheckboxValue(DYNAHIDE_CB);
         resetVis();
+        search0();
+        search1();
         update(null, 0);
         update(null, 0);
     }
@@ -5656,6 +5939,8 @@ if (!phyloXml) {
     function shortenCbClicked() {
         _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
         resetVis();
+        search0();
+        search1();
         update(null, 0);
     }
 
@@ -6204,8 +6489,7 @@ if (!phyloXml) {
                 'width': '104px'
             });
 
-        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT +
-            ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y)
+        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y)
             .css({
                 'height': '16px'
             });
