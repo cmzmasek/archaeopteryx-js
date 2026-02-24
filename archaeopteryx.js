@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.3.0.a1
-// 2025-06-30
+// v 2.3.1.a1
+// 2026-02-23
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
