@@ -7975,17 +7975,19 @@ if (!phyloXml) {
 
 
     function initializeInitialVisualization() {
-        if (_options.initialNodeFillColorVisualization && _options.initialNodeFillColorVisualization !== DEFAULT && _visualizations.nodeFillColor[_options.initialNodeFillColorVisualization] != null) {
-            _currentNodeFillColorVisualization = _options.initialNodeFillColorVisualization;
-            setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, _currentNodeFillColorVisualization);
-            addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-            _options.showExternalNodes = true;
-            setCheckboxValue(EXTERNAL_NODES_CB, true);
-        }
-        if (_options.initialLabelColorVisualization && _options.initialLabelColorVisualization !== DEFAULT && _visualizations.labelColor[_options.initialLabelColorVisualization] != null) {
-            _currentLabelColorVisualization = _options.initialLabelColorVisualization;
-            setSelectMenuValue(LABEL_COLOR_SELECT_MENU, _currentLabelColorVisualization);
-            addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
+        if (_options && _visualizations) {
+            if (_options.initialNodeFillColorVisualization && _options.initialNodeFillColorVisualization !== DEFAULT && _visualizations.nodeFillColor[_options.initialNodeFillColorVisualization] != null) {
+                _currentNodeFillColorVisualization = _options.initialNodeFillColorVisualization;
+                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, _currentNodeFillColorVisualization);
+                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
+                _options.showExternalNodes = true;
+                setCheckboxValue(EXTERNAL_NODES_CB, true);
+            }
+            if (_options.initialLabelColorVisualization && _options.initialLabelColorVisualization !== DEFAULT && _visualizations.labelColor[_options.initialLabelColorVisualization] != null) {
+                _currentLabelColorVisualization = _options.initialLabelColorVisualization;
+                setSelectMenuValue(LABEL_COLOR_SELECT_MENU, _currentLabelColorVisualization);
+                addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
+            }
         }
     }
 
