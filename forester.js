@@ -20,8 +20,8 @@
  *
  */
 
-// v 2.3.0.a1
-// 2025-06-30
+// v 2.3.1.a1
+// 2026-02-23
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
