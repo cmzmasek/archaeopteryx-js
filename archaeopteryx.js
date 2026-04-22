@@ -1,7 +1,7 @@
 /**
- *  Copyright (C) 2025 Christian M. Zmasek
- *  Copyright (C) 2025 Yun Zhang
- *  Copyright (C) 2025 J. Craig Venter Institute
+ *  Copyright (C) 2026 Christian M. Zmasek
+ *  Copyright (C) 2026 Yun Zhang
+ *  Copyright (C) 2026 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -21,8 +21,8 @@
  *
  */
 
-// v 2.3.1.a1
-// 2026-02-23
+// v 2.3.2
+// 2026-04-22
 //
 // Archaeopteryx.js is a software tool for the visualization and
 // analysis of highly annotated phylogenetic trees.
@@ -73,8 +73,8 @@ if (!phyloXml) {
 
     "use strict";
 
-    const VERSION = '2.3.1.a1';
-    const WEBSITE = 'https://sites.google.com/view/archaeopteryxjs';
+    const VERSION = '2.3.2';
+    const WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     const NAME = 'Archaeopteryx.js';
 
     // -----------------------------
@@ -7307,18 +7307,27 @@ if (!phyloXml) {
         function makeTreeDesc() {
             let h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<div class=' + TREE_DESC + '>');
+            // Create the tooltip text
+            let tooltipText = "";
+            if (_treeData.name) {
+                tooltipText += "Name: " + _treeData.name;
+            }
+            if (_treeData.description) {
+                if (tooltipText) tooltipText += "\n\n";
+                tooltipText += "Description: " + _treeData.description;
+            }
+
+            h = h.concat('<div class="' + TREE_DESC + '" title="' + tooltipText + '">');
             let f = false;
-            if (_treeData.name && _treeData.name.length > 0) {
-                h = h.concat(_treeData.name);
+            if (_treeData.name) {
+                if (_treeData.name.length > 20) {
+                    h = h.concat(_treeData.name.split(/[^A-Za-z0-9_]/)[0].substring(0, 20));
+                } else {
+                    h = h.concat(_treeData.name);
+                }
                 f = true;
             }
-            if (_treeData.description && _treeData.description.length > 0) {
-                if (f) {
-                    h = h.concat('<br>');
-                }
-                h = h.concat('Desc: ' + _treeData.description);
-            }
+
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
