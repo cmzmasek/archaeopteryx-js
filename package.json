@@ -1,0 +1,43 @@
+{
+  "name": "archaeopteryx",
+  "version": "2.3.2",
+  "description": "Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.",
+  "main": "archaeopteryx.js",
+  "files": [
+    "archaeopteryx.js",
+    "forester.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cmzmasek/archaeopteryx-js.git"
+  },
+  "dependencies": {
+    "phyloxml": ">=0.9.16",
+    "d3": "~3.5.17",
+    "jquery": "~1.12.4",
+    "jquery-ui": "~1.12.1",
+    "canvg": "~1.5.3",
+    "rgbcolor": "~1.0.1",
+    "Blob.js": "git+https://github.com/eligrey/Blob.js.git",
+    "canvas-toBlob.js": "git+https://github.com/eligrey/canvas-toBlob.js.git",
+    "file-saver": "git+https://github.com/eligrey/FileSaver.js"
+  },
+  "keywords": [
+    "archaeopteryx",
+    "phyloXML",
+    "evolution",
+    "phylogenetics",
+    "visualization"
+  ],
+  "author": "Chris Zmasek",
+  "license": "LGPL-2.1-or-later",
+  "bugs": {
+    "url": "https://github.com/cmzmasek/archaeopteryx-js/issues"
+  },
+  "homepage": "https://github.com/cmzmasek/archaeopteryx-js#readme"
+}
