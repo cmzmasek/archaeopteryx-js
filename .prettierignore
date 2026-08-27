@@ -1,0 +1,14 @@
+# Third-party / vendored code — never reformat.
+node_modules/
+dependencies/
+test/lib/
+test/data/
+
+# Minified assets.
+*.min.js
+
+# Large legacy source files: not reformatted yet to avoid an enormous,
+# review-unfriendly diff. Remove these two lines to opt them into Prettier
+# (expect a very large one-time formatting commit if you do).
+archaeopteryx.js
+forester.js

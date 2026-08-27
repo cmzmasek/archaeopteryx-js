@@ -39,13 +39,14 @@
 // * jQuery UI (1.12.1): https://www.npmjs.com/package/jquery-ui/v/1.12.1
 // * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
 //
-//   For file (Newick/New Hampshire, phyloXML) and graphics (PNG, SVG)
-//   download/export, the following five libraries are required as well:
+//   For graphics (PNG) export, the following two libraries are required as well:
 // * canvg: https://www.npmjs.com/package/canvg
 // * rgbcolor: https://www.npmjs.com/package/rgbcolor
-// * Blob.js: https://github.com/eligrey/Blob.js
-// * canvas-toBlob.js (needed in some versions of Internet Explorer and Opera): https://github.com/eligrey/canvas-toBlob.js
-// * FileSaver.js: https://github.com/eligrey/FileSaver.js
+//
+//   File (Newick/New Hampshire, phyloXML, FASTA) and SVG download, as well as
+//   saving the PNG, use native browser APIs (Blob, canvas.toBlob, and an
+//   <a download> link), so Blob.js, canvas-toBlob.js and FileSaver.js are no
+//   longer required.
 //
 //   Additionally, Archaeopteryx.js also requires the following CSS:
 // * jquery-ui.css: https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css
@@ -58,15 +59,15 @@
 // https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8
 
 if (!d3) {
-    throw "no d3.js";
+    throw new Error("no d3.js");
 }
 
 if (!forester) {
-    throw "no forester.js";
+    throw new Error("no forester.js");
 }
 
 if (!phyloXml) {
-    throw "no phyloxml.js";
+    throw new Error("no phyloxml.js");
 }
 
 (function archaeopteryx() {
@@ -878,7 +879,7 @@ if (!phyloXml) {
                                             .range(nodeVisualization.colors)
                                             .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else {
-                                        throw 'Number of colors has to be either 2 or 3';
+                                        throw new Error('Number of colors has to be either 2 or 3');
                                     }
                                 }
 
@@ -892,7 +893,7 @@ if (!phyloXml) {
                                             .range(nodeVisualization.colorsAlt)
                                             .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else {
-                                        throw 'Number of colors has to be either 2 or 3';
+                                        throw new Error('Number of colors has to be either 2 or 3');
                                     }
                                 }
 
@@ -932,7 +933,7 @@ if (!phyloXml) {
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                             _usedColorCategories.add('category50c');
                                         } else {
-                                            throw 'do not know how to process ' + nodeVisualization.colors;
+                                            throw new Error('do not know how to process ' + nodeVisualization.colors);
                                         }
                                     }
                                 }
@@ -958,7 +959,7 @@ if (!phyloXml) {
                                         .range(nodeVisualization.sizes)
                                         .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                 } else {
-                                    throw 'Number of sizes has to be either 2 or 3';
+                                    throw new Error('Number of sizes has to be either 2 or 3');
                                 }
                                 if (sizeScale) {
                                     addNodeSizeVisualization(nodeVisualization.label, nodeVisualization.description, null, nodeVisualization.cladeRef, nodeVisualization.regex, null, sizeScale, scaleType);
@@ -1071,7 +1072,7 @@ if (!phyloXml) {
     function makeColorLegend(id, xPos, yPos, colorScale, scaleType, label, description) {
 
         if (!label) {
-            throw 'legend label is missing';
+            throw new Error('legend label is missing');
         }
 
         let linearRangeLabel = ' (gradient)';
@@ -1203,7 +1204,7 @@ if (!phyloXml) {
     function makeShapeLegend(id, xPos, yPos, shapeScale, label, description) {
 
         if (!label) {
-            throw 'legend label is missing';
+            throw new Error('legend label is missing');
         }
 
         let outOfRangeSymbol = ' *';
@@ -1321,7 +1322,7 @@ if (!phyloXml) {
 
     function makeSizeLegend(id, xPos, yPos, sizeScale, scaleType, label, description) {
         if (!label) {
-            throw 'legend label is missing';
+            throw new Error('legend label is missing');
         }
         let linearRangeLabel = ' (range)';
         let isLinearRange = scaleType === LINEAR_SCALE;
@@ -1552,7 +1553,7 @@ if (!phyloXml) {
             colorScale = category50c()
                 .domain(fifty);
         } else {
-            throw 'do not know ' + name;
+            throw new Error('do not know ' + name);
         }
         let colors = [];
         for (let i = 0; i < l; ++i) {
@@ -2912,7 +2913,7 @@ if (!phyloXml) {
 
         if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
             let d = phynode.distributions;
-            for (let ii = 0; i < d.length; ++ii) {
+            for (let ii = 0; ii < d.length; ++ii) {
                 l = appendB(l, d[ii].desc);
             }
         }
@@ -3032,7 +3033,7 @@ if (!phyloXml) {
 
         if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
             let d = phynode.distributions;
-            for (let ii = 0; i < d.length; ++ii) {
+            for (let ii = 0; ii < d.length; ++ii) {
                 l = append(l, d[ii].desc);
             }
         }
@@ -4558,12 +4559,13 @@ if (!phyloXml) {
 
             function accessDatabase(node) {
                 let url = null;
+                let accessionValue = null;
                 if (node.properties && node.properties.length > 0) {
                     let propertiesLength = node.properties.length;
                     for (let i = 0; i < propertiesLength; ++i) {
                         let p = node.properties[i];
                         if (p.value && p.ref.toLowerCase().indexOf("accession") >= 0) {
-                            let value = p.value;
+                            let value = accessionValue = p.value;
                             if (RE_GENBANK_PROT.test(value)) {
                                 url = 'https://www.ncbi.nlm.nih.gov/protein/' + value;
                             } else if (RE_GENBANK_NUC.test(value)) {
@@ -4586,7 +4588,7 @@ if (!phyloXml) {
                     for (let i = 0; i < node.sequences.length; ++i) {
                         let s = node.sequences[i];
                         if (s.accession && s.accession.value && s.accession.source) {
-                            let value = s.accession.value;
+                            let value = accessionValue = s.accession.value;
                             let source = s.accession.source.toUpperCase();
 
                             if (source === ACC_GENBANK || source === ACC_NCBI) {
@@ -4630,7 +4632,7 @@ if (!phyloXml) {
                     let win = window.open(url, '_blank');
                     win.focus();
                 } else {
-                    alert("Don't know how to interpret sequence accession \'" + value + "\'");
+                    alert("Don't know how to interpret sequence accession \'" + accessionValue + "\'");
                 }
 
 
@@ -5802,6 +5804,17 @@ if (!phyloXml) {
         _options.alignPhylogram = false;
         setDisplayTypeButtons();
         update(null, 0);
+    }
+
+    // Toggles alignment of the labels in phylogram mode (bound to the 'L'
+    // keyboard shortcut). Alignment only applies to phylograms, so this is a
+    // no-op in cladogram mode.
+    function toggleAlignPhylogram() {
+        if (_options.phylogram) {
+            _options.alignPhylogram = !_options.alignPhylogram;
+            setDisplayTypeButtons();
+            update(null, 0);
+        }
     }
 
     function nodeNameCbClicked() {
@@ -8486,6 +8499,33 @@ if (!phyloXml) {
         } else if (format === FASTA_EXPORT_FORMAT) {
             downloadAsFastaAll();
         }
+    }
+
+    /**
+     * Saves a Blob to a file using native browser APIs (an <a download> link
+     * pointing at an object URL). This replaces the former FileSaver.js
+     * dependency; it is intentionally named `saveAs` so every existing call
+     * site keeps working unchanged. If a global saveAs (e.g. a page still
+     * loading FileSaver.js) is present it is left untouched — this local
+     * definition simply shadows it within the library.
+     *
+     * @param blob - the Blob to save
+     * @param filename - the suggested file name for the download
+     */
+    function saveAs(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Revoke on a later tick so the download has time to start.
+        setTimeout(function () {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
     }
 
     function downloadAsPhyloXml() {

@@ -10,7 +10,11 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/forester_test.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -22,10 +26,13 @@
     "jquery": "~1.12.4",
     "jquery-ui": "~1.12.1",
     "canvg": "~1.5.3",
-    "rgbcolor": "~1.0.1",
-    "Blob.js": "git+https://github.com/eligrey/Blob.js.git",
-    "canvas-toBlob.js": "git+https://github.com/eligrey/canvas-toBlob.js.git",
-    "file-saver": "git+https://github.com/eligrey/FileSaver.js"
+    "rgbcolor": "~1.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3"
   },
   "keywords": [
     "archaeopteryx",

@@ -37,17 +37,43 @@ var t0 = pth.join(__dirname, "./data/t0.xml");
 var t1 = pth.join(__dirname, "./data/t1.xml");
 var t_properties = pth.join(__dirname, "./data/properties.xml");
 
-console.log("getTreeRoot                : " + (testGetTreeRoot() === true ? "pass" : "FAIL"));
-console.log("preOrderTraversal          : " + (testPreOrderTraversal() === true ? "pass" : "FAIL"));
-console.log("preOrderTraversalAll       : " + (testPreOrderTraversalAll() === true ? "pass" : "FAIL"));
-console.log("NewHampshire 1             : " + (testNewHampshire() === true ? "pass" : "FAIL"));
-console.log("NewHampshire 2             : " + (testNewHampshire2() === true ? "pass" : "FAIL"));
-console.log("NewHampshire 3             : " + (testNewHampshire3() === true ? "pass" : "FAIL"));
-console.log("reRoot 1                   : " + (testReRoot1() === true ? "pass" : "FAIL"));
-console.log("reRoot 2                   : " + (testReRoot2() === true ? "pass" : "FAIL"));
-console.log("reRoot 3                   : " + (testReRoot3() === true ? "pass" : "FAIL"));
-console.log("collectProperties          : " + (testCollectProperties() === true ? "pass" : "FAIL"));
-console.log("delete subtree             : " + (testDeleteSubtree() === true ? "pass" : "FAIL"));
+var _testFailures = 0;
+
+// Runs a single test function, catching thrown errors so one bad test cannot
+// crash the whole suite, and records failures so the process can exit non-zero
+// (needed for CI to detect regressions).
+function runTest(label, fn) {
+    var ok;
+    try {
+        ok = fn() === true;
+    } catch (e) {
+        ok = false;
+        console.log(label + ": threw " + (e && e.stack ? e.stack : e));
+    }
+    if (!ok) {
+        _testFailures++;
+    }
+    console.log(label + (ok ? "pass" : "FAIL"));
+}
+
+runTest("getTreeRoot                : ", testGetTreeRoot);
+runTest("preOrderTraversal          : ", testPreOrderTraversal);
+runTest("preOrderTraversalAll       : ", testPreOrderTraversalAll);
+runTest("NewHampshire 1             : ", testNewHampshire);
+runTest("NewHampshire 2             : ", testNewHampshire2);
+runTest("NewHampshire 3             : ", testNewHampshire3);
+runTest("reRoot 1                   : ", testReRoot1);
+runTest("reRoot 2                   : ", testReRoot2);
+runTest("reRoot 3                   : ", testReRoot3);
+runTest("collectProperties          : ", testCollectProperties);
+runTest("delete subtree             : ", testDeleteSubtree);
+
+if (_testFailures > 0) {
+    console.log("\n" + _testFailures + " test(s) FAILED");
+    process.exit(1);
+} else {
+    console.log("\nAll tests passed");
+}
 
 function readPhyloXmlFromFile(fileName) {
     var fs = require('fs');

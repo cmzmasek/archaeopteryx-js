@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Minimal phyloXML fixture for forester_test.js testCollectProperties().
+  Two external nodes carrying node-level properties (applies_to="node")
+  plus one property that applies to a phylogeny, so that collection with
+  appliesTo="node" and externalOnly=true has both matching and
+  non-matching properties to filter.
+-->
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns="http://www.phyloxml.org"
+          xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
+    <phylogeny rooted="true">
+        <name>properties test tree</name>
+        <clade>
+            <clade>
+                <name>A</name>
+                <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay</property>
+                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2001</property>
+                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
+            </clade>
+            <clade>
+                <name>B</name>
+                <property ref="ird:Country" datatype="xsd:string" applies_to="node">Egypt</property>
+                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2002</property>
+                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+            </clade>
+        </clade>
+    </phylogeny>
+</phyloxml>
