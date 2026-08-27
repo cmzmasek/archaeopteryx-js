@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Archaeopteryx.js — Live Demo</title>
+
+    <!-- Everything is served from this repository (GitHub Pages); there are no
+         external dependencies to expire. Load order matters: sax before
+         phyloxml, and forester/phyloxml/d3 before archaeopteryx. -->
+    <script src="lib/d3.v7.min.js"></script>
+    <script src="lib/sax.js"></script>
+    <script src="lib/rgbcolor.js"></script>
+    <script src="lib/canvg.js"></script>
+    <script src="lib/phyloxml.js"></script>
+    <script src="lib/forester.js"></script>
+    <script src="lib/archaeopteryx.js"></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        /* Floating card in the top-right corner, clear of the tree's own
+           control panel (which sits in the top-left). */
+        #toolbar {
+            position: fixed;
+            top: 10px;
+            right: 12px;
+            z-index: 1000;
+            width: 250px;
+            padding: 9px 12px;
+            background: rgba(34, 48, 60, 0.95);
+            color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            font-size: 13px;
+        }
+        #toolbar .title {
+            font-weight: 600;
+        }
+        #toolbar a {
+            color: #7fc4ff;
+            text-decoration: none;
+        }
+        #toolbar select {
+            font-size: 13px;
+            padding: 4px 6px;
+            width: 100%;
+            margin-top: 6px;
+            box-sizing: border-box;
+        }
+        #toolbar .desc {
+            display: block;
+            color: #b9c6d1;
+            margin-top: 6px;
+            line-height: 1.35;
+        }
+        #phylogram1 {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        #errbox {
+            color: #a00;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+<div id="toolbar">
+    <span class="title">🐦 Archaeopteryx.js</span> &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
+    <select id="treePicker"></select>
+    <span class="desc" id="treeDesc"></span>
+</div>
+
+<pre id="errbox"></pre>
+<div id="phylogram1"></div>
+<div id="controls0" style="position:absolute"></div>
+<div id="controls1" style="position:absolute"></div>
+
+<script>
+    var TREES = {
+        apaf: {file: 'data/apaf.xml', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny.'},
+        bcl2: {file: 'data/bcl2.xml', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations.'},
+        influenza: {file: 'data/influenza.xml', label: 'Influenza HA (annotated)', desc: 'Richly annotated: Year, Country, Host, Subtype.'},
+        confidences: {file: 'data/confidences.xml', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
+        branch_events: {file: 'data/branch_events.xml', label: 'Branch events', desc: 'A tree with branch (duplication/speciation) events.'}
+    };
+    var DEFAULT_TREE = 'influenza';
+
+    function currentTreeKey() {
+        var params = new URLSearchParams(window.location.search);
+        var t = params.get('tree');
+        return (t && TREES[t]) ? t : DEFAULT_TREE;
+    }
+
+    function buildPicker() {
+        var sel = document.getElementById('treePicker');
+        Object.keys(TREES).forEach(function (key) {
+            var opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = TREES[key].label;
+            sel.appendChild(opt);
+        });
+        sel.value = currentTreeKey();
+        // Reload with the chosen tree for a guaranteed-clean viewer state.
+        sel.addEventListener('change', function () {
+            window.location.search = '?tree=' + sel.value;
+        });
+    }
+
+    function showError(msg) {
+        document.getElementById('errbox').textContent = msg;
+    }
+
+    function loadTree() {
+        var key = currentTreeKey();
+        var tree = TREES[key];
+        document.getElementById('treeDesc').textContent = tree.desc;
+
+        var options = {
+            phylogram: true,
+            showExternalLabels: true,
+            showInternalLabels: false,
+            showBranchLengthValues: false,
+            showConfidenceValues: true,
+            showNodeName: true,
+            showTaxonomy: true,
+            showSequence: true
+        };
+        var settings = {
+            enableDynamicSizing: true,
+            enableDownloads: true,
+            enableNodeVisualizations: true,
+            enableBranchVisualizations: true,
+            controls0: 'controls0',
+            controls1: 'controls1'
+        };
+
+        fetch(tree.file)
+            .then(function (r) {
+                if (!r.ok) {
+                    throw new Error('HTTP ' + r.status + ' loading ' + tree.file);
+                }
+                return r.text();
+            })
+            .then(function (data) {
+                archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, options, settings);
+            })
+            .catch(function (e) {
+                showError('Could not load tree "' + key + '": ' + (e && e.message ? e.message : e));
+            });
+    }
+
+    window.addEventListener('load', function () {
+        buildPicker();
+        loadTree();
+    });
+</script>
+</body>
+</html>

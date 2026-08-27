@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docs:sync": "cp archaeopteryx.js forester.js docs/lib/"
   },
   "repository": {
     "type": "git",

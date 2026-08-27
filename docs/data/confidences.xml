@@ -1,0 +1,1496 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.phyloxml.org"
+          xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
+    <phylogeny rooted="false">
+        <clade>
+            <clade>
+                <branch_length>0.00062103811689025916</branch_length>
+                <confidence type="bootstrap">100</confidence>
+                <clade>
+                    <branch_length>0.00178210401592715571</branch_length>
+                    <confidence type="bootstrap">90</confidence>
+                    <clade>
+                        <branch_length>0.00000119063362005552</branch_length>
+                        <confidence type="bootstrap">10</confidence>
+                        <clade>
+                            <branch_length>0.00118787361266810992</branch_length>
+                            <confidence type="bootstrap">100</confidence>
+                            <clade>
+                                <branch_length>0.00000119063362005552</branch_length>
+                                <confidence type="bootstrap">99</confidence>
+                                <confidence type="likelihood">0.9</confidence>
+                                <clade>
+                                    <branch_length>0.00000119063362005552</branch_length>
+                                    <clade>
+                                        <name>KT580868</name>
+                                        <sequence>
+                                            <accession>KT580868</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00059266854016337082</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <name>KT580860</name>
+                                        <sequence>
+                                            <accession>KT580860</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00059295669017806320</branch_length>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00059286359300699399</branch_length>
+                                    <clade>
+                                        <name>KU204732</name>
+                                        <sequence>
+                                            <accession>KU204732</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00237972366429040636</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <branch_length>0.00000119063362005552</branch_length>
+                                        <clade>
+                                            <name>KT580908</name>
+                                            <sequence>
+                                                <accession>KT580908</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                14-15
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2015</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00000119063362005552</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <name>KT580884</name>
+                                            <sequence>
+                                                <accession>KT580884</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                14-15
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2015</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00059272009830271615</branch_length>
+                                        </clade>
+                                    </clade>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00297720736368106264</branch_length>
+                                <clade>
+                                    <name>KX670529</name>
+                                    <sequence>
+                                        <accession>KX670529</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2016</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00238022996535373291</branch_length>
+                                </clade>
+                                <clade>
+                                    <name>KX851937</name>
+                                    <sequence>
+                                        <accession>KX851937</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2015</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00000119063362005552</branch_length>
+                                </clade>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <branch_length>0.00059345172018148698</branch_length>
+                            <clade>
+                                <branch_length>0.00000119063362005552</branch_length>
+                                <clade>
+                                    <name>KR065782</name>
+                                    <sequence>
+                                        <accession>KR065782</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2015</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00000119063362005552</branch_length>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00059874021609249140</branch_length>
+                                    <clade>
+                                        <name>KU500870</name>
+                                        <sequence>
+                                            <accession>KU500870</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00723284882052601698</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <name>KR982627</name>
+                                        <sequence>
+                                            <accession>KR982627</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00178029206891831587</branch_length>
+                                    </clade>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00179734792525648810</branch_length>
+                                <clade>
+                                    <branch_length>0.00058129597340923821</branch_length>
+                                    <clade>
+                                        <branch_length>0.00178545555496594172</branch_length>
+                                        <clade>
+                                            <name>KX086562</name>
+                                            <sequence>
+                                                <accession>KX086562</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2016</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00000119063362005552</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <name>KU529098</name>
+                                            <sequence>
+                                                <accession>KU529098</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2015</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00118718310576779130</branch_length>
+                                        </clade>
+                                    </clade>
+                                    <clade>
+                                        <name>KU500861</name>
+                                        <sequence>
+                                            <accession>KU500861</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00059281975292808898</branch_length>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00300102252385905151</branch_length>
+                                    <clade>
+                                        <name>KX156625</name>
+                                        <sequence>
+                                            <accession>KX156625</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2016</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00180030254631233276</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <branch_length>0.00057771379418609416</branch_length>
+                                        <clade>
+                                            <name>KX008711</name>
+                                            <sequence>
+                                                <accession>KX008711</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2016</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00120027720789026514</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <name>KX255802</name>
+                                            <sequence>
+                                                <accession>KX255802</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2016</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00239671140200301133</branch_length>
+                                        </clade>
+                                    </clade>
+                                </clade>
+                            </clade>
+                        </clade>
+                    </clade>
+                    <clade>
+                        <branch_length>0.00059178315030744295</branch_length>
+                        <clade>
+                            <branch_length>0.00059339873119450314</branch_length>
+                            <clade>
+                                <name>KR065758</name>
+                                <sequence>
+                                    <accession>KR065758</accession>
+                                </sequence>
+                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                </property>
+                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15</property>
+                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                </property>
+                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                <Simple_Characteristics>
+                                    <Country>USA</Country>
+                                    <Year>2015</Year>
+                                    <HA>1</HA>
+                                    <NA>2</NA>
+                                    <Host>Swine</Host>
+                                </Simple_Characteristics>
+                                <branch_length>0.00059494978933964562</branch_length>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00059420049056905231</branch_length>
+                                <clade>
+                                    <branch_length>0.00055743888072372295</branch_length>
+                                    <clade>
+                                        <name>KU529123</name>
+                                        <sequence>
+                                            <accession>KU529123</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00483241032866169474</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <branch_length>0.00242266320224748507</branch_length>
+                                        <clade>
+                                            <name>KU513739</name>
+                                            <sequence>
+                                                <accession>KU513739</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2015</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00000119063362005552</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <branch_length>0.00000119063362005552</branch_length>
+                                            <clade>
+                                                <name>KU143634</name>
+                                                <sequence>
+                                                    <accession>KU143634</accession>
+                                                </sequence>
+                                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                    delta1
+                                                </property>
+                                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                </property>
+                                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                                </property>
+                                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                    USA
+                                                </property>
+                                                <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                          applies_to="node">1B.2.2.1
+                                                </property>
+                                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                    H1N2
+                                                </property>
+                                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                    15-16
+                                                </property>
+                                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                    America
+                                                </property>
+                                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                                </property>
+                                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                </property>
+                                                <Simple_Characteristics>
+                                                    <Country>USA</Country>
+                                                    <Year>2015</Year>
+                                                    <HA>1</HA>
+                                                    <NA>2</NA>
+                                                    <Host>Swine</Host>
+                                                </Simple_Characteristics>
+                                                <branch_length>0.00000119063362005552</branch_length>
+                                            </clade>
+                                            <clade>
+                                                <name>KU143610</name>
+                                                <sequence>
+                                                    <accession>KU143610</accession>
+                                                </sequence>
+                                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                    delta1
+                                                </property>
+                                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                </property>
+                                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015
+                                                </property>
+                                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                    USA
+                                                </property>
+                                                <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                          applies_to="node">1B.2.2.1
+                                                </property>
+                                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                    H1N2
+                                                </property>
+                                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                    15-16
+                                                </property>
+                                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                    America
+                                                </property>
+                                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                                </property>
+                                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                </property>
+                                                <Simple_Characteristics>
+                                                    <Country>USA</Country>
+                                                    <Year>2015</Year>
+                                                    <HA>1</HA>
+                                                    <NA>2</NA>
+                                                    <Host>Swine</Host>
+                                                </Simple_Characteristics>
+                                                <branch_length>0.00238747793789162183</branch_length>
+                                            </clade>
+                                        </clade>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00298610561792260216</branch_length>
+                                    <clade>
+                                        <name>KT965411</name>
+                                        <sequence>
+                                            <accession>KT965411</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00000119063362005552</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <branch_length>0.00478015659721095758</branch_length>
+                                        <clade>
+                                            <name>KU877404</name>
+                                            <sequence>
+                                                <accession>KU877404</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.1
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                15-16
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2016</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00118726162303371967</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <branch_length>0.00000119063362005552</branch_length>
+                                            <clade>
+                                                <name>KU877368</name>
+                                                <sequence>
+                                                    <accession>KU877368</accession>
+                                                </sequence>
+                                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                    delta1
+                                                </property>
+                                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                </property>
+                                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2016
+                                                </property>
+                                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                    USA
+                                                </property>
+                                                <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                          applies_to="node">1B.2.2.1
+                                                </property>
+                                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                    H1N2
+                                                </property>
+                                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                    15-16
+                                                </property>
+                                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                    America
+                                                </property>
+                                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                                </property>
+                                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                </property>
+                                                <Simple_Characteristics>
+                                                    <Country>USA</Country>
+                                                    <Year>2016</Year>
+                                                    <HA>1</HA>
+                                                    <NA>2</NA>
+                                                    <Host>Swine</Host>
+                                                </Simple_Characteristics>
+                                                <branch_length>0.00000119063362005552</branch_length>
+                                            </clade>
+                                            <clade>
+                                                <branch_length>0.00059404394760684558</branch_length>
+                                                <clade>
+                                                    <name>KX150786</name>
+                                                    <sequence>
+                                                        <accession>KX150786</accession>
+                                                    </sequence>
+                                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                        delta1
+                                                    </property>
+                                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                    </property>
+                                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">
+                                                        2016
+                                                    </property>
+                                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                        USA
+                                                    </property>
+                                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                              applies_to="node">1B.2.2.1
+                                                    </property>
+                                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                        H1N2
+                                                    </property>
+                                                    <property ref="ird:FluSeason" datatype="xsd:string"
+                                                              applies_to="node">15-16
+                                                    </property>
+                                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">
+                                                        North America
+                                                    </property>
+                                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">
+                                                        Swine
+                                                    </property>
+                                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                    </property>
+                                                    <Simple_Characteristics>
+                                                        <Country>USA</Country>
+                                                        <Year>2016</Year>
+                                                        <HA>1</HA>
+                                                        <NA>2</NA>
+                                                        <Host>Swine</Host>
+                                                    </Simple_Characteristics>
+                                                    <branch_length>0.00239512177813208183</branch_length>
+                                                </clade>
+                                                <clade>
+                                                    <name>KU877374</name>
+                                                    <sequence>
+                                                        <accession>KU877374</accession>
+                                                    </sequence>
+                                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                        delta1
+                                                    </property>
+                                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                    </property>
+                                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">
+                                                        2016
+                                                    </property>
+                                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                        USA
+                                                    </property>
+                                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                              applies_to="node">1B.2.2.1
+                                                    </property>
+                                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                        H1N2
+                                                    </property>
+                                                    <property ref="ird:FluSeason" datatype="xsd:string"
+                                                              applies_to="node">15-16
+                                                    </property>
+                                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">
+                                                        North America
+                                                    </property>
+                                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">
+                                                        Swine
+                                                    </property>
+                                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                    </property>
+                                                    <Simple_Characteristics>
+                                                        <Country>USA</Country>
+                                                        <Year>2016</Year>
+                                                        <HA>1</HA>
+                                                        <NA>2</NA>
+                                                        <Host>Swine</Host>
+                                                    </Simple_Characteristics>
+                                                    <branch_length>0.00178730460477463638</branch_length>
+                                                </clade>
+                                            </clade>
+                                        </clade>
+                                    </clade>
+                                </clade>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <branch_length>0.00000119063362005552</branch_length>
+                            <clade>
+                                <branch_length>0.00000119063362005552</branch_length>
+                                <clade>
+                                    <name>KR982657</name>
+                                    <sequence>
+                                        <accession>KR982657</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2015</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00059472349663914476</branch_length>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00058496583769083424</branch_length>
+                                    <clade>
+                                        <name>KR982621</name>
+                                        <sequence>
+                                            <accession>KR982621</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00060233507322387907</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <name>KX631954</name>
+                                        <sequence>
+                                            <accession>KX631954</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.1
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">15-16
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2015</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00602030298504688428</branch_length>
+                                    </clade>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00000119063362005552</branch_length>
+                                <clade>
+                                    <name>KP996586</name>
+                                    <sequence>
+                                        <accession>KP996586</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2015</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00000119063362005552</branch_length>
+                                </clade>
+                                <clade>
+                                    <name>KP996553</name>
+                                    <sequence>
+                                        <accession>KP996553</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2015</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00000119063362005552</branch_length>
+                                </clade>
+                            </clade>
+                        </clade>
+                    </clade>
+                </clade>
+                <clade>
+                    <name>KT165011</name>
+                    <sequence>
+                        <accession>KT165011</accession>
+                    </sequence>
+                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1</property>
+                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15</property>
+                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                    <Simple_Characteristics>
+                        <Country>USA</Country>
+                        <Year>2015</Year>
+                        <HA>1</HA>
+                        <NA>2</NA>
+                        <Host>Swine</Host>
+                    </Simple_Characteristics>
+                    <branch_length>0.00300247148677470523</branch_length>
+                </clade>
+            </clade>
+            <clade>
+                <branch_length>0.01978996621229666894</branch_length>
+                <clade>
+                    <name>KR052698</name>
+                    <sequence>
+                        <accession>KR052698</accession>
+                    </sequence>
+                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2015</property>
+                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1</property>
+                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15</property>
+                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                    <Simple_Characteristics>
+                        <Country>USA</Country>
+                        <Year>2015</Year>
+                        <HA>1</HA>
+                        <NA>2</NA>
+                        <Host>Swine</Host>
+                    </Simple_Characteristics>
+                    <branch_length>0.02433410513165232963</branch_length>
+                </clade>
+                <clade>
+                    <branch_length>0.02737113265105546589</branch_length>
+                    <clade>
+                        <name>KM245290</name>
+                        <sequence>
+                            <accession>KM245290</accession>
+                        </sequence>
+                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.2</property>
+                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">13-14</property>
+                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                        <Simple_Characteristics>
+                            <Country>USA</Country>
+                            <Year>2014</Year>
+                            <HA>1</HA>
+                            <NA>2</NA>
+                            <Host>Swine</Host>
+                        </Simple_Characteristics>
+                        <branch_length>0.03229302636565305890</branch_length>
+                    </clade>
+                    <clade>
+                        <branch_length>0.01600590640578181817</branch_length>
+                        <clade>
+                            <name>KF922771</name>
+                            <sequence>
+                                <accession>KF922771</accession>
+                            </sequence>
+                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2013</property>
+                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.2
+                            </property>
+                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">13-14</property>
+                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                            <Simple_Characteristics>
+                                <Country>USA</Country>
+                                <Year>2013</Year>
+                                <HA>1</HA>
+                                <NA>2</NA>
+                                <Host>Swine</Host>
+                            </Simple_Characteristics>
+                            <branch_length>0.00586207730239317760</branch_length>
+                        </clade>
+                        <clade>
+                            <branch_length>0.00499660253712222880</branch_length>
+                            <clade>
+                                <name>KJ650529</name>
+                                <sequence>
+                                    <accession>KJ650529</accession>
+                                </sequence>
+                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.2
+                                </property>
+                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">13-14</property>
+                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                </property>
+                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                <Simple_Characteristics>
+                                    <Country>USA</Country>
+                                    <Year>2014</Year>
+                                    <HA>1</HA>
+                                    <NA>2</NA>
+                                    <Host>Swine</Host>
+                                </Simple_Characteristics>
+                                <branch_length>0.00118227401168372807</branch_length>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00000119063362005552</branch_length>
+                                <clade>
+                                    <name>KJ650526</name>
+                                    <sequence>
+                                        <accession>KJ650526</accession>
+                                    </sequence>
+                                    <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                    </property>
+                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                    <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.2
+                                    </property>
+                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">13-14
+                                    </property>
+                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                    <Simple_Characteristics>
+                                        <Country>USA</Country>
+                                        <Year>2014</Year>
+                                        <HA>1</HA>
+                                        <NA>2</NA>
+                                        <Host>Swine</Host>
+                                    </Simple_Characteristics>
+                                    <branch_length>0.00059119024826684535</branch_length>
+                                </clade>
+                                <clade>
+                                    <branch_length>0.00059116500726070001</branch_length>
+                                    <clade>
+                                        <name>KP192035</name>
+                                        <sequence>
+                                            <accession>KP192035</accession>
+                                        </sequence>
+                                        <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                        </property>
+                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                        <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                            1B.2.2.2
+                                        </property>
+                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                        </property>
+                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15
+                                        </property>
+                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                        </property>
+                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                        <Simple_Characteristics>
+                                            <Country>USA</Country>
+                                            <Year>2014</Year>
+                                            <HA>1</HA>
+                                            <NA>2</NA>
+                                            <Host>Swine</Host>
+                                        </Simple_Characteristics>
+                                        <branch_length>0.00660875962672803109</branch_length>
+                                    </clade>
+                                    <clade>
+                                        <branch_length>0.00059535246691561539</branch_length>
+                                        <clade>
+                                            <name>KJ650523</name>
+                                            <sequence>
+                                                <accession>KJ650523</accession>
+                                            </sequence>
+                                            <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1
+                                            </property>
+                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014
+                                            </property>
+                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
+                                            </property>
+                                            <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">
+                                                1B.2.2.2
+                                            </property>
+                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2
+                                            </property>
+                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                13-14
+                                            </property>
+                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                America
+                                            </property>
+                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                            </property>
+                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                                            <Simple_Characteristics>
+                                                <Country>USA</Country>
+                                                <Year>2014</Year>
+                                                <HA>1</HA>
+                                                <NA>2</NA>
+                                                <Host>Swine</Host>
+                                            </Simple_Characteristics>
+                                            <branch_length>0.00237267749325028796</branch_length>
+                                        </clade>
+                                        <clade>
+                                            <branch_length>0.00058722179396258054</branch_length>
+                                            <clade>
+                                                <name>KJ650520</name>
+                                                <sequence>
+                                                    <accession>KJ650520</accession>
+                                                </sequence>
+                                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                    delta1
+                                                </property>
+                                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                </property>
+                                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014
+                                                </property>
+                                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                    USA
+                                                </property>
+                                                <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                          applies_to="node">1B.2.2.2
+                                                </property>
+                                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                    H1N2
+                                                </property>
+                                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                    13-14
+                                                </property>
+                                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                    America
+                                                </property>
+                                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                                </property>
+                                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                </property>
+                                                <Simple_Characteristics>
+                                                    <Country>USA</Country>
+                                                    <Year>2014</Year>
+                                                    <HA>1</HA>
+                                                    <NA>2</NA>
+                                                    <Host>Swine</Host>
+                                                </Simple_Characteristics>
+                                                <branch_length>0.00059803446158350829</branch_length>
+                                            </clade>
+                                            <clade>
+                                                <name>KJ470679</name>
+                                                <sequence>
+                                                    <accession>KJ470679</accession>
+                                                </sequence>
+                                                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">
+                                                    delta1
+                                                </property>
+                                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1
+                                                </property>
+                                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2013
+                                                </property>
+                                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">
+                                                    USA
+                                                </property>
+                                                <property ref="ird:GlobalH1Clade" datatype="xsd:string"
+                                                          applies_to="node">1B.2.2.2
+                                                </property>
+                                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">
+                                                    H1N2
+                                                </property>
+                                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">
+                                                    13-14
+                                                </property>
+                                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North
+                                                    America
+                                                </property>
+                                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine
+                                                </property>
+                                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2
+                                                </property>
+                                                <Simple_Characteristics>
+                                                    <Country>USA</Country>
+                                                    <Year>2013</Year>
+                                                    <HA>1</HA>
+                                                    <NA>2</NA>
+                                                    <Host>Swine</Host>
+                                                </Simple_Characteristics>
+                                                <branch_length>0.00000119063362005552</branch_length>
+                                            </clade>
+                                        </clade>
+                                    </clade>
+                                </clade>
+                            </clade>
+                        </clade>
+                    </clade>
+                </clade>
+            </clade>
+            <clade>
+                <name>KP693592</name>
+                <sequence>
+                    <accession>KP693592</accession>
+                </sequence>
+                <property ref="ird:H1Clade" datatype="xsd:string" applies_to="node">delta1</property>
+                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
+                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
+                <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
+                <property ref="ird:GlobalH1Clade" datatype="xsd:string" applies_to="node">1B.2.2.1</property>
+                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N2</property>
+                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">14-15</property>
+                <property ref="ird:Region" datatype="xsd:string" applies_to="node">North America</property>
+                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Swine</property>
+                <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
+                <Simple_Characteristics>
+                    <Country>USA</Country>
+                    <Year>2014</Year>
+                    <HA>1</HA>
+                    <NA>2</NA>
+                    <Host>Swine</Host>
+                </Simple_Characteristics>
+                <branch_length>0.00117395499615513370</branch_length>
+            </clade>
+        </clade>
+    </phylogeny>
+</phyloxml>

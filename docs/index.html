@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Archaeopteryx.js — phylogenetic tree viewer</title>
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --ink: #1f2a33;
+            --muted: #5b6b78;
+            --accent: #2590fd;
+            --line: #e2e8ee;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+        }
+        header {
+            background: linear-gradient(135deg, #22303c, #2b4a66);
+            color: #fff;
+            padding: 42px 20px 34px;
+            text-align: center;
+        }
+        header h1 { margin: 0 0 6px; font-size: 30px; }
+        header p { margin: 0 auto; max-width: 620px; color: #cdd8e1; }
+        header .links { margin-top: 16px; font-size: 14px; }
+        header .links a { color: #7fc4ff; text-decoration: none; margin: 0 8px; }
+        main { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
+        main h2 { font-size: 18px; color: var(--muted); font-weight: 600; margin: 8px 0 16px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            display: block;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 18px;
+            text-decoration: none;
+            color: inherit;
+            transition: box-shadow .15s, transform .15s, border-color .15s;
+        }
+        .card:hover {
+            box-shadow: 0 6px 18px rgba(31, 42, 51, .12);
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+        .card h3 { margin: 0 0 6px; font-size: 16px; }
+        .card p { margin: 0; color: var(--muted); font-size: 14px; }
+        .card .open { margin-top: 12px; color: var(--accent); font-size: 13px; font-weight: 600; }
+        footer { text-align: center; color: var(--muted); font-size: 13px; padding: 0 20px 40px; }
+        footer a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>🐦 Archaeopteryx.js</h1>
+    <p>A browser tool for the visualization and analysis of highly annotated phylogenetic trees.</p>
+    <div class="links">
+        <a href="https://github.com/cmzmasek/archaeopteryx-js">GitHub</a> ·
+        <a href="https://www.npmjs.com/package/archaeopteryx">npm</a>
+    </div>
+</header>
+
+<main>
+    <h2>Live demos</h2>
+    <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+    Free software (GNU LGPL). Runs entirely in your browser on
+    <a href="https://d3js.org/">d3</a> — no plugins, no server.
+</footer>
+
+<script>
+    // Keep this list in sync with demo.html.
+    var TREES = [
+        {key: 'influenza', label: 'Influenza HA (annotated)', desc: 'Richly annotated strains — Year, Country, Host, Subtype. Shows off Archaeopteryx’s annotation features.'},
+        {key: 'apaf', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny with confidence values.'},
+        {key: 'bcl2', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations and sequences.'},
+        {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
+        {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'}
+    ];
+    var grid = document.getElementById('grid');
+    TREES.forEach(function (t) {
+        var a = document.createElement('a');
+        a.className = 'card';
+        a.href = 'demo.html?tree=' + t.key;
+        a.innerHTML = '<h3>' + t.label + '</h3><p>' + t.desc + '</p><div class="open">Open demo →</div>';
+        grid.appendChild(a);
+    });
+</script>
+</body>
+</html>

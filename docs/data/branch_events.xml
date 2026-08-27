@@ -1,0 +1,1034 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd"
+          xmlns="http://www.phyloxml.org">
+    <phylogeny rooted="true" rerootable="true">
+        <clade>
+            <branch_length>0.000051398</branch_length>
+            <clade>
+                <branch_length>0.000009298</branch_length>
+                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                <clade>
+                    <branch_length>0.000006506</branch_length>
+                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                    <clade>
+                        <branch_length>5.5e-7</branch_length>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <clade>
+                            <branch_length>9.01e-7</branch_length>
+                            <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:W34J
+                            </property>
+                            <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:Y409-
+                            </property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <clade>
+                                <branch_length>0.000033145</branch_length>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:E848K
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.5
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.5
+                                </property>
+                                <clade>
+                                    <branch_length>0.000001406</branch_length>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.5
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.5
+                                    </property>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/AUS/VIC138/2020</name>
+                                        <branch_length>-0.000001128</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT451042</accession>
+                                        </sequence>
+                                        <property ref="aptx:branch_event" datatype="xsd:string"
+                                                  applies_to="parent_branch">S:G04N
+                                        </property>
+                                        <property ref="aptx:branch_event" datatype="xsd:string"
+                                                  applies_to="parent_branch">S:E49B
+                                        </property>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_03
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.5
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.5
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                        </property>
+                                    </clade>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/AUS/VIC293/2020</name>
+                                        <branch_length>0.000131128</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT451185</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_03
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.5
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.5
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                        </property>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/COL/79256_Antioquia/2020</name>
+                                    <branch_length>0.000068594</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MT256924</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">South America
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.5
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.5
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Colombia
+                                    </property>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <branch_length>0.00006623</branch_length>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:J843T
+                                </property>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:S049H
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A</property>
+                                <clade>
+                                    <branch_length>0.000001711</branch_length>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <clade>
+                                        <name>2019_nCoV/Japan/TY/WK_012/2020</name>
+                                        <branch_length>0.000033595</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">LC522973</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">East Asia
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Japan
+                                        </property>
+                                    </clade>
+                                    <clade>
+                                        <name>2019_nCoV/Japan/TY/WK_501/2020</name>
+                                        <branch_length>-0.000003595</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">LC522974</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">East Asia
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Japan
+                                        </property>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <name>2019_nCoV/Japan/TY/WK_521/2020</name>
+                                    <branch_length>0.000033289</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">LC522975</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">East Asia
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Japan
+                                    </property>
+                                </clade>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <branch_length>3.49e-7</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <clade>
+                                <branch_length>0.000065439</branch_length>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:D59H
+                                </property>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:A484F
+                                </property>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:G04N
+                                </property>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:E49B
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.6
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.6
+                                </property>
+                                <clade>
+                                    <branch_length>0.00006932</branch_length>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.6
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.6
+                                    </property>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/THA/MUMT_3/2020</name>
+                                        <branch_length>-5.32e-7</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT781415</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_02
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Southeast
+                                            Asia
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.6
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.6
+                                        </property>
+                                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:A829T
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Thailand
+                                        </property>
+                                    </clade>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/KHM/Kunming_kms_2/2020</name>
+                                        <branch_length>0.000200532</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MW341443</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_03
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Southeast
+                                            Asia
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.6
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.6
+                                        </property>
+                                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:A829T
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Cambodia
+                                        </property>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/THA/SI200468_NT/2020</name>
+                                    <branch_length>6.8e-7</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MT447158</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_01
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Southeast Asia
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.6
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.6
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Thailand
+                                    </property>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <branch_length>0.000068936</branch_length>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.1
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.1
+                                </property>
+                                <clade>
+                                    <branch_length>0.000033809</branch_length>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.1
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.1
+                                    </property>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/USA/UF_1/2020</name>
+                                        <branch_length>0.000030718</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT295464</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_03
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.1
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.1
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                    </clade>
+                                    <clade>
+                                        <name>SARS_CoV_2/ENV/USA/UF_11/2020</name>
+                                        <branch_length>-7.18e-7</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT476384</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_02
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North
+                                            America
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.1
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.1
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Unknown
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA
+                                        </property>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/AUS/TAS221/2020</name>
+                                    <branch_length>0.000066191</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MT973295</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.1
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.1
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                    </property>
+                                </clade>
+                            </clade>
+                        </clade>
+                    </clade>
+                    <clade>
+                        <branch_length>0.00023445</branch_length>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:D59H
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:A484F
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E49B
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:D59H
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:A484F
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E49B
+                        </property>
+                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.3</property>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.3</property>
+                        <clade>
+                            <branch_length>0.000069274</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.3</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.3</property>
+                            <clade>
+                                <name>SARS_CoV_2/human/AUS/VIC108/2020</name>
+                                <branch_length>0.000030737</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT451017</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania</property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.3
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.3
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                </property>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/AUS/VIC112/2020</name>
+                                <branch_length>-7.37e-7</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT451021</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania</property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.3
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.3
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                </property>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <name>SARS_CoV_2/ENV/USA/UF_3/2020</name>
+                            <branch_length>7.26e-7</branch_length>
+                            <sequence>
+                                <accession source="ncbi">MT324684</accession>
+                            </sequence>
+                            <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03</property>
+                            <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                            <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America</property>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.3</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.3</property>
+                            <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Unknown</property>
+                            <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                        </clade>
+                    </clade>
+                </clade>
+                <clade>
+                    <branch_length>0.00016074</branch_length>
+                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                    <clade>
+                        <branch_length>0.000006051</branch_length>
+                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <clade>
+                            <branch_length>0.000001264</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <clade>
+                                <branch_length>0.000065884</branch_length>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.2
+                                </property>
+                                <clade>
+                                    <branch_length>0.000070852</branch_length>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.2
+                                    </property>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/AUS/TAS08/2020</name>
+                                        <branch_length>0.000031962</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT973348</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_04
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.2
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">
+                                            A.2.2
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                        </property>
+                                    </clade>
+                                    <clade>
+                                        <name>SARS_CoV_2/human/AUS/TAS133/2020</name>
+                                        <branch_length>-0.000001962</branch_length>
+                                        <sequence>
+                                            <accession source="ncbi">MT973454</accession>
+                                        </sequence>
+                                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">
+                                            2020_04
+                                        </property>
+                                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020
+                                        </property>
+                                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">
+                                            A.2
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">
+                                            A
+                                        </property>
+                                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">
+                                            A.2.2
+                                        </property>
+                                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human
+                                        </property>
+                                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                        </property>
+                                    </clade>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/AUS/NT47/2020</name>
+                                    <branch_length>-8.52e-7</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MT745668</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.2
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                    </property>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/CHL/2020_26639/2020</name>
+                                <branch_length>0.000066616</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT670018</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">South America
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:I197V</property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Chile</property>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <branch_length>0.000001861</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2</property>
+                            <clade>
+                                <name>SARS_CoV_2/human/AUS/VIC338/2020</name>
+                                <branch_length>0.000098756</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT451229</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania</property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                </property>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/AUS/VIC367/2020</name>
+                                <branch_length>0.000031244</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT451258</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania</property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia
+                                </property>
+                            </clade>
+                        </clade>
+                    </clade>
+                    <clade>
+                        <branch_length>0.000831761</branch_length>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E49B
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:D59H
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:A484F
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E49B
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:D59H
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:A484F
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E49B
+                        </property>
+                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.4</property>
+                        <clade>
+                            <branch_length>0.000001398</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.4</property>
+                            <clade>
+                                <name>SARS_CoV_2/human/USA/FL_BPHL_0057/2021</name>
+                                <branch_length>-6.3e-8</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MW586582</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.4
+                                </property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L141-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:G142-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:V143-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D215A</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L452R</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G</property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/USA/FL_BPHL_0058/2021</name>
+                                <branch_length>6.3e-8</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MW586583</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.4
+                                </property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L141-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:G142-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:V143-</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D215A</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L452R</property>
+                                <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G</property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <name>SARS_CoV_2/human/USA/FL_BPHL_0056/2021</name>
+                            <branch_length>0.000068602</branch_length>
+                            <sequence>
+                                <accession source="ncbi">MW586581</accession>
+                            </sequence>
+                            <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01</property>
+                            <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                            <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America</property>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.2</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.2.4</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L141-</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:G142-</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:V143-</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D215A</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L452R</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G</property>
+                            <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                            <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                        </clade>
+                    </clade>
+                </clade>
+            </clade>
+            <clade>
+                <branch_length>0.000050687</branch_length>
+                <clade>
+                    <branch_length>0.000005728</branch_length>
+                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                    <clade>
+                        <branch_length>0.000008879</branch_length>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <clade>
+                            <branch_length>0.000102074</branch_length>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.4</property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.4</property>
+                            <clade>
+                                <branch_length>0.000032039</branch_length>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.4
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.4
+                                </property>
+                                <clade>
+                                    <name>SARS_CoV_2/human/USA/IL_UW_149/2020</name>
+                                    <branch_length>0.000067032</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MT706277</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_04
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.4
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.4
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/USA/UT_QDX_2480/2020</name>
+                                    <branch_length>0.000002968</branch_length>
+                                    <sequence>
+                                        <accession source="ncbi">MW191285</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.4
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.4
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/USA/MI_MDHHS_SC20124/2020</name>
+                                <branch_length>0.000032961</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT439284</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_03
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.4
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.4
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <name>SARS_CoV_2/human/GHA/35563_S37/2020</name>
+                            <branch_length>0.000235426</branch_length>
+                            <sequence>
+                                <accession source="ncbi">MT890230</accession>
+                            </sequence>
+                            <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_05</property>
+                            <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                            <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Africa</property>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.11
+                            </property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.11</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:L5F</property>
+                            <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:V1122L</property>
+                            <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                            <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Ghana</property>
+                        </clade>
+                    </clade>
+                    <clade>
+                        <branch_length>0.000026746</branch_length>
+
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <clade>
+                            <branch_length>0.000022798</branch_length>
+                            <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:E584F
+                            </property>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.20
+                            </property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.20</property>
+                            <clade>
+                                <branch_length>0.000533717</branch_length>
+                                <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">
+                                    S:E483-
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.20
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.20
+                                </property>
+                                <clade>
+                                    <name>SARS_CoV_2/human/USA/NC_CDC_LC0002643/2021</name>
+                                    <sequence>
+                                        <accession source="ncbi">MW635193</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.20
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.20
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:A222V
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D253Y
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:P1069S
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                </clade>
+                                <clade>
+                                    <name>SARS_CoV_2/human/USA/NC_CDC_LC0002652/2021</name>
+                                    <sequence>
+                                        <accession source="ncbi">MW635200</accession>
+                                    </sequence>
+                                    <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01
+                                    </property>
+                                    <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                                    <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.20
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                    </property>
+                                    <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.20
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:A222V
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D253Y
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G
+                                    </property>
+                                    <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:P1069S
+                                    </property>
+                                    <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                    <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                                </clade>
+                            </clade>
+                            <clade>
+                                <name>SARS_CoV_2/human/JOR/SEARCH_0336_JOR/2020</name>
+                                <branch_length>0.000006283</branch_length>
+                                <sequence>
+                                    <accession source="ncbi">MT811569</accession>
+                                </sequence>
+                                <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_04
+                                </property>
+                                <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                                <property ref="vipr:Region" datatype="xsd:string" applies_to="node">West Asia</property>
+                                <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.20
+                                </property>
+                                <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A
+                                </property>
+                                <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.20
+                                </property>
+                                <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                                <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Jordan</property>
+                            </clade>
+                        </clade>
+                        <clade>
+                            <name>SARS_CoV_2/human/AUS/VIC2232/2020</name>
+                            <branch_length>0.000177202</branch_length>
+                            <sequence>
+                                <accession source="ncbi">MT972166</accession>
+                            </sequence>
+                            <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_06</property>
+                            <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                            <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Oceania</property>
+                            <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.25
+                            </property>
+                            <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                            <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.25</property>
+                            <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                            <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Australia</property>
+                        </clade>
+                    </clade>
+                </clade>
+                <clade>
+                    <branch_length>0.00001771</branch_length>
+                    <clade>
+                        <name>SARS_CoV_2/human/GHA/nmimr_SARS_CoV_2_NTRA__14877/2020</name>
+                        <branch_length>0.000688777</branch_length>
+                        <sequence>
+                            <accession source="ncbi">MW598425</accession>
+                        </sequence>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2020_12</property>
+                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2020</property>
+                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">Africa</property>
+                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">B.1</property>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">B</property>
+                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">B.1.313</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:D614G</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:Q675H</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:A688V</property>
+                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">Ghana</property>
+                    </clade>
+                    <clade>
+                        <name>SARS_CoV_2/human/USA/FL_CDC_LC0006351/2021</name>
+                        <branch_length>0.000761223</branch_length>
+                        <sequence>
+                            <accession source="ncbi">MW636563</accession>
+                        </sequence>
+                        <property ref="aptx:branch_event" datatype="xsd:string" applies_to="parent_branch">S:G04N
+                        </property>
+                        <property ref="vipr:Year_Month" datatype="xsd:string" applies_to="node">2021_01</property>
+                        <property ref="vipr:Year" datatype="xsd:string" applies_to="node">2021</property>
+                        <property ref="vipr:Region" datatype="xsd:string" applies_to="node">North America</property>
+                        <property ref="vipr:PANGO_Lineage_L1" datatype="xsd:string" applies_to="node">A.28</property>
+                        <property ref="vipr:PANGO_Lineage_L0" datatype="xsd:string" applies_to="node">A</property>
+                        <property ref="vipr:PANGO_Lineage" datatype="xsd:string" applies_to="node">A.28</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:H69-</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:V70-</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:N501T</property>
+                        <property ref="vipr:Mutation" datatype="xsd:string" applies_to="node">S:H655Y</property>
+                        <property ref="vipr:Host" datatype="xsd:string" applies_to="node">Human</property>
+                        <property ref="vipr:Country" datatype="xsd:string" applies_to="node">USA</property>
+                    </clade>
+                </clade>
+            </clade>
+        </clade>
+    </phylogeny>
+</phyloxml>
