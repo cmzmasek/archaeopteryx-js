@@ -34,7 +34,7 @@
 // Dependencies:
 // * forester.js: https://www.npmjs.com/package/archaeopteryx
 // * phyloxml.js: https://www.npmjs.com/package/phyloxml
-// * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
+// * d3.js (version 7): https://www.npmjs.com/package/d3
 // * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
 //
 //   For graphics (PNG) export, the following two libraries are required as well:
@@ -75,6 +75,13 @@ if (!phyloXml) {
     const VERSION = '2.3.2';
     const WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
     const NAME = 'Archaeopteryx.js';
+
+    // The 20-colour categorical palettes below were removed from d3 in v5. These
+    // are the exact colour arrays from d3 v3's d3.scale.category20/20b/20c, kept
+    // so d3.scaleOrdinal(...) reproduces the original colours after the upgrade.
+    const SCHEME_CATEGORY20 = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c', '#98df8a', '#d62728', '#ff9896', '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5'];
+    const SCHEME_CATEGORY20B = ['#393b79', '#5254a3', '#6b6ecf', '#9c9ede', '#637939', '#8ca252', '#b5cf6b', '#cedb9c', '#8c6d31', '#bd9e39', '#e7ba52', '#e7cb94', '#843c39', '#ad494a', '#d6616b', '#e7969c', '#7b4173', '#a55194', '#ce6dbd', '#de9ed6'];
+    const SCHEME_CATEGORY20C = ['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#31a354', '#74c476', '#a1d99b', '#c7e9c0', '#756bb1', '#9e9ac8', '#bcbddd', '#dadaeb', '#636363', '#969696', '#bdbdbd', '#d9d9d9'];
 
     // -----------------------------
     // Named colors and orientations
@@ -437,15 +444,15 @@ if (!phyloXml) {
         '#9E9E9E', '#616161'];
 
     const category50 = function () {
-        return d3.scale.ordinal().domain([]).range(col_category50);
+        return d3.scaleOrdinal().domain([]).range(col_category50);
     };
 
     const category50b = function () {
-        return d3.scale.ordinal().domain([]).range(col_category50b);
+        return d3.scaleOrdinal().domain([]).range(col_category50b);
     };
 
     const category50c = function () {
-        return d3.scale.ordinal().domain([]).range(col_category50c);
+        return d3.scaleOrdinal().domain([]).range(col_category50c);
     };
 
 
@@ -490,7 +497,6 @@ if (!phyloXml) {
     let _root = null;
     let _root_const = null;
     let _in_subtree = false;
-    let _scale = null;
     let _searchBox0Empty = true;
     let _searchBox1Empty = true;
     let _settings = null;
@@ -498,7 +504,6 @@ if (!phyloXml) {
     let _showLegends = true;
     let _svgGroup = null;
     let _totalSearchedWithData = 0;
-    let _translate = null;
     let _treeData = null;
     let _treeFn = null;
     let _usedColorCategories = new Set();
@@ -533,7 +538,7 @@ if (!phyloXml) {
             return n.distToRoot;
         });
 
-        let yScale = d3.scale.linear()
+        let yScale = d3.scaleLinear()
             .domain([0, d3.max(distsToRoot)])
             .range([0, width]);
         forester.preOrderTraversalAll(_root, function (n) {
@@ -551,27 +556,31 @@ if (!phyloXml) {
         }
     }
 
-    function zoom() {
-        if (d3.event.sourceEvent && d3.event.sourceEvent.shiftKey) {
-            if (_scale === null) {
-                _scale = _zoomListener.scale();
-                _translate = _zoomListener.translate();
-            }
-        } else {
-            if (_scale !== null && _translate !== null) {
-                _zoomListener.scale(_scale);
-                _zoomListener.translate(_translate);
-                _svgGroup.attr('transform', 'translate(' + _translate + ')scale(' + _scale + ')');
-                _scale = null;
-                _translate = null;
-            } else {
-                _svgGroup.attr('transform', 'translate(' + d3.event.translate + ')scale(' + d3.event.scale + ')');
-            }
+    // Current zoom scale (k) from the zoom behavior's stored transform.
+    function currentZoomScale() {
+        return _baseSvg ? d3.zoomTransform(_baseSvg.node()).k : 1;
+    }
+
+    // Sets the zoom scale while preserving the current translation (and applies
+    // it, firing the 'zoom' handler). Replaces the v3 _zoomListener.scale(k) setter.
+    function setZoomScale(scale) {
+        if (_baseSvg) {
+            _baseSvg.call(_zoomListener.transform, function () {
+                let t = d3.zoomTransform(this);
+                return d3.zoomIdentity.translate(t.x, t.y).scale(scale);
+            });
         }
     }
 
+    // Applies the current zoom/pan transform to the tree group. Shift gestures
+    // are filtered out where _zoomListener is created, so they stay free for
+    // moving the legend.
+    function zoom(event) {
+        _svgGroup.attr('transform', event.transform);
+    }
+
     function centerNode(source, x, y) {
-        let scale = _zoomListener.scale();
+        let scale = currentZoomScale();
         if (!x) {
             x = -source.y0;
             if (_settings.enableDynamicSizing) {
@@ -583,10 +592,7 @@ if (!phyloXml) {
         if (!y) {
             y = 0;
         }
-        d3.select('g')
-            .attr('transform', 'translate(' + x + ',' + y + ')scale(' + scale + ')');
-        _zoomListener.scale(scale);
-        _zoomListener.translate([x, y]);
+        _baseSvg.call(_zoomListener.transform, d3.zoomIdentity.translate(x, y).scale(scale));
     }
 
     function calcMaxTreeLengthForDisplay() {
@@ -626,7 +632,7 @@ if (!phyloXml) {
             .style('border-radius', '4px')
     }
 
-    function mousemove(d) {
+    function mousemove(event, d) {
 
         let mo_text = '';
         if (d.name) {
@@ -761,8 +767,8 @@ if (!phyloXml) {
 
         _node_mouseover_div
             .html(mo_text)
-            .style('left', (d3.event.pageX) + 'px')
-            .style('top', (d3.event.pageY) + 'px');
+            .style('left', (event.pageX) + 'px')
+            .style('top', (event.pageY) + 'px');
     }
 
     function mouseout() {
@@ -840,17 +846,17 @@ if (!phyloXml) {
 
                             let shapeScale = null;
                             if (nodeVisualization.label === MSA_RESIDUE) {
-                                shapeScale = d3.scale.ordinal()
+                                shapeScale = d3.scaleOrdinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(_basicTreeProperties.molSeqResiduesPerPosition[0]);
                                 scaleType = ORDINAL_SCALE;
                             } else if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
-                                shapeScale = d3.scale.ordinal()
+                                shapeScale = d3.scaleOrdinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                 scaleType = ORDINAL_SCALE;
                             } else if (nodeVisualization.field && nodeProperties[nodeVisualization.field] && forester.setToArray(nodeProperties[nodeVisualization.field]).length > 0) {
-                                shapeScale = d3.scale.ordinal()
+                                shapeScale = d3.scaleOrdinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.field]));
                                 scaleType = ORDINAL_SCALE;
@@ -870,11 +876,11 @@ if (!phyloXml) {
                                 if (Array.isArray(nodeVisualization.colors)) {
                                     scaleType = LINEAR_SCALE;
                                     if (nodeVisualization.colors.length === 3) {
-                                        colorScale = d3.scale.linear()
+                                        colorScale = d3.scaleLinear()
                                             .range(nodeVisualization.colors)
                                             .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else if (nodeVisualization.colors.length === 2) {
-                                        colorScale = d3.scale.linear()
+                                        colorScale = d3.scaleLinear()
                                             .range(nodeVisualization.colors)
                                             .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else {
@@ -884,11 +890,11 @@ if (!phyloXml) {
 
                                 if (Array.isArray(nodeVisualization.colorsAlt)) {
                                     if (nodeVisualization.colorsAlt.length === 3) {
-                                        altColorScale = d3.scale.linear()
+                                        altColorScale = d3.scaleLinear()
                                             .range(nodeVisualization.colorsAlt)
                                             .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else if (nodeVisualization.colorsAlt.length === 2) {
-                                        altColorScale = d3.scale.linear()
+                                        altColorScale = d3.scaleLinear()
                                             .range(nodeVisualization.colorsAlt)
                                             .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                     } else {
@@ -899,24 +905,24 @@ if (!phyloXml) {
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     scaleType = ORDINAL_SCALE;
                                     if (nodeVisualization.label === MSA_RESIDUE) {
-                                        colorScale = d3.scale.category20()
+                                        colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                                             .domain(_basicTreeProperties.molSeqResiduesPerPosition[0]);
                                         _usedColorCategories.add('category20');
                                     } else {
                                         if (nodeVisualization.colors === 'category20') {
-                                            colorScale = d3.scale.category20()
+                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                             _usedColorCategories.add('category20');
                                         } else if (nodeVisualization.colors === 'category20b') {
-                                            colorScale = d3.scale.category20b()
+                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20B)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                             _usedColorCategories.add('category20b');
                                         } else if (nodeVisualization.colors === 'category20c') {
-                                            colorScale = d3.scale.category20c()
+                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20C)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                             _usedColorCategories.add('category20c');
                                         } else if (nodeVisualization.colors === 'category10') {
-                                            colorScale = d3.scale.category10()
+                                            colorScale = d3.scaleOrdinal(d3.schemeCategory10)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
                                             _usedColorCategories.add('category10');
                                         } else if (nodeVisualization.colors === 'category50') {
@@ -950,11 +956,11 @@ if (!phyloXml) {
                                 let sizeScale = null;
                                 let scaleType = LINEAR_SCALE;
                                 if (nodeVisualization.sizes.length === 3) {
-                                    sizeScale = d3.scale.linear()
+                                    sizeScale = d3.scaleLinear()
                                         .range(nodeVisualization.sizes)
                                         .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                 } else if (nodeVisualization.sizes.length === 2) {
-                                    sizeScale = d3.scale.linear()
+                                    sizeScale = d3.scaleLinear()
                                         .range(nodeVisualization.sizes)
                                         .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
                                 } else {
@@ -1108,7 +1114,9 @@ if (!phyloXml) {
             .style('cursor', 'pointer')
             .attr('width', null)
             .attr('height', null)
-            .on('click', function (clickedName, clickedIndex) {
+            .on('click', function (event, clickedName) {
+                // d3 v6+ no longer passes the index; derive it from the domain.
+                let clickedIndex = colorScale.domain().indexOf(clickedName);
                 legendColorRectClicked(colorScale, label, description, clickedName, clickedIndex);
             });
 
@@ -1139,6 +1147,8 @@ if (!phyloXml) {
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
+
+        legend = legendEnter.merge(legend);
 
         let legendUpdate = legend.transition()
             .duration(0)
@@ -1302,12 +1312,12 @@ if (!phyloXml) {
             .attr('transform', function () {
                 return 'translate(' + 1 + ',' + 3 + ')'
             })
-            .attr('d', d3.svg.symbol()
+            .attr('d', d3.symbol()
                 .size(function () {
                     return 20;
                 })
                 .type(function (d, i) {
-                    return shapeScale(values[i]);
+                    return d3SymbolType(shapeScale(values[i]));
                 }))
             .style('fill', 'none')
             .style('stroke', _options.branchColorDefault);
@@ -1427,13 +1437,13 @@ if (!phyloXml) {
             .attr('transform', function () {
                 return 'translate(' + 1 + ',' + 3 + ')'
             })
-            .attr('d', d3.svg.symbol()
+            .attr('d', d3.symbol()
                 .size(function (d, i) {
-                    let scale = _zoomListener.scale();
+                    let scale = currentZoomScale();
                     return scale * _options.nodeSizeDefault * sizeScale(values[i]);
                 })
                 .type(function () {
-                    return 'circle';
+                    return d3SymbolType('circle');
                 }))
             .style('fill', 'none')
             .style('stroke', _options.branchColorDefault);
@@ -1525,19 +1535,19 @@ if (!phyloXml) {
         let l = 0;
         if (name === 'category20') {
             l = 20;
-            colorScale = d3.scale.category20()
+            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                 .domain(twenty);
         } else if (name === 'category20b') {
             l = 20;
-            colorScale = d3.scale.category20b()
+            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20B)
                 .domain(twenty);
         } else if (name === 'category20c') {
             l = 20;
-            colorScale = d3.scale.category20c()
+            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20C)
                 .domain(twenty);
         } else if (name === 'category10') {
             l = 10;
-            colorScale = d3.scale.category10()
+            colorScale = d3.scaleOrdinal(d3.schemeCategory10)
                 .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         } else if (name === 'category50') {
             l = 50;
@@ -1652,7 +1662,7 @@ if (!phyloXml) {
             }
         }
 
-        let colorPickerColors = d3.scale.linear()
+        let colorPickerColors = d3.scaleLinear()
             .domain(lbls)
             .range(_colorsForColorPicker);
 
@@ -1672,7 +1682,7 @@ if (!phyloXml) {
             .style('cursor', 'pointer')
             .attr('width', null)
             .attr('height', null)
-            .on('click', function (d) {
+            .on('click', function (event, d) {
                 colorPickerClicked(colorPickerColors(d));
             });
 
@@ -1845,8 +1855,25 @@ if (!phyloXml) {
 
         _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
         let uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
-        let nodes = _treeFn.nodes(_root).reverse();
-        let links = _treeFn.links(nodes);
+        // d3 v7: d3.cluster() lays out a d3.hierarchy rather than mutating our
+        // own nodes in place (as d3 v3's d3.layout.cluster().nodes() did). Run
+        // the layout on a hierarchy, then copy the computed x/y/depth back onto
+        // the forester nodes so the rest of the renderer is unchanged.
+        let hierarchy = d3.hierarchy(_root, function (d) {
+            return d.children;
+        });
+        _treeFn(hierarchy);
+        hierarchy.each(function (hn) {
+            hn.data.x = hn.x;
+            hn.data.y = hn.y;
+            hn.data.depth = hn.depth;
+        });
+        let nodes = hierarchy.descendants().map(function (hn) {
+            return hn.data;
+        }).reverse();
+        let links = hierarchy.links().map(function (link) {
+            return {source: link.source.data, target: link.target.data};
+        });
         let gap = _options.nodeLabelGap;
 
         if (_options.phylogram === true) {
@@ -1894,8 +1921,8 @@ if (!phyloXml) {
 
         nodeEnter.append('circle')
             .on("mouseover", mouseover)
-            .on("mousemove", function (d) {
-                mousemove(d);
+            .on("mousemove", function (event, d) {
+                mousemove(event, d);
             })
             .on("mouseout", mouseout)
             .style('cursor', 'pointer')
@@ -1937,6 +1964,10 @@ if (!phyloXml) {
                 return 0.3 * _options.externalNodeFontSize + 'px';
             })
             .style('font-family', _options.defaultFont);
+
+        // d3 v4+ no longer folds entered nodes into the update selection, so
+        // merge them before the shared styling/positioning below.
+        node = nodeEnter.merge(node);
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
@@ -2096,7 +2127,7 @@ if (!phyloXml) {
                 d3.select(this).select('.collapsedText').transition().duration(transitionDuration)
                     .attr('x', 0)
                     .style('fill-opacity', 1e-6)
-                    .each('end', function () {
+                    .on('end', function () {
                         d3.select(this).text('');
                     });
             }
@@ -2122,7 +2153,7 @@ if (!phyloXml) {
                 return d.target.id;
             });
 
-        link.enter().insert('path', 'g')
+        let linkEnter = link.enter().insert('path', 'g')
             .attr('class', 'link')
             .attr('fill', 'none')
             .attr('stroke-width', makeBranchWidth)
@@ -2135,6 +2166,8 @@ if (!phyloXml) {
                     source: o, target: o
                 });
             });
+
+        link = linkEnter.merge(link);
 
         link.transition()
             .duration(transitionDuration)
@@ -2466,7 +2499,7 @@ if (!phyloXml) {
 
         function makeShape(node, shape) {
             node.hasVis = true;
-            return d3.svg.symbol().type(shape).size(makeVisNodeSize(node))();
+            return d3.symbol().type(d3SymbolType(shape)).size(makeVisNodeSize(node))();
         }
     };
 
@@ -2763,21 +2796,21 @@ if (!phyloXml) {
                 if (found0and1 === total) {
                     return _options.found0and1ColorDefault;
                 }
-                return d3.scale.linear()
+                return d3.scaleLinear()
                     .domain([0, total])
                     .range([_options.branchColorDefault, _options.found0and1ColorDefault])(_foundSum);
             } else if (found0 > 0) {
                 if (found0 === total) {
                     return _options.found0ColorDefault;
                 }
-                return d3.scale.linear()
+                return d3.scaleLinear()
                     .domain([0, total])
                     .range([_options.branchColorDefault, _options.found0ColorDefault])(found0);
             } else if (found1 > 0) {
                 if (found1 === total) {
                     return _options.found1ColorDefault;
                 }
-                return d3.scale.linear()
+                return d3.scaleLinear()
                     .domain([0, total])
                     .range([_options.branchColorDefault, _options.found1ColorDefault])(found1);
             }
@@ -3609,10 +3642,10 @@ if (!phyloXml) {
         }
     }
 
-    function mouseDown() {
-        if (d3.event.which === 1 && (d3.event.altKey || d3.event.shiftKey)) {
+    function mouseDown(event) {
+        if (event.which === 1 && (event.altKey || event.shiftKey)) {
             if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && (_legendColorScales[LEGEND_NODE_FILL_COLOR] || _legendShapeScales[LEGEND_NODE_SHAPE] || _legendSizeScales[LEGEND_NODE_SIZE]))))) {
-                moveLegendWithMouse(d3.event);
+                moveLegendWithMouse(event);
             }
         }
     }
@@ -3747,7 +3780,13 @@ if (!phyloXml) {
 
         _treeData = phylo;
         _id = id;
-        _zoomListener = d3.behavior.zoom().scaleExtent([0.1, 10]).on('zoom', zoom);
+        _zoomListener = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .filter(function (event) {
+                // Reserve the shift key for moving the legend, not zoom/pan.
+                return !event.shiftKey;
+            })
+            .on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
         _options_orig = structuredClone(_options);
 
@@ -3857,7 +3896,7 @@ if (!phyloXml) {
 
                     _baseSvg.attr('width', width);
                     _baseSvg.attr('height', height);
-                    if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(_zoomListener.scale() - 1.0) < 0.001)) {
+                    if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
                         zoomToFit();
                     }
                     if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
@@ -3871,7 +3910,7 @@ if (!phyloXml) {
                 });
         }
 
-        _treeFn = d3.layout.cluster()
+        _treeFn = d3.cluster()
             .size([_displayHeight, _displayWidth]);
 
         _treeFn.clickEvent = getClickEventListenerNode(phylo);
@@ -4694,7 +4733,7 @@ if (!phyloXml) {
                         return 'Display Node Data';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     displayNodeData(d);
                 });
 
@@ -4720,7 +4759,7 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     toggleCollapse(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
@@ -4752,7 +4791,7 @@ if (!phyloXml) {
                         return 'Uncollapse All';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     unCollapseAll(d);
                     resetDepthCollapseDepthValue();
                     resetRankCollapseRankValue();
@@ -4778,7 +4817,7 @@ if (!phyloXml) {
                         return 'Go to Subtree';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     goToSubTree(d);
                 });
 
@@ -4801,7 +4840,7 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     swapChildren(d);
                     update();
                 });
@@ -4825,7 +4864,7 @@ if (!phyloXml) {
                         }
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     if (!_treeFn.visData) {
                         _treeFn.visData = {};
                     }
@@ -4856,7 +4895,7 @@ if (!phyloXml) {
                         return 'Reroot';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     unCollapseAll(_root);
                     forester.reRoot(tree, d, -1);
                     resetDepthCollapseDepthValue();
@@ -4883,7 +4922,7 @@ if (!phyloXml) {
                         return 'Select/Deselect Node';
 
                     })
-                    .on('click', function (d) {
+                    .on('click', function (event, d) {
                         selectDeselectNode(d);
                     });
                 d3.select(this).append('text')
@@ -4902,7 +4941,7 @@ if (!phyloXml) {
                         return 'Select/Deselect All Ext Nodes';
 
                     })
-                    .on('click', function (d) {
+                    .on('click', function (event, d) {
                         selectDeselectNodeExtNodes(d);
                     });
 
@@ -4925,7 +4964,7 @@ if (!phyloXml) {
                         return 'List External Node Data';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     listExternalNodeData(d);
                 });
 
@@ -4947,7 +4986,7 @@ if (!phyloXml) {
                         return 'Download Ext Node Data';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     downloadExternalNodeData(d);
                 });
 
@@ -4968,7 +5007,7 @@ if (!phyloXml) {
                         return 'Download All Ext Node Data';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     downloadExternalNodeDataAll(d);
                 });
 
@@ -4990,7 +5029,7 @@ if (!phyloXml) {
                         return 'List Sequences in Fasta';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     listMolecularSequences(d);
                 });
 
@@ -5011,7 +5050,7 @@ if (!phyloXml) {
                         return 'Download Sequences in Fasta';
                     }
                 })
-                .on('click', function (d) {
+                .on('click', function (event, d) {
                     downloadExternalNodeMolecularSequenceAsFasta(d);
                 });
 
@@ -5071,7 +5110,7 @@ if (!phyloXml) {
                             return 'Access DB [' + value + ']';
                         }
                     })
-                    .on('click', function (d) {
+                    .on('click', function (event, d) {
                         accessDatabase(d);
                     });
             }
@@ -5103,7 +5142,7 @@ if (!phyloXml) {
                             }
                         }
                     })
-                    .on('click', function (d) {
+                    .on('click', function (event, d) {
                         unCollapseAll(_root);
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
@@ -5237,7 +5276,7 @@ if (!phyloXml) {
             intitializeDisplaySize();
             initializeSettings(_settings);
             removeColorPicker();
-            _zoomListener.scale(1);
+            setZoomScale(1);
             update(_root, 0);
             centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
         }
@@ -5247,7 +5286,7 @@ if (!phyloXml) {
         if (_root) {
             calcMaxExtLabel();
             intitializeDisplaySize();
-            _zoomListener.scale(1);
+            setZoomScale(1);
             update(_root, 0);
             _zoomed_x_or_y = true;
             const uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
@@ -6126,6 +6165,30 @@ if (!phyloXml) {
             el.addEventListener('mousedown', downHandler);
             el.addEventListener('mouseup', upHandler);
             el.addEventListener('mouseleave', upHandler);
+        }
+    }
+
+    // Maps a d3 v3 symbol-type name (string) to a d3 v7 symbol-type constant.
+    // v7 dropped the separate up/down triangles, so both map to symbolTriangle.
+    function d3SymbolType(shapeName) {
+        switch (shapeName) {
+            case 'square':
+                return d3.symbolSquare;
+            case 'diamond':
+                return d3.symbolDiamond;
+            case 'triangle-up':
+            case 'triangle-down':
+            case 'triangle':
+                return d3.symbolTriangle;
+            case 'cross':
+                return d3.symbolCross;
+            case 'star':
+                return d3.symbolStar;
+            case 'wye':
+                return d3.symbolWye;
+            case 'circle':
+            default:
+                return d3.symbolCircle;
         }
     }
 

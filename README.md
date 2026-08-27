@@ -46,7 +46,7 @@ https://github.com/cmzmasek/archaeopteryx-js/wiki/Archaeopteryx.js-Version-Histo
 Archaeopteryx.js has the following dependencies:
  * forester.js: https://www.npmjs.com/package/archaeopteryx
  * phyloxml.js: https://www.npmjs.com/package/phyloxml
- * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
+ * d3.js (version 7): https://www.npmjs.com/package/d3
  * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
  
 For graphics (PNG) export, the following two libraries are required as well:
@@ -75,8 +75,8 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
    <!-- For MS IE/Edge compatibility:-->
    <meta http-equiv="X-UA-Compatible" content="IE=100">
 
-   <!-- D3.js (version 3):-->
-   <script src="http://d3js.org/d3.v3.min.js"></script>
+   <!-- D3.js (version 7):-->
+   <script src="https://d3js.org/d3.v7.min.js"></script>
 
    <!-- SAX XML parser:-->
    <script src="http://www.phyloxml.org/js/dependencies/sax.js"></script>
