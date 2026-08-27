@@ -36,7 +36,6 @@
 // * phyloxml.js: https://www.npmjs.com/package/phyloxml
 // * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
 // * jQuery (1.12.4): https://www.npmjs.com/package/jquery/v/1.12.4
-// * jQuery UI (1.12.1): https://www.npmjs.com/package/jquery-ui/v/1.12.1
 // * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
 //
 //   For graphics (PNG) export, the following two libraries are required as well:
@@ -48,8 +47,8 @@
 //   <a download> link), so Blob.js, canvas-toBlob.js and FileSaver.js are no
 //   longer required.
 //
-//   Additionally, Archaeopteryx.js also requires the following CSS:
-// * jquery-ui.css: https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css
+//   The user interface (control panel, sliders, dialogs) is built with native
+//   DOM elements, so jQuery UI (and its CSS) is no longer required.
 //
 //
 // Developer documentation:
@@ -201,6 +200,7 @@ if (!phyloXml) {
     const RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
     const RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
     const SHORTEN_NAME_MAX_LENGTH = 18;
+    const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
     const SPECIATION_COLOR = '#00ff00';
     const SPECIES_FEATURE = 'Species';
@@ -4060,47 +4060,7 @@ if (!phyloXml) {
                     text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
-                $('#' + NODE_DATA).dialog("destroy");
-
-                $("<div id='" + NODE_DATA + "'>" + text + "</div>").dialog();
-                let dialog = $('#' + NODE_DATA);
-
-                let fs = (_settings.controlsFontSize + 4).toString() + 'px';
-
-                $('.ui-dialog').css({
-                    'text-align': 'left',
-                    'color': _settings.controlsFontColor,
-                    'font-size': fs,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'normal',
-                    'font-weight': 'normal',
-                    'text-decoration': 'none',
-                    'width': 260,
-                    'height': 300,
-                    'overflow': 'auto',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#F0F8FF',
-                    'border-style': 'groove',
-                    'border-color': '#AAAAAA'
-
-                });
-
-                $('.ui-dialog-titlebar').css({
-                    'text-align': 'center',
-                    'color': '#FFFFFF',
-                    'font-size': fs,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'normal',
-                    'font-weight': 'bold',
-                    'text-decoration': 'none',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#AAAAAA'
-                });
-
-                dialog.dialog('option', 'modal', true);
-                dialog.dialog('option', 'title', title);
+                showNodeDataDialog(title, text, (_settings.controlsFontSize + 4).toString() + 'px', _settings.controlsFont, 260, 300);
 
                 update();
             }
@@ -4231,48 +4191,7 @@ if (!phyloXml) {
                     }
                 }
 
-                $('#' + NODE_DATA).dialog("destroy");
-
-                $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
-                let dialog = $('#' + NODE_DATA);
-
-                let fs = (_settings.controlsFontSize + 1).toString() + 'px';
-
-                $('.ui-dialog').css({
-                    'position': 'absolute',
-                    'top': '120px',
-                    'text-align': 'left',
-                    'color': _settings.controlsFontColor,
-                    'font-size': fs,
-                    'font-family': MOLSEQ_FONT_DEFAULTS,
-                    'font-style': 'normal',
-                    'font-weight': 'normal',
-                    'text-decoration': 'none',
-                    'width': 400,
-                    'height': 260,
-                    'overflow': 'auto',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#F0F8FF',
-                    'border-style': 'groove',
-                    'border-color': '#AAAAAA'
-                });
-
-                $('.ui-dialog-titlebar').css({
-                    'text-align': 'center',
-                    'color': _settings.controlsFontColor,
-                    'font-size': fs,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'normal',
-                    'font-weight': 'bold',
-                    'text-decoration': 'none',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#AAAAAA'
-                });
-
-                dialog.dialog('option', 'modal', true);
-                dialog.dialog('option', 'title', title);
+                showNodeDataDialog(title, text_all, (_settings.controlsFontSize + 1).toString() + 'px', MOLSEQ_FONT_DEFAULTS, 400, 260);
 
                 update();
             }
@@ -4647,48 +4566,7 @@ if (!phyloXml) {
                 let title = 'Sequences in for ' + ext_nodes.length + ' Nodes';
 
 
-                $('#' + NODE_DATA).dialog("destroy");
-
-                $("<div id='" + NODE_DATA + "'>" + text_all + "</div>").dialog();
-                let dialog = $('#' + NODE_DATA);
-
-                let fs = (_settings.controlsFontSize - 1).toString() + 'px';
-
-                $('.ui-dialog').css({
-                    'position': 'absolute',
-                    'top': '120px',
-                    'text-align': 'left',
-                    'color': _settings.controlsFontColor,
-                    'font-size': fs,
-                    'font-family': MOLSEQ_FONT_DEFAULTS,
-                    'font-style': 'normal',
-                    'font-weight': 'normal',
-                    'text-decoration': 'none',
-                    'width': 400,
-                    'height': 260,
-                    'overflow': 'auto',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#F0F8FF',
-                    'border-style': 'groove',
-                    'border-color': '#AAAAAA'
-                });
-
-                $('.ui-dialog-titlebar').css({
-                    'text-align': 'center',
-                    'color': _settings.controlsFontColor,
-                    'font-size': fs,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'normal',
-                    'font-weight': 'bold',
-                    'text-decoration': 'none',
-                    'opacity': 0.95,
-                    'z-index': 10,
-                    'background-color': '#AAAAAA'
-                });
-
-                dialog.dialog('option', 'modal', true);
-                dialog.dialog('option', 'title', title);
+                showNodeDataDialog(title, text_all, (_settings.controlsFontSize - 1).toString() + 'px', MOLSEQ_FONT_DEFAULTS, 400, 260);
 
                 update();
             }
@@ -5980,12 +5858,12 @@ if (!phyloXml) {
     }
 
     function changeBranchWidth(e, slider) {
-        _options.branchWidthDefault = getSliderValue(slider);
+        _options.branchWidthDefault = getSliderValue(e);
         update(null, 0, true);
     }
 
     function changeNodeSize(e, slider) {
-        _options.nodeSizeDefault = getSliderValue(slider);
+        _options.nodeSizeDefault = getSliderValue(e);
         if (!_options.showInternalNodes && !_options.showExternalNodes && !_options.showNodeVisualizations && !_options.showNodeEvents) {
             _options.showInternalNodes = true;
             _options.showExternalNodes = true;
@@ -5997,23 +5875,23 @@ if (!phyloXml) {
 
 
     function changeInternalFontSize(e, slider) {
-        _options.internalNodeFontSize = getSliderValue(slider);
+        _options.internalNodeFontSize = getSliderValue(e);
         update(null, 0, true);
     }
 
     function changeExternalFontSize(e, slider) {
-        _options.externalNodeFontSize = getSliderValue(slider);
+        _options.externalNodeFontSize = getSliderValue(e);
         update(null, 0, true);
     }
 
     function changeBranchDataFontSize(e, slider) {
-        _options.branchDataFontSize = getSliderValue(slider);
+        _options.branchDataFontSize = getSliderValue(e);
         update(null, 0, true);
     }
 
     function updateMsaResidueVisCurrResPosFromSlider(e, slider) {
         removeColorPicker();
-        _msa_residue_vis_curr_res_pos = getSliderValue(slider) - 1;
+        _msa_residue_vis_curr_res_pos = getSliderValue(e) - 1;
         showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
         update(null, 0, true);
     }
@@ -6152,7 +6030,6 @@ if (!phyloXml) {
         let radio = $('#' + id);
         if (radio) {
             radio[0].checked = value;
-            radio.button('refresh');
         }
     }
 
@@ -6160,7 +6037,6 @@ if (!phyloXml) {
         let cb = $('#' + id);
         if (cb && cb[0]) {
             cb[0].checked = value;
-            cb.button('refresh');
         }
     }
 
@@ -6175,21 +6051,126 @@ if (!phyloXml) {
         return $('#' + id).is(':checked');
     }
 
-    function getSliderValue(slider) {
-        return slider.value;
+    function getSliderValue(e) {
+        return parseFloat(e.target.value);
     }
 
     function setSliderValue(id, value) {
-        let sli = $('#' + id);
-        if (sli) {
-            sli.slider('value', value);
+        let el = document.getElementById(id);
+        if (el) {
+            el.value = value;
         }
     }
 
+    // Initializes a native range input (replaces the former jQuery UI slider).
+    // The 'input' event fires continuously while dragging, covering what jQuery
+    // UI split into its 'slide' and 'change' callbacks.
+    function initSlider(id, min, max, step, value, onInput) {
+        let el = document.getElementById(id);
+        if (el) {
+            el.min = min;
+            el.max = max;
+            el.step = step;
+            el.value = value;
+            el.addEventListener('input', onInput);
+        }
+    }
+
+    // Shows a modal popup with the given HTML content (replaces the former
+    // jQuery UI dialog used for the node/sequence data popups). Only one such
+    // dialog exists at a time; opening a new one removes the previous. Uses the
+    // native <dialog> element, so Escape and the close button both dismiss it.
+    function showNodeDataDialog(title, htmlContent, fontSize, fontFamily, width, height) {
+        let existing = document.getElementById(NODE_DATA);
+        if (existing) {
+            existing.remove();
+        }
+        let dialog = document.createElement('dialog');
+        dialog.id = NODE_DATA;
+        dialog.style.cssText = 'padding:0; border-style:groove; border-color:#AAAAAA;'
+            + ' background-color:#F0F8FF; opacity:0.95; z-index:10;'
+            + ' color:' + _settings.controlsFontColor + ';'
+            + ' font-family:' + fontFamily + '; font-size:' + fontSize + ';'
+            + ' width:' + width + 'px;';
+
+        let titlebar = document.createElement('div');
+        titlebar.textContent = title;
+        titlebar.style.cssText = 'text-align:center; font-weight:bold; color:#FFFFFF;'
+            + ' background-color:#AAAAAA; padding:2px 4px;'
+            + ' font-family:' + _settings.controlsFont + ';';
+
+        let closeButton = document.createElement('span');
+        closeButton.textContent = '✕';
+        closeButton.style.cssText = 'float:right; cursor:pointer; padding-left:8px;';
+        closeButton.addEventListener('click', function () {
+            dialog.close();
+        });
+        titlebar.appendChild(closeButton);
+
+        let body = document.createElement('div');
+        body.innerHTML = htmlContent;
+        body.style.cssText = 'text-align:left; overflow:auto; padding:4px; height:' + height + 'px;';
+
+        dialog.appendChild(titlebar);
+        dialog.appendChild(body);
+        document.body.appendChild(dialog);
+        dialog.addEventListener('close', function () {
+            dialog.remove();
+        });
+        dialog.showModal();
+    }
+
+    // Makes an element draggable within its offset parent using pointer events
+    // (replaces jQuery UI .draggable({containment: 'parent'})). The element is
+    // expected to be positioned (the control panels are position:absolute);
+    // dragging updates its left/top. Drags that begin on an interactive control
+    // are ignored, matching jQuery UI's default cancel behavior.
+    function makeDraggableWithinParent(el) {
+        if (!el) {
+            return;
+        }
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0, dragging = false;
+
+        function onMove(e) {
+            if (!dragging) {
+                return;
+            }
+            let newLeft = startLeft + (e.clientX - startX);
+            let newTop = startTop + (e.clientY - startY);
+            let parent = el.offsetParent;
+            if (parent) {
+                newLeft = Math.max(0, Math.min(newLeft, parent.clientWidth - el.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, parent.clientHeight - el.offsetHeight));
+            }
+            el.style.left = newLeft + 'px';
+            el.style.top = newTop + 'px';
+        }
+
+        function onUp() {
+            dragging = false;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+        }
+
+        el.addEventListener('pointerdown', function (e) {
+            let t = e.target;
+            if (t !== el && t.closest('input, select, button, textarea, label, a, option')) {
+                return;
+            }
+            dragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = el.offsetLeft;
+            startTop = el.offsetTop;
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
+        });
+    }
+
     function updateMsaResidueVisCurrResPosSliderValue() {
-        let sli = $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1);
-        if (sli) {
-            sli.slider('value', _msa_residue_vis_curr_res_pos + 1);
+        let el = document.getElementById(MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1);
+        if (el) {
+            el.value = _msa_residue_vis_curr_res_pos + 1;
         }
     }
 
@@ -6291,7 +6272,7 @@ if (!phyloXml) {
                 'text-decoration': 'none'
             });
 
-            c0.draggable({containment: 'parent'});
+            makeDraggableWithinParent(c0[0]);
 
             c0.append(makeProgramDesc());
 
@@ -6373,23 +6354,11 @@ if (!phyloXml) {
                 });
             }
 
-            $('.' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP).controlgroup({
-                'direction': 'horizontal'
-            });
-
-            $('.' + DISPLAY_DATA_CONTROLGROUP).controlgroup({
-                'direction': 'vertical'
-            });
-
             c0.append(makeControlButtons());
 
             c0.append(makeSliders());
 
             c0.append(makeSearchBoxes());
-
-            $('.' + SEARCH_OPTIONS_GROUP).controlgroup({
-                'direction': 'horizontal'
-            });
 
             c0.append(makeAutoCollapse());
 
@@ -6421,7 +6390,7 @@ if (!phyloXml) {
                 'text-decoration': 'none'
             });
 
-            c1.draggable({containment: 'parent'});
+            makeDraggableWithinParent(c1[0]);
 
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
                 c1.append(makeVisualControls());
@@ -6485,7 +6454,6 @@ if (!phyloXml) {
         }
 
         $('input:button')
-            .button()
             .css({
                 'width': '26px',
                 'text-align': 'center',
@@ -6547,14 +6515,6 @@ if (!phyloXml) {
                 'width': '80px', 'margin-bottom': '3px'
             });
         }
-
-        $(':radio').checkboxradio({
-            icon: false
-        });
-
-        $(':checkbox').checkboxradio({
-            icon: false,
-        });
 
 
         $('#' + SEARCH_FIELD_0).keyup(search0);
@@ -6846,55 +6806,15 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_SIZE_SLIDER).slider({
-            min: NODE_SIZE_MIN,
-            max: NODE_SIZE_MAX,
-            step: SLIDER_STEP,
-            value: _options.nodeSizeDefault,
-            animate: 'fast',
-            slide: changeNodeSize,
-            change: changeNodeSize
-        });
+        initSlider(NODE_SIZE_SLIDER, NODE_SIZE_MIN, NODE_SIZE_MAX, SLIDER_STEP, _options.nodeSizeDefault, changeNodeSize);
 
-        $('#' + BRANCH_WIDTH_SLIDER).slider({
-            min: BRANCH_WIDTH_MIN,
-            max: BRANCH_WIDTH_MAX,
-            step: SLIDER_STEP,
-            value: _options.branchWidthDefault,
-            animate: 'fast',
-            slide: changeBranchWidth,
-            change: changeBranchWidth
-        });
+        initSlider(BRANCH_WIDTH_SLIDER, BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX, SLIDER_STEP, _options.branchWidthDefault, changeBranchWidth);
 
-        $('#' + EXTERNAL_FONT_SIZE_SLIDER).slider({
-            min: FONT_SIZE_MIN,
-            max: FONT_SIZE_MAX,
-            step: SLIDER_STEP,
-            value: _options.externalNodeFontSize,
-            animate: 'fast',
-            slide: changeExternalFontSize,
-            change: changeExternalFontSize
-        });
+        initSlider(EXTERNAL_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.externalNodeFontSize, changeExternalFontSize);
 
-        $('#' + INTERNAL_FONT_SIZE_SLIDER).slider({
-            min: FONT_SIZE_MIN,
-            max: FONT_SIZE_MAX,
-            step: SLIDER_STEP,
-            value: _options.internalNodeFontSize,
-            animate: 'fast',
-            slide: changeInternalFontSize,
-            change: changeInternalFontSize
-        });
+        initSlider(INTERNAL_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.internalNodeFontSize, changeInternalFontSize);
 
-        $('#' + BRANCH_DATA_FONT_SIZE_SLIDER).slider({
-            min: FONT_SIZE_MIN,
-            max: FONT_SIZE_MAX,
-            step: SLIDER_STEP,
-            value: _options.branchDataFontSize,
-            animate: 'fast',
-            slide: changeBranchDataFontSize,
-            change: changeBranchDataFontSize
-        });
+        initSlider(BRANCH_DATA_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.branchDataFontSize, changeBranchDataFontSize);
 
         $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
             .off('keydown')
@@ -6911,7 +6831,6 @@ if (!phyloXml) {
             });
 
         $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
-            .button()
             .off('keydown')
             .off('mouseenter')
             .off('mousedown')
@@ -7759,10 +7678,11 @@ if (!phyloXml) {
         }
 
         function makeSlider(label, id) {
+            let input = '<input type="range" class="' + SLIDER_CLASS + '" name="' + id + '" id="' + id + '">';
             if (label) {
-                return label + '<div id="' + id + '"></div>';
+                return label + input;
             }
-            return '<div id="' + id + '"></div>';
+            return input;
         }
 
         function makeTextInput(id, tooltip) {
@@ -7961,15 +7881,7 @@ if (!phyloXml) {
         }
 
 
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1).slider({
-            min: 1,
-            max: _basicTreeProperties.maxMolSeqLength,
-            step: 1,
-            value: 1,
-            animate: 'fast',
-            slide: updateMsaResidueVisCurrResPosFromSlider,
-            change: updateMsaResidueVisCurrResPosFromSlider
-        });
+        initSlider(MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1, 1, _basicTreeProperties.maxMolSeqLength, 1, 1, updateMsaResidueVisCurrResPosFromSlider);
 
     }
 
@@ -8384,11 +8296,9 @@ if (!phyloXml) {
 
     function disableCheckbox(cb) {
         if (cb) {
-            let b = $(cb);
-            if (b) {
-                b.checkboxradio({
-                    disabled: true
-                });
+            let el = document.querySelector(cb);
+            if (el) {
+                el.disabled = true;
             }
         }
     }

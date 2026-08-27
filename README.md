@@ -48,7 +48,6 @@ Archaeopteryx.js has the following dependencies:
  * phyloxml.js: https://www.npmjs.com/package/phyloxml
  * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
  * jQuery (1.12.4): https://www.npmjs.com/package/jquery/v/1.12.4
- * jQuery UI (1.12.1): https://www.npmjs.com/package/jquery-ui/v/1.12.1
  * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
  
 For graphics (PNG) export, the following two libraries are required as well:
@@ -59,9 +58,10 @@ File (Newick/New Hampshire, phyloXML, FASTA) and SVG download, as well as saving
 the exported PNG, use native browser APIs (`Blob`, `canvas.toBlob()`, and an
 `<a download>` link), so Blob.js, canvas-toBlob.js and FileSaver.js are no longer
 required.
- 
-Additionally, Archaeopteryx.js also requires the following CSS:
- * jquery-ui.css: https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css
+
+The user interface (control panel, sliders, dialogs) is built with native DOM
+elements, so **jQuery UI is no longer required** — neither its JavaScript nor its
+CSS. (jQuery itself is still used.)
 
 
 ## Basic Example of HTML for launching Archaeopteryx.js
