@@ -45,8 +45,6 @@ export default [
                 ...globals.browser,
                 ...globals.node, // module, global, require (UMD-style export)
                 d3: 'readonly',
-                $: 'readonly',
-                jQuery: 'readonly',
                 forester: 'readonly',
                 phyloXml: 'readonly',
                 phyloxml: 'readonly',

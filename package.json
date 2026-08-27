@@ -23,7 +23,6 @@
   "dependencies": {
     "phyloxml": ">=0.9.16",
     "d3": "~3.5.17",
-    "jquery": "~1.12.4",
     "canvg": "~1.5.3",
     "rgbcolor": "~1.0.1"
   },

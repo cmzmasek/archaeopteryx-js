@@ -35,7 +35,6 @@
 // * forester.js: https://www.npmjs.com/package/archaeopteryx
 // * phyloxml.js: https://www.npmjs.com/package/phyloxml
 // * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
-// * jQuery (1.12.4): https://www.npmjs.com/package/jquery/v/1.12.4
 // * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
 //
 //   For graphics (PNG) export, the following two libraries are required as well:
@@ -3701,9 +3700,9 @@ if (!phyloXml) {
             if (found) {
                 console.log(MESSAGE + 'Setting initial value for collapse by feature to: ' + feature);
                 collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-                let s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+                let s = byId(COLLAPSE_BY_FEATURE_SELECT);
                 if (s) {
-                    s.val(feature);
+                    s.value = feature;
                 }
             } else {
                 console.log(WARNING + ' initial value for collapse by feature [' + feature + '] not present');
@@ -3862,9 +3861,9 @@ if (!phyloXml) {
                         zoomToFit();
                     }
                     if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-                        let c1 = $('#' + _settings.controls1);
+                        let c1 = byId(_settings.controls1);
                         if (c1) {
-                            c1.css({
+                            setStyles(c1, {
                                 'left': width - _settings.controls1Width
                             });
                         }
@@ -5140,7 +5139,7 @@ if (!phyloXml) {
     }
 
 
-    $('html').click(function (d) {
+    document.documentElement.addEventListener('click', function (d) {
         let attrClass = d.target.getAttribute('class');
         if ((attrClass !== 'nodeCircleOptions')) {
             removeTooltips();
@@ -5408,20 +5407,20 @@ if (!phyloXml) {
         }
         zoomToFit();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            let c0 = $('#' + _settings.controls0);
+            let c0 = byId(_settings.controls0);
             if (c0) {
-                c0.css({
+                setStyles(c0, {
                     'left': _settings.controls0Left, 'top': _settings.controls0Top + _offsetTop
                 });
             }
-            let c1 = $('#' + _settings.controls1);
+            let c1 = byId(_settings.controls1);
             if (c1) {
                 if (_settings.enableDynamicSizing) {
-                    c1.css({
+                    setStyles(c1, {
                         'left': width - _settings.controls1Width, 'top': _settings.controls1Top + _offsetTop
                     });
                 } else {
-                    c1.css({
+                    setStyles(c1, {
                         'left': _settings.controls1Left, 'top': _settings.controls1Top + _offsetTop
                     });
                 }
@@ -5429,15 +5428,15 @@ if (!phyloXml) {
 
         }
         if (_options.searchAinitialValue) {
-            $('#' + SEARCH_FIELD_0).val(_options.searchAinitialValue);
+            setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
         } else {
-            $('#' + SEARCH_FIELD_0).val('');
+            setValue(SEARCH_FIELD_0, '');
         }
         if (_options.searchBinitialValue) {
-            $('#' + SEARCH_FIELD_1).val(_options.searchBinitialValue);
+            setValue(SEARCH_FIELD_1, _options.searchBinitialValue);
 
         } else {
-            $('#' + SEARCH_FIELD_1).val('');
+            setValue(SEARCH_FIELD_1, '');
         }
 
         initializeInitialVisualization();
@@ -5451,7 +5450,7 @@ if (!phyloXml) {
     function search0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
-        let query = $('#' + SEARCH_FIELD_0).val();
+        let query = getValue(SEARCH_FIELD_0);
         if (query && query.length > 0) {
             let my_query = query.trim();
             if (my_query.length > 0) {
@@ -5465,7 +5464,7 @@ if (!phyloXml) {
     function search1() {
         _foundNodes1.clear();
         _searchBox1Empty = true;
-        let query = $('#' + SEARCH_FIELD_1).val();
+        let query = getValue(SEARCH_FIELD_1);
         if (query && query.length > 0) {
             let my_query = query.trim();
             if (my_query.length > 0) {
@@ -5479,7 +5478,7 @@ if (!phyloXml) {
     function resetSearch0() {
         _foundNodes0.clear();
         _searchBox0Empty = true;
-        $('#' + SEARCH_FIELD_0).val('');
+        setValue(SEARCH_FIELD_0, '');
         update(null, 0, true);
         update(null, 0, true);
     }
@@ -5487,7 +5486,7 @@ if (!phyloXml) {
     function resetSearch1() {
         _foundNodes1.clear();
         _searchBox1Empty = true;
-        $('#' + SEARCH_FIELD_1).val('');
+        setValue(SEARCH_FIELD_1, '');
         update(null, 0, true);
         update(null, 0, true);
     }
@@ -5836,9 +5835,9 @@ if (!phyloXml) {
     }
 
     function downloadButtonPressed() {
-        const s = $('#' + EXPORT_FORMAT_SELECT);
+        const s = byId(EXPORT_FORMAT_SELECT);
         if (s) {
-            let format = s.val();
+            let format = s.value;
             downloadTree(format);
         }
     }
@@ -5849,12 +5848,9 @@ if (!phyloXml) {
     }
 
     function changeBaseBackgoundColor(color) {
-        let bg = $('.' + BASE_BACKGROUND);
-        if (bg) {
-            bg.css({
-                'fill': color
-            });
-        }
+        setStylesAll('.' + BASE_BACKGROUND, {
+            'fill': color
+        });
     }
 
     function changeBranchWidth(e, slider) {
@@ -6027,16 +6023,16 @@ if (!phyloXml) {
     }
 
     function setRadioButtonValue(id, value) {
-        let radio = $('#' + id);
+        let radio = byId(id);
         if (radio) {
-            radio[0].checked = value;
+            radio.checked = value;
         }
     }
 
     function setCheckboxValue(id, value) {
-        let cb = $('#' + id);
-        if (cb && cb[0]) {
-            cb[0].checked = value;
+        let cb = byId(id);
+        if (cb) {
+            cb.checked = value;
         }
     }
 
@@ -6048,7 +6044,89 @@ if (!phyloXml) {
     }
 
     function getCheckboxValue(id) {
-        return $('#' + id).is(':checked');
+        let el = byId(id);
+        return el ? el.checked : false;
+    }
+
+    // Short vanilla alias for document.getElementById, used throughout the UI
+    // code in place of the former jQuery `$('#' + id)` selector.
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+    // Null-safe value setter/getter. jQuery's $('#'+id).val(v) silently no-ops
+    // on a missing element, and .val() returns undefined; these mirror that so
+    // controls that only exist conditionally never throw.
+    function setValue(id, value) {
+        let el = byId(id);
+        if (el) {
+            el.value = value;
+        }
+    }
+
+    function getValue(id) {
+        let el = byId(id);
+        return el ? el.value : '';
+    }
+
+    // Appends an <option> (value + HTML label) to a <select> by id. Replaces the
+    // former jQuery $('select#id').append($('<option>').val(v).html(t)) chains.
+    function addOption(selectId, value, html) {
+        let sel = byId(selectId);
+        if (sel) {
+            let opt = document.createElement('option');
+            opt.value = value;
+            opt.innerHTML = html;
+            sel.appendChild(opt);
+        }
+    }
+
+    // Applies a style object (jQuery .css() style, hyphenated keys) to an
+    // element. Numeric values get 'px' appended, matching jQuery's behavior.
+    function setStyles(el, styles) {
+        if (el) {
+            for (let key in styles) {
+                let v = styles[key];
+                // Accept both hyphenated ('border-color') and camelCase
+                // ('borderColor') keys, as jQuery .css() did.
+                let prop = key.replace(/[A-Z]/g, function (m) {
+                    return '-' + m.toLowerCase();
+                });
+                el.style.setProperty(prop, typeof v === 'number' ? v + 'px' : v);
+            }
+        }
+    }
+
+    // Applies a style object to every element matching a CSS selector (replaces
+    // jQuery $(selector).css({...}) on multi-element / class selectors).
+    function setStylesAll(selector, styles) {
+        let els = document.querySelectorAll(selector);
+        for (let i = 0; i < els.length; ++i) {
+            setStyles(els[i], styles);
+        }
+    }
+
+    // Safely binds an event handler to an element by id (replaces jQuery
+    // $('#' + id).click/.on/.bind/.mousedown/.keyup(...)). A missing element is
+    // a no-op, matching jQuery's behavior on an empty selection.
+    function on(id, evt, handler) {
+        let el = byId(id);
+        if (el) {
+            el.addEventListener(evt, handler);
+        }
+    }
+
+    // Press-and-hold binding for a button by id (replaces jQuery
+    // $('#' + id).mousedown(down).bind('mouseup mouseleave', up)): the down
+    // handler fires on press, the up handler on release or when the pointer
+    // leaves the button.
+    function onHold(id, downHandler, upHandler) {
+        let el = byId(id);
+        if (el) {
+            el.addEventListener('mousedown', downHandler);
+            el.addEventListener('mouseup', upHandler);
+            el.addEventListener('mouseleave', upHandler);
+        }
     }
 
     function getSliderValue(e) {
@@ -6236,14 +6314,12 @@ if (!phyloXml) {
         }
 
 
-        let container = $(_id);
-
-        container.css({
+        setStylesAll(_id, {
             'font-style': 'normal',
             'font-weight': 'normal',
             'text-decoration': 'none',
             'text-align': 'left',
-            'borderColor': 'LightGray'
+            'border-color': 'LightGray'
         });
 
 
@@ -6252,10 +6328,10 @@ if (!phyloXml) {
             .style("opacity", 1e-6);
 
 
-        let c0 = $('#' + _settings.controls0);
+        let c0 = byId(_settings.controls0);
 
         if (c0) {
-            c0.css({
+            setStyles(c0, {
                 'position': 'absolute',
                 'left': _settings.controls0Left,
                 'top': _settings.controls0Top + _offsetTop,
@@ -6272,108 +6348,99 @@ if (!phyloXml) {
                 'text-decoration': 'none'
             });
 
-            makeDraggableWithinParent(c0[0]);
+            makeDraggableWithinParent(c0);
 
-            c0.append(makeProgramDesc());
+            c0.insertAdjacentHTML('beforeend',makeProgramDesc());
 
             if ((_treeData.name && _treeData.name.length > 0) || (_treeData.description && _treeData.description.length > 0)) {
-                c0.append(makeTreeDesc());
+                c0.insertAdjacentHTML('beforeend',makeTreeDesc());
             }
 
-            c0.append(makePhylogramControl());
+            c0.insertAdjacentHTML('beforeend',makePhylogramControl());
 
-            c0.append(makeDisplayControl());
+            c0.insertAdjacentHTML('beforeend',makeDisplayControl());
 
-            c0.append(makeZoomControl());
+            c0.insertAdjacentHTML('beforeend',makeZoomControl());
 
-            let treedesc = $('.' + TREE_DESC);
-            if (treedesc) {
-                treedesc.css({
-                    'text-align': 'left',
-                    'padding-top': '1px',
-                    'padding-bottom': '1px',
-                    'font-size': _settings.controlsFontSize + 2,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'normal',
-                    'font-weight': 'normal',
-                    'text-decoration': 'none'
-                });
-            }
+            setStylesAll('.' + TREE_DESC, {
+                'text-align': 'left',
+                'padding-top': '1px',
+                'padding-bottom': '1px',
+                'font-size': _settings.controlsFontSize + 2,
+                'font-family': _settings.controlsFont,
+                'font-style': 'normal',
+                'font-weight': 'normal',
+                'text-decoration': 'none'
+            });
 
 
-            let pn = $('.' + PROG_NAME);
-            if (pn) {
-                pn.css({
-                    'text-align': 'center',
-                    'padding-top': '5px',
-                    'padding-bottom': '5px',
-                    'font-size': _settings.controlsFontSize + 4,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'italic',
-                    'font-weight': 'bold',
-                    'text-decoration': 'none'
-                });
-            }
-            let pnl = $('.' + PROGNAMELINK);
-            if (pnl) {
-                pnl.css({
-                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 4,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'italic',
-                    'font-weight': 'bold',
-                    'text-decoration': 'none',
-                    'border': 'none'
-                });
-                $('.' + PROGNAMELINK + ':hover').css({
-                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 4,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'italic',
-                    'font-weight': 'bold',
-                    'text-decoration': 'underline',
-                    'border': 'none'
-                });
-                $('.' + PROGNAMELINK + ':link').css({
-                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 4,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'italic',
-                    'font-weight': 'bold',
-                    'text-decoration': 'normal',
-                    'border': 'none'
-                });
-                $('.' + PROGNAMELINK + ':visited').css({
-                    'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                    'font-size': _settings.controlsFontSize + 4,
-                    'font-family': _settings.controlsFont,
-                    'font-style': 'italic',
-                    'font-weight': 'bold',
-                    'text-decoration': 'normal',
-                    'border': 'none'
-                });
-            }
+            setStylesAll('.' + PROG_NAME, {
+                'text-align': 'center',
+                'padding-top': '5px',
+                'padding-bottom': '5px',
+                'font-size': _settings.controlsFontSize + 4,
+                'font-family': _settings.controlsFont,
+                'font-style': 'italic',
+                'font-weight': 'bold',
+                'text-decoration': 'none'
+            });
+            setStylesAll('.' + PROGNAMELINK, {
+                'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                'font-size': _settings.controlsFontSize + 4,
+                'font-family': _settings.controlsFont,
+                'font-style': 'italic',
+                'font-weight': 'bold',
+                'text-decoration': 'none',
+                'border': 'none'
+            });
+            setStylesAll('.' + PROGNAMELINK + ':hover', {
+                'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                'font-size': _settings.controlsFontSize + 4,
+                'font-family': _settings.controlsFont,
+                'font-style': 'italic',
+                'font-weight': 'bold',
+                'text-decoration': 'underline',
+                'border': 'none'
+            });
+            setStylesAll('.' + PROGNAMELINK + ':link', {
+                'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                'font-size': _settings.controlsFontSize + 4,
+                'font-family': _settings.controlsFont,
+                'font-style': 'italic',
+                'font-weight': 'bold',
+                'text-decoration': 'normal',
+                'border': 'none'
+            });
+            setStylesAll('.' + PROGNAMELINK + ':visited', {
+                'color': COLOR_FOR_ACTIVE_ELEMENTS,
+                'font-size': _settings.controlsFontSize + 4,
+                'font-family': _settings.controlsFont,
+                'font-style': 'italic',
+                'font-weight': 'bold',
+                'text-decoration': 'normal',
+                'border': 'none'
+            });
 
-            c0.append(makeControlButtons());
+            c0.insertAdjacentHTML('beforeend',makeControlButtons());
 
-            c0.append(makeSliders());
+            c0.insertAdjacentHTML('beforeend',makeSliders());
 
-            c0.append(makeSearchBoxes());
+            c0.insertAdjacentHTML('beforeend',makeSearchBoxes());
 
-            c0.append(makeAutoCollapse());
+            c0.insertAdjacentHTML('beforeend',makeAutoCollapse());
 
             if (_settings.allowManualNodeSelection) {
                 //c0.append(makeSubmitSection()); //~~~
             }
 
             if (_settings.enableDownloads) {
-                c0.append(makeDownloadSection());
+                c0.insertAdjacentHTML('beforeend',makeDownloadSection());
             }
         }
 
-        let c1 = $('#' + _settings.controls1);
+        let c1 = byId(_settings.controls1);
         if (c1) {
-            c1.css({
+            setStyles(c1, {
                 'position': 'absolute',
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top + _offsetTop,
@@ -6390,12 +6457,12 @@ if (!phyloXml) {
                 'text-decoration': 'none'
             });
 
-            makeDraggableWithinParent(c1[0]);
+            makeDraggableWithinParent(c1);
 
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
-                c1.append(makeVisualControls());
+                c1.insertAdjacentHTML('beforeend',makeVisualControls());
                 if (isCanDoMsaResidueVisualizations()) {
-                    c1.append(makeMsaResidueVisCurrResPositionControl());
+                    c1.insertAdjacentHTML('beforeend',makeMsaResidueVisCurrResPositionControl());
                 }
 
 
@@ -6403,7 +6470,7 @@ if (!phyloXml) {
                     if ('Mutations' in _specialVisualizations) {
                         const mutations = _specialVisualizations['Mutations'];
                         if (mutations != null) {
-                            c1.append(makeVisualization2(mutations.label));
+                            c1.insertAdjacentHTML('beforeend',makeVisualization2(mutations.label));
                             _visualizations2_color = mutations.color;
                             _visualizations2_applies_to_ref = mutations.applies_to_ref;
                             _visualizations2_property_datatype = mutations.property_datatype;
@@ -6419,7 +6486,7 @@ if (!phyloXml) {
                     if ('Convergent_Mutations' in _specialVisualizations) {
                         const conv_mutations = _specialVisualizations['Convergent_Mutations'];
                         if (conv_mutations != null) {
-                            c1.append(makeVisualization3(conv_mutations.label));
+                            c1.insertAdjacentHTML('beforeend',makeVisualization3(conv_mutations.label));
                             _visualizations3_color = conv_mutations.color;
                             _visualizations3_applies_to_ref = conv_mutations.applies_to_ref;
                             _visualizations3_property_datatype = conv_mutations.property_datatype;
@@ -6436,7 +6503,7 @@ if (!phyloXml) {
                     if ('vipr:PANGO_Lineage' in _specialVisualizations) {
                         const lineages = _specialVisualizations['vipr:PANGO_Lineage'];
                         if (lineages != null) {
-                            c1.append(makeVisualization4(lineages.label));
+                            c1.insertAdjacentHTML('beforeend',makeVisualization4(lineages.label));
                             _visualizations4_color = lineages.color;
                             _visualizations4_applies_to_ref = lineages.applies_to_ref;
                             _visualizations4_property_datatype = lineages.property_datatype;
@@ -6449,121 +6516,113 @@ if (!phyloXml) {
                     }
                 }
 
-                c1.append(makeLegendControl());
+                c1.insertAdjacentHTML('beforeend',makeLegendControl());
             }
         }
 
-        $('input:button')
-            .css({
-                'width': '26px',
-                'text-align': 'center',
-                'outline': 'none',
-                'margin': '0px',
-                'font-style': 'normal',
-                'font-weight': 'normal',
-                'text-decoration': 'none'
-            });
+        setStylesAll('input[type=button]', {
+            'width': '26px',
+            'text-align': 'center',
+            'outline': 'none',
+            'margin': '0px',
+            'font-style': 'normal',
+            'font-weight': 'normal',
+            'text-decoration': 'none'
+        });
 
 
-        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y)
-            .css({
-                'width': '104px'
-            });
+        setStylesAll('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y, {
+            'width': '104px'
+        });
 
-        $('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y)
-            .css({
-                'height': '16px'
-            });
+        setStylesAll('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y, {
+            'height': '16px'
+        });
 
-        $('#' + DECR_DEPTH_COLLAPSE_LEVEL + ', #' + INCR_DEPTH_COLLAPSE_LEVEL + ', #' + DECR_BL_COLLAPSE_LEVEL + ', #' + INCR_BL_COLLAPSE_LEVEL)
-            .css({
-                'width': '16px'
-            });
+        setStylesAll('#' + DECR_DEPTH_COLLAPSE_LEVEL + ', #' + INCR_DEPTH_COLLAPSE_LEVEL + ', #' + DECR_BL_COLLAPSE_LEVEL + ', #' + INCR_BL_COLLAPSE_LEVEL, {
+            'width': '16px'
+        });
 
-        $('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN)
-            .css({
-                'width': '72px'
-            });
+        setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN, {
+            'width': '72px'
+        });
 
-        $('#' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN)
-            .css({
-                'width': '24px'
-            });
+        setStylesAll('#' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN, {
+            'width': '24px'
+        });
 
-        $('#' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN)
-            .css({
-                'width': '36px'
-            });
+        setStylesAll('#' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN, {
+            'width': '36px'
+        });
 
-        $('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN + ', #' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN + ', #' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN)
-            .css({
-                'height': '16px'
-            });
+        setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN + ', #' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN + ', #' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN, {
+            'height': '16px'
+        });
 
-        const downloadButton = $('#' + DOWNLOAD_BUTTON);
+        const downloadButton = byId(DOWNLOAD_BUTTON);
 
         if (downloadButton) {
-            downloadButton.css({
+            setStyles(downloadButton, {
                 'width': '60px', 'margin-bottom': '3px'
             });
         }
 
-        const submitSelectedButton = $('#' + SUBMIT_SELECTED_NODES_BUTTON);
+        const submitSelectedButton = byId(SUBMIT_SELECTED_NODES_BUTTON);
 
         if (submitSelectedButton) {
-            submitSelectedButton.css({
+            setStyles(submitSelectedButton, {
                 'width': '80px', 'margin-bottom': '3px'
             });
         }
 
 
-        $('#' + SEARCH_FIELD_0).keyup(search0);
+        on(SEARCH_FIELD_0, 'keyup', search0);
 
-        $('#' + SEARCH_FIELD_1).keyup(search1);
+        on(SEARCH_FIELD_1, 'keyup', search1);
 
-        $('#' + PHYLOGRAM_BUTTON).click(toPhylogram);
+        on(PHYLOGRAM_BUTTON, 'click', toPhylogram);
 
-        $('#' + PHYLOGRAM_ALIGNED_BUTTON).click(toAlignedPhylogram);
+        on(PHYLOGRAM_ALIGNED_BUTTON, 'click', toAlignedPhylogram);
 
-        $('#' + CLADOGRAM_BUTTON).click(toCladegram);
+        on(CLADOGRAM_BUTTON, 'click', toCladegram);
 
-        $('#' + NODE_NAME_CB).click(nodeNameCbClicked);
+        on(NODE_NAME_CB, 'click', nodeNameCbClicked);
 
-        $('#' + TAXONOMY_CB).click(taxonomyCbClicked);
+        on(TAXONOMY_CB, 'click', taxonomyCbClicked);
 
-        $('#' + SEQUENCE_CB).click(sequenceCbClicked);
+        on(SEQUENCE_CB, 'click', sequenceCbClicked);
 
-        $('#' + CONFIDENCE_VALUES_CB).click(confidenceValuesCbClicked);
+        on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
 
-        $('#' + BRANCH_LENGTH_VALUES_CB).click(branchLengthsCbClicked);
+        on(BRANCH_LENGTH_VALUES_CB, 'click', branchLengthsCbClicked);
 
-        $('#' + NODE_EVENTS_CB).click(nodeEventsCbClicked);
+        on(NODE_EVENTS_CB, 'click', nodeEventsCbClicked);
 
-        $('#' + BRANCH_EVENTS_CB).click(branchEventsCbClicked);
+        on(BRANCH_EVENTS_CB, 'click', branchEventsCbClicked);
 
-        $('#' + INTERNAL_LABEL_CB).click(internalLabelsCbClicked);
+        on(INTERNAL_LABEL_CB, 'click', internalLabelsCbClicked);
 
-        $('#' + EXTERNAL_LABEL_CB).click(externalLabelsCbClicked);
+        on(EXTERNAL_LABEL_CB, 'click', externalLabelsCbClicked);
 
-        $('#' + INTERNAL_NODES_CB).click(internalNodesCbClicked);
+        on(INTERNAL_NODES_CB, 'click', internalNodesCbClicked);
 
-        $('#' + EXTERNAL_NODES_CB).click(externalNodesCbClicked);
+        on(EXTERNAL_NODES_CB, 'click', externalNodesCbClicked);
 
-        $('#' + NODE_VIS_CB).click(nodeVisCbClicked);
+        on(NODE_VIS_CB, 'click', nodeVisCbClicked);
 
-        $('#' + BRANCH_VIS_CB).click(branchVisCbClicked);
+        on(BRANCH_VIS_CB, 'click', branchVisCbClicked);
 
-        $('#' + BRANCH_COLORS_CB).click(branchColorsCbClicked);
+        on(BRANCH_COLORS_CB, 'click', branchColorsCbClicked);
 
-        $('#' + DYNAHIDE_CB).click(dynaHideCbClicked);
+        on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
 
-        $('#' + SHORTEN_NODE_NAME_CB).click(shortenCbClicked);
+        on(SHORTEN_NODE_NAME_CB, 'click', shortenCbClicked);
 
         if (_nodeLabels) {
             for (const [key, value] of Object.entries(_nodeLabels)) {
                 if (value.label && value.showButton === true && value.propertyRef && value.description) {
                     const cb_id = makeIdForCustomCheckboxButton(key);
-                    $('#' + cb_id).click(function () {
+                    on(cb_id, 'click', function () {
                         customCbClicked(cb_id);
                     });
                     if (value.selected === true) {
@@ -6573,7 +6632,7 @@ if (!phyloXml) {
             }
         }
 
-        $('#' + LABEL_COLOR_SELECT_MENU).on('change', function () {
+        on(LABEL_COLOR_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (isAddVisualization2()) {
                 setSelectMenuValue(LABEL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -6598,7 +6657,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + LABEL_COLOR_SELECT_MENU_2).on('change', function () {
+        on(LABEL_COLOR_SELECT_MENU_2, 'change', function () {
             let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization3()) {
@@ -6619,7 +6678,7 @@ if (!phyloXml) {
         });
 
 
-        $('#' + LABEL_COLOR_SELECT_MENU_3).on('change', function () {
+        on(LABEL_COLOR_SELECT_MENU_3, 'change', function () {
             let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
@@ -6639,7 +6698,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + LABEL_COLOR_SELECT_MENU_4).on('change', function () {
+        on(LABEL_COLOR_SELECT_MENU_4, 'change', function () {
             let v = this.value;
             setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
@@ -6659,7 +6718,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU).on('change', function () {
+        on(NODE_FILL_COLOR_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (isAddVisualization2()) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
@@ -6688,7 +6747,7 @@ if (!phyloXml) {
         });
 
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_2).on('change', function () {
+        on(NODE_FILL_COLOR_SELECT_MENU_2, 'change', function () {
             let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization3()) {
@@ -6715,7 +6774,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_3).on('change', function () {
+        on(NODE_FILL_COLOR_SELECT_MENU_3, 'change', function () {
             let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
@@ -6742,7 +6801,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_4).on('change', function () {
+        on(NODE_FILL_COLOR_SELECT_MENU_4, 'change', function () {
             let v = this.value;
             setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
             if (isAddVisualization2()) {
@@ -6770,7 +6829,7 @@ if (!phyloXml) {
         });
 
 
-        $('#' + NODE_SHAPE_SELECT_MENU).on('change', function () {
+        on(NODE_SHAPE_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (v && v !== DEFAULT) {
                 _currentNodeShapeVisualization = v;
@@ -6787,7 +6846,7 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        $('#' + NODE_SIZE_SELECT_MENU).on('change', function () {
+        on(NODE_SIZE_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (v && v !== DEFAULT) {
                 _currentNodeSizeVisualization = v;
@@ -6816,26 +6875,19 @@ if (!phyloXml) {
 
         initSlider(BRANCH_DATA_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.branchDataFontSize, changeBranchDataFontSize);
 
-        $('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1)
-            .off('keydown')
-            .off('mouseenter')
-            .off('mousedown')
-            .css({
-                'font': 'inherit',
-                'color': 'inherit',
-                'text-align': 'left',
-                'outline': 'none',
-                'cursor': 'text',
-                'width': _settings.searchFieldWidth,
-                'height': _settings.textFieldHeight
-            });
+        setStylesAll('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1, {
+            'font': 'inherit',
+            'color': 'inherit',
+            'text-align': 'left',
+            'outline': 'none',
+            'cursor': 'text',
+            'width': _settings.searchFieldWidth,
+            'height': _settings.textFieldHeight
+        });
 
-        $('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL)
-            .off('keydown')
-            .off('mouseenter')
-            .off('mousedown')
-            .attr('disabled', 'disabled')
-            .css({
+        document.querySelectorAll('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL).forEach(function (el) {
+            el.setAttribute('disabled', 'disabled');
+            setStyles(el, {
                 'font': 'inherit',
                 'color': 'inherit',
                 'text-align': 'center',
@@ -6843,150 +6895,147 @@ if (!phyloXml) {
                 'cursor': 'text',
                 'width': _settings.collapseLabelWidth
             });
+        });
 
-        $('#' + ZOOM_IN_Y).mousedown(function () {
+        onHold(ZOOM_IN_Y, function () {
             zoomInY();
             _intervalId = setInterval(zoomInY, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + ZOOM_OUT_Y).mousedown(function () {
+        onHold(ZOOM_OUT_Y, function () {
             zoomOutY();
             _intervalId = setInterval(zoomOutY, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + ZOOM_IN_X).mousedown(function () {
+        onHold(ZOOM_IN_X, function () {
             zoomInX();
             _intervalId = setInterval(zoomInX, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + ZOOM_OUT_X).mousedown(function () {
+        onHold(ZOOM_OUT_X, function () {
             zoomOutX();
             _intervalId = setInterval(zoomOutX, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + DECR_DEPTH_COLLAPSE_LEVEL).mousedown(function () {
+        onHold(DECR_DEPTH_COLLAPSE_LEVEL, function () {
             decrDepthCollapseLevel();
             _intervalId = setInterval(decrDepthCollapseLevel, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
-        $('#' + INCR_DEPTH_COLLAPSE_LEVEL).mousedown(function () {
+        onHold(INCR_DEPTH_COLLAPSE_LEVEL, function () {
             incrDepthCollapseLevel();
             _intervalId = setInterval(incrDepthCollapseLevel, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
-        $('#' + DECR_BL_COLLAPSE_LEVEL).mousedown(function () {
+        onHold(DECR_BL_COLLAPSE_LEVEL, function () {
             decrBlCollapseLevel();
             _intervalId = setInterval(decrBlCollapseLevel, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
-        $('#' + INCR_BL_COLLAPSE_LEVEL).mousedown(function () {
+        onHold(INCR_BL_COLLAPSE_LEVEL, function () {
             incrBlCollapseLevel();
             _intervalId = setInterval(incrBlCollapseLevel, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + ZOOM_TO_FIT).mousedown(zoomToFit);
+        on(ZOOM_TO_FIT, 'mousedown', zoomToFit);
 
-        $('#' + ZOOM_TO_EXPAND_Y).mousedown(zoomToExpandY);
+        on(ZOOM_TO_EXPAND_Y, 'mousedown', zoomToExpandY);
 
-        $('#' + RETURN_TO_SUPERTREE_BUTTON).mousedown(returnToSupertreeButtonPressed);
+        on(RETURN_TO_SUPERTREE_BUTTON, 'mousedown', returnToSupertreeButtonPressed);
 
-        $('#' + RETURN_TO_SUPERTREE_BUTTON_BY_ONE).mousedown(returnToSupertreeButtonByOnePressed);
+        on(RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'mousedown', returnToSupertreeButtonByOnePressed);
 
-        $('#' + ORDER_BUTTON).mousedown(orderButtonPressed);
+        on(ORDER_BUTTON, 'mousedown', orderButtonPressed);
 
-        $('#' + UNCOLLAPSE_ALL_BUTTON).mousedown(uncollapseAllButtonPressed);
+        on(UNCOLLAPSE_ALL_BUTTON, 'mousedown', uncollapseAllButtonPressed);
 
-        $('#' + MIDPOINT_ROOT_BUTTON).mousedown(midpointRootButtonPressed);
+        on(MIDPOINT_ROOT_BUTTON, 'mousedown', midpointRootButtonPressed);
 
         // Search Controls
         // ---------------
 
-        $('#' + SEARCH_OPTIONS_CASE_SENSITIVE_CB).click(searchOptionsCaseSenstiveCbClicked);
-        $('#' + SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB).click(searchOptionsCompleteTermsOnlyCbClicked);
-        $('#' + SEARCH_OPTIONS_REGEX_CB).click(searchOptionsRegexCbClicked);
-        $('#' + SEARCH_OPTIONS_NEGATE_RES_CB).click(searchOptionsNegateResultCbClicked);
-        $('#' + SEARCH_OPTIONS_PROPERTIES_CB).click(searchOptionsPropertiesCbClicked);
+        on(SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'click', searchOptionsCaseSenstiveCbClicked);
+        on(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, 'click', searchOptionsCompleteTermsOnlyCbClicked);
+        on(SEARCH_OPTIONS_REGEX_CB, 'click', searchOptionsRegexCbClicked);
+        on(SEARCH_OPTIONS_NEGATE_RES_CB, 'click', searchOptionsNegateResultCbClicked);
+        on(SEARCH_OPTIONS_PROPERTIES_CB, 'click', searchOptionsPropertiesCbClicked);
 
-        $('#' + RESET_SEARCH_A_BTN).mousedown(resetSearch0);
-        $('#' + RESET_SEARCH_B_BTN).mousedown(resetSearch1);
+        on(RESET_SEARCH_A_BTN, 'mousedown', resetSearch0);
+        on(RESET_SEARCH_B_BTN, 'mousedown', resetSearch1);
 
         // Visualization Legends
         // ---------------------
 
-        $('#' + LEGENDS_MOVE_UP_BTN).mousedown(function () {
+        onHold(LEGENDS_MOVE_UP_BTN, function () {
             legendMoveUp(2);
             _intervalId = setInterval(legendMoveUp, MOVE_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + LEGENDS_MOVE_DOWN_BTN).mousedown(function () {
+        onHold(LEGENDS_MOVE_DOWN_BTN, function () {
             legendMoveDown(2);
             _intervalId = setInterval(legendMoveDown, MOVE_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + LEGENDS_MOVE_LEFT_BTN).mousedown(function () {
+        onHold(LEGENDS_MOVE_LEFT_BTN, function () {
             legendMoveLeft(2);
             _intervalId = setInterval(legendMoveLeft, MOVE_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + LEGENDS_MOVE_RIGHT_BTN).mousedown(function () {
+        onHold(LEGENDS_MOVE_RIGHT_BTN, function () {
             legendMoveRight(2);
             _intervalId = setInterval(legendMoveRight, MOVE_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + LEGENDS_HORIZ_VERT_BTN).click(legendHorizVertClicked);
-        $('#' + LEGENDS_SHOW_BTN).click(legendShowClicked);
-        $('#' + LEGENDS_RESET_BTN).click(legendResetClicked);
+        on(LEGENDS_HORIZ_VERT_BTN, 'click', legendHorizVertClicked);
+        on(LEGENDS_SHOW_BTN, 'click', legendShowClicked);
+        on(LEGENDS_RESET_BTN, 'click', legendResetClicked);
 
         // ----------------
 
         if (downloadButton) {
-            downloadButton.mousedown(downloadButtonPressed);
+            downloadButton.addEventListener('mousedown', downloadButtonPressed);
         }
 
         if (submitSelectedButton) {
-            submitSelectedButton.mousedown(submitSelectedPressed);
+            submitSelectedButton.addEventListener('mousedown', submitSelectedPressed);
         }
 
         // Collapse
         // ---------------
 
-        $('#' + COLLAPSE_BY_FEATURE_SELECT)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(COLLAPSE_BY_FEATURE_SELECT), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + EXPORT_FORMAT_SELECT)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(EXPORT_FORMAT_SELECT), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + COLLAPSE_BY_FEATURE_SELECT).on('change', function () {
-            let s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+        on(COLLAPSE_BY_FEATURE_SELECT, 'change', function () {
+            let s = byId(COLLAPSE_BY_FEATURE_SELECT);
             if (s) {
-                let f = s.val();
+                let f = s.value;
                 if (f) {
                     collapseByFeature(f);
                 }
@@ -6999,90 +7048,65 @@ if (!phyloXml) {
         // Visualizations
         // ---------------
 
-        $('#' + LABEL_COLOR_SELECT_MENU)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(LABEL_COLOR_SELECT_MENU), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_SHAPE_SELECT_MENU)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_SHAPE_SELECT_MENU), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_SIZE_SELECT_MENU)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_SIZE_SELECT_MENU), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
 
-        $('#' + LABEL_COLOR_SELECT_MENU_2)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(LABEL_COLOR_SELECT_MENU_2), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_2)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_2), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + LABEL_COLOR_SELECT_MENU_3)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(LABEL_COLOR_SELECT_MENU_3), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_3)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_3), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + LABEL_COLOR_SELECT_MENU_4)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(LABEL_COLOR_SELECT_MENU_4), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
-        $('#' + NODE_FILL_COLOR_SELECT_MENU_4)
-            .select()
-            .css({
-                'font': 'inherit', 'color': 'inherit'
-            });
+        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_4), {
+            'font': 'inherit', 'color': 'inherit'
+        });
 
 
         // MSA residue visualization: Position control
         // -------------------------------------------
-        $('#' + MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN + ', #' + MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN)
-            .css({
-                'width': '18px'
-            });
+        setStylesAll('#' + MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN + ', #' + MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, {
+            'width': '18px'
+        });
 
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL)
-            .off('keydown')
-            .off('mouseenter')
-            .off('mousedown')
-            .css({
-                'font': 'inherit',
-                'color': 'inherit',
-                'text-align': 'center',
-                'outline': 'none',
-                'cursor': 'text',
-                'width': '28px',
-                'height': _settings.textFieldHeight
-            });
+        setStyles(byId(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL), {
+            'font': 'inherit',
+            'color': 'inherit',
+            'text-align': 'center',
+            'outline': 'none',
+            'cursor': 'text',
+            'width': '28px',
+            'height': _settings.textFieldHeight
+        });
 
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).keyup(function (e) {
+        on(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, 'keyup', function (e) {
             let keycode = e.keyCode;
             if ((((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD)) && (keycode <= VK_9_NUMPAD)) || (keycode === VK_BACKSPACE) || (keycode === VK_DELETE)) {
                 let i = 0;
@@ -7093,7 +7117,7 @@ if (!phyloXml) {
                         i = keycode - 96;
                     }
                 } else {
-                    let x = $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).val().trim();
+                    let x = getValue(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).trim();
                     if (x === '') {
                         return;
                     }
@@ -7112,24 +7136,24 @@ if (!phyloXml) {
             }
         });
 
-        $('#' + MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN).mousedown(function () {
+        onHold(MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN, function () {
             decrMsaResidueVisCurrResPos();
             _intervalId = setInterval(decrMsaResidueVisCurrResPos, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
-        $('#' + MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN).mousedown(function () {
+        onHold(MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, function () {
             incrMsaResidueVisCurrResPos();
             _intervalId = setInterval(incrMsaResidueVisCurrResPos, ZOOM_INTERVAL);
-        }).bind('mouseup mouseleave', function () {
+        }, function () {
             clearTimeout(_intervalId);
         });
 
 
         // -------------------------------------------
 
-        $(document).keyup(function (e) {
+        document.addEventListener('keyup', function (e) {
             if (e.altKey) {
                 if (e.keyCode === VK_O) {
                     orderButtonPressed();
@@ -7159,7 +7183,7 @@ if (!phyloXml) {
             }
         });
 
-        $(document).keydown(function (e) {
+        document.addEventListener('keydown', function (e) {
             if (e.altKey) {
                 if (e.keyCode === VK_UP) {
                     zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
@@ -7197,32 +7221,29 @@ if (!phyloXml) {
         });
 
 
-        $(document).on('mousewheel DOMMouseScroll', function (e) {
+        document.addEventListener('wheel', function (e) {
             if (e.shiftKey) {
-                if (e.originalEvent) {
-                    let oe = e.originalEvent;
-                    if (oe.detail > 0 || oe.wheelDelta < 0) {
-                        if (e.ctrlKey) {
-                            decreaseFontSizes();
-                        } else if (e.altKey) {
-                            zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                        } else {
-                            zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                        }
+                if (e.deltaY > 0) {
+                    if (e.ctrlKey) {
+                        decreaseFontSizes();
+                    } else if (e.altKey) {
+                        zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                     } else {
-                        if (e.ctrlKey) {
-                            increaseFontSizes();
-                        } else if (e.altKey) {
-                            zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                        } else {
-                            zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                        }
+                        zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                    }
+                } else {
+                    if (e.ctrlKey) {
+                        increaseFontSizes();
+                    } else if (e.altKey) {
+                        zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                    } else {
+                        zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
                     }
                 }
-                // To prevent page fom scrolling:
-                return false;
+                // To prevent the page from scrolling:
+                e.preventDefault();
             }
-        });
+        }, {passive: false});
 
         // --------------------------------------------------------------
         // Functions to make GUI elements
@@ -7733,42 +7754,22 @@ if (!phyloXml) {
         _currentNodeFillColorVisualization = DEFAULT;
         _currentNodeSizeVisualization = DEFAULT;
 
-        $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(NODE_FILL_COLOR_SELECT_MENU, DEFAULT, 'default');
 
-        $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
-        $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
-        $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(NODE_SHAPE_SELECT_MENU, DEFAULT, 'default');
+        addOption(NODE_SIZE_SELECT_MENU, DEFAULT, 'default');
+        addOption(LABEL_COLOR_SELECT_MENU, DEFAULT, 'default');
 
-        $('select#' + NODE_FILL_COLOR_SELECT_MENU_2).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
-        $('select#' + LABEL_COLOR_SELECT_MENU_2).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT, 'default');
+        addOption(LABEL_COLOR_SELECT_MENU_2, DEFAULT, 'default');
 
-        $('select#' + NODE_FILL_COLOR_SELECT_MENU_3).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT, 'default');
 
-        $('select#' + LABEL_COLOR_SELECT_MENU_3).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(LABEL_COLOR_SELECT_MENU_3, DEFAULT, 'default');
 
-        $('select#' + NODE_FILL_COLOR_SELECT_MENU_4).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT, 'default');
 
-        $('select#' + LABEL_COLOR_SELECT_MENU_4).append($('<option>')
-            .val(DEFAULT)
-            .html('default'));
+        addOption(LABEL_COLOR_SELECT_MENU_4, DEFAULT, 'default');
 
         if (_visualizations) {
             if (_visualizations.labelColor) {
@@ -7778,9 +7779,7 @@ if (!phyloXml) {
                         if (key_html.length > 15) {
                             key_html = key_html.substring(0, 15);
                         }
-                        $('select#' + LABEL_COLOR_SELECT_MENU).append($('<option>')
-                            .val(key)
-                            .html(key_html));
+                        addOption(LABEL_COLOR_SELECT_MENU, key, key_html);
                     }
                 }
             }
@@ -7791,9 +7790,7 @@ if (!phyloXml) {
                         if (key_html.length > 15) {
                             key_html = key_html.substring(0, 15);
                         }
-                        $('select#' + NODE_SHAPE_SELECT_MENU).append($('<option>')
-                            .val(key)
-                            .html(key_html));
+                        addOption(NODE_SHAPE_SELECT_MENU, key, key_html);
                     }
                 }
             }
@@ -7804,9 +7801,7 @@ if (!phyloXml) {
                         if (key_html.length > 15) {
                             key_html = key_html.substring(0, 15);
                         }
-                        $('select#' + NODE_FILL_COLOR_SELECT_MENU).append($('<option>')
-                            .val(key)
-                            .html(key_html));
+                        addOption(NODE_FILL_COLOR_SELECT_MENU, key, key_html);
                     }
                 }
             }
@@ -7817,9 +7812,7 @@ if (!phyloXml) {
                         if (key_html.length > 15) {
                             key_html = key_html.substring(0, 15);
                         }
-                        $('select#' + NODE_SIZE_SELECT_MENU).append($('<option>')
-                            .val(key)
-                            .html(key_html));
+                        addOption(NODE_SIZE_SELECT_MENU, key, key_html);
                     }
                 }
             }
@@ -7833,12 +7826,8 @@ if (!phyloXml) {
                     const arrayLength = properties.length;
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
-                        $('select#' + LABEL_COLOR_SELECT_MENU_2).append($('<option>')
-                            .val(key)
-                            .html(key));
-                        $('select#' + NODE_FILL_COLOR_SELECT_MENU_2).append($('<option>')
-                            .val(key)
-                            .html(key));
+                        addOption(LABEL_COLOR_SELECT_MENU_2, key, key);
+                        addOption(NODE_FILL_COLOR_SELECT_MENU_2, key, key);
                     }
                 }
             }
@@ -7851,12 +7840,8 @@ if (!phyloXml) {
                     const arrayLength = properties.length;
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
-                        $('select#' + LABEL_COLOR_SELECT_MENU_3).append($('<option>')
-                            .val(key)
-                            .html(key));
-                        $('select#' + NODE_FILL_COLOR_SELECT_MENU_3).append($('<option>')
-                            .val(key)
-                            .html(key));
+                        addOption(LABEL_COLOR_SELECT_MENU_3, key, key);
+                        addOption(NODE_FILL_COLOR_SELECT_MENU_3, key, key);
                     }
                 }
             }
@@ -7869,12 +7854,8 @@ if (!phyloXml) {
                     const arrayLength = properties.length;
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
-                        $('select#' + LABEL_COLOR_SELECT_MENU_4).append($('<option>')
-                            .val(key)
-                            .html(key));
-                        $('select#' + NODE_FILL_COLOR_SELECT_MENU_4).append($('<option>')
-                            .val(key)
-                            .html(key));
+                        addOption(LABEL_COLOR_SELECT_MENU_4, key, key);
+                        addOption(NODE_FILL_COLOR_SELECT_MENU_4, key, key);
                     }
                 }
             }
@@ -7900,10 +7881,10 @@ if (!phyloXml) {
         setCheckboxValue(SEARCH_OPTIONS_PROPERTIES_CB, _options.searchProperties);
 
         if (_options.searchAinitialValue) {
-            $('#' + SEARCH_FIELD_0).val(_options.searchAinitialValue);
+            setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
         }
         if (_options.searchBinitialValue) {
-            $('#' + SEARCH_FIELD_1).val(_options.searchBinitialValue);
+            setValue(SEARCH_FIELD_1, _options.searchBinitialValue);
         }
     }
 
@@ -8084,7 +8065,7 @@ if (!phyloXml) {
         if ((_currentLabelColorVisualization == null || _currentLabelColorVisualization === DEFAULT) && (_currentNodeFillColorVisualization !== MSA_RESIDUE) && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
 
             _currentLabelColorVisualization = MSA_RESIDUE;
-            $('#' + LABEL_COLOR_SELECT_MENU).val(MSA_RESIDUE);
+            setValue(LABEL_COLOR_SELECT_MENU, MSA_RESIDUE);
             addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
             if (_settings.enableBranchVisualizations) {
                 _options.showBranchVisualizations = true;
@@ -8092,7 +8073,7 @@ if (!phyloXml) {
             }
         } else if ((_currentLabelColorVisualization !== MSA_RESIDUE) && (_currentNodeFillColorVisualization == null || _currentNodeFillColorVisualization === DEFAULT) && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
             _currentNodeFillColorVisualization = MSA_RESIDUE;
-            $('#' + NODE_FILL_COLOR_SELECT_MENU).val(MSA_RESIDUE);
+            setValue(NODE_FILL_COLOR_SELECT_MENU, MSA_RESIDUE);
             addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
             if (_settings.enableBranchVisualizations) {
                 _options.showBranchVisualizations = true;
@@ -8100,7 +8081,7 @@ if (!phyloXml) {
             }
         } else if ((_currentLabelColorVisualization !== MSA_RESIDUE) && (_currentNodeFillColorVisualization !== MSA_RESIDUE) && (_currentNodeShapeVisualization == null || _currentNodeShapeVisualization === DEFAULT) && isCanDoMsaResidueVisualizations()) {
             _currentNodeShapeVisualization = MSA_RESIDUE;
-            $('#' + NODE_SHAPE_SELECT_MENU).val(MSA_RESIDUE);
+            setValue(NODE_SHAPE_SELECT_MENU, MSA_RESIDUE);
             addLegend(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
         }
     }
@@ -8108,14 +8089,12 @@ if (!phyloXml) {
 
     function updateDepthCollapseDepthDisplay() {
         let v = obtainDepthCollapseDepthValue();
-        $('#' + DEPTH_COLLAPSE_LABEL)
-            .val(" " + v);
+        setValue(DEPTH_COLLAPSE_LABEL, " " + v);
     }
 
     function updateBranchLengthCollapseBranchLengthDisplay() {
         let v = obtainBranchLengthCollapseBranchLengthValue();
-        $('#' + BL_COLLAPSE_LABEL)
-            .val(v);
+        setValue(BL_COLLAPSE_LABEL, v);
     }
 
     function collapseByFeature(feature) {
@@ -8173,18 +8152,18 @@ if (!phyloXml) {
     }
 
     function resetCollapseByFeature() {
-        let s = $('#' + COLLAPSE_BY_FEATURE_SELECT);
+        let s = byId(COLLAPSE_BY_FEATURE_SELECT);
         if (s) {
-            let f = s.val();
+            let f = s.value;
             if (f !== OFF_FEATURE) {
-                s.val(OFF_FEATURE);
+                s.value = OFF_FEATURE;
                 removeForCollapsedFeatureSpecialLabel(_root, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
             }
         }
     }
 
     function updateMsaResidueVisCurrResPosLabel() {
-        $('#' + MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).val(_msa_residue_vis_curr_res_pos + 1);
+        setValue(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, _msa_residue_vis_curr_res_pos + 1);
     }
 
     function setMsaResidueVisCurrResPos(position) {
@@ -8199,98 +8178,98 @@ if (!phyloXml) {
 
     function updateButtonEnabledState() {
         if (_in_subtree) {
-            enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
-            enableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
+            enableButton(byId(RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
+            enableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
         } else {
-            disableButton($('#' + RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
-            disableButton($('#' + RETURN_TO_SUPERTREE_BUTTON));
+            disableButton(byId(RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
+            disableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
         }
 
         if (forester.isHasCollapsedNodes(_root)) {
-            enableButton($('#' + UNCOLLAPSE_ALL_BUTTON));
+            enableButton(byId(UNCOLLAPSE_ALL_BUTTON));
         } else {
-            disableButton($('#' + UNCOLLAPSE_ALL_BUTTON));
+            disableButton(byId(UNCOLLAPSE_ALL_BUTTON));
         }
         if (!_in_subtree && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
-            enableButton($('#' + MIDPOINT_ROOT_BUTTON));
+            enableButton(byId(MIDPOINT_ROOT_BUTTON));
         } else {
-            disableButton($('#' + MIDPOINT_ROOT_BUTTON));
+            disableButton(byId(MIDPOINT_ROOT_BUTTON));
         }
         let b;
         if (_foundNodes0 && !_searchBox0Empty) {
-            b = $('#' + RESET_SEARCH_A_BTN);
+            b = byId(RESET_SEARCH_A_BTN);
             if (b) {
-                b.prop('disabled', false);
+                b.disabled = false;
                 if (_foundNodes0.size < 1) {
-                    b.css('background', '');
-                    b.css('color', '');
+                    b.style.background = '';
+                    b.style.color = '';
                 } else {
-                    b.css('background', _options.found0ColorDefault);
-                    b.css('color', WHITE);
+                    b.style.background = _options.found0ColorDefault;
+                    b.style.color = WHITE;
                 }
                 let nd0 = _foundNodes0.size === 1 ? 'node' : 'nodes';
-                b.prop('title', 'found ' + _foundNodes0.size + ' ' + nd0 + ' [click to ' + RESET_SEARCH_A_BTN_TOOLTIP + ']');
+                b.title = 'found ' + _foundNodes0.size + ' ' + nd0 + ' [click to ' + RESET_SEARCH_A_BTN_TOOLTIP + ']';
             }
         } else {
-            b = $('#' + RESET_SEARCH_A_BTN);
+            b = byId(RESET_SEARCH_A_BTN);
             if (b) {
-                b.prop('disabled', true);
-                b.css('background', _settings.controlsBackgroundColor);
-                b.css('color', '');
-                b.prop('title', RESET_SEARCH_A_BTN_TOOLTIP);
+                b.disabled = true;
+                b.style.background = _settings.controlsBackgroundColor;
+                b.style.color = '';
+                b.title = RESET_SEARCH_A_BTN_TOOLTIP;
             }
         }
 
         if (_foundNodes1 && !_searchBox1Empty) {
-            b = $('#' + RESET_SEARCH_B_BTN);
+            b = byId(RESET_SEARCH_B_BTN);
             if (b) {
-                b.prop('disabled', false);
+                b.disabled = false;
                 if (_foundNodes1.size < 1) {
-                    b.css('background', '');
-                    b.css('color', '');
+                    b.style.background = '';
+                    b.style.color = '';
                 } else {
-                    b.css('background', _options.found1ColorDefault);
-                    b.css('color', WHITE);
+                    b.style.background = _options.found1ColorDefault;
+                    b.style.color = WHITE;
                 }
                 let nd1 = _foundNodes1.size === 1 ? 'node' : 'nodes';
-                b.prop('title', 'found ' + _foundNodes1.size + ' ' + nd1 + ' [click to ' + RESET_SEARCH_B_BTN_TOOLTIP + ']');
+                b.title = 'found ' + _foundNodes1.size + ' ' + nd1 + ' [click to ' + RESET_SEARCH_B_BTN_TOOLTIP + ']';
             }
         } else {
-            b = $('#' + RESET_SEARCH_B_BTN);
+            b = byId(RESET_SEARCH_B_BTN);
             if (b) {
-                b.prop('disabled', true);
-                b.css('background', _settings.controlsBackgroundColor);
-                b.css('color', '');
-                b.prop('title', RESET_SEARCH_B_BTN_TOOLTIP);
+                b.disabled = true;
+                b.style.background = _settings.controlsBackgroundColor;
+                b.style.color = '';
+                b.title = RESET_SEARCH_B_BTN_TOOLTIP;
             }
         }
     }
 
     function updateLegendButtonEnabledState() {
-        let b = $('#' + LEGENDS_SHOW_BTN);
+        let b = byId(LEGENDS_SHOW_BTN);
         if (b) {
             if (_showLegends) {
-                b.css('background', COLOR_FOR_ACTIVE_ELEMENTS);
-                b.css('color', WHITE);
+                b.style.background = COLOR_FOR_ACTIVE_ELEMENTS;
+                b.style.color = WHITE;
             } else {
-                b.css('background', '');
-                b.css('color', '');
+                b.style.background = '';
+                b.style.color = '';
             }
         }
         if (_showLegends && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && (_legendColorScales[LEGEND_NODE_FILL_COLOR] || _legendShapeScales[LEGEND_NODE_SHAPE] || _legendSizeScales[LEGEND_NODE_SIZE])))) {
-            enableButton($('#' + LEGENDS_HORIZ_VERT_BTN));
-            enableButton($('#' + LEGENDS_MOVE_UP_BTN));
-            enableButton($('#' + LEGENDS_MOVE_DOWN_BTN));
-            enableButton($('#' + LEGENDS_MOVE_LEFT_BTN));
-            enableButton($('#' + LEGENDS_MOVE_RIGHT_BTN));
-            enableButton($('#' + LEGENDS_RESET_BTN));
+            enableButton(byId(LEGENDS_HORIZ_VERT_BTN));
+            enableButton(byId(LEGENDS_MOVE_UP_BTN));
+            enableButton(byId(LEGENDS_MOVE_DOWN_BTN));
+            enableButton(byId(LEGENDS_MOVE_LEFT_BTN));
+            enableButton(byId(LEGENDS_MOVE_RIGHT_BTN));
+            enableButton(byId(LEGENDS_RESET_BTN));
         } else {
-            disableButton($('#' + LEGENDS_HORIZ_VERT_BTN));
-            disableButton($('#' + LEGENDS_MOVE_UP_BTN));
-            disableButton($('#' + LEGENDS_MOVE_DOWN_BTN));
-            disableButton($('#' + LEGENDS_MOVE_LEFT_BTN));
-            disableButton($('#' + LEGENDS_MOVE_RIGHT_BTN));
-            disableButton($('#' + LEGENDS_RESET_BTN));
+            disableButton(byId(LEGENDS_HORIZ_VERT_BTN));
+            disableButton(byId(LEGENDS_MOVE_UP_BTN));
+            disableButton(byId(LEGENDS_MOVE_DOWN_BTN));
+            disableButton(byId(LEGENDS_MOVE_LEFT_BTN));
+            disableButton(byId(LEGENDS_MOVE_RIGHT_BTN));
+            disableButton(byId(LEGENDS_RESET_BTN));
         }
     }
 
@@ -8305,15 +8284,15 @@ if (!phyloXml) {
 
     function disableButton(b) {
         if (b) {
-            b.prop('disabled', true);
-            b.css('background', _settings.controlsBackgroundColor);
+            b.disabled = true;
+            b.style.background = _settings.controlsBackgroundColor;
         }
     }
 
     function enableButton(b) {
         if (b) {
-            b.prop('disabled', false);
-            b.css('background', '');
+            b.disabled = false;
+            b.style.background = '';
         }
     }
 

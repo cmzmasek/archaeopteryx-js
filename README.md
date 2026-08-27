@@ -47,7 +47,6 @@ Archaeopteryx.js has the following dependencies:
  * forester.js: https://www.npmjs.com/package/archaeopteryx
  * phyloxml.js: https://www.npmjs.com/package/phyloxml
  * d3.js (version 3): https://www.npmjs.com/package/d3/v/3.5.17
- * jQuery (1.12.4): https://www.npmjs.com/package/jquery/v/1.12.4
  * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
  
 For graphics (PNG) export, the following two libraries are required as well:
@@ -60,8 +59,8 @@ the exported PNG, use native browser APIs (`Blob`, `canvas.toBlob()`, and an
 required.
 
 The user interface (control panel, sliders, dialogs) is built with native DOM
-elements, so **jQuery UI is no longer required** — neither its JavaScript nor its
-CSS. (jQuery itself is still used.)
+elements, so **jQuery and jQuery UI are no longer required** — neither their
+JavaScript nor jQuery UI's CSS.
 
 
 ## Basic Example of HTML for launching Archaeopteryx.js
@@ -76,10 +75,8 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
    <!-- For MS IE/Edge compatibility:-->
    <meta http-equiv="X-UA-Compatible" content="IE=100">
 
-   <!-- D3.js, jQuery, and jQuery UI:-->
+   <!-- D3.js (version 3):-->
    <script src="http://d3js.org/d3.v3.min.js"></script>
-   <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-   <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
 
    <!-- SAX XML parser:-->
    <script src="http://www.phyloxml.org/js/dependencies/sax.js"></script>
@@ -88,9 +85,6 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
    <script src="http://path/to/phyloxml.js"></script>
    <script src="http://path/to/forester.js"></script>
    <script src="http://path/to/archaeopteryx.js"></script>
-
-   <!-- CSS for jQuery UI: -->
-   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
 
    <script>
        function load() {
