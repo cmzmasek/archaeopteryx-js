@@ -5,9 +5,14 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: ['**']
   pull_request:
     branches: [master]
+
+# Cancel superseded runs for the same ref (e.g. rapid pushes to a branch).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
