@@ -28,7 +28,6 @@ export default [
     {
         ignores: [
             'node_modules/**',
-            'dependencies/**',
             'test/data/**',
             'test/lib/**',
         ],

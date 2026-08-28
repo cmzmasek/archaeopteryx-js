@@ -109,7 +109,6 @@ if (!phyloXml) {
     const BRANCH_COLOR_DEFAULT = '#909090';
     const BRANCH_DATA_FONT_SIZE_DEFAULT = 6;
     const BRANCH_WIDTH_DEFAULT = 1;
-    const COLLAPSED_LABEL_LENGTH_DEFAULT = 7;
     const DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
     const EXTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
     const FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
@@ -134,7 +133,6 @@ if (!phyloXml) {
     // ---------------------------
     // Default values for settings
     // ---------------------------
-    const COLLAPSE_LABEL_WIDTH_DEFAULT = '20px';
     const CONTROLS_0_LEFT_DEFAULT = 20;
     const CONTROLS_0_TOP_DEFAULT = 10;
     const CONTROLS_1_TOP_DEFAULT = 10;
@@ -180,7 +178,6 @@ if (!phyloXml) {
     const FASTA_EXPORT_FORMAT = 'Fasta';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
-    const KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL = 'collapsed_spec_label';
     const LABEL_SIZE_CALC_ADDITION = 80;
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
@@ -188,7 +185,6 @@ if (!phyloXml) {
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const LEGEND_NODE_SIZE = 'legendNodeSize';
     const LINEAR_SCALE = 'linear';
-    const MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL = 10;
     const MOVE_INTERVAL = 150;
     const NH_EXPORT_FORMAT = 'Newick';
     const HEIGHT_OFFSET = 40;
@@ -197,7 +193,6 @@ if (!phyloXml) {
     const NODE_TOOLTIP_BACKGROUND_COLOR = '#606060';
     const NODE_TOOLTIP_TEXT_ACTIVE_COLOR = COLOR_FOR_ACTIVE_ELEMENTS;
     const NODE_TOOLTIP_TEXT_COLOR = WHITE;
-    const OFF_FEATURE = 'off';
     const ORDINAL_SCALE = 'ordinal';
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
@@ -206,10 +201,11 @@ if (!phyloXml) {
     const RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
     const RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
     const SHORTEN_NAME_MAX_LENGTH = 18;
+    const PANEL_STYLE_ID = 'aptx-panel-styles';
+    const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
     const SPECIATION_COLOR = '#00ff00';
-    const SPECIES_FEATURE = 'Species';
     const SVG_EXPORT_FORMAT = 'SVG';
     const TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     const TRANSITION_DURATION_DEFAULT = 750;
@@ -223,7 +219,6 @@ if (!phyloXml) {
     // Names for GUI elements
     // ---------------------------
     const BASE_BACKGROUND = 'basebackground';
-    const BL_COLLAPSE_LABEL = 'bl_col_label';
     const BRANCH_COLORS_CB = 'brnch_col_cb';
     const BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
     const BRANCH_EVENTS_CB = 'brevts_cb';
@@ -231,15 +226,11 @@ if (!phyloXml) {
     const BRANCH_VIS_CB = 'branchvis_cb';
     const BRANCH_WIDTH_SLIDER = 'bw_sl';
     const CLADOGRAM_BUTTON = 'cla_b';
-    const COLLAPSE_BY_FEATURE_SELECT = 'coll_by_feat_sel';
     const COLOR_PICKER = 'col_pick';
     const COLOR_PICKER_LABEL = 'colorPickerLabel';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const CONTROLS_0 = 'controls0';
     const CONTROLS_1 = 'controls1';
-    const DECR_BL_COLLAPSE_LEVEL = 'decr_blcl';
-    const DECR_DEPTH_COLLAPSE_LEVEL = 'decr_dcl';
-    const DEPTH_COLLAPSE_LABEL = 'depth_col_label';
     const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
@@ -248,8 +239,6 @@ if (!phyloXml) {
     const EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
     const EXTERNAL_NODES_CB = 'extn_cb';
-    const INCR_BL_COLLAPSE_LEVEL = 'incr_blcl';
-    const INCR_DEPTH_COLLAPSE_LEVEL = 'incr_dcl';
     const INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
     const INTERNAL_LABEL_CB = 'intl_cb';
     const INTERNAL_NODES_CB = 'intn_cb';
@@ -299,7 +288,6 @@ if (!phyloXml) {
     const SEQUENCE_CB = 'seq_cb';
     const SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
     const TAXONOMY_CB = 'tax_cb';
-    const UNCOLLAPSE_ALL_BUTTON = 'unc_b';
     const ZOOM_IN_X = 'zoomin_x';
     const ZOOM_IN_Y = 'zoomout_y';
     const ZOOM_OUT_X = 'zoomout_x';
@@ -321,15 +309,12 @@ if (!phyloXml) {
     // Key codes
     // ---------------------------
     const VK_ESC = 27;
-    const VK_A = 65;
     const VK_C = 67;
     const VK_L = 76;
     const VK_M = 77;
     const VK_O = 79;
     const VK_P = 80;
     const VK_R = 82;
-    const VK_S = 83;
-    const VK_U = 85;
     const VK_0 = 48;
     const VK_9 = 57;
     const VK_0_NUMPAD = 96;
@@ -461,24 +446,19 @@ if (!phyloXml) {
     // ---------------------------
     let _baseSvg = null;
     let _basicTreeProperties = null;
-    let _branch_length_collapse_data = {};
-    let _branch_length_collapse_level = -1;
     let _colorPickerData = null;
     let _colorsForColorPicker = null;
     let _currentLabelColorVisualization = null;
     let _currentNodeFillColorVisualization = null;
     let _currentNodeShapeVisualization = null;
     let _currentNodeSizeVisualization = null;
-    let _depth_collapse_level = -1;
     let _displayHeight = 0;
     let _displayWidth = 0;
     let _dynahide_counter = 0;
     let _dynahide_factor = 0;
-    let _external_nodes = 0;
     let _foundNodes0 = new Set();
     let _foundNodes1 = new Set();
     let _selectedNodes = new Set();
-    let _foundSum = 0;
     let _i = 0;
     let _id = null;
     let _intervalId = 0;
@@ -493,7 +473,6 @@ if (!phyloXml) {
     let _offsetTop = 0;
     let _options = null;
     let _options_orig = null;
-    let _rank_collapse_level = -1;
     let _root = null;
     let _root_const = null;
     let _in_subtree = false;
@@ -503,7 +482,6 @@ if (!phyloXml) {
     let _showColorPicker = false;
     let _showLegends = true;
     let _svgGroup = null;
-    let _totalSearchedWithData = 0;
     let _treeData = null;
     let _treeFn = null;
     let _usedColorCategories = new Set();
@@ -761,7 +739,7 @@ if (!phyloXml) {
                 }
             }
         }
-        if (d.children || d._children) {
+        if (d.children) {
             mo_text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
         }
 
@@ -1853,7 +1831,6 @@ if (!phyloXml) {
             return a.parent === b.parent ? 1 : 1;
         });
 
-        _external_nodes = forester.calcSumOfAllExternalDescendants(_root);
         let uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
         // d3 v7: d3.cluster() lays out a d3.hierarchy rather than mutating our
         // own nodes in place (as d3 v3's d3.layout.cluster().nodes() did). Run
@@ -1888,8 +1865,6 @@ if (!phyloXml) {
             });
         }
 
-        updateDepthCollapseDepthDisplay();
-        updateBranchLengthCollapseBranchLengthDisplay();
         updateButtonEnabledState();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
             updateLegendButtonEnabledState();
@@ -1938,7 +1913,7 @@ if (!phyloXml) {
         nodeEnter.append('text')
             .attr('class', 'extlabel')
             .attr('text-anchor', function (d) {
-                return d.children || d._children ? "end" : "start";
+                return d.children ? "end" : "start";
             })
             .style('font-family', _options.defaultFont)
             .style('fill-opacity', 0.5);
@@ -1958,27 +1933,20 @@ if (!phyloXml) {
             .attr('text-anchor', 'middle')
             .style('font-family', _options.defaultFont);
 
-        nodeEnter.append('text')
-            .attr('class', 'collapsedText')
-            .attr('dy', function () {
-                return 0.3 * _options.externalNodeFontSize + 'px';
-            })
-            .style('font-family', _options.defaultFont);
-
         // d3 v4+ no longer folds entered nodes into the update selection, so
         // merge them before the shared styling/positioning below.
         node = nodeEnter.merge(node);
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
-                return d.children || d._children ? _options.internalNodeFontSize + 'px' : _options.externalNodeFontSize + 'px';
+                return d.children ? _options.internalNodeFontSize + 'px' : _options.externalNodeFontSize + 'px';
             })
             .style('fill', makeLabelColor)
             .attr('dy', function (d) {
-                return d.children || d._children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
+                return d.children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
-                if (!(d.children || d._children)) {
+                if (!(d.children)) {
                     if (_options.phylogram && _options.alignPhylogram) {
                         return (-_yScale(d.distToRoot) + _w + gap);
                     } else {
@@ -2036,9 +2004,6 @@ if (!phyloXml) {
             });
 
 
-        let start = _options.phylogram ? (-1) : (-10);
-        let ylength = _displayHeight / (3 * uncollsed_nodes);
-
         let nodeUpdate = node.transition()
             .duration(transitionDuration)
             .attr('transform', function (d) {
@@ -2072,51 +2037,6 @@ if (!phyloXml) {
             .attr('d', _options.showNodeVisualizations ? makeNodeVisShape : null);
 
         node.each(function (d) {
-            if (d._children) {
-                let yl = ylength;
-                let descs = forester.getAllExternalNodes(d);
-                if (descs.length < 5) {
-                    yl = 0.5 * yl;
-                }
-                let avg = forester.calcAverageTreeHeight(d, descs);
-
-                let xlength = _options.phylogram ? _yScale(avg) : 0;
-                d.avg = xlength;
-                let l = d.width ? (d.width / 2) : _options.branchWidthDefault / 2;
-                let collapsedColor = makeCollapsedColor(d);
-                d3.select(this).select('path').transition().duration(transitionDuration)
-                    .attr('d', function () {
-                        return 'M' + start + ',' + (-l) + 'L' + xlength + ',' + (-yl) + 'L' + xlength + ',' + (yl) + 'L' + start + ',' + l + 'L' + start + ',' + (-l);
-                    })
-                    .style('stroke', collapsedColor)
-                    .style('fill', collapsedColor);
-
-                d3.select(this).select('.collapsedText').attr('font-size', function () {
-                    return _options.externalNodeFontSize + 'px';
-                });
-
-                d3.select(this).select('.collapsedText').transition().duration(transitionDuration)
-                    .style('fill-opacity', 1)
-                    .text(makeCollapsedLabel(d, descs))
-                    .style('fill', function (d) {
-                        return makeLabelColorForCollapsed(d, collapsedColor);
-                    })
-                    .attr('dy', function () {
-                        return 0.3 * _options.externalNodeFontSize + 'px';
-                    })
-                    .attr('x', function (d) {
-                        if (_options.phylogram && _options.alignPhylogram) {
-                            let w = d;
-                            while (w.children && w.children.length > 0) {
-                                w = w.children[0];
-                            }
-                            return (-_yScale(w.distToRoot) + _w + gap);
-                        } else {
-                            return xlength + gap;
-                        }
-                    });
-
-            }
             if (d.children) {
                 if (!_options.showNodeVisualizations && makeNodeVisShape(d) === null) {
                     d3.select(this).select('path').transition().duration(transitionDuration)
@@ -2124,12 +2044,6 @@ if (!phyloXml) {
                             return 'M0,0';
                         });
                 }
-                d3.select(this).select('.collapsedText').transition().duration(transitionDuration)
-                    .attr('x', 0)
-                    .style('fill-opacity', 1e-6)
-                    .on('end', function () {
-                        d3.select(this).text('');
-                    });
             }
         });
 
@@ -2217,7 +2131,7 @@ if (!phyloXml) {
             return _options.nodeSizeDefault;
         }
 
-        return ((_options.nodeSizeDefault > 0 && node.parent && !(_options.showNodeVisualizations && node.hasVis)) && ((node.children && _options.showInternalNodes) || ((!node._children && !node.children) && _options.showExternalNodes)) || (_options.phylogram && node.parent && !node.parent.parent && (!node.branch_length || node.branch_length <= 0))
+        return ((_options.nodeSizeDefault > 0 && node.parent && !(_options.showNodeVisualizations && node.hasVis)) && ((node.children && _options.showInternalNodes) || ((!node.children) && _options.showExternalNodes)) || (_options.phylogram && node.parent && !node.parent.parent && (!node.branch_length || node.branch_length <= 0))
 
         ) ? makeVisNodeSize(node, 0.05) : 0;
     };
@@ -2370,21 +2284,6 @@ if (!phyloXml) {
         return _options.branchColorDefault;
     };
 
-    let makeCollapsedColor = function (node) {
-        let c = calcCollapsedColorInSubtree(node);
-        if (c) {
-            return c;
-        }
-        c = makeLabelColorForCollapsed(node);
-        if (c) {
-            return c;
-        }
-        if (_options.showBranchColors && node.color) {
-            return "rgb(" + node.color.red + "," + node.color.green + "," + node.color.blue + ")";
-        }
-        return _options.branchColorDefault;
-    };
-
     let makeLabelColor = function (phynode) {
         let foundColor = getFoundColor(phynode);
         if (foundColor) {
@@ -2403,25 +2302,8 @@ if (!phyloXml) {
         return _options.labelColorDefault;
     };
 
-    let makeLabelColorForCollapsed = function (phynode, color) {
-        if (color && color !== _options.branchColorDefault) {
-            return color
-        }
-        if (_currentLabelColorVisualization) {
-            let ncolor = makeVisLabelColorForSubtree(phynode);
-            if (ncolor) {
-                return ncolor;
-            }
-        }
-        if (_options.showBranchColors && phynode.color) {
-            let c = phynode.color;
-            return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
-        }
-        return _options.labelColorDefault;
-    };
-
     let makeNodeVisShape = function (node) {
-        if (_currentNodeShapeVisualization && _visualizations && !node._children && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_options.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
+        if (_currentNodeShapeVisualization && _visualizations && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_options.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
             let vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
             if (_currentNodeShapeVisualization === MSA_RESIDUE) {
 
@@ -2505,7 +2387,7 @@ if (!phyloXml) {
 
     let makeVisNodeFillColor = function (node) {
 
-        if (_options.showNodeVisualizations && !node._children && _currentNodeFillColorVisualization && _visualizations && _visualizations.nodeFillColor) {
+        if (_options.showNodeVisualizations && _currentNodeFillColorVisualization && _visualizations && _visualizations.nodeFillColor) {
 
             if (_currentNodeFillColorVisualization === MSA_RESIDUE) {
                 return makeMsaResidueVisualizationColor(node, _visualizations.nodeFillColor[MSA_RESIDUE]);
@@ -2647,7 +2529,7 @@ if (!phyloXml) {
         if (_currentLabelColorVisualization === MSA_RESIDUE) {
             return makeMsaResidueVisualizationColor(node, _visualizations.labelColor[MSA_RESIDUE]);
         }
-        if (!node._children && _currentLabelColorVisualization) {
+        if (_currentLabelColorVisualization) {
             if (_visualizations && _visualizations.labelColor && _visualizations.labelColor[_currentLabelColorVisualization]) {
                 let vis = _visualizations.labelColor[_currentLabelColorVisualization];
                 let color = makeVisColor(node, vis);
@@ -2677,34 +2559,9 @@ if (!phyloXml) {
         return _options.labelColorDefault;
     };
 
-    let makeVisLabelColorForSubtree = function (node) {
-        let color = null;
-        let success = true;
-        if (_currentLabelColorVisualization && _visualizations && _visualizations.labelColor && _visualizations.labelColor[_currentLabelColorVisualization]) {
-            let vis = _visualizations.labelColor[_currentLabelColorVisualization];
-            forester.preOrderTraversalAll(node, function (n) {
-                if (forester.isHasNodeData(n)) {
-                    let c = makeVisColor(n, vis);
-                    if (!c) {
-                        success = false;
-                    } else if (color == null) {
-                        color = c;
-                    } else if (color !== c) {
-                        success = false;
-                    }
-                }
-            });
-        }
-        if (success === false) {
-            return null;
-        }
-        return color;
-    };
-
-
     let makeVisNodeSize = function (node, correctionFactor) {
         if (_options.showNodeVisualizations && _currentNodeSizeVisualization) {
-            if (_visualizations && !node._children && _visualizations.nodeSize && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
+            if (_visualizations && _visualizations.nodeSize && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
                 let vis = _visualizations.nodeSize[_currentNodeSizeVisualization];
                 let size;
                 if (vis.field) {
@@ -2769,56 +2626,6 @@ if (!phyloXml) {
         }
     };
 
-    function calcCollapsedColorInSubtree(node) {
-        let found0 = 0;
-        let found1 = 0;
-        let found0and1 = 0;
-        let total = 0;
-        if (_foundNodes0 && _foundNodes1) {
-            forester.preOrderTraversalAll(node, function (n) {
-                if (forester.isHasNodeData(n)) {
-                    ++total;
-                    if (_foundNodes0.has(n) && _foundNodes1.has(n)) {
-                        ++found0and1;
-                    } else if (_foundNodes0.has(n)) {
-                        ++found0;
-                    } else if (_foundNodes1.has(n)) {
-                        ++found1;
-                    }
-                }
-            });
-        }
-        _foundSum = found0and1 + found0 + found1;
-        _totalSearchedWithData = total;
-
-        if (total > 0 && _foundSum > 0) {
-            if ((found0and1 > 0) || ((found0 > 0) && (found1 > 0))) {
-                if (found0and1 === total) {
-                    return _options.found0and1ColorDefault;
-                }
-                return d3.scaleLinear()
-                    .domain([0, total])
-                    .range([_options.branchColorDefault, _options.found0and1ColorDefault])(_foundSum);
-            } else if (found0 > 0) {
-                if (found0 === total) {
-                    return _options.found0ColorDefault;
-                }
-                return d3.scaleLinear()
-                    .domain([0, total])
-                    .range([_options.branchColorDefault, _options.found0ColorDefault])(found0);
-            } else if (found1 > 0) {
-                if (found1 === total) {
-                    return _options.found1ColorDefault;
-                }
-                return d3.scaleLinear()
-                    .domain([0, total])
-                    .range([_options.branchColorDefault, _options.found1ColorDefault])(found1);
-            }
-        }
-        return null;
-    }
-
-
     function getFoundColor(phynode) {
         if (_selectedNodes.has(phynode)) {
             return _options.selectedColorDefault;
@@ -2862,10 +2669,10 @@ if (!phyloXml) {
     }
 
     let makeNodeLabel = function (phynode) {
-        if (!_options.showExternalLabels && !(phynode.children || phynode._children)) {
+        if (!_options.showExternalLabels && !(phynode.children)) {
             return null;
         }
-        if (!_options.showInternalLabels && (phynode.children || phynode._children)) {
+        if (!_options.showInternalLabels && (phynode.children)) {
             return null;
         }
         if (!phynode.parent) {
@@ -2992,10 +2799,10 @@ if (!phyloXml) {
 
 
     let makeNodeLabelForSearch = function (phynode) {
-        if (!_options.showExternalLabels && !(phynode.children || phynode._children)) {
+        if (!_options.showExternalLabels && !(phynode.children)) {
             return null;
         }
-        if (!_options.showInternalLabels && (phynode.children || phynode._children)) {
+        if (!_options.showInternalLabels && (phynode.children)) {
             return null;
         }
 
@@ -3085,40 +2892,6 @@ if (!phyloXml) {
     };
 
 
-    let makeCollapsedLabel = function (node, descs) {
-        if (node.hide) {
-            return;
-        }
-
-        let first;
-        let last;
-        if (descs.length > 1) {
-            first = descs[0];
-            last = descs[descs.length - 1];
-        }
-        let text = null;
-        if (first && last) {
-            let first_label = makeNodeLabel(first);
-            let last_label = makeNodeLabel(last);
-
-            if (first_label && last_label) {
-                text = first_label.substring(0, _options.collapsedLabelLength) + " ... " + last_label.substring(0, _options.collapsedLabelLength) + " [" + descs.length + "]";
-                if (_foundSum > 0 && _totalSearchedWithData) {
-                    text += (' [' + _foundSum + '/' + _totalSearchedWithData + ']');
-                }
-            }
-
-            if (node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL]) {
-                if (text) {
-                    text = node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL] + ': ' + text;
-                } else {
-                    text = node[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL];
-                }
-            }
-        }
-        return text;
-    };
-
     let makeBranchLengthLabel = function (phynode) {
         if (phynode.branch_length) {
             if (_options.phylogram && _options.minBranchLengthValueToShow && phynode.branch_length < _options.minBranchLengthValueToShow) {
@@ -3189,9 +2962,6 @@ if (!phyloXml) {
     let connection = function (n) {
         if (_options.phylogram) {
             let x1 = n.y + 5;
-            if (n._children) {
-                x1 += n.avg;
-            }
             let y = n.x;
             let x = (n.y - _yScale(n.distToRoot) + _w);
             if ((x - x1) > 5) {
@@ -3332,9 +3102,6 @@ if (!phyloXml) {
         if (!_options.branchDataFontSize) {
             _options.branchDataFontSize = BRANCH_DATA_FONT_SIZE_DEFAULT;
         }
-        if (!_options.collapsedLabelLength) {
-            _options.collapsedLabelLength = COLLAPSED_LABEL_LENGTH_DEFAULT;
-        }
         if (!_options.nodeLabelGap) {
             _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
         }
@@ -3433,14 +3200,6 @@ if (!phyloXml) {
             _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
         }
 
-        if (!_options.initialCollapseFeature) {
-            _options.initialCollapseFeature = null;
-        }
-
-        if (!_options.initialCollapseDepth) {
-            _options.initialCollapseDepth = -1;
-        }
-
         _options.externalNodeFontSize = parseInt(_options.externalNodeFontSize);
         _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
         _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
@@ -3509,15 +3268,6 @@ if (!phyloXml) {
         if (_settings.enableNodeVisualizations === undefined) {
             _settings.enableNodeVisualizations = false;
         }
-        if (_settings.enableCollapseByBranchLenghts === undefined) {
-            _settings.enableCollapseByBranchLenghts = false;
-        }
-        if (_settings.enableCollapseByTaxonomyRank === undefined) {
-            _settings.enableCollapseByTaxonomyRank = false;
-        }
-        if (_settings.enableCollapseByFeature === undefined) {
-            _settings.enableCollapseByFeature = false;
-        }
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
         }
@@ -3526,9 +3276,6 @@ if (!phyloXml) {
         }
         if (_settings.textFieldHeight === undefined) {
             _settings.textFieldHeight = TEXT_INPUT_FIELD_DEFAULT_HEIGHT;
-        }
-        if (_settings.collapseLabelWidth === undefined) {
-            _settings.collapseLabelWidth = COLLAPSE_LABEL_WIDTH_DEFAULT;
         }
         if (_settings.showBranchColorsButton === undefined) {
             _settings.showBranchColorsButton = false;
@@ -3619,7 +3366,7 @@ if (!phyloXml) {
 
         if (!_settings.controls1Left) {
             // this needs to be after intitializeDisplaySize()
-            _settings.controls1Left = _displayWidth - _settings.controls1Width;
+            _settings.controls1Left = _displayWidth - PANEL_WIDTH;
         }
     }
 
@@ -3719,47 +3466,11 @@ if (!phyloXml) {
             initializeInitialVisualization();
         }
 
-        if (_options.initialCollapseFeature) {
-            let feature = _options.initialCollapseFeature;
-            let refs = forester.collectPropertyRefs(_root, 'node', false);
-            let found = false;
-            if (refs) {
-                refs.forEach(function (v) {
-                    if (v === feature) {
-                        found = true;
-                    }
-                });
-            }
-            if (found) {
-                console.log(MESSAGE + 'Setting initial value for collapse by feature to: ' + feature);
-                collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-                let s = byId(COLLAPSE_BY_FEATURE_SELECT);
-                if (s) {
-                    s.value = feature;
-                }
-            } else {
-                console.log(WARNING + ' initial value for collapse by feature [' + feature + '] not present');
-            }
-        } else if (_options.initialCollapseDepth > 0) {
-            _depth_collapse_level = _options.initialCollapseDepth;
-            let max_depth = forester.calcMaxDepth(_root);
-            if (_depth_collapse_level >= max_depth) {
-                console.log(WARNING + ' initial value for collapse depth [' + _depth_collapse_level + '] is larger than or equal to maximum depth [' + max_depth + ']');
-                _depth_collapse_level = max_depth - 1;
-            }
-            console.log(MESSAGE + 'Setting initial value for collapse depth to: ' + _depth_collapse_level);
-            forester.collapseToDepth(_root, _depth_collapse_level);
-            updateDepthCollapseDepthDisplay();
-        }
-
         update(null, 0);
 
         zoomToFit();
 
         updateNodeVisualizationsAndLegends(_root);
-        resetDepthCollapseDepthValue();
-        resetRankCollapseRankValue();
-        resetBranchLengthCollapseValue();
         search0();
         search1();
     }
@@ -3903,7 +3614,7 @@ if (!phyloXml) {
                         let c1 = byId(_settings.controls1);
                         if (c1) {
                             setStyles(c1, {
-                                'left': width - _settings.controls1Width
+                                'left': width - PANEL_WIDTH
                             });
                         }
                     }
@@ -3941,9 +3652,7 @@ if (!phyloXml) {
     function calcMaxExtLabel() {
         _maxLabelLength = _options.nodeLabelGap;
         forester.preOrderTraversal(_root, function (d) {
-            if (d._children) {
-                _maxLabelLength = Math.max((2 * _options.collapsedLabelLength) + 8, _maxLabelLength);
-            } else if (!d.children) {
+            if (!d.children) {
                 let l = makeNodeLabel(d);
                 if (l) {
                     _maxLabelLength = Math.max(l.length, _maxLabelLength);
@@ -4094,7 +3803,7 @@ if (!phyloXml) {
                         }
                     }
                 }
-                if (n.children || n._children) {
+                if (n.children) {
                     text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
@@ -4611,7 +4320,7 @@ if (!phyloXml) {
 
             function goToSubTree(node) {
                 if (node.parent) {
-                    if (!(node.children || node._children)) {
+                    if (!(node.children)) {
                         if (node.parent.parent) {
                             node = node.parent;
                         } else {
@@ -4629,16 +4338,8 @@ if (!phyloXml) {
                         fakeNode.y = 0;
                         fakeNode.y0 = 0;
                         _root = fakeNode;
-                        if (node._children) {
-                            // To make sure, new root is uncollapsed.
-                            node.children = node._children;
-                            node._children = null;
-                        }
                         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
                         updateNodeVisualizationsAndLegends(_root);
-                        resetDepthCollapseDepthValue();
-                        resetRankCollapseRankValue();
-                        resetBranchLengthCollapseValue();
                         search0();
                         search1();
                         zoomToFit();
@@ -4655,15 +4356,6 @@ if (!phyloXml) {
                         c[i] = c[i + 1];
                     }
                     c[l - 1] = first;
-                }
-            }
-
-            function toggleCollapse(node) {
-                if (node.children) {
-                    node._children = node.children;
-                    node.children = null;
-                } else {
-                    unCollapseAll(node);
                 }
             }
 
@@ -4735,69 +4427,6 @@ if (!phyloXml) {
                 })
                 .on('click', function (event, d) {
                     displayNodeData(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent && d.parent.parent) {
-                        if (d._children) {
-                            textSum += textInc;
-                            return 'Uncollapse';
-                        } else if (d.children) {
-                            textSum += textInc;
-                            return 'Collapse';
-                        }
-                    }
-                })
-                .on('click', function (event, d) {
-                    toggleCollapse(d);
-                    resetDepthCollapseDepthValue();
-                    resetRankCollapseRankValue();
-                    resetBranchLengthCollapseValue();
-                    resetCollapseByFeature();
-                    update(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    let cc = 0;
-                    forester.preOrderTraversalAll(d, function (e) {
-                        if (e._children) {
-                            ++cc;
-                        }
-                    });
-                    if (cc > 1 || (cc === 1 && !d._children)) {
-                        textSum += textInc;
-                        return 'Uncollapse All';
-                    }
-                })
-                .on('click', function (event, d) {
-                    unCollapseAll(d);
-                    resetDepthCollapseDepthValue();
-                    resetRankCollapseRankValue();
-                    resetBranchLengthCollapseValue();
-                    resetCollapseByFeature();
-                    update();
                 });
 
             d3.select(this).append('text')
@@ -4896,12 +4525,7 @@ if (!phyloXml) {
                     }
                 })
                 .on('click', function (event, d) {
-                    unCollapseAll(_root);
                     forester.reRoot(tree, d, -1);
-                    resetDepthCollapseDepthValue();
-                    resetRankCollapseRankValue();
-                    resetBranchLengthCollapseValue();
-                    resetCollapseByFeature();
                     zoomToFit();
                 });
 
@@ -5131,11 +4755,9 @@ if (!phyloXml) {
                     .text(function (d) {
                         if (!_in_subtree && d.parent && d.parent.parent && d.parent.parent.parent) {
                             textSum += textInc;
-                            if (d.children || d._children) {
-                                if ((d.children) && (d.children.length > 1)) {
+                            if (d.children) {
+                                if (d.children.length > 1) {
                                     return 'Delete Subtree';
-                                } else if ((d._children) && (d._children.length > 1)) {
-                                    return 'Delete Collapsed Subtree';
                                 }
                             } else {
                                 return 'Delete External Node';
@@ -5143,15 +4765,10 @@ if (!phyloXml) {
                         }
                     })
                     .on('click', function (event, d) {
-                        unCollapseAll(_root);
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
                         updateNodeVisualizationsAndLegends(_treeData);
-                        resetDepthCollapseDepthValue();
-                        resetRankCollapseRankValue();
-                        resetBranchLengthCollapseValue();
-                        resetCollapseByFeature();
                         search0();
                         search1();
                         zoomToFit();
@@ -5305,9 +4922,6 @@ if (!phyloXml) {
             _in_subtree = false;
             _basicTreeProperties = forester.collectBasicTreeProperties(_root);
             updateNodeVisualizationsAndLegends(_root);
-            resetDepthCollapseDepthValue();
-            resetRankCollapseRankValue();
-            resetBranchLengthCollapseValue();
             search0();
             search1();
             zoomToFit();
@@ -5348,9 +4962,6 @@ if (!phyloXml) {
                 _basicTreeProperties = forester.collectBasicTreeProperties(_root);
                 initializeInitialVisualization(_root);
                 updateNodeVisualizationsAndLegends(_root);
-                resetDepthCollapseDepthValue();
-                resetRankCollapseRankValue();
-                resetBranchLengthCollapseValue();
                 search0();
                 search1();
                 zoomToFit();
@@ -5375,25 +4986,9 @@ if (!phyloXml) {
         }
     }
 
-    function uncollapseAllButtonPressed() {
-        if (_root && forester.isHasCollapsedNodes(_root)) {
-            unCollapseAll(_root);
-            resetDepthCollapseDepthValue();
-            resetRankCollapseRankValue();
-            resetBranchLengthCollapseValue();
-            resetCollapseByFeature();
-            zoomToFit();
-        }
-    }
-
     function midpointRootButtonPressed() {
         if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
-            unCollapseAll(_root);
             forester.midpointRoot(_root);
-            resetDepthCollapseDepthValue();
-            resetRankCollapseRankValue();
-            resetBranchLengthCollapseValue();
-            resetCollapseByFeature();
             zoomToFit();
         }
     }
@@ -5404,14 +4999,7 @@ if (!phyloXml) {
             _in_subtree = false;
         }
 
-        unCollapseAll(_root);
-
         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-
-        resetDepthCollapseDepthValue();
-        resetRankCollapseRankValue();
-        resetBranchLengthCollapseValue();
-        resetCollapseByFeature();
 
         initializeSettings(_settings);
 
@@ -5456,7 +5044,7 @@ if (!phyloXml) {
             if (c1) {
                 if (_settings.enableDynamicSizing) {
                     setStyles(c1, {
-                        'left': width - _settings.controls1Width, 'top': _settings.controls1Top + _offsetTop
+                        'left': width - PANEL_WIDTH, 'top': _settings.controls1Top + _offsetTop
                     });
                 } else {
                     setStyles(c1, {
@@ -6145,6 +5733,139 @@ if (!phyloXml) {
         }
     }
 
+    // Injects the control-panel stylesheet once. Everything is scoped to the
+    // .aptx-panel class (added to the controls containers), styled through CSS
+    // custom properties so the light and dark themes share one rule set. This is
+    // the modern "refined" skin that replaced the old jQuery-UI look.
+    function injectPanelStyles() {
+        if (document.getElementById(PANEL_STYLE_ID)) {
+            return;
+        }
+        let css = ''
+            + '.aptx-panel {'
+            + '  --p-bg: rgba(255,255,255,0.94); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
+            + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
+            + '  --p-shadow-sm:0 1px 2px rgba(23,34,46,0.12);'
+            + '  box-sizing:border-box; width:' + PANEL_WIDTH + 'px;'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11px; line-height:1.42; color:var(--p-ink); background:var(--p-bg);'
+            + '  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);'
+            + '  border:1px solid var(--p-line-strong); border-radius:12px;'
+            + '  box-shadow:0 12px 30px -12px rgba(23,34,46,0.32),0 2px 6px -2px rgba(23,34,46,0.14);'
+            + '  overflow:hidden; }'
+            + '.aptx-panel * { box-sizing:border-box; }'
+            + '@media (prefers-color-scheme:dark){ .aptx-panel {'
+            + '  --p-bg:rgba(24,35,46,0.94); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
+            + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
+            + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
+            + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4); } }'
+            + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
+            + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
+            + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
+            + '.aptx-panel .' + TREE_DESC + ' { text-align:center; font-weight:600; font-size:11.5px; color:var(--p-ink); padding:2px 0; }'
+            + '.aptx-panel .aptx-panel-title { font-size:12px; }'
+            + '.aptx-panel fieldset { border:0; border-top:1px solid var(--p-line); margin:0; padding:9px 12px; min-width:0; }'
+            + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 7px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
+            + '.aptx-panel label { cursor:pointer; }'
+            + '.aptx-panel input[type=checkbox],.aptx-panel input[type=radio] { accent-color:var(--p-accent); width:13px; height:13px; vertical-align:-2px; margin:0 4px 0 0; }'
+            + '.aptx-panel input[type=range] { -webkit-appearance:none; appearance:none; display:block; width:100%; height:15px; margin:2px 0 9px; padding:0; background:transparent; cursor:pointer; }'
+            + '.aptx-panel input[type=range]::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
+            + '.aptx-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; margin-top:-4.5px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
+            + '.aptx-panel input[type=range]::-moz-range-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
+            + '.aptx-panel input[type=range]::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
+            + '.aptx-panel input[type=button] { font-family:inherit; font-size:11px; height:24px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; margin:2px 3px 2px 0; cursor:pointer; transition:background .12s,border-color .12s,color .12s; }'
+            + '.aptx-panel input[type=button]:hover { background:var(--p-accent-weak); border-color:var(--p-accent); color:var(--p-accent-ink); }'
+            + '.aptx-panel input[type=button]:disabled { opacity:0.4; cursor:default; }'
+            + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
+            + '.aptx-panel input[type=text]:focus,.aptx-panel select:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
+            // --- collapsible sections, internal scroll, whole-panel hide ---
+            + '.aptx-panel { display:flex; flex-direction:column; max-height:calc(100vh - 40px); }'
+            + '.aptx-panel > .aptx-body { overflow-y:auto; overflow-x:hidden; min-height:0; }'
+            + '.aptx-panel > .aptx-body::-webkit-scrollbar { width:9px; }'
+            + '.aptx-panel > .aptx-body::-webkit-scrollbar-thumb { background:var(--p-line-strong); border-radius:9px; border:2px solid var(--p-bg); }'
+            + '.aptx-panel legend.aptx-legend-toggle { display:flex; align-items:center; width:100%; cursor:pointer; }'
+            + '.aptx-panel legend.aptx-legend-toggle::after { content:"\\25BE"; margin-left:auto; font-size:8px; color:var(--p-faint); transition:transform .15s; }'
+            + '.aptx-panel legend.aptx-legend-toggle:hover { color:var(--p-accent-ink); }'
+            + '.aptx-panel fieldset.aptx-collapsed > legend.aptx-legend-toggle::after { transform:rotate(-90deg); }'
+            + '.aptx-panel fieldset.aptx-collapsed > legend { margin-bottom:0; }'
+            + '.aptx-panel fieldset.aptx-collapsed > *:not(legend) { display:none; }'
+            + '.aptx-panel .aptx-hide-btn { margin-left:auto; flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:15px; line-height:1; }'
+            + '.aptx-panel .aptx-hide-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
+            + '.aptx-panel.aptx-hidden > .aptx-body { display:none; }'
+            + '.aptx-panel.aptx-hidden > .' + PROG_NAME + ' { border-bottom:0; }';
+        let style = document.createElement('style');
+        style.id = PANEL_STYLE_ID;
+        style.textContent = css;
+        document.head.appendChild(style);
+    }
+
+    // Post-processes a control panel once: moves its sections into a scrolling
+    // body under the fixed header, adds a hide/show toggle to the header, and
+    // makes each titled section (a fieldset with a legend) collapse on click.
+    // Together these keep the panel from running off the screen and let it be
+    // folded away entirely.
+    function enhancePanel(panel, title) {
+        if (!panel || panel.dataset.aptxEnhanced) {
+            return;
+        }
+        panel.dataset.aptxEnhanced = '1';
+
+        let header = panel.querySelector('.' + PROG_NAME);
+
+        // Panels without their own header (the legend/visualization panel) get
+        // one built from the given title, so they gain the same header bar and
+        // hide button as the main control panel.
+        if (!header && title) {
+            header = document.createElement('div');
+            header.className = PROG_NAME;
+            let titleEl = document.createElement('span');
+            titleEl.className = 'aptx-panel-title';
+            titleEl.textContent = title;
+            header.appendChild(titleEl);
+            panel.insertBefore(header, panel.firstChild);
+        }
+
+        // Move everything after the header into a scrolling body.
+        let body = document.createElement('div');
+        body.className = 'aptx-body';
+        let node = header ? header.nextSibling : panel.firstChild;
+        while (node) {
+            let next = node.nextSibling;
+            body.appendChild(node);
+            node = next;
+        }
+        panel.appendChild(body);
+
+        // Header hide/show toggle.
+        if (header) {
+            let toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'aptx-hide-btn';
+            toggle.title = 'Hide / show the controls';
+            toggle.textContent = '–';
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                let hidden = panel.classList.toggle('aptx-hidden');
+                toggle.textContent = hidden ? '+' : '–';
+            });
+            header.appendChild(toggle);
+        }
+
+        // Collapsible sections: any fieldset that carries a legend.
+        let fieldsets = body.querySelectorAll('fieldset');
+        for (let i = 0; i < fieldsets.length; ++i) {
+            let fieldset = fieldsets[i];
+            let legend = fieldset.querySelector('legend');
+            if (legend) {
+                legend.classList.add('aptx-legend-toggle');
+                legend.addEventListener('click', function () {
+                    fieldset.classList.toggle('aptx-collapsed');
+                });
+            }
+        }
+    }
+
     // Safely binds an event handler to an element by id (replaces jQuery
     // $('#' + id).click/.on/.bind/.mousedown/.keyup(...)). A missing element is
     // a no-op, matching jQuery's behavior on an empty selection.
@@ -6295,7 +6016,7 @@ if (!phyloXml) {
 
         el.addEventListener('pointerdown', function (e) {
             let t = e.target;
-            if (t !== el && t.closest('input, select, button, textarea, label, a, option')) {
+            if (t !== el && t.closest('input, select, button, textarea, label, a, option, legend')) {
                 return;
             }
             dragging = true;
@@ -6394,21 +6115,14 @@ if (!phyloXml) {
         let c0 = byId(_settings.controls0);
 
         if (c0) {
+            injectPanelStyles();
+            c0.classList.add('aptx-panel');
             setStyles(c0, {
                 'position': 'absolute',
                 'left': _settings.controls0Left,
                 'top': _settings.controls0Top + _offsetTop,
-                'text-align': 'left',
                 'padding': '0px',
-                'margin': '0 0 0 0',
-                'opacity': 0.80,
-                'background-color': _settings.controlsBackgroundColor,
-                'color': _settings.controlsFontColor,
-                'font-size': _settings.controlsFontSize,
-                'font-family': _settings.controlsFont,
-                'font-style': 'normal',
-                'font-weight': 'normal',
-                'text-decoration': 'none'
+                'margin': '0'
             });
 
             makeDraggableWithinParent(c0);
@@ -6425,72 +6139,11 @@ if (!phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
 
-            setStylesAll('.' + TREE_DESC, {
-                'text-align': 'left',
-                'padding-top': '1px',
-                'padding-bottom': '1px',
-                'font-size': _settings.controlsFontSize + 2,
-                'font-family': _settings.controlsFont,
-                'font-style': 'normal',
-                'font-weight': 'normal',
-                'text-decoration': 'none'
-            });
-
-
-            setStylesAll('.' + PROG_NAME, {
-                'text-align': 'center',
-                'padding-top': '5px',
-                'padding-bottom': '5px',
-                'font-size': _settings.controlsFontSize + 4,
-                'font-family': _settings.controlsFont,
-                'font-style': 'italic',
-                'font-weight': 'bold',
-                'text-decoration': 'none'
-            });
-            setStylesAll('.' + PROGNAMELINK, {
-                'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                'font-size': _settings.controlsFontSize + 4,
-                'font-family': _settings.controlsFont,
-                'font-style': 'italic',
-                'font-weight': 'bold',
-                'text-decoration': 'none',
-                'border': 'none'
-            });
-            setStylesAll('.' + PROGNAMELINK + ':hover', {
-                'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                'font-size': _settings.controlsFontSize + 4,
-                'font-family': _settings.controlsFont,
-                'font-style': 'italic',
-                'font-weight': 'bold',
-                'text-decoration': 'underline',
-                'border': 'none'
-            });
-            setStylesAll('.' + PROGNAMELINK + ':link', {
-                'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                'font-size': _settings.controlsFontSize + 4,
-                'font-family': _settings.controlsFont,
-                'font-style': 'italic',
-                'font-weight': 'bold',
-                'text-decoration': 'normal',
-                'border': 'none'
-            });
-            setStylesAll('.' + PROGNAMELINK + ':visited', {
-                'color': COLOR_FOR_ACTIVE_ELEMENTS,
-                'font-size': _settings.controlsFontSize + 4,
-                'font-family': _settings.controlsFont,
-                'font-style': 'italic',
-                'font-weight': 'bold',
-                'text-decoration': 'normal',
-                'border': 'none'
-            });
-
             c0.insertAdjacentHTML('beforeend',makeControlButtons());
 
             c0.insertAdjacentHTML('beforeend',makeSliders());
 
             c0.insertAdjacentHTML('beforeend',makeSearchBoxes());
-
-            c0.insertAdjacentHTML('beforeend',makeAutoCollapse());
 
             if (_settings.allowManualNodeSelection) {
                 //c0.append(makeSubmitSection()); //~~~
@@ -6499,25 +6152,20 @@ if (!phyloXml) {
             if (_settings.enableDownloads) {
                 c0.insertAdjacentHTML('beforeend',makeDownloadSection());
             }
+
+            enhancePanel(c0);
         }
 
         let c1 = byId(_settings.controls1);
         if (c1) {
+            injectPanelStyles();
+            c1.classList.add('aptx-panel');
             setStyles(c1, {
                 'position': 'absolute',
                 'left': _settings.controls1Left,
                 'top': _settings.controls1Top + _offsetTop,
-                'text-align': 'left',
                 'padding': '0px',
-                'margin': '0 0 0 0',
-                'opacity': 0.80,
-                'background-color': _settings.controlsBackgroundColor,
-                'color': _settings.controlsFontColor,
-                'font-size': _settings.controlsFontSize,
-                'font-family': _settings.controlsFont,
-                'font-style': 'normal',
-                'font-weight': 'normal',
-                'text-decoration': 'none'
+                'margin': '0'
             });
 
             makeDraggableWithinParent(c1);
@@ -6581,6 +6229,8 @@ if (!phyloXml) {
 
                 c1.insertAdjacentHTML('beforeend',makeLegendControl());
             }
+
+            enhancePanel(c1, 'Legend');
         }
 
         setStylesAll('input[type=button]', {
@@ -6600,10 +6250,6 @@ if (!phyloXml) {
 
         setStylesAll('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y, {
             'height': '16px'
-        });
-
-        setStylesAll('#' + DECR_DEPTH_COLLAPSE_LEVEL + ', #' + INCR_DEPTH_COLLAPSE_LEVEL + ', #' + DECR_BL_COLLAPSE_LEVEL + ', #' + INCR_BL_COLLAPSE_LEVEL, {
-            'width': '16px'
         });
 
         setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN, {
@@ -6948,18 +6594,6 @@ if (!phyloXml) {
             'height': _settings.textFieldHeight
         });
 
-        document.querySelectorAll('#' + DEPTH_COLLAPSE_LABEL + ', #' + BL_COLLAPSE_LABEL).forEach(function (el) {
-            el.setAttribute('disabled', 'disabled');
-            setStyles(el, {
-                'font': 'inherit',
-                'color': 'inherit',
-                'text-align': 'center',
-                'outline': 'none',
-                'cursor': 'text',
-                'width': _settings.collapseLabelWidth
-            });
-        });
-
         onHold(ZOOM_IN_Y, function () {
             zoomInY();
             _intervalId = setInterval(zoomInY, ZOOM_INTERVAL);
@@ -6988,31 +6622,6 @@ if (!phyloXml) {
             clearTimeout(_intervalId);
         });
 
-        onHold(DECR_DEPTH_COLLAPSE_LEVEL, function () {
-            decrDepthCollapseLevel();
-            _intervalId = setInterval(decrDepthCollapseLevel, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-        onHold(INCR_DEPTH_COLLAPSE_LEVEL, function () {
-            incrDepthCollapseLevel();
-            _intervalId = setInterval(incrDepthCollapseLevel, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-        onHold(DECR_BL_COLLAPSE_LEVEL, function () {
-            decrBlCollapseLevel();
-            _intervalId = setInterval(decrBlCollapseLevel, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-        onHold(INCR_BL_COLLAPSE_LEVEL, function () {
-            incrBlCollapseLevel();
-            _intervalId = setInterval(incrBlCollapseLevel, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-
         on(ZOOM_TO_FIT, 'mousedown', zoomToFit);
 
         on(ZOOM_TO_EXPAND_Y, 'mousedown', zoomToExpandY);
@@ -7022,8 +6631,6 @@ if (!phyloXml) {
         on(RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'mousedown', returnToSupertreeButtonByOnePressed);
 
         on(ORDER_BUTTON, 'mousedown', orderButtonPressed);
-
-        on(UNCOLLAPSE_ALL_BUTTON, 'mousedown', uncollapseAllButtonPressed);
 
         on(MIDPOINT_ROOT_BUTTON, 'mousedown', midpointRootButtonPressed);
 
@@ -7084,27 +6691,9 @@ if (!phyloXml) {
             submitSelectedButton.addEventListener('mousedown', submitSelectedPressed);
         }
 
-        // Collapse
-        // ---------------
-
-        setStyles(byId(COLLAPSE_BY_FEATURE_SELECT), {
-            'font': 'inherit', 'color': 'inherit'
-        });
-
         setStyles(byId(EXPORT_FORMAT_SELECT), {
             'font': 'inherit', 'color': 'inherit'
         });
-
-        on(COLLAPSE_BY_FEATURE_SELECT, 'change', function () {
-            let s = byId(COLLAPSE_BY_FEATURE_SELECT);
-            if (s) {
-                let f = s.value;
-                if (f) {
-                    collapseByFeature(f);
-                }
-            }
-        });
-
 
         // ---------------
 
@@ -7222,8 +6811,6 @@ if (!phyloXml) {
                     orderButtonPressed();
                 } else if (e.keyCode === VK_R) {
                     returnToSupertreeButtonByOnePressed();
-                } else if (e.keyCode === VK_U) {
-                    uncollapseAllButtonPressed();
                 } else if (e.keyCode === VK_M) {
                     midpointRootButtonPressed();
                 } else if (e.keyCode === VK_C || e.keyCode === VK_DELETE || e.keyCode === VK_BACKSPACE) {
@@ -7270,10 +6857,6 @@ if (!phyloXml) {
                         zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                         zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                     }
-                } else if (e.keyCode === VK_A) {
-                    decrDepthCollapseLevel();
-                } else if (e.keyCode === VK_S) {
-                    incrDepthCollapseLevel();
                 }
             }
             if (e.keyCode === VK_PAGE_UP) {
@@ -7512,7 +7095,6 @@ if (!phyloXml) {
             h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
             h = h.concat(makeButton('R1', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'return to supertree by one branch (if in subtree) (Alt+R)'));
             h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to supertree (if in subtree)'));
-            h = h.concat(makeButton('U', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all (Alt+U)'));
             h = h.concat(makeButton('M', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -7551,6 +7133,7 @@ if (!phyloXml) {
         function makeSliders() {
             let h = "";
             h = h.concat('<fieldset>');
+            h = h.concat('<legend>Sizes</legend>');
             h = h.concat(makeSlider('External label size:', EXTERNAL_FONT_SIZE_SLIDER));
             if (_basicTreeProperties.internalNodeData) {
                 h = h.concat(makeSlider('Internal label size:', INTERNAL_FONT_SIZE_SLIDER));
@@ -7561,50 +7144,6 @@ if (!phyloXml) {
             h = h.concat(makeSlider('Node size:', NODE_SIZE_SLIDER));
             h = h.concat(makeSlider('Branch width:', BRANCH_WIDTH_SLIDER));
             h = h.concat('</fieldset>');
-            return h;
-        }
-
-        function makeAutoCollapse() {
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Collapse Depth</legend>');
-            h = h.concat(makeButton('-', DECR_DEPTH_COLLAPSE_LEVEL, 'to decrease the depth threshold (wraps around) (Alt+A)'));
-            h = h.concat(makeTextInput(DEPTH_COLLAPSE_LABEL, 'the current depth threshold'));
-            h = h.concat(makeButton('+', INCR_DEPTH_COLLAPSE_LEVEL, 'to increase the depth threshold (wraps around) (Alt+S)'));
-            h = h.concat('</fieldset>');
-            if (_settings.enableCollapseByBranchLenghts && _basicTreeProperties.branchLengths) {
-                h = h.concat('<fieldset>');
-                h = h.concat('<legend>Collapse Length</legend>');
-                h = h.concat(makeButton('-', DECR_BL_COLLAPSE_LEVEL, 'to decrease the maximal subtree branch length threshold (wraps around)'));
-                h = h.concat(makeTextInput(BL_COLLAPSE_LABEL, 'the current maximal subtree branch length threshold'));
-                h = h.concat(makeButton('+', INCR_BL_COLLAPSE_LEVEL, 'to increase the maximal subtree branch length threshold (wraps around)'));
-                h = h.concat('</fieldset>');
-            }
-
-            if (_settings.enableCollapseByFeature) {
-                h = h.concat('<fieldset>');
-                h = h.concat('<legend>Collapse Feature</legend>');
-                h = h.concat('<select name="' + COLLAPSE_BY_FEATURE_SELECT + '" id="' + COLLAPSE_BY_FEATURE_SELECT + '">');
-                h = h.concat('<option value="' + OFF_FEATURE + '">' + OFF_FEATURE + '</option>');
-                if (_basicTreeProperties.taxonomies) {
-                    h = h.concat('<option value="' + SPECIES_FEATURE + '">' + SPECIES_FEATURE + '</option>');
-                }
-                let refs = forester.collectPropertyRefs(_treeData, 'node', false);
-                if (refs) {
-                    refs.forEach(function (v) {
-                        let label = v;
-                        label = label.replace(/^.+:/, '');
-                        if (!_settings.propertiesToIgnoreForNodeVisualization || (_settings.propertiesToIgnoreForNodeVisualization.indexOf(label) < 0)) {
-                            if (label.length > (MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL + 2)) {
-                                label = label.substring(0, MAX_LENGTH_FOR_COLLAPSE_BY_FEATURE_LABEL) + "..";
-                            }
-                            h = h.concat('<option value="' + v + '">' + label + '</option>');
-                        }
-                    });
-                }
-                h = h.concat('</select>');
-                h = h.concat('</fieldset>');
-            }
             return h;
         }
 
@@ -8024,83 +7563,6 @@ if (!phyloXml) {
         }
     }
 
-    function unCollapseAll(node) {
-        forester.preOrderTraversal(node, function (n) {
-            if (n._children) {
-                n.children = n._children;
-                n._children = null;
-            }
-            if (n[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL]) {
-                n[KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL] = undefined;
-            }
-        });
-    }
-
-    function decrDepthCollapseLevel() {
-        _rank_collapse_level = -1;
-        _branch_length_collapse_level = -1;
-        resetCollapseByFeature();
-        if (_root && _treeData && (_external_nodes > 2)) {
-            if (_depth_collapse_level <= 1) {
-                _depth_collapse_level = forester.calcMaxDepth(_root);
-                unCollapseAll(_root);
-            } else {
-                --_depth_collapse_level;
-                forester.collapseToDepth(_root, _depth_collapse_level);
-            }
-        }
-        update(null, 0);
-    }
-
-    function incrDepthCollapseLevel() {
-        _rank_collapse_level = -1;
-        _branch_length_collapse_level = -1;
-        resetCollapseByFeature();
-        if ((_root && _treeData) && (_external_nodes > 2)) {
-            let max = forester.calcMaxDepth(_root);
-            if (_depth_collapse_level >= max) {
-                _depth_collapse_level = 1;
-            } else {
-                unCollapseAll(_root);
-                ++_depth_collapse_level;
-            }
-            forester.collapseToDepth(_root, _depth_collapse_level);
-        }
-        update(null, 0);
-    }
-
-    function decrBlCollapseLevel() {
-        _rank_collapse_level = -1;
-        _depth_collapse_level = -1;
-        resetCollapseByFeature();
-        if (_root && _treeData && (_external_nodes > 2)) {
-            if (_branch_length_collapse_level <= _branch_length_collapse_data.min) {
-                _branch_length_collapse_level = _branch_length_collapse_data.max;
-            }
-            _branch_length_collapse_level -= _branch_length_collapse_data.step;
-            forester.collapseToBranchLength(_root, _branch_length_collapse_level);
-        }
-        update(null, 0);
-    }
-
-    function incrBlCollapseLevel() {
-        _rank_collapse_level = -1;
-        _depth_collapse_level = -1;
-        resetCollapseByFeature();
-        if ((_root && _treeData) && (_external_nodes > 2)) {
-            if (_branch_length_collapse_level >= _branch_length_collapse_data.max || _branch_length_collapse_level < 0) {
-                _branch_length_collapse_level = _branch_length_collapse_data.min;
-            }
-            _branch_length_collapse_level += _branch_length_collapse_data.step;
-            if (_branch_length_collapse_level >= _branch_length_collapse_data.max) {
-                unCollapseAll(_root);
-            } else {
-                forester.collapseToBranchLength(_root, _branch_length_collapse_level);
-            }
-        }
-        update(null, 0);
-    }
-
     function decrMsaResidueVisCurrResPos() {
         if (_msa_residue_vis_curr_res_pos <= 0) {
             _msa_residue_vis_curr_res_pos = _basicTreeProperties.maxMolSeqLength - 1;
@@ -8150,81 +7612,6 @@ if (!phyloXml) {
     }
 
 
-    function updateDepthCollapseDepthDisplay() {
-        let v = obtainDepthCollapseDepthValue();
-        setValue(DEPTH_COLLAPSE_LABEL, " " + v);
-    }
-
-    function updateBranchLengthCollapseBranchLengthDisplay() {
-        let v = obtainBranchLengthCollapseBranchLengthValue();
-        setValue(BL_COLLAPSE_LABEL, v);
-    }
-
-    function collapseByFeature(feature) {
-        _rank_collapse_level = -1;
-        _depth_collapse_level = -1;
-        _branch_length_collapse_level = -1;
-        if (feature === SPECIES_FEATURE) {
-            collapseSpecificSubtrees(_root, null, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-        } else if (feature === OFF_FEATURE) {
-            unCollapseAll(_root)
-        } else {
-            collapseSpecificSubtrees(_root, feature, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-        }
-        update(null, 0);
-    }
-
-
-    function removeForCollapsedFeatureSpecialLabel(phy, keyForCollapsedFeatureSpecialLabel) {
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (n[keyForCollapsedFeatureSpecialLabel]) {
-                n[keyForCollapsedFeatureSpecialLabel] = undefined;
-            }
-        });
-    }
-
-    function collapseSpecificSubtrees(phy, nodePropertyRef, keyForCollapsedFeatureSpecialLabel) {
-        unCollapseAll(phy);
-
-        if (nodePropertyRef && nodePropertyRef.length > 0) {
-            forester.preOrderTraversalAll(phy, function (n) {
-                if (n.children && !n._children && (n.children.length > 1)) {
-                    let pv = forester.getOneDistinctNodePropertyValue(n, nodePropertyRef);
-                    if (pv != null) {
-                        forester.collapse(n);
-                        if (keyForCollapsedFeatureSpecialLabel) {
-                            n[keyForCollapsedFeatureSpecialLabel] = '[' + nodePropertyRef + '] ' + pv;
-                        }
-                    }
-                }
-            });
-        } else {
-            forester.preOrderTraversalAll(phy, function (n) {
-                if (n.children && !n._children && (n.children.length > 1)) {
-                    let tv = forester.getOneDistinctTaxonomy(n);
-                    if (tv != null) {
-                        forester.collapse(n);
-                        if (keyForCollapsedFeatureSpecialLabel) {
-                            n[keyForCollapsedFeatureSpecialLabel] = tv;
-                        }
-                    }
-                }
-            });
-        }
-
-    }
-
-    function resetCollapseByFeature() {
-        let s = byId(COLLAPSE_BY_FEATURE_SELECT);
-        if (s) {
-            let f = s.value;
-            if (f !== OFF_FEATURE) {
-                s.value = OFF_FEATURE;
-                removeForCollapsedFeatureSpecialLabel(_root, KEY_FOR_COLLAPSED_FEATURES_SPECIAL_LABEL);
-            }
-        }
-    }
-
     function updateMsaResidueVisCurrResPosLabel() {
         setValue(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, _msa_residue_vis_curr_res_pos + 1);
     }
@@ -8248,11 +7635,6 @@ if (!phyloXml) {
             disableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
         }
 
-        if (forester.isHasCollapsedNodes(_root)) {
-            enableButton(byId(UNCOLLAPSE_ALL_BUTTON));
-        } else {
-            disableButton(byId(UNCOLLAPSE_ALL_BUTTON));
-        }
         if (!_in_subtree && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
             enableButton(byId(MIDPOINT_ROOT_BUTTON));
         } else {
@@ -8356,65 +7738,6 @@ if (!phyloXml) {
         if (b) {
             b.disabled = false;
             b.style.background = '';
-        }
-    }
-
-    function obtainDepthCollapseDepthValue() {
-        if (!(_treeData && _root)) {
-            return "";
-        }
-        if (_external_nodes < 3) {
-            return "off";
-        } else if (_depth_collapse_level < 0) {
-            _depth_collapse_level = forester.calcMaxDepth(_root);
-            return "off";
-        } else if (_depth_collapse_level === forester.calcMaxDepth(_root)) {
-            return "off";
-        }
-        return _depth_collapse_level;
-    }
-
-    function obtainBranchLengthCollapseBranchLengthValue() {
-        if (!(_treeData && _root)) {
-            return "";
-        }
-        if (!_branch_length_collapse_data.min) {
-            resetBranchLengthCollapseValue();
-        }
-
-        if (_external_nodes < 3) {
-            return "off";
-        } else if (_branch_length_collapse_level <= _branch_length_collapse_data.min) {
-            return "off";
-        } else if (_branch_length_collapse_level >= _branch_length_collapse_data.max) {
-            return "off";
-        }
-        return _branch_length_collapse_level;
-    }
-
-
-    function resetDepthCollapseDepthValue() {
-        _depth_collapse_level = -1;
-    }
-
-    function resetRankCollapseRankValue() {
-        _rank_collapse_level = -1;
-    }
-
-    function resetBranchLengthCollapseValue() {
-        _branch_length_collapse_level = -1;
-        _branch_length_collapse_data.min = Number.MAX_VALUE;
-        _branch_length_collapse_data.max = 0;
-
-        if (_root) {
-            forester.removeMaxBranchLength(_root);
-            let stats = forester.calcBranchLengthSimpleStatistics(_root);
-            _branch_length_collapse_data.min = stats.min;
-            _branch_length_collapse_data.max = stats.max;
-            _branch_length_collapse_data.max = 0.25 * ((3 * _branch_length_collapse_data.max) + _branch_length_collapse_data.min);
-            let x = stats.n < 200 ? (stats.n / 4) : 50;
-            _branch_length_collapse_data.step = (_branch_length_collapse_data.max - _branch_length_collapse_data.min) / x;
-
         }
     }
 

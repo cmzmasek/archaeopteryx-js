@@ -1,6 +1,5 @@
 # Third-party / vendored code — never reformat.
 node_modules/
-dependencies/
 test/lib/
 test/data/
 
