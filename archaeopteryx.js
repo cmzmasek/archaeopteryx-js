@@ -490,6 +490,7 @@ if (!phyloXml) {
     let _w = null;
     let _yScale = null;
     let _radial = null;   // circular-layout params (set per render when _options.circular)
+    let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
     let _node_mouseover_div;
@@ -5916,10 +5917,72 @@ if (!phyloXml) {
     // .aptx-panel class (added to the controls containers), styled through CSS
     // custom properties so the light and dark themes share one rule set. This is
     // the modern "refined" skin that replaced the old jQuery-UI look.
+    // --- panel light/dark switch ---
+    // Is the panel currently dark? Explicit choice wins, else follow the OS.
+    function panelDarkActive() {
+        if (_panelTheme === 'dark') {
+            return true;
+        }
+        if (_panelTheme === 'light') {
+            return false;
+        }
+        return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+
+    // Icon for the theme the switch would move TO (sun to go light, moon to go dark).
+    function panelThemeIcon() {
+        return panelDarkActive() ? '☀︎' : '☽';
+    }
+
+    // Apply the current theme choice to every panel and refresh the switch icons.
+    function applyPanelTheme() {
+        let panels = document.querySelectorAll('.aptx-panel');
+        for (let i = 0; i < panels.length; ++i) {
+            panels[i].classList.remove('aptx-light', 'aptx-dark');
+            if (_panelTheme === 'light' || _panelTheme === 'dark') {
+                panels[i].classList.add('aptx-' + _panelTheme);
+            }
+        }
+        let btns = document.querySelectorAll('.aptx-theme-btn');
+        let icon = panelThemeIcon();
+        for (let i = 0; i < btns.length; ++i) {
+            btns[i].textContent = icon;
+        }
+    }
+
+    function togglePanelTheme() {
+        _panelTheme = panelDarkActive() ? 'light' : 'dark';
+        try {
+            localStorage.setItem('aptx-panel-theme', _panelTheme);
+        } catch (e) {
+            // localStorage may be unavailable (private mode); the choice just
+            // won't persist across reloads.
+        }
+        applyPanelTheme();
+    }
+
+    function loadPanelTheme() {
+        try {
+            let saved = localStorage.getItem('aptx-panel-theme');
+            if (saved === 'light' || saved === 'dark') {
+                _panelTheme = saved;
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
     function injectPanelStyles() {
+        loadPanelTheme();
         if (document.getElementById(PANEL_STYLE_ID)) {
             return;
         }
+        // Dark palette tokens, shared by the system-preference default and the
+        // explicit "dark" choice from the header light/dark switch.
+        let dark = '  --p-bg:rgba(24,35,46,0.94); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
+            + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
+            + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
+            + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4);';
         let css = ''
             + '.aptx-panel {'
             + '  --p-bg: rgba(255,255,255,0.94); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
@@ -5934,11 +5997,8 @@ if (!phyloXml) {
             + '  box-shadow:0 12px 30px -12px rgba(23,34,46,0.32),0 2px 6px -2px rgba(23,34,46,0.14);'
             + '  overflow:hidden; }'
             + '.aptx-panel * { box-sizing:border-box; }'
-            + '@media (prefers-color-scheme:dark){ .aptx-panel {'
-            + '  --p-bg:rgba(24,35,46,0.94); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
-            + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
-            + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
-            + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4); } }'
+            + '@media (prefers-color-scheme:dark){ .aptx-panel:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-panel.aptx-dark {' + dark + '}'
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
@@ -5956,12 +6016,28 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-checkgrid .aptx-check { font-size:9px; }'
             + '.aptx-panel .aptx-subhead { margin:9px 0 4px; font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel .aptx-fieldset-body > .aptx-subhead:first-child { margin-top:0; }'
-            + '.aptx-panel .' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ',.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }'
+            + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }'
             + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { margin-top:9px; }'
             + '.aptx-panel .aptx-field-label { display:block; margin:8px 0 3px; font-size:10px; color:var(--p-muted); }'
             + '.aptx-panel .aptx-search-row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }'
             + '.aptx-panel .aptx-search-row input[type=text] { flex:1 1 auto; min-width:0; height:26px; }'
             + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; }'
+            // segmented display-mode control (P/A/C) + the Circular toggle pill
+            + '.aptx-panel .aptx-modebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }'
+            + '.aptx-panel .aptx-segmented { display:inline-flex; border:1px solid var(--p-line-strong); border-radius:7px; overflow:hidden; }'
+            + '.aptx-panel .aptx-seg { display:flex; align-items:center; justify-content:center; min-width:24px; padding:3px 8px; font-size:11px; font-weight:600; color:var(--p-muted); background:var(--p-surface2); cursor:pointer; border-right:1px solid var(--p-line-strong); transition:background .12s,color .12s; }'
+            + '.aptx-panel .aptx-seg:last-child { border-right:0; }'
+            + '.aptx-panel .aptx-seg > input { position:absolute; width:0; height:0; opacity:0; margin:0; pointer-events:none; }'
+            + '.aptx-panel .aptx-seg:hover { color:var(--p-accent-ink); background:var(--p-accent-weak); }'
+            + '.aptx-panel .aptx-seg:has(> input:checked) { background:var(--p-accent); color:#fff; }'
+            + '.aptx-panel .aptx-seg:has(> input:disabled) { opacity:0.4; cursor:default; }'
+            + '.aptx-panel .aptx-toggle { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border:1px solid var(--p-line-strong); border-radius:7px; background:var(--p-surface2); font-size:11px; font-weight:600; color:var(--p-muted); cursor:pointer; transition:background .12s,color .12s,border-color .12s; }'
+            + '.aptx-panel .aptx-toggle > input { position:absolute; width:0; height:0; opacity:0; margin:0; pointer-events:none; }'
+            + '.aptx-panel .aptx-toggle:hover { color:var(--p-accent-ink); border-color:var(--p-accent); }'
+            + '.aptx-panel .aptx-toggle:has(> input:checked) { background:var(--p-accent); color:#fff; border-color:var(--p-accent); }'
+            + '.aptx-panel .aptx-actions { margin-left:auto; display:flex; align-items:center; gap:5px; }'
+            + '.aptx-panel .aptx-theme-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:12px; line-height:1; }'
+            + '.aptx-panel .aptx-theme-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
             + '.aptx-panel input[type=range] { -webkit-appearance:none; appearance:none; display:block; width:100%; height:15px; margin:2px 0 9px; padding:0; background:transparent; cursor:pointer; }'
             + '.aptx-panel input[type=range]::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
             + '.aptx-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; margin-top:-4.5px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
@@ -5983,7 +6059,7 @@ if (!phyloXml) {
             + '.aptx-panel fieldset.aptx-collapsed > legend.aptx-legend-toggle::after { transform:rotate(-90deg); }'
             + '.aptx-panel fieldset.aptx-collapsed > legend { margin-bottom:0; }'
             + '.aptx-panel fieldset.aptx-collapsed > .aptx-fieldset-body { display:none; }'
-            + '.aptx-panel .aptx-hide-btn { margin-left:auto; flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:15px; line-height:1; }'
+            + '.aptx-panel .aptx-hide-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:15px; line-height:1; }'
             + '.aptx-panel .aptx-hide-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
             + '.aptx-panel.aptx-hidden > .aptx-body { display:none; }'
             + '.aptx-panel.aptx-hidden > .' + PROG_NAME + ' { border-bottom:0; }';
@@ -6030,8 +6106,25 @@ if (!phyloXml) {
         }
         panel.appendChild(body);
 
-        // Header hide/show toggle.
+        // Header actions: the light/dark switch (main panel only) and the
+        // whole-panel hide/show toggle, grouped at the right of the header.
         if (header) {
+            let actions = document.createElement('div');
+            actions.className = 'aptx-actions';
+
+            if (header.querySelector('.' + PROGNAMELINK)) {
+                let themeBtn = document.createElement('button');
+                themeBtn.type = 'button';
+                themeBtn.className = 'aptx-theme-btn';
+                themeBtn.title = 'Switch between light and dark';
+                themeBtn.textContent = panelThemeIcon();
+                themeBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    togglePanelTheme();
+                });
+                actions.appendChild(themeBtn);
+            }
+
             let toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'aptx-hide-btn';
@@ -6042,7 +6135,9 @@ if (!phyloXml) {
                 let hidden = panel.classList.toggle('aptx-hidden');
                 toggle.textContent = hidden ? '+' : '–';
             });
-            header.appendChild(toggle);
+            actions.appendChild(toggle);
+
+            header.appendChild(actions);
         }
 
         // Collapsible sections: wrap each titled fieldset's content in a body
@@ -6069,6 +6164,9 @@ if (!phyloXml) {
                 fieldset.classList.toggle('aptx-collapsed');
             });
         }
+
+        // Apply the current light/dark choice to this (and every) panel.
+        applyPanelTheme();
     }
 
     // Safely binds an event handler to an element by id (replaces jQuery
@@ -7141,14 +7239,21 @@ if (!phyloXml) {
             let radioGroup = 'phylogram_control_radio';
             let h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + '">');
-            h = h.concat(makeRadioButton('P', PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeRadioButton('A', PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeRadioButton('C', CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeCheckboxItem('Circular', CIRCULAR_CB, 'display the tree as a circular (radial) tree'));
+            h = h.concat('<div class="aptx-modebar">');
+            h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
+            h = h.concat(makeSegment('P', PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment('A', PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment('C', CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat('</div>');
+            h = h.concat('<label class="aptx-toggle" title="display the tree as a circular (radial) tree"><input type="checkbox" name="' + CIRCULAR_CB + '" id="' + CIRCULAR_CB + '"><span>Circular</span></label>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
+        }
+
+        // One segment of the P/A/C segmented display-type control.
+        function makeSegment(label, id, radioGroup, tooltip) {
+            return '<label class="aptx-seg" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '"><span>' + label + '</span></label>';
         }
 
         function makeIdForCustomCheckboxButton(key) {
@@ -7457,10 +7562,6 @@ if (!phyloXml) {
                 return '';
             }
             return '<div class="aptx-subhead">' + name + '</div><div class="aptx-checkgrid">' + items.join('') + '</div>';
-        }
-
-        function makeRadioButton(label, id, radioGroup, tooltip) {
-            return '<label class="aptx-check" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '"><span>' + label + '</span></label>';
         }
 
         function makeSelectMenu(label, sep, id, tooltip) {
