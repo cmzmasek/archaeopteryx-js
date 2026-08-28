@@ -7830,8 +7830,17 @@ if (!phyloXml) {
 
     function downloadAsPng() {
         let svg = getTreeAsSvg();
+        // Render onto an up-scaled canvas so the exported PNG is high-resolution
+        // rather than 1:1 with the on-screen SVG. Scale is configurable via
+        // _options.pngExportScale (default 4x).
+        let svgEl = document.getElementById(_id.replace('#', '')).querySelector('svg');
+        let scale = _options.pngExportScale > 0 ? _options.pngExportScale : 4;
+        let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
+        let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
         let canvas = document.createElement('canvas');
-        canvg(canvas, svg);
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        canvg(canvas, svg, {ignoreDimensions: true, scaleWidth: canvas.width, scaleHeight: canvas.height});
         canvas.toBlob(function (blob) {
             saveAs(blob, _options.nameForPngDownload);
         });
