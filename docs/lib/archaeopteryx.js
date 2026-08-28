@@ -225,6 +225,7 @@ if (!phyloXml) {
     const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
     const BRANCH_VIS_CB = 'branchvis_cb';
     const BRANCH_WIDTH_SLIDER = 'bw_sl';
+    const CIRCULAR_CB = 'circular_cb';
     const CLADOGRAM_BUTTON = 'cla_b';
     const COLOR_PICKER = 'col_pick';
     const COLOR_PICKER_LABEL = 'colorPickerLabel';
@@ -488,6 +489,7 @@ if (!phyloXml) {
     let _visualizations = null;
     let _w = null;
     let _yScale = null;
+    let _radial = null;   // circular-layout params (set per render when _options.circular)
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
     let _node_mouseover_div;
@@ -1857,6 +1859,23 @@ if (!phyloXml) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
 
+        if (_options.circular) {
+            let maxY = 0;
+            for (let i = 0; i < nodes.length; ++i) {
+                if (nodes[i].y > maxY) {
+                    maxY = nodes[i].y;
+                }
+            }
+            _radial = {
+                clusterH: _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT),
+                angleSpan: 2 * Math.PI * (1 - 1 / Math.max(2, uncollsed_nodes)),
+                maxY: maxY,
+                maxRad: Math.min(_displayWidth, _displayHeight) * 0.42
+            };
+        } else {
+            _radial = null;
+        }
+
         if (_options.dynahide) {
             _dynahide_counter = 0;
             _dynahide_factor = Math.round(_options.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
@@ -1949,10 +1968,31 @@ if (!phyloXml) {
                 return makeFoundOutlineColor(d) ? '0.9px' : null;
             })
             .style('paint-order', 'stroke')
+            .attr('text-anchor', function (d) {
+                if (_options.circular) {
+                    return labelFlip(d) ? 'end' : 'start';
+                }
+                return d.children ? 'end' : 'start';
+            })
+            .attr('transform', function (d) {
+                if (!_options.circular) {
+                    return null;
+                }
+                // external labels are pulled out to the common outer ring;
+                // internal labels sit at their node.
+                let off = d.children ? 0 : (_radial.maxRad - radialRadius(d.y));
+                return 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
+            })
             .attr('dy', function (d) {
+                if (_options.circular) {
+                    return '0.32em';
+                }
                 return d.children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
+                if (_options.circular) {
+                    return labelFlip(d) ? -gap : gap;
+                }
                 if (!(d.children)) {
                     if (_options.phylogram && _options.alignPhylogram) {
                         return (-_yScale(d.distToRoot) + _w + gap);
@@ -1966,8 +2006,17 @@ if (!phyloXml) {
 
         node.select('text.bllabel')
             .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('text-anchor', function () {
+                return _options.circular ? 'middle' : null;
+            })
+            .attr('transform', function (d) {
+                return _options.circular ? branchLabelTransform(d) : null;
+            })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
+                if (_options.circular) {
+                    return 0;
+                }
                 if (d.parent) {
                     return (d.parent.y - d.y + 1);
                 } else {
@@ -1977,8 +2026,14 @@ if (!phyloXml) {
 
         node.select('text.conflabel')
             .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('transform', function (d) {
+                return _options.circular ? branchLabelTransform(d) : null;
+            })
             .attr('dy', _options.branchDataFontSize)
             .attr('x', function (d) {
+                if (_options.circular) {
+                    return 0;
+                }
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y));
                 } else {
@@ -1988,8 +2043,14 @@ if (!phyloXml) {
 
         node.select('text.brancheventlabel')
             .style('font-size', _options.branchDataFontSize + 'px')
+            .attr('transform', function (d) {
+                return _options.circular ? branchLabelTransform(d) : null;
+            })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
+                if (_options.circular) {
+                    return 0;
+                }
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y));
                 }
@@ -2014,7 +2075,7 @@ if (!phyloXml) {
         let nodeUpdate = node.transition()
             .duration(transitionDuration)
             .attr('transform', function (d) {
-                return 'translate(' + d.y + ',' + d.x + ')';
+                return nodeTransform(d);
             });
 
         nodeUpdate.select('text')
@@ -2057,7 +2118,7 @@ if (!phyloXml) {
         let nodeExit = node.exit().transition()
             .duration(transitionDuration)
             .attr('transform', function () {
-                return "translate(" + source.y + "," + source.x + ")";
+                return nodeTransform(source);
             })
             .remove();
 
@@ -2123,6 +2184,26 @@ if (!phyloXml) {
                 .attr('d', function (d) {
                     return connection(d.target);
                 });
+        }
+
+        // circular: a thin dashed connector from each external node out to the
+        // common label ring (so labels line up like iTOL's aligned display).
+        _svgGroup.selectAll('g.aptx-radial-conn').remove();
+        if (_options.circular && _options.showExternalLabels) {
+            let conn = _svgGroup.insert('g', 'g').attr('class', 'aptx-radial-conn');
+            conn.selectAll('line')
+                .data(nodes.filter(function (d) {
+                    return !d.children && !(_options.dynahide && d.hide);
+                }))
+                .enter().append('line')
+                .attr('stroke', _options.branchColorDefault)
+                .attr('stroke-width', 0.5)
+                .style('stroke-opacity', 0.3)
+                .style('stroke-dasharray', '1.5,2.5')
+                .attr('x1', function (d) { return radialXY(d.x, d.y)[0]; })
+                .attr('y1', function (d) { return radialXY(d.x, d.y)[1]; })
+                .attr('x2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[0]; })
+                .attr('y2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[1]; });
         }
 
         for (let i = 0, len = nodes.length; i !== len; ++i) {
@@ -2975,7 +3056,58 @@ if (!phyloXml) {
         }
     };
 
+    // ---- radial (circular) layout helpers ----
+    // When _options.circular is on, the cluster's cross-axis position (node.x) is
+    // reinterpreted as an angle and its depth position (node.y) as a radius, so the
+    // same layout renders as a circular tree. _radial is set per render in update().
+    function radialAngle(x) {
+        return _radial ? (x / _radial.clusterH) * _radial.angleSpan : 0;
+    }
+    function radialRadius(y) {
+        return (_radial && _radial.maxY > 0) ? (y / _radial.maxY) * _radial.maxRad : 0;
+    }
+    function polarXY(angle, r) {
+        let a = angle - Math.PI / 2;
+        return [r * Math.cos(a), r * Math.sin(a)];
+    }
+    function radialXY(x, y) {
+        return polarXY(radialAngle(x), radialRadius(y));
+    }
+    function nodeTransform(d) {
+        if (_options.circular) {
+            let p = radialXY(d.x, d.y);
+            return 'translate(' + p[0] + ',' + p[1] + ')';
+        }
+        return 'translate(' + d.y + ',' + d.x + ')';
+    }
+
+    // Degrees to rotate a label so it reads along the radius at node d's angle.
+    function labelAngleDeg(d) {
+        return radialAngle(d.x) * 180 / Math.PI - 90;
+    }
+    // Nodes on the left half of the circle need their text flipped 180° so it
+    // isn't upside-down.
+    function labelFlip(d) {
+        return radialAngle(d.x) >= Math.PI;
+    }
+    // Transform for a branch-data label (confidence / branch length / events):
+    // rotate to the node's angle and sit at the midpoint of the branch (radially).
+    function branchLabelTransform(d) {
+        if (!d.parent) {
+            return 'rotate(' + labelAngleDeg(d) + ')';
+        }
+        let mid = (radialRadius(d.parent.y) - radialRadius(d.y)) / 2;
+        return 'rotate(' + labelAngleDeg(d) + ') translate(' + mid + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
+    }
+
     let elbow = function (d) {
+        if (_options.circular) {
+            let sa = radialAngle(d.source.x), ta = radialAngle(d.target.x);
+            let sr = radialRadius(d.source.y), tr = radialRadius(d.target.y);
+            let sp = polarXY(sa, sr), mp = polarXY(ta, sr), tp = polarXY(ta, tr);
+            let large = Math.abs(ta - sa) > Math.PI ? 1 : 0, sweep = ta > sa ? 1 : 0;
+            return 'M' + sp[0] + ',' + sp[1] + 'A' + sr + ',' + sr + ' 0 ' + large + ' ' + sweep + ' ' + mp[0] + ',' + mp[1] + 'L' + tp[0] + ',' + tp[1];
+        }
         return 'M' + d.source.y + ',' + d.source.x + 'V' + d.target.x + 'H' + d.target.y;
     };
 
@@ -3007,6 +3139,9 @@ if (!phyloXml) {
         }
         if (_options.phylogram === false) {
             _options.alignPhylogram = false;
+        }
+        if (_options.circular === undefined) {
+            _options.circular = false;
         }
         if (_options.dynahide === undefined) {
             _options.dynahide = true;
@@ -4912,8 +5047,30 @@ if (!phyloXml) {
             removeColorPicker();
             setZoomScale(1);
             update(_root, 0);
-            centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+            if (_options.circular) {
+                fitCircular();
+            } else {
+                centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+            }
         }
+    }
+
+    // Fit the circular tree into the viewport, centred. The root is at the
+    // group origin (0,0), so we place that at the viewport centre and scale so
+    // the outer label ring fits. Computed from the known radial extent rather
+    // than getBBox(), which would read stale positions during the transition.
+    function fitCircular() {
+        if (!_radial || !_radial.maxRad) {
+            return;
+        }
+        let labelSpace = (_maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
+        let outer = _radial.maxRad + labelSpace;
+        let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
+        let scale = 0.9 * (Math.min(W, H) / (2 * outer));
+        if (!isFinite(scale) || scale <= 0) {
+            scale = 1;
+        }
+        _baseSvg.call(_zoomListener.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(scale));
     }
 
     function zoomToExpandY() {
@@ -5325,6 +5482,11 @@ if (!phyloXml) {
         _options.alignPhylogram = false;
         setDisplayTypeButtons();
         update(null, 0);
+    }
+
+    function circularCbClicked() {
+        _options.circular = getCheckboxValue(CIRCULAR_CB);
+        zoomToFit();
     }
 
     // Toggles alignment of the labels in phylogram mode (bound to the 'L'
@@ -6368,6 +6530,8 @@ if (!phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
 
+        on(CIRCULAR_CB, 'click', circularCbClicked);
+
         on(SHORTEN_NODE_NAME_CB, 'click', shortenCbClicked);
 
         if (_nodeLabels) {
@@ -6981,6 +7145,7 @@ if (!phyloXml) {
             h = h.concat(makeRadioButton('P', PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
             h = h.concat(makeRadioButton('A', PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
             h = h.concat(makeRadioButton('C', CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeCheckboxItem('Circular', CIRCULAR_CB, 'display the tree as a circular (radial) tree'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -7559,6 +7724,7 @@ if (!phyloXml) {
         setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
+        setCheckboxValue(CIRCULAR_CB, _options.circular);
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
