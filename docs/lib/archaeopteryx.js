@@ -112,10 +112,11 @@ if (!phyloXml) {
     const DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
     const EXTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
     const FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
-    const FOUND0_COLOR_DEFAULT = '#66cc00';
-    const FOUND0AND1_COLOR_DEFAULT = '#0000ee';
-    const FOUND1_COLOR_DEFAULT = '#ff00ff';
-    const SELECTED_COLOR_DEFAULT = '#ff0000';
+    // Okabe-Ito color-blind-safe palette for search / selection highlights.
+    const FOUND0_COLOR_DEFAULT = '#0072B2';      // Search A  — blue
+    const FOUND1_COLOR_DEFAULT = '#D55E00';      // Search B  — vermillion
+    const FOUND0AND1_COLOR_DEFAULT = '#CC79A7';  // A and B   — reddish purple
+    const SELECTED_COLOR_DEFAULT = '#009E73';    // Selected  — bluish green
     const INTERNAL_NODE_FONT_SIZE_DEFAULT = 6;
     const LABEL_COLOR_DEFAULT = '#202020';
     const NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
@@ -145,7 +146,6 @@ if (!phyloXml) {
     const DISPLAY_WIDTH_DEFAULT = 800;
     const MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Arial', 'Helvetica', 'Times'];
     const ROOTOFFSET_DEFAULT = 220;
-    const SEARCH_FIELD_WIDTH_DEFAULT = '38px';
     const TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
     // ------------------------------
@@ -3271,9 +3271,6 @@ if (!phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
         }
-        if (_settings.searchFieldWidth === undefined) {
-            _settings.searchFieldWidth = SEARCH_FIELD_WIDTH_DEFAULT;
-        }
         if (_settings.textFieldHeight === undefined) {
             _settings.textFieldHeight = TEXT_INPUT_FIELD_DEFAULT_HEIGHT;
         }
@@ -5769,6 +5766,20 @@ if (!phyloXml) {
             + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 7px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel label { cursor:pointer; }'
             + '.aptx-panel input[type=checkbox],.aptx-panel input[type=radio] { accent-color:var(--p-accent); width:13px; height:13px; vertical-align:-2px; margin:0 4px 0 0; }'
+            // checkbox/radio + label as one item (used by the Display Data grid and the inline P/A/C and search-option rows)
+            + '.aptx-panel .aptx-check { display:flex; align-items:center; gap:6px; cursor:pointer; min-width:0; }'
+            + '.aptx-panel .aptx-check > input { margin:0; flex:none; }'
+            + '.aptx-panel .aptx-check > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
+            + '.aptx-panel .aptx-checkgrid { display:grid; grid-template-columns:1fr 1fr; gap:5px 10px; }'
+            + '.aptx-panel .aptx-checkgrid .aptx-check { font-size:9px; }'
+            + '.aptx-panel .aptx-subhead { margin:9px 0 4px; font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--p-faint); }'
+            + '.aptx-panel .aptx-fieldset-body > .aptx-subhead:first-child { margin-top:0; }'
+            + '.aptx-panel .' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ',.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }'
+            + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { margin-top:9px; }'
+            + '.aptx-panel .aptx-field-label { display:block; margin:8px 0 3px; font-size:10px; color:var(--p-muted); }'
+            + '.aptx-panel .aptx-search-row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }'
+            + '.aptx-panel .aptx-search-row input[type=text] { flex:1 1 auto; min-width:0; height:26px; }'
+            + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; }'
             + '.aptx-panel input[type=range] { -webkit-appearance:none; appearance:none; display:block; width:100%; height:15px; margin:2px 0 9px; padding:0; background:transparent; cursor:pointer; }'
             + '.aptx-panel input[type=range]::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
             + '.aptx-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; margin-top:-4.5px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
@@ -5789,7 +5800,7 @@ if (!phyloXml) {
             + '.aptx-panel legend.aptx-legend-toggle:hover { color:var(--p-accent-ink); }'
             + '.aptx-panel fieldset.aptx-collapsed > legend.aptx-legend-toggle::after { transform:rotate(-90deg); }'
             + '.aptx-panel fieldset.aptx-collapsed > legend { margin-bottom:0; }'
-            + '.aptx-panel fieldset.aptx-collapsed > *:not(legend) { display:none; }'
+            + '.aptx-panel fieldset.aptx-collapsed > .aptx-fieldset-body { display:none; }'
             + '.aptx-panel .aptx-hide-btn { margin-left:auto; flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:15px; line-height:1; }'
             + '.aptx-panel .aptx-hide-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
             + '.aptx-panel.aptx-hidden > .aptx-body { display:none; }'
@@ -5852,17 +5863,29 @@ if (!phyloXml) {
             header.appendChild(toggle);
         }
 
-        // Collapsible sections: any fieldset that carries a legend.
+        // Collapsible sections: wrap each titled fieldset's content in a body
+        // element (so collapsing hides everything under the legend, including
+        // bare text labels like the slider captions) and toggle it via the legend.
         let fieldsets = body.querySelectorAll('fieldset');
         for (let i = 0; i < fieldsets.length; ++i) {
             let fieldset = fieldsets[i];
             let legend = fieldset.querySelector('legend');
-            if (legend) {
-                legend.classList.add('aptx-legend-toggle');
-                legend.addEventListener('click', function () {
-                    fieldset.classList.toggle('aptx-collapsed');
-                });
+            if (!legend) {
+                continue;
             }
+            let fsBody = document.createElement('div');
+            fsBody.className = 'aptx-fieldset-body';
+            let n = legend.nextSibling;
+            while (n) {
+                let next = n.nextSibling;
+                fsBody.appendChild(n);
+                n = next;
+            }
+            fieldset.appendChild(fsBody);
+            legend.classList.add('aptx-legend-toggle');
+            legend.addEventListener('click', function () {
+                fieldset.classList.toggle('aptx-collapsed');
+            });
         }
     }
 
@@ -6589,9 +6612,7 @@ if (!phyloXml) {
             'color': 'inherit',
             'text-align': 'left',
             'outline': 'none',
-            'cursor': 'text',
-            'width': _settings.searchFieldWidth,
-            'height': _settings.textFieldHeight
+            'cursor': 'text'
         });
 
         onHold(ZOOM_IN_Y, function () {
@@ -6950,124 +6971,80 @@ if (!phyloXml) {
         }
 
         function makeDisplayControl() {
-            let h = "";
-            let counter = 0;
+            let labels = [];
+            let nodes = [];
+            let opts = [];
 
-            h = h.concat('<fieldset><legend>Display Data</legend>');
-            h = h.concat('<div>');
-
+            // --- Labels: what text/data is drawn on the tree ---
             if (_settings.showNodeNameButton && _basicTreeProperties.nodeNames) {
-                h = h.concat(makeCheckboxButtonTableData('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
-                counter += 1;
+                labels.push(makeCheckboxItem('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
             }
-
             if (_settings.showTaxonomyButton && _basicTreeProperties.taxonomies) {
-                h = h.concat(makeCheckboxButtonTableData('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
+                labels.push(makeCheckboxItem('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
             }
-
             if (_settings.showSequenceButton && _basicTreeProperties.sequences) {
-                h = h.concat(makeCheckboxButtonTableData('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
+                labels.push(makeCheckboxItem('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
             }
-
             if (_nodeLabels) {
                 for (const [key, value] of Object.entries(_nodeLabels)) {
                     if (value.label && value.propertyRef && value.description) {
                         const cb_id = makeIdForCustomCheckboxButton(key);
                         if (value.showButton === true) {
-                            h = h.concat(makeCheckboxButtonTableData(value.label, cb_id, value.description));
-                            counter += 1;
-                            if (counter % 2 === 0) {
-                                h = h.concat('</br>');
-                            }
+                            labels.push(makeCheckboxItem(value.label, cb_id, value.description));
                         }
                         value.cb_id = cb_id;
                     }
                 }
             }
-
-            if (counter % 2 === 1) {
-                h = h.concat('</br>');
+            if (_basicTreeProperties.confidences) {
+                labels.push(makeCheckboxItem('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
+            }
+            if (_basicTreeProperties.branchLengths) {
+                labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
+            }
+            if (_settings.showExternalLabelsButton) {
+                labels.push(makeCheckboxItem('Ext. Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
+            }
+            if (_basicTreeProperties.internalNodeData && _settings.showInternalLabelsButton) {
+                labels.push(makeCheckboxItem('Int. Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
             }
 
-            if (_basicTreeProperties.confidences || _basicTreeProperties.branchLengths) {
-                if (_basicTreeProperties.confidences) {
-                    h = h.concat(makeCheckboxButtonTableData('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
-                }
-                if (_basicTreeProperties.branchLengths) {
-                    h = h.concat(makeCheckboxButtonTableData('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
-                }
-                h = h.concat('</br>');
+            // --- Nodes & branches: shapes, events, colors, visualizations ---
+            if (_basicTreeProperties.nodeEvents) {
+                nodes.push(makeCheckboxItem('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
             }
-
-            if (_basicTreeProperties.nodeEvents || _basicTreeProperties.branchEvents) {
-                if (_basicTreeProperties.nodeEvents) {
-                    h = h.concat(makeCheckboxButtonTableData('Node Events', NODE_EVENTS_CB, 'to show speciations and duplications as colored nodes (e.g. speciations green, duplications red)'));
-                }
-                if (_basicTreeProperties.branchEvents) {
-                    h = h.concat(makeCheckboxButtonTableData('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
-                }
-                h = h.concat('</br>');
+            if (_basicTreeProperties.branchEvents) {
+                nodes.push(makeCheckboxItem('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-
-            if (_settings.showExternalLabelsButton || _settings.showInternalLabelsButton) {
-                if (_settings.showExternalLabelsButton) {
-                    h = h.concat(makeCheckboxButtonTableData('External Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
-                }
-                if (_basicTreeProperties.internalNodeData && _settings.showInternalLabelsButton) {
-                    h = h.concat(makeCheckboxButtonTableData('Internal Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
-                }
-                h = h.concat('</br>');
+            if (_settings.showExternalNodesButton) {
+                nodes.push(makeCheckboxItem('Ext. Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
             }
-
-            if (_settings.showExternalNodesButton || _settings.showInternalNodesButton) {
-                if (_settings.showExternalNodesButton) {
-                    h = h.concat(makeCheckboxButtonTableData('External Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
-                }
-                if (_settings.showInternalNodesButton) {
-                    h = h.concat(makeCheckboxButtonTableData('Internal Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
-                }
-                h = h.concat('</br>');
+            if (_settings.showInternalNodesButton) {
+                nodes.push(makeCheckboxItem('Int. Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
             }
-
-            counter = 0;
             if (_settings.showBranchColorsButton) {
-                h = h.concat(makeCheckboxButtonTableData('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
-                counter += 1;
+                nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
             }
-
             if (_settings.enableNodeVisualizations) {
-                h = h.concat(makeCheckboxButtonTableData('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
+                nodes.push(makeCheckboxItem('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
             }
             if (_settings.enableBranchVisualizations) {
-                h = h.concat(makeCheckboxButtonTableData('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
+                nodes.push(makeCheckboxItem('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
             }
+
+            // --- Options ---
             if (_settings.showDynahideButton) {
-                h = h.concat(makeCheckboxButtonTableData('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
-                counter += 1;
-                if (counter % 2 === 0) {
-                    h = h.concat('</br>');
-                }
+                opts.push(makeCheckboxItem('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
             }
             if (_settings.showShortenNodeNamesButton) {
-                h = h.concat(makeCheckboxButtonTableData('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
+                opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             }
-            h = h.concat('</div></fieldset>');
+
+            let h = '<fieldset><legend>Display Data</legend>';
+            h = h.concat(makeCheckboxGroup('Labels', labels));
+            h = h.concat(makeCheckboxGroup('Nodes', nodes));
+            h = h.concat(makeCheckboxGroup('Options', opts));
+            h = h.concat('</fieldset>');
             return h;
         }
 
@@ -7156,12 +7133,16 @@ if (!phyloXml) {
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
+            h = h.concat('<label class="aptx-field-label" for="' + SEARCH_FIELD_0 + '">Search A</label>');
+            h = h.concat('<div class="aptx-search-row">');
             h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
-            h = h.concat('<br>');
+            h = h.concat('</div>');
+            h = h.concat('<label class="aptx-field-label" for="' + SEARCH_FIELD_1 + '">Search B</label>');
+            h = h.concat('<div class="aptx-search-row">');
             h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
             h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
-            h = h.concat('<br>');
+            h = h.concat('</div>');
             h = h.concat(makeSearchControlsCompact());
             h = h.concat('</fieldset>');
             return h;
@@ -7170,13 +7151,13 @@ if (!phyloXml) {
         function makeSearchControlsCompact() {
             let h = "";
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxButton('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
-            h = h.concat(makeCheckboxButton('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxButton('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
+            h = h.concat(makeCheckboxItem('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxItem('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
+            h = h.concat(makeCheckboxItem('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
             if (_settings.showSearchPropertiesButton === true) {
-                h = h.concat(makeCheckboxButton('P', SEARCH_OPTIONS_PROPERTIES_CB, 'to search (hidden) properties'));
+                h = h.concat(makeCheckboxItem('P', SEARCH_OPTIONS_PROPERTIES_CB, 'to search (hidden) properties'));
             }
-            h = h.concat(makeCheckboxButton('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat(makeCheckboxItem('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
             h = h.concat('</div>');
             return h;
         }
@@ -7280,20 +7261,21 @@ if (!phyloXml) {
             return '<input type="button" value="' + label + '" name="' + id + '" id="' + id + '" title="' + tooltip + '">';
         }
 
-        function makeCheckboxButton(label, id, tooltip) {
-            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input  type="checkbox" name="' + id + '" id="' + id + '">';
+        // A checkbox + label item, used by the Display Data grid and the inline search-option row.
+        function makeCheckboxItem(label, id, tooltip) {
+            return '<label class="aptx-check" title="' + tooltip + '"><input type="checkbox" name="' + id + '" id="' + id + '"><span>' + label + '</span></label>';
         }
 
-        function makeCheckboxButtonTableData(label, id, tooltip) {
-            const n = 15;
-            if (label.length > n) {
-                label = label.substring(0, n);
+        // A titled 2-column group of checkbox items; empty groups render nothing.
+        function makeCheckboxGroup(name, items) {
+            if (items.length === 0) {
+                return '';
             }
-            return '<label style="width:68px;text-align: left" for="' + id + '" title="' + tooltip + '">' + label + '</label><input  type="checkbox" name="' + id + '" id="' + id + '">';
+            return '<div class="aptx-subhead">' + name + '</div><div class="aptx-checkgrid">' + items.join('') + '</div>';
         }
 
         function makeRadioButton(label, id, radioGroup, tooltip) {
-            return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label><input type="radio" name="' + radioGroup + '" id="' + id + '">';
+            return '<label class="aptx-check" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '"><span>' + label + '</span></label>';
         }
 
         function makeSelectMenu(label, sep, id, tooltip) {
