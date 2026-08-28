@@ -115,7 +115,7 @@ if (!phyloXml) {
     // Okabe-Ito color-blind-safe palette for search / selection highlights.
     const FOUND0_COLOR_DEFAULT = '#0072B2';      // Search A  — blue
     const FOUND1_COLOR_DEFAULT = '#D55E00';      // Search B  — vermillion
-    const FOUND0AND1_COLOR_DEFAULT = '#CC79A7';  // A and B   — reddish purple
+    const FOUND0AND1_COLOR_DEFAULT = '#F0E442';  // A and B   — yellow
     const SELECTED_COLOR_DEFAULT = '#009E73';    // Selected  — bluish green
     const INTERNAL_NODE_FONT_SIZE_DEFAULT = 6;
     const LABEL_COLOR_DEFAULT = '#202020';
@@ -1942,6 +1942,13 @@ if (!phyloXml) {
                 return d.children ? _options.internalNodeFontSize + 'px' : _options.externalNodeFontSize + 'px';
             })
             .style('fill', makeLabelColor)
+            .style('stroke', function (d) {
+                return makeFoundOutlineColor(d) || 'none';
+            })
+            .style('stroke-width', function (d) {
+                return makeFoundOutlineColor(d) ? '0.9px' : null;
+            })
+            .style('paint-order', 'stroke')
             .attr('dy', function (d) {
                 return d.children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
             })
@@ -2265,10 +2272,23 @@ if (!phyloXml) {
         return makeVisNodeFillColor(phynode);
     };
 
-    let makeNodeStrokeColor = function (phynode) {
+    // A darker shade of a node's found/selected highlight color, used as a thin
+    // rim on found node dots and labels so the fill (especially the pale yellow
+    // both-A-and-B color) stands out on any background. Returns null when the
+    // node is neither a search hit nor selected.
+    function makeFoundOutlineColor(phynode) {
         let foundColor = getFoundColor(phynode);
-        if (foundColor) {
-            return foundColor;
+        if (!foundColor) {
+            return null;
+        }
+        let c = d3.color(foundColor);
+        return c ? c.darker(1.6).formatHex() : foundColor;
+    }
+
+    let makeNodeStrokeColor = function (phynode) {
+        let outline = makeFoundOutlineColor(phynode);
+        if (outline) {
+            return outline;
         }
         if (_options.showNodeEvents && phynode.events && phynode.children) {
             let evColor = makeNodeEventsDependentColor(phynode.events);
