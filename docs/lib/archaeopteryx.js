@@ -5162,6 +5162,8 @@ if (!phyloXml) {
         let bActive = !!(specB.value && specB.value.trim().length > 0);
         let combine = getValue(SEARCH_COMBINE_SELECT);
         updateCombineVisibility(aActive, bActive);
+        updateSearchFieldValidity(0);
+        updateSearchFieldValidity(1);
 
         _foundNodes0 = new Set();
         _foundNodes1 = new Set();
@@ -5193,6 +5195,32 @@ if (!phyloXml) {
     function updateCombineVisibility(aActive, bActive) {
         let row = byId(SEARCH_COMBINE_ROW);
         if (row) row.style.display = (aActive && bActive) ? '' : 'none';
+    }
+
+    // Flag a value box red when its (non-empty) query can never match: an
+    // uncompilable regex in regex mode, or a non-number on a numeric field.
+    function updateSearchFieldValidity(idx) {
+        let spec = currentSearchSpec(idx);
+        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
+        let input2 = byId(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1);
+        let v = (spec.value === null || spec.value === undefined) ? '' : String(spec.value).trim();
+        let badPrimary = false, badSecondary = false;
+        if (v.length >= 1) {
+            if (spec.field.numeric) badPrimary = parseFiniteDouble(v) === null;
+            else if (spec.mode === 'regex') badPrimary = makeStringTest(v, 'regex', spec.caseSensitive) === null;
+        }
+        if (spec.field.numeric && spec.mode === 'range') {
+            let v2 = (spec.value2 === null || spec.value2 === undefined) ? '' : String(spec.value2).trim();
+            badSecondary = v2.length >= 1 && parseFiniteDouble(v2) === null;
+        }
+        if (input) {
+            if (input.dataset.baseTitle === undefined) input.dataset.baseTitle = input.title;
+            input.classList.toggle('aptx-search-invalid', badPrimary);
+            input.title = badPrimary
+                ? (spec.field.numeric ? 'not a valid number' : 'invalid regular expression')
+                : input.dataset.baseTitle;
+        }
+        if (input2) input2.classList.toggle('aptx-search-invalid', badSecondary);
     }
 
     function resetSearch0() {
@@ -6171,6 +6199,8 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; }'
             + '.aptx-panel .aptx-search-menus { display:flex; flex-direction:column; gap:4px; margin:2px 0 3px; }'
             + '.aptx-panel .aptx-search-menus select { width:100%; min-width:0; height:26px; font:inherit; }'
+            // red cue for an unmatchable query (bad regex / non-number); box-shadow, since the value boxes carry an inline outline:none
+            + '.aptx-panel .aptx-search-invalid { box-shadow:0 0 0 2px #e5484d; border-color:#e5484d; }'
             + '.aptx-panel .aptx-combine { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }'
             + '.aptx-panel .aptx-combine .aptx-field-label { margin:0; flex:none; }'
             + '.aptx-panel .aptx-combine select { flex:1 1 auto; min-width:0; height:26px; font:inherit; }'
