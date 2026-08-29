@@ -10,7 +10,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/forester_test.js",
+    "test": "node test/forester_test.js && node test/search_test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

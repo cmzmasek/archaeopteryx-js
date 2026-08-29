@@ -5172,8 +5172,8 @@ if (!phyloXml) {
 
         if (combine && combine !== 'independent' && aActive && bActive) {
             // Combined result lives in found-set 0 only, so colour / count reflect it.
-            let setA = searchWithSpec(specA);
-            let setB = searchWithSpec(specB);
+            let setA = forester.searchWithSpec(_root, specA);
+            let setB = forester.searchWithSpec(_root, specB);
             let combined = new Set();
             if (combine === 'and') {
                 setA.forEach(function (n) { if (setB.has(n)) combined.add(n); });
@@ -5185,8 +5185,8 @@ if (!phyloXml) {
             _searchBox0Empty = false;
             _searchBox1Empty = true;
         } else {
-            if (aActive) _foundNodes0 = searchWithSpec(specA);
-            if (bActive) _foundNodes1 = searchWithSpec(specB);
+            if (aActive) _foundNodes0 = forester.searchWithSpec(_root, specA);
+            if (bActive) _foundNodes1 = forester.searchWithSpec(_root, specB);
         }
         update(null, 0, true);
     }
@@ -5206,12 +5206,12 @@ if (!phyloXml) {
         let v = (spec.value === null || spec.value === undefined) ? '' : String(spec.value).trim();
         let badPrimary = false, badSecondary = false;
         if (v.length >= 1) {
-            if (spec.field.numeric) badPrimary = parseFiniteDouble(v) === null;
-            else if (spec.mode === 'regex') badPrimary = makeStringTest(v, 'regex', spec.caseSensitive) === null;
+            if (spec.field.numeric) badPrimary = forester.parseFiniteDouble(v) === null;
+            else if (spec.mode === 'regex') badPrimary = forester.makeSearchStringTest(v, 'regex', spec.caseSensitive) === null;
         }
         if (spec.field.numeric && spec.mode === 'range') {
             let v2 = (spec.value2 === null || spec.value2 === undefined) ? '' : String(spec.value2).trim();
-            badSecondary = v2.length >= 1 && parseFiniteDouble(v2) === null;
+            badSecondary = v2.length >= 1 && forester.parseFiniteDouble(v2) === null;
         }
         if (input) {
             if (input.dataset.baseTitle === undefined) input.dataset.baseTitle = input.title;
@@ -5235,302 +5235,11 @@ if (!phyloXml) {
         runSearches();
     }
 
-
-    // ===================== Search engine =====================
-    // Field-and-mode search (mirrors the desktop Archaeopteryx redesign): each
-    // search box picks a FIELD (what to search) and a MODE (how to match). The
-    // value box holds only the query; ',' = OR and '+' = AND for text fields.
-
-    const SEARCH_FIELD_LABELS = {
-        NN: 'Node Name',
-        TS: 'Taxonomy Scientific', TN: 'Taxonomy Common', TC: 'Taxonomy Code',
-        TI: 'Taxonomy Identifier', SY: 'Taxonomy Synonym', LN: 'Taxonomy Lineage',
-        SN: 'Seq Name', GN: 'Gene Name', SS: 'Gene Symbol', SA: 'Seq Accession',
-        MS: 'Molecular Sequence', DO: 'Domain', AN: 'Annotation', XR: 'Cross-Reference'
-    };
-    const SEARCH_TEXT_ORDER = ['TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'DO', 'AN', 'XR', 'MS'];
-    // Fields folded into the "Any Text" umbrella (desktop omits MS + DO there).
-    const SEARCH_ANY_TEXT_KEYS = ['NN', 'TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'AN', 'XR'];
-    const SEARCH_NUMERIC_DATATYPES = new Set(['decimal', 'double', 'float', 'integer', 'int', 'long', 'short',
-        'byte', 'unsignedint', 'unsignedlong', 'unsignedshort', 'unsignedbyte', 'nonnegativeinteger',
-        'nonpositiveinteger', 'negativeinteger', 'positiveinteger']);
-
-    function searchTaxa(n) { return (n.taxonomies && n.taxonomies.length) ? n.taxonomies : []; }
-    function searchSeqs(n) { return (n.sequences && n.sequences.length) ? n.sequences : []; }
-
-    const SEARCH_TEXT_EXTRACTORS = {
-        NN: n => (n.name ? [n.name] : []),
-        TS: n => searchTaxa(n).map(t => t.scientific_name).filter(Boolean),
-        TN: n => searchTaxa(n).map(t => t.common_name).filter(Boolean),
-        TC: n => searchTaxa(n).map(t => t.code).filter(Boolean),
-        TI: n => searchTaxa(n).map(t => t.id && t.id.value).filter(Boolean),
-        SY: n => searchTaxa(n).reduce((a, t) => a.concat(t.synonyms || []), []).filter(Boolean),
-        LN: n => searchTaxa(n).reduce((a, t) => a.concat(t.lineage || []), []).filter(Boolean),
-        SN: n => searchSeqs(n).map(s => s.name).filter(Boolean),
-        GN: n => searchSeqs(n).map(s => s.gene_name).filter(Boolean),
-        SS: n => searchSeqs(n).map(s => s.symbol).filter(Boolean),
-        SA: n => searchSeqs(n).map(s => s.accession && s.accession.value).filter(Boolean),
-        MS: n => searchSeqs(n).map(s => s.mol_seq).filter(Boolean),
-        DO: n => searchSeqs(n).reduce((a, s) => a.concat((s.domain_architecture && s.domain_architecture.domains) ? s.domain_architecture.domains.map(d => d.name) : []), []).filter(Boolean),
-        AN: n => searchSeqs(n).reduce((a, s) => a.concat((s.annotations || []).reduce((b, an) => b.concat([an.desc, an.ref]), [])), []).filter(Boolean),
-        XR: n => searchSeqs(n).reduce((a, s) => a.concat((s.cross_references || []).reduce((b, x) => b.concat([x.value, x.source, x.comment]), [])), []).filter(Boolean)
-    };
-
-    function isInternalPropRef(ref) { return !ref || ref.indexOf('aptx:') === 0; }
-
-    function datatypeIsNumeric(dt) {
-        if (!dt) return false;
-        let local = String(dt).toLowerCase();
-        let c = local.lastIndexOf(':');
-        if (c >= 0) local = local.substring(c + 1);
-        return SEARCH_NUMERIC_DATATYPES.has(local);
-    }
-
-    function escapeRegExp(str) {
-        return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    // Accept comma as decimal separator when unambiguous (one comma, no period,
-    // and not the US thousands pattern comma+exactly-3-digits). Returns null if
-    // not a finite number.
-    function parseFiniteDouble(s) {
-        if (s === null || s === undefined) return null;
-        s = String(s).trim();
-        if (s.length === 0) return null;
-        if (s.indexOf('.') < 0 && (s.split(',').length - 1) === 1 && !/,\d{3}$/.test(s)) {
-            s = s.replace(',', '.');
-        }
-        let n = Number(s);
-        return isFinite(n) ? n : null;
-    }
-
-    // Build a predicate value -> bool for one text term. Returns null for an
-    // invalid regex (caller treats that as "never matches").
-    function makeStringTest(term, mode, caseSensitive) {
-        if (mode === 'regex' || mode === 'whole_word') {
-            let src = (mode === 'whole_word')
-                ? ('(?<![\\p{L}\\p{N}])' + escapeRegExp(term) + '(?![\\p{L}\\p{N}])')
-                : term;
-            let re;
-            try { re = new RegExp(src, caseSensitive ? 'u' : 'iu'); }
-            catch (e) { return null; }
-            return s => (s !== null && s !== undefined && re.test(String(s)));
-        }
-        let t = caseSensitive ? term : term.toLowerCase();
-        return function (s) {
-            if (s === null || s === undefined) return false;
-            let str = caseSensitive ? String(s) : String(s).toLowerCase();
-            if (mode === 'starts_with') return str.indexOf(t) === 0;
-            if (mode === 'ends_with') return str.length >= t.length && str.lastIndexOf(t) === str.length - t.length;
-            return str.indexOf(t) >= 0; // contains
-        };
-    }
-
-    function numMatches(x, mode, a, lo, hi) {
-        switch (mode) {
-            case 'eq': return Math.abs(x - a) <= 1e-9 * Math.max(1, Math.abs(a));
-            case 'ne': return Math.abs(x - a) > 1e-9 * Math.max(1, Math.abs(a));
-            case 'lt': return x < a;
-            case 'le': return x <= a;
-            case 'gt': return x > a;
-            case 'ge': return x >= a;
-            case 'range': return x >= lo && x <= hi;
-            default: return false;
-        }
-    }
-
-    // Rebuild the list of fields the loaded tree actually offers (populates the
-    // Field dropdowns). Always exposes Any Text + Node Name; adds the text,
-    // numeric and custom-property fields that are present, then structure fields.
-    function collectSearchFields() {
-        _searchFields = [];
-        _searchFields.push({ key: 'ANY', label: 'Any Text', numeric: false });
-        _searchFields.push({ key: 'NN', label: SEARCH_FIELD_LABELS.NN, numeric: false });
-        if (!_root) return;
-
-        let present = {};
-        let hasBL = false, hasConf = false;
-        let propRefs = {}; // ref -> { num, tot, dtNum, dtStr }
-        forester.preOrderTraversalAll(_root, function (n) {
-            for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
-                let key = SEARCH_TEXT_ORDER[k];
-                if (!present[key] && SEARCH_TEXT_EXTRACTORS[key](n).length > 0) present[key] = true;
-            }
-            if (!hasBL && typeof n.branch_length === 'number' && n.branch_length >= 0) hasBL = true;
-            if (!hasConf && n.confidences) {
-                for (let i = 0; i < n.confidences.length; ++i) {
-                    if (typeof n.confidences[i].value === 'number') { hasConf = true; break; }
-                }
-            }
-            if (n.properties) {
-                for (let i = 0; i < n.properties.length; ++i) {
-                    let p = n.properties[i];
-                    if (isInternalPropRef(p.ref)) continue;
-                    let r = propRefs[p.ref] || (propRefs[p.ref] = { num: 0, tot: 0, dtNum: false, dtStr: false });
-                    r.tot++;
-                    if (parseFiniteDouble(p.value) !== null) r.num++;
-                    if (p.datatype) { if (datatypeIsNumeric(p.datatype)) r.dtNum = true; else r.dtStr = true; }
-                }
-            }
-        });
-
-        for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
-            let key = SEARCH_TEXT_ORDER[k];
-            if (present[key]) _searchFields.push({ key: key, label: SEARCH_FIELD_LABELS[key], numeric: false });
-        }
-        if (hasBL) _searchFields.push({ key: 'BL', label: 'Branch Length', numeric: true });
-        if (hasConf) _searchFields.push({ key: 'CO', label: 'Confidence', numeric: true });
-        let refs = Object.keys(propRefs).sort();
-        for (let i = 0; i < refs.length; ++i) {
-            let r = propRefs[refs[i]];
-            let numeric = r.dtStr ? false : (r.dtNum ? true : (r.tot > 0 && r.num === r.tot));
-            _searchFields.push({ key: 'PROP:' + refs[i], label: refs[i], numeric: numeric, propRef: refs[i] });
-        }
-        _searchFields.push({ key: 'CS', label: 'Clade Size (tips)', numeric: true });
-        _searchFields.push({ key: 'NC', label: 'Number of Children', numeric: true });
-        _searchFields.push({ key: 'DE', label: 'Depth from Root', numeric: true });
-        if (hasBL) _searchFields.push({ key: 'DR', label: 'Distance from Root', numeric: true });
-        _searchFields.push({ key: 'NT', label: 'Node Type', numeric: false });
-    }
-
-    // Per-node depth / distance-to-root / clade size, computed on demand for the
-    // structure search fields (cheap O(n), avoids staleness after tree edits).
-    function computeSearchMetrics() {
-        (function pre(n, depth, dist) {
-            n._srchDepth = depth;
-            let d = dist + (typeof n.branch_length === 'number' && n.branch_length > 0 ? n.branch_length : 0);
-            n._srchDist = d;
-            let kids = n.children || n._children;
-            if (kids) for (let i = 0; i < kids.length; ++i) pre(kids[i], depth + 1, d);
-        })(_root, 0, 0);
-        forester.postOrderTraversalAll(_root, function (n) {
-            let kids = n.children || n._children;
-            if (!kids || kids.length === 0) { n._srchClade = 1; return; }
-            let s = 0;
-            for (let i = 0; i < kids.length; ++i) s += kids[i]._srchClade;
-            n._srchClade = s;
-        });
-    }
-
-    // Extract the value(s) of a field from a node (strings for text fields,
-    // numbers for the numeric ones). A field is multi-valued; any value matching
-    // is a match.
-    function extractSearchValues(node, field) {
-        let key = field.key;
-        if (key === 'ANY') {
-            let out = [];
-            for (let i = 0; i < SEARCH_ANY_TEXT_KEYS.length; ++i) {
-                out = out.concat(SEARCH_TEXT_EXTRACTORS[SEARCH_ANY_TEXT_KEYS[i]](node));
-            }
-            if (node.properties) {
-                for (let i = 0; i < node.properties.length; ++i) {
-                    let p = node.properties[i];
-                    if (!isInternalPropRef(p.ref) && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
-                }
-            }
-            return out;
-        }
-        if (key === 'NT') {
-            let kids = node.children || node._children;
-            let isLeaf = !kids || kids.length === 0;
-            return [isLeaf ? 'leaf' : (node === _root ? 'root' : 'internal')];
-        }
-        if (key.indexOf('PROP:') === 0) {
-            let out = [];
-            if (node.properties) {
-                for (let i = 0; i < node.properties.length; ++i) {
-                    let p = node.properties[i];
-                    if (p.ref === field.propRef && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
-                }
-            }
-            return out;
-        }
-        if (SEARCH_TEXT_EXTRACTORS[key]) return SEARCH_TEXT_EXTRACTORS[key](node);
-        switch (key) {
-            case 'BL': return (typeof node.branch_length === 'number') ? [node.branch_length] : [];
-            case 'CO': return node.confidences ? node.confidences.map(c => c.value).filter(v => typeof v === 'number') : [];
-            case 'CS': return [node._srchClade];
-            case 'NC': { let kids = node.children || node._children; return [kids ? kids.length : 0]; }
-            case 'DE': return [node._srchDepth];
-            case 'DR': return [node._srchDist];
-            default: return [];
-        }
-    }
-
-    // Run one search spec { field, mode, value, value2, caseSensitive, inverse }
-    // over the tree and return the Set of matching forester nodes.
-    function searchWithSpec(spec) {
-        let result = new Set();
-        if (!_root || !spec || !spec.field) return result;
-        let field = spec.field;
-        if (field.key === 'CS' || field.key === 'DE' || field.key === 'DR' || field.key === 'NC') computeSearchMetrics();
-
-        let v = (spec.value === null || spec.value === undefined) ? '' : String(spec.value);
-        v = v.replace(/\s+/g, ' ').trim();
-
-        let test = null;
-        if (field.numeric) {
-            let a = parseFiniteDouble(v);
-            let b = (spec.mode === 'range') ? parseFiniteDouble(spec.value2) : null;
-            if (a === null || (spec.mode === 'range' && b === null)) return result; // invalid -> reset
-            let lo = (b !== null) ? Math.min(a, b) : a;
-            let hi = (b !== null) ? Math.max(a, b) : a;
-            test = function (n) {
-                let vals = extractSearchValues(n, field);
-                for (let i = 0; i < vals.length; ++i) {
-                    let x = (typeof vals[i] === 'number') ? vals[i] : parseFiniteDouble(vals[i]);
-                    if (x !== null && numMatches(x, spec.mode, a, lo, hi)) return true;
-                }
-                return false;
-            };
-        } else {
-            if (v.length < 1) return result;
-            let splittable = spec.mode !== 'regex';
-            let orTerms = (splittable && v.indexOf(',') >= 0) ? v.split(/,+/) : [v];
-            let compiled = [];
-            for (let oi = 0; oi < orTerms.length; ++oi) {
-                let ot = orTerms[oi].trim();
-                if (!ot) continue;
-                let ands = (splittable && ot.indexOf('+') > 0) ? ot.split(/\++/) : [ot];
-                let tests = [];
-                let bad = false;
-                for (let ai = 0; ai < ands.length; ++ai) {
-                    let term = ands[ai].trim();
-                    if (!term) continue;
-                    let t = makeStringTest(term, spec.mode, spec.caseSensitive);
-                    if (t === null) { bad = true; break; } // invalid regex
-                    tests.push(t);
-                }
-                if (!bad && tests.length) compiled.push(tests);
-            }
-            if (!compiled.length) return result;
-            test = function (n) {
-                let vals = extractSearchValues(n, field);
-                for (let oi = 0; oi < compiled.length; ++oi) {
-                    let ands = compiled[oi], ok = true;
-                    for (let ai = 0; ai < ands.length; ++ai) {
-                        let hit = false;
-                        for (let vi = 0; vi < vals.length; ++vi) { if (ands[ai](vals[vi])) { hit = true; break; } }
-                        if (!hit) { ok = false; break; }
-                    }
-                    if (ok) return true;
-                }
-                return false;
-            };
-        }
-
-        forester.preOrderTraversalAll(_root, function (n) { if (test(n)) result.add(n); });
-
-        if (spec.inverse) {
-            // Complement, scoped to nodes that actually carry this field.
-            let inv = new Set();
-            forester.preOrderTraversalAll(_root, function (n) {
-                if (!result.has(n) && extractSearchValues(n, field).length > 0) inv.add(n);
-            });
-            return inv;
-        }
-        return result;
-    }
+    // ===================== Search (UI glue) =====================
+    // The search engine itself (field discovery, spec matching, value
+    // extraction) lives in forester.js (forester.availableSearchFields,
+    // forester.searchWithSpec, ...) where it runs in Node and is covered by
+    // test/search_test.js. This section is only the control-panel glue.
 
     // Read a search box's current field / mode / value(s) into a spec.
     function currentSearchSpec(idx) {
@@ -5564,7 +5273,7 @@ if (!phyloXml) {
     // Fill both search-field dropdowns from the loaded tree's available fields,
     // then set up each box's mode menu. Called when a tree is (re)loaded.
     function populateSearchMenus() {
-        collectSearchFields();
+        _searchFields = forester.availableSearchFields(_root);
         [SEARCH_FIELD_SELECT_0, SEARCH_FIELD_SELECT_1].forEach(function (selId) {
             let sel = byId(selId);
             if (!sel) return;
@@ -5624,26 +5333,6 @@ if (!phyloXml) {
         if (idx === 0) { search0(); } else { search1(); }
     }
 
-    // Distinct, trimmed, sorted values of a specific text field across the tree,
-    // for the value-box autocomplete. Empty for numeric, Any Text, or Molecular
-    // Sequence (near-unique / huge).
-    function distinctFieldValues(field) {
-        if (!_root || !field || field.numeric || field.key === 'ANY' || field.key === 'MS') return [];
-        let set = new Set();
-        forester.preOrderTraversalAll(_root, function (n) {
-            let vals = extractSearchValues(n, field);
-            for (let i = 0; i < vals.length; ++i) {
-                if (vals[i] !== null && vals[i] !== undefined) {
-                    let v = String(vals[i]).trim();
-                    if (v.length > 0) set.add(v);
-                }
-            }
-        });
-        let arr = Array.from(set).sort(function (a, b) { return a.localeCompare(b); });
-        if (arr.length > SEARCH_AUTOCOMPLETE_CAP) arr = arr.slice(0, SEARCH_AUTOCOMPLETE_CAP);
-        return arr;
-    }
-
     // Populate (or detach) the value box's <datalist> so the browser offers
     // type-ahead value suggestions for specific text fields only.
     function updateSearchAutocomplete(idx) {
@@ -5655,7 +5344,7 @@ if (!phyloXml) {
         let enable = !spec.field.numeric && spec.field.key !== 'ANY' && spec.field.key !== 'MS' && spec.mode !== 'regex';
         dl.innerHTML = '';
         if (!enable) { input.removeAttribute('list'); return; }
-        let vals = distinctFieldValues(spec.field);
+        let vals = forester.distinctSearchValues(_root, spec.field, SEARCH_AUTOCOMPLETE_CAP);
         for (let i = 0; i < vals.length; ++i) {
             let opt = document.createElement('option');
             opt.value = vals[i];
