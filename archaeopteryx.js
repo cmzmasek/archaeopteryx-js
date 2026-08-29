@@ -281,11 +281,19 @@ if (!phyloXml) {
     const SEARCH_FIELD_0 = 'sf0';
     const SEARCH_FIELD_1 = 'sf1';
     const SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
-    const SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB = 'so_cto_cb';
-    const SEARCH_OPTIONS_PROPERTIES_CB = 'so_prp_cb';
     const SEARCH_OPTIONS_GROUP = 'search_opts_g';
     const SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
-    const SEARCH_OPTIONS_REGEX_CB = 'so_regex_cb';
+    const SEARCH_FIELD_SELECT_0 = 'sfs0';
+    const SEARCH_FIELD_SELECT_1 = 'sfs1';
+    const SEARCH_MODE_SELECT_0 = 'sms0';
+    const SEARCH_MODE_SELECT_1 = 'sms1';
+    const SEARCH_VALUE2_0 = 'sv2_0';
+    const SEARCH_VALUE2_1 = 'sv2_1';
+    const SEARCH_DATALIST_0 = 'sdl0';
+    const SEARCH_DATALIST_1 = 'sdl1';
+    const SEARCH_AUTOCOMPLETE_CAP = 2000;
+    const SEARCH_COMBINE_SELECT = 'scmb';
+    const SEARCH_COMBINE_ROW = 'scmb_row';
     const SEQUENCE_CB = 'seq_cb';
     const SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
     const TAXONOMY_CB = 'tax_cb';
@@ -491,6 +499,7 @@ if (!phyloXml) {
     let _yScale = null;
     let _radial = null;   // circular-layout params (set per render when _options.circular)
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
+    let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
     let _node_mouseover_div;
@@ -2731,39 +2740,21 @@ if (!phyloXml) {
     function getFoundColor(phynode) {
         if (_selectedNodes.has(phynode)) {
             return _options.selectedColorDefault;
-        } else {
-            if (!_options.searchNegateResult) {
-                if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
-                    return _options.found0and1ColorDefault;
-                } else if (_foundNodes0 && _foundNodes0.has(phynode)) {
-                    return _options.found0ColorDefault;
-                } else if (_foundNodes1 && _foundNodes1.has(phynode)) {
-                    return _options.found1ColorDefault;
-                }
-            } else if (forester.isHasNodeData(phynode)) {
-                if ((_foundNodes0 && !_searchBox0Empty) && (_foundNodes1 && !_searchBox1Empty) && !_foundNodes0.has(phynode) && !_foundNodes1.has(phynode)) {
-                    return _options.found0and1ColorDefault;
-                } else if ((_foundNodes0 && !_searchBox0Empty) && !_foundNodes0.has(phynode)) {
-                    return _options.found0ColorDefault;
-                } else if ((_foundNodes1 && !_searchBox1Empty) && !_foundNodes1.has(phynode)) {
-                    return _options.found1ColorDefault;
-                }
-            }
+        }
+        // _foundNodes0/1 already reflect the Inverse toggle (complement is applied
+        // inside searchWithSpec), so colouring is a plain membership test.
+        if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
+            return _options.found0and1ColorDefault;
+        } else if (_foundNodes0 && _foundNodes0.has(phynode)) {
+            return _options.found0ColorDefault;
+        } else if (_foundNodes1 && _foundNodes1.has(phynode)) {
+            return _options.found1ColorDefault;
         }
         return null;
     }
 
     function isNodeFound(phynode) {
-        if (!_options.searchNegateResult) {
-            if ((_foundNodes0 && _foundNodes0.has(phynode)) || (_foundNodes1 && _foundNodes1.has(phynode))) {
-                return true;
-            }
-        } else if (forester.isHasNodeData(phynode)) {
-            if (((_foundNodes0 && !_searchBox0Empty) && !_foundNodes0.has(phynode)) || ((_foundNodes1 && !_searchBox1Empty) && !_foundNodes1.has(phynode))) {
-                return true
-            }
-        }
-        return false;
+        return (_foundNodes0 && _foundNodes0.has(phynode)) || (_foundNodes1 && _foundNodes1.has(phynode));
     }
 
     function isNodeSelected(phynode) {
@@ -2899,99 +2890,6 @@ if (!phyloXml) {
         }
     };
 
-
-    let makeNodeLabelForSearch = function (phynode) {
-        if (!_options.showExternalLabels && !(phynode.children)) {
-            return null;
-        }
-        if (!_options.showInternalLabels && (phynode.children)) {
-            return null;
-        }
-
-        let l = "";
-        if (_options.showNodeName && phynode.name) {
-            l = append(l, phynode.name);
-        }
-
-        if (_options.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
-            let t = phynode.taxonomies[0];
-            if (_options.showTaxonomyCode) {
-                l = append(l, t.code);
-            }
-            if (_options.showTaxonomyScientificName) {
-                l = append(l, t.scientific_name);
-            }
-            if (_options.showTaxonomyCommonName) {
-                l = append(l, t.common_name);
-            }
-            if (_options.showTaxonomyRank) {
-                l = append(l, t.rank);
-            }
-            if (_options.showTaxonomySynonyms) {
-                if (t.synonyms && t.synonyms.length > 0) {
-                    let syn = t.synonyms;
-                    for (let i = 0; i < syn.length; ++i) {
-                        l = append(l, syn[i]);
-                    }
-                }
-            }
-        }
-        if (_options.showSequence && phynode.sequences && phynode.sequences.length > 0) {
-            let s = phynode.sequences[0];
-            if (_options.showSequenceSymbol) {
-                l = append(l, s.symbol);
-            }
-            if (_options.showSequenceName) {
-                l = append(l, s.name);
-            }
-            if (_options.showSequenceGeneSymbol) {
-                l = append(l, s.gene_name);
-            }
-            if (_options.showSequenceAccession && s.accession && s.accession.value) {
-                l = append(l, s.accession.value);
-            }
-        }
-
-        if (_nodeLabels && phynode.properties) {
-            const props_length = phynode.properties.length;
-            if (props_length > 0) {
-                for (const [key, value] of Object.entries(_nodeLabels)) {
-                    if (value.selected === true && value.propertyRef) {
-                        let prop_text = '';
-                        for (let pm = 0; pm < props_length; ++pm) {
-                            if (phynode.properties[pm].ref === value.propertyRef && phynode.properties[pm].datatype === 'xsd:string' && phynode.properties[pm].applies_to === 'node') {
-                                if (prop_text.length > 0) {
-                                    prop_text += ' | '
-                                }
-                                prop_text += phynode.properties[pm].value;
-                            }
-                        }
-                        l = append(l, prop_text);
-                    }
-                }
-            }
-        }
-
-        if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
-            let d = phynode.distributions;
-            for (let ii = 0; ii < d.length; ++ii) {
-                l = append(l, d[ii].desc);
-            }
-        }
-        console.log(l)
-        return l;
-
-        function append(str1, str2) {
-            if (str2 && str2.length > 0) {
-                if (str1.length > 0) {
-                    str1 += (' | ' + str2);
-                } else {
-                    str1 = str2;
-                }
-            }
-            return str1;
-        }
-    };
 
 
     let makeBranchLengthLabel = function (phynode) {
@@ -3602,6 +3500,7 @@ if (!phyloXml) {
 
     function initialize() {
         initializeGui();
+        populateSearchMenus();
 
         _svgGroup = _baseSvg.append('g');
 
@@ -5249,218 +5148,492 @@ if (!phyloXml) {
 
     }
 
-    function search0() {
-        _foundNodes0.clear();
-        _searchBox0Empty = true;
-        let query = getValue(SEARCH_FIELD_0);
-        if (query && query.length > 0) {
-            let my_query = query.trim();
-            if (my_query.length > 0) {
-                _searchBox0Empty = false;
-                _foundNodes0 = search(my_query);
+    // Both search boxes route through one coordinator so the Combine A & B control
+    // can intersect / union them. search0 / search1 are kept as the names the rest
+    // of the code calls (display toggles, keyup, etc.).
+    function search0() { runSearches(); }
+
+    function search1() { runSearches(); }
+
+    function runSearches() {
+        let specA = currentSearchSpec(0);
+        let specB = currentSearchSpec(1);
+        let aActive = !!(specA.value && specA.value.trim().length > 0);
+        let bActive = !!(specB.value && specB.value.trim().length > 0);
+        let combine = getValue(SEARCH_COMBINE_SELECT);
+        updateCombineVisibility(aActive, bActive);
+
+        _foundNodes0 = new Set();
+        _foundNodes1 = new Set();
+        _searchBox0Empty = !aActive;
+        _searchBox1Empty = !bActive;
+
+        if (combine && combine !== 'independent' && aActive && bActive) {
+            // Combined result lives in found-set 0 only, so colour / count reflect it.
+            let setA = searchWithSpec(specA);
+            let setB = searchWithSpec(specB);
+            let combined = new Set();
+            if (combine === 'and') {
+                setA.forEach(function (n) { if (setB.has(n)) combined.add(n); });
+            } else {
+                setA.forEach(function (n) { combined.add(n); });
+                setB.forEach(function (n) { combined.add(n); });
             }
+            _foundNodes0 = combined;
+            _searchBox0Empty = false;
+            _searchBox1Empty = true;
+        } else {
+            if (aActive) _foundNodes0 = searchWithSpec(specA);
+            if (bActive) _foundNodes1 = searchWithSpec(specB);
         }
         update(null, 0, true);
     }
 
-    function search1() {
-        _foundNodes1.clear();
-        _searchBox1Empty = true;
-        let query = getValue(SEARCH_FIELD_1);
-        if (query && query.length > 0) {
-            let my_query = query.trim();
-            if (my_query.length > 0) {
-                _searchBox1Empty = false;
-                _foundNodes1 = search(my_query);
-            }
-        }
-        update(null, 0, true);
+    // The Combine control only makes sense when both boxes hold a query.
+    function updateCombineVisibility(aActive, bActive) {
+        let row = byId(SEARCH_COMBINE_ROW);
+        if (row) row.style.display = (aActive && bActive) ? '' : 'none';
     }
 
     function resetSearch0() {
-        _foundNodes0.clear();
-        _searchBox0Empty = true;
         setValue(SEARCH_FIELD_0, '');
-        update(null, 0, true);
-        update(null, 0, true);
+        setValue(SEARCH_VALUE2_0, '');
+        runSearches();
     }
 
     function resetSearch1() {
-        _foundNodes1.clear();
-        _searchBox1Empty = true;
         setValue(SEARCH_FIELD_1, '');
-        update(null, 0, true);
-        update(null, 0, true);
+        setValue(SEARCH_VALUE2_1, '');
+        runSearches();
     }
 
 
-    function search(query) {
-        return searchData(query, _root, _options.searchIsCaseSensitive, _options.searchIsPartial, _options.searchUsesRegex, _options.searchProperties);
+    // ===================== Search engine =====================
+    // Field-and-mode search (mirrors the desktop Archaeopteryx redesign): each
+    // search box picks a FIELD (what to search) and a MODE (how to match). The
+    // value box holds only the query; ',' = OR and '+' = AND for text fields.
+
+    const SEARCH_FIELD_LABELS = {
+        NN: 'Node Name',
+        TS: 'Taxonomy Scientific', TN: 'Taxonomy Common', TC: 'Taxonomy Code',
+        TI: 'Taxonomy Identifier', SY: 'Taxonomy Synonym', LN: 'Taxonomy Lineage',
+        SN: 'Seq Name', GN: 'Gene Name', SS: 'Gene Symbol', SA: 'Seq Accession',
+        MS: 'Molecular Sequence', DO: 'Domain', AN: 'Annotation', XR: 'Cross-Reference'
+    };
+    const SEARCH_TEXT_ORDER = ['TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'DO', 'AN', 'XR', 'MS'];
+    // Fields folded into the "Any Text" umbrella (desktop omits MS + DO there).
+    const SEARCH_ANY_TEXT_KEYS = ['NN', 'TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'AN', 'XR'];
+    const SEARCH_NUMERIC_DATATYPES = new Set(['decimal', 'double', 'float', 'integer', 'int', 'long', 'short',
+        'byte', 'unsignedint', 'unsignedlong', 'unsignedshort', 'unsignedbyte', 'nonnegativeinteger',
+        'nonpositiveinteger', 'negativeinteger', 'positiveinteger']);
+
+    function searchTaxa(n) { return (n.taxonomies && n.taxonomies.length) ? n.taxonomies : []; }
+    function searchSeqs(n) { return (n.sequences && n.sequences.length) ? n.sequences : []; }
+
+    const SEARCH_TEXT_EXTRACTORS = {
+        NN: n => (n.name ? [n.name] : []),
+        TS: n => searchTaxa(n).map(t => t.scientific_name).filter(Boolean),
+        TN: n => searchTaxa(n).map(t => t.common_name).filter(Boolean),
+        TC: n => searchTaxa(n).map(t => t.code).filter(Boolean),
+        TI: n => searchTaxa(n).map(t => t.id && t.id.value).filter(Boolean),
+        SY: n => searchTaxa(n).reduce((a, t) => a.concat(t.synonyms || []), []).filter(Boolean),
+        LN: n => searchTaxa(n).reduce((a, t) => a.concat(t.lineage || []), []).filter(Boolean),
+        SN: n => searchSeqs(n).map(s => s.name).filter(Boolean),
+        GN: n => searchSeqs(n).map(s => s.gene_name).filter(Boolean),
+        SS: n => searchSeqs(n).map(s => s.symbol).filter(Boolean),
+        SA: n => searchSeqs(n).map(s => s.accession && s.accession.value).filter(Boolean),
+        MS: n => searchSeqs(n).map(s => s.mol_seq).filter(Boolean),
+        DO: n => searchSeqs(n).reduce((a, s) => a.concat((s.domain_architecture && s.domain_architecture.domains) ? s.domain_architecture.domains.map(d => d.name) : []), []).filter(Boolean),
+        AN: n => searchSeqs(n).reduce((a, s) => a.concat((s.annotations || []).reduce((b, an) => b.concat([an.desc, an.ref]), [])), []).filter(Boolean),
+        XR: n => searchSeqs(n).reduce((a, s) => a.concat((s.cross_references || []).reduce((b, x) => b.concat([x.value, x.source, x.comment]), [])), []).filter(Boolean)
+    };
+
+    function isInternalPropRef(ref) { return !ref || ref.indexOf('aptx:') === 0; }
+
+    function datatypeIsNumeric(dt) {
+        if (!dt) return false;
+        let local = String(dt).toLowerCase();
+        let c = local.lastIndexOf(':');
+        if (c >= 0) local = local.substring(c + 1);
+        return SEARCH_NUMERIC_DATATYPES.has(local);
     }
 
-    function searchData(query, phy, caseSensitive, partial, regex, searchProperties) {
-        let nodes = new Set();
-        if (!phy || !query || query.length < 1) {
-            return nodes;
-        }
-        let my_query = query.trim();
-        if (my_query.length < 1) {
-            return nodes;
-        }
-        my_query = my_query.replace(/\s\s+/g, ' ');
+    function escapeRegExp(str) {
+        return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
 
-        if (!regex) {
-            my_query = my_query.replace(/\+\++/g, '+');
+    // Accept comma as decimal separator when unambiguous (one comma, no period,
+    // and not the US thousands pattern comma+exactly-3-digits). Returns null if
+    // not a finite number.
+    function parseFiniteDouble(s) {
+        if (s === null || s === undefined) return null;
+        s = String(s).trim();
+        if (s.length === 0) return null;
+        if (s.indexOf('.') < 0 && (s.split(',').length - 1) === 1 && !/,\d{3}$/.test(s)) {
+            s = s.replace(',', '.');
         }
+        let n = Number(s);
+        return isFinite(n) ? n : null;
+    }
 
-        let queries = [];
-
-        if (!regex && (my_query.indexOf(",") >= 0)) {
-            queries = my_query.split(",");
-        } else {
-            queries.push(my_query);
+    // Build a predicate value -> bool for one text term. Returns null for an
+    // invalid regex (caller treats that as "never matches").
+    function makeStringTest(term, mode, caseSensitive) {
+        if (mode === 'regex' || mode === 'whole_word') {
+            let src = (mode === 'whole_word')
+                ? ('(?<![\\p{L}\\p{N}])' + escapeRegExp(term) + '(?![\\p{L}\\p{N}])')
+                : term;
+            let re;
+            try { re = new RegExp(src, caseSensitive ? 'u' : 'iu'); }
+            catch (e) { return null; }
+            return s => (s !== null && s !== undefined && re.test(String(s)));
         }
-        let queriesLength = queries.length;
-        let q;
-        for (let i = 0; i < queriesLength; ++i) {
-            q = queries[i];
-            if (q) {
-                q = q.trim();
-                if (q.length > 0) {
-                    forester.preOrderTraversalAll(phy, matcher);
+        let t = caseSensitive ? term : term.toLowerCase();
+        return function (s) {
+            if (s === null || s === undefined) return false;
+            let str = caseSensitive ? String(s) : String(s).toLowerCase();
+            if (mode === 'starts_with') return str.indexOf(t) === 0;
+            if (mode === 'ends_with') return str.length >= t.length && str.lastIndexOf(t) === str.length - t.length;
+            return str.indexOf(t) >= 0; // contains
+        };
+    }
+
+    function numMatches(x, mode, a, lo, hi) {
+        switch (mode) {
+            case 'eq': return Math.abs(x - a) <= 1e-9 * Math.max(1, Math.abs(a));
+            case 'ne': return Math.abs(x - a) > 1e-9 * Math.max(1, Math.abs(a));
+            case 'lt': return x < a;
+            case 'le': return x <= a;
+            case 'gt': return x > a;
+            case 'ge': return x >= a;
+            case 'range': return x >= lo && x <= hi;
+            default: return false;
+        }
+    }
+
+    // Rebuild the list of fields the loaded tree actually offers (populates the
+    // Field dropdowns). Always exposes Any Text + Node Name; adds the text,
+    // numeric and custom-property fields that are present, then structure fields.
+    function collectSearchFields() {
+        _searchFields = [];
+        _searchFields.push({ key: 'ANY', label: 'Any Text', numeric: false });
+        _searchFields.push({ key: 'NN', label: SEARCH_FIELD_LABELS.NN, numeric: false });
+        if (!_root) return;
+
+        let present = {};
+        let hasBL = false, hasConf = false;
+        let propRefs = {}; // ref -> { num, tot, dtNum, dtStr }
+        forester.preOrderTraversalAll(_root, function (n) {
+            for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
+                let key = SEARCH_TEXT_ORDER[k];
+                if (!present[key] && SEARCH_TEXT_EXTRACTORS[key](n).length > 0) present[key] = true;
+            }
+            if (!hasBL && typeof n.branch_length === 'number' && n.branch_length >= 0) hasBL = true;
+            if (!hasConf && n.confidences) {
+                for (let i = 0; i < n.confidences.length; ++i) {
+                    if (typeof n.confidences[i].value === 'number') { hasConf = true; break; }
                 }
             }
-        }
-
-        return nodes;
-
-        function matcher(node) {
-            let mqueries = [];
-            if (!regex && (q.indexOf("+") >= 0)) {
-                mqueries = q.split("+");
-            } else {
-                mqueries.push(q);
-            }
-            let mqueriesLength = mqueries.length;
-            let match = true;
-            for (let i = 0; i < mqueriesLength; ++i) {
-                let mq = mqueries[i];
-                if (mq) {
-                    mq = mq.trim();
-                    if (mq.length > 0) {
-                        let ndf = null;
-                        if ((mq.length > 3) && (mq.indexOf(":") === 2)) {
-                            ndf = makeNDF(mq);
-                            if (ndf) {
-                                mq = mq.substring(3);
-                            }
-                        }
-                        let lmatch = false;
-                        if (ndf === null) {
-                            if (matchme(makeNodeLabelForSearch(node), mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((searchProperties === true) && node.properties && node.properties.length > 0) {
-                                let propertiesLength = node.properties.length;
-                                for (let i = 0; i < propertiesLength; ++i) {
-                                    let p = node.properties[i];
-                                    if (p.value && matchme(p.value, mq, caseSensitive, partial, regex)) {
-                                        lmatch = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            if ((ndf === "NN") && node.name && matchme(node.name, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "TC") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].code, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "TS") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].scientific_name, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "TN") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].common_name, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "SY") && node.taxonomies && node.taxonomies.length > 0 && matchme(node.taxonomies[0].synonym, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "TI") && node.taxonomies && node.taxonomies.length > 0 && node.taxonomies[0].id && matchme(node.taxonomies[0].id.value, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "SN") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].name, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "GN") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].gene_name, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "SS") && node.sequences && node.sequences.length > 0 && matchme(node.sequences[0].symbol, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            } else if ((ndf === "SA") && node.sequences && node.sequences.length > 0 && node.sequences[0].accession && matchme(node.sequences[0].accession.value, mq, caseSensitive, partial, regex)) {
-                                lmatch = true;
-                            }
-                        }
-                        if (!lmatch) {
-                            match = false;
-                            break;
-                        }
-
-                    } // if (mq.length > 0)
-                    else {
-                        match = false;
-                    }
-                } // if (mq)
-                else {
-                    match = false;
+            if (n.properties) {
+                for (let i = 0; i < n.properties.length; ++i) {
+                    let p = n.properties[i];
+                    if (isInternalPropRef(p.ref)) continue;
+                    let r = propRefs[p.ref] || (propRefs[p.ref] = { num: 0, tot: 0, dtNum: false, dtStr: false });
+                    r.tot++;
+                    if (parseFiniteDouble(p.value) !== null) r.num++;
+                    if (p.datatype) { if (datatypeIsNumeric(p.datatype)) r.dtNum = true; else r.dtStr = true; }
                 }
-            } //  for (let i = 0; i < mqueriesLength; ++i)
-            if (match) {
-                nodes.add(node);
             }
-        }
+        });
 
-        function matchme(s, query, caseSensitive, partial, regex) {
-            if (!s || !query) {
+        for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
+            let key = SEARCH_TEXT_ORDER[k];
+            if (present[key]) _searchFields.push({ key: key, label: SEARCH_FIELD_LABELS[key], numeric: false });
+        }
+        if (hasBL) _searchFields.push({ key: 'BL', label: 'Branch Length', numeric: true });
+        if (hasConf) _searchFields.push({ key: 'CO', label: 'Confidence', numeric: true });
+        let refs = Object.keys(propRefs).sort();
+        for (let i = 0; i < refs.length; ++i) {
+            let r = propRefs[refs[i]];
+            let numeric = r.dtStr ? false : (r.dtNum ? true : (r.tot > 0 && r.num === r.tot));
+            _searchFields.push({ key: 'PROP:' + refs[i], label: refs[i], numeric: numeric, propRef: refs[i] });
+        }
+        _searchFields.push({ key: 'CS', label: 'Clade Size (tips)', numeric: true });
+        _searchFields.push({ key: 'NC', label: 'Number of Children', numeric: true });
+        _searchFields.push({ key: 'DE', label: 'Depth from Root', numeric: true });
+        if (hasBL) _searchFields.push({ key: 'DR', label: 'Distance from Root', numeric: true });
+        _searchFields.push({ key: 'NT', label: 'Node Type', numeric: false });
+    }
+
+    // Per-node depth / distance-to-root / clade size, computed on demand for the
+    // structure search fields (cheap O(n), avoids staleness after tree edits).
+    function computeSearchMetrics() {
+        (function pre(n, depth, dist) {
+            n._srchDepth = depth;
+            let d = dist + (typeof n.branch_length === 'number' && n.branch_length > 0 ? n.branch_length : 0);
+            n._srchDist = d;
+            let kids = n.children || n._children;
+            if (kids) for (let i = 0; i < kids.length; ++i) pre(kids[i], depth + 1, d);
+        })(_root, 0, 0);
+        forester.postOrderTraversalAll(_root, function (n) {
+            let kids = n.children || n._children;
+            if (!kids || kids.length === 0) { n._srchClade = 1; return; }
+            let s = 0;
+            for (let i = 0; i < kids.length; ++i) s += kids[i]._srchClade;
+            n._srchClade = s;
+        });
+    }
+
+    // Extract the value(s) of a field from a node (strings for text fields,
+    // numbers for the numeric ones). A field is multi-valued; any value matching
+    // is a match.
+    function extractSearchValues(node, field) {
+        let key = field.key;
+        if (key === 'ANY') {
+            let out = [];
+            for (let i = 0; i < SEARCH_ANY_TEXT_KEYS.length; ++i) {
+                out = out.concat(SEARCH_TEXT_EXTRACTORS[SEARCH_ANY_TEXT_KEYS[i]](node));
+            }
+            if (node.properties) {
+                for (let i = 0; i < node.properties.length; ++i) {
+                    let p = node.properties[i];
+                    if (!isInternalPropRef(p.ref) && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
+                }
+            }
+            return out;
+        }
+        if (key === 'NT') {
+            let kids = node.children || node._children;
+            let isLeaf = !kids || kids.length === 0;
+            return [isLeaf ? 'leaf' : (node === _root ? 'root' : 'internal')];
+        }
+        if (key.indexOf('PROP:') === 0) {
+            let out = [];
+            if (node.properties) {
+                for (let i = 0; i < node.properties.length; ++i) {
+                    let p = node.properties[i];
+                    if (p.ref === field.propRef && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
+                }
+            }
+            return out;
+        }
+        if (SEARCH_TEXT_EXTRACTORS[key]) return SEARCH_TEXT_EXTRACTORS[key](node);
+        switch (key) {
+            case 'BL': return (typeof node.branch_length === 'number') ? [node.branch_length] : [];
+            case 'CO': return node.confidences ? node.confidences.map(c => c.value).filter(v => typeof v === 'number') : [];
+            case 'CS': return [node._srchClade];
+            case 'NC': { let kids = node.children || node._children; return [kids ? kids.length : 0]; }
+            case 'DE': return [node._srchDepth];
+            case 'DR': return [node._srchDist];
+            default: return [];
+        }
+    }
+
+    // Run one search spec { field, mode, value, value2, caseSensitive, inverse }
+    // over the tree and return the Set of matching forester nodes.
+    function searchWithSpec(spec) {
+        let result = new Set();
+        if (!_root || !spec || !spec.field) return result;
+        let field = spec.field;
+        if (field.key === 'CS' || field.key === 'DE' || field.key === 'DR' || field.key === 'NC') computeSearchMetrics();
+
+        let v = (spec.value === null || spec.value === undefined) ? '' : String(spec.value);
+        v = v.replace(/\s+/g, ' ').trim();
+
+        let test = null;
+        if (field.numeric) {
+            let a = parseFiniteDouble(v);
+            let b = (spec.mode === 'range') ? parseFiniteDouble(spec.value2) : null;
+            if (a === null || (spec.mode === 'range' && b === null)) return result; // invalid -> reset
+            let lo = (b !== null) ? Math.min(a, b) : a;
+            let hi = (b !== null) ? Math.max(a, b) : a;
+            test = function (n) {
+                let vals = extractSearchValues(n, field);
+                for (let i = 0; i < vals.length; ++i) {
+                    let x = (typeof vals[i] === 'number') ? vals[i] : parseFiniteDouble(vals[i]);
+                    if (x !== null && numMatches(x, spec.mode, a, lo, hi)) return true;
+                }
                 return false;
+            };
+        } else {
+            if (v.length < 1) return result;
+            let splittable = spec.mode !== 'regex';
+            let orTerms = (splittable && v.indexOf(',') >= 0) ? v.split(/,+/) : [v];
+            let compiled = [];
+            for (let oi = 0; oi < orTerms.length; ++oi) {
+                let ot = orTerms[oi].trim();
+                if (!ot) continue;
+                let ands = (splittable && ot.indexOf('+') > 0) ? ot.split(/\++/) : [ot];
+                let tests = [];
+                let bad = false;
+                for (let ai = 0; ai < ands.length; ++ai) {
+                    let term = ands[ai].trim();
+                    if (!term) continue;
+                    let t = makeStringTest(term, spec.mode, spec.caseSensitive);
+                    if (t === null) { bad = true; break; } // invalid regex
+                    tests.push(t);
+                }
+                if (!bad && tests.length) compiled.push(tests);
             }
-            let my_s = s.trim();
-            let my_query = query.trim();
-            if (!caseSensitive && !regex) {
-                my_s = my_s.toLowerCase();
-                my_query = my_query.toLowerCase();
-            }
-            if (regex) {
-                let re = null;
-                try {
-                    if (caseSensitive) {
-                        re = new RegExp(my_query);
-                    } else {
-                        re = new RegExp(my_query, 'i');
+            if (!compiled.length) return result;
+            test = function (n) {
+                let vals = extractSearchValues(n, field);
+                for (let oi = 0; oi < compiled.length; ++oi) {
+                    let ands = compiled[oi], ok = true;
+                    for (let ai = 0; ai < ands.length; ++ai) {
+                        let hit = false;
+                        for (let vi = 0; vi < vals.length; ++vi) { if (ands[ai](vals[vi])) { hit = true; break; } }
+                        if (!hit) { ok = false; break; }
                     }
-                } catch (err) {
-                    return false;
+                    if (ok) return true;
                 }
-                if (re) {
-                    return (my_s.search(re) > -1);
-                } else {
-                    return false;
-                }
-            } else if (partial) {
-                return (my_s.indexOf(my_query) > -1);
-            } else {
-                let np = new RegExp("(^|\\s)" + escapeRegExp(my_query) + "($|\\s)");
-                if (np) {
-                    return (my_s.search(np) > -1);
-                } else {
-                    return false;
-                }
-            }
+                return false;
+            };
         }
 
-        function escapeRegExp(str) {
-            return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-        }
+        forester.preOrderTraversalAll(_root, function (n) { if (test(n)) result.add(n); });
 
-        function makeNDF(query) {
-            let str = query.substring(0, 2);
-            if (str === "NN" || str === "TC" || str === "TN" || str === "TS" || str === "TI" || str === "SY" || str === "SN" || str === "GN" || str === "SS" || str === "SA" || str === "AN" || str === "XR" || str === "MS") {
-                return str;
-            } else {
-                return null;
-            }
+        if (spec.inverse) {
+            // Complement, scoped to nodes that actually carry this field.
+            let inv = new Set();
+            forester.preOrderTraversalAll(_root, function (n) {
+                if (!result.has(n) && extractSearchValues(n, field).length > 0) inv.add(n);
+            });
+            return inv;
         }
+        return result;
+    }
+
+    // Read a search box's current field / mode / value(s) into a spec.
+    function currentSearchSpec(idx) {
+        let key = getValue(idx === 0 ? SEARCH_FIELD_SELECT_0 : SEARCH_FIELD_SELECT_1);
+        let field = null;
+        for (let i = 0; i < _searchFields.length; ++i) {
+            if (_searchFields[i].key === key) { field = _searchFields[i]; break; }
+        }
+        if (!field) field = _searchFields[0] || { key: 'ANY', label: 'Any Text', numeric: false };
+        let mode = getValue(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
+        if (!mode) mode = field.numeric ? 'eq' : 'contains';
+        return {
+            field: field,
+            mode: mode,
+            value: getValue(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1),
+            value2: getValue(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1),
+            caseSensitive: _options.searchIsCaseSensitive === true,
+            inverse: _options.searchNegateResult === true
+        };
+    }
+
+    const SEARCH_STRING_MODES = [
+        ['contains', 'contains'], ['starts_with', 'starts with'], ['ends_with', 'ends with'],
+        ['whole_word', 'whole word'], ['regex', 'regex']
+    ];
+    const SEARCH_NUMERIC_MODES = [
+        ['eq', 'equals (=)'], ['ne', 'not equal (≠)'], ['lt', 'less than (<)'],
+        ['le', 'at most (≤)'], ['gt', 'greater than (>)'], ['ge', 'at least (≥)'], ['range', 'range']
+    ];
+
+    // Fill both search-field dropdowns from the loaded tree's available fields,
+    // then set up each box's mode menu. Called when a tree is (re)loaded.
+    function populateSearchMenus() {
+        collectSearchFields();
+        [SEARCH_FIELD_SELECT_0, SEARCH_FIELD_SELECT_1].forEach(function (selId) {
+            let sel = byId(selId);
+            if (!sel) return;
+            let prev = sel.value;
+            sel.innerHTML = '';
+            for (let i = 0; i < _searchFields.length; ++i) {
+                let opt = document.createElement('option');
+                opt.value = _searchFields[i].key;
+                opt.textContent = _searchFields[i].label;
+                sel.appendChild(opt);
+            }
+            if (prev && _searchFields.some(f => f.key === prev)) sel.value = prev;
+            else sel.value = 'ANY';
+        });
+        populateSearchModeMenu(0);
+        populateSearchModeMenu(1);
+        updateSearchAutocomplete(0);
+        updateSearchAutocomplete(1);
+    }
+
+    // Fill one box's mode dropdown with the string or numeric modes appropriate to
+    // its selected field, keeping a compatible previous choice, and show/hide the
+    // range's second value input.
+    function populateSearchModeMenu(idx) {
+        let field = currentSearchSpec(idx).field;
+        let sel = byId(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
+        if (!sel) return;
+        let prev = sel.value;
+        let modes = field.numeric ? SEARCH_NUMERIC_MODES : SEARCH_STRING_MODES;
+        sel.innerHTML = '';
+        for (let i = 0; i < modes.length; ++i) {
+            let opt = document.createElement('option');
+            opt.value = modes[i][0];
+            opt.textContent = modes[i][1];
+            sel.appendChild(opt);
+        }
+        sel.value = modes.some(m => m[0] === prev) ? prev : modes[0][0];
+        updateSearchValue2Visibility(idx);
+    }
+
+    function updateSearchValue2Visibility(idx) {
+        let el = byId(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1);
+        if (!el) return;
+        let mode = getValue(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
+        el.style.display = (mode === 'range') ? '' : 'none';
+    }
+
+    function onSearchFieldChanged(idx) {
+        populateSearchModeMenu(idx); // string<->numeric mode set may change
+        updateSearchAutocomplete(idx);
+        if (idx === 0) { search0(); } else { search1(); }
+    }
+
+    function onSearchModeChanged(idx) {
+        updateSearchValue2Visibility(idx);
+        updateSearchAutocomplete(idx); // regex mode turns suggestions off
+        if (idx === 0) { search0(); } else { search1(); }
+    }
+
+    // Distinct, trimmed, sorted values of a specific text field across the tree,
+    // for the value-box autocomplete. Empty for numeric, Any Text, or Molecular
+    // Sequence (near-unique / huge).
+    function distinctFieldValues(field) {
+        if (!_root || !field || field.numeric || field.key === 'ANY' || field.key === 'MS') return [];
+        let set = new Set();
+        forester.preOrderTraversalAll(_root, function (n) {
+            let vals = extractSearchValues(n, field);
+            for (let i = 0; i < vals.length; ++i) {
+                if (vals[i] !== null && vals[i] !== undefined) {
+                    let v = String(vals[i]).trim();
+                    if (v.length > 0) set.add(v);
+                }
+            }
+        });
+        let arr = Array.from(set).sort(function (a, b) { return a.localeCompare(b); });
+        if (arr.length > SEARCH_AUTOCOMPLETE_CAP) arr = arr.slice(0, SEARCH_AUTOCOMPLETE_CAP);
+        return arr;
+    }
+
+    // Populate (or detach) the value box's <datalist> so the browser offers
+    // type-ahead value suggestions for specific text fields only.
+    function updateSearchAutocomplete(idx) {
+        let dlId = idx === 0 ? SEARCH_DATALIST_0 : SEARCH_DATALIST_1;
+        let dl = byId(dlId);
+        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
+        if (!dl || !input) return;
+        let spec = currentSearchSpec(idx);
+        let enable = !spec.field.numeric && spec.field.key !== 'ANY' && spec.field.key !== 'MS' && spec.mode !== 'regex';
+        dl.innerHTML = '';
+        if (!enable) { input.removeAttribute('list'); return; }
+        let vals = distinctFieldValues(spec.field);
+        for (let i = 0; i < vals.length; ++i) {
+            let opt = document.createElement('option');
+            opt.value = vals[i];
+            dl.appendChild(opt);
+        }
+        input.setAttribute('list', dlId);
     }
 
 
@@ -5701,32 +5874,6 @@ if (!phyloXml) {
 
     function searchOptionsCaseSenstiveCbClicked() {
         _options.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
-        search0();
-        search1();
-    }
-
-    function searchOptionsCompleteTermsOnlyCbClicked() {
-        _options.searchIsPartial = !getCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB);
-        if (_options.searchIsPartial === false) {
-            _options.searchUsesRegex = false;
-            setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
-        }
-        search0();
-        search1();
-    }
-
-    function searchOptionsPropertiesCbClicked() {
-        _options.searchProperties = getCheckboxValue(SEARCH_OPTIONS_PROPERTIES_CB);
-        search0();
-        search1();
-    }
-
-    function searchOptionsRegexCbClicked() {
-        _options.searchUsesRegex = getCheckboxValue(SEARCH_OPTIONS_REGEX_CB);
-        if (_options.searchUsesRegex === true) {
-            _options.searchIsPartial = true;
-            setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
-        }
         search0();
         search1();
     }
@@ -6022,6 +6169,11 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-search-row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }'
             + '.aptx-panel .aptx-search-row input[type=text] { flex:1 1 auto; min-width:0; height:26px; }'
             + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; }'
+            + '.aptx-panel .aptx-search-menus { display:flex; flex-direction:column; gap:4px; margin:2px 0 3px; }'
+            + '.aptx-panel .aptx-search-menus select { width:100%; min-width:0; height:26px; font:inherit; }'
+            + '.aptx-panel .aptx-combine { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }'
+            + '.aptx-panel .aptx-combine .aptx-field-label { margin:0; flex:none; }'
+            + '.aptx-panel .aptx-combine select { flex:1 1 auto; min-width:0; height:26px; font:inherit; }'
             // segmented display-mode control (P/A/C) + the Circular toggle pill
             + '.aptx-panel .aptx-modebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }'
             + '.aptx-panel .aptx-segmented { display:inline-flex; border:1px solid var(--p-line-strong); border-radius:7px; overflow:hidden; }'
@@ -6592,6 +6744,20 @@ if (!phyloXml) {
 
         on(SEARCH_FIELD_1, 'keyup', search1);
 
+        on(SEARCH_VALUE2_0, 'keyup', search0);
+
+        on(SEARCH_VALUE2_1, 'keyup', search1);
+
+        on(SEARCH_FIELD_SELECT_0, 'change', function () { onSearchFieldChanged(0); });
+
+        on(SEARCH_FIELD_SELECT_1, 'change', function () { onSearchFieldChanged(1); });
+
+        on(SEARCH_MODE_SELECT_0, 'change', function () { onSearchModeChanged(0); });
+
+        on(SEARCH_MODE_SELECT_1, 'change', function () { onSearchModeChanged(1); });
+
+        on(SEARCH_COMBINE_SELECT, 'change', runSearches);
+
         on(PHYLOGRAM_BUTTON, 'click', toPhylogram);
 
         on(PHYLOGRAM_ALIGNED_BUTTON, 'click', toAlignedPhylogram);
@@ -6941,10 +7107,7 @@ if (!phyloXml) {
         // ---------------
 
         on(SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'click', searchOptionsCaseSenstiveCbClicked);
-        on(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, 'click', searchOptionsCompleteTermsOnlyCbClicked);
-        on(SEARCH_OPTIONS_REGEX_CB, 'click', searchOptionsRegexCbClicked);
         on(SEARCH_OPTIONS_NEGATE_RES_CB, 'click', searchOptionsNegateResultCbClicked);
-        on(SEARCH_OPTIONS_PROPERTIES_CB, 'click', searchOptionsPropertiesCbClicked);
 
         on(RESET_SEARCH_A_BTN, 'mousedown', resetSearch0);
         on(RESET_SEARCH_B_BTN, 'mousedown', resetSearch1);
@@ -7418,36 +7581,53 @@ if (!phyloXml) {
         // Functions to make search-related elements
         // --------------------------------------------------------------
         function makeSearchBoxes() {
-
-            let tooltip = "enter text to search for (use ',' for logical OR and '+' for logical AND," + " use expressions in form of XX:term for typed search -- e.g. NN:node name, TC:taxonomy code," + " TS:taxonomy scientific name, SN:sequence name, GN:gene name, SS:sequence symbol, MS:molecular sequence, ...)";
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
-            h = h.concat('<label class="aptx-field-label" for="' + SEARCH_FIELD_0 + '">Search A</label>');
-            h = h.concat('<div class="aptx-search-row">');
-            h = h.concat(makeTextInput(SEARCH_FIELD_0, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_A_BTN, RESET_SEARCH_A_BTN_TOOLTIP));
-            h = h.concat('</div>');
-            h = h.concat('<label class="aptx-field-label" for="' + SEARCH_FIELD_1 + '">Search B</label>');
-            h = h.concat('<div class="aptx-search-row">');
-            h = h.concat(makeTextInput(SEARCH_FIELD_1, tooltip));
-            h = h.concat(makeButton('R', RESET_SEARCH_B_BTN, RESET_SEARCH_B_BTN_TOOLTIP));
+            h = h.concat(makeSearchBox('Search A', 0));
+            h = h.concat(makeSearchBox('Search B', 1));
+            h = h.concat('<div class="aptx-combine" id="' + SEARCH_COMBINE_ROW + '" style="display:none">');
+            h = h.concat('<label class="aptx-field-label" for="' + SEARCH_COMBINE_SELECT + '">Combine A &amp; B</label>');
+            h = h.concat('<select id="' + SEARCH_COMBINE_SELECT + '" name="' + SEARCH_COMBINE_SELECT + '" title="how to combine the two searches">');
+            h = h.concat('<option value="independent">independent</option>');
+            h = h.concat('<option value="and">A AND B</option>');
+            h = h.concat('<option value="or">A OR B</option>');
+            h = h.concat('</select>');
             h = h.concat('</div>');
             h = h.concat(makeSearchControlsCompact());
             h = h.concat('</fieldset>');
             return h;
         }
 
+        function makeSearchBox(label, idx) {
+            let valTip = "enter text to search for -- ',' means OR, '+' means AND; pick the field and match mode from the menus above";
+            let fsel = idx === 0 ? SEARCH_FIELD_SELECT_0 : SEARCH_FIELD_SELECT_1;
+            let msel = idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1;
+            let val = idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1;
+            let val2 = idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1;
+            let reset = idx === 0 ? RESET_SEARCH_A_BTN : RESET_SEARCH_B_BTN;
+            let resetTip = idx === 0 ? RESET_SEARCH_A_BTN_TOOLTIP : RESET_SEARCH_B_BTN_TOOLTIP;
+            let dl = idx === 0 ? SEARCH_DATALIST_0 : SEARCH_DATALIST_1;
+            let h = "";
+            h = h.concat('<label class="aptx-field-label" for="' + val + '">' + label + '</label>');
+            h = h.concat('<div class="aptx-search-menus">');
+            h = h.concat('<select class="aptx-search-field" name="' + fsel + '" id="' + fsel + '" title="the field to search in"></select>');
+            h = h.concat('<select class="aptx-search-mode" name="' + msel + '" id="' + msel + '" title="how to match"></select>');
+            h = h.concat('</div>');
+            h = h.concat('<div class="aptx-search-row">');
+            h = h.concat('<input class="aptx-search-value" autocomplete="off" title="' + valTip + '" type="text" name="' + val + '" id="' + val + '">');
+            h = h.concat('<input class="aptx-search-value2" style="display:none" title="upper bound of the range" type="text" name="' + val2 + '" id="' + val2 + '">');
+            h = h.concat(makeButton('R', reset, resetTip));
+            h = h.concat('</div>');
+            h = h.concat('<datalist id="' + dl + '"></datalist>');
+            return h;
+        }
+
         function makeSearchControlsCompact() {
             let h = "";
             h = h.concat('<div class="' + SEARCH_OPTIONS_GROUP + '">');
-            h = h.concat(makeCheckboxItem('C', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'to search in a case-sensitive manner'));
-            h = h.concat(makeCheckboxItem('W', SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, ' to match complete terms (separated by spaces or underscores) only (does not apply to regular expression search)'));
-            h = h.concat(makeCheckboxItem('R', SEARCH_OPTIONS_REGEX_CB, 'to search with regular expressions'));
-            if (_settings.showSearchPropertiesButton === true) {
-                h = h.concat(makeCheckboxItem('P', SEARCH_OPTIONS_PROPERTIES_CB, 'to search (hidden) properties'));
-            }
-            h = h.concat(makeCheckboxItem('N', SEARCH_OPTIONS_NEGATE_RES_CB, 'to invert (negate) the search results'));
+            h = h.concat(makeCheckboxItem('Match case', SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'search in a case-sensitive manner'));
+            h = h.concat(makeCheckboxItem('Inverse', SEARCH_OPTIONS_NEGATE_RES_CB, 'select the nodes that do NOT match'));
             h = h.concat('</div>');
             return h;
         }
@@ -7737,18 +7917,9 @@ if (!phyloXml) {
     }
 
     function initializeSearchOptions() {
-        if (_options.searchUsesRegex === true) {
-            _options.searchIsPartial = true;
-        }
-        if (_options.searchIsPartial === false) {
-            _options.searchUsesRegex = false;
-        }
         _options.searchNegateResult = false;
         setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _options.searchIsCaseSensitive);
-        setCheckboxValue(SEARCH_OPTIONS_COMPLETE_TERMS_ONLY_CB, !_options.searchIsPartial);
-        setCheckboxValue(SEARCH_OPTIONS_REGEX_CB, _options.searchUsesRegex);
         setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _options.searchNegateResult);
-        setCheckboxValue(SEARCH_OPTIONS_PROPERTIES_CB, _options.searchProperties);
 
         if (_options.searchAinitialValue) {
             setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
