@@ -75,7 +75,6 @@
 <div id="toolbar">
     <span class="title">🐦 Archaeopteryx.js</span> &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
     <select id="treePicker"></select>
-    <span class="desc" id="treeDesc"></span>
 </div>
 
 <pre id="errbox"></pre>
@@ -121,7 +120,8 @@
     function loadTree() {
         var key = currentTreeKey();
         var tree = TREES[key];
-        document.getElementById('treeDesc').textContent = tree.desc;
+        // The tree's own name/description (when present) is shown in the viewer's
+        // control panel now, so the toolbar no longer repeats a description here.
 
         // No display options: the viewer's intelligent pre-sets configure the
         // display from what each tree actually contains (confidences, taxonomy,

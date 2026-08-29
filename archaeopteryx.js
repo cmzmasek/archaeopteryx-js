@@ -54,7 +54,7 @@
 // https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
 //
 // User documentation:
-// https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8
+// https://cmzmasek.github.io/archaeopteryx-js/
 
 if (!d3) {
     throw new Error("no d3.js");
@@ -5938,7 +5938,9 @@ if (!phyloXml) {
             // Tree name + description: clamped to a few lines with the full text
             // in a tooltip (click toggles the clamp). overflow-wrap:anywhere
             // guarantees even an unbroken string can never widen the panel.
-            + '.aptx-panel .' + TREE_DESC + ' { min-width:0; cursor:pointer; }'
+            + '.aptx-panel .' + TREE_DESC + ' { min-width:0; }'
+            + '.aptx-panel .' + TREE_DESC + '.aptx-clampable { cursor:pointer; }'
+            + '.aptx-panel .' + TREE_DESC + '.aptx-clampable:focus-visible { outline:2px solid var(--p-accent); outline-offset:2px; border-radius:3px; }'
             + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-name { font-weight:600; font-size:11.5px; line-height:1.35; color:var(--p-ink); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }'
             + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-descr { margin-top:3px; font-size:10px; line-height:1.45; color:var(--p-muted); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }'
             + '.aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-name, .aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-descr { display:block; -webkit-line-clamp:unset; overflow:visible; }'
@@ -6267,7 +6269,10 @@ if (!phyloXml) {
 
         el.addEventListener('pointerdown', function (e) {
             let t = e.target;
-            if (t !== el && t.closest('input, select, button, textarea, label, a, option, legend')) {
+            // Don't start a drag on an interactive control, or on the clampable
+            // tree name/description block (so a click there toggles it instead of
+            // moving the panel and then firing the toggle on release).
+            if (t !== el && t.closest('input, select, button, textarea, label, a, option, legend, .' + TREE_DESC + '.aptx-clampable')) {
                 return;
             }
             dragging = true;
@@ -6380,14 +6385,10 @@ if (!phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeProgramDesc());
 
-            if ((_treeData.name && _treeData.name.length > 0) || (_treeData.description && _treeData.description.length > 0)) {
-                c0.insertAdjacentHTML('beforeend',makeTreeDesc());
-                let treeDescEl = c0.querySelector('.' + TREE_DESC);
-                if (treeDescEl) {
-                    treeDescEl.addEventListener('click', function () {
-                        treeDescEl.classList.toggle('aptx-expanded');
-                    });
-                }
+            let treeDescFieldset = makeTreeDesc();
+            if (treeDescFieldset) {
+                c0.appendChild(treeDescFieldset);
+                enableTreeDescExpand(treeDescFieldset.querySelector('.' + TREE_DESC));
             }
 
             c0.insertAdjacentHTML('beforeend',makePhylogramControl());
@@ -7175,28 +7176,76 @@ if (!phyloXml) {
         // long: they are clamped to a few lines (never widening the panel --
         // overflow-wrap breaks even unbroken strings), with the full text in a
         // tooltip; clicking the block toggles the clamp.
+        // The tree's name and description (when present) as a DOM block, or null
+        // when there is nothing to show. Built with textContent -- no HTML string,
+        // so tree-file text needs no escaping here. Both can be very long, so CSS
+        // clamps each to a few lines; the caller (enableTreeDescExpand) adds the
+        // click/keyboard expand affordance only when the text actually overflows.
         function makeTreeDesc() {
             let name = _treeData.name ? String(_treeData.name).trim() : '';
             let desc = _treeData.description ? String(_treeData.description).trim() : '';
-            let tooltipText = '';
+            if (!name && !desc) {
+                return null;
+            }
+            let fieldset = document.createElement('fieldset');
+            let block = document.createElement('div');
+            block.className = TREE_DESC;
+            let tooltip = '';
             if (name) {
-                tooltipText += 'Name: ' + name;
+                let nameEl = document.createElement('div');
+                nameEl.className = 'aptx-tree-name';
+                nameEl.textContent = name;
+                block.appendChild(nameEl);
+                tooltip = 'Name: ' + name;
             }
             if (desc) {
-                tooltipText += (tooltipText ? '\n\n' : '') + 'Description: ' + desc;
+                let descEl = document.createElement('div');
+                descEl.className = 'aptx-tree-descr';
+                descEl.textContent = desc;
+                block.appendChild(descEl);
+                tooltip += (tooltip ? '\n\n' : '') + 'Description: ' + desc;
             }
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<div class="' + TREE_DESC + '" title="' + escapeHtml(tooltipText) + '">');
-            if (name) {
-                h = h.concat('<div class="aptx-tree-name">' + escapeHtml(name) + '</div>');
+            block.title = tooltip;
+            fieldset.appendChild(block);
+            return fieldset;
+        }
+
+        // Make the tree name/description block a keyboard-accessible
+        // expand/collapse control, but ONLY if its text is actually clamped --
+        // otherwise a click would be a no-op with a misleading pointer cursor.
+        // Overflow is measured after layout via requestAnimationFrame.
+        function enableTreeDescExpand(block) {
+            if (!block) {
+                return;
             }
-            if (desc) {
-                h = h.concat('<div class="aptx-tree-descr">' + escapeHtml(desc) + '</div>');
-            }
-            h = h.concat('</div>');
-            h = h.concat('</fieldset>');
-            return h;
+            requestAnimationFrame(function () {
+                let clamped = false;
+                let parts = block.querySelectorAll('.aptx-tree-name, .aptx-tree-descr');
+                for (let i = 0; i < parts.length; ++i) {
+                    if (parts[i].scrollHeight > parts[i].clientHeight + 1) {
+                        clamped = true;
+                        break;
+                    }
+                }
+                if (!clamped) {
+                    return; // text fits: leave it as static, non-interactive text
+                }
+                block.classList.add('aptx-clampable');
+                block.setAttribute('role', 'button');
+                block.setAttribute('tabindex', '0');
+                block.setAttribute('aria-expanded', 'false');
+                let toggle = function () {
+                    let expanded = block.classList.toggle('aptx-expanded');
+                    block.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                };
+                block.addEventListener('click', toggle);
+                block.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        toggle();
+                    }
+                });
+            });
         }
 
         function makePhylogramControl() {
