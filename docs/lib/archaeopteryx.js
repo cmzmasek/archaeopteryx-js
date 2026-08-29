@@ -756,7 +756,7 @@ if (!phyloXml) {
         }
 
         _node_mouseover_div
-            .html(mo_text)
+            .html(escapeHtmlKeepBreaks(mo_text))
             .style('left', (event.pageX) + 'px')
             .style('top', (event.pageY) + 'px');
     }
@@ -5787,6 +5787,13 @@ if (!phyloXml) {
             .replace(/'/g, '&#39;');
     }
 
+    // Like escapeHtml, but keeps the literal <br> line breaks that the node
+    // mouseover tooltip and the node-data dialogs use as their only intended
+    // markup (everything else, including tree-file text, is escaped).
+    function escapeHtmlKeepBreaks(s) {
+        return escapeHtml(s).replace(/&lt;br&gt;/g, '<br>');
+    }
+
     // Null-safe value setter/getter. jQuery's $('#'+id).val(v) silently no-ops
     // on a missing element, and .val() returns undefined; these mirror that so
     // controls that only exist conditionally never throw.
@@ -5809,7 +5816,7 @@ if (!phyloXml) {
         if (sel) {
             let opt = document.createElement('option');
             opt.value = value;
-            opt.innerHTML = html;
+            opt.textContent = html; // option labels are plain text (some tree-derived)
             sel.appendChild(opt);
         }
     }
@@ -6212,7 +6219,9 @@ if (!phyloXml) {
         titlebar.appendChild(closeButton);
 
         let body = document.createElement('div');
-        body.innerHTML = htmlContent;
+        // htmlContent is built from tree-file text with <br> separators; escape
+        // everything else so a crafted name / property value cannot inject markup.
+        body.innerHTML = escapeHtmlKeepBreaks(htmlContent);
         body.style.cssText = 'text-align:left; overflow:auto; padding:4px; height:' + height + 'px;';
 
         dialog.appendChild(titlebar);
