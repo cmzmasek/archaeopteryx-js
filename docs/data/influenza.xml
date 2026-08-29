@@ -3,6 +3,8 @@
 <phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.phyloxml.org"
           xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
     <phylogeny rooted="false">
+        <name>Influenza A virus hemagglutinin (HA) phylogeny with Influenza Research Database annotations</name>
+        <description>Maximum-likelihood phylogeny of influenza A virus hemagglutinin (HA) gene sequences from human, swine, and avian hosts, sampled between 2001 and 2015. Each strain is annotated with Influenza Research Database (IRD) metadata: collection year, country and region, host species, HA and NA subtypes, and H5 clade designation where applicable.</description>
         <flu_type>A</flu_type>
         <DynamicCharNames>
             <Category>

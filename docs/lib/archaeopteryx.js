@@ -73,7 +73,7 @@ if (!phyloXml) {
     "use strict";
 
     const VERSION = '2.3.2';
-    const WEBSITE = 'https://docs.google.com/document/d/16PjoaNeNTWPUNVGcdYukP6Y1G35PFhq39OiIMmD03U8';
+    const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
     const NAME = 'Archaeopteryx.js';
 
     // The 20-colour categorical palettes below were removed from d3 in v5. These
@@ -5776,6 +5776,17 @@ if (!phyloXml) {
         return document.getElementById(id);
     }
 
+    // Escape text (e.g. from the loaded tree file) for safe use in HTML
+    // content and attribute values.
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // Null-safe value setter/getter. jQuery's $('#'+id).val(v) silently no-ops
     // on a missing element, and .val() returns undefined; these mirror that so
     // controls that only exist conditionally never throw.
@@ -5917,7 +5928,13 @@ if (!phyloXml) {
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
-            + '.aptx-panel .' + TREE_DESC + ' { text-align:center; font-weight:600; font-size:11.5px; color:var(--p-ink); padding:2px 0; }'
+            // Tree name + description: clamped to a few lines with the full text
+            // in a tooltip (click toggles the clamp). overflow-wrap:anywhere
+            // guarantees even an unbroken string can never widen the panel.
+            + '.aptx-panel .' + TREE_DESC + ' { min-width:0; cursor:pointer; }'
+            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-name { font-weight:600; font-size:11.5px; line-height:1.35; color:var(--p-ink); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }'
+            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-descr { margin-top:3px; font-size:10px; line-height:1.45; color:var(--p-muted); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }'
+            + '.aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-name, .aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-descr { display:block; -webkit-line-clamp:unset; overflow:visible; }'
             + '.aptx-panel .aptx-panel-title { font-size:12px; }'
             + '.aptx-panel fieldset { border:0; border-top:1px solid var(--p-line); margin:0; padding:9px 12px; min-width:0; }'
             + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 7px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
@@ -6356,6 +6373,12 @@ if (!phyloXml) {
 
             if ((_treeData.name && _treeData.name.length > 0) || (_treeData.description && _treeData.description.length > 0)) {
                 c0.insertAdjacentHTML('beforeend',makeTreeDesc());
+                let treeDescEl = c0.querySelector('.' + TREE_DESC);
+                if (treeDescEl) {
+                    treeDescEl.addEventListener('click', function () {
+                        treeDescEl.classList.toggle('aptx-expanded');
+                    });
+                }
             }
 
             c0.insertAdjacentHTML('beforeend',makePhylogramControl());
@@ -7139,30 +7162,29 @@ if (!phyloXml) {
             return h;
         }
 
+        // The tree's name and description (when present). Both can be very
+        // long: they are clamped to a few lines (never widening the panel --
+        // overflow-wrap breaks even unbroken strings), with the full text in a
+        // tooltip; clicking the block toggles the clamp.
         function makeTreeDesc() {
+            let name = _treeData.name ? String(_treeData.name).trim() : '';
+            let desc = _treeData.description ? String(_treeData.description).trim() : '';
+            let tooltipText = '';
+            if (name) {
+                tooltipText += 'Name: ' + name;
+            }
+            if (desc) {
+                tooltipText += (tooltipText ? '\n\n' : '') + 'Description: ' + desc;
+            }
             let h = "";
             h = h.concat('<fieldset>');
-            // Create the tooltip text
-            let tooltipText = "";
-            if (_treeData.name) {
-                tooltipText += "Name: " + _treeData.name;
+            h = h.concat('<div class="' + TREE_DESC + '" title="' + escapeHtml(tooltipText) + '">');
+            if (name) {
+                h = h.concat('<div class="aptx-tree-name">' + escapeHtml(name) + '</div>');
             }
-            if (_treeData.description) {
-                if (tooltipText) tooltipText += "\n\n";
-                tooltipText += "Description: " + _treeData.description;
+            if (desc) {
+                h = h.concat('<div class="aptx-tree-descr">' + escapeHtml(desc) + '</div>');
             }
-
-            h = h.concat('<div class="' + TREE_DESC + '" title="' + tooltipText + '">');
-            let f = false;
-            if (_treeData.name) {
-                if (_treeData.name.length > 20) {
-                    h = h.concat(_treeData.name.split(/[^A-Za-z0-9_]/)[0].substring(0, 20));
-                } else {
-                    h = h.concat(_treeData.name);
-                }
-                f = true;
-            }
-
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;

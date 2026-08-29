@@ -136,7 +136,7 @@
             controls1: 'controls1'
         };
 
-        fetch(tree.file)
+        fetch(tree.file, {cache: 'no-cache'})
             .then(function (r) {
                 if (!r.ok) {
                     throw new Error('HTTP ' + r.status + ' loading ' + tree.file);
