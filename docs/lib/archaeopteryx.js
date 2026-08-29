@@ -6388,7 +6388,6 @@ if (!phyloXml) {
             let treeDescFieldset = makeTreeDesc();
             if (treeDescFieldset) {
                 c0.appendChild(treeDescFieldset);
-                enableTreeDescExpand(treeDescFieldset.querySelector('.' + TREE_DESC));
             }
 
             c0.insertAdjacentHTML('beforeend',makePhylogramControl());
@@ -6412,6 +6411,12 @@ if (!phyloXml) {
             }
 
             enhancePanel(c0);
+
+            // After enhancePanel has wrapped the sections and the panel has its
+            // final width, wire the tree name/description block's expand control.
+            if (treeDescFieldset) {
+                enableTreeDescExpand(c0.querySelector('.' + TREE_DESC));
+            }
         }
 
         let c1 = byId(_settings.controls1);
@@ -7211,14 +7216,34 @@ if (!phyloXml) {
         }
 
         // Make the tree name/description block a keyboard-accessible
-        // expand/collapse control, but ONLY if its text is actually clamped --
-        // otherwise a click would be a no-op with a misleading pointer cursor.
-        // Overflow is measured after layout via requestAnimationFrame.
+        // expand/collapse control, but only while its text is actually clamped
+        // (otherwise the pointer cursor + click would be a misleading no-op).
+        // Clamp state is re-evaluated whenever the block's size changes -- the
+        // panel only reaches its final width after construction, and it can
+        // change again on window resize -- but never while expanded, since
+        // unclamped text would read as "fits".
         function enableTreeDescExpand(block) {
             if (!block) {
                 return;
             }
-            requestAnimationFrame(function () {
+            let toggle = function () {
+                if (!block.classList.contains('aptx-clampable')) {
+                    return; // nothing is clamped -> not an interactive control
+                }
+                let expanded = block.classList.toggle('aptx-expanded');
+                block.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            };
+            block.addEventListener('click', toggle);
+            block.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    toggle();
+                }
+            });
+            let evaluate = function () {
+                if (block.classList.contains('aptx-expanded')) {
+                    return;
+                }
                 let clamped = false;
                 let parts = block.querySelectorAll('.aptx-tree-name, .aptx-tree-descr');
                 for (let i = 0; i < parts.length; ++i) {
@@ -7227,25 +7252,27 @@ if (!phyloXml) {
                         break;
                     }
                 }
-                if (!clamped) {
-                    return; // text fits: leave it as static, non-interactive text
-                }
-                block.classList.add('aptx-clampable');
-                block.setAttribute('role', 'button');
-                block.setAttribute('tabindex', '0');
-                block.setAttribute('aria-expanded', 'false');
-                let toggle = function () {
-                    let expanded = block.classList.toggle('aptx-expanded');
-                    block.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-                };
-                block.addEventListener('click', toggle);
-                block.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-                        e.preventDefault();
-                        toggle();
+                if (clamped) {
+                    block.classList.add('aptx-clampable');
+                    block.setAttribute('role', 'button');
+                    block.setAttribute('tabindex', '0');
+                    if (!block.hasAttribute('aria-expanded')) {
+                        block.setAttribute('aria-expanded', 'false');
                     }
-                });
-            });
+                } else {
+                    block.classList.remove('aptx-clampable');
+                    block.removeAttribute('role');
+                    block.removeAttribute('tabindex');
+                    block.removeAttribute('aria-expanded');
+                }
+            };
+            // Evaluate now (reading scrollHeight forces the pending layout, so
+            // this is correct as soon as the block has its final width) and again
+            // on every later size change (window resize).
+            evaluate();
+            if (typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(evaluate).observe(block);
+            }
         }
 
         function makePhylogramControl() {
