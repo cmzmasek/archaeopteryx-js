@@ -3580,6 +3580,7 @@ if (!phyloXml) {
             });
         }
 
+        let callerProvidedNodeVisualizations = !!nodeVisualizations;
         if (nodeVisualizations) {
             _nodeVisualizations = nodeVisualizations;
         }
@@ -3614,28 +3615,60 @@ if (!phyloXml) {
                 };
             }
 
-            if (_settings.dynamicallyAddNodeVisualizations === true) {
-                let refsSet = forester.collectPropertyRefs(_treeData, 'node', false);
-                let re = new RegExp('.*:(.+)'); // For extracting the substring after the ':'
-
-                refsSet.forEach(function (value) {
-                    let arr = re.exec(value);
-                    let propertyName = arr[1]; // The substring after the ':'
-
-                    if ((!_nodeVisualizations.hasOwnProperty(propertyName)) && (!_settings.propertiesToIgnoreForNodeVisualization || (_settings.propertiesToIgnoreForNodeVisualization.indexOf(propertyName) < 0))) {
-
-                        _nodeVisualizations[propertyName] = {
-                            label: propertyName,
-                            description: 'the ' + propertyName,
+            // Intelligent pre-sets: when the caller provides no node
+            // visualizations, generate sensible ones from the tree's custom
+            // properties (dynamicallyAddNodeVisualizations forces this even
+            // when some were provided). A numeric property gets a continuous
+            // color ramp plus a size mapping; a categorical one gets a palette
+            // sized to its number of distinct values, and shapes when there
+            // are few enough of them. Classification (numeric vs categorical,
+            // distinct values) reuses the tested per-tree field discovery.
+            if (_settings.dynamicallyAddNodeVisualizations === true || !callerProvidedNodeVisualizations) {
+                if (_nodeVisualizations == null) {
+                    _nodeVisualizations = {};
+                }
+                forester.availableSearchFields(_treeData).forEach(function (f) {
+                    if (!f.propRef) {
+                        return; // only custom properties get auto visualizations
+                    }
+                    let ref = f.propRef;
+                    let name = ref.indexOf(':') >= 0 ? ref.substring(ref.indexOf(':') + 1) : ref;
+                    if (_nodeVisualizations.hasOwnProperty(name)) {
+                        return;
+                    }
+                    if (_settings.propertiesToIgnoreForNodeVisualization && _settings.propertiesToIgnoreForNodeVisualization.indexOf(name) >= 0) {
+                        return;
+                    }
+                    let vis;
+                    if (f.numeric) {
+                        vis = {
+                            label: name,
+                            description: 'the ' + name,
                             field: null,
-                            cladeRef: value,
+                            cladeRef: ref,
                             regex: false,
-                            shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'],
-                            colors: 'category50',
+                            shapes: null,
+                            colors: ['#440154', '#21908C', '#FDE725'], // viridis ramp (CVD-safe)
+                            sizes: [12, 42]
+                        };
+                    } else {
+                        let distinct = forester.distinctSearchValues(_treeData, f).length;
+                        if (distinct < 1 || distinct > 50) {
+                            return; // empty, or unique-ID-like: no useful visualization
+                        }
+                        vis = {
+                            label: name,
+                            description: 'the ' + name,
+                            field: null,
+                            cladeRef: ref,
+                            regex: false,
+                            shapes: distinct <= 6 ? ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'] : null,
+                            colors: distinct <= 10 ? 'category10' : (distinct <= 20 ? 'category20' : 'category50'),
                             sizes: null
                         };
-                        console.log(MESSAGE + 'Dynamically added property: ' + value + ' as ' + propertyName);
                     }
+                    _nodeVisualizations[name] = vis;
+                    console.log(MESSAGE + 'Auto node visualization for property ' + ref + ' (' + (f.numeric ? 'numeric' : 'categorical') + ')');
                 });
             }
 
