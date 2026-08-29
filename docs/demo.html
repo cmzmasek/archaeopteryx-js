@@ -123,16 +123,10 @@
         var tree = TREES[key];
         document.getElementById('treeDesc').textContent = tree.desc;
 
-        var options = {
-            phylogram: true,
-            showExternalLabels: true,
-            showInternalLabels: false,
-            showBranchLengthValues: false,
-            showConfidenceValues: true,
-            showNodeName: true,
-            showTaxonomy: true,
-            showSequence: true
-        };
+        // No display options: the viewer's intelligent pre-sets configure the
+        // display from what each tree actually contains (confidences, taxonomy,
+        // sequences, events, ...).
+        var options = {};
         var settings = {
             enableDynamicSizing: true,
             enableDownloads: true,

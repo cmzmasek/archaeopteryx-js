@@ -3025,6 +3025,17 @@ if (!phyloXml) {
     function initializeOptions(options) {
         _options = options ? options : {};
 
+        // Intelligent pre-sets: any display option the caller does NOT set
+        // explicitly is derived from what the loaded tree actually contains
+        // (an explicit caller option always wins). Field presence comes from
+        // the same per-tree discovery that drives the search Field menu.
+        let presentFields = new Set();
+        if (_treeData) {
+            forester.availableSearchFields(_treeData).forEach(function (f) {
+                presentFields.add(f.key);
+            });
+        }
+
         if (_basicTreeProperties.branchLengths) {
             if (_options.phylogram === undefined) {
                 _options.phylogram = true;
@@ -3061,22 +3072,25 @@ if (!phyloXml) {
             _options.showBranchLengthValues = false;
         }
         if (_options.showConfidenceValues === undefined) {
-            _options.showConfidenceValues = false;
+            // show support values whenever the tree has them
+            _options.showConfidenceValues = _basicTreeProperties.confidences === true;
         }
         if (_options.showNodeName === undefined) {
             _options.showNodeName = true;
         }
         if (_options.showTaxonomy === undefined) {
-            _options.showTaxonomy = false;
+            _options.showTaxonomy = _basicTreeProperties.taxonomies === true;
         }
         if (_options.showTaxonomyCode === undefined) {
-            _options.showTaxonomyCode = false;
+            _options.showTaxonomyCode = presentFields.has('TC');
         }
         if (_options.showTaxonomyScientificName === undefined) {
-            _options.showTaxonomyScientificName = false;
+            _options.showTaxonomyScientificName = presentFields.has('TS');
         }
         if (_options.showTaxonomyCommonName === undefined) {
-            _options.showTaxonomyCommonName = false;
+            // the scientific name is the primary label; fall back to the
+            // common name only when there is no scientific name to show
+            _options.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
         }
         if (_options.showTaxonomyRank === undefined) {
             _options.showTaxonomyRank = false;
@@ -3085,19 +3099,21 @@ if (!phyloXml) {
             _options.showTaxonomySynonyms = false;
         }
         if (_options.showSequence === undefined) {
-            _options.showSequence = false;
+            _options.showSequence = _basicTreeProperties.sequences === true;
         }
-        if (_options.showSequenceSymbol === undefined) {
-            _options.showSequenceSymbol = false;
-        }
+        // one good sequence identifier, not all of them: prefer the sequence
+        // name, then the gene name, then the symbol, then the accession
         if (_options.showSequenceName === undefined) {
-            _options.showSequenceName = false;
+            _options.showSequenceName = presentFields.has('SN');
         }
         if (_options.showSequenceGeneSymbol === undefined) {
-            _options.showSequenceGeneSymbol = false;
+            _options.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
+        }
+        if (_options.showSequenceSymbol === undefined) {
+            _options.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
         }
         if (_options.showSequenceAccession === undefined) {
-            _options.showSequenceAccession = false;
+            _options.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN') && !presentFields.has('GN') && !presentFields.has('SS');
         }
         if (_options.showDistributions === undefined) {
             _options.showDistributions = false;
@@ -3182,10 +3198,12 @@ if (!phyloXml) {
             _options.alignPhylogram = false;
         }
         if (_options.showNodeEvents === undefined) {
-            _options.showNodeEvents = false;
+            // show duplication / speciation markers whenever the tree has events
+            _options.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         }
         if (_options.showBranchEvents === undefined) {
-            _options.showBranchEvents = false;
+            // show branch events (e.g. mutations) whenever the tree has them
+            _options.showBranchEvents = _basicTreeProperties.branchEvents === true;
         }
         if (_options.showNodeVisualizations === undefined) {
             _options.showNodeVisualizations = false;
