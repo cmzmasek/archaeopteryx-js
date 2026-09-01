@@ -230,15 +230,18 @@ Both are optional; `archaeopteryx.launch('#phylogram1', tree, {}, {})` works.
 
 ## Intelligent pre-sets
 
-Most of what used to be configured is now read off the tree. Anything you do
-not set explicitly is derived from what the loaded tree actually contains —
-a tree with taxonomies shows taxonomies and offers a Taxonomy control, a tree
-without them shows neither. An option you *do* set always wins.
+Almost everything that used to be configured is now read off the tree: a tree
+with taxonomies shows taxonomies and offers a Taxonomy control, a tree without
+them shows neither; a tree whose branches mostly carry lengths is drawn to
+scale, one whose branches mostly do not is drawn as a cladogram.
 
-This means **the shortest configuration is usually the best one**. Passing a
-full dictionary copied from an older version will mostly restate what
-Archaeopteryx.js would have worked out on its own, and risks overriding a
-sensible per-tree choice with a fixed one.
+So **the best configuration is usually an empty one**. Six options remain, and
+they are the ones no tree can answer for you: which layout, what to prefill the
+search boxes with, where the legend sits, and how big a PNG to export.
+
+Everything else is either derived, or a control the user can change once the
+tree is on screen. Those controls still have defaults, and the defaults are
+chosen per tree — they are simply no longer yours to set at launch.
 
 ## Removed names throw
 
@@ -255,65 +258,56 @@ upgrading, run once and fix whatever it names.
 
 ## Options
 
+Almost nothing is left here on purpose. What a tree should look like is now
+read off the tree itself, so the six options below are the ones no tree can
+answer for you.
+
 ### Still used
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `phylogram` | `true` if the tree has branch lengths | Draw branch lengths to scale. Forced `false` for a tree without them. |
-| `alignPhylogram` | `false` | Line the external nodes up at the right edge. |
 | `circular` | `false` | Circular layout instead of rectangular. |
-| `treeName` | the tree's own name | Used in the panel header and as the stem of every download filename. Non-word characters become `_`. |
-| `fontSize` | `8` | One size for **every** label, as on the desktop. Clamped to a sane range. |
-| `defaultFont` | `['Arial', 'Helvetica', 'Times']` | Label font stack. |
-| `labelColorDefault` | `'#202020'` | Label colour. |
-| `branchColorDefault` | `'#909090'` | Branch colour. |
-| `branchWidthDefault` | `1` | Branch width. |
-| `backgroundColorDefault` | `'#f0f0f0'` | Background behind the tree. |
-| `backgroundColorForPrintExportDefault` | `'#ffffff'` | Background used for PNG/SVG export. |
-| `nodeSizeDefault` | `3` | Node shape size. |
-| `nodeLabelGap` | `10` | Gap between a node and its label. |
-| `showNodeName` | `true` | Label with the node name. |
-| `showTaxonomy` | tree has taxonomies | Label with taxonomy. *Which* taxonomy field is chosen from the tree. |
-| `showSequence` | tree has sequences | Label with sequence data. *Which* field is chosen from the tree. |
-| `showConfidenceValues` | tree has confidences | Show support values. |
-| `showBranchLengthValues` | `false` | Show branch lengths as text. |
-| `showInternalLabels` | `false` | Label internal nodes. |
-| `showExternalLabels` | `true` | Label external nodes. |
-| `showNodeEvents` | tree has node events | Duplication / speciation markers. |
-| `showBranchEvents` | tree has branch events | Branch events, e.g. mutations. |
-| `showDistributions` | `false` | Show distribution data. |
-| `showBranchColors` | `true` | Honour branch colours stored in the tree. |
-| `shortenNodeNames` | `false` | Truncate long node names. |
-| `dynahide` | `true` | Auto-hide labels that would collide. |
-| `minConfidenceValueToShow` | `null` | Hide support values below this. |
-| `minBranchLengthValueToShow` | `null` | Hide branch lengths below this. |
-| `showNodeVisualizations` | `false` | Start with node visualizations on. |
-| `showBranchVisualizations` | `false` | Start with branch visualizations on. |
-| `nodeVisualizationsOpacity` | `1` | Opacity of node visualizations. |
-| `initialNodeFillColorVisualization` | none | Name of the node-fill visualization to start with. |
-| `initialLabelColorVisualization` | none | Name of the label-colour visualization to start with. |
-| `visualizationsLegendXpos` | `220` | Legend position, x. |
-| `visualizationsLegendYpos` | `30` | Legend position, y. |
-| `visualizationsLegendOrientation` | `vertical` | Legend orientation. |
-| `decimalsForLinearRangeMeanValue` | `0` | Decimals shown for a linear-range mean. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
-| `searchIsCaseSensitive` | `false` | Initial state of Match case. |
+| `visualizationsLegendXpos` | `220` | Legend position, x. |
+| `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `pngExportScale` | `4` | PNG export resolution multiplier. |
+
+### What replaced the rest
+
+A few of these are worth spelling out, because they are decisions rather than
+constants:
+
+* **Phylogram or cladogram** — the tree is drawn to scale when **more than half
+  its branches carry a positive length**. A tree where a handful of branches
+  have a length and the rest do not is not a phylogram with gaps; it is a
+  cladogram, and is now drawn as one.
+* **Branch width** — `2` for a tree of 50 tips or fewer, `1` above that.
+  Hairlines suit a crowded tree; on a dozen branches they just look faint.
+* **Labels** — node names, taxonomy, sequences, confidences and events are each
+  shown when the tree actually contains them.
+* **Short names** — on from the start when the tree has names longer than 18
+  characters, off otherwise. The checkbox is always there either way.
+* **Font** — one size (11) for every label, in whichever sans-serif the
+  reader's own system renders best.
 
 ### Removed — passing these throws
 
 | Option | Why, and what to do instead |
 | --- | --- |
-| `externalNodeFontSize` | All labels share one size now — use `fontSize`. |
-| `internalNodeFontSize` | All labels share one size now — use `fontSize`. |
-| `branchDataFontSize` | All labels share one size now — use `fontSize`. |
 | `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `showInternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `searchIsPartial` | Each search box picks its own match mode (contains / starts with / ends with / whole word / regex). |
-| `searchUsesRegex` | Choose the "regex" match mode in the search box instead. |
+| `searchUsesRegex` | Choose the `regex` match mode in the search box instead. |
 | `searchProperties` | Choose the property in the search box's field menu instead. |
-| `searchNegateResult` | This is the state of the Inverse checkbox, not an input. |
+| `externalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `internalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `branchDataFontSize` | All labels share one size now -- use `fontSize`. |
+| `nameForNhDownload` | Download names follow `treeName`. |
+| `nameForPhyloXmlDownload` | Download names follow `treeName`. |
+| `nameForPngDownload` | Download names follow `treeName`. |
+| `nameForSvgDownload` | Download names follow `treeName`. |
+| `nameForFastaDownload` | Download names follow `treeName`. |
 | `showTaxonomyCode` | Taxonomy labelling follows what the tree contains. |
 | `showTaxonomyScientificName` | Taxonomy labelling follows what the tree contains. |
 | `showTaxonomyCommonName` | Taxonomy labelling follows what the tree contains. |
@@ -323,11 +317,6 @@ upgrading, run once and fix whatever it names.
 | `showSequenceGeneSymbol` | Sequence labelling follows what the tree contains. |
 | `showSequenceSymbol` | Sequence labelling follows what the tree contains. |
 | `showSequenceAccession` | Sequence labelling follows what the tree contains. |
-| `nameForNhDownload` | Download names follow `treeName`. |
-| `nameForPhyloXmlDownload` | Download names follow `treeName`. |
-| `nameForPngDownload` | Download names follow `treeName`. |
-| `nameForSvgDownload` | Download names follow `treeName`. |
-| `nameForFastaDownload` | Download names follow `treeName`. |
 | `found0ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
 | `found1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
 | `found0and1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
@@ -335,8 +324,44 @@ upgrading, run once and fix whatever it names.
 | `collapsedLabelLength` | The collapse feature was removed. |
 | `initialCollapseDepth` | The collapse feature was removed. |
 | `initialCollapseFeature` | The collapse feature was removed. |
-| `visualizationsLegendXposOrig` | Internal bookkeeping — set `visualizationsLegendXpos`. |
-| `visualizationsLegendYposOrig` | Internal bookkeeping — set `visualizationsLegendYpos`. |
+| `searchNegateResult` | This is the state of the Inverse checkbox, not an input. |
+| `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
+| `visualizationsLegendYposOrig` | Internal bookkeeping; set visualizationsLegendYpos. |
+| `phylogram` | The tree is drawn to scale when most of its branches have a length. |
+| `alignPhylogram` | Aligning the tips is a control, not a launch option. |
+| `treeName` | The name comes from the tree file. |
+| `fontSize` | One default size for every label; the font-size slider changes it. |
+| `defaultFont` | Labels use the sans-serif the reader's own system renders best. |
+| `labelColorDefault` | The default label colour is fixed. |
+| `branchColorDefault` | The default branch colour is fixed. |
+| `branchWidthDefault` | Branch width follows the size of the tree. |
+| `backgroundColorDefault` | The background is fixed. |
+| `backgroundColorForPrintExportDefault` | The export background is fixed. |
+| `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |
+| `nodeLabelGap` | The label gap is fixed. |
+| `showNodeName` | Shown when the tree has node names. |
+| `showTaxonomy` | Shown when the tree has taxonomies. |
+| `showSequence` | Shown when the tree has sequences. |
+| `showConfidenceValues` | Shown when the tree has confidences. |
+| `showNodeEvents` | Shown when the tree has node events. |
+| `showBranchEvents` | Shown when the tree has branch events. |
+| `showBranchLengthValues` | Off by default; use the Branch Length checkbox. |
+| `showInternalLabels` | Off by default; use the Int. Labels checkbox. |
+| `showExternalLabels` | On by default; use the Ext. Labels checkbox. |
+| `showDistributions` | Off by default. |
+| `showBranchColors` | On by default. |
+| `shortenNodeNames` | On by default when the tree has long node names; use the Short Names checkbox. |
+| `dynahide` | On by default; use the Auto-hide Labels checkbox. |
+| `minConfidenceValueToShow` | No longer configurable. |
+| `minBranchLengthValueToShow` | No longer configurable. |
+| `showNodeVisualizations` | Off by default; use the Node Vis checkbox. |
+| `showBranchVisualizations` | Off by default; use the Branch Vis checkbox. |
+| `nodeVisualizationsOpacity` | No longer configurable. |
+| `initialNodeFillColorVisualization` | Choose the visualization in the Visualizations panel. |
+| `initialLabelColorVisualization` | Choose the visualization in the Visualizations panel. |
+| `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
+| `decimalsForLinearRangeMeanValue` | No longer configurable. |
+| `searchIsCaseSensitive` | Off by default; use the Match case checkbox. |
 
 ## Settings
 

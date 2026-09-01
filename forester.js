@@ -884,12 +884,18 @@
         properties.alignedMolSeqs = true;
         properties.maxMolSeqLength = 0;
         properties.externalNodesCount = 0;
+        properties.nodeCount = 0;
+        // How many of the tree's branches actually carry a positive length.
+        // Whether a tree is worth drawing to scale is a question about the
+        // majority of its branches, not about whether any branch has a length.
+        properties.branchesWithPositiveLength = 0;
         properties.molSeqResiduesPerPosition = null;
         properties.averageBranchLength = 0;
         let bl_counter = 0;
         let bl_sum = 0;
         let molSeqs = [];
         forester.preOrderTraversalAll(tree, function (n) {
+            properties.nodeCount += 1;
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.name.length > properties.longestNodeName) {
@@ -975,6 +981,8 @@
                 properties.molSeqResiduesPerPosition.push(myArray);
             }
         }
+
+        properties.branchesWithPositiveLength = bl_counter;
 
         if (bl_counter > 0) {
             properties.averageBranchLength = bl_sum / bl_counter;

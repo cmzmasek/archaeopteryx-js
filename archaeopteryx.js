@@ -109,8 +109,11 @@ if (!phyloXml) {
     const BRANCH_COLOR_DEFAULT = '#909090';
     const BRANCH_WIDTH_DEFAULT = 1;
     const DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
-    const FONT_SIZE_DEFAULT = 8; // one size for every label, as on the desktop
-    const FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
+    const FONT_SIZE_DEFAULT = 11; // one size for every label, as on the desktop
+    // Whatever sans-serif the reader's own system renders best: system-ui first,
+    // then the named faces for platforms that do not honour it, then the generic.
+    const FONT_DEFAULTS = ['system-ui', '-apple-system', 'Segoe UI', 'Roboto',
+        'Helvetica Neue', 'Arial', 'sans-serif'];
     // Okabe-Ito color-blind-safe palette for search / selection highlights.
     const FOUND0_COLOR_DEFAULT = '#0072B2';      // Search A  — blue
     const FOUND1_COLOR_DEFAULT = '#D55E00';      // Search B  — vermillion
@@ -194,7 +197,12 @@ if (!phyloXml) {
     const RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
     // Auto-hide Labels is only offered once a tree is dense enough for labels
     // to actually collide.
-    const DYNAHIDE_MIN_EXT_NODES = 20;
+    // A tree small enough to draw boldly. Thin hairlines suit a crowded tree;
+    // on a dozen branches they just look faint.
+    const SMALL_TREE_MAX_EXT_NODES = 50;
+    const BRANCH_WIDTH_SMALL_TREE = 2;
+    // Branch lengths are drawn to scale only when most branches have one.
+    const PHYLOGRAM_MIN_BRANCH_FRACTION = 0.5;
     const SHORTEN_NAME_MAX_LENGTH = 18;
     const PANEL_STYLE_ID = 'aptx-panel-styles';
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
@@ -3467,7 +3475,43 @@ if (!phyloXml) {
         // never were inputs: runtime state that happens to live in the same bag
         searchNegateResult: 'this is the state of the Inverse checkbox, not an input',
         visualizationsLegendXposOrig: 'internal bookkeeping; set visualizationsLegendXpos',
-        visualizationsLegendYposOrig: 'internal bookkeeping; set visualizationsLegendYpos'
+        visualizationsLegendYposOrig: 'internal bookkeeping; set visualizationsLegendYpos',
+        // Decided from the tree, or simply fixed, as of the 2026 modernization.
+        phylogram: 'the tree is drawn to scale when most of its branches have a length',
+        alignPhylogram: 'aligning the tips is a control, not a launch option',
+        treeName: 'the name comes from the tree file',
+        fontSize: 'one default size for every label; the font-size slider changes it',
+        defaultFont: 'labels use the sans-serif the reader\'s own system renders best',
+        labelColorDefault: 'the default label colour is fixed',
+        branchColorDefault: 'the default branch colour is fixed',
+        branchWidthDefault: 'branch width follows the size of the tree',
+        backgroundColorDefault: 'the background is fixed',
+        backgroundColorForPrintExportDefault: 'the export background is fixed',
+        nodeSizeDefault: 'node size is fixed; the Node size slider changes it',
+        nodeLabelGap: 'the label gap is fixed',
+        showNodeName: 'shown when the tree has node names',
+        showTaxonomy: 'shown when the tree has taxonomies',
+        showSequence: 'shown when the tree has sequences',
+        showConfidenceValues: 'shown when the tree has confidences',
+        showNodeEvents: 'shown when the tree has node events',
+        showBranchEvents: 'shown when the tree has branch events',
+        showBranchLengthValues: 'off by default; use the Branch Length checkbox',
+        showInternalLabels: 'off by default; use the Int. Labels checkbox',
+        showExternalLabels: 'on by default; use the Ext. Labels checkbox',
+        showDistributions: 'off by default',
+        showBranchColors: 'on by default',
+        shortenNodeNames: 'on by default when the tree has long node names; use the Short Names checkbox',
+        dynahide: 'on by default; use the Auto-hide Labels checkbox',
+        minConfidenceValueToShow: 'no longer configurable',
+        minBranchLengthValueToShow: 'no longer configurable',
+        showNodeVisualizations: 'off by default; use the Node Vis checkbox',
+        showBranchVisualizations: 'off by default; use the Branch Vis checkbox',
+        nodeVisualizationsOpacity: 'no longer configurable',
+        initialNodeFillColorVisualization: 'choose the visualization in the Visualizations panel',
+        initialLabelColorVisualization: 'choose the visualization in the Visualizations panel',
+        visualizationsLegendOrientation: 'the legend orientation is fixed; the legend has its own control',
+        decimalsForLinearRangeMeanValue: 'no longer configurable',
+        searchIsCaseSensitive: 'off by default; use the Match case checkbox'
     };
     const REMOVED_SETTINGS = {
         showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
@@ -3526,26 +3570,18 @@ if (!phyloXml) {
             });
         }
 
-        if (_basicTreeProperties.branchLengths) {
-            if (_options.phylogram === undefined) {
-                _options.phylogram = true;
-            }
-            if (_options.alignPhylogram === undefined) {
-                _options.alignPhylogram = false;
-            }
-        } else {
-            _options.phylogram = false;
-            _options.alignPhylogram = false;
-        }
-        if (_options.phylogram === false) {
-            _options.alignPhylogram = false;
-        }
+        // Branch lengths are worth drawing to scale only when MOST branches
+        // carry one. A tree where a handful of branches have a length and the
+        // rest do not is not a phylogram with gaps -- it is a cladogram.
+        let branchCount = _basicTreeProperties.nodeCount - 1;
+        _options.phylogram = branchCount > 0
+            && (_basicTreeProperties.branchesWithPositiveLength / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
+        _options.alignPhylogram = false;
         if (_options.circular === undefined) {
             _options.circular = false;
         }
-        if (_options.dynahide === undefined) {
-            _options.dynahide = true;
-        }
+        _options.dynahide = true;
+
         if (_options.searchAinitialValue && (typeof _options.searchAinitialValue === 'string' || _options.searchAinitialValue instanceof String) && _options.searchAinitialValue.trim().length > 0) {
             _options.searchAinitialValue = _options.searchAinitialValue.trim();
             console.log(MESSAGE + 'Setting initial search value for A to: ' + _options.searchAinitialValue);
@@ -3558,19 +3594,25 @@ if (!phyloXml) {
         } else {
             _options.searchBinitialValue = null;
         }
-        if (_options.showBranchLengthValues === undefined) {
-            _options.showBranchLengthValues = false;
-        }
-        if (_options.showConfidenceValues === undefined) {
-            // show support values whenever the tree has them
-            _options.showConfidenceValues = _basicTreeProperties.confidences === true;
-        }
-        if (_options.showNodeName === undefined) {
-            _options.showNodeName = true;
-        }
-        if (_options.showTaxonomy === undefined) {
-            _options.showTaxonomy = _basicTreeProperties.taxonomies === true;
-        }
+        _options.searchIsCaseSensitive = false;
+        _options.searchNegateResult = false;
+
+        // What to label with is read off the tree: show what it actually has.
+        _options.showNodeName = _basicTreeProperties.nodeNames === true;
+        _options.showTaxonomy = _basicTreeProperties.taxonomies === true;
+        _options.showSequence = _basicTreeProperties.sequences === true;
+        _options.showConfidenceValues = _basicTreeProperties.confidences === true;
+        _options.showNodeEvents = _basicTreeProperties.nodeEvents === true;
+        _options.showBranchEvents = _basicTreeProperties.branchEvents === true;
+        _options.showBranchLengthValues = false;
+        _options.showDistributions = false;
+        _options.showInternalLabels = false;
+        _options.showExternalLabels = true;
+        _options.showBranchColors = true;
+        // Long names are shortened from the start; the checkbox is always there
+        // to turn that off.
+        _options.shortenNodeNames = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
+
         // Which taxonomy fields to label with is decided from the tree, not
         // configured: show the scientific name and code when present, and fall
         // back to the common name only when there is no scientific name.
@@ -3579,9 +3621,6 @@ if (!phyloXml) {
         _options.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
         _options.showTaxonomyRank = false;
         _options.showTaxonomySynonyms = false;
-        if (_options.showSequence === undefined) {
-            _options.showSequence = _basicTreeProperties.sequences === true;
-        }
         // Likewise ONE good sequence identifier rather than all of them, in
         // order of preference: sequence name, gene name, symbol, accession.
         _options.showSequenceName = presentFields.has('SN');
@@ -3589,30 +3628,15 @@ if (!phyloXml) {
         _options.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
         _options.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
             && !presentFields.has('GN') && !presentFields.has('SS');
-        if (_options.showDistributions === undefined) {
-            _options.showDistributions = false;
-        }
-        if (_options.showInternalLabels === undefined) {
-            _options.showInternalLabels = false;
-        }
-        if (_options.showExternalLabels === undefined) {
-            _options.showExternalLabels = true;
-        }
-        if (!_options.branchWidthDefault) {
-            _options.branchWidthDefault = BRANCH_WIDTH_DEFAULT;
-        }
-        if (!_options.branchColorDefault) {
-            _options.branchColorDefault = BRANCH_COLOR_DEFAULT;
-        }
-        if (!_options.labelColorDefault) {
-            _options.labelColorDefault = LABEL_COLOR_DEFAULT;
-        }
-        if (!_options.backgroundColorDefault) {
-            _options.backgroundColorDefault = BACKGROUND_COLOR_DEFAULT;
-        }
-        if (!_options.backgroundColorForPrintExportDefault) {
-            _options.backgroundColorForPrintExportDefault = BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
-        }
+
+        // A small tree is drawn with a heavier stroke; hairlines are for trees
+        // dense enough to need them.
+        _options.branchWidthDefault = _basicTreeProperties.externalNodesCount <= SMALL_TREE_MAX_EXT_NODES
+            ? BRANCH_WIDTH_SMALL_TREE : BRANCH_WIDTH_DEFAULT;
+        _options.branchColorDefault = BRANCH_COLOR_DEFAULT;
+        _options.labelColorDefault = LABEL_COLOR_DEFAULT;
+        _options.backgroundColorDefault = BACKGROUND_COLOR_DEFAULT;
+        _options.backgroundColorForPrintExportDefault = BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
         // Fixed, not configurable: these are the colour-vision-safe Okabe-Ito
         // colours the search and selection highlighting depends on, and they have
         // to stay distinguishable from each other and from the tree.
@@ -3620,66 +3644,23 @@ if (!phyloXml) {
         _options.found1ColorDefault = FOUND1_COLOR_DEFAULT;
         _options.selectedColorDefault = SELECTED_COLOR_DEFAULT;
         _options.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
-        if (!_options.defaultFont) {
-            _options.defaultFont = FONT_DEFAULTS;
-        }
-        if (!_options.nodeSizeDefault) {
-            _options.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
-        }
+        _options.defaultFont = FONT_DEFAULTS;
+        _options.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
         // Every label shares one font size (as the desktop does). The three
-        // _options fields the renderer reads are always kept equal; `fontSize` is
-        // the single knob that sets them.
-        if (!_options.fontSize) {
-            _options.fontSize = FONT_SIZE_DEFAULT;
-        }
-        if (!_options.nodeLabelGap) {
-            _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
-        }
-        if (!_options.minBranchLengthValueToShow) {
-            _options.minBranchLengthValueToShow = null;
-        }
-        if (_options.minConfidenceValueToShow === undefined) {
-            _options.minConfidenceValueToShow = null;
-        }
-        if (_options.searchIsCaseSensitive === undefined) {
-            _options.searchIsCaseSensitive = false;
-        }
-        _options.searchNegateResult = false;
-        if (_options.alignPhylogram === undefined) {
-            _options.alignPhylogram = false;
-        }
-        if (_options.showNodeEvents === undefined) {
-            // show duplication / speciation markers whenever the tree has events
-            _options.showNodeEvents = _basicTreeProperties.nodeEvents === true;
-        }
-        if (_options.showBranchEvents === undefined) {
-            // show branch events (e.g. mutations) whenever the tree has them
-            _options.showBranchEvents = _basicTreeProperties.branchEvents === true;
-        }
-        if (_options.showNodeVisualizations === undefined) {
-            _options.showNodeVisualizations = false;
-        }
-        if (_options.showBranchVisualizations === undefined) {
-            _options.showBranchVisualizations = false;
-        }
-        if (_options.nodeVisualizationsOpacity === undefined) {
-            _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
-        }
-        if (_options.showBranchColors === undefined) {
-            _options.showBranchColors = true;
-        }
-        if (_options.decimalsForLinearRangeMeanValue === undefined) {
-            _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
-        }
-        if (_options.treeName) {
-            _options.treeName = _options.treeName.trim().replace(/\W+/g, '_');
-        } else if (_treeData.name) {
-            _options.treeName = _treeData.name.trim().replace(/\W+/g, '_');
-        } else {
-            _options.treeName = null;
-        }
-        // Download filenames follow the tree's name; there is nothing useful to
-        // configure separately per format.
+        // _options fields the renderer reads are always kept equal.
+        _options.fontSize = FONT_SIZE_DEFAULT;
+        _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
+        _options.minBranchLengthValueToShow = null;
+        _options.minConfidenceValueToShow = null;
+
+        _options.showNodeVisualizations = false;
+        _options.showBranchVisualizations = false;
+        _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
+        _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
+
+        // The tree names itself; a caller-supplied name only ever disagreed with
+        // the file. It is the stem of every download filename.
+        _options.treeName = _treeData.name ? _treeData.name.trim().replace(/\W+/g, '_') : null;
         _options.nameForNhDownload = _options.treeName
             ? (_options.treeName + NH_SUFFIX) : NAME_FOR_NH_DOWNLOAD_DEFAULT;
         _options.nameForPhyloXmlDownload = _options.treeName
@@ -3690,6 +3671,7 @@ if (!phyloXml) {
             ? (_options.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
         _options.nameForFastaDownload = _options.treeName
             ? (_options.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
+
         if (!_options.visualizationsLegendXpos) {
             _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
         }
@@ -3698,9 +3680,7 @@ if (!phyloXml) {
         }
         _options.visualizationsLegendXposOrig = _options.visualizationsLegendXpos;
         _options.visualizationsLegendYposOrig = _options.visualizationsLegendYpos;
-        if (!_options.visualizationsLegendOrientation) {
-            _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
-        }
+        _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
 
         setFontSizes(parseInt(_options.fontSize));
     }
@@ -3909,10 +3889,6 @@ if (!phyloXml) {
         }
         if (_options.searchBinitialValue) {
             search1();
-        }
-
-        if (_options.initialNodeFillColorVisualization || _options.initialLabelColorVisualization) {
-            initializeInitialVisualization();
         }
 
         update(null, 0);
@@ -4988,7 +4964,6 @@ if (!phyloXml) {
                 }
 
                 _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                initializeInitialVisualization(_root);
                 updateNodeVisualizationsAndLegends(_root);
                 search0();
                 search1();
@@ -5099,7 +5074,6 @@ if (!phyloXml) {
             setValue(SEARCH_FIELD_1, '');
         }
 
-        initializeInitialVisualization();
         update(null, 0);
         updateNodeVisualizationsAndLegends(_root);
         search0();
@@ -7575,15 +7549,14 @@ if (!phyloXml) {
             }
 
             // --- Options ---
-            if (_basicTreeProperties.externalNodesCount > DYNAHIDE_MIN_EXT_NODES) {
-                // "Auto-hide Labels" matches the desktop, which renamed the historical
-                // "Dyna Hide" because that named the mechanism rather than what the user
-                // sees. The _options.dynahide option keeps its name (public API).
-                opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
-            }
-            if (_basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH) {
-                opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
-            }
+            // Both are always offered. They do nothing on a tree that needs
+            // neither, but a control that comes and goes between trees is worse
+            // than one that is simply there.
+            // "Auto-hide Labels" matches the desktop, which renamed the historical
+            // "Dyna Hide" because that named the mechanism rather than what the user
+            // sees. The _options.dynahide field keeps its name internally.
+            opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
+            opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
 
             let h = '<fieldset><legend>Display Data</legend>';
             h = h.concat(makeCheckboxGroup('Labels', labels));
@@ -8019,27 +7992,6 @@ if (!phyloXml) {
         }
         if (_options.searchBinitialValue) {
             setValue(SEARCH_FIELD_1, _options.searchBinitialValue);
-        }
-    }
-
-
-    function initializeInitialVisualization() {
-        if (_options && _visualizations) {
-            if (_options.initialNodeFillColorVisualization && _options.initialNodeFillColorVisualization !== DEFAULT && _visualizations.nodeFillColor[_options.initialNodeFillColorVisualization] != null) {
-                _currentNodeFillColorVisualization = _options.initialNodeFillColorVisualization;
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, _currentNodeFillColorVisualization);
-                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-                // Node shapes are drawn only while node visualizations are on, so
-                // an initial fill-colour visualization has to switch them on (the
-                // visualization menus do the same).
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-            }
-            if (_options.initialLabelColorVisualization && _options.initialLabelColorVisualization !== DEFAULT && _visualizations.labelColor[_options.initialLabelColorVisualization] != null) {
-                _currentLabelColorVisualization = _options.initialLabelColorVisualization;
-                setSelectMenuValue(LABEL_COLOR_SELECT_MENU, _currentLabelColorVisualization);
-                addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
-            }
         }
     }
 
