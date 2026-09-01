@@ -1647,7 +1647,7 @@ if (!phyloXml) {
 
         if (_showLegends && _legendColorScales[LEGEND_LABEL_COLOR] && _visualizations.labelColor[_currentLabelColorVisualization]) {
             removeColorLegend(LEGEND_LABEL_COLOR);
-            label = 'Label Color';
+            label = 'Color';
             desc = _currentLabelColorVisualization;
 
             scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
@@ -1659,7 +1659,7 @@ if (!phyloXml) {
         }
 
         if (_showLegends && _options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
-            label = 'Node Shape';
+            label = 'Shape';
             desc = _currentNodeShapeVisualization;
             counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
             xPos += xPosIncr;
@@ -7276,10 +7276,10 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
+            h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
+            h = h.concat(makeSelectMenu('Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
@@ -7291,7 +7291,7 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_2, 'colorize the node label and the node itself according to a property'));
+            h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU_2, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
@@ -7303,7 +7303,7 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_3, 'colorize the node label and the node itself according to a property'));
+            h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU_3, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
@@ -7315,7 +7315,7 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_4, 'colorize the node label and the node itself according to a property'));
+            h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU_4, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');

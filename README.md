@@ -433,17 +433,17 @@ constants:
 `dynamicallyAddNodeVisualizations` setting, register the entries offered in the
 Visualizations panel. There are **two** kinds:
 
-| Kind | Key | What it does |
+| Menu | Key | What it does |
 | --- | --- | --- |
-| Colour | `colors` | Colours the node label **and** the node itself, in the same colour. |
-| Shape | `shapes` | Gives the node a shape. Best for a property with only a few distinct values. |
+| **Color** | `colors` | Colours the node label **and** the node itself, in the same colour. |
+| **Shape** | `shapes` | Gives the node a shape. Best for a property with only a few distinct values. |
 
 There used to be four menus. Label Color and Node Fill Color were registered
 from the same colour scale into two identical maps and then offered as two
-separate menus that could be set to disagree with each other; they are now one
-menu, and choosing a colour switches node visualizations on so that both halves
-of what it promises actually show. Node Size, which varied the node's radius by
-a property, is gone.
+separate menus that could be set to disagree with each other; they are now the
+single **Color** menu, and choosing a colour switches node visualizations on so
+that both halves of what it promises actually show. **Node Shape** is now just
+**Shape**. Node Size, which varied the node's radius by a property, is gone.
 
 So `sizes` now throws:
 
