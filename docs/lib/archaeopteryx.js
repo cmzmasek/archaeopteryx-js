@@ -876,14 +876,7 @@ if (!phyloXml) {
     function mouseover() {
         _node_mouseover_div.transition()
             .duration(300)
-            .style('opacity', 0.95)
-            .style('text-align', 'left')
-            .style('position', 'absolute')
-            .style('font', '12px sans-serif')
-            .style('pointer-events', 'none')
-            .style('background', '#dddddd')
-            .style('border', 'solid 1px #aaa')
-            .style('border-radius', '4px')
+            .style('opacity', 0.95); // only the fade -- the rest is set at creation
     }
 
     function mousemove(event, d) {
@@ -6845,9 +6838,22 @@ if (!phyloXml) {
         });
 
 
+        // The tooltip's appearance is fixed, so it is set ONCE here rather than
+        // animated on every hover. In particular position:absolute has to be in
+        // place before the first hover: while it is still static, the left/top
+        // set on mousemove do nothing and the tooltip sits in the page flow, so
+        // applying it through a transition made the first tooltip fly in from
+        // the corner (and only the first, since the style stuck afterwards).
         _node_mouseover_div = d3.select("body").append("div")
             .attr("class", "node_mouseover_tooltip")
-            .style("opacity", 1e-6);
+            .style("opacity", 1e-6)
+            .style('position', 'absolute')
+            .style('text-align', 'left')
+            .style('font', '12px sans-serif')
+            .style('pointer-events', 'none')
+            .style('background', '#dddddd')
+            .style('border', 'solid 1px #aaa')
+            .style('border-radius', '4px');
 
 
         let c0 = byId(_settings.controls0);
