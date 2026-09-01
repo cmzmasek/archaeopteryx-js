@@ -4821,39 +4821,42 @@ if (!phyloXml) {
     // not derived from the zoom factor: the layout is affine, not proportional
     // (it subtracts borders and the longest label), so a factor-based guess
     // drifts. The circular layout already centres itself, so it is left alone.
+    // The layout's own spans, which nodes are laid out across: a node renders at
+    // translate(d.y, d.x) with d.x in [0, vertical] and d.y in [0, horizontal],
+    // so these are exactly what a zoom rescales.
+    function layoutSpans() {
+        return {
+            horizontal: _displayWidth - calcMaxTreeLengthForDisplay(),
+            vertical: _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+        };
+    }
+
     function keepViewportCentred(applyZoom) {
         let size = svgSize();
-        let group = _svgGroup ? _svgGroup.node() : null;
-        let before = null;
-        if (!_options.circular && size && group) {
-            try {
-                before = group.getBBox();
-            } catch (e) {
-                before = null; // not rendered yet
-            }
-        }
-        if (!before || before.width <= 0 || before.height <= 0) {
+        if (_options.circular || !_baseSvg || !size) {
             applyZoom();
             return;
         }
         let t = d3.zoomTransform(_baseSvg.node());
-        // where the viewport's centre falls within the content, as a fraction
-        let u = ((((size.w / 2) - t.x) / t.k) - before.x) / before.width;
-        let v = ((((size.h / 2) - t.y) / t.k) - before.y) / before.height;
+        let before = layoutSpans();
+        // the layout point currently under the middle of the viewport
+        let cx = ((size.w / 2) - t.x) / t.k;
+        let cy = ((size.h / 2) - t.y) / t.k;
 
         applyZoom();
 
-        let after;
-        try {
-            after = group.getBBox();
-        } catch (e) {
+        let after = layoutSpans();
+        if (!(before.horizontal > 0) || !(before.vertical > 0)
+            || !(after.horizontal > 0) || !(after.vertical > 0)) {
             return;
         }
-        if (!(after.width > 0) || !(after.height > 0)) {
-            return;
-        }
-        let nx = after.x + (u * after.width);
-        let ny = after.y + (v * after.height);
+        // Taken from the layout spans, NOT from a measured bounding box: nodes
+        // and labels are moved by a transition, so straight after update() the
+        // rendered geometry is still a mix of old and new and measuring it puts
+        // the anchor in the wrong place (which showed up as the tree wandering
+        // up the screen while zooming out). The spans are exact and immediate.
+        let nx = cx * (after.horizontal / before.horizontal);
+        let ny = cy * (after.vertical / before.vertical);
         _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
             .translate((size.w / 2) - (nx * t.k), (size.h / 2) - (ny * t.k))
             .scale(t.k));
