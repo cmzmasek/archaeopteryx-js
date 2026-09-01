@@ -3039,7 +3039,41 @@ if (!phyloXml) {
     };
 
 
+    // Options and settings this version no longer has, with what to do instead.
+    // Passing one is an ERROR rather than a silent no-op: a caller who sets it is
+    // expecting behaviour that will not happen, and quietly ignoring it hides
+    // that until somebody notices the display is wrong.
+    const REMOVED_OPTIONS = {
+        showExternalNodes: 'node shapes now appear wherever a node visualization applies',
+        showInternalNodes: 'node shapes now appear wherever a node visualization applies',
+        searchIsPartial: 'each search box picks its own match mode (contains / starts with / ends with / whole word / regex)',
+        searchUsesRegex: 'choose the "regex" match mode in the search box instead',
+        searchProperties: 'choose the property in the search box\'s field menu instead'
+    };
+    const REMOVED_SETTINGS = {
+        showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
+        showInternalNodesButton: 'the Int. Nodes switch no longer exists',
+        showSearchPropertiesButton: 'properties are searched by choosing them in a search box\'s field menu',
+        searchFieldWidth: 'the search boxes size themselves to the control panel'
+    };
+
+    function rejectRemoved(given, removed, kind) {
+        if (!given) {
+            return;
+        }
+        let found = Object.keys(removed).filter(function (k) {
+            return given[k] !== undefined;
+        });
+        if (found.length > 0) {
+            throw new Error(ERROR + 'removed ' + kind + ' passed to launch: '
+                + found.map(function (k) {
+                    return '"' + k + '" -- ' + removed[k];
+                }).join('; '));
+        }
+    }
+
     function initializeOptions(options) {
+        rejectRemoved(options, REMOVED_OPTIONS, 'option(s)');
         _options = options ? options : {};
 
         // Intelligent pre-sets: any display option the caller does NOT set
@@ -3195,16 +3229,7 @@ if (!phyloXml) {
         if (_options.searchIsCaseSensitive === undefined) {
             _options.searchIsCaseSensitive = false;
         }
-        if (_options.searchIsPartial === undefined) {
-            _options.searchIsPartial = true;
-        }
         _options.searchNegateResult = false;
-        if (_options.searchUsesRegex === undefined) {
-            _options.searchUsesRegex = false;
-        }
-        if (_options.searchProperties === undefined) {
-            _options.searchProperties = false;
-        }
         if (_options.alignPhylogram === undefined) {
             _options.alignPhylogram = false;
         }
@@ -3289,6 +3314,7 @@ if (!phyloXml) {
     }
 
     function initializeSettings(settings) {
+        rejectRemoved(settings, REMOVED_SETTINGS, 'setting(s)');
         _settings = settings ? settings : {};
 
         if (!_settings.controls1Width) {
@@ -3423,9 +3449,6 @@ if (!phyloXml) {
         }
         if (_settings.enableSpecialVisualizations4 === undefined) {
             _settings.enableSpecialVisualizations4 = false;
-        }
-        if (_settings.showSearchPropertiesButton === undefined) {
-            _settings.showSearchPropertiesButton = true;
         }
         if (_settings.allowManualNodeSelection === undefined) {
             _settings.allowManualNodeSelection = false;
