@@ -5107,6 +5107,11 @@ if (!phyloXml) {
             }
             orderSubtree(_root, _treeFn.visData.order);
             _treeFn.visData.order = !_treeFn.visData.order;
+            // The glyph shows the direction the NEXT press will order in.
+            let orderBtn = byId(ORDER_BUTTON);
+            if (orderBtn) {
+                orderBtn.innerHTML = makeGlyph(_treeFn.visData.order ? 'ladderize_asc' : 'ladderize_desc');
+            }
             update(null, 0);
         }
     }
@@ -5863,8 +5868,10 @@ if (!phyloXml) {
     }
 
     // Icon for the theme the switch would move TO (sun to go light, moon to go dark).
+    // The theme switch shows the theme it will switch TO: the sun while dark,
+    // the moon while light.
     function panelThemeIcon() {
-        return panelDarkActive() ? '☀︎' : '☽';
+        return makeGlyph(panelDarkActive() ? 'sun' : 'moon');
     }
 
     // Apply the current theme choice to every panel and refresh the switch icons.
@@ -5877,9 +5884,8 @@ if (!phyloXml) {
             }
         }
         let btns = document.querySelectorAll('.aptx-theme-btn');
-        let icon = panelThemeIcon();
         for (let i = 0; i < btns.length; ++i) {
-            btns[i].textContent = icon;
+            btns[i].innerHTML = panelThemeIcon(); // a drawn glyph, not a text character
         }
     }
 
@@ -5903,6 +5909,202 @@ if (!phyloXml) {
         } catch (e) {
             // ignore
         }
+    }
+
+    // ===================== Control-panel glyphs =====================
+    // Vector glyphs ported from the desktop Archaeopteryx control panel (its
+    // DisplayTypeIcon / ControlButtonIcon / LayoutIcon / ThemeToggleIcon /
+    // LadderizeIcon classes), so the two programs' panels read as siblings.
+    // The Java geometry is written as fractions of the icon's size, so it
+    // transfers verbatim -- same constants, same shapes -- drawn here as inline
+    // SVG on a 0..100 viewBox. Glyphs paint in currentColor, so the panel's
+    // light/dark tokens apply; a disabled button fades the whole <svg> via
+    // opacity, never per-stroke alpha (translucent strokes compound where a
+    // shaft crosses its own arrowhead, leaving dark spots).
+
+    let _glyphUid = 0;
+
+    function glyphNum(v) {
+        return Math.round(v * 100) / 100;
+    }
+
+    function glyphLine(x1, y1, x2, y2) {
+        return '<line x1="' + glyphNum(x1) + '" y1="' + glyphNum(y1) + '" x2="' + glyphNum(x2) + '" y2="' + glyphNum(y2) + '"/>';
+    }
+
+    function glyphPoly(points) {
+        let p = [];
+        for (let i = 0; i < points.length; i += 2) {
+            p.push(glyphNum(points[i]) + ',' + glyphNum(points[i + 1]));
+        }
+        return '<polygon points="' + p.join(' ') + '" stroke="none" fill="currentColor"/>';
+    }
+
+    function glyphDot(cx, cy, r) {
+        return '<circle cx="' + glyphNum(cx) + '" cy="' + glyphNum(cy) + '" r="' + glyphNum(r) + '" stroke="none" fill="currentColor"/>';
+    }
+
+    // An arc of the circle (cx,cy,r) from `start` through `sweep` degrees, in
+    // the screen convention (y down, so a positive sweep runs clockwise).
+    function glyphArc(cx, cy, r, start, sweep) {
+        let a0 = start * Math.PI / 180;
+        let a1 = (start + sweep) * Math.PI / 180;
+        return '<path d="M ' + glyphNum(cx + r * Math.cos(a0)) + ' ' + glyphNum(cy + r * Math.sin(a0))
+            + ' A ' + glyphNum(r) + ' ' + glyphNum(r) + ' 0 ' + (Math.abs(sweep) > 180 ? 1 : 0) + ' ' + (sweep > 0 ? 1 : 0)
+            + ' ' + glyphNum(cx + r * Math.cos(a1)) + ' ' + glyphNum(cy + r * Math.sin(a1)) + '"/>';
+    }
+
+    // A short arrow from (x1,y1) whose head TIP lands exactly on (x2,y2).
+    function glyphArrow(x1, y1, x2, y2, head) {
+        let a = Math.atan2(y2 - y1, x2 - x1);
+        return glyphLine(x1, y1, x2 - Math.cos(a) * head * 0.85, y2 - Math.sin(a) * head * 0.85)
+            + glyphPoly([x2, y2,
+                x2 - Math.cos(a - 0.62) * head, y2 - Math.sin(a - 0.62) * head,
+                x2 - Math.cos(a + 0.62) * head, y2 - Math.sin(a + 0.62) * head]);
+    }
+
+    // The display-type glyphs (the former P / A / C): a mini root-left tree PLUS
+    // the tip labels it produces, drawn as short ticks past the tips. The three
+    // differ in two independent cues -- branches ragged (lengths to scale) or
+    // flush, and labels at their own tips or lined up in one column -- so
+    // adjacent pairs differ in exactly one cue.
+    const GLYPH_DT_ROOT_X = 0.02, GLYPH_DT_SPINE_X = 0.13, GLYPH_DT_SUB_X = 0.30;
+    const GLYPH_DT_TIP_Y = [0.13, 0.45, 0.85];
+    const GLYPH_DT_UPPER_Y = 0.29, GLYPH_DT_ROOT_Y = 0.57;
+    const GLYPH_DT_RAGGED = [0.62, 0.42, 0.26], GLYPH_DT_FLUSH = 0.62;
+    const GLYPH_DT_LABEL_GAP = 0.11, GLYPH_DT_LABEL_LEN = 0.22;
+    const GLYPH_DT_ASPECT = 1.6; // wider than tall: a tree plus a label column is a wide thing
+
+    function glyphDisplayType(kind) {
+        let w = 100 * GLYPH_DT_ASPECT;
+        let X = function (f) { return f * w; };
+        let Y = function (f) { return f * 100; };
+        let flush = (kind === 'cladogram');
+        let ends = [flush ? GLYPH_DT_FLUSH : GLYPH_DT_RAGGED[0],
+            flush ? GLYPH_DT_FLUSH : GLYPH_DT_RAGGED[1],
+            flush ? GLYPH_DT_FLUSH : GLYPH_DT_RAGGED[2]];
+        let s = glyphLine(X(GLYPH_DT_ROOT_X), Y(GLYPH_DT_ROOT_Y), X(GLYPH_DT_SPINE_X), Y(GLYPH_DT_ROOT_Y))
+            + glyphLine(X(GLYPH_DT_SPINE_X), Y(GLYPH_DT_UPPER_Y), X(GLYPH_DT_SPINE_X), Y(GLYPH_DT_TIP_Y[2]))
+            + glyphLine(X(GLYPH_DT_SPINE_X), Y(GLYPH_DT_UPPER_Y), X(GLYPH_DT_SUB_X), Y(GLYPH_DT_UPPER_Y))
+            + glyphLine(X(GLYPH_DT_SUB_X), Y(GLYPH_DT_TIP_Y[0]), X(GLYPH_DT_SUB_X), Y(GLYPH_DT_TIP_Y[1]))
+            + glyphLine(X(GLYPH_DT_SUB_X), Y(GLYPH_DT_TIP_Y[0]), X(ends[0]), Y(GLYPH_DT_TIP_Y[0]))
+            + glyphLine(X(GLYPH_DT_SUB_X), Y(GLYPH_DT_TIP_Y[1]), X(ends[1]), Y(GLYPH_DT_TIP_Y[1]))
+            + glyphLine(X(GLYPH_DT_SPINE_X), Y(GLYPH_DT_TIP_Y[2]), X(ends[2]), Y(GLYPH_DT_TIP_Y[2]));
+        let aligned = (kind !== 'phylogram');
+        for (let i = 0; i < 3; ++i) {
+            let lx = aligned ? (GLYPH_DT_FLUSH + GLYPH_DT_LABEL_GAP) : (ends[i] + GLYPH_DT_LABEL_GAP);
+            s += glyphLine(X(lx), Y(GLYPH_DT_TIP_Y[i]), X(lx + GLYPH_DT_LABEL_LEN), Y(GLYPH_DT_TIP_Y[i]));
+        }
+        return s;
+    }
+
+    // The circular layout: a two-level circular dendrogram (centre hub, rim arc
+    // broken by the root wedge, four radial tips) -- deliberately arc-bearing so
+    // it cannot be confused with the sun on the theme toggle.
+    function glyphCircular() {
+        let s = glyphDot(50, 50, 7.5) + glyphArc(50, 50, 43, 32, 296);
+        [75, 150, 225, 300].forEach(function (deg) {
+            let a = deg * Math.PI / 180;
+            s += glyphLine(50 + Math.cos(a) * 13, 50 + Math.sin(a) * 13, 50 + Math.cos(a) * 43, 50 + Math.sin(a) * 43);
+        });
+        return s;
+    }
+
+    // "Fit everything": a rounded window frame with a two-headed diagonal arrow
+    // pushing outward against it.
+    function glyphFitAll() {
+        return '<rect x="4" y="4" width="92" height="92" rx="18" ry="18"/>'
+            + glyphArrow(55, 55, 84, 84, 20)
+            + glyphArrow(45, 45, 16, 16, 20);
+    }
+
+    // "Expand to fit labels": the label rows as three short parallel lines with
+    // an arrow beyond each outer row pushing the stack apart -- the
+    // increase-line-spacing idiom, which is exactly what the button does.
+    function glyphExpandVertical() {
+        let s = '';
+        [-16, 0, 16].forEach(function (off) {
+            s += glyphLine(22, 50 + off, 78, 50 + off);
+        });
+        return s + glyphArrow(50, 28, 50, 1.5, 19) + glyphArrow(50, 72, 50, 98.5, 19);
+    }
+
+    // Back toward the root: an arrow pointing LEFT (in a root-left tree that is
+    // literally the direction of the parent clade). With the bar it stops
+    // against it reads "all the way back", without it "one step back".
+    function glyphBackArrow(toBar) {
+        let tip = toBar ? 30 : 14;
+        let s = glyphLine(tip + 16, 50, 88, 50)
+            + glyphPoly([tip, 50, tip + 26, 28, tip + 26, 72]);
+        return toBar ? (s + glyphLine(14, 18, 14, 82)) : s;
+    }
+
+    // "Order all" (ladderize): a root spine with branches whose lengths cascade,
+    // depicting the ladderized silhouette the next press will produce.
+    function glyphLadderize(ascending) {
+        let s = glyphLine(14, 6, 14, 94);
+        let rows = [8, 36, 64, 92];
+        for (let i = 0; i < rows.length; ++i) {
+            let frac = ascending ? (i / 3) : (1 - (i / 3));
+            s += glyphLine(14, rows[i], 14 + 16 + (frac * 62), rows[i]);
+        }
+        return s;
+    }
+
+    // The theme toggle, showing the theme it will switch TO.
+    function glyphSun() {
+        let s = glyphDot(50, 50, 20);
+        for (let i = 0; i < 8; ++i) {
+            let a = i * Math.PI / 4;
+            s += glyphLine(50 + Math.cos(a) * 29, 50 + Math.sin(a) * 29, 50 + Math.cos(a) * 43, 50 + Math.sin(a) * 43);
+        }
+        return s;
+    }
+
+    function glyphMoon() {
+        let id = 'aptx_moon_' + (++_glyphUid);
+        let a = -35 * Math.PI / 180;
+        return '<defs><mask id="' + id + '">'
+            + '<rect x="0" y="0" width="100" height="100" fill="white"/>'
+            + '<circle cx="' + glyphNum(50 + Math.cos(a) * 33) + '" cy="' + glyphNum(50 + Math.sin(a) * 33) + '" r="40" fill="black"/>'
+            + '</mask></defs>'
+            + '<circle cx="50" cy="50" r="44" stroke="none" fill="currentColor" mask="url(#' + id + ')"/>';
+    }
+
+    // Midpoint re-root: the longest tip-to-tip path with its MIDPOINT marked --
+    // exactly where this button puts the root. The desktop has no counterpart
+    // for this one, so it is drawn to match the ported family's proportions.
+    function glyphMidpoint() {
+        return glyphLine(12, 50, 88, 50)
+            + glyphLine(12, 30, 12, 70)
+            + glyphLine(88, 30, 88, 70)
+            + glyphDot(50, 50, 11);
+    }
+
+    // Build one glyph as an inline <svg>. Stroke weight, caps and joins follow
+    // the desktop class each glyph came from.
+    function makeGlyph(kind) {
+        let w = 100, sw = 7.5, cap = 'butt', join = 'round', body;
+        switch (kind) {
+            case 'phylogram':
+            case 'aligned_phylogram':
+            case 'cladogram':
+                w = 100 * GLYPH_DT_ASPECT; sw = 6; join = 'miter'; body = glyphDisplayType(kind); break;
+            case 'circular': cap = 'round'; body = glyphCircular(); break;
+            case 'fit_all': sw = 6.5; body = glyphFitAll(); break;
+            case 'expand_vertical': body = glyphExpandVertical(); break;
+            case 'whole_tree': sw = 11; join = 'miter'; body = glyphBackArrow(true); break;
+            case 'up_one_level': sw = 11; join = 'miter'; body = glyphBackArrow(false); break;
+            case 'ladderize_asc': sw = 8; cap = 'round'; body = glyphLadderize(true); break;
+            case 'ladderize_desc': sw = 8; cap = 'round'; body = glyphLadderize(false); break;
+            case 'midpoint': sw = 8; cap = 'round'; body = glyphMidpoint(); break;
+            case 'sun': body = glyphSun(); break;
+            case 'moon': body = glyphMoon(); break;
+            default: throw new Error('unknown control-panel glyph: ' + kind);
+        }
+        return '<svg class="aptx-glyph" viewBox="0 0 ' + w + ' 100" aria-hidden="true" focusable="false"'
+            + ' fill="none" stroke="currentColor" stroke-width="' + sw + '"'
+            + ' stroke-linecap="' + cap + '" stroke-linejoin="' + join + '">' + body + '</svg>';
     }
 
     function injectPanelStyles() {
@@ -5991,9 +6193,15 @@ if (!phyloXml) {
             + '.aptx-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; margin-top:-4.5px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
             + '.aptx-panel input[type=range]::-moz-range-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
             + '.aptx-panel input[type=range]::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--p-accent); border:2px solid var(--p-bg); box-shadow:var(--p-shadow-sm); }'
-            + '.aptx-panel input[type=button] { font-family:inherit; font-size:11px; height:24px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; margin:2px 3px 2px 0; cursor:pointer; transition:background .12s,border-color .12s,color .12s; }'
-            + '.aptx-panel input[type=button]:hover { background:var(--p-accent-weak); border-color:var(--p-accent); color:var(--p-accent-ink); }'
-            + '.aptx-panel input[type=button]:disabled { opacity:0.4; cursor:default; }'
+            + '.aptx-panel input[type=button], .aptx-panel .aptx-gbtn { font-family:inherit; font-size:11px; height:24px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; margin:2px 3px 2px 0; cursor:pointer; transition:background .12s,border-color .12s,color .12s; }'
+            + '.aptx-panel input[type=button]:hover, .aptx-panel .aptx-gbtn:hover { background:var(--p-accent-weak); border-color:var(--p-accent); color:var(--p-accent-ink); }'
+            + '.aptx-panel input[type=button]:disabled, .aptx-panel .aptx-gbtn:disabled { opacity:0.4; cursor:default; }'
+            // Glyph buttons: same chrome as the lettered ones, sized around the
+            // drawn glyph. The glyph inherits the button's colour (currentColor)
+            // and a disabled button fades the whole svg with the button chrome.
+            + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
+            + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
+            + '.aptx-panel .aptx-seg .aptx-glyph, .aptx-panel .aptx-toggle .aptx-glyph { height:13px; }'
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
             + '.aptx-panel input[type=text]:focus,.aptx-panel select:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
             // --- collapsible sections, internal scroll, whole-panel hide ---
@@ -6065,7 +6273,7 @@ if (!phyloXml) {
                 themeBtn.type = 'button';
                 themeBtn.className = 'aptx-theme-btn';
                 themeBtn.title = 'Switch between light and dark';
-                themeBtn.textContent = panelThemeIcon();
+                themeBtn.innerHTML = panelThemeIcon();
                 themeBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
                     togglePanelTheme();
@@ -6511,9 +6719,9 @@ if (!phyloXml) {
             'width': '104px'
         });
 
-        setStylesAll('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y + ', #' + ZOOM_TO_FIT + ', #' + ZOOM_IN_X + ', #' + ZOOM_OUT_X + ', #' + ZOOM_TO_EXPAND_Y, {
-            'height': '16px'
-        });
+        // (The zoom pad's buttons used to be forced to 16px here; they now take
+        // the panel's standard button height so the glyph buttons in this row
+        // match the ones in Tools.)
 
         setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN, {
             'width': '72px'
@@ -7281,19 +7489,20 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<div class="aptx-modebar">');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
-            h = h.concat(makeSegment('P', PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment('A', PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment('C', CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
             h = h.concat('</div>');
-            h = h.concat('<label class="aptx-toggle" title="display the tree as a circular (radial) tree"><input type="checkbox" name="' + CIRCULAR_CB + '" id="' + CIRCULAR_CB + '"><span>Circular</span></label>');
+            h = h.concat('<label class="aptx-toggle" title="display the tree as a circular (radial) tree"><input type="checkbox" name="' + CIRCULAR_CB + '" id="' + CIRCULAR_CB + '">' + makeGlyph('circular') + '</label>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
 
-        // One segment of the P/A/C segmented display-type control.
-        function makeSegment(label, id, radioGroup, tooltip) {
-            return '<label class="aptx-seg" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '"><span>' + label + '</span></label>';
+        // One segment of the segmented display-type control. `content` is either
+        // plain text or a glyph from makeGlyph.
+        function makeSegment(content, id, radioGroup, tooltip) {
+            return '<label class="aptx-seg" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '">' + content + '</label>';
         }
 
         function makeIdForCustomCheckboxButton(key) {
@@ -7385,8 +7594,8 @@ if (!phyloXml) {
             h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
             h = h.concat('<br>');
             h = h.concat(makeButton('X-', ZOOM_OUT_X, 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)'));
-            h = h.concat(makeButton('F', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
-            h = h.concat(makeButton('E', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
+            h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
+            h = h.concat(makeGlyphButton('expand_vertical', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
             h = h.concat(makeButton('X+', ZOOM_IN_X, 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)'));
             h = h.concat('<br>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
@@ -7399,10 +7608,10 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
-            h = h.concat(makeButton('O', ORDER_BUTTON, 'order all (Alt+O)'));
-            h = h.concat(makeButton('R1', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'return to supertree by one branch (if in subtree) (Alt+R)'));
-            h = h.concat(makeButton('R', RETURN_TO_SUPERTREE_BUTTON, 'return to supertree (if in subtree)'));
-            h = h.concat(makeButton('M', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
+            h = h.concat(makeGlyphButton('ladderize_asc', ORDER_BUTTON, 'order all (Alt+O)'));
+            h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'return to supertree by one branch (if in subtree) (Alt+R)'));
+            h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return to supertree (if in subtree)'));
+            h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -7606,6 +7815,13 @@ if (!phyloXml) {
         // --------------------------------------------------------------
         function makeButton(label, id, tooltip) {
             return '<input type="button" value="' + label + '" name="' + id + '" id="' + id + '" title="' + tooltip + '">';
+        }
+
+        // A button carrying one of the drawn glyphs instead of a letter. A real
+        // <button> (not <input type=button>, which cannot contain an <svg>).
+        function makeGlyphButton(glyph, id, tooltip) {
+            return '<button type="button" class="aptx-gbtn" name="' + id + '" id="' + id + '" title="' + tooltip + '">'
+                + makeGlyph(glyph) + '</button>';
         }
 
         // A checkbox + label item, used by the Display Data grid and the inline search-option row.
