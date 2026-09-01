@@ -2226,6 +2226,14 @@ if (!phyloXml) {
             .attr('text-anchor', 'middle')
             .style('font-family', _options.defaultFont);
 
+        // Grab the exit selection BEFORE merging. In d3 v3 the exit selection
+        // survived on the merged result, but in v4+ merge() returns a NEW
+        // selection with no exit, so calling .exit() after this line silently
+        // matches nothing and departed nodes are never removed. That only shows
+        // when the node set SHRINKS -- entering a subtree, or deleting one --
+        // where the old tree stayed on screen underneath the new one.
+        let nodeExitSelection = node.exit();
+
         // d3 v4+ no longer folds entered nodes into the update selection, so
         // merge them before the shared styling/positioning below.
         node = nodeEnter.merge(node);
@@ -2389,18 +2397,15 @@ if (!phyloXml) {
             }
         });
 
-        let nodeExit = node.exit().transition()
-            .duration(transitionDuration)
-            .attr('transform', function () {
-                return nodeTransform(source);
-            })
-            .remove();
-
-        nodeExit.select('circle')
-            .attr('r', 0);
-
-        nodeExit.select('text')
-            .style('fill-opacity', 0);
+        // Departing nodes are removed OUTRIGHT rather than on the end of a
+        // transition. Going to a subtree (or deleting one) fires several updates
+        // in a row -- two searches plus the zoom-to-fit -- and a transition
+        // cancelled before it starts fires neither 'end' nor 'interrupt', so a
+        // transition's .remove() never ran and the departed nodes stayed in the
+        // DOM: invisible, but still counted by getBBox (skewing zoom-to-fit and
+        // the overview) and still clickable. Links have always been removed this
+        // way; nodes now match.
+        nodeExitSelection.remove();
 
         let link = _svgGroup.selectAll('path.link')
             .attr('d', elbow)
@@ -2423,6 +2428,8 @@ if (!phyloXml) {
                 });
             });
 
+        let linkExitSelection = link.exit(); // before the merge -- see nodeExitSelection
+
         link = linkEnter.merge(link);
 
         link.transition()
@@ -2430,7 +2437,7 @@ if (!phyloXml) {
             .attr('stroke', makeBranchColor)
             .attr('d', elbow);
 
-        link.exit()
+        linkExitSelection
             .attr('d', function () {
                 let o = {
                     x: source.x, y: source.y
