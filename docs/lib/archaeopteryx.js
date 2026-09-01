@@ -563,8 +563,146 @@ if (!phyloXml) {
     // Applies the current zoom/pan transform to the tree group. Shift gestures
     // are filtered out where _zoomListener is created, so they stay free for
     // moving the legend.
+    // ===================== Overview =====================
+    // A miniature of the whole tree, shown in a corner once part of the tree has
+    // been zoomed out of view, with a rectangle marking the part you are looking
+    // at. It appears and disappears on its own -- there is nothing to switch on,
+    // and it is purely informational (pointer-events are off, so it never eats a
+    // click meant for the tree underneath).
+
+    const OVERVIEW_WIDTH = 118;
+    const OVERVIEW_HEIGHT = 92;
+    const OVERVIEW_MARGIN = 12;
+    const OVERVIEW_PAD = 5;
+
+    let _overviewGroup = null;   // the whole overview, appended above the tree
+    let _overviewContent = null; // the scaled miniature inside it
+    let _overviewViewport = null;// the "you are here" rectangle
+    let _overviewMap = null;     // {scale, tx, ty} mapping tree coords -> overview coords
+
+    function makeOverview() {
+        _overviewGroup = _baseSvg.append('g')
+            .attr('class', 'aptx-overview')
+            .style('display', 'none')
+            .style('pointer-events', 'none');
+        _overviewGroup.append('rect').attr('class', 'aptx-overview-bg')
+            .attr('width', OVERVIEW_WIDTH).attr('height', OVERVIEW_HEIGHT)
+            .attr('rx', 4).attr('ry', 4)
+            // opaque: a branch of the real tree showing through the panel would
+            // read as part of the miniature
+            .style('fill', _options.backgroundColorDefault)
+            .style('stroke', '#9a9a9a').style('stroke-width', 1);
+        _overviewContent = _overviewGroup.append('g').attr('class', 'aptx-overview-tree');
+        // a light wash plus a firm outline: enough to read at a glance without
+        // obscuring the miniature underneath it
+        _overviewViewport = _overviewGroup.append('rect').attr('class', 'aptx-overview-viewport')
+            .style('fill', '#7f7f7f').style('fill-opacity', 0.10)
+            .style('stroke', '#333333').style('stroke-width', 1.2);
+    }
+
+    function svgSize() {
+        let n = _baseSvg ? _baseSvg.node() : null;
+        if (!n) {
+            return null;
+        }
+        let w = n.clientWidth || parseFloat(_baseSvg.attr('width'));
+        let h = n.clientHeight || parseFloat(_baseSvg.attr('height'));
+        return (w > 0 && h > 0) ? {w: w, h: h} : null;
+    }
+
+    // Rebuild the miniature. Called when the tree itself changes: the branch
+    // paths are copied straight from what was just rendered, so the overview
+    // matches the real display in either layout without redoing any geometry.
+    function rebuildOverview() {
+        if (!_overviewGroup) {
+            return;
+        }
+        let size = svgSize();
+        let box = null;
+        try {
+            box = _svgGroup.node().getBBox(); // in un-zoomed tree coordinates
+        } catch (e) {
+            box = null;
+        }
+        if (!size || !box || box.width <= 0 || box.height <= 0) {
+            _overviewGroup.style('display', 'none');
+            _overviewMap = null;
+            return;
+        }
+        let innerW = OVERVIEW_WIDTH - (2 * OVERVIEW_PAD);
+        let innerH = OVERVIEW_HEIGHT - (2 * OVERVIEW_PAD);
+        let scale = Math.min(innerW / box.width, innerH / box.height);
+        _overviewMap = {
+            scale: scale,
+            tx: OVERVIEW_PAD + ((innerW - (box.width * scale)) / 2) - (box.x * scale),
+            ty: OVERVIEW_PAD + ((innerH - (box.height * scale)) / 2) - (box.y * scale),
+            box: box
+        };
+        _overviewGroup.attr('transform', 'translate('
+            + (size.w - OVERVIEW_WIDTH - OVERVIEW_MARGIN) + ','
+            + (size.h - OVERVIEW_HEIGHT - OVERVIEW_MARGIN) + ')');
+        _overviewContent.attr('transform', 'translate(' + _overviewMap.tx + ',' + _overviewMap.ty + ') scale(' + scale + ')');
+
+        let paths = [];
+        _svgGroup.selectAll('path.link').each(function () {
+            let d = this.getAttribute('d');
+            if (d) {
+                paths.push(d);
+            }
+        });
+        let sel = _overviewContent.selectAll('path').data(paths);
+        sel.exit().remove();
+        sel.enter().append('path')
+            .merge(sel)
+            .attr('d', function (d) {
+                return d;
+            })
+            .style('fill', 'none')
+            .style('stroke', _options.branchColorDefault)
+            .style('stroke-width', 1)
+            .style('vector-effect', 'non-scaling-stroke'); // stays a hairline however far it is scaled down
+        updateOverviewViewport();
+    }
+
+    // Move the "you are here" rectangle, and show or hide the whole overview
+    // depending on whether any of the tree is currently off-screen.
+    function updateOverviewViewport() {
+        if (!_overviewGroup || !_overviewMap) {
+            return;
+        }
+        let size = svgSize();
+        if (!size) {
+            return;
+        }
+        let t = d3.zoomTransform(_baseSvg.node());
+        // the part of the tree currently visible, in un-zoomed tree coordinates
+        let visX = -t.x / t.k;
+        let visY = -t.y / t.k;
+        let visW = size.w / t.k;
+        let visH = size.h / t.k;
+        let box = _overviewMap.box;
+        let fits = (visX <= box.x) && (visY <= box.y)
+            && ((visX + visW) >= (box.x + box.width))
+            && ((visY + visH) >= (box.y + box.height));
+        if (fits) {
+            _overviewGroup.style('display', 'none');
+            return;
+        }
+        _overviewGroup.style('display', null);
+        // clamp to the overview's frame so the rectangle cannot spill outside it
+        let x0 = Math.max(OVERVIEW_PAD, _overviewMap.tx + (visX * _overviewMap.scale));
+        let y0 = Math.max(OVERVIEW_PAD, _overviewMap.ty + (visY * _overviewMap.scale));
+        let x1 = Math.min(OVERVIEW_WIDTH - OVERVIEW_PAD, _overviewMap.tx + ((visX + visW) * _overviewMap.scale));
+        let y1 = Math.min(OVERVIEW_HEIGHT - OVERVIEW_PAD, _overviewMap.ty + ((visY + visH) * _overviewMap.scale));
+        _overviewViewport
+            .attr('x', x0).attr('y', y0)
+            .attr('width', Math.max(0, x1 - x0))
+            .attr('height', Math.max(0, y1 - y0));
+    }
+
     function zoom(event) {
         _svgGroup.attr('transform', event.transform);
+        updateOverviewViewport();
     }
 
     function centerNode(source, x, y) {
@@ -2219,6 +2357,8 @@ if (!phyloXml) {
             d.x0 = d.x;
             d.y0 = d.y;
         }
+
+        rebuildOverview();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -3543,6 +3683,7 @@ if (!phyloXml) {
         populateSearchMenus();
 
         _svgGroup = _baseSvg.append('g');
+        makeOverview(); // appended after the tree group, so it paints on top of it
 
         if (_settings.orderTree) {
             orderSubtree(_root, true);
@@ -3732,6 +3873,7 @@ if (!phyloXml) {
 
                     _baseSvg.attr('width', width);
                     _baseSvg.attr('height', height);
+                    rebuildOverview();
                     if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
                         zoomToFit();
                     }
@@ -8247,7 +8389,15 @@ if (!phyloXml) {
         let svg = wrapper.querySelector('svg');
         let svgTree = null;
         if (typeof window.XMLSerializer !== 'undefined') {
-            svgTree = (new XMLSerializer()).serializeToString(svg);
+            // Serialize a COPY with the overview taken out of it: the overview is
+            // an on-screen navigation aid, not part of the tree, and working on a
+            // copy leaves the live display untouched.
+            let copy = svg.cloneNode(true);
+            let overview = copy.querySelector('.aptx-overview');
+            if (overview) {
+                overview.remove();
+            }
+            svgTree = (new XMLSerializer()).serializeToString(copy);
         } else if (typeof svg.xml !== 'undefined') {
             svgTree = svg.xml;
         }
