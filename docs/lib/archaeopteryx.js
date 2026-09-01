@@ -1009,10 +1009,16 @@ if (!phyloXml) {
             mo_text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
         }
 
+        // Same label/value layout as the node-data dialog, so the two read alike.
+        let tip = _node_mouseover_div.node();
+        tip.classList.remove('aptx-light', 'aptx-dark');
+        if (_panelTheme) {
+            tip.classList.add('aptx-' + _panelTheme);
+        }
         _node_mouseover_div
-            .html(escapeHtmlKeepBreaks(mo_text))
-            .style('left', (event.pageX) + 'px')
-            .style('top', (event.pageY) + 'px');
+            .html(markUpDataLabels(escapeHtmlKeepBreaks(mo_text)))
+            .style('left', (event.pageX + 14) + 'px')
+            .style('top', (event.pageY + 14) + 'px');
     }
 
     // ----------------------------
@@ -1024,8 +1030,14 @@ if (!phyloXml) {
     // hover states and shadow.
 
     let _nodeMenu = null;
+    let _nodeMenuDismiss = null; // the listeners that close it, so they can be detached
 
     function removeNodeMenu() {
+        if (_nodeMenuDismiss) {
+            document.removeEventListener('click', _nodeMenuDismiss.onClick, true);
+            document.removeEventListener('keydown', _nodeMenuDismiss.onKey);
+            _nodeMenuDismiss = null;
+        }
         if (_nodeMenu) {
             _nodeMenu.remove();
             _nodeMenu = null;
@@ -1080,26 +1092,31 @@ if (!phyloXml) {
         menu.style.top = Math.max(window.scrollY + 8, Math.min(y, maxY)) + 'px';
         _nodeMenu = menu;
 
-        // Dismiss on the next click anywhere else, or on Escape.
-        setTimeout(function () {
-            document.addEventListener('mousedown', onDismiss, {once: true});
-        }, 0);
-        document.addEventListener('keydown', onEscape);
-
-        function onDismiss(e) {
+        // Dismiss on a click anywhere else, or on Escape.
+        //
+        // On CLICK, not mousedown: d3's zoom behaviour is bound to the same svg
+        // and calls stopImmediatePropagation on mousedown, so a mousedown on the
+        // tree never reaches the document and the menu could only be closed by
+        // choosing an action.
+        //
+        // In the CAPTURE phase, and registered immediately: capture at the
+        // document has already passed for the click that opened this menu, so
+        // that click cannot close it again, and no deferral is needed. A click
+        // inside the menu is ignored here and handled by the buttons.
+        let onClick = function (e) {
             if (_nodeMenu && _nodeMenu.contains(e.target)) {
-                return; // a click on the menu itself is handled by its buttons
+                return;
             }
             removeNodeMenu();
-            document.removeEventListener('keydown', onEscape);
-        }
-
-        function onEscape(e) {
+        };
+        let onKey = function (e) {
             if (e.key === 'Escape') {
                 removeNodeMenu();
-                document.removeEventListener('keydown', onEscape);
             }
-        }
+        };
+        _nodeMenuDismiss = {onClick: onClick, onKey: onKey};
+        document.addEventListener('click', onClick, true);
+        document.addEventListener('keydown', onKey);
     }
 
     function mouseout() {
@@ -6041,6 +6058,28 @@ if (!phyloXml) {
             + '.aptx-dialog-val { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }'
             + '.aptx-dialog-mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;'
             + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
+            // The hover tooltip, on the same palette.
+            + '.aptx-tip {'
+            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1;'
+            + '}'
+            + '@media (prefers-color-scheme:dark){ .aptx-tip:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-tip.aptx-dark {' + dark + '}'
+            // width:max-content so rows size to their content instead of wrapping
+            // in a box narrower than the text (capped, for very long values)
+            + '.aptx-tip { position:absolute; pointer-events:none; z-index:900;'
+            + '  width:max-content; max-width:320px;'
+            + '  padding:7px 10px; border:1px solid var(--p-line-strong); border-radius:8px;'
+            + '  background:var(--p-bg); color:var(--p-ink);'
+            + '  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);'
+            + '  box-shadow:0 8px 20px -8px rgba(23,34,46,0.4),0 2px 5px -2px rgba(23,34,46,0.2);'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11px; line-height:1.45; text-align:left; }'
+            + '.aptx-tip .aptx-dialog-head { margin:7px 0 2px; }'
+            + '.aptx-tip .aptx-dialog-head:first-child { margin-top:0; }'
+            + '.aptx-tip .aptx-dialog-line { padding:1px 0; }'
+            + '.aptx-tip .aptx-dialog-line + .aptx-dialog-line { border-top:0; }'
+            + '.aptx-tip .aptx-dialog-key { flex:0 0 auto; min-width:96px; }'
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
@@ -6484,16 +6523,11 @@ if (!phyloXml) {
         // set on mousemove do nothing and the tooltip sits in the page flow, so
         // applying it through a transition made the first tooltip fly in from
         // the corner (and only the first, since the style stuck afterwards).
+        // Appearance comes from the stylesheet (same palette as the panel, the
+        // node menu and the dialog); only opacity is animated on hover.
         _node_mouseover_div = d3.select("body").append("div")
-            .attr("class", "node_mouseover_tooltip")
-            .style("opacity", 1e-6)
-            .style('position', 'absolute')
-            .style('text-align', 'left')
-            .style('font', '12px sans-serif')
-            .style('pointer-events', 'none')
-            .style('background', '#dddddd')
-            .style('border', 'solid 1px #aaa')
-            .style('border-radius', '4px');
+            .attr("class", "node_mouseover_tooltip aptx-tip")
+            .style("opacity", 1e-6);
 
 
         let c0 = byId(_settings.controls0);
