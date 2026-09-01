@@ -566,9 +566,8 @@ if (!phyloXml) {
     // ===================== Overview =====================
     // A miniature of the whole tree, shown in a corner once part of the tree has
     // been zoomed out of view, with a rectangle marking the part you are looking
-    // at. It appears and disappears on its own -- there is nothing to switch on,
-    // and it is purely informational (pointer-events are off, so it never eats a
-    // click meant for the tree underneath).
+    // at. It appears and disappears on its own -- there is nothing to switch on.
+    // Clicking or dragging inside it moves the main view there.
 
     const OVERVIEW_WIDTH = 118;
     const OVERVIEW_HEIGHT = 92;
@@ -585,19 +584,88 @@ if (!phyloXml) {
             .attr('class', 'aptx-overview')
             .style('display', 'none')
             .style('pointer-events', 'none');
-        _overviewGroup.append('rect').attr('class', 'aptx-overview-bg')
+        // The background doubles as the click target: the group itself takes no
+        // pointer events, so the miniature and the viewport rectangle drawn over
+        // this rect never intercept anything, and clicks land here.
+        let bg = _overviewGroup.append('rect').attr('class', 'aptx-overview-bg')
             .attr('width', OVERVIEW_WIDTH).attr('height', OVERVIEW_HEIGHT)
             .attr('rx', 4).attr('ry', 4)
             // opaque: a branch of the real tree showing through the panel would
             // read as part of the miniature
             .style('fill', _options.backgroundColorDefault)
-            .style('stroke', '#9a9a9a').style('stroke-width', 1);
+            .style('stroke', '#9a9a9a').style('stroke-width', 1)
+            .style('pointer-events', 'all')
+            .style('cursor', 'pointer');
+        bindOverviewNavigation(bg);
         _overviewContent = _overviewGroup.append('g').attr('class', 'aptx-overview-tree');
         // a light wash plus a firm outline: enough to read at a glance without
         // obscuring the miniature underneath it
         _overviewViewport = _overviewGroup.append('rect').attr('class', 'aptx-overview-viewport')
             .style('fill', '#7f7f7f').style('fill-opacity', 0.10)
             .style('stroke', '#333333').style('stroke-width', 1.2);
+    }
+
+    // Centre the main view on the tree position under an overview point, keeping
+    // the current zoom level.
+    function centerOverviewPoint(ox, oy) {
+        let size = svgSize();
+        if (!size || !_overviewMap) {
+            return;
+        }
+        let lx = (ox - _overviewMap.tx) / _overviewMap.scale;
+        let ly = (oy - _overviewMap.ty) / _overviewMap.scale;
+        let k = d3.zoomTransform(_baseSvg.node()).k;
+        _baseSvg.call(_zoomListener.transform,
+            d3.zoomIdentity.translate((size.w / 2) - (lx * k), (size.h / 2) - (ly * k)).scale(k));
+    }
+
+    // Click or drag inside the overview to move the main view. Every handler
+    // stops propagation: the tree's own zoom/pan behaviour is bound to the same
+    // svg, and without this a drag here would pan the tree as well.
+    function bindOverviewNavigation(surface) {
+        let dragging = false;
+        let goTo = function (event) {
+            let p = d3.pointer(event, _overviewGroup.node());
+            centerOverviewPoint(p[0], p[1]);
+        };
+        surface.on('pointerdown', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            dragging = true;
+            try {
+                this.setPointerCapture(event.pointerId);
+            } catch (e) {
+                // no pointer capture available; the move handler still works
+            }
+            goTo(event);
+        });
+        surface.on('pointermove', function (event) {
+            if (!dragging) {
+                return;
+            }
+            event.stopPropagation();
+            goTo(event);
+        });
+        surface.on('pointerup pointercancel pointerleave', function (event) {
+            if (!dragging) {
+                return;
+            }
+            dragging = false;
+            try {
+                this.releasePointerCapture(event.pointerId);
+            } catch (e) {
+                // nothing captured
+            }
+            event.stopPropagation();
+        });
+        // A real press fires mousedown/touchstart as well as pointerdown, and
+        // d3.zoom pans on THOSE -- so without swallowing them here, a drag in the
+        // overview would also drag the tree. dblclick and wheel are d3.zoom's
+        // other bindings.
+        surface.on('mousedown touchstart dblclick wheel', function (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        });
     }
 
     function svgSize() {
