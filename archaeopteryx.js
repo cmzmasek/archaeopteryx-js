@@ -188,9 +188,6 @@ if (!phyloXml) {
     const HEIGHT_OFFSET = 40;
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
-    const NODE_TOOLTIP_BACKGROUND_COLOR = '#606060';
-    const NODE_TOOLTIP_TEXT_ACTIVE_COLOR = COLOR_FOR_ACTIVE_ELEMENTS;
-    const NODE_TOOLTIP_TEXT_COLOR = WHITE;
     const ORDINAL_SCALE = 'ordinal';
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
@@ -1016,6 +1013,93 @@ if (!phyloXml) {
             .html(escapeHtmlKeepBreaks(mo_text))
             .style('left', (event.pageX) + 'px')
             .style('top', (event.pageY) + 'px');
+    }
+
+    // ----------------------------
+    // The node action menu
+    // ----------------------------
+    // An HTML overlay rather than shapes drawn into the tree: it keeps one fixed
+    // size at any zoom level (the old svg menu lived inside the zoomed group and
+    // grew and shrank with it), and it can use the control panel's palette,
+    // hover states and shadow.
+
+    let _nodeMenu = null;
+
+    function removeNodeMenu() {
+        if (_nodeMenu) {
+            _nodeMenu.remove();
+            _nodeMenu = null;
+        }
+    }
+
+    // items: [{label, action, danger}]; anchored at the click position.
+    function showNodeMenu(items, event, titleText) {
+        removeNodeMenu();
+        if (!items || items.length < 1) {
+            return;
+        }
+        let menu = document.createElement('div');
+        menu.className = 'aptx-node-menu';
+        if (_panelTheme) {
+            menu.classList.add('aptx-' + _panelTheme); // follow the panel's light/dark choice
+        }
+        if (titleText) {
+            let title = document.createElement('div');
+            title.className = 'aptx-node-menu-title';
+            title.textContent = titleText;
+            menu.appendChild(title);
+        }
+        items.forEach(function (item) {
+            if (item.separator) {
+                menu.appendChild(document.createElement('hr'));
+                return;
+            }
+            let b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = item.label;
+            if (item.danger) {
+                b.className = 'aptx-menu-danger';
+            }
+            b.addEventListener('click', function (e) {
+                e.stopPropagation();
+                removeNodeMenu();
+                item.action();
+            });
+            menu.appendChild(b);
+        });
+        document.body.appendChild(menu);
+
+        // Place it at the pointer, nudged back inside the window if it would
+        // otherwise hang off the right or bottom edge.
+        let x = (event && event.pageX !== undefined) ? event.pageX : 0;
+        let y = (event && event.pageY !== undefined) ? event.pageY : 0;
+        let r = menu.getBoundingClientRect();
+        let maxX = window.scrollX + document.documentElement.clientWidth - r.width - 8;
+        let maxY = window.scrollY + document.documentElement.clientHeight - r.height - 8;
+        menu.style.left = Math.max(window.scrollX + 8, Math.min(x, maxX)) + 'px';
+        menu.style.top = Math.max(window.scrollY + 8, Math.min(y, maxY)) + 'px';
+        _nodeMenu = menu;
+
+        // Dismiss on the next click anywhere else, or on Escape.
+        setTimeout(function () {
+            document.addEventListener('mousedown', onDismiss, {once: true});
+        }, 0);
+        document.addEventListener('keydown', onEscape);
+
+        function onDismiss(e) {
+            if (_nodeMenu && _nodeMenu.contains(e.target)) {
+                return; // a click on the menu itself is handled by its buttons
+            }
+            removeNodeMenu();
+            document.removeEventListener('keydown', onEscape);
+        }
+
+        function onEscape(e) {
+            if (e.key === 'Escape') {
+                removeNodeMenu();
+                document.removeEventListener('keydown', onEscape);
+            }
+        }
     }
 
     function mouseout() {
@@ -4065,16 +4149,67 @@ if (!phyloXml) {
     }
 
 
-    function removeTooltips() {
-        if (_svgGroup != null) {
-            _svgGroup.selectAll('.tooltipElem').remove();
+    // The accession the "Access DB" menu entry would look up, or null when this
+    // node carries nothing a database link can be built from.
+    function databaseAccessionFor(d) {
+        let value = null;
+        if (d.properties && d.properties.length > 0) {
+            for (let i = 0; i < d.properties.length; ++i) {
+                let p = d.properties[i];
+                if (p.value && p.ref && p.ref.toLowerCase().indexOf('accession') >= 0) {
+                    if (RE_SWISSPROT_TREMBL_PFAM.test(p.value) || RE_GENBANK_PROT.test(p.value)
+                        || RE_GENBANK_NUC.test(p.value) || RE_REFSEQ.test(p.value)
+                        || RE_UNIPROTKB.test(p.value) || RE_SWISSPROT_TREMBL.test(p.value)) {
+                        value = p.value;
+                        break;
+                    }
+                }
+            }
         }
+        if (d.sequences) {
+            for (let i = 0; i < d.sequences.length; ++i) {
+                let s = d.sequences[i];
+                if (s.accession && s.accession.value && s.accession.source) {
+                    let source = s.accession.source.toUpperCase();
+                    if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ
+                        || source === ACC_UNIPROT || source === ACC_UNIPROTKB || source === ACC_SWISSPROT
+                        || source === ACC_TREMBL || source === 'UNKNOWN' || source === '?') {
+                        value = s.accession.value;
+                        break;
+                    }
+                }
+            }
+        }
+        if (d.name) {
+            if (RE_SWISSPROT_TREMBL.test(d.name)) {
+                value = d.name;
+            } else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
+                value = RE_SWISSPROT_TREMBL_PFAM.exec(d.name)[1];
+            }
+        }
+        return value;
     }
 
+    // A short heading naming the node the menu belongs to, so it is obvious
+    // which node the actions will apply to.
+    function makeNodeMenuTitle(d) {
+        let name = d.name;
+        if (!name && d.taxonomies && d.taxonomies.length > 0) {
+            name = d.taxonomies[0].scientific_name || d.taxonomies[0].common_name || d.taxonomies[0].code;
+        }
+        if (!name && d.sequences && d.sequences.length > 0) {
+            name = d.sequences[0].name || d.sequences[0].gene_name;
+        }
+        if (!name) {
+            return d.children ? 'Internal node' : 'Node';
+        }
+        name = String(name).trim();
+        return (name.length > 34) ? (name.substring(0, 33) + '…') : name;
+    }
 
     function getClickEventListenerNode(tree) {
 
-        function nodeClick() {
+        function nodeClick(event, d) {
 
             if (_showColorPicker === true) {
                 removeColorPicker();
@@ -4788,115 +4923,18 @@ if (!phyloXml) {
                 document.dispatchEvent(event);
             }
 
-            let rectWidth = 130;
-            let rectHeight = 260;
-
-            removeTooltips();
-
-            d3.select(this).append('rect')
-                .attr('class', 'tooltipElem')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('width', rectWidth)
-                .attr('height', rectHeight)
-                .attr('rx', 10)
-                .attr('ry', 10)
-                .style('fill-opacity', 0.9)
-                .style('fill', NODE_TOOLTIP_BACKGROUND_COLOR);
-
-            let rightPad = 10;
-            let topPad = 20;
-            let textSum = 0;
-            let textInc = 20;
-
-            let fs = _settings.controlsFontSize.toString() + 'px';
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        textSum += textInc;
-                        return 'Display Node Data';
-                    }
-                })
-                .on('click', function (event, d) {
-                    displayNodeData(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent && d.parent.parent) {
-                        textSum += textInc;
-                        return 'Go to Subtree';
-                    }
-                })
-                .on('click', function (event, d) {
-                    goToSubTree(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        if (d.children) {
-                            textSum += textInc;
-                            return 'Swap Descendants';
-                        }
-                    }
-                })
-                .on('click', function (event, d) {
-                    swapChildren(d);
-                    update();
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        if (d.children) {
-                            textSum += textInc;
-                            return 'Order Subtree';
-                        }
-                    }
-                })
-                .on('click', function (event, d) {
+            // Build the menu declaratively, then render it as an HTML overlay
+            // (see showNodeMenu). Same actions and the same order as before.
+            let items = [];
+            if (d.parent) {
+                items.push({label: 'Display Node Data', action: function () { displayNodeData(d); }});
+            }
+            if (d.parent && d.parent.parent) {
+                items.push({label: 'Go to Subtree', action: function () { goToSubTree(d); }});
+            }
+            if (d.parent && d.children) {
+                items.push({label: 'Swap Descendants', action: function () { swapChildren(d); update(); }});
+                items.push({label: 'Order Subtree', action: function () {
                     if (!_treeFn.visData) {
                         _treeFn.visData = {};
                     }
@@ -4906,268 +4944,47 @@ if (!phyloXml) {
                     orderSubtree(d, _treeFn.visData.order);
                     _treeFn.visData.order = !_treeFn.visData.order;
                     update(null, 0);
-                });
-
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', _settings.controlsFont)
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (!_in_subtree && d.parent && d.parent.parent && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
-                        textSum += textInc;
-                        return 'Reroot';
-                    }
-                })
-                .on('click', function (event, d) {
-                    forester.reRoot(tree, d, -1);
-                    zoomToFit();
-                });
-
+                }});
+            }
+            if (!_in_subtree && d.parent && d.parent.parent
+                && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
+                items.push({label: 'Reroot', action: function () { forester.reRoot(tree, d, -1); zoomToFit(); }});
+            }
             if (_settings.allowManualNodeSelection) {
-                d3.select(this).append('text')
-                    .attr('class', 'tooltipElem tooltipElemText')
-                    .attr('y', topPad + textSum)
-                    .attr('x', +rightPad)
-                    .style('text-align', 'left')
-                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                    .style('font-size', fs)
-                    .style('font-family', 'Helvetica')
-                    .style('font-style', 'normal')
-                    .style('font-weight', 'bold')
-                    .style('text-decoration', 'none')
-                    .text(function (d) {
-                        textSum += textInc;
-                        return 'Select/Deselect Node';
-
-                    })
-                    .on('click', function (event, d) {
-                        selectDeselectNode(d);
-                    });
-                d3.select(this).append('text')
-                    .attr('class', 'tooltipElem tooltipElemText')
-                    .attr('y', topPad + textSum)
-                    .attr('x', +rightPad)
-                    .style('text-align', 'left')
-                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                    .style('font-size', fs)
-                    .style('font-family', 'Helvetica')
-                    .style('font-style', 'normal')
-                    .style('font-weight', 'bold')
-                    .style('text-decoration', 'none')
-                    .text(function (d) {
-                        textSum += textInc;
-                        return 'Select/Deselect All Ext Nodes';
-
-                    })
-                    .on('click', function (event, d) {
-                        selectDeselectNodeExtNodes(d);
-                    });
-
+                items.push({label: 'Select/Deselect Node', action: function () { selectDeselectNode(d); }});
+                items.push({label: 'Select/Deselect All Ext Nodes', action: function () { selectDeselectNodeExtNodes(d); }});
             }
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        textSum += textInc;
-                        return 'List External Node Data';
-                    }
-                })
-                .on('click', function (event, d) {
-                    listExternalNodeData(d);
-                });
-
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        textSum += textInc;
-                        return 'Download Ext Node Data';
-                    }
-                })
-                .on('click', function (event, d) {
-                    downloadExternalNodeData(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent) {
-                        textSum += textInc;
-                        return 'Download All Ext Node Data';
-                    }
-                })
-                .on('click', function (event, d) {
-                    downloadExternalNodeDataAll(d);
-                });
-
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent && _basicTreeProperties.sequences && (_basicTreeProperties.maxMolSeqLength && (_basicTreeProperties.maxMolSeqLength > 0))) {
-                        textSum += textInc;
-                        return 'List Sequences in Fasta';
-                    }
-                })
-                .on('click', function (event, d) {
-                    listMolecularSequences(d);
-                });
-
-            d3.select(this).append('text')
-                .attr('class', 'tooltipElem tooltipElemText')
-                .attr('y', topPad + textSum)
-                .attr('x', +rightPad)
-                .style('text-align', 'left')
-                .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                .style('font-size', fs)
-                .style('font-family', 'Helvetica')
-                .style('font-style', 'normal')
-                .style('font-weight', 'bold')
-                .style('text-decoration', 'none')
-                .text(function (d) {
-                    if (d.parent && _basicTreeProperties.sequences && (_basicTreeProperties.maxMolSeqLength && (_basicTreeProperties.maxMolSeqLength > 0))) {
-                        textSum += textInc;
-                        return 'Download Sequences in Fasta';
-                    }
-                })
-                .on('click', function (event, d) {
-                    downloadExternalNodeMolecularSequenceAsFasta(d);
-                });
-
+            if (d.parent) {
+                items.push({separator: true});
+                items.push({label: 'List External Node Data', action: function () { listExternalNodeData(d); }});
+                items.push({label: 'Download Ext Node Data', action: function () { downloadExternalNodeData(d); }});
+                items.push({label: 'Download All Ext Node Data', action: function () { downloadExternalNodeDataAll(d); }});
+            }
+            if (d.parent && _basicTreeProperties.sequences
+                && _basicTreeProperties.maxMolSeqLength && (_basicTreeProperties.maxMolSeqLength > 0)) {
+                items.push({label: 'List Sequences in Fasta', action: function () { listMolecularSequences(d); }});
+                items.push({label: 'Download Sequences in Fasta', action: function () { downloadExternalNodeMolecularSequenceAsFasta(d); }});
+            }
             if (_settings.enableAccessToDatabases === true) {
-                d3.select(this).append('text')
-                    .attr('class', 'tooltipElem tooltipElemText')
-                    .attr('y', topPad + textSum)
-                    .attr('x', +rightPad)
-                    .style('text-align', 'left')
-                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                    .style('font-size', fs)
-                    .style('font-family', 'Helvetica')
-                    .style('font-style', 'normal')
-                    .style('font-weight', 'bold')
-                    .style('text-decoration', 'none')
-                    .text(function (d) {
-                        let show = false;
-                        let value = null;
-
-                        if (d.properties && d.properties.length > 0) {
-                            let propertiesLength = d.properties.length;
-                            for (let i = 0; i < propertiesLength; ++i) {
-                                let p = d.properties[i];
-                                if (p.value && p.ref.toLowerCase().indexOf("accession") >= 0) {
-                                    if (RE_SWISSPROT_TREMBL_PFAM.test(p.value) || RE_GENBANK_PROT.test(p.value) || RE_GENBANK_NUC.test(p.value) || RE_REFSEQ.test(p.value) || RE_UNIPROTKB.test(p.value) || RE_SWISSPROT_TREMBL.test(p.value)) {
-                                        show = true;
-                                        value = p.value;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (d.sequences) {
-                            for (let i = 0; i < d.sequences.length; ++i) {
-                                let s = d.sequences[i];
-                                if (s.accession && s.accession.value && s.accession.source) {
-                                    let source = s.accession.source.toUpperCase();
-                                    if (source === ACC_GENBANK || source === ACC_NCBI || source === ACC_REFSEQ || source === ACC_UNIPROT || source === ACC_UNIPROTKB || source === ACC_SWISSPROT || source === ACC_TREMBL || source === 'UNKNOWN' || source === '?') {
-                                        show = true;
-                                        value = s.accession.value;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (d.name) {
-                            if (RE_SWISSPROT_TREMBL.test(d.name)) {
-                                show = true;
-                                value = d.name;
-                            } else if (RE_SWISSPROT_TREMBL_PFAM.test(d.name)) {
-                                show = true;
-                                value = RE_SWISSPROT_TREMBL_PFAM.exec(d.name)[1];
-                            }
-                        }
-                        if (show) {
-                            textSum += textInc;
-                            return 'Access DB [' + value + ']';
-                        }
-                    })
-                    .on('click', function (event, d) {
-                        accessDatabase(d);
-                    });
+                let acc = databaseAccessionFor(d);
+                if (acc) {
+                    items.push({separator: true});
+                    items.push({label: 'Access DB [' + acc + ']', action: function () { accessDatabase(d); }});
+                }
             }
-
-            if (_settings.enableSubtreeDeletion === true) {
-                d3.select(this).append('text')
-                    .attr('class', 'tooltipElem tooltipElemText')
-                    .attr('y', topPad + textSum)
-                    .attr('x', +rightPad)
-                    .style('text-align', 'left')
-                    .style('align', 'left')
-                    .style('fill', NODE_TOOLTIP_TEXT_COLOR)
-                    .style('font-size', fs)
-                    .style('font-family', _settings.controlsFont)
-                    .style('font-style', 'normal')
-                    .style('font-weight', 'bold')
-                    .style('text-decoration', 'none')
-                    .text(function (d) {
-                        if (!_in_subtree && d.parent && d.parent.parent && d.parent.parent.parent) {
-                            textSum += textInc;
-                            if (d.children) {
-                                if (d.children.length > 1) {
-                                    return 'Delete Subtree';
-                                }
-                            } else {
-                                return 'Delete External Node';
-                            }
-                        }
-                    })
-                    .on('click', function (event, d) {
+            if ((_settings.enableSubtreeDeletion === true) && !_in_subtree
+                && d.parent && d.parent.parent && d.parent.parent.parent) {
+                let deleteLabel = null;
+                if (d.children) {
+                    if (d.children.length > 1) {
+                        deleteLabel = 'Delete Subtree';
+                    }
+                } else {
+                    deleteLabel = 'Delete External Node';
+                }
+                if (deleteLabel) {
+                    items.push({separator: true});
+                    items.push({label: deleteLabel, danger: true, action: function () {
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
@@ -5175,23 +4992,11 @@ if (!phyloXml) {
                         search0();
                         search1();
                         zoomToFit();
-                    });
+                    }});
+                }
             }
 
-            d3.selection.prototype.moveToFront = function () {
-                return this.each(function () {
-                    this.parentNode.appendChild(this);
-                });
-            };
-            d3.select(this).moveToFront();
-            d3.select(this).selectAll('.tooltipElemText').each(function () {
-                d3.select(this).on('mouseover', function () {
-                    d3.select(this).transition().duration(50).style('fill', NODE_TOOLTIP_TEXT_ACTIVE_COLOR);
-                });
-                d3.select(this).on('mouseout', function () {
-                    d3.select(this).transition().duration(50).style('fill', NODE_TOOLTIP_TEXT_COLOR);
-                });
-            });
+            showNodeMenu(items, event, makeNodeMenuTitle(d));
         }
 
         return nodeClick;
@@ -5200,9 +5005,6 @@ if (!phyloXml) {
 
     document.documentElement.addEventListener('click', function (d) {
         let attrClass = d.target.getAttribute('class');
-        if ((attrClass !== 'nodeCircleOptions')) {
-            removeTooltips();
-        }
         if (attrClass === BASE_BACKGROUND) {
             if (_showColorPicker === true) {
                 removeColorPicker();
@@ -6440,6 +6242,37 @@ if (!phyloXml) {
             + '.aptx-panel * { box-sizing:border-box; }'
             + '@media (prefers-color-scheme:dark){ .aptx-panel:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
             + '.aptx-panel.aptx-dark {' + dark + '}'
+            // The node menu is a separate overlay (it cannot live inside the
+            // panel), so it carries its own copy of the palette and follows the
+            // same light / dark rules.
+            + '.aptx-node-menu {'
+            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
+            + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
+            + '}'
+            + '@media (prefers-color-scheme:dark){ .aptx-node-menu:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-node-menu.aptx-dark {' + dark + '}'
+            // The menu itself: fixed 11px type, so it does NOT scale with the
+            // tree's zoom the way the old svg-drawn menu did.
+            + '.aptx-node-menu { position:absolute; z-index:1000; min-width:196px; max-width:280px; padding:4px;'
+            + '  box-sizing:border-box; border:1px solid var(--p-line-strong); border-radius:10px;'
+            + '  background:var(--p-bg); color:var(--p-ink);'
+            + '  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);'
+            + '  box-shadow:0 12px 30px -12px rgba(23,34,46,0.42),0 2px 6px -2px rgba(23,34,46,0.2);'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11px; line-height:1.45; }'
+            + '.aptx-node-menu-title { padding:5px 9px 6px; font-size:9px; font-weight:700; letter-spacing:0.07em;'
+            + '  text-transform:uppercase; color:var(--p-faint); border-bottom:1px solid var(--p-line);'
+            + '  margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
+            + '.aptx-node-menu button { display:block; width:100%; text-align:left; margin:0; padding:5px 9px;'
+            + '  border:0; border-radius:6px; background:transparent; color:var(--p-ink); font:inherit;'
+            + '  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+            + '  transition:background .1s,color .1s; }'
+            + '.aptx-node-menu button:hover, .aptx-node-menu button:focus-visible {'
+            + '  background:var(--p-accent); color:#fff; outline:none; }'
+            + '.aptx-node-menu button.aptx-menu-danger:hover, .aptx-node-menu button.aptx-menu-danger:focus-visible {'
+            + '  background:#e5484d; color:#fff; }'
+            + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
