@@ -135,8 +135,6 @@ if (!phyloXml) {
     const CONTROLS_0_LEFT_DEFAULT = 20;
     const CONTROLS_0_TOP_DEFAULT = 10;
     const CONTROLS_1_TOP_DEFAULT = 10;
-    const CONTROLS_1_WIDTH_DEFAULT = 120;
-    const CONTROLS_BACKGROUND_COLOR_DEFAULT = '#c0c0c0';
     const CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     const CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     const CONTROLS_FONT_SIZE_DEFAULT = 8;
@@ -3461,7 +3459,15 @@ if (!phyloXml) {
         found0ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
         found1ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
         found0and1ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
-        selectedColorDefault: 'the search / selection colours are fixed so they stay distinguishable'
+        selectedColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
+        // the collapse-by-depth / rank / feature feature is gone
+        collapsedLabelLength: 'the collapse feature was removed',
+        initialCollapseDepth: 'the collapse feature was removed',
+        initialCollapseFeature: 'the collapse feature was removed',
+        // never were inputs: runtime state that happens to live in the same bag
+        searchNegateResult: 'this is the state of the Inverse checkbox, not an input',
+        visualizationsLegendXposOrig: 'internal bookkeeping; set visualizationsLegendXpos',
+        visualizationsLegendYposOrig: 'internal bookkeeping; set visualizationsLegendYpos'
     };
     const REMOVED_SETTINGS = {
         showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
@@ -3476,7 +3482,18 @@ if (!phyloXml) {
         showDynahideButton: 'shown automatically once the tree has enough tips to need it',
         showShortenNodeNamesButton: 'shown automatically when the tree has long node names',
         showExternalLabelsButton: 'always shown',
-        showInternalLabelsButton: 'shown automatically when the tree has internal node data'
+        showInternalLabelsButton: 'shown automatically when the tree has internal node data',
+        // the collapse-by-depth / rank / feature feature is gone
+        collapseLabelWidth: 'the collapse feature was removed',
+        enableCollapseByBranchLenghts: 'the collapse feature was removed',
+        enableCollapseByFeature: 'the collapse feature was removed',
+        enableCollapseByTaxonomyRank: 'the collapse feature was removed',
+        // set but never read -- controls1Width lost its job to PANEL_WIDTH when
+        // the panels were rebuilt; groupSpecies and groupYears never had one
+        controls1Width: 'the control panel sizes itself',
+        groupSpecies: 'this setting was never read; it did nothing',
+        groupYears: 'this setting was never read; it did nothing',
+        controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
     function rejectRemoved(given, removed, kind) {
@@ -3692,9 +3709,6 @@ if (!phyloXml) {
         rejectRemoved(settings, REMOVED_SETTINGS, 'setting(s)');
         _settings = settings ? settings : {};
 
-        if (!_settings.controls1Width) {
-            _settings.controls1Width = CONTROLS_1_WIDTH_DEFAULT;
-        }
         if (!_settings.rootOffset) {
             _settings.rootOffset = ROOTOFFSET_DEFAULT;
         }
@@ -3724,9 +3738,6 @@ if (!phyloXml) {
         }
         if (!_settings.controlsFont) {
             _settings.controlsFont = CONTROLS_FONT_DEFAULTS;
-        }
-        if (!_settings.controlsBackgroundColor) {
-            _settings.controlsBackgroundColor = CONTROLS_BACKGROUND_COLOR_DEFAULT;
         }
         if (!_settings.controls0) {
             _settings.controls0 = CONTROLS_0;
@@ -3779,12 +3790,6 @@ if (!phyloXml) {
         }
         if (_settings.valuesToIgnoreForNodeVisualization === undefined) {
             _settings.valuesToIgnoreForNodeVisualization = null;
-        }
-        if (_settings.groupSpecies === undefined) {
-            _settings.groupSpecies = null;
-        }
-        if (_settings.groupYears === undefined) {
-            _settings.groupYears = null;
         }
         if (_settings.enableSpecialVisualizations2 === undefined) {
             _settings.enableSpecialVisualizations2 = false;
@@ -8191,7 +8196,7 @@ if (!phyloXml) {
             b = byId(RESET_SEARCH_A_BTN);
             if (b) {
                 b.disabled = true;
-                b.style.background = _settings.controlsBackgroundColor;
+                b.style.background = '';
                 b.style.color = '';
                 b.title = RESET_SEARCH_A_BTN_TOOLTIP;
             }
@@ -8215,7 +8220,7 @@ if (!phyloXml) {
             b = byId(RESET_SEARCH_B_BTN);
             if (b) {
                 b.disabled = true;
-                b.style.background = _settings.controlsBackgroundColor;
+                b.style.background = '';
                 b.style.color = '';
                 b.title = RESET_SEARCH_B_BTN_TOOLTIP;
             }
@@ -8262,7 +8267,7 @@ if (!phyloXml) {
     function disableButton(b) {
         if (b) {
             b.disabled = true;
-            b.style.background = _settings.controlsBackgroundColor;
+            b.style.background = '';
         }
     }
 
