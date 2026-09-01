@@ -88,8 +88,6 @@ if (!phyloXml) {
     // -----------------------------
     const LIGHT_BLUE = '#2590FD';
     const WHITE = '#ffffff';
-    const HORIZONTAL = 'horizontal';
-    const VERTICAL = 'vertical';
 
     // ------------------------------
     // File suffixes
@@ -128,7 +126,6 @@ if (!phyloXml) {
     const NODE_LABEL_GAP_DEFAULT = 10;
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
-    const VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
 
     // ---------------------------
@@ -136,7 +133,6 @@ if (!phyloXml) {
     // ---------------------------
     const CONTROLS_0_LEFT_DEFAULT = 20;
     const CONTROLS_0_TOP_DEFAULT = 10;
-    const CONTROLS_1_TOP_DEFAULT = 10;
     const CONTROLS_FONT_COLOR_DEFAULT = '#505050';
     const CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     const CONTROLS_FONT_SIZE_DEFAULT = 8;
@@ -205,6 +201,8 @@ if (!phyloXml) {
     const PHYLOGRAM_MIN_BRANCH_FRACTION = 0.5;
     const SHORTEN_NAME_MAX_LENGTH = 18;
     const PANEL_STYLE_ID = 'aptx-panel-styles';
+    // How wide a legend row is treated as, for grabbing it with the mouse.
+    const LEGEND_HIT_WIDTH = 140;
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
@@ -237,7 +235,6 @@ if (!phyloXml) {
     const COLOR_PICKER_LABEL = 'colorPickerLabel';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const CONTROLS_0 = 'controls0';
-    const CONTROLS_1 = 'controls1';
     const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
@@ -248,15 +245,10 @@ if (!phyloXml) {
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const LEGEND = 'legend';
+    const LEGEND_HIT = 'legendHit';
+    const LEGEND_SWATCH = 'legendSwatch';
     const LEGEND_DESCRIPTION = 'legendDescription';
     const LEGEND_LABEL = 'legendLabel';
-    const LEGENDS_HORIZ_VERT_BTN = 'legends_horizvert';
-    const LEGENDS_MOVE_DOWN_BTN = 'legends_mdown';
-    const LEGENDS_MOVE_LEFT_BTN = 'legends_mleft';
-    const LEGENDS_MOVE_RIGHT_BTN = 'legends_mright';
-    const LEGENDS_MOVE_UP_BTN = 'legends_mup';
-    const LEGENDS_RESET_BTN = 'legends_rest';
-    const LEGENDS_SHOW_BTN = 'legends_show';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
     const MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = 'seq_pos_label_curr_pos';
     const MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
@@ -456,6 +448,7 @@ if (!phyloXml) {
     let _colorPickerData = null;
     let _colorsForColorPicker = null;
     let _currentLabelColorVisualization = null;
+    let _legendDragged = false;
     let _currentNodeShapeVisualization = null;
     let _displayHeight = 0;
     let _displayWidth = 0;
@@ -484,7 +477,6 @@ if (!phyloXml) {
     let _searchBox1Empty = true;
     let _settings = null;
     let _showColorPicker = false;
-    let _showLegends = true;
     let _svgGroup = null;
     let _treeData = null;
     let _treeFn = null;
@@ -1400,13 +1392,24 @@ if (!phyloXml) {
         let legendEnter = legend.enter().append('g')
             .attr('class', id);
 
+        makeLegendDraggable(legendEnter);
+
         let fs = _settings.controlsFontSize.toString() + 'px';
 
         legendEnter.append('rect')
+            .attr('class', LEGEND_HIT)
+            .style('fill', 'none')
+            .style('pointer-events', 'all');
+
+        legendEnter.append('rect')
+            .attr('class', LEGEND_SWATCH)
             .style('cursor', 'pointer')
             .attr('width', null)
             .attr('height', null)
             .on('click', function (event, clickedName) {
+                if (_legendDragged) {
+                    return; // the pointer moved: that was a drag, not a pick
+                }
                 // d3 v6+ no longer passes the index; derive it from the domain.
                 let clickedIndex = colorScale.domain().indexOf(clickedName);
                 legendColorRectClicked(colorScale, label, description, clickedName, clickedIndex);
@@ -1452,7 +1455,11 @@ if (!phyloXml) {
                 return 'translate(' + x + ',' + y + ')';
             });
 
-        legendUpdate.select('rect')
+        legendUpdate.select('rect.' + LEGEND_HIT)
+            .attr('width', LEGEND_HIT_WIDTH)
+            .attr('height', legendRectSize);
+
+        legendUpdate.select('rect.' + LEGEND_SWATCH)
             .attr('width', legendRectSize)
             .attr('height', legendRectSize)
             .style('fill', colorScale)
@@ -1529,7 +1536,14 @@ if (!phyloXml) {
         let legendEnter = legend.enter().append('g')
             .attr('class', id);
 
+        makeLegendDraggable(legendEnter);
+
         let fs = _settings.controlsFontSize.toString() + 'px';
+
+        legendEnter.append('rect')
+            .attr('class', LEGEND_HIT)
+            .style('fill', 'none')
+            .style('pointer-events', 'all');
 
         legendEnter.append('path');
 
@@ -1600,6 +1614,12 @@ if (!phyloXml) {
                 }
             });
 
+        legendUpdate.select('rect.' + LEGEND_HIT)
+            .attr('x', -6)
+            .attr('y', -6)
+            .attr('width', LEGEND_HIT_WIDTH)
+            .attr('height', 12);
+
         legendUpdate.select('path')
             .attr('transform', function () {
                 return 'translate(' + 1 + ',' + 3 + ')'
@@ -1626,43 +1646,60 @@ if (!phyloXml) {
         return (Math.round((num * t) + (decimals > 0 ? 1 : 0) * (Math.sign(num) * (10 / Math.pow(100, decimals)))) / t).toFixed(decimals);
     }
 
+    // Legends are placed by dragging them. Every legend group is laid out from
+    // the visualizationsLegendXpos / visualizationsLegendYpos pair, so a drag
+    // moves that one origin and all of them follow. Only addLegends() is redrawn
+    // on each move -- update() would redraw the whole tree on every mousemove.
+    function makeLegendDraggable(selection) {
+        selection
+            .style('cursor', 'move')
+            .call(d3.drag()
+                .on('start', function (event) {
+                    if (event.sourceEvent) {
+                        // otherwise the same mousedown starts a pan of the tree
+                        event.sourceEvent.stopPropagation();
+                    }
+                    _legendDragged = false;
+                })
+                .on('drag', function (event) {
+                    _legendDragged = true;
+                    _options.visualizationsLegendXpos =
+                        Math.max(0, Math.min(_displayWidth - 20, _options.visualizationsLegendXpos + event.dx));
+                    _options.visualizationsLegendYpos =
+                        Math.max(0, Math.min(_displayHeight, _options.visualizationsLegendYpos + event.dy));
+                    removeColorPicker();
+                    addLegends();
+                }));
+    }
+
     function addLegends() {
         let xPos = _options.visualizationsLegendXpos;
         let yPos = _options.visualizationsLegendYpos;
-        let xPosIncr = 0;
-        let yPosIncr = 0;
-        let yPosIncrConst = 0;
-        if (_options.visualizationsLegendOrientation === HORIZONTAL) {
-            xPosIncr = 130;
-        } else if (_options.visualizationsLegendOrientation === VERTICAL) {
-            yPosIncr = 10;
-            yPosIncrConst = 40;
-        } else {
-            throw ('unknown direction for legends ' + _options.visualizationsLegendOrientation);
-        }
+        // Legends stack downwards. The button that switched them to a row went
+        // with the rest of the Vis Legend controls.
+        let yPosIncr = 10;
+        let yPosIncrConst = 40;
         let label = '';
         let desc = '';
         let counter = 0;
         let scaleType = '';
 
-        if (_showLegends && _legendColorScales[LEGEND_LABEL_COLOR] && _visualizations.labelColor[_currentLabelColorVisualization]) {
+        if (_legendColorScales[LEGEND_LABEL_COLOR] && _visualizations.labelColor[_currentLabelColorVisualization]) {
             removeColorLegend(LEGEND_LABEL_COLOR);
             label = 'Color';
             desc = _currentLabelColorVisualization;
 
             scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
             counter = makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], scaleType, label, desc);
-            xPos += xPosIncr;
             yPos += ((counter * yPosIncr) + yPosIncrConst);
         } else {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_showLegends && _options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
+        if (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Shape';
             desc = _currentNodeShapeVisualization;
             counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
-            xPos += xPosIncr;
             yPos += ((counter * yPosIncr) + yPosIncrConst);
         } else {
             removeShapeLegend(LEGEND_NODE_SHAPE);
@@ -1777,13 +1814,8 @@ if (!phyloXml) {
         let xPos = 0;
         let yPos = 0;
 
-        if (_options.visualizationsLegendOrientation === VERTICAL) {
-            xPos = _options.visualizationsLegendXpos + 140;
-            yPos = _options.visualizationsLegendYpos - 10;
-        } else {
-            xPos = _options.visualizationsLegendXpos;
-            yPos = _options.visualizationsLegendYpos + 180;
-        }
+        xPos = _options.visualizationsLegendXpos + 140;
+        yPos = _options.visualizationsLegendYpos - 10;
 
         if (xPos < 20) {
             xPos = 20;
@@ -2052,7 +2084,6 @@ if (!phyloXml) {
 
         updateButtonEnabledState();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            updateLegendButtonEnabledState();
             if (_settings.enableMsaResidueVisualizations) {
                 updateMsaResidueVisCurrResPosLabel();
             }
@@ -3219,6 +3250,10 @@ if (!phyloXml) {
         // set but never read -- controls1Width lost its job to PANEL_WIDTH when
         // the panels were rebuilt; groupSpecies and groupYears never had one
         controls1Width: 'the control panel sizes itself',
+        // there is only one panel now
+        controls1: 'the visualization menus moved into the main control panel',
+        controls1Left: 'the visualization menus moved into the main control panel',
+        controls1Top: 'the visualization menus moved into the main control panel',
         groupSpecies: 'this setting was never read; it did nothing',
         groupYears: 'this setting was never read; it did nothing',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
@@ -3377,7 +3412,6 @@ if (!phyloXml) {
         }
         _options.visualizationsLegendXposOrig = _options.visualizationsLegendXpos;
         _options.visualizationsLegendYposOrig = _options.visualizationsLegendYpos;
-        _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
 
         setFontSizes(parseInt(_options.fontSize));
     }
@@ -3423,12 +3457,6 @@ if (!phyloXml) {
         }
         if (!_settings.rootOffset) {
             _settings.rootOffset = leftPanelClearance(_settings);
-        }
-        if (!_settings.controls1Top) {
-            _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;
-        }
-        if (!_settings.controls1) {
-            _settings.controls1 = CONTROLS_1;
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = false;
@@ -3486,11 +3514,6 @@ if (!phyloXml) {
         _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
         intitializeDisplaySize();
-
-        if (!_settings.controls1Left) {
-            // this needs to be after intitializeDisplaySize()
-            _settings.controls1Left = _displayWidth - PANEL_WIDTH;
-        }
     }
 
 
@@ -3512,13 +3535,6 @@ if (!phyloXml) {
         }
     }
 
-    function mouseDown(event) {
-        if (event.which === 1 && (event.altKey || event.shiftKey)) {
-            if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
-                moveLegendWithMouse(event);
-            }
-        }
-    }
 
     function deleteValuesFromNodeProperties(valuesToIgnoreForNodeVisualization, nodeProperties) {
         for (let key in nodeProperties) {
@@ -3736,7 +3752,6 @@ if (!phyloXml) {
 
         if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
             d3.select(window)
-                .on("mousedown", mouseDown);
         }
 
         _baseSvg = d3.select(id).append('svg')
@@ -3766,14 +3781,6 @@ if (!phyloXml) {
                     rebuildOverview();
                     if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
                         zoomToFit();
-                    }
-                    if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-                        let c1 = byId(_settings.controls1);
-                        if (c1) {
-                            setStyles(c1, {
-                                'left': width - PANEL_WIDTH
-                            });
-                        }
                     }
                 });
         }
@@ -4437,7 +4444,7 @@ if (!phyloXml) {
         }
         initializeNodeVisualizations(nodeProperties);
 
-        if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
+        if (((_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
                 removeLegend(LEGEND_LABEL_COLOR);
                 addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
@@ -4719,9 +4726,8 @@ if (!phyloXml) {
                 width = _displayWidth;
             }
         }
-        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            legendReset();
-        }
+        // Where the user dragged the legend to is their choice; a resize is no
+        // reason to undo it.
         zoomToFit();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
             let c0 = byId(_settings.controls0);
@@ -4730,19 +4736,6 @@ if (!phyloXml) {
                     'left': _settings.controls0Left, 'top': _settings.controls0Top + _offsetTop
                 });
             }
-            let c1 = byId(_settings.controls1);
-            if (c1) {
-                if (_settings.enableDynamicSizing) {
-                    setStyles(c1, {
-                        'left': width - PANEL_WIDTH, 'top': _settings.controls1Top + _offsetTop
-                    });
-                } else {
-                    setStyles(c1, {
-                        'left': _settings.controls1Left, 'top': _settings.controls1Top + _offsetTop
-                    });
-                }
-            }
-
         }
         if (_options.searchAinitialValue) {
             setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
@@ -5200,91 +5193,14 @@ if (!phyloXml) {
     }
 
 
-    function legendMoveUp(x) {
-        if (!x) {
-            x = 10;
-        }
-        if (_options.visualizationsLegendYpos > 0) {
-            _options.visualizationsLegendYpos -= x;
-            removeColorPicker();
-            update(null, 0);
-        }
-    }
 
-    function legendMoveDown(x) {
-        if (!x) {
-            x = 10;
-        }
-        if (_options.visualizationsLegendYpos < _displayHeight) {
-            _options.visualizationsLegendYpos += x;
-            removeColorPicker();
-            update(null, 0);
-        }
-    }
 
-    function legendMoveRight(x) {
-        if (!x) {
-            x = 10;
-        }
-        if (_options.visualizationsLegendXpos < (_displayWidth - 20)) {
-            _options.visualizationsLegendXpos += x;
-            removeColorPicker();
-            update(null, 0);
-        }
-    }
 
-    function legendMoveLeft(x) {
-        if (!x) {
-            x = 10;
-        }
-        if (_options.visualizationsLegendXpos > 0) {
-            _options.visualizationsLegendXpos -= x;
-            removeColorPicker();
-            update(null, 0);
-        }
-    }
 
-    function moveLegendWithMouse(ev) {
-        let x = ev.layerX;
-        let y = ev.layerY - _offsetTop;
-        if (x > 0 && x < _displayWidth) {
-            _options.visualizationsLegendXpos = x;
-        }
-        if (y > 0 && y < _displayHeight) {
-            _options.visualizationsLegendYpos = y;
-        }
-        removeColorPicker();
-        update(null, 0);
-    }
 
-    function legendHorizVertClicked() {
-        if (_options.visualizationsLegendOrientation === VERTICAL) {
-            _options.visualizationsLegendOrientation = HORIZONTAL;
-        } else {
-            _options.visualizationsLegendOrientation = VERTICAL;
-        }
-        removeColorPicker();
-        update(null, 0);
-    }
 
-    function legendShowClicked() {
-        _showLegends = !_showLegends;
-        if (!_showLegends) {
-            removeColorPicker();
-        }
-        update(null, 0, true);
-    }
 
-    function legendResetClicked() {
-        removeColorPicker();
-        legendReset();
-        update(null, 0, true);
-    }
 
-    function legendReset() {
-        _options.visualizationsLegendXpos = _options.visualizationsLegendXposOrig;
-        _options.visualizationsLegendYpos = _options.visualizationsLegendYposOrig;
-    }
 
     function legendColorRectClicked(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
         addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex);
@@ -6262,6 +6178,8 @@ if (!phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makePhylogramControl());
 
+            insertVisualizationControls(c0);
+
             c0.insertAdjacentHTML('beforeend',makeDisplayControl());
 
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
@@ -6289,81 +6207,6 @@ if (!phyloXml) {
             }
         }
 
-        let c1 = byId(_settings.controls1);
-        if (c1) {
-            c1.classList.add('aptx-panel');
-            setStyles(c1, {
-                'position': 'absolute',
-                'left': _settings.controls1Left,
-                'top': _settings.controls1Top + _offsetTop,
-                'padding': '0px',
-                'margin': '0'
-            });
-
-            makeDraggableWithinParent(c1);
-
-            if (_settings.enableNodeVisualizations && _nodeVisualizations) {
-                c1.insertAdjacentHTML('beforeend',makeVisualControls());
-                if (isCanDoMsaResidueVisualizations()) {
-                    c1.insertAdjacentHTML('beforeend',makeMsaResidueVisCurrResPositionControl());
-                }
-
-
-                if (isAddVisualization2() && _specialVisualizations != null) {
-                    if ('Mutations' in _specialVisualizations) {
-                        const mutations = _specialVisualizations['Mutations'];
-                        if (mutations != null) {
-                            c1.insertAdjacentHTML('beforeend',makeVisualization2(mutations.label));
-                            _visualizations2_color = mutations.color;
-                            _visualizations2_applies_to_ref = mutations.applies_to_ref;
-                            _visualizations2_property_datatype = mutations.property_datatype;
-                            _visualizations2_property_applies_to = mutations.property_applies_to;
-                            console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations2_applies_to_ref);
-                            console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations2_property_applies_to);
-                            console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations2_property_datatype);
-                            console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations2_color);
-                        }
-                    }
-                }
-                if (isAddVisualization3() && _specialVisualizations != null) {
-                    if ('Convergent_Mutations' in _specialVisualizations) {
-                        const conv_mutations = _specialVisualizations['Convergent_Mutations'];
-                        if (conv_mutations != null) {
-                            c1.insertAdjacentHTML('beforeend',makeVisualization3(conv_mutations.label));
-                            _visualizations3_color = conv_mutations.color;
-                            _visualizations3_applies_to_ref = conv_mutations.applies_to_ref;
-                            _visualizations3_property_datatype = conv_mutations.property_datatype;
-                            _visualizations3_property_applies_to = conv_mutations.property_applies_to;
-                            console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations3_applies_to_ref);
-                            console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations3_property_applies_to);
-                            console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations3_property_datatype);
-                            console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations3_color);
-                        }
-                    }
-                }
-
-                if (isAddVisualization4() && _specialVisualizations != null) {
-                    if ('vipr:PANGO_Lineage' in _specialVisualizations) {
-                        const lineages = _specialVisualizations['vipr:PANGO_Lineage'];
-                        if (lineages != null) {
-                            c1.insertAdjacentHTML('beforeend',makeVisualization4(lineages.label));
-                            _visualizations4_color = lineages.color;
-                            _visualizations4_applies_to_ref = lineages.applies_to_ref;
-                            _visualizations4_property_datatype = lineages.property_datatype;
-                            _visualizations4_property_applies_to = lineages.property_applies_to;
-                            console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations4_applies_to_ref);
-                            console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations4_property_applies_to);
-                            console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations4_property_datatype);
-                            console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations4_color);
-                        }
-                    }
-                }
-
-                c1.insertAdjacentHTML('beforeend',makeLegendControl());
-            }
-
-            enhancePanel(c1, 'Legend');
-        }
 
         setStylesAll('input[type=button]', {
             'width': '26px',
@@ -6384,21 +6227,9 @@ if (!phyloXml) {
         // the panel's standard button height so the glyph buttons in this row
         // match the ones in Tools.)
 
-        setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN, {
-            'width': '72px'
-        });
 
-        setStylesAll('#' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN, {
-            'width': '24px'
-        });
 
-        setStylesAll('#' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN, {
-            'width': '36px'
-        });
 
-        setStylesAll('#' + LEGENDS_MOVE_UP_BTN + ', #' + LEGENDS_MOVE_DOWN_BTN + ', #' + LEGENDS_RESET_BTN + ', #' + LEGENDS_MOVE_LEFT_BTN + ', #' + LEGENDS_MOVE_RIGHT_BTN + ', #' + LEGENDS_SHOW_BTN + ', #' + LEGENDS_HORIZ_VERT_BTN, {
-            'height': '16px'
-        });
 
         const downloadButton = byId(DOWNLOAD_BUTTON);
 
@@ -6673,37 +6504,10 @@ if (!phyloXml) {
         // Visualization Legends
         // ---------------------
 
-        onHold(LEGENDS_MOVE_UP_BTN, function () {
-            legendMoveUp(2);
-            _intervalId = setInterval(legendMoveUp, MOVE_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
 
-        onHold(LEGENDS_MOVE_DOWN_BTN, function () {
-            legendMoveDown(2);
-            _intervalId = setInterval(legendMoveDown, MOVE_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
 
-        onHold(LEGENDS_MOVE_LEFT_BTN, function () {
-            legendMoveLeft(2);
-            _intervalId = setInterval(legendMoveLeft, MOVE_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
 
-        onHold(LEGENDS_MOVE_RIGHT_BTN, function () {
-            legendMoveRight(2);
-            _intervalId = setInterval(legendMoveRight, MOVE_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
 
-        on(LEGENDS_HORIZ_VERT_BTN, 'click', legendHorizVertClicked);
-        on(LEGENDS_SHOW_BTN, 'click', legendShowClicked);
-        on(LEGENDS_RESET_BTN, 'click', legendResetClicked);
 
         // ----------------
 
@@ -7268,6 +7072,69 @@ if (!phyloXml) {
         }
 
 
+        // The visualization menus used to live in a second, free-floating panel
+        // on the right. They belong with every other control, and above Display
+        // Data, which is where the desktop puts them.
+        function insertVisualizationControls(panel) {
+        if (_settings.enableNodeVisualizations && _nodeVisualizations) {
+            panel.insertAdjacentHTML('beforeend',makeVisualControls());
+            if (isCanDoMsaResidueVisualizations()) {
+                panel.insertAdjacentHTML('beforeend',makeMsaResidueVisCurrResPositionControl());
+            }
+
+
+            if (isAddVisualization2() && _specialVisualizations != null) {
+                if ('Mutations' in _specialVisualizations) {
+                    const mutations = _specialVisualizations['Mutations'];
+                    if (mutations != null) {
+                        panel.insertAdjacentHTML('beforeend',makeVisualization2(mutations.label));
+                        _visualizations2_color = mutations.color;
+                        _visualizations2_applies_to_ref = mutations.applies_to_ref;
+                        _visualizations2_property_datatype = mutations.property_datatype;
+                        _visualizations2_property_applies_to = mutations.property_applies_to;
+                        console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations2_applies_to_ref);
+                        console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations2_property_applies_to);
+                        console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations2_property_datatype);
+                        console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations2_color);
+                    }
+                }
+            }
+            if (isAddVisualization3() && _specialVisualizations != null) {
+                if ('Convergent_Mutations' in _specialVisualizations) {
+                    const conv_mutations = _specialVisualizations['Convergent_Mutations'];
+                    if (conv_mutations != null) {
+                        panel.insertAdjacentHTML('beforeend',makeVisualization3(conv_mutations.label));
+                        _visualizations3_color = conv_mutations.color;
+                        _visualizations3_applies_to_ref = conv_mutations.applies_to_ref;
+                        _visualizations3_property_datatype = conv_mutations.property_datatype;
+                        _visualizations3_property_applies_to = conv_mutations.property_applies_to;
+                        console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations3_applies_to_ref);
+                        console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations3_property_applies_to);
+                        console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations3_property_datatype);
+                        console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations3_color);
+                    }
+                }
+            }
+
+            if (isAddVisualization4() && _specialVisualizations != null) {
+                if ('vipr:PANGO_Lineage' in _specialVisualizations) {
+                    const lineages = _specialVisualizations['vipr:PANGO_Lineage'];
+                    if (lineages != null) {
+                        panel.insertAdjacentHTML('beforeend',makeVisualization4(lineages.label));
+                        _visualizations4_color = lineages.color;
+                        _visualizations4_applies_to_ref = lineages.applies_to_ref;
+                        _visualizations4_property_datatype = lineages.property_datatype;
+                        _visualizations4_property_applies_to = lineages.property_applies_to;
+                        console.log(MESSAGE + 'Setting special visualization property ref to: ' + _visualizations4_applies_to_ref);
+                        console.log(MESSAGE + 'Setting special visualization property applies to to: ' + _visualizations4_property_applies_to);
+                        console.log(MESSAGE + 'Setting special visualization property datatype to: ' + _visualizations4_property_datatype);
+                        console.log(MESSAGE + 'Setting special visualization color to: ' + _visualizations4_color);
+                    }
+                }
+            }
+        }
+        }
+
         // --------------------------------------------------------------
         // Functions to make visualization controls
         // --------------------------------------------------------------
@@ -7334,24 +7201,6 @@ if (!phyloXml) {
             return h;
         }
 
-        function makeLegendControl() {
-            let mouseTip = ' (alternatively, place legend with mouse using shift+left-mouse-button click, or alt+left-mouse-button click)';
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Vis Legend</legend>');
-            h = h.concat(makeButton('Show', LEGENDS_SHOW_BTN, 'to show/hide legend(s)'));
-            h = h.concat(makeButton('Dir', LEGENDS_HORIZ_VERT_BTN, 'to toggle between vertical and horizontal alignment of (multiple) legends'));
-            h = h.concat('<br>');
-            h = h.concat(makeButton('^', LEGENDS_MOVE_UP_BTN, 'move legend(s) up' + mouseTip));
-            h = h.concat('<br>');
-            h = h.concat(makeButton('<', LEGENDS_MOVE_LEFT_BTN, 'move legend(s) left' + mouseTip));
-            h = h.concat(makeButton('R', LEGENDS_RESET_BTN, 'return legend(s) to original position' + mouseTip));
-            h = h.concat(makeButton('>', LEGENDS_MOVE_RIGHT_BTN, 'move legend(s) right' + mouseTip));
-            h = h.concat('<br>');
-            h = h.concat(makeButton('v', LEGENDS_MOVE_DOWN_BTN, 'move legend(s) down' + mouseTip));
-            h = h.concat('</fieldset>');
-            return h;
-        }
 
 
         // --------------------------------------------------------------
@@ -7722,33 +7571,6 @@ if (!phyloXml) {
         }
     }
 
-    function updateLegendButtonEnabledState() {
-        let b = byId(LEGENDS_SHOW_BTN);
-        if (b) {
-            if (_showLegends) {
-                b.style.background = COLOR_FOR_ACTIVE_ELEMENTS;
-                b.style.color = WHITE;
-            } else {
-                b.style.background = '';
-                b.style.color = '';
-            }
-        }
-        if (_showLegends && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
-            enableButton(byId(LEGENDS_HORIZ_VERT_BTN));
-            enableButton(byId(LEGENDS_MOVE_UP_BTN));
-            enableButton(byId(LEGENDS_MOVE_DOWN_BTN));
-            enableButton(byId(LEGENDS_MOVE_LEFT_BTN));
-            enableButton(byId(LEGENDS_MOVE_RIGHT_BTN));
-            enableButton(byId(LEGENDS_RESET_BTN));
-        } else {
-            disableButton(byId(LEGENDS_HORIZ_VERT_BTN));
-            disableButton(byId(LEGENDS_MOVE_UP_BTN));
-            disableButton(byId(LEGENDS_MOVE_DOWN_BTN));
-            disableButton(byId(LEGENDS_MOVE_LEFT_BTN));
-            disableButton(byId(LEGENDS_MOVE_RIGHT_BTN));
-            disableButton(byId(LEGENDS_RESET_BTN));
-        }
-    }
 
     function disableCheckbox(cb) {
         if (cb) {

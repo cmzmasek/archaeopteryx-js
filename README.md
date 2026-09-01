@@ -369,12 +369,9 @@ constants:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `controls0` | `'controls0'` | Id of the div for the main control panel. |
-| `controls1` | `'controls1'` | Id of the div for the visualizations panel. |
+| `controls0` | `'controls0'` | Id of the div for the control panel. |
 | `controls0Left` | `20` | Position of the main panel. |
 | `controls0Top` | `10` | Position of the main panel. |
-| `controls1Left` | right edge of the display | Position of the visualizations panel. |
-| `controls1Top` | `10` | Position of the visualizations panel. |
 | `controlsFont` | `['Arial', 'Helvetica', 'Times']` | Control-panel font stack. |
 | `controlsFontSize` | `8` | Control-panel font size. |
 | `controlsFontColor` | `'#505050'` | Control-panel text colour. |
@@ -406,27 +403,29 @@ constants:
 
 | Setting | Why, and what to do instead |
 | --- | --- |
+| `showExternalNodesButton` | The Ext. Nodes switch no longer exists. |
+| `showInternalNodesButton` | The Int. Nodes switch no longer exists. |
+| `showSearchPropertiesButton` | Properties are searched by choosing them in a search box's field menu. |
+| `searchFieldWidth` | The search boxes size themselves to the control panel. |
 | `showNodeNameButton` | Shown automatically when the tree has node names. |
 | `showTaxonomyButton` | Shown automatically when the tree has taxonomies. |
 | `showSequenceButton` | Shown automatically when the tree has sequences. |
 | `showBranchColorsButton` | Shown automatically when the tree has branch colours. |
 | `showDynahideButton` | Shown automatically once the tree has enough tips to need it. |
 | `showShortenNodeNamesButton` | Shown automatically when the tree has long node names. |
-| `showInternalLabelsButton` | Shown automatically when the tree has internal node data. |
 | `showExternalLabelsButton` | Always shown. |
-| `showExternalNodesButton` | The Ext. Nodes switch no longer exists. |
-| `showInternalNodesButton` | The Int. Nodes switch no longer exists. |
-| `showSearchPropertiesButton` | Properties are searched by choosing them in a search box's field menu. |
-| `searchFieldWidth` | The search boxes size themselves to the control panel. |
-| `controls1Width` | The control panel sizes itself. |
-| `controlsBackgroundColor` | The control panel follows the light / dark palette. |
+| `showInternalLabelsButton` | Shown automatically when the tree has internal node data. |
 | `collapseLabelWidth` | The collapse feature was removed. |
 | `enableCollapseByBranchLenghts` | The collapse feature was removed. |
 | `enableCollapseByFeature` | The collapse feature was removed. |
 | `enableCollapseByTaxonomyRank` | The collapse feature was removed. |
-| `groupSpecies` | Never read — it did nothing, even before. |
-| `groupYears` | Never read — it did nothing, even before. |
-
+| `controls1Width` | The control panel sizes itself. |
+| `controls1` | The visualization menus moved into the main control panel. |
+| `controls1Left` | The visualization menus moved into the main control panel. |
+| `controls1Top` | The visualization menus moved into the main control panel. |
+| `groupSpecies` | This setting was never read; it did nothing. |
+| `groupYears` | This setting was never read; it did nothing. |
+| `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 ## Node visualizations
 
 `launch()`'s `nodeVisualizations` argument, and the
@@ -454,3 +453,14 @@ size visualizations were removed -- use "colors" or "shapes" instead
 
 The **Node size** slider in the control panel is unrelated and still there: it
 sets one size for every node.
+
+Both menus live in the single control panel, above Display Data, which is where
+the desktop puts them. There is no second panel any more.
+
+### Moving the legends
+
+The legends drawn over the tree are **dragged with the mouse** — grab one
+anywhere and both move together, keeping their stacked order. The old Vis
+Legend fieldset (Show / Dir / four arrows / R) is gone; so is the shift- or
+alt-click placement it documented. `visualizationsLegendXpos` and
+`visualizationsLegendYpos` still set where they start out.
