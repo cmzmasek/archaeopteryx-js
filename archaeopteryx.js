@@ -4589,7 +4589,7 @@ if (!phyloXml) {
                 update();
             }
 
-            function goToSubTree(node) {
+            function switchToSubtree(node) {
                 if (node.parent) {
                     if (!(node.children)) {
                         if (node.parent.parent) {
@@ -4663,7 +4663,9 @@ if (!phyloXml) {
                 items.push({label: 'Display Node Data', action: function () { displayNodeData(d); }});
             }
             if (d.parent && d.parent.parent) {
-                items.push({label: 'Go to Subtree', action: function () { goToSubTree(d); }});
+                // "Switch to ..." matches the desktop's wording for this action.
+                items.push({separator: true});
+                items.push({label: 'Switch to Subtree', action: function () { switchToSubtree(d); }});
             }
             if (d.parent && d.children) {
                 items.push({label: 'Swap Descendants', action: function () { swapChildren(d); update(); }});
