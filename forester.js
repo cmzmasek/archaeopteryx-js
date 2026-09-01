@@ -878,6 +878,7 @@
         properties.branchLengths = false;
         properties.confidences = false;
         properties.nodeEvents = false;
+        properties.branchColors = false;
         properties.sequences = false;
         properties.taxonomies = false;
         properties.alignedMolSeqs = true;
@@ -908,6 +909,9 @@
             }
             if (n.events) {
                 properties.nodeEvents = true;
+            }
+            if (n.color) {
+                properties.branchColors = true;
             }
             if (n.sequences && n.sequences.length > 0) {
                 properties.sequences = true;

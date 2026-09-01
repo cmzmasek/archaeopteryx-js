@@ -195,6 +195,9 @@ if (!phyloXml) {
     const MSA_RESIDUE = 'MSA Residue';
     const RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
     const RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
+    // Auto-hide Labels is only offered once a tree is dense enough for labels
+    // to actually collide.
+    const DYNAHIDE_MIN_EXT_NODES = 20;
     const SHORTEN_NAME_MAX_LENGTH = 18;
     const PANEL_STYLE_ID = 'aptx-panel-styles';
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
@@ -3438,13 +3441,43 @@ if (!phyloXml) {
         searchProperties: 'choose the property in the search box\'s field menu instead',
         externalNodeFontSize: 'all labels share one size now -- use "fontSize"',
         internalNodeFontSize: 'all labels share one size now -- use "fontSize"',
-        branchDataFontSize: 'all labels share one size now -- use "fontSize"'
+        branchDataFontSize: 'all labels share one size now -- use "fontSize"',
+        // download filenames follow the tree's name
+        nameForNhDownload: 'download names follow "treeName"',
+        nameForPhyloXmlDownload: 'download names follow "treeName"',
+        nameForPngDownload: 'download names follow "treeName"',
+        nameForSvgDownload: 'download names follow "treeName"',
+        nameForFastaDownload: 'download names follow "treeName"',
+        // which taxonomy / sequence field to label with is read off the tree
+        showTaxonomyCode: 'taxonomy labelling follows what the tree contains',
+        showTaxonomyScientificName: 'taxonomy labelling follows what the tree contains',
+        showTaxonomyCommonName: 'taxonomy labelling follows what the tree contains',
+        showTaxonomyRank: 'taxonomy labelling follows what the tree contains',
+        showTaxonomySynonyms: 'taxonomy labelling follows what the tree contains',
+        showSequenceName: 'sequence labelling follows what the tree contains',
+        showSequenceGeneSymbol: 'sequence labelling follows what the tree contains',
+        showSequenceSymbol: 'sequence labelling follows what the tree contains',
+        showSequenceAccession: 'sequence labelling follows what the tree contains',
+        // fixed colour-vision-safe highlighting colours
+        found0ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
+        found1ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
+        found0and1ColorDefault: 'the search / selection colours are fixed so they stay distinguishable',
+        selectedColorDefault: 'the search / selection colours are fixed so they stay distinguishable'
     };
     const REMOVED_SETTINGS = {
         showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
         showInternalNodesButton: 'the Int. Nodes switch no longer exists',
         showSearchPropertiesButton: 'properties are searched by choosing them in a search box\'s field menu',
-        searchFieldWidth: 'the search boxes size themselves to the control panel'
+        searchFieldWidth: 'the search boxes size themselves to the control panel',
+        // each control now appears when the tree actually has the data for it
+        showNodeNameButton: 'shown automatically when the tree has node names',
+        showTaxonomyButton: 'shown automatically when the tree has taxonomies',
+        showSequenceButton: 'shown automatically when the tree has sequences',
+        showBranchColorsButton: 'shown automatically when the tree has branch colours',
+        showDynahideButton: 'shown automatically once the tree has enough tips to need it',
+        showShortenNodeNamesButton: 'shown automatically when the tree has long node names',
+        showExternalLabelsButton: 'always shown',
+        showInternalLabelsButton: 'shown automatically when the tree has internal node data'
     };
 
     function rejectRemoved(given, removed, kind) {
@@ -3522,40 +3555,24 @@ if (!phyloXml) {
         if (_options.showTaxonomy === undefined) {
             _options.showTaxonomy = _basicTreeProperties.taxonomies === true;
         }
-        if (_options.showTaxonomyCode === undefined) {
-            _options.showTaxonomyCode = presentFields.has('TC');
-        }
-        if (_options.showTaxonomyScientificName === undefined) {
-            _options.showTaxonomyScientificName = presentFields.has('TS');
-        }
-        if (_options.showTaxonomyCommonName === undefined) {
-            // the scientific name is the primary label; fall back to the
-            // common name only when there is no scientific name to show
-            _options.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
-        }
-        if (_options.showTaxonomyRank === undefined) {
-            _options.showTaxonomyRank = false;
-        }
-        if (_options.showTaxonomySynonyms === undefined) {
-            _options.showTaxonomySynonyms = false;
-        }
+        // Which taxonomy fields to label with is decided from the tree, not
+        // configured: show the scientific name and code when present, and fall
+        // back to the common name only when there is no scientific name.
+        _options.showTaxonomyCode = presentFields.has('TC');
+        _options.showTaxonomyScientificName = presentFields.has('TS');
+        _options.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
+        _options.showTaxonomyRank = false;
+        _options.showTaxonomySynonyms = false;
         if (_options.showSequence === undefined) {
             _options.showSequence = _basicTreeProperties.sequences === true;
         }
-        // one good sequence identifier, not all of them: prefer the sequence
-        // name, then the gene name, then the symbol, then the accession
-        if (_options.showSequenceName === undefined) {
-            _options.showSequenceName = presentFields.has('SN');
-        }
-        if (_options.showSequenceGeneSymbol === undefined) {
-            _options.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
-        }
-        if (_options.showSequenceSymbol === undefined) {
-            _options.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
-        }
-        if (_options.showSequenceAccession === undefined) {
-            _options.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN') && !presentFields.has('GN') && !presentFields.has('SS');
-        }
+        // Likewise ONE good sequence identifier rather than all of them, in
+        // order of preference: sequence name, gene name, symbol, accession.
+        _options.showSequenceName = presentFields.has('SN');
+        _options.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
+        _options.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
+        _options.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
+            && !presentFields.has('GN') && !presentFields.has('SS');
         if (_options.showDistributions === undefined) {
             _options.showDistributions = false;
         }
@@ -3580,18 +3597,13 @@ if (!phyloXml) {
         if (!_options.backgroundColorForPrintExportDefault) {
             _options.backgroundColorForPrintExportDefault = BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
         }
-        if (!_options.found0ColorDefault) {
-            _options.found0ColorDefault = FOUND0_COLOR_DEFAULT;
-        }
-        if (!_options.found1ColorDefault) {
-            _options.found1ColorDefault = FOUND1_COLOR_DEFAULT;
-        }
-        if (!_options.selectedColorDefault) {
-            _options.selectedColorDefault = SELECTED_COLOR_DEFAULT;
-        }
-        if (!_options.found0and1ColorDefault) {
-            _options.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
-        }
+        // Fixed, not configurable: these are the colour-vision-safe Okabe-Ito
+        // colours the search and selection highlighting depends on, and they have
+        // to stay distinguishable from each other and from the tree.
+        _options.found0ColorDefault = FOUND0_COLOR_DEFAULT;
+        _options.found1ColorDefault = FOUND1_COLOR_DEFAULT;
+        _options.selectedColorDefault = SELECTED_COLOR_DEFAULT;
+        _options.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
         if (!_options.defaultFont) {
             _options.defaultFont = FONT_DEFAULTS;
         }
@@ -3650,39 +3662,18 @@ if (!phyloXml) {
         } else {
             _options.treeName = null;
         }
-        if (!_options.nameForNhDownload) {
-            if (_options.treeName) {
-                _options.nameForNhDownload = _options.treeName + NH_SUFFIX;
-            } else {
-                _options.nameForNhDownload = NAME_FOR_NH_DOWNLOAD_DEFAULT;
-            }
-        }
-        if (!_options.nameForPhyloXmlDownload) {
-            if (_options.treeName) {
-                _options.nameForPhyloXmlDownload = _options.treeName + XML_SUFFIX;
-            } else {
-                _options.nameForPhyloXmlDownload = NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
-            }
-        }
-        if (!_options.nameForPngDownload) {
-            if (_options.treeName) {
-                _options.nameForPngDownload = _options.treeName + PNG_SUFFIX;
-            } else {
-                _options.nameForPngDownload = NAME_FOR_PNG_DOWNLOAD_DEFAULT;
-            }
-        }
-        if (!_options.nameForSvgDownload) {
-            if (_options.treeName) {
-                _options.nameForSvgDownload = _options.treeName + SVG_SUFFIX;
-            } else {
-                _options.nameForSvgDownload = NAME_FOR_SVG_DOWNLOAD_DEFAULT;
-            }
-        }
-        if (_options.treeName) {
-            _options.nameForFastaDownload = _options.treeName + FASTA_SUFFIX;
-        } else {
-            _options.nameForFastaDownload = NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
-        }
+        // Download filenames follow the tree's name; there is nothing useful to
+        // configure separately per format.
+        _options.nameForNhDownload = _options.treeName
+            ? (_options.treeName + NH_SUFFIX) : NAME_FOR_NH_DOWNLOAD_DEFAULT;
+        _options.nameForPhyloXmlDownload = _options.treeName
+            ? (_options.treeName + XML_SUFFIX) : NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
+        _options.nameForPngDownload = _options.treeName
+            ? (_options.treeName + PNG_SUFFIX) : NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+        _options.nameForSvgDownload = _options.treeName
+            ? (_options.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
+        _options.nameForFastaDownload = _options.treeName
+            ? (_options.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
         if (!_options.visualizationsLegendXpos) {
             _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
         }
@@ -3767,36 +3758,6 @@ if (!phyloXml) {
         }
         if (_settings.textFieldHeight === undefined) {
             _settings.textFieldHeight = TEXT_INPUT_FIELD_DEFAULT_HEIGHT;
-        }
-        if (_settings.showBranchColorsButton === undefined) {
-            _settings.showBranchColorsButton = false;
-        }
-        if (_settings.showNodeNameButton === undefined) {
-            _settings.showNodeNameButton = true;
-        }
-        if (_settings.showTaxonomyButton === undefined) {
-            _settings.showTaxonomyButton = true;
-        }
-        if (_settings.showSequenceButton === undefined) {
-            _settings.showSequenceButton = true;
-        }
-        if (_settings.showDynahideButton === undefined) {
-            _settings.showDynahideButton = _basicTreeProperties.externalNodesCount > 20;
-        }
-        if (_settings.showShortenNodeNamesButton === undefined) {
-            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
-        }
-        if (_settings.showExternalLabelsButton === undefined) {
-            _settings.showExternalLabelsButton = true;
-        }
-        if (_settings.showInternalLabelsButton === undefined) {
-            _settings.showInternalLabelsButton = true;
-        }
-        if (_settings.showShortenNodeNamesButton === undefined) {
-            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
-        }
-        if (_settings.showShortenNodeNamesButton === undefined) {
-            _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
         }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
@@ -7547,13 +7508,13 @@ if (!phyloXml) {
             let opts = [];
 
             // --- Labels: what text/data is drawn on the tree ---
-            if (_settings.showNodeNameButton && _basicTreeProperties.nodeNames) {
+            if (_basicTreeProperties.nodeNames) {
                 labels.push(makeCheckboxItem('Node Name', NODE_NAME_CB, 'to show/hide node names (node names usually are the untyped labels found in New Hampshire/Newick formatted trees)'));
             }
-            if (_settings.showTaxonomyButton && _basicTreeProperties.taxonomies) {
+            if (_basicTreeProperties.taxonomies) {
                 labels.push(makeCheckboxItem('Taxonomy', TAXONOMY_CB, 'to show/hide node taxonomic information'));
             }
-            if (_settings.showSequenceButton && _basicTreeProperties.sequences) {
+            if (_basicTreeProperties.sequences) {
                 labels.push(makeCheckboxItem('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
             }
             if (_nodeLabels) {
@@ -7573,10 +7534,10 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
-            if (_settings.showExternalLabelsButton) {
+            {
                 labels.push(makeCheckboxItem('Ext. Labels', EXTERNAL_LABEL_CB, 'to show/hide external node labels'));
             }
-            if (_basicTreeProperties.internalNodeData && _settings.showInternalLabelsButton) {
+            if (_basicTreeProperties.internalNodeData) {
                 labels.push(makeCheckboxItem('Int. Labels', INTERNAL_LABEL_CB, 'to show/hide internal node labels'));
             }
 
@@ -7587,7 +7548,7 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchEvents) {
                 nodes.push(makeCheckboxItem('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-            if (_settings.showBranchColorsButton) {
+            if (_basicTreeProperties.branchColors) { // only when the tree carries any
                 nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
             }
             if (_settings.enableNodeVisualizations) {
@@ -7598,13 +7559,13 @@ if (!phyloXml) {
             }
 
             // --- Options ---
-            if (_settings.showDynahideButton) {
+            if (_basicTreeProperties.externalNodesCount > DYNAHIDE_MIN_EXT_NODES) {
                 // "Auto-hide Labels" matches the desktop, which renamed the historical
                 // "Dyna Hide" because that named the mechanism rather than what the user
                 // sees. The _options.dynahide option keeps its name (public API).
                 opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             }
-            if (_settings.showShortenNodeNamesButton) {
+            if (_basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH) {
                 opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             }
 
