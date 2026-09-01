@@ -578,8 +578,69 @@ if (!phyloXml) {
     let _overviewContent = null; // the scaled miniature inside it
     let _overviewViewport = null;// the "you are here" rectangle
     let _overviewMap = null;     // {scale, tx, ty} mapping tree coords -> overview coords
+    let _overviewCorner = 0;     // 0 bottom-right, 1 bottom-left, 2 top-left, 3 top-right
+
+    function loadOverviewCorner() {
+        try {
+            let stored = parseInt(localStorage.getItem('aptx-overview-corner'), 10);
+            _overviewCorner = (stored >= 0 && stored <= 3) ? stored : 0;
+        } catch (e) {
+            _overviewCorner = 0; // storage unavailable (private mode, blocked cookies)
+        }
+    }
+
+    function overviewCornerPos(corner, size) {
+        let right = size.w - OVERVIEW_WIDTH - OVERVIEW_MARGIN;
+        let bottom = size.h - OVERVIEW_HEIGHT - OVERVIEW_MARGIN;
+        if (corner === 1) {
+            return {x: OVERVIEW_MARGIN, y: bottom};
+        }
+        if (corner === 2) {
+            return {x: OVERVIEW_MARGIN, y: OVERVIEW_MARGIN};
+        }
+        if (corner === 3) {
+            return {x: right, y: OVERVIEW_MARGIN};
+        }
+        return {x: right, y: bottom};
+    }
+
+    // Move the overview to the next corner, the way the desktop's "O" does: a
+    // plain cycle, bottom-right -> bottom-left -> top-left -> top-right. (An
+    // earlier version skipped corners hidden behind a control panel, which
+    // sounds helpful but ping-pongs between the two free corners and can never
+    // reach the others; a predictable cycle is easier to use. The panels can be
+    // hidden if a corner under one is wanted.)
+    function moveOverviewToNextCorner() {
+        _overviewCorner = (_overviewCorner + 1) % 4;
+        try {
+            localStorage.setItem('aptx-overview-corner', String(_overviewCorner));
+        } catch (e) {
+            // storage unavailable; the move still applies for this session
+        }
+        positionOverview();
+    }
+
+    function positionOverview() {
+        let size = svgSize();
+        if (!_overviewGroup || !size) {
+            return;
+        }
+        let pos = overviewCornerPos(_overviewCorner, size);
+        _overviewGroup.attr('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+    }
+
+    // True while the user is typing, so an unmodified shortcut key does not fire
+    // from inside the search boxes.
+    function isTypingTarget(el) {
+        if (!el || !el.tagName) {
+            return false;
+        }
+        let tag = el.tagName.toLowerCase();
+        return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable === true;
+    }
 
     function makeOverview() {
+        loadOverviewCorner();
         _overviewGroup = _baseSvg.append('g')
             .attr('class', 'aptx-overview')
             .style('display', 'none')
@@ -596,6 +657,7 @@ if (!phyloXml) {
             .style('stroke', '#9a9a9a').style('stroke-width', 1)
             .style('pointer-events', 'all')
             .style('cursor', 'pointer');
+        bg.append('title').text('Click or drag to move the view. Press O to move this overview to the next corner.');
         bindOverviewNavigation(bg);
         _overviewContent = _overviewGroup.append('g').attr('class', 'aptx-overview-tree');
         // a light wash plus a firm outline: enough to read at a glance without
@@ -706,9 +768,7 @@ if (!phyloXml) {
             ty: OVERVIEW_PAD + ((innerH - (box.height * scale)) / 2) - (box.y * scale),
             box: box
         };
-        _overviewGroup.attr('transform', 'translate('
-            + (size.w - OVERVIEW_WIDTH - OVERVIEW_MARGIN) + ','
-            + (size.h - OVERVIEW_HEIGHT - OVERVIEW_MARGIN) + ')');
+        positionOverview();
         _overviewContent.attr('transform', 'translate(' + _overviewMap.tx + ',' + _overviewMap.ty + ') scale(' + scale + ')');
 
         let paths = [];
@@ -7490,6 +7550,9 @@ if (!phyloXml) {
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 escPressed();
+            } else if ((e.keyCode === VK_O) && !e.ctrlKey && !e.metaKey && !e.shiftKey
+                && !isTypingTarget(e.target)) {
+                moveOverviewToNextCorner(); // as on the desktop
             }
         });
 
