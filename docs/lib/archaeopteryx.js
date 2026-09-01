@@ -3948,7 +3948,10 @@ if (!phyloXml) {
             .scaleExtent([0.1, 10])
             .filter(function (event) {
                 // Reserve the shift key for moving the legend, not zoom/pan.
-                return !event.shiftKey;
+                // The wheel is handled ourselves (it expands/contracts the tree's
+                // layout rather than scaling the picture), so keep d3's own
+                // wheel-zoom out of it; dragging to pan still comes through here.
+                return !event.shiftKey && event.type !== 'wheel';
             })
             .on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
@@ -7261,7 +7264,24 @@ if (!phyloXml) {
                 }
                 // To prevent the page from scrolling:
                 e.preventDefault();
+                return;
             }
+            // A plain wheel over the tree zooms BOTH axes, exactly as pressing
+            // Y+ and X+ together does (and Y-/X- the other way): the tree's
+            // layout grows or shrinks while the labels stay the size they were.
+            // Only over the tree -- elsewhere the wheel must still scroll the
+            // control panel or the page.
+            if (!_baseSvg || !_baseSvg.node().contains(e.target)) {
+                return;
+            }
+            if (e.deltaY > 0) {
+                zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+            } else if (e.deltaY < 0) {
+                zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+            }
+            e.preventDefault();
         }, {passive: false});
 
         // --------------------------------------------------------------
