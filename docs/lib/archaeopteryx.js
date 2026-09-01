@@ -243,10 +243,8 @@ if (!phyloXml) {
     const EXPORT_FORMAT_SELECT = 'exp_f_sel';
     const EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
-    const EXTERNAL_NODES_CB = 'extn_cb';
     const INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
     const INTERNAL_LABEL_CB = 'intl_cb';
-    const INTERNAL_NODES_CB = 'intn_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const LEGEND = 'legend';
     const LEGEND_DESCRIPTION = 'legendDescription';
@@ -2227,15 +2225,30 @@ if (!phyloXml) {
         }
     }
 
+    // A node is drawn as a shape only when there is a reason to show one: it
+    // carries a duplication/speciation event, it is a search hit or selected, or
+    // a node visualization is colouring it. (A node whose shape comes from a
+    // shape visualization is drawn by that path instead -- hence the hasVis
+    // guard.) There is deliberately no "show all nodes" switch: circles on every
+    // node carry no information and only add clutter.
     let makeNodeSize = function (node) {
 
         if ((_options.showNodeEvents && node.events && node.children && (node.events.duplications || node.events.speciations)) || isNodeFound(node) || isNodeSelected(node)) {
             return _options.nodeSizeDefault;
         }
 
-        return ((_options.nodeSizeDefault > 0 && node.parent && !(_options.showNodeVisualizations && node.hasVis)) && ((node.children && _options.showInternalNodes) || ((!node.children) && _options.showExternalNodes)) || (_options.phylogram && node.parent && !node.parent.parent && (!node.branch_length || node.branch_length <= 0))
+        // A fill-colour or size visualization must actually be SELECTED, not just
+        // the Node Vis switch turned on: otherwise every node would sprout a
+        // circle whenever that switch is on with no visualization chosen.
+        let visualized = _options.nodeSizeDefault > 0 && node.parent
+            && _options.showNodeVisualizations && !node.hasVis
+            && (_currentNodeFillColorVisualization != null || _currentNodeSizeVisualization != null);
 
-        ) ? makeVisNodeSize(node, 0.05) : 0;
+        // a zero-length branch off the root would otherwise be invisible
+        let zeroLengthRootChild = _options.phylogram && node.parent && !node.parent.parent
+            && (!node.branch_length || node.branch_length <= 0);
+
+        return (visualized || zeroLengthRootChild) ? makeVisNodeSize(node, 0.05) : 0;
     };
 
     let makeBranchWidth = function (link) {
@@ -3122,12 +3135,6 @@ if (!phyloXml) {
         if (_options.showDistributions === undefined) {
             _options.showDistributions = false;
         }
-        if (_options.showInternalNodes === undefined) {
-            _options.showInternalNodes = false;
-        }
-        if (_options.showExternalNodes === undefined) {
-            _options.showExternalNodes = false;
-        }
         if (_options.showInternalLabels === undefined) {
             _options.showInternalLabels = false;
         }
@@ -3373,12 +3380,6 @@ if (!phyloXml) {
         }
         if (_settings.showInternalLabelsButton === undefined) {
             _settings.showInternalLabelsButton = true;
-        }
-        if (_settings.showExternalNodesButton === undefined) {
-            _settings.showExternalNodesButton = true;
-        }
-        if (_settings.showInternalNodesButton === undefined) {
-            _settings.showInternalNodesButton = true;
         }
         if (_settings.showShortenNodeNamesButton === undefined) {
             _settings.showShortenNodeNamesButton = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
@@ -5541,20 +5542,6 @@ if (!phyloXml) {
         update();
     }
 
-    function internalNodesCbClicked() {
-        _options.showInternalNodes = getCheckboxValue(INTERNAL_NODES_CB);
-        search0();
-        search1();
-        update();
-    }
-
-    function externalNodesCbClicked() {
-        _options.showExternalNodes = getCheckboxValue(EXTERNAL_NODES_CB);
-        search0();
-        search1();
-        update();
-    }
-
     function nodeVisCbClicked() {
         _options.showNodeVisualizations = getCheckboxValue(NODE_VIS_CB);
         resetVis();
@@ -5617,12 +5604,6 @@ if (!phyloXml) {
 
     function changeNodeSize(e, slider) {
         _options.nodeSizeDefault = getSliderValue(e);
-        if (!_options.showInternalNodes && !_options.showExternalNodes && !_options.showNodeVisualizations && !_options.showNodeEvents) {
-            _options.showInternalNodes = true;
-            _options.showExternalNodes = true;
-            setCheckboxValue(INTERNAL_NODES_CB, true);
-            setCheckboxValue(EXTERNAL_NODES_CB, true);
-        }
         update(null, 0, true);
     }
 
@@ -6823,10 +6804,6 @@ if (!phyloXml) {
 
         on(EXTERNAL_LABEL_CB, 'click', externalLabelsCbClicked);
 
-        on(INTERNAL_NODES_CB, 'click', internalNodesCbClicked);
-
-        on(EXTERNAL_NODES_CB, 'click', externalNodesCbClicked);
-
         on(NODE_VIS_CB, 'click', nodeVisCbClicked);
 
         on(BRANCH_VIS_CB, 'click', branchVisCbClicked);
@@ -6953,10 +6930,6 @@ if (!phyloXml) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
             }
             if (v && v !== DEFAULT) {
-                if (!_options.showExternalNodes && !_options.showInternalNodes && (_currentNodeShapeVisualization == null)) {
-                    _options.showExternalNodes = true;
-                    setCheckboxValue(EXTERNAL_NODES_CB, true);
-                }
                 _options.showNodeVisualizations = true;
                 setCheckboxValue(NODE_VIS_CB, true);
                 _currentNodeFillColorVisualization = v;
@@ -6980,11 +6953,6 @@ if (!phyloXml) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
             }
             if (v && v !== DEFAULT) {
-                _options.showExternalNodes = true;
-                setCheckboxValue(EXTERNAL_NODES_CB, true);
-                _options.showInternalNodes = true;
-                setCheckboxValue(INTERNAL_NODES_CB, true);
-
                 _options.showNodeVisualizations = true;
                 setCheckboxValue(NODE_VIS_CB, true);
                 _currentNodeFillColorVisualization = v;
@@ -7007,11 +6975,6 @@ if (!phyloXml) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
             }
             if (v && v !== DEFAULT) {
-                _options.showExternalNodes = true;
-                setCheckboxValue(EXTERNAL_NODES_CB, true);
-                _options.showInternalNodes = true;
-                setCheckboxValue(INTERNAL_NODES_CB, true);
-
                 _options.showNodeVisualizations = true;
                 setCheckboxValue(NODE_VIS_CB, true);
                 _currentNodeFillColorVisualization = v;
@@ -7034,11 +6997,6 @@ if (!phyloXml) {
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
             }
             if (v && v !== DEFAULT) {
-                _options.showExternalNodes = true;
-                setCheckboxValue(EXTERNAL_NODES_CB, true);
-                _options.showInternalNodes = true;
-                setCheckboxValue(INTERNAL_NODES_CB, true);
-
                 _options.showNodeVisualizations = true;
                 setCheckboxValue(NODE_VIS_CB, true);
                 _currentNodeFillColorVisualization = v;
@@ -7074,10 +7032,6 @@ if (!phyloXml) {
             if (v && v !== DEFAULT) {
                 _currentNodeSizeVisualization = v;
                 addLegendForSizes(LEGEND_NODE_SIZE, _visualizations.nodeSize[_currentNodeSizeVisualization]);
-                if (!_options.showExternalNodes && !_options.showInternalNodes && (_currentNodeShapeVisualization == null)) {
-                    _options.showExternalNodes = true;
-                    setCheckboxValue(EXTERNAL_NODES_CB, true);
-                }
                 _options.showNodeVisualizations = true;
                 setCheckboxValue(NODE_VIS_CB, true);
             } else {
@@ -7586,12 +7540,6 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchEvents) {
                 nodes.push(makeCheckboxItem('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-            if (_settings.showExternalNodesButton) {
-                nodes.push(makeCheckboxItem('Ext. Nodes', EXTERNAL_NODES_CB, 'to show external nodes as shapes (usually circles)'));
-            }
-            if (_settings.showInternalNodesButton) {
-                nodes.push(makeCheckboxItem('Int. Nodes', INTERNAL_NODES_CB, 'to show internal nodes as shapes (usually circles)'));
-            }
             if (_settings.showBranchColorsButton) {
                 nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
             }
@@ -7904,8 +7852,6 @@ if (!phyloXml) {
         setCheckboxValue(BRANCH_EVENTS_CB, _options.showBranchEvents);
         setCheckboxValue(INTERNAL_LABEL_CB, _options.showInternalLabels);
         setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
-        setCheckboxValue(INTERNAL_NODES_CB, _options.showInternalNodes);
-        setCheckboxValue(EXTERNAL_NODES_CB, _options.showExternalNodes);
         setCheckboxValue(BRANCH_COLORS_CB, _options.showBranchColors);
         setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
         setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
@@ -8065,8 +8011,11 @@ if (!phyloXml) {
                 _currentNodeFillColorVisualization = _options.initialNodeFillColorVisualization;
                 setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, _currentNodeFillColorVisualization);
                 addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-                _options.showExternalNodes = true;
-                setCheckboxValue(EXTERNAL_NODES_CB, true);
+                // Node shapes are drawn only while node visualizations are on, so
+                // an initial fill-colour visualization has to switch them on (the
+                // visualization menus do the same).
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             }
             if (_options.initialLabelColorVisualization && _options.initialLabelColorVisualization !== DEFAULT && _visualizations.labelColor[_options.initialLabelColorVisualization] != null) {
                 _currentLabelColorVisualization = _options.initialLabelColorVisualization;
