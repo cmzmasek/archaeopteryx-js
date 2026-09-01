@@ -107,17 +107,15 @@ if (!phyloXml) {
     const BACKGROUND_COLOR_DEFAULT = '#f0f0f0';
     const BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT = '#ffffff';
     const BRANCH_COLOR_DEFAULT = '#909090';
-    const BRANCH_DATA_FONT_SIZE_DEFAULT = 6;
     const BRANCH_WIDTH_DEFAULT = 1;
     const DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
-    const EXTERNAL_NODE_FONT_SIZE_DEFAULT = 9;
+    const FONT_SIZE_DEFAULT = 8; // one size for every label, as on the desktop
     const FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
     // Okabe-Ito color-blind-safe palette for search / selection highlights.
     const FOUND0_COLOR_DEFAULT = '#0072B2';      // Search A  — blue
     const FOUND1_COLOR_DEFAULT = '#D55E00';      // Search B  — vermillion
     const FOUND0AND1_COLOR_DEFAULT = '#F0E442';  // A and B   — yellow
     const SELECTED_COLOR_DEFAULT = '#009E73';    // Selected  — bluish green
-    const INTERNAL_NODE_FONT_SIZE_DEFAULT = 6;
     const LABEL_COLOR_DEFAULT = '#202020';
     const NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
     const NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
@@ -220,7 +218,6 @@ if (!phyloXml) {
     // ---------------------------
     const BASE_BACKGROUND = 'basebackground';
     const BRANCH_COLORS_CB = 'brnch_col_cb';
-    const BRANCH_DATA_FONT_SIZE_SLIDER = 'bdfs_sl';
     const BRANCH_EVENTS_CB = 'brevts_cb';
     const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
     const BRANCH_VIS_CB = 'branchvis_cb';
@@ -241,9 +238,8 @@ if (!phyloXml) {
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const EXPORT_FORMAT_SELECT = 'exp_f_sel';
-    const EXTERNAL_FONT_SIZE_SLIDER = 'entfs_sl';
+    const FONT_SIZE_SLIDER = 'fs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
-    const INTERNAL_FONT_SIZE_SLIDER = 'intfs_sl';
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const LEGEND = 'legend';
@@ -3048,7 +3044,10 @@ if (!phyloXml) {
         showInternalNodes: 'node shapes now appear wherever a node visualization applies',
         searchIsPartial: 'each search box picks its own match mode (contains / starts with / ends with / whole word / regex)',
         searchUsesRegex: 'choose the "regex" match mode in the search box instead',
-        searchProperties: 'choose the property in the search box\'s field menu instead'
+        searchProperties: 'choose the property in the search box\'s field menu instead',
+        externalNodeFontSize: 'all labels share one size now -- use "fontSize"',
+        internalNodeFontSize: 'all labels share one size now -- use "fontSize"',
+        branchDataFontSize: 'all labels share one size now -- use "fontSize"'
     };
     const REMOVED_SETTINGS = {
         showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
@@ -3208,14 +3207,11 @@ if (!phyloXml) {
         if (!_options.nodeSizeDefault) {
             _options.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
         }
-        if (!_options.externalNodeFontSize) {
-            _options.externalNodeFontSize = EXTERNAL_NODE_FONT_SIZE_DEFAULT;
-        }
-        if (!_options.internalNodeFontSize) {
-            _options.internalNodeFontSize = INTERNAL_NODE_FONT_SIZE_DEFAULT;
-        }
-        if (!_options.branchDataFontSize) {
-            _options.branchDataFontSize = BRANCH_DATA_FONT_SIZE_DEFAULT;
+        // Every label shares one font size (as the desktop does). The three
+        // _options fields the renderer reads are always kept equal; `fontSize` is
+        // the single knob that sets them.
+        if (!_options.fontSize) {
+            _options.fontSize = FONT_SIZE_DEFAULT;
         }
         if (!_options.nodeLabelGap) {
             _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
@@ -3308,9 +3304,7 @@ if (!phyloXml) {
             _options.visualizationsLegendOrientation = VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT;
         }
 
-        _options.externalNodeFontSize = parseInt(_options.externalNodeFontSize);
-        _options.internalNodeFontSize = parseInt(_options.internalNodeFontSize);
-        _options.branchDataFontSize = parseInt(_options.branchDataFontSize);
+        setFontSizes(parseInt(_options.fontSize));
     }
 
     function initializeSettings(settings) {
@@ -5631,19 +5625,22 @@ if (!phyloXml) {
     }
 
 
-    function changeInternalFontSize(e, slider) {
-        _options.internalNodeFontSize = getSliderValue(e);
+    // One slider, one font size for every label -- external, internal and branch
+    // data alike, as the desktop does it.
+    function changeFontSize(e, slider) {
+        setFontSizes(getSliderValue(e));
         update(null, 0, true);
     }
 
-    function changeExternalFontSize(e, slider) {
-        _options.externalNodeFontSize = getSliderValue(e);
-        update(null, 0, true);
+    function clampFontSize(v) {
+        return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, v));
     }
 
-    function changeBranchDataFontSize(e, slider) {
-        _options.branchDataFontSize = getSliderValue(e);
-        update(null, 0, true);
+    function setFontSizes(size) {
+        size = clampFontSize(size);
+        _options.externalNodeFontSize = size;
+        _options.internalNodeFontSize = size;
+        _options.branchDataFontSize = size;
     }
 
     function updateMsaResidueVisCurrResPosFromSlider(e, slider) {
@@ -6531,51 +6528,22 @@ if (!phyloXml) {
 
 
     function increaseFontSizes() {
-        let step = SLIDER_STEP * 2;
-        let max = FONT_SIZE_MAX - step;
-        let up = false;
-        if (_options.externalNodeFontSize <= max) {
-            _options.externalNodeFontSize += step;
-            up = true;
-        }
-        if (_options.internalNodeFontSize <= max) {
-            _options.internalNodeFontSize += step;
-            up = true;
-        }
-        if (_options.branchDataFontSize <= max) {
-            _options.branchDataFontSize += step;
-            up = true;
-        }
-        if (up) {
-            setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
-            setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
-            setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
-            update(null, 0, true);
-        }
+        stepFontSizes(SLIDER_STEP * 2);
     }
 
     function decreaseFontSizes() {
-        let step = SLIDER_STEP * 2;
-        let min = FONT_SIZE_MIN + step;
-        let up = false;
-        if (_options.externalNodeFontSize >= min) {
-            _options.externalNodeFontSize -= step;
-            up = true;
+        stepFontSizes(-SLIDER_STEP * 2);
+    }
+
+    // The keyboard font-size shortcuts, in terms of the single base size.
+    function stepFontSizes(step) {
+        let base = clampFontSize(_options.externalNodeFontSize + step);
+        if (base === _options.externalNodeFontSize) {
+            return; // already at the end of the range
         }
-        if (_options.internalNodeFontSize >= min) {
-            _options.internalNodeFontSize -= step;
-            up = true;
-        }
-        if (_options.branchDataFontSize >= min) {
-            _options.branchDataFontSize -= step;
-            up = true;
-        }
-        if (up) {
-            setSliderValue(EXTERNAL_FONT_SIZE_SLIDER, _options.externalNodeFontSize);
-            setSliderValue(INTERNAL_FONT_SIZE_SLIDER, _options.internalNodeFontSize);
-            setSliderValue(BRANCH_DATA_FONT_SIZE_SLIDER, _options.branchDataFontSize);
-            update(null, 0, true);
-        }
+        setFontSizes(base);
+        setSliderValue(FONT_SIZE_SLIDER, _options.externalNodeFontSize);
+        update(null, 0, true);
     }
 
 
@@ -7069,11 +7037,7 @@ if (!phyloXml) {
 
         initSlider(BRANCH_WIDTH_SLIDER, BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX, SLIDER_STEP, _options.branchWidthDefault, changeBranchWidth);
 
-        initSlider(EXTERNAL_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.externalNodeFontSize, changeExternalFontSize);
-
-        initSlider(INTERNAL_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.internalNodeFontSize, changeInternalFontSize);
-
-        initSlider(BRANCH_DATA_FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.branchDataFontSize, changeBranchDataFontSize);
+        initSlider(FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.externalNodeFontSize, changeFontSize);
 
         setStylesAll('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1, {
             'font': 'inherit',
@@ -7655,13 +7619,7 @@ if (!phyloXml) {
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Sizes</legend>');
-            h = h.concat(makeSlider('External label size:', EXTERNAL_FONT_SIZE_SLIDER));
-            if (_basicTreeProperties.internalNodeData) {
-                h = h.concat(makeSlider('Internal label size:', INTERNAL_FONT_SIZE_SLIDER));
-            }
-            if (_basicTreeProperties.branchLengths || _basicTreeProperties.confidences || _basicTreeProperties.branchEvents) {
-                h = h.concat(makeSlider('Branch label size:', BRANCH_DATA_FONT_SIZE_SLIDER));
-            }
+            h = h.concat(makeSlider('Font size:', FONT_SIZE_SLIDER));
             h = h.concat(makeSlider('Node size:', NODE_SIZE_SLIDER));
             h = h.concat(makeSlider('Branch width:', BRANCH_WIDTH_SLIDER));
             h = h.concat('</fieldset>');
