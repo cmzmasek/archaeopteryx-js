@@ -426,3 +426,31 @@ constants:
 | `enableCollapseByTaxonomyRank` | The collapse feature was removed. |
 | `groupSpecies` | Never read — it did nothing, even before. |
 | `groupYears` | Never read — it did nothing, even before. |
+
+## Node visualizations
+
+`launch()`'s `nodeVisualizations` argument, and the
+`dynamicallyAddNodeVisualizations` setting, register the entries offered in the
+Visualizations panel. There are **two** kinds:
+
+| Kind | Key | What it does |
+| --- | --- | --- |
+| Colour | `colors` | Colours the node label **and** the node itself, in the same colour. |
+| Shape | `shapes` | Gives the node a shape. Best for a property with only a few distinct values. |
+
+There used to be four menus. Label Color and Node Fill Color were registered
+from the same colour scale into two identical maps and then offered as two
+separate menus that could be set to disagree with each other; they are now one
+menu, and choosing a colour switches node visualizations on so that both halves
+of what it promises actually show. Node Size, which varied the node's radius by
+a property, is gone.
+
+So `sizes` now throws:
+
+```
+ArchaeopteryxJS: ERROR: node visualization "Year" asks to vary node size;
+size visualizations were removed -- use "colors" or "shapes" instead
+```
+
+The **Node size** slider in the control panel is unrelated and still there: it
+sets one size for every node.

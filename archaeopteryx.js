@@ -129,7 +129,6 @@ if (!phyloXml) {
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
     const VISUALIZATIONS_LEGEND_ORIENTATION_DEFAULT = VERTICAL;
-    const VISUALIZATIONS_LEGEND_XPOS_DEFAULT = 220;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
 
     // ---------------------------
@@ -182,9 +181,7 @@ if (!phyloXml) {
     const LABEL_SIZE_CALC_ADDITION = 80;
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
-    const LEGEND_NODE_FILL_COLOR = 'legendNodeFillColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
-    const LEGEND_NODE_SIZE = 'legendNodeSize';
     const LINEAR_SCALE = 'linear';
     const MOVE_INTERVAL = 150;
     const NH_EXPORT_FORMAT = 'Newick';
@@ -267,10 +264,8 @@ if (!phyloXml) {
     const MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = 'seq_pos_incr_pos';
     const NODE_DATA = 'node_data_dialog';
     const NODE_EVENTS_CB = 'nevts_cb';
-    const NODE_FILL_COLOR_SELECT_MENU = 'nfcolors_menu';
     const NODE_NAME_CB = 'nn_cb';
     const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
-    const NODE_SIZE_SELECT_MENU = 'nsizes_menu';
     const NODE_SIZE_SLIDER = 'ns_sl';
     const NODE_VIS_CB = 'nodevis_cb';
     const ORDER_BUTTON = 'ord_b';
@@ -311,13 +306,10 @@ if (!phyloXml) {
     const ZOOM_TO_EXPAND_Y = 'zoomtoexpandy';
 
     const LABEL_COLOR_SELECT_MENU_2 = 'lcs_2_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_2 = 'nfcolors_2_menu';
 
     const LABEL_COLOR_SELECT_MENU_3 = 'lcs_3_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_3 = 'nfcolors_3_menu';
 
     const LABEL_COLOR_SELECT_MENU_4 = 'lcs_4_menu';
-    const NODE_FILL_COLOR_SELECT_MENU_4 = 'nfcolors_4_menu';
 
 
     // ---------------------------
@@ -464,9 +456,7 @@ if (!phyloXml) {
     let _colorPickerData = null;
     let _colorsForColorPicker = null;
     let _currentLabelColorVisualization = null;
-    let _currentNodeFillColorVisualization = null;
     let _currentNodeShapeVisualization = null;
-    let _currentNodeSizeVisualization = null;
     let _displayHeight = 0;
     let _displayWidth = 0;
     let _dynahide_counter = 0;
@@ -479,7 +469,6 @@ if (!phyloXml) {
     let _intervalId = 0;
     let _legendColorScales = {};
     let _legendShapeScales = {};
-    let _legendSizeScales = {};
     let _maxLabelLength = 0;
     let _msa_residue_vis_curr_res_pos = 0;
     let _nodeVisualizations = null;
@@ -1303,32 +1292,18 @@ if (!phyloXml) {
                                 }
 
                                 if (colorScale) {
+                                    // One colour visualization drives BOTH the label and
+                                    // the node fill. These used to be registered twice,
+                                    // from the same scale, into two identical maps.
                                     addLabelColorVisualization(nodeVisualization.label, nodeVisualization.description, null, nodeVisualization.cladeRef, nodeVisualization.regex, null, colorScale, scaleType, altColorScale);
-
-                                    addNodeFillColorVisualization(nodeVisualization.label, nodeVisualization.description, null, nodeVisualization.cladeRef, nodeVisualization.regex, null, colorScale, scaleType, altColorScale);
                                 }
                             }
                         }
 
-                        if (nodeVisualization.sizes && Array.isArray(nodeVisualization.sizes) && (nodeVisualization.sizes.length > 0)) {
-                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
-                                let sizeScale = null;
-                                let scaleType = LINEAR_SCALE;
-                                if (nodeVisualization.sizes.length === 3) {
-                                    sizeScale = d3.scaleLinear()
-                                        .range(nodeVisualization.sizes)
-                                        .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                } else if (nodeVisualization.sizes.length === 2) {
-                                    sizeScale = d3.scaleLinear()
-                                        .range(nodeVisualization.sizes)
-                                        .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                } else {
-                                    throw new Error('Number of sizes has to be either 2 or 3');
-                                }
-                                if (sizeScale) {
-                                    addNodeSizeVisualization(nodeVisualization.label, nodeVisualization.description, null, nodeVisualization.cladeRef, nodeVisualization.regex, null, sizeScale, scaleType);
-                                }
-                            }
+                        if (nodeVisualization.sizes) {
+                            throw new Error(ERROR + 'node visualization "' + nodeVisualization.label
+                                + '" asks to vary node size; size visualizations were removed'
+                                + ' -- use "colors" or "shapes" instead');
                         }
                     }
                 }
@@ -1336,44 +1311,6 @@ if (!phyloXml) {
         }
     }
 
-
-    function addNodeSizeVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType) {
-        if (arguments.length !== 8) {
-            throw('expected 8 arguments, got ' + arguments.length);
-        }
-        if (!_visualizations) {
-            _visualizations = {};
-        }
-        if (!_visualizations.nodeSize) {
-            _visualizations.nodeSize = {};
-        }
-        if (_visualizations.nodeSize[label]) {
-            console.log(MESSAGE + 'node size visualization for "' + label + '" already exists');
-        }
-        let vis = createVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType);
-        if (vis) {
-            _visualizations.nodeSize[vis.label] = vis;
-        }
-    }
-
-    function addNodeFillColorVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType, altMappingFn) {
-        if (arguments.length < 8) {
-            throw('expected at least 8 arguments, got ' + arguments.length);
-        }
-        if (!_visualizations) {
-            _visualizations = {};
-        }
-        if (!_visualizations.nodeFillColor) {
-            _visualizations.nodeFillColor = {};
-        }
-        if (_visualizations.nodeFillColor[label]) {
-            console.log(MESSAGE + 'node fill color visualization for "' + label + '" already exists');
-        }
-        let vis = createVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType, altMappingFn);
-        if (vis) {
-            _visualizations.nodeFillColor[vis.label] = vis;
-        }
-    }
 
     function addNodeShapeVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType) {
         if (arguments.length !== 8) {
@@ -1426,10 +1363,6 @@ if (!phyloXml) {
     }
 
     function removeShapeLegend(id) {
-        _baseSvg.selectAll('g.' + id).remove();
-    }
-
-    function removeSizeLegend(id) {
         _baseSvg.selectAll('g.' + id).remove();
     }
 
@@ -1688,130 +1621,6 @@ if (!phyloXml) {
     }
 
 
-    function makeSizeLegend(id, xPos, yPos, sizeScale, scaleType, label, description) {
-        if (!label) {
-            throw new Error('legend label is missing');
-        }
-        let linearRangeLabel = ' (range)';
-        let isLinearRange = scaleType === LINEAR_SCALE;
-        let linearRangeLength = 0;
-        if (isLinearRange) {
-            label += linearRangeLabel;
-            linearRangeLength = sizeScale.domain().length;
-        }
-
-        let counter = 0;
-
-        let legendRectSize = 10;
-        let legendSpacing = 4;
-
-        let xCorrectionForLabel = -1;
-        let yFactorForLabel = -1.5;
-        let yFactorForDesc = -0.5;
-
-        let legend = _baseSvg.selectAll('g.' + id)
-            .data(sizeScale.domain());
-
-        let legendEnter = legend.enter().append('g')
-            .attr('class', id);
-
-        let fs = _settings.controlsFontSize.toString() + 'px';
-
-        legendEnter.append('path');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_LABEL)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        let legendUpdate = legend
-            .attr('transform', function (d, i) {
-                ++counter;
-                let height = legendRectSize;
-                let x = xPos;
-                let y = yPos + i * height;
-                return 'translate(' + x + ',' + y + ')';
-            });
-
-        let values = [];
-
-        legendUpdate.select('text.' + LEGEND)
-            .attr('x', legendRectSize + legendSpacing)
-            .attr('y', legendRectSize - legendSpacing)
-            .text(function (d, i) {
-                values.push(d);
-                if (isLinearRange) {
-                    if (i === 0) {
-                        return d + ' (min)';
-                    } else if (((linearRangeLength === 2 && i === 1) || (linearRangeLength === 3 && i === 2))) {
-                        return d + ' (max)';
-                    } else if (linearRangeLength === 3 && i === 1) {
-                        return preciseRound(d, _options.decimalsForLinearRangeMeanValue) + ' (mean)';
-                    }
-                }
-                return d;
-            });
-
-        legendUpdate.select('text.' + LEGEND_LABEL)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForLabel * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return label;
-                }
-            });
-
-        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForDesc * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0 && description) {
-                    return description;
-                }
-            });
-
-        legendUpdate.select('path')
-            .attr('transform', function () {
-                return 'translate(' + 1 + ',' + 3 + ')'
-            })
-            .attr('d', d3.symbol()
-                .size(function (d, i) {
-                    let scale = currentZoomScale();
-                    return scale * _options.nodeSizeDefault * sizeScale(values[i]);
-                })
-                .type(function () {
-                    return d3SymbolType('circle');
-                }))
-            .style('fill', 'none')
-            .style('stroke', _options.branchColorDefault);
-
-        legend.exit().remove();
-
-        return counter;
-    }
-
     function preciseRound(num, decimals) {
         let t = Math.pow(10, decimals);
         return (Math.round((num * t) + (decimals > 0 ? 1 : 0) * (Math.sign(num) * (10 / Math.pow(100, decimals)))) / t).toFixed(decimals);
@@ -1849,19 +1658,6 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_showLegends && _options.showNodeVisualizations && _legendColorScales[LEGEND_NODE_FILL_COLOR] && _visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
-            removeColorLegend(LEGEND_NODE_FILL_COLOR);
-            label = 'Node Fill';
-            desc = _currentNodeFillColorVisualization;
-            scaleType = _visualizations.nodeFillColor[_currentNodeFillColorVisualization].scaleType;
-
-            counter = makeColorLegend(LEGEND_NODE_FILL_COLOR, xPos, yPos, _legendColorScales[LEGEND_NODE_FILL_COLOR], scaleType, label, desc);
-            xPos += xPosIncr;
-            yPos += ((counter * yPosIncr) + yPosIncrConst);
-        } else {
-            removeColorLegend(LEGEND_NODE_FILL_COLOR);
-        }
-
         if (_showLegends && _options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Node Shape';
             desc = _currentNodeShapeVisualization;
@@ -1870,15 +1666,6 @@ if (!phyloXml) {
             yPos += ((counter * yPosIncr) + yPosIncrConst);
         } else {
             removeShapeLegend(LEGEND_NODE_SHAPE);
-        }
-
-        if (_showLegends && _options.showNodeVisualizations && _legendSizeScales[LEGEND_NODE_SIZE] && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
-            label = 'Node Size';
-            desc = _currentNodeSizeVisualization;
-            scaleType = _visualizations.nodeSize[_currentNodeSizeVisualization].scaleType;
-            makeSizeLegend(LEGEND_NODE_SIZE, xPos, yPos, _legendSizeScales[LEGEND_NODE_SIZE], scaleType, label, desc);
-        } else {
-            removeSizeLegend(LEGEND_NODE_SIZE);
         }
 
     }
@@ -2629,24 +2416,30 @@ if (!phyloXml) {
     // shape visualization is drawn by that path instead -- hence the hasVis
     // guard.) There is deliberately no "show all nodes" switch: circles on every
     // node carry no information and only add clutter.
+    // d3.symbol() takes an AREA, while nodeSizeDefault is a radius; this is the
+    // conversion the size visualization used to apply on its way out.
+    function nodeSymbolArea() {
+        return 2 * _options.nodeSizeDefault * _options.nodeSizeDefault;
+    }
+
     let makeNodeSize = function (node) {
 
         if ((_options.showNodeEvents && node.events && node.children && (node.events.duplications || node.events.speciations)) || isNodeFound(node) || isNodeSelected(node)) {
             return _options.nodeSizeDefault;
         }
 
-        // A fill-colour or size visualization must actually be SELECTED, not just
-        // the Node Vis switch turned on: otherwise every node would sprout a
-        // circle whenever that switch is on with no visualization chosen.
+        // A colour visualization must actually be SELECTED, not just the Node Vis
+        // switch turned on: otherwise every node would sprout a circle whenever
+        // that switch is on with no visualization chosen.
         let visualized = _options.nodeSizeDefault > 0 && node.parent
             && _options.showNodeVisualizations && !node.hasVis
-            && (_currentNodeFillColorVisualization != null || _currentNodeSizeVisualization != null);
+            && _currentLabelColorVisualization != null;
 
         // a zero-length branch off the root would otherwise be invisible
         let zeroLengthRootChild = _options.phylogram && node.parent && !node.parent.parent
             && (!node.branch_length || node.branch_length <= 0);
 
-        return (visualized || zeroLengthRootChild) ? makeVisNodeSize(node, 0.05) : 0;
+        return (visualized || zeroLengthRootChild) ? _options.nodeSizeDefault : 0;
     };
 
     let makeBranchWidth = function (link) {
@@ -2660,7 +2453,7 @@ if (!phyloXml) {
 
         const n = link.target;
         if (_options.showBranchVisualizations && n != null) {
-            if ((_currentLabelColorVisualization === MSA_RESIDUE || _currentNodeFillColorVisualization === MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
+            if (_currentLabelColorVisualization === MSA_RESIDUE && isCanDoMsaResidueVisualizations()) {
 
                 let exts = forester.getAllExternalNodes(n);
                 let residue = null;
@@ -2683,31 +2476,26 @@ if (!phyloXml) {
                     }
                 }
                 if (residue != null && residue !== '-' && residue !== '.' && residue !== '?') {
-                    let vis = _visualizations.nodeFillColor[MSA_RESIDUE];
+                    let vis = _visualizations.labelColor[MSA_RESIDUE];
                     return vis.mappingFn ? vis.mappingFn(residue) : vis.mapping[residue];
                 }
             } else if ((isAddVisualization2() || isAddVisualization3() || isAddVisualization4()) && (_specialVisualizations != null) && (n.properties != null)) {
                 const l = n.properties.length;
                 for (let p = 0; p < l; ++p) {
                     if (n.properties[p].ref === _visualizations4_applies_to_ref && n.properties[p].datatype === _visualizations4_property_datatype && n.properties[p].applies_to === _visualizations4_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === n.properties[p].value || _currentLabelColorVisualization === n.properties[p].value) {
+                        if (_currentLabelColorVisualization === n.properties[p].value) {
                             return _visualizations4_color;
                         }
                     } else if (n.properties[p].ref === _visualizations3_applies_to_ref && n.properties[p].datatype === _visualizations3_property_datatype && n.properties[p].applies_to === _visualizations3_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === n.properties[p].value || _currentLabelColorVisualization === n.properties[p].value) {
+                        if (_currentLabelColorVisualization === n.properties[p].value) {
                             return _visualizations3_color;
                         }
                     } else if (n.properties[p].ref === _visualizations2_applies_to_ref && n.properties[p].datatype === _visualizations2_property_datatype && n.properties[p].applies_to === _visualizations2_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === n.properties[p].value || _currentLabelColorVisualization === n.properties[p].value) {
+                        if (_currentLabelColorVisualization === n.properties[p].value) {
                             return _visualizations2_color;
                         }
                     } else if (n.properties[p].ref === 'vipr:PANGO_Lineage' && n.properties[p].datatype === 'xsd:string' && n.properties[p].applies_to === 'node') {
-                        let vis = null;
-                        if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
-                        } else if (_visualizations.nodeFillColor[_currentLabelColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentLabelColorVisualization];
-                        }
+                        let vis = _visualizations.labelColor[_currentLabelColorVisualization];
                         if (vis != null) {
                             const color = makeVisColor(n, vis);
                             if (color) {
@@ -2715,12 +2503,7 @@ if (!phyloXml) {
                             }
                         }
                     } else if (n.properties[p].ref === 'vipr:PANGO_Lineage_L0' && n.properties[p].datatype === 'xsd:string' && n.properties[p].applies_to === 'node') {
-                        let vis = null;
-                        if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
-                        } else if (_visualizations.nodeFillColor[_currentLabelColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentLabelColorVisualization];
-                        }
+                        let vis = _visualizations.labelColor[_currentLabelColorVisualization];
                         if (vis != null) {
                             const color = makeVisColor(n, vis);
                             if (color) {
@@ -2728,12 +2511,7 @@ if (!phyloXml) {
                             }
                         }
                     } else if (n.properties[p].ref === 'vipr:PANGO_Lineage_L1' && n.properties[p].datatype === 'xsd:string' && n.properties[p].applies_to === 'node') {
-                        let vis = null;
-                        if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
-                        } else if (_visualizations.nodeFillColor[_currentLabelColorVisualization]) {
-                            vis = _visualizations.nodeFillColor[_currentLabelColorVisualization];
-                        }
+                        let vis = _visualizations.labelColor[_currentLabelColorVisualization];
                         if (vis != null) {
                             const color = makeVisColor(n, vis);
                             if (color) {
@@ -2907,42 +2685,52 @@ if (!phyloXml) {
 
         function makeShape(node, shape) {
             node.hasVis = true;
-            return d3.symbol().type(d3SymbolType(shape)).size(makeVisNodeSize(node))();
+            return d3.symbol().type(d3SymbolType(shape)).size(nodeSymbolArea())();
         }
     };
 
-    let makeVisNodeFillColor = function (node) {
-
-        if (_options.showNodeVisualizations && _currentNodeFillColorVisualization && _visualizations && _visualizations.nodeFillColor) {
-
-            if (_currentNodeFillColorVisualization === MSA_RESIDUE) {
-                return makeMsaResidueVisualizationColor(node, _visualizations.nodeFillColor[MSA_RESIDUE]);
-            } else if (_visualizations.nodeFillColor[_currentNodeFillColorVisualization]) {
-                let vis = _visualizations.nodeFillColor[_currentNodeFillColorVisualization];
-                let color = makeVisColor(node, vis);
-                if (color) {
-                    return color;
-                }
-            } else if (node.properties != null) {
-                const l = node.properties.length;
-                for (let p = 0; p < l; ++p) {
-                    if (node.properties[p].ref === _visualizations4_applies_to_ref && node.properties[p].datatype === _visualizations4_property_datatype && node.properties[p].applies_to === _visualizations4_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === node.properties[p].value) {
-                            return _visualizations4_color;
-                        }
-                    } else if (node.properties[p].ref === _visualizations3_applies_to_ref && node.properties[p].datatype === _visualizations3_property_datatype && node.properties[p].applies_to === _visualizations3_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === node.properties[p].value) {
-                            return _visualizations3_color;
-                        }
-                    } else if (node.properties[p].ref === _visualizations2_applies_to_ref && node.properties[p].datatype === _visualizations2_property_datatype && node.properties[p].applies_to === _visualizations2_property_applies_to) {
-                        if (_currentNodeFillColorVisualization === node.properties[p].value) {
-                            return _visualizations2_color;
-                        }
+    // ONE colour visualization drives both the label and the node fill -- these
+    // were two identical code paths over two identical maps. Returns null when
+    // nothing applies, so each caller supplies its own fallback.
+    function visualizationColorFor(node) {
+        if (!_currentLabelColorVisualization || !_visualizations || !_visualizations.labelColor) {
+            return null;
+        }
+        if (_currentLabelColorVisualization === MSA_RESIDUE) {
+            return makeMsaResidueVisualizationColor(node, _visualizations.labelColor[MSA_RESIDUE]);
+        }
+        let vis = _visualizations.labelColor[_currentLabelColorVisualization];
+        if (vis) {
+            return makeVisColor(node, vis) || null;
+        }
+        // The special visualizations colour by a property VALUE rather than by a
+        // registered visualization, so they are matched separately.
+        if (node.properties != null) {
+            for (let p = 0, l = node.properties.length; p < l; ++p) {
+                const prop = node.properties[p];
+                if (prop.ref === _visualizations4_applies_to_ref && prop.datatype === _visualizations4_property_datatype && prop.applies_to === _visualizations4_property_applies_to) {
+                    if (_currentLabelColorVisualization === prop.value) {
+                        return _visualizations4_color;
+                    }
+                } else if (prop.ref === _visualizations3_applies_to_ref && prop.datatype === _visualizations3_property_datatype && prop.applies_to === _visualizations3_property_applies_to) {
+                    if (_currentLabelColorVisualization === prop.value) {
+                        return _visualizations3_color;
+                    }
+                } else if (prop.ref === _visualizations2_applies_to_ref && prop.datatype === _visualizations2_property_datatype && prop.applies_to === _visualizations2_property_applies_to) {
+                    if (_currentLabelColorVisualization === prop.value) {
+                        return _visualizations2_color;
                     }
                 }
             }
         }
-        return _options.backgroundColorDefault;
+        return null;
+    }
+
+    let makeVisNodeFillColor = function (node) {
+        if (!_options.showNodeVisualizations) {
+            return _options.backgroundColorDefault;
+        }
+        return visualizationColorFor(node) || _options.backgroundColorDefault;
     };
 
     let makeMsaResidueVisualizationColor = function (node, vis) {
@@ -3025,22 +2813,12 @@ if (!phyloXml) {
         }
     }
 
-    function addLegendForSizes(type, vis) {
-        if (vis) {
-            _legendSizeScales[type] = vis.mappingFn ? vis.mappingFn : null;
-        }
-    }
-
     function removeLegend(type) {
         _legendColorScales[type] = null;
     }
 
     function removeLegendForShapes(type) {
         _legendShapeScales[type] = null;
-    }
-
-    function removeLegendForSizes(type) {
-        _legendSizeScales[type] = null;
     }
 
     let makeVisNodeBorderColor = function (node) {
@@ -3052,104 +2830,7 @@ if (!phyloXml) {
     };
 
     let makeVisLabelColor = function (node) {
-        if (_currentLabelColorVisualization === MSA_RESIDUE) {
-            return makeMsaResidueVisualizationColor(node, _visualizations.labelColor[MSA_RESIDUE]);
-        }
-        if (_currentLabelColorVisualization) {
-            if (_visualizations && _visualizations.labelColor && _visualizations.labelColor[_currentLabelColorVisualization]) {
-                let vis = _visualizations.labelColor[_currentLabelColorVisualization];
-                let color = makeVisColor(node, vis);
-
-                if (color) {
-                    return color;
-                }
-            } else if (node.properties != null) {
-                const l = node.properties.length;
-                for (let p = 0; p < l; ++p) {
-                    if (node.properties[p].ref === _visualizations4_applies_to_ref && node.properties[p].datatype === _visualizations4_property_datatype && node.properties[p].applies_to === _visualizations4_property_applies_to) {
-                        if (_currentLabelColorVisualization === node.properties[p].value) {
-                            return _visualizations4_color;
-                        }
-                    } else if (node.properties[p].ref === _visualizations3_applies_to_ref && node.properties[p].datatype === _visualizations3_property_datatype && node.properties[p].applies_to === _visualizations3_property_applies_to) {
-                        if (_currentLabelColorVisualization === node.properties[p].value) {
-                            return _visualizations3_color;
-                        }
-                    } else if (node.properties[p].ref === _visualizations2_applies_to_ref && node.properties[p].datatype === _visualizations2_property_datatype && node.properties[p].applies_to === _visualizations2_property_applies_to) {
-                        if (_currentLabelColorVisualization === node.properties[p].value) {
-                            return _visualizations2_color;
-                        }
-                    }
-                }
-            }
-        }
-        return _options.labelColorDefault;
-    };
-
-    let makeVisNodeSize = function (node, correctionFactor) {
-        if (_options.showNodeVisualizations && _currentNodeSizeVisualization) {
-            if (_visualizations && _visualizations.nodeSize && _visualizations.nodeSize[_currentNodeSizeVisualization]) {
-                let vis = _visualizations.nodeSize[_currentNodeSizeVisualization];
-                let size;
-                if (vis.field) {
-                    let fieldValue = node[vis.field];
-                    if (fieldValue) {
-                        if (vis.isRegex) {
-                            for (let key in vis.mapping) {
-                                if (vis.mapping.hasOwnProperty(key)) {
-                                    let re = new RegExp(key);
-                                    if (re && fieldValue.search(re) > -1) {
-                                        size = produceVis(vis, key, correctionFactor);
-                                        if (size) {
-                                            return size;
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            size = produceVis(vis, fieldValue, correctionFactor);
-                            if (size) {
-                                return size;
-                            }
-                        }
-                    }
-                } else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
-                    let ref_name = vis.cladePropertyRef;
-                    let propertiesLength = node.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        let p = node.properties[i];
-                        if (p.ref === ref_name && p.value) {
-                            size = produceVis(vis, p.value, correctionFactor);
-                            if (size) {
-                                return size;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (correctionFactor) {
-            return _options.nodeSizeDefault;
-        } else {
-            return 2 * _options.nodeSizeDefault * _options.nodeSizeDefault;
-        }
-
-
-        function produceVis(vis, key, correctionFactor) {
-            let size;
-            if (vis.mappingFn) {
-                size = vis.mappingFn(key);
-            } else {
-                size = vis.mapping[key];
-            }
-            if (size) {
-                if (correctionFactor) {
-                    return correctionFactor * size * _options.nodeSizeDefault;
-                } else {
-                    return size * _options.nodeSizeDefault;
-                }
-            }
-            return null;
-        }
+        return visualizationColorFor(node) || _options.labelColorDefault;
     };
 
     function getFoundColor(phynode) {
@@ -3558,7 +3239,17 @@ if (!phyloXml) {
         }
     }
 
-    function initializeOptions(options) {
+    // Where content has to start to clear the left control panel. Both the root
+    // and the visualizations legend need this, and neither may hard-code it:
+    // the panel's own geometry is the only honest source, and a caller who
+    // asks for no left panel should not pay for one.
+    function leftPanelClearance(settings) {
+        let id = (settings && settings.controls0) ? settings.controls0 : CONTROLS_0;
+        let left = (settings && settings.controls0Left) ? settings.controls0Left : CONTROLS_0_LEFT_DEFAULT;
+        return byId(id) ? (left + PANEL_WIDTH + ROOT_CLEARANCE) : ROOTOFFSET_NO_PANEL_DEFAULT;
+    }
+
+    function initializeOptions(options, settings) {
         rejectRemoved(options, REMOVED_OPTIONS, 'option(s)');
         _options = options ? options : {};
 
@@ -3676,7 +3367,10 @@ if (!phyloXml) {
             ? (_options.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
 
         if (!_options.visualizationsLegendXpos) {
-            _options.visualizationsLegendXpos = VISUALIZATIONS_LEGEND_XPOS_DEFAULT;
+            // The legend was hard-coded to 220 and so came up underneath the
+            // control panel, exactly as the root did. It starts where the tree
+            // starts instead.
+            _options.visualizationsLegendXpos = leftPanelClearance(settings);
         }
         if (!_options.visualizationsLegendYpos) {
             _options.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
@@ -3728,15 +3422,7 @@ if (!phyloXml) {
             _settings.controls0Top = CONTROLS_0_TOP_DEFAULT;
         }
         if (!_settings.rootOffset) {
-            // The root has to clear the control panel. This used to be a
-            // hard-coded 220 while the panel ran from controls0Left (20) to
-            // 20 + PANEL_WIDTH (234), so the root was drawn behind the panel on
-            // every tree. Deriving it from the panel's own geometry means the
-            // two numbers cannot drift apart again -- and a caller who asks for
-            // no left panel does not pay for one.
-            _settings.rootOffset = byId(_settings.controls0)
-                ? (_settings.controls0Left + PANEL_WIDTH + ROOT_CLEARANCE)
-                : ROOTOFFSET_NO_PANEL_DEFAULT;
+            _settings.rootOffset = leftPanelClearance(_settings);
         }
         if (!_settings.controls1Top) {
             _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;
@@ -3828,7 +3514,7 @@ if (!phyloXml) {
 
     function mouseDown(event) {
         if (event.which === 1 && (event.altKey || event.shiftKey)) {
-            if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && (_legendColorScales[LEGEND_NODE_FILL_COLOR] || _legendShapeScales[LEGEND_NODE_SHAPE] || _legendSizeScales[LEGEND_NODE_SIZE]))))) {
+            if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
                 moveLegendWithMouse(event);
             }
         }
@@ -3961,7 +3647,7 @@ if (!phyloXml) {
         }
 
 
-        initializeOptions(options);
+        initializeOptions(options, settings);
         initializeSettings(settings);
 
 
@@ -4751,22 +4437,14 @@ if (!phyloXml) {
         }
         initializeNodeVisualizations(nodeProperties);
 
-        if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && (_legendColorScales[LEGEND_NODE_FILL_COLOR] || _legendShapeScales[LEGEND_NODE_SHAPE] || _legendSizeScales[LEGEND_NODE_SIZE]))))) {
+        if ((_showLegends && (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
                 removeLegend(LEGEND_LABEL_COLOR);
                 addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
             }
-            if (_legendColorScales[LEGEND_NODE_FILL_COLOR]) {
-                removeLegend(LEGEND_NODE_FILL_COLOR);
-                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-            }
             if (_legendShapeScales[LEGEND_NODE_SHAPE]) {
                 removeShapeLegend(LEGEND_NODE_SHAPE);
                 addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-            }
-            if (_legendSizeScales[LEGEND_NODE_SIZE]) {
-                removeSizeLegend(LEGEND_NODE_SIZE);
-                addLegendForSizes(LEGEND_NODE_SIZE, _visualizations.nodeSize[_currentNodeSizeVisualization]);
             }
         }
     }
@@ -5022,19 +4700,13 @@ if (!phyloXml) {
         initializeSettings(_settings);
 
         setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
-        setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
         setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);
-        setSelectMenuValue(NODE_SIZE_SELECT_MENU, DEFAULT);
 
-        _currentNodeFillColorVisualization = null;
         _currentLabelColorVisualization = null;
         _currentNodeShapeVisualization = null;
-        _currentNodeSizeVisualization = null;
 
         removeLegend(LEGEND_LABEL_COLOR);
-        removeLegend(LEGEND_NODE_FILL_COLOR);
         removeLegendForShapes(LEGEND_NODE_SHAPE);
-        removeLegendForSizes(LEGEND_NODE_SIZE);
 
         removeColorPicker();
 
@@ -6829,6 +6501,11 @@ if (!phyloXml) {
 
             if (v && v !== DEFAULT) {
                 _currentLabelColorVisualization = v;
+                // One colour now paints the label AND the node, so choosing one
+                // switches node visualizations on -- otherwise half of what the
+                // control promises would not show.
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
                 if (_visualizations.labelColor[_currentLabelColorVisualization] != null) {
                     addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
                 }
@@ -6853,6 +6530,8 @@ if (!phyloXml) {
                 _currentLabelColorVisualization = v;
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             } else {
                 _currentLabelColorVisualization = null;
             }
@@ -6874,6 +6553,8 @@ if (!phyloXml) {
                 _currentLabelColorVisualization = v;
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             } else {
                 _currentLabelColorVisualization = null;
             }
@@ -6894,6 +6575,8 @@ if (!phyloXml) {
                 _currentLabelColorVisualization = v;
                 _options.showExternalLabels = true;
                 setCheckboxValue(EXTERNAL_LABEL_CB, true);
+                _options.showNodeVisualizations = true;
+                setCheckboxValue(NODE_VIS_CB, true);
             } else {
                 _currentLabelColorVisualization = null;
             }
@@ -6901,96 +6584,10 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        on(NODE_FILL_COLOR_SELECT_MENU, 'change', function () {
-            let v = this.value;
-            if (isAddVisualization2()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
-            }
-            if (isAddVisualization3()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
-            }
-            if (isAddVisualization4()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
-            }
-            if (v && v !== DEFAULT) {
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-                _currentNodeFillColorVisualization = v;
-                addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-            } else {
-                _currentNodeFillColorVisualization = null;
-                removeLegend(LEGEND_NODE_FILL_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
 
 
-        on(NODE_FILL_COLOR_SELECT_MENU_2, 'change', function () {
-            let v = this.value;
-            setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
-            if (isAddVisualization3()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
-            }
-            if (isAddVisualization4()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
-            }
-            if (v && v !== DEFAULT) {
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-                _currentNodeFillColorVisualization = v;
 
-            } else {
-                _currentNodeFillColorVisualization = null;
-                removeLegend(LEGEND_NODE_FILL_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
 
-        on(NODE_FILL_COLOR_SELECT_MENU_3, 'change', function () {
-            let v = this.value;
-            setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
-            if (isAddVisualization2()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
-            }
-            if (isAddVisualization4()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT);
-            }
-            if (v && v !== DEFAULT) {
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-                _currentNodeFillColorVisualization = v;
-
-            } else {
-                _currentNodeFillColorVisualization = null;
-                removeLegend(LEGEND_NODE_FILL_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
-
-        on(NODE_FILL_COLOR_SELECT_MENU_4, 'change', function () {
-            let v = this.value;
-            setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU, DEFAULT);
-            if (isAddVisualization2()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT);
-            }
-            if (isAddVisualization3()) {
-                setSelectMenuValue(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT);
-            }
-            if (v && v !== DEFAULT) {
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-                _currentNodeFillColorVisualization = v;
-
-            } else {
-                _currentNodeFillColorVisualization = null;
-                removeLegend(LEGEND_NODE_FILL_COLOR);
-            }
-            removeColorPicker();
-            update(null, 0);
-        });
 
 
         on(NODE_SHAPE_SELECT_MENU, 'change', function () {
@@ -7007,21 +6604,6 @@ if (!phyloXml) {
             removeColorPicker();
             resetVis();
             update(null, 0);
-            update(null, 0);
-        });
-
-        on(NODE_SIZE_SELECT_MENU, 'change', function () {
-            let v = this.value;
-            if (v && v !== DEFAULT) {
-                _currentNodeSizeVisualization = v;
-                addLegendForSizes(LEGEND_NODE_SIZE, _visualizations.nodeSize[_currentNodeSizeVisualization]);
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
-            } else {
-                _currentNodeSizeVisualization = null;
-                removeLegendForSizes(LEGEND_NODE_SIZE);
-            }
-            removeColorPicker();
             update(null, 0);
         });
 
@@ -7146,15 +6728,8 @@ if (!phyloXml) {
             'font': 'inherit', 'color': 'inherit'
         });
 
-        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU), {
-            'font': 'inherit', 'color': 'inherit'
-        });
 
         setStyles(byId(NODE_SHAPE_SELECT_MENU), {
-            'font': 'inherit', 'color': 'inherit'
-        });
-
-        setStyles(byId(NODE_SIZE_SELECT_MENU), {
             'font': 'inherit', 'color': 'inherit'
         });
 
@@ -7163,25 +6738,16 @@ if (!phyloXml) {
             'font': 'inherit', 'color': 'inherit'
         });
 
-        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_2), {
-            'font': 'inherit', 'color': 'inherit'
-        });
 
         setStyles(byId(LABEL_COLOR_SELECT_MENU_3), {
             'font': 'inherit', 'color': 'inherit'
         });
 
-        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_3), {
-            'font': 'inherit', 'color': 'inherit'
-        });
 
         setStyles(byId(LABEL_COLOR_SELECT_MENU_4), {
             'font': 'inherit', 'color': 'inherit'
         });
 
-        setStyles(byId(NODE_FILL_COLOR_SELECT_MENU_4), {
-            'font': 'inherit', 'color': 'inherit'
-        });
 
 
         // MSA residue visualization: Position control
@@ -7710,13 +7276,11 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label according to a property'));
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU, 'colorize the node fill according to a property'));
             h = h.concat('<br>');
             h = h.concat(makeSelectMenu('Node Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Size:', '<br>', NODE_SIZE_SELECT_MENU, 'change the node size according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
@@ -7727,9 +7291,8 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_2, 'colorize the node label according to a property'));
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_2, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_2, 'colorize the node fill according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
@@ -7740,9 +7303,8 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_3, 'colorize the node label according to a property'));
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_3, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_3, 'colorize the node fill according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
@@ -7753,9 +7315,8 @@ if (!phyloXml) {
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>' + title + '</legend>');
-            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_4, 'colorize the node label according to a property'));
+            h = h.concat(makeSelectMenu('Label Color:', '<br>', LABEL_COLOR_SELECT_MENU_4, 'colorize the node label and the node itself according to a property'));
             h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Node Fill Color:', '<br>', NODE_FILL_COLOR_SELECT_MENU_4, 'colorize the node fill according to a property'));
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;
@@ -7876,24 +7437,16 @@ if (!phyloXml) {
     function initializeVisualizationMenu() {
 
         _currentLabelColorVisualization = DEFAULT;
-        _currentNodeSizeVisualization = DEFAULT;
-        _currentNodeFillColorVisualization = DEFAULT;
-        _currentNodeSizeVisualization = DEFAULT;
 
-        addOption(NODE_FILL_COLOR_SELECT_MENU, DEFAULT, 'default');
 
         addOption(NODE_SHAPE_SELECT_MENU, DEFAULT, 'default');
-        addOption(NODE_SIZE_SELECT_MENU, DEFAULT, 'default');
         addOption(LABEL_COLOR_SELECT_MENU, DEFAULT, 'default');
 
-        addOption(NODE_FILL_COLOR_SELECT_MENU_2, DEFAULT, 'default');
         addOption(LABEL_COLOR_SELECT_MENU_2, DEFAULT, 'default');
 
-        addOption(NODE_FILL_COLOR_SELECT_MENU_3, DEFAULT, 'default');
 
         addOption(LABEL_COLOR_SELECT_MENU_3, DEFAULT, 'default');
 
-        addOption(NODE_FILL_COLOR_SELECT_MENU_4, DEFAULT, 'default');
 
         addOption(LABEL_COLOR_SELECT_MENU_4, DEFAULT, 'default');
 
@@ -7920,25 +7473,13 @@ if (!phyloXml) {
                     }
                 }
             }
-            if (_visualizations.nodeFillColor) {
-                for (let key in _visualizations.nodeFillColor) {
-                    if (_visualizations.nodeFillColor.hasOwnProperty(key)) {
+            if (_visualizations.labelColor) {
+                for (let key in _visualizations.labelColor) {
+                    if (_visualizations.labelColor.hasOwnProperty(key)) {
                         let key_html = key;
                         if (key_html.length > 15) {
                             key_html = key_html.substring(0, 15);
                         }
-                        addOption(NODE_FILL_COLOR_SELECT_MENU, key, key_html);
-                    }
-                }
-            }
-            if (_visualizations.nodeSize) {
-                for (let key in _visualizations.nodeSize) {
-                    if (_visualizations.nodeSize.hasOwnProperty(key)) {
-                        let key_html = key;
-                        if (key_html.length > 15) {
-                            key_html = key_html.substring(0, 15);
-                        }
-                        addOption(NODE_SIZE_SELECT_MENU, key, key_html);
                     }
                 }
             }
@@ -7953,7 +7494,6 @@ if (!phyloXml) {
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
                         addOption(LABEL_COLOR_SELECT_MENU_2, key, key);
-                        addOption(NODE_FILL_COLOR_SELECT_MENU_2, key, key);
                     }
                 }
             }
@@ -7967,7 +7507,6 @@ if (!phyloXml) {
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
                         addOption(LABEL_COLOR_SELECT_MENU_3, key, key);
-                        addOption(NODE_FILL_COLOR_SELECT_MENU_3, key, key);
                     }
                 }
             }
@@ -7981,7 +7520,6 @@ if (!phyloXml) {
                     for (let i = 0; i < arrayLength; i++) {
                         const key = properties[i];
                         addOption(LABEL_COLOR_SELECT_MENU_4, key, key);
-                        addOption(NODE_FILL_COLOR_SELECT_MENU_4, key, key);
                     }
                 }
             }
@@ -8086,7 +7624,8 @@ if (!phyloXml) {
 
     function showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown() {
 
-        if ((_currentLabelColorVisualization == null || _currentLabelColorVisualization === DEFAULT) && (_currentNodeFillColorVisualization !== MSA_RESIDUE) && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
+        if ((_currentLabelColorVisualization == null || _currentLabelColorVisualization === DEFAULT)
+            && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
 
             _currentLabelColorVisualization = MSA_RESIDUE;
             setValue(LABEL_COLOR_SELECT_MENU, MSA_RESIDUE);
@@ -8095,15 +7634,9 @@ if (!phyloXml) {
                 _options.showBranchVisualizations = true;
                 setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
             }
-        } else if ((_currentLabelColorVisualization !== MSA_RESIDUE) && (_currentNodeFillColorVisualization == null || _currentNodeFillColorVisualization === DEFAULT) && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
-            _currentNodeFillColorVisualization = MSA_RESIDUE;
-            setValue(NODE_FILL_COLOR_SELECT_MENU, MSA_RESIDUE);
-            addLegend(LEGEND_NODE_FILL_COLOR, _visualizations.nodeFillColor[_currentNodeFillColorVisualization]);
-            if (_settings.enableBranchVisualizations) {
-                _options.showBranchVisualizations = true;
-                setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
-            }
-        } else if ((_currentLabelColorVisualization !== MSA_RESIDUE) && (_currentNodeFillColorVisualization !== MSA_RESIDUE) && (_currentNodeShapeVisualization == null || _currentNodeShapeVisualization === DEFAULT) && isCanDoMsaResidueVisualizations()) {
+        } else if ((_currentLabelColorVisualization !== MSA_RESIDUE)
+            && (_currentNodeShapeVisualization == null || _currentNodeShapeVisualization === DEFAULT)
+            && isCanDoMsaResidueVisualizations()) {
             _currentNodeShapeVisualization = MSA_RESIDUE;
             setValue(NODE_SHAPE_SELECT_MENU, MSA_RESIDUE);
             addLegend(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
@@ -8200,7 +7733,7 @@ if (!phyloXml) {
                 b.style.color = '';
             }
         }
-        if (_showLegends && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && (_legendColorScales[LEGEND_NODE_FILL_COLOR] || _legendShapeScales[LEGEND_NODE_SHAPE] || _legendSizeScales[LEGEND_NODE_SIZE])))) {
+        if (_showLegends && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
             enableButton(byId(LEGENDS_HORIZ_VERT_BTN));
             enableButton(byId(LEGENDS_MOVE_UP_BTN));
             enableButton(byId(LEGENDS_MOVE_DOWN_BTN));
