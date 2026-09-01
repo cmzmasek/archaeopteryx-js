@@ -143,7 +143,10 @@ if (!phyloXml) {
     const CONTROLS_FONT_SIZE_DEFAULT = 8;
     const DISPLY_HEIGHT_DEFAULT = 600;
     const DISPLAY_WIDTH_DEFAULT = 800;
-    const ROOTOFFSET_DEFAULT = 220;
+    // Gap between the control panel's right edge and the root, and the offset
+    // used when there is no left control panel to clear at all.
+    const ROOT_CLEARANCE = 20;
+    const ROOTOFFSET_NO_PANEL_DEFAULT = 30;
     const TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
     // ------------------------------
@@ -3689,10 +3692,6 @@ if (!phyloXml) {
         rejectRemoved(settings, REMOVED_SETTINGS, 'setting(s)');
         _settings = settings ? settings : {};
 
-        if (!_settings.rootOffset) {
-            _settings.rootOffset = ROOTOFFSET_DEFAULT;
-        }
-
         if (_settings.enableDynamicSizing === undefined) {
             _settings.enableDynamicSizing = true;
         }
@@ -3727,6 +3726,17 @@ if (!phyloXml) {
         }
         if (!_settings.controls0Top) {
             _settings.controls0Top = CONTROLS_0_TOP_DEFAULT;
+        }
+        if (!_settings.rootOffset) {
+            // The root has to clear the control panel. This used to be a
+            // hard-coded 220 while the panel ran from controls0Left (20) to
+            // 20 + PANEL_WIDTH (234), so the root was drawn behind the panel on
+            // every tree. Deriving it from the panel's own geometry means the
+            // two numbers cannot drift apart again -- and a caller who asks for
+            // no left panel does not pay for one.
+            _settings.rootOffset = byId(_settings.controls0)
+                ? (_settings.controls0Left + PANEL_WIDTH + ROOT_CLEARANCE)
+                : ROOTOFFSET_NO_PANEL_DEFAULT;
         }
         if (!_settings.controls1Top) {
             _settings.controls1Top = CONTROLS_1_TOP_DEFAULT;

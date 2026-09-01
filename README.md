@@ -384,7 +384,7 @@ constants:
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
-| `rootOffset` | `220` | Distance from the left edge to the root. |
+| `rootOffset` | clears the control panel, or `30` without one | Distance from the left edge to the root. |
 | `enableDownloads` | `false` | Offer the download buttons. |
 | `nhExportWriteConfidences` | `false` | Write confidences into exported Newick. |
 | `nhExportReplaceIllegalChars` | `true` | Replace illegal characters in exported Newick. |
