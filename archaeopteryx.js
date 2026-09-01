@@ -142,7 +142,6 @@ if (!phyloXml) {
     const CONTROLS_FONT_SIZE_DEFAULT = 8;
     const DISPLY_HEIGHT_DEFAULT = 600;
     const DISPLAY_WIDTH_DEFAULT = 800;
-    const MOLSEQ_FONT_DEFAULTS = ['Courier', 'Courier New', 'Arial', 'Helvetica', 'Times'];
     const ROOTOFFSET_DEFAULT = 220;
     const TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
@@ -3923,15 +3922,14 @@ if (!phyloXml) {
     archaeopteryx.launch = function (id, phylo, options, settings, nodeVisualizations, nodeLabels, specialVisualizations) {
 
 
+        // Bad input is the caller's bug, so it is thrown at the caller. It used
+        // to pop a browser alert and return, which blocks the whole tab and
+        // leaves an empty div behind with nothing to catch.
         if (phylo === undefined || phylo === null) {
-            console.log(ERROR + 'input tree is undefined or null');
-            alert(ERROR + 'input tree is undefined or null');
-            return;
+            throw new Error(ERROR + 'input tree is undefined or null');
         }
         if ((!phylo.children) || (phylo.children.length < 1)) {
-            console.log(ERROR + 'input tree is empty or illegally formatted');
-            alert(ERROR + 'input tree is empty or illegally formatted');
-            return;
+            throw new Error(ERROR + 'input tree is empty or illegally formatted');
         }
 
         _treeData = phylo;
@@ -4340,7 +4338,7 @@ if (!phyloXml) {
                     text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
-                showNodeDataDialog(title, text, (_settings.controlsFontSize + 4).toString() + 'px', _settings.controlsFont, 260, 300);
+                showNodeDataDialog(title, text, false, 260, 300);
 
                 update();
             }
@@ -4564,7 +4562,17 @@ if (!phyloXml) {
                     let win = window.open(url, '_blank');
                     win.focus();
                 } else {
-                    alert("Don't know how to interpret sequence accession \'" + accessionValue + "\'");
+                    // Not a programming error -- the user clicked and there is
+                    // simply nowhere to go -- so this one gets told in the same
+                    // dialog the node data uses, not thrown and not alerted.
+                    // Finding no accession at all and finding one we cannot
+                    // build a URL from are different answers, so say which.
+                    showNodeDataDialog('Cannot Open Database Entry',
+                        accessionValue
+                            ? ('Accession: ' + accessionValue
+                                + '<br>Problem: not an identifier Archaeopteryx.js knows how to link to')
+                            : 'Problem: this node carries no sequence accession',
+                        false, 380, 200);
                 }
 
 
@@ -4579,7 +4587,7 @@ if (!phyloXml) {
                 let title = 'Sequences in for ' + ext_nodes.length + ' Nodes';
 
 
-                showNodeDataDialog(title, text_all, (_settings.controlsFontSize - 1).toString() + 'px', MOLSEQ_FONT_DEFAULTS, 400, 260);
+                showNodeDataDialog(title, text_all, true, 400, 260);
 
                 update();
             }
@@ -6380,6 +6388,8 @@ if (!phyloXml) {
     // jQuery UI dialog used for the node/sequence data popups). Only one such
     // dialog exists at a time; opening a new one removes the previous. Uses the
     // native <dialog> element, so Escape and the close button both dismiss it.
+    // With mono set the body is shown as a preformatted monospaced block, which
+    // is what a FASTA sequence needs; otherwise it is laid out as label/value.
     // Content arrives as "Label: value" lines separated by <br>. Setting the
     // label part apart makes a wall of such lines scannable. Lines without a
     // label (a heading like "Taxonomy", or a FASTA sequence) are left alone.
@@ -6401,15 +6411,11 @@ if (!phyloXml) {
         }).join('');
     }
 
-    function showNodeDataDialog(title, htmlContent, fontSize, fontFamily, width, height) {
+    function showNodeDataDialog(title, htmlContent, mono, width, height) {
         let existing = document.getElementById(NODE_DATA);
         if (existing) {
             existing.remove();
         }
-        // Molecular sequences are handed to us in a monospaced font; that is the
-        // signal to show them as a preformatted block rather than label/value.
-        let mono = (fontFamily === MOLSEQ_FONT_DEFAULTS);
-
         let dialog = document.createElement('dialog');
         dialog.id = NODE_DATA;
         dialog.className = 'aptx-dialog';
@@ -6560,6 +6566,13 @@ if (!phyloXml) {
         // the corner (and only the first, since the style stuck afterwards).
         // Appearance comes from the stylesheet (same palette as the panel, the
         // node menu and the dialog); only opacity is animated on hover.
+        // The tooltip, the node menu and the node-data dialog all draw on these
+        // styles, and they exist whether or not the embedder asked for control
+        // panels -- so inject before the tooltip rather than inside the two
+        // "did we get a panel div?" branches below, which is where this used to
+        // live. Injecting twice is a no-op.
+        injectPanelStyles();
+
         _node_mouseover_div = d3.select("body").append("div")
             .attr("class", "node_mouseover_tooltip aptx-tip")
             .style("opacity", 1e-6);
@@ -6568,7 +6581,6 @@ if (!phyloXml) {
         let c0 = byId(_settings.controls0);
 
         if (c0) {
-            injectPanelStyles();
             c0.classList.add('aptx-panel');
             setStyles(c0, {
                 'position': 'absolute',
@@ -6618,7 +6630,6 @@ if (!phyloXml) {
 
         let c1 = byId(_settings.controls1);
         if (c1) {
-            injectPanelStyles();
             c1.classList.add('aptx-panel');
             setStyles(c1, {
                 'position': 'absolute',
@@ -8426,19 +8437,19 @@ if (!phyloXml) {
      * @param nodeVisualizations
      */
     archaeopteryx.launchArchaeopteryx = function (label, location, data, options, settings, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames, nodeVisualizations) {
-        let tree = null;
+        let tree;
         try {
             tree = archaeopteryx.parseTree(location, data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
         } catch (e) {
-            alert(ERROR + 'error while parsing tree: ' + e);
+            // Worth catching only to say that it was the parse, not the launch,
+            // that failed -- a malformed tree file rather than a bug in here.
+            // The original is kept as the cause so the stack is not lost.
+            throw new Error(ERROR + 'could not parse tree: ' + e.message, {cause: e});
         }
-        if (tree) {
-            try {
-                archaeopteryx.launch(label, tree, options, settings, nodeVisualizations);
-            } catch (e) {
-                alert(ERROR + 'error while launching archaeopteryx: ' + e);
-            }
-        }
+        // launch() already reports its own failures well enough; wrapping them
+        // added nothing but a prefix, and swallowing them left the caller with
+        // a blank page and no way to find out why.
+        archaeopteryx.launch(label, tree, options, settings, nodeVisualizations);
     };
 
 
