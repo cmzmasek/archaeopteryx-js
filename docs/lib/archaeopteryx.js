@@ -2170,7 +2170,15 @@ if (!phyloXml) {
                 return 'translate(' + source.y0 + ',' + source.x0 + ')';
             })
             .style('cursor', 'default')
-            .on('click', _treeFn.clickEvent);
+            .on('click', _treeFn.clickEvent)
+            // Right-click opens the same menu. The left-click target is an
+            // invisible 5px circle on the node itself, which is hard to hit; this
+            // handler sits on the whole node group, so the node's LABEL works as
+            // the target too -- a much easier thing to aim at.
+            .on('contextmenu', function (event, d) {
+                event.preventDefault(); // ours instead of the browser's menu
+                _treeFn.clickEvent.call(this, event, d);
+            });
 
 
         nodeEnter.append('path')
