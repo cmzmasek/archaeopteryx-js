@@ -6006,6 +6006,38 @@ if (!phyloXml) {
             + '.aptx-node-menu button.aptx-menu-danger:hover, .aptx-node-menu button.aptx-menu-danger:focus-visible {'
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
+            // The node-data dialog, on the same palette as the panel and the menu.
+            + '.aptx-dialog {'
+            + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
+            + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
+            + '}'
+            + '@media (prefers-color-scheme:dark){ .aptx-dialog:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-dialog.aptx-dark {' + dark + '}'
+            + '.aptx-dialog { padding:0; border:1px solid var(--p-line-strong); border-radius:12px;'
+            + '  background:var(--p-bg); color:var(--p-ink); max-width:92vw;'
+            + '  box-shadow:0 24px 48px -16px rgba(23,34,46,0.45),0 4px 12px -4px rgba(23,34,46,0.22);'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11.5px; line-height:1.5; }'
+            + '.aptx-dialog::backdrop { background:rgba(15,23,32,0.34); }'
+            + '.aptx-dialog-title { display:flex; align-items:center; gap:8px; padding:9px 10px 9px 13px;'
+            + '  border-bottom:1px solid var(--p-line); font-weight:600; }'
+            + '.aptx-dialog-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
+            + '.aptx-dialog-close { margin-left:auto; flex:none; width:22px; height:22px; display:grid;'
+            + '  place-items:center; padding:0; border:1px solid transparent; border-radius:6px;'
+            + '  background:transparent; color:var(--p-muted); font:inherit; line-height:1; cursor:pointer; }'
+            + '.aptx-dialog-close:hover { background:var(--p-accent-weak); color:var(--p-accent-ink);'
+            + '  border-color:var(--p-accent); }'
+            + '.aptx-dialog-body { padding:10px 13px 12px; overflow:auto; }'
+            + '.aptx-dialog-head { margin:10px 0 3px; font-size:9px; font-weight:700; letter-spacing:0.07em;'
+            + '  text-transform:uppercase; color:var(--p-faint); }'
+            + '.aptx-dialog-body > .aptx-dialog-head:first-child { margin-top:0; }'
+            + '.aptx-dialog-line { display:flex; gap:8px; padding:2px 0; }'
+            + '.aptx-dialog-line + .aptx-dialog-line { border-top:1px solid var(--p-line); }'
+            + '.aptx-dialog-key { flex:0 0 42%; color:var(--p-muted); }'
+            + '.aptx-dialog-val { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }'
+            + '.aptx-dialog-mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;'
+            + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
@@ -6271,38 +6303,69 @@ if (!phyloXml) {
     // jQuery UI dialog used for the node/sequence data popups). Only one such
     // dialog exists at a time; opening a new one removes the previous. Uses the
     // native <dialog> element, so Escape and the close button both dismiss it.
+    // Content arrives as "Label: value" lines separated by <br>. Setting the
+    // label part apart makes a wall of such lines scannable. Lines without a
+    // label (a heading like "Taxonomy", or a FASTA sequence) are left alone.
+    function markUpDataLabels(escaped) {
+        return escaped.split('<br>').map(function (line) {
+            if (!line.trim()) {
+                return '';
+            }
+            let m = /^(\s*-*\s*[^:<]{1,40}?):\s(.*)$/.exec(line);
+            if (!m) {
+                // no label: a section heading such as "Taxonomy" or "Sequence"
+                return '<div class="aptx-dialog-head">' + line.trim() + '</div>';
+            }
+            // the source marks sub-entries with leading dashes; the layout shows
+            // that relationship now, so the dashes only add noise
+            let key = m[1].replace(/^[\s-]+/, '');
+            return '<div class="aptx-dialog-line"><span class="aptx-dialog-key">' + key
+                + '</span><span class="aptx-dialog-val">' + m[2] + '</span></div>';
+        }).join('');
+    }
+
     function showNodeDataDialog(title, htmlContent, fontSize, fontFamily, width, height) {
         let existing = document.getElementById(NODE_DATA);
         if (existing) {
             existing.remove();
         }
+        // Molecular sequences are handed to us in a monospaced font; that is the
+        // signal to show them as a preformatted block rather than label/value.
+        let mono = (fontFamily === MOLSEQ_FONT_DEFAULTS);
+
         let dialog = document.createElement('dialog');
         dialog.id = NODE_DATA;
-        dialog.style.cssText = 'padding:0; border-style:groove; border-color:#AAAAAA;'
-            + ' background-color:#F0F8FF; opacity:0.95; z-index:10;'
-            + ' color:' + _settings.controlsFontColor + ';'
-            + ' font-family:' + fontFamily + '; font-size:' + fontSize + ';'
-            + ' width:' + width + 'px;';
+        dialog.className = 'aptx-dialog';
+        if (_panelTheme) {
+            dialog.classList.add('aptx-' + _panelTheme); // follow the panel's light/dark choice
+        }
+        dialog.style.width = width + 'px';
 
         let titlebar = document.createElement('div');
-        titlebar.textContent = title;
-        titlebar.style.cssText = 'text-align:center; font-weight:bold; color:#FFFFFF;'
-            + ' background-color:#AAAAAA; padding:2px 4px;'
-            + ' font-family:' + _settings.controlsFont + ';';
+        titlebar.className = 'aptx-dialog-title';
+        let name = document.createElement('span');
+        name.className = 'aptx-dialog-name';
+        name.textContent = title;
+        titlebar.appendChild(name);
 
-        let closeButton = document.createElement('span');
+        let closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'aptx-dialog-close';
+        closeButton.title = 'Close';
+        closeButton.setAttribute('aria-label', 'Close');
         closeButton.textContent = '✕';
-        closeButton.style.cssText = 'float:right; cursor:pointer; padding-left:8px;';
         closeButton.addEventListener('click', function () {
             dialog.close();
         });
         titlebar.appendChild(closeButton);
 
         let body = document.createElement('div');
+        body.className = 'aptx-dialog-body' + (mono ? ' aptx-dialog-mono' : '');
         // htmlContent is built from tree-file text with <br> separators; escape
         // everything else so a crafted name / property value cannot inject markup.
-        body.innerHTML = escapeHtmlKeepBreaks(htmlContent);
-        body.style.cssText = 'text-align:left; overflow:auto; padding:4px; height:' + height + 'px;';
+        let escaped = escapeHtmlKeepBreaks(htmlContent);
+        body.innerHTML = mono ? escaped : markUpDataLabels(escaped);
+        body.style.maxHeight = height + 'px';
 
         dialog.appendChild(titlebar);
         dialog.appendChild(body);
