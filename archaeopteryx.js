@@ -6157,6 +6157,7 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-check > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
             + '.aptx-panel .aptx-checkgrid { display:grid; grid-template-columns:1fr 1fr; gap:5px 10px; }'
             + '.aptx-panel .aptx-checkgrid .aptx-check { font-size:9px; }'
+            + '.aptx-panel .aptx-checkgrid .aptx-check-wide { grid-column:1 / -1; }'
             + '.aptx-panel .aptx-subhead { margin:9px 0 4px; font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel .aptx-fieldset-body > .aptx-subhead:first-child { margin-top:0; }'
             + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }'
@@ -7573,7 +7574,10 @@ if (!phyloXml) {
 
             // --- Options ---
             if (_settings.showDynahideButton) {
-                opts.push(makeCheckboxItem('Dyna Hide', DYNAHIDE_CB, 'to hide external labels depending on expected visibility'));
+                // "Auto-hide Labels" matches the desktop, which renamed the historical
+                // "Dyna Hide" because that named the mechanism rather than what the user
+                // sees. The _options.dynahide option keeps its name (public API).
+                opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             }
             if (_settings.showShortenNodeNamesButton) {
                 opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
@@ -7825,8 +7829,10 @@ if (!phyloXml) {
         }
 
         // A checkbox + label item, used by the Display Data grid and the inline search-option row.
-        function makeCheckboxItem(label, id, tooltip) {
-            return '<label class="aptx-check" title="' + tooltip + '"><input type="checkbox" name="' + id + '" id="' + id + '"><span>' + label + '</span></label>';
+        // `wide` makes the item span both columns of the checkbox grid, for a
+        // label too long to fit one column without being ellipsized.
+        function makeCheckboxItem(label, id, tooltip, wide) {
+            return '<label class="aptx-check' + (wide ? ' aptx-check-wide' : '') + '" title="' + tooltip + '"><input type="checkbox" name="' + id + '" id="' + id + '"><span>' + label + '</span></label>';
         }
 
         // A titled 2-column group of checkbox items; empty groups render nothing.
