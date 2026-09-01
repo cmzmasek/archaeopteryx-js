@@ -4702,7 +4702,9 @@ if (!phyloXml) {
                 items.push({label: 'Switch to Subtree', action: function () { switchToSubtree(d); }});
             }
             if (d.parent && d.children) {
-                items.push({label: 'Swap Descendants', action: function () { swapChildren(d); update(); }});
+                // redrawn with no transition: animating a swap sends the two
+                // clades sliding across each other, which is just noise
+                items.push({label: 'Swap Descendants', action: function () { swapChildren(d); update(null, 0); }});
                 items.push({label: 'Order Subtree', action: function () {
                     if (!_treeFn.visData) {
                         _treeFn.visData = {};
