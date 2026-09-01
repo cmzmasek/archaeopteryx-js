@@ -7245,7 +7245,16 @@ if (!phyloXml) {
 
         document.addEventListener('wheel', function (e) {
             if (e.shiftKey) {
-                if (e.deltaY > 0) {
+                // Browsers turn a shifted wheel into HORIZONTAL scrolling: the
+                // movement arrives in deltaX and deltaY is 0. Testing deltaY
+                // alone therefore sent every shifted wheel down the "zoom in"
+                // branch, whichever way the wheel actually turned. Take whichever
+                // axis carries the scroll.
+                let delta = (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) ? e.deltaY : e.deltaX;
+                if (delta === 0) {
+                    return;
+                }
+                if (delta > 0) {
                     if (e.ctrlKey) {
                         decreaseFontSizes();
                     } else if (e.altKey) {
