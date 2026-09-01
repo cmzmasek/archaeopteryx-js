@@ -225,7 +225,11 @@ if (!phyloXml) {
     const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
     const BRANCH_VIS_CB = 'branchvis_cb';
     const BRANCH_WIDTH_SLIDER = 'bw_sl';
-    const CIRCULAR_CB = 'circular_cb';
+    // The layout row: rectangular (root at left) vs circular. An exclusive pair,
+    // as in the desktop -- which offers three more layouts (root at top / bottom,
+    // unrooted) that this viewer does not draw.
+    const LAYOUT_RECT_BUTTON = 'layout_rect_b';
+    const LAYOUT_CIRC_BUTTON = 'layout_circ_b';
     const CLADOGRAM_BUTTON = 'cla_b';
     const COLOR_PICKER = 'col_pick';
     const COLOR_PICKER_LABEL = 'colorPickerLabel';
@@ -5431,8 +5435,8 @@ if (!phyloXml) {
         update(null, 0);
     }
 
-    function circularCbClicked() {
-        _options.circular = getCheckboxValue(CIRCULAR_CB);
+    function layoutButtonClicked() {
+        _options.circular = getCheckboxValue(LAYOUT_CIRC_BUTTON);
         zoomToFit();
     }
 
@@ -5998,6 +6002,28 @@ if (!phyloXml) {
         return s;
     }
 
+    // The rectangular layout, root at left: a mini tree silhouette. Its sibling
+    // in the desktop's layout row (which also offers root-at-top / -bottom and
+    // an unrooted layout, neither of which this viewer draws).
+    const GLYPH_RECT_SEGMENTS = [
+        [6, 50, 24, 50],   // root stub
+        [24, 24, 24, 76],  // spine
+        [24, 24, 52, 24],  // upper branch
+        [24, 76, 94, 76],  // lower branch -> tip 3
+        [52, 10, 52, 38],  // sub-spine
+        [52, 10, 94, 10],  // tip 1
+        [52, 38, 94, 38]   // tip 2
+    ];
+
+    function glyphRectangular() {
+        let s = '';
+        for (let i = 0; i < GLYPH_RECT_SEGMENTS.length; ++i) {
+            let g = GLYPH_RECT_SEGMENTS[i];
+            s += glyphLine(g[0], g[1], g[2], g[3]);
+        }
+        return s;
+    }
+
     // The circular layout: a two-level circular dendrogram (centre hub, rim arc
     // broken by the root wedge, four radial tips) -- deliberately arc-bearing so
     // it cannot be confused with the sun on the theme toggle.
@@ -6090,6 +6116,7 @@ if (!phyloXml) {
             case 'aligned_phylogram':
             case 'cladogram':
                 w = 100 * GLYPH_DT_ASPECT; sw = 6; join = 'miter'; body = glyphDisplayType(kind); break;
+            case 'rectangular': cap = 'round'; body = glyphRectangular(); break;
             case 'circular': cap = 'round'; body = glyphCircular(); break;
             case 'fit_all': sw = 6.5; body = glyphFitAll(); break;
             case 'expand_vertical': body = glyphExpandVertical(); break;
@@ -6173,7 +6200,8 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-combine { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }'
             + '.aptx-panel .aptx-combine .aptx-field-label { margin:0; flex:none; }'
             + '.aptx-panel .aptx-combine select { flex:1 1 auto; min-width:0; height:26px; font:inherit; }'
-            // segmented display-mode control (P/A/C) + the Circular toggle pill
+            // the two segmented controls: display type (phylogram / aligned /
+            // cladogram) and layout (rectangular / circular)
             + '.aptx-panel .aptx-modebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }'
             + '.aptx-panel .aptx-segmented { display:inline-flex; border:1px solid var(--p-line-strong); border-radius:7px; overflow:hidden; }'
             + '.aptx-panel .aptx-seg { display:flex; align-items:center; justify-content:center; min-width:24px; padding:3px 8px; font-size:11px; font-weight:600; color:var(--p-muted); background:var(--p-surface2); cursor:pointer; border-right:1px solid var(--p-line-strong); transition:background .12s,color .12s; }'
@@ -6182,10 +6210,6 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-seg:hover { color:var(--p-accent-ink); background:var(--p-accent-weak); }'
             + '.aptx-panel .aptx-seg:has(> input:checked) { background:var(--p-accent); color:#fff; }'
             + '.aptx-panel .aptx-seg:has(> input:disabled) { opacity:0.4; cursor:default; }'
-            + '.aptx-panel .aptx-toggle { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border:1px solid var(--p-line-strong); border-radius:7px; background:var(--p-surface2); font-size:11px; font-weight:600; color:var(--p-muted); cursor:pointer; transition:background .12s,color .12s,border-color .12s; }'
-            + '.aptx-panel .aptx-toggle > input { position:absolute; width:0; height:0; opacity:0; margin:0; pointer-events:none; }'
-            + '.aptx-panel .aptx-toggle:hover { color:var(--p-accent-ink); border-color:var(--p-accent); }'
-            + '.aptx-panel .aptx-toggle:has(> input:checked) { background:var(--p-accent); color:#fff; border-color:var(--p-accent); }'
             + '.aptx-panel .aptx-actions { margin-left:auto; display:flex; align-items:center; gap:5px; }'
             + '.aptx-panel .aptx-theme-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:12px; line-height:1; }'
             + '.aptx-panel .aptx-theme-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
@@ -6202,7 +6226,7 @@ if (!phyloXml) {
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
             + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
-            + '.aptx-panel .aptx-seg .aptx-glyph, .aptx-panel .aptx-toggle .aptx-glyph { height:13px; }'
+            + '.aptx-panel .aptx-seg .aptx-glyph { height:13px; }'
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
             + '.aptx-panel input[type=text]:focus,.aptx-panel select:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
             // --- collapsible sections, internal scroll, whole-panel hide ---
@@ -6811,7 +6835,9 @@ if (!phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
 
-        on(CIRCULAR_CB, 'click', circularCbClicked);
+        on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
+
+        on(LAYOUT_CIRC_BUTTON, 'click', layoutButtonClicked);
 
         on(SHORTEN_NODE_NAME_CB, 'click', shortenCbClicked);
 
@@ -7494,7 +7520,11 @@ if (!phyloXml) {
             h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
             h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
             h = h.concat('</div>');
-            h = h.concat('<label class="aptx-toggle" title="display the tree as a circular (radial) tree"><input type="checkbox" name="' + CIRCULAR_CB + '" id="' + CIRCULAR_CB + '">' + makeGlyph('circular') + '</label>');
+            let layoutGroup = 'layout_control_radio';
+            h = h.concat('<div class="aptx-segmented">');
+            h = h.concat(makeSegment(makeGlyph('rectangular'), LAYOUT_RECT_BUTTON, layoutGroup, 'rectangular, root at left'));
+            h = h.concat(makeSegment(makeGlyph('circular'), LAYOUT_CIRC_BUTTON, layoutGroup, 'circular'));
+            h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -8095,7 +8125,8 @@ if (!phyloXml) {
         setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
-        setCheckboxValue(CIRCULAR_CB, _options.circular);
+        setCheckboxValue(LAYOUT_CIRC_BUTTON, _options.circular);
+        setCheckboxValue(LAYOUT_RECT_BUTTON, !_options.circular);
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
