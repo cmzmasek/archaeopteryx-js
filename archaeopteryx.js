@@ -2551,16 +2551,30 @@ if (!phyloXml) {
             .remove();
 
 
-        if (_options.phylogram && _options.alignPhylogram && _options.showExternalLabels && (_options.showNodeName || _options.showTaxonomy || _options.showSequence)) {
-            let linkExtension = _svgGroup.append("g")
-                .selectAll('path')
+        // Aligned phylogram: a faint extension from each tip out to the column
+        // the labels line up in.
+        //
+        // Cleared first and rebuilt into ONE group. It used to append a fresh
+        // <g> on every update and never remove any of them, so the extensions
+        // piled up and outlived the setting that drew them.
+        //
+        // Not in circular mode: there the radial connectors below do this job,
+        // while these are built from rectangular geometry and would be drawn as
+        // straight lines right across the circular tree.
+        //
+        // The class is deliberately NOT "link": these paths live under
+        // _svgGroup, so that name put them in the way of selectAll('path.link')
+        // -- the main link data-join, and the overview's miniature.
+        _svgGroup.selectAll('g.aptx-align-ext').remove();
+        if (!_options.circular && _options.phylogram && _options.alignPhylogram && _options.showExternalLabels
+            && (_options.showNodeName || _options.showTaxonomy || _options.showSequence)) {
+            let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
+            ext.selectAll('path')
                 .data(links.filter(function (d) {
                     return (!d.target.children && !(_options.dynahide && d.target.hide));
-                }));
-
-            linkExtension.enter().insert('path', 'g')
-                .attr('class', "link")
-                .attr('fill', "none")
+                }))
+                .enter().append('path')
+                .attr('fill', 'none')
                 .attr('stroke-width', 1)
                 .attr('stroke', _options.branchColorDefault)
                 .style('stroke-opacity', 0.25)
