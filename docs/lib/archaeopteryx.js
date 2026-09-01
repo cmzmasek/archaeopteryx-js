@@ -4812,52 +4812,107 @@ if (!phyloXml) {
     }
 
 
-    function zoomInX(zoomInFactor) {
-        _zoomed_x_or_y = true;
-        if (zoomInFactor) {
-            _displayWidth = _displayWidth * zoomInFactor;
-        } else {
-            _displayWidth = _displayWidth * BUTTON_ZOOM_IN_FACTOR;
+    // Zooming rescales the LAYOUT, and the rectangular layout grows from its
+    // top-left origin -- so without compensating, the tree creeps away toward a
+    // corner as you zoom and you lose what you were looking at. Keep whatever
+    // sits under the middle of the viewport there.
+    //
+    // The anchor point is MEASURED from the content's extent before and after,
+    // not derived from the zoom factor: the layout is affine, not proportional
+    // (it subtracts borders and the longest label), so a factor-based guess
+    // drifts. The circular layout already centres itself, so it is left alone.
+    function keepViewportCentred(applyZoom) {
+        let size = svgSize();
+        let group = _svgGroup ? _svgGroup.node() : null;
+        let before = null;
+        if (!_options.circular && size && group) {
+            try {
+                before = group.getBBox();
+            } catch (e) {
+                before = null; // not rendered yet
+            }
         }
-        update(null, 0);
+        if (!before || before.width <= 0 || before.height <= 0) {
+            applyZoom();
+            return;
+        }
+        let t = d3.zoomTransform(_baseSvg.node());
+        // where the viewport's centre falls within the content, as a fraction
+        let u = ((((size.w / 2) - t.x) / t.k) - before.x) / before.width;
+        let v = ((((size.h / 2) - t.y) / t.k) - before.y) / before.height;
+
+        applyZoom();
+
+        let after;
+        try {
+            after = group.getBBox();
+        } catch (e) {
+            return;
+        }
+        if (!(after.width > 0) || !(after.height > 0)) {
+            return;
+        }
+        let nx = after.x + (u * after.width);
+        let ny = after.y + (v * after.height);
+        _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
+            .translate((size.w / 2) - (nx * t.k), (size.h / 2) - (ny * t.k))
+            .scale(t.k));
+    }
+
+    function zoomInX(zoomInFactor) {
+        keepViewportCentred(function () {
+            _zoomed_x_or_y = true;
+            if (zoomInFactor) {
+                _displayWidth = _displayWidth * zoomInFactor;
+            } else {
+                _displayWidth = _displayWidth * BUTTON_ZOOM_IN_FACTOR;
+            }
+            update(null, 0);
+        });
     }
 
     function zoomInY(zoomInFactor) {
-        _zoomed_x_or_y = true;
-        if (zoomInFactor) {
-            _displayHeight = _displayHeight * zoomInFactor;
-        } else {
-            _displayHeight = _displayHeight * BUTTON_ZOOM_IN_FACTOR;
-        }
-        update(null, 0);
+        keepViewportCentred(function () {
+            _zoomed_x_or_y = true;
+            if (zoomInFactor) {
+                _displayHeight = _displayHeight * zoomInFactor;
+            } else {
+                _displayHeight = _displayHeight * BUTTON_ZOOM_IN_FACTOR;
+            }
+            update(null, 0);
+        });
     }
 
     function zoomOutX(zoomOutFactor) {
-        _zoomed_x_or_y = true;
-        let newDisplayWidth;
-        if (zoomOutFactor) {
-            newDisplayWidth = _displayWidth * zoomOutFactor;
-        } else {
-            newDisplayWidth = _displayWidth * BUTTON_ZOOM_OUT_FACTOR;
-        }
-        if ((newDisplayWidth - calcMaxTreeLengthForDisplay()) >= 1) {
-            _displayWidth = newDisplayWidth;
-            update(null, 0);
-        }
+        keepViewportCentred(function () {
+            _zoomed_x_or_y = true;
+            let newDisplayWidth;
+            if (zoomOutFactor) {
+                newDisplayWidth = _displayWidth * zoomOutFactor;
+            } else {
+                newDisplayWidth = _displayWidth * BUTTON_ZOOM_OUT_FACTOR;
+            }
+            if ((newDisplayWidth - calcMaxTreeLengthForDisplay()) >= 1) {
+                _displayWidth = newDisplayWidth;
+                update(null, 0);
+            }
+        });
     }
 
     function zoomOutY(zoomOutFactor) {
-        _zoomed_x_or_y = true;
-        if (zoomOutFactor) {
-            _displayHeight = _displayHeight * zoomOutFactor;
-        } else {
-            _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
-        }
-        let min = 40;
-        if (_displayHeight < min) {
-            _displayHeight = min;
-        }
-        update(null, 0);
+        keepViewportCentred(function () {
+            _zoomed_x_or_y = true;
+            if (zoomOutFactor) {
+                _displayHeight = _displayHeight * zoomOutFactor;
+            } else {
+                _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
+            }
+            let min = 40;
+            if (_displayHeight < min) {
+                _displayHeight = min;
+            }
+            update(null, 0);
+        });
     }
 
     function zoomToFit() {
