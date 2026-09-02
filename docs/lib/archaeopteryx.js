@@ -3769,7 +3769,8 @@ if (!phyloXml) {
                             }
                         }
                     }
-                } else if (node.sequences) {
+                }
+                if (!url && node.sequences) {
                     for (let i = 0; i < node.sequences.length; ++i) {
                         let s = node.sequences[i];
                         if (s.accession && s.accession.value && s.accession.source) {
@@ -3805,7 +3806,8 @@ if (!phyloXml) {
                             }
                         }
                     }
-                } else if (node.name) {
+                }
+                if (!url && node.name) {
                     if (RE_SWISSPROT_TREMBL.test(node.name)) {
                         url = 'https://www.uniprot.org/uniprot/' + node.name;
                     } else if (RE_SWISSPROT_TREMBL_PFAM.test(node.name)) {
