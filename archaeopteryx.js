@@ -2926,6 +2926,7 @@ if (!phyloXml) {
         controlsFontColor: 'this never had any effect; the legend follows the tree\'s label colour',
         textFieldHeight: 'the text fields size themselves to their content',
         enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
+        border: 'style the tree\'s svg with CSS instead',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3390,13 +3391,6 @@ if (!phyloXml) {
         _baseSvg = d3.select(id).append('svg')
             .attr('width', _displayWidth)
             .attr('height', _displayHeight)
-            .style('border', function () {
-                if (_settings.border) {
-                    return _settings.border;
-                } else {
-                    return '';
-                }
-            })
             .call(_zoomListener);
 
         if (_settings.enableDynamicSizing) {
