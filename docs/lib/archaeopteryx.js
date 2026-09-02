@@ -151,7 +151,6 @@ if (!phyloXml) {
     // Gap between the control panel's right edge and the root, and the offset
     // used when there is no left control panel to clear at all.
     const ROOT_CLEARANCE = 20;
-    const ROOTOFFSET_NO_PANEL_DEFAULT = 30;
 
     // ------------------------------
     // Various constants and settings
@@ -239,7 +238,6 @@ if (!phyloXml) {
     const LAYOUT_CIRC_BUTTON = 'layout_circ_b';
     const CLADOGRAM_BUTTON = 'cla_b';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
-    const CONTROLS_0 = 'controls0';
     const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
@@ -460,7 +458,6 @@ if (!phyloXml) {
     let _maxLabelLength = 0;
     let _nodeVisualizations = null;
     let _nodeLabels = null;
-    let _offsetTop = 0;
     let _options = null;
     let _options_orig = null;
     let _root = null;
@@ -2903,6 +2900,9 @@ if (!phyloXml) {
         textFieldHeight: 'the text fields size themselves to their content',
         enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
         border: 'style the tree\'s svg with CSS instead',
+        controls0: 'the control panel is created inside the tree\'s own container now',
+        controls0Left: 'the control panel is placed against the tree; drag it to move it',
+        controls0Top: 'the control panel is placed against the tree; drag it to move it',
         nhExportReplaceIllegalChars: 'always on; Newick cannot carry those characters',
         propertiesToIgnoreForNodeVisualization: 'every property the tree carries is offered; choose what to show in the panel',
         valuesToIgnoreForNodeVisualization: 'every value is shown; choose what to show in the panel',
@@ -2929,10 +2929,8 @@ if (!phyloXml) {
     // and the visualizations legend need this, and neither may hard-code it:
     // the panel's own geometry is the only honest source, and a caller who
     // asks for no left panel should not pay for one.
-    function leftPanelClearance(settings) {
-        let id = (settings && settings.controls0) ? settings.controls0 : CONTROLS_0;
-        let left = (settings && settings.controls0Left) ? settings.controls0Left : CONTROLS_0_LEFT_DEFAULT;
-        return byId(id) ? (left + PANEL_WIDTH + ROOT_CLEARANCE) : ROOTOFFSET_NO_PANEL_DEFAULT;
+    function leftPanelClearance() {
+        return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
     }
 
     function initializeOptions(options, settings) {
@@ -3056,7 +3054,7 @@ if (!phyloXml) {
             // The legend was hard-coded to 220 and so came up underneath the
             // control panel, exactly as the root did. It starts where the tree
             // starts instead.
-            _options.visualizationsLegendXpos = leftPanelClearance(settings);
+            _options.visualizationsLegendXpos = leftPanelClearance();
         }
         if (!_options.visualizationsLegendYpos) {
             _options.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
@@ -3088,17 +3086,8 @@ if (!phyloXml) {
         if ((!_settings.displayHeight) && (!_settings.enableDynamicSizing)) {
             _settings.displayHeight = DISPLY_HEIGHT_DEFAULT;
         }
-        if (!_settings.controls0) {
-            _settings.controls0 = CONTROLS_0;
-        }
-        if (!_settings.controls0Left) {
-            _settings.controls0Left = CONTROLS_0_LEFT_DEFAULT;
-        }
-        if (!_settings.controls0Top) {
-            _settings.controls0Top = CONTROLS_0_TOP_DEFAULT;
-        }
         if (!_settings.rootOffset) {
-            _settings.rootOffset = leftPanelClearance(_settings);
+            _settings.rootOffset = leftPanelClearance();
         }
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = true;
@@ -4289,10 +4278,10 @@ if (!phyloXml) {
         // reason to undo it.
         zoomToFit();
         if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            let c0 = byId(_settings.controls0);
+            let c0 = document.querySelector(_id + ' > .aptx-panel');
             if (c0) {
                 setStyles(c0, {
-                    'left': _settings.controls0Left, 'top': _settings.controls0Top + _offsetTop
+                    'left': CONTROLS_0_LEFT_DEFAULT, 'top': CONTROLS_0_TOP_DEFAULT
                 });
             }
         }
@@ -5363,7 +5352,9 @@ if (!phyloXml) {
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
             + '.aptx-panel input[type=text]:focus,.aptx-panel select:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
             // --- collapsible sections, internal scroll, whole-panel hide ---
-            + '.aptx-panel { display:flex; flex-direction:column; max-height:calc(100vh - 40px); }'
+            // the panel is a child of the tree's container now, so it can be held
+            // to that container's height rather than the whole viewport's
+            + '.aptx-panel { display:flex; flex-direction:column; max-height:calc(100% - 20px); }'
             + '.aptx-panel > .aptx-body { overflow-y:auto; overflow-x:hidden; min-height:0; }'
             + '.aptx-panel > .aptx-body::-webkit-scrollbar { width:9px; }'
             + '.aptx-panel > .aptx-body::-webkit-scrollbar-thumb { background:var(--p-line-strong); border-radius:9px; border:2px solid var(--p-bg); }'
@@ -5779,16 +5770,27 @@ if (!phyloXml) {
     }
 
 
-    function createGui() {
-
-        let d3selectId = d3.select(_id);
-        if (d3selectId && d3selectId[0]) {
-            let phyloDiv = d3selectId[0][0];
-            if (phyloDiv) {
-                _offsetTop = phyloDiv.offsetTop;
-                phyloDiv.style.textAlign = 'left';
-            }
+    // The control panel is created inside the tree's own container and placed
+    // against it. It used to be built into a div the embedder had to supply and
+    // position themselves, offset by _offsetTop to line it up -- and _offsetTop
+    // was read through the d3 v3 selection API, so on d3 v7 it stayed 0 and the
+    // panel landed at the top of the PAGE however far down the tree began.
+    function makeControlPanelElement() {
+        let container = d3.select(_id).node();
+        if (!container) {
+            return null;
         }
+        // absolute placement below needs the container to be a containing block
+        if (getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
+        }
+        container.style.textAlign = 'left';
+        let panel = document.createElement('div');
+        container.appendChild(panel);
+        return panel;
+    }
+
+    function createGui() {
 
 
         setStylesAll(_id, {
@@ -5820,14 +5822,14 @@ if (!phyloXml) {
             .style("opacity", 1e-6);
 
 
-        let c0 = byId(_settings.controls0);
+        let c0 = makeControlPanelElement();
 
         if (c0) {
             c0.classList.add('aptx-panel');
             setStyles(c0, {
                 'position': 'absolute',
-                'left': _settings.controls0Left,
-                'top': _settings.controls0Top + _offsetTop,
+                'left': CONTROLS_0_LEFT_DEFAULT,
+                'top': CONTROLS_0_TOP_DEFAULT,
                 'padding': '0px',
                 'margin': '0'
             });

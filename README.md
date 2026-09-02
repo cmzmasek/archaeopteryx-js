@@ -101,8 +101,6 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
 <div>
    <h2>Archaeopteryx.js Basic Demo</h2>
    <div id='phylogram1'></div>
-   <div id='controls0'></div>
-   <div id='controls1'></div>
 </div>
 </body>
 </html>
@@ -368,9 +366,6 @@ constants:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `controls0` | `'controls0'` | Id of the div for the control panel. |
-| `controls0Left` | `20` | Position of the main panel. |
-| `controls0Top` | `10` | Position of the main panel. |
 | `enableDynamicSizing` | `true` | Size the tree to the window and follow resizes. |
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
@@ -421,6 +416,9 @@ constants:
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
 | `border` | Style the tree's svg with CSS instead. |
+| `controls0` | The control panel is created inside the tree's own container now. |
+| `controls0Left` | The control panel is placed against the tree; drag it to move it. |
+| `controls0Top` | The control panel is placed against the tree; drag it to move it. |
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
