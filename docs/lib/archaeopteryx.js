@@ -5458,12 +5458,16 @@ if (!phyloXml) {
             + '  box-sizing:border-box; width:' + PANEL_WIDTH + 'px;'
             + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
             + '  font-size:11px; line-height:1.42; color:var(--p-ink); background:var(--p-bg);'
-            // Deliberately NO backdrop blur here. The panel is translucent so the
-            // tree can be seen under it, and a blur defeats exactly that: it
-            // smears one-pixel branches and small labels into flat colour, so
-            // the panel reads as opaque however low its alpha goes. The node
-            // menu and the tooltip keep their blur -- those want to be read, not
-            // seen through.
+            // A SMALL backdrop blur: enough to push the tree behind the panel
+            // into the background, not enough to erase it. The radius has to
+            // stay well under the size of what should still read through --
+            // one-pixel branches and 11px labels. Compared side by side over a
+            // dense tree: 1px leaves the labels behind sharp enough to compete
+            // with the panel's own, 3px flattens them away entirely (8px, which
+            // this used to be, made the panel look solid at any alpha), and 2px
+            // keeps the branches and the shape of the labels while clearly
+            // putting them behind glass.
+            + '  -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);'
             + '  border:1px solid var(--p-line-strong); border-radius:12px;'
             + '  box-shadow:0 12px 30px -12px rgba(23,34,46,0.32),0 2px 6px -2px rgba(23,34,46,0.14);'
             + '  overflow:hidden; }'
