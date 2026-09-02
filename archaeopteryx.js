@@ -2385,17 +2385,6 @@ if (!phyloXml) {
                     for (let i = 0; i < propertiesLength; ++i) {
                         let p = node.properties[i];
                         if (p.value && p.ref === ref_name) {
-                            if (_settings.valuesToIgnoreForNodeVisualization) {
-                                if (p.ref in _settings.valuesToIgnoreForNodeVisualization) {
-                                    let ignoreValues = _settings.valuesToIgnoreForNodeVisualization[p.ref];
-                                    let arrayLength = ignoreValues.length;
-                                    for (let i = 0; i < arrayLength; i++) {
-                                        if (p.value === ignoreValues[i]) {
-                                            return null;
-                                        }
-                                    }
-                                }
-                            }
                             return produceVis(vis, p.value);
                         }
                     }
@@ -2467,19 +2456,6 @@ if (!phyloXml) {
             for (let i = 0; i < propertiesLength; ++i) {
                 let p = node.properties[i];
                 if (p.value && p.ref === ref_name) {
-                    if (_settings.valuesToIgnoreForNodeVisualization) {
-                        let ignore = _settings.valuesToIgnoreForNodeVisualization;
-                        // for (let key in nodeProperties) {
-                        if (p.ref in ignore) {
-                            let toIgnores = ignore[p.ref];
-                            let arrayLength = toIgnores.length;
-                            for (let i = 0; i < arrayLength; i++) {
-                                if (p.value === toIgnores[i]) {
-                                    return null;
-                                }
-                            }
-                        }
-                    }
                     return produceVis(vis, p.value);
                 }
             }
@@ -2928,6 +2904,8 @@ if (!phyloXml) {
         enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
         border: 'style the tree\'s svg with CSS instead',
         nhExportReplaceIllegalChars: 'always on; Newick cannot carry those characters',
+        propertiesToIgnoreForNodeVisualization: 'every property the tree carries is offered; choose what to show in the panel',
+        valuesToIgnoreForNodeVisualization: 'every value is shown; choose what to show in the panel',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3145,12 +3123,6 @@ if (!phyloXml) {
         if (_settings.dynamicallyAddNodeVisualizations === undefined) {
             _settings.dynamicallyAddNodeVisualizations = false;
         }
-        if (_settings.propertiesToIgnoreForNodeVisualization === undefined) {
-            _settings.propertiesToIgnoreForNodeVisualization = null;
-        }
-        if (_settings.valuesToIgnoreForNodeVisualization === undefined) {
-            _settings.valuesToIgnoreForNodeVisualization = null;
-        }
         if (_settings.allowManualNodeSelection === undefined) {
             _settings.allowManualNodeSelection = false;
         }
@@ -3178,23 +3150,6 @@ if (!phyloXml) {
         } else {
             _displayHeight = _settings.displayHeight;
             _displayWidth = _settings.displayWidth;
-        }
-    }
-
-
-    function deleteValuesFromNodeProperties(valuesToIgnoreForNodeVisualization, nodeProperties) {
-        for (let key in nodeProperties) {
-            if (key in valuesToIgnoreForNodeVisualization) {
-                let ignoreValues = valuesToIgnoreForNodeVisualization[key];
-                let arrayLength = ignoreValues.length;
-                for (let i = 0; i < arrayLength; i++) {
-                    let ignoreValue = ignoreValues[i];
-                    let deleted = nodeProperties[key].delete(ignoreValue);
-                    if (deleted === true) {
-                        console.log(MESSAGE + 'Ignoring \"' + key + '=' + ignoreValue + '\" for visualizations');
-                    }
-                }
-            }
         }
     }
 
@@ -3341,9 +3296,6 @@ if (!phyloXml) {
                     if (_nodeVisualizations.hasOwnProperty(name)) {
                         return;
                     }
-                    if (_settings.propertiesToIgnoreForNodeVisualization && _settings.propertiesToIgnoreForNodeVisualization.indexOf(name) >= 0) {
-                        return;
-                    }
                     let vis;
                     if (f.numeric) {
                         vis = {
@@ -3378,9 +3330,6 @@ if (!phyloXml) {
             }
 
             let nodeProperties = forester.collectProperties(_treeData, 'node', false);
-            if (settings.valuesToIgnoreForNodeVisualization) {
-                deleteValuesFromNodeProperties(settings.valuesToIgnoreForNodeVisualization, nodeProperties);
-            }
             initializeNodeVisualizations(nodeProperties);
         }
 
@@ -4051,9 +4000,6 @@ if (!phyloXml) {
         _visualizations = null;
         let nodeProperties = forester.collectProperties(tree, 'node', false);
 
-        if (_settings.valuesToIgnoreForNodeVisualization) {
-            deleteValuesFromNodeProperties(_settings.valuesToIgnoreForNodeVisualization, nodeProperties);
-        }
         initializeNodeVisualizations(nodeProperties);
 
         if (((_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {

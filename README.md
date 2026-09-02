@@ -381,8 +381,6 @@ constants:
 | `enableNodeVisualizations` | `false` | Offer node visualizations. |
 | `enableBranchVisualizations` | `false` | Offer branch visualizations. |
 | `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree's own properties. |
-| `propertiesToIgnoreForNodeVisualization` | `null` | Properties to skip when doing so. |
-| `valuesToIgnoreForNodeVisualization` | `null` | Values to skip when doing so. |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
 | `allowManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
@@ -424,6 +422,8 @@ constants:
 | `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
 | `border` | Style the tree's svg with CSS instead. |
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
+| `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
+| `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 
 ## Node visualizations
