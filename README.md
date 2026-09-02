@@ -234,7 +234,7 @@ chosen per tree — they are simply no longer yours to set at launch.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-twenty keys below are the ones no tree can answer for you.
+nineteen keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -266,7 +266,6 @@ keep working; it logs a deprecation warning.
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |
 | `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
-| `filterValues` | `null` | Copy node property values from one property to another, keeping only the listed ones. Array of `{source, target, pass}`. |
 
 ### Anything else throws
 
@@ -303,7 +302,7 @@ constants:
 
 ### Removed — passing these throws
 
-All 111 of them, alphabetically:
+All 112 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
@@ -342,6 +341,7 @@ All 111 of them, alphabetically:
 | `enableSpecialVisualizations3` | The special visualizations were removed. |
 | `enableSpecialVisualizations4` | The special visualizations were removed. |
 | `externalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `filterValues` | Reshape the tree's properties yourself before calling launch. |
 | `fontSize` | One default size for every label; the font-size slider changes it. |
 | `found0and1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
 | `found0ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |

@@ -302,7 +302,6 @@ if (!phyloXml) {
 
 
 
-
     // ---------------------------
     // Key codes
     // ---------------------------
@@ -1791,7 +1790,6 @@ if (!phyloXml) {
 
 
 
-
     // --------------------------------------------------------------
 
     function update(source, transitionDuration, doNotRecalculateWidth) {
@@ -2649,7 +2647,6 @@ if (!phyloXml) {
     };
 
 
-
     let makeBranchLengthLabel = function (phynode) {
         if (phynode.branch_length) {
             if (_state.phylogram && _state.minBranchLengthValueToShow && phynode.branch_length < _state.minBranchLengthValueToShow) {
@@ -2914,7 +2911,8 @@ if (!phyloXml) {
         propertiesToIgnoreForNodeVisualization: 'every property the tree carries is offered; choose what to show in the panel',
         valuesToIgnoreForNodeVisualization: 'every value is shown; choose what to show in the panel',
         orderTree: 'renamed to "ladderizeTree", to match the wording used everywhere else',
-        controlsBackgroundColor: 'the control panel follows the light / dark palette'
+        controlsBackgroundColor: 'the control panel follows the light / dark palette',
+        filterValues: 'reshape the tree\'s properties yourself before calling launch'
     };
 
     // ---- the public config surface ----------------------------------------
@@ -2945,7 +2943,6 @@ if (!phyloXml) {
         'enableManualNodeSelection',
         'enableSubtreeDeletion',
         'enableVisualizations',
-        'filterValues',
         'ladderizeTree',
         'nhExportWriteConfidences',
         'pngExportScale',
@@ -3229,39 +3226,6 @@ if (!phyloXml) {
     }
 
 
-    function filterValues(phy, source, target, pass) {
-
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (n.properties && n.properties.length > 0) {
-                const propertiesLength = n.properties.length;
-                for (let i = 0; i < propertiesLength; ++i) {
-                    const property = n.properties[i];
-                    if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === 'node') {
-                        if (property.ref === source) {
-                            const value = property.value;
-                            const l = pass.length;
-                            let present = false;
-                            for (let j = 0; j < l; j++) {
-                                if (value === pass[j]) {
-                                    present = true;
-                                    break;
-                                }
-                            }
-                            if (present) {
-                                const newProp = {};
-                                newProp.ref = target;
-                                newProp.value = value;
-                                newProp.datatype = property.datatype;
-                                newProp.applies_to = property.applies_to;
-                                n.properties.push(newProp);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     function initialize() {
         initializeGui();
         populateSearchMenus();
@@ -3319,15 +3283,6 @@ if (!phyloXml) {
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
         let cfg = readConfig(config, legacySettings);
-
-        if (cfg.settings.filterValues) {
-            cfg.settings.filterValues.forEach(function (e) {
-                if (e && e.source && e.target && e.pass && e.pass.length > 0) {
-                    console.log(MESSAGE + ' Filtering values from \"' + e.source + '\" to \"' + e.target + ', allowed values ' + e.pass);
-                    filterValues(_treeData, e.source, e.target, e.pass);
-                }
-            });
-        }
 
         // Every launch starts from a clean slate. These used to be assigned only
         // when the caller supplied them, so launching a second tree in the same
@@ -4076,7 +4031,6 @@ if (!phyloXml) {
     }
 
 
-
     function updateNodeVisualizationsAndLegends(tree) {
         _visualizations = null;
         let nodeProperties = forester.collectProperties(tree, 'node', false);
@@ -4818,9 +4772,6 @@ if (!phyloXml) {
         search0();
         search1();
     }
-
-
-
 
 
 
@@ -5990,7 +5941,6 @@ if (!phyloXml) {
 
 
 
-
         const downloadButton = byId(DOWNLOAD_BUTTON);
 
         if (downloadButton) {
@@ -6103,9 +6053,6 @@ if (!phyloXml) {
 
 
 
-
-
-
         on(NODE_SHAPE_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (v && v !== DEFAULT) {
@@ -6192,7 +6139,6 @@ if (!phyloXml) {
 
 
 
-
         // ----------------
 
         if (downloadButton) {
@@ -6220,8 +6166,6 @@ if (!phyloXml) {
         setStyles(byId(NODE_SHAPE_SELECT_MENU), {
             'font': 'inherit', 'color': 'inherit'
         });
-
-
 
 
 
@@ -6710,7 +6654,6 @@ if (!phyloXml) {
         }
 
 
-
         // --------------------------------------------------------------
         // Functions to make individual GUI components
         // --------------------------------------------------------------
@@ -6796,7 +6739,6 @@ if (!phyloXml) {
 
         addOption(NODE_SHAPE_SELECT_MENU, DEFAULT, 'default');
         addOption(LABEL_COLOR_SELECT_MENU, DEFAULT, 'default');
-
 
 
 
