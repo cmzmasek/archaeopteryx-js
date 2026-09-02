@@ -74,34 +74,6 @@
 
     const NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
 
-    const MSA_RESIDUE_SORT_MAP = new Map();
-    MSA_RESIDUE_SORT_MAP.set('A', 0);
-    MSA_RESIDUE_SORT_MAP.set('C', 1);
-    MSA_RESIDUE_SORT_MAP.set('D', 2);
-    MSA_RESIDUE_SORT_MAP.set('E', 3);
-    MSA_RESIDUE_SORT_MAP.set('F', 4);
-    MSA_RESIDUE_SORT_MAP.set('G', 5);
-    MSA_RESIDUE_SORT_MAP.set('H', 6);
-    MSA_RESIDUE_SORT_MAP.set('I', 7);
-    MSA_RESIDUE_SORT_MAP.set('K', 8);
-    MSA_RESIDUE_SORT_MAP.set('L', 9);
-    MSA_RESIDUE_SORT_MAP.set('M', 10);
-    MSA_RESIDUE_SORT_MAP.set('N', 11);
-    MSA_RESIDUE_SORT_MAP.set('P', 12);
-    MSA_RESIDUE_SORT_MAP.set('Q', 13);
-    MSA_RESIDUE_SORT_MAP.set('R', 14);
-    MSA_RESIDUE_SORT_MAP.set('S', 15);
-    MSA_RESIDUE_SORT_MAP.set('T', 16);
-    MSA_RESIDUE_SORT_MAP.set('U', 17);// Uracil
-    MSA_RESIDUE_SORT_MAP.set('V', 18);
-    MSA_RESIDUE_SORT_MAP.set('W', 19);
-    MSA_RESIDUE_SORT_MAP.set('Y', 20);
-    MSA_RESIDUE_SORT_MAP.set('B', 21);// Asparagine or aspartic acid
-    MSA_RESIDUE_SORT_MAP.set('Z', 22);// Glutamine or glutamic acid
-    MSA_RESIDUE_SORT_MAP.set('X', 23);
-    MSA_RESIDUE_SORT_MAP.set('?', 24);
-    MSA_RESIDUE_SORT_MAP.set('-', 25);
-    MSA_RESIDUE_SORT_MAP.set('.', 26);
 
 
     /**
@@ -889,11 +861,9 @@
         // Whether a tree is worth drawing to scale is a question about the
         // majority of its branches, not about whether any branch has a length.
         properties.branchesWithPositiveLength = 0;
-        properties.molSeqResiduesPerPosition = null;
         properties.averageBranchLength = 0;
         let bl_counter = 0;
         let bl_sum = 0;
-        let molSeqs = [];
         // Counting the super-root would add a node and a branch that do not
         // exist -- skewing the branch-length fraction the viewer uses to choose
         // between a phylogram and a cladogram -- and from phyloXML would take
@@ -936,8 +906,6 @@
                         }
                         if (!s.mol_seq.is_aligned) {
                             properties.alignedMolSeqs = false;
-                        } else {
-                            molSeqs.push(s.mol_seq.value);
                         }
                     }
                 }
@@ -961,30 +929,6 @@
             }
 
         });
-
-        if (properties.alignedMolSeqs) {
-            properties.molSeqResiduesPerPosition = [];
-            for (let p = 0, maxLen = properties.maxMolSeqLength; p < maxLen; ++p) {
-                let mySet = new Set();
-                for (let i = 0, seqsLen = molSeqs.length; i < seqsLen; ++i) {
-                    let molSeq = molSeqs[i];
-                    let c = molSeq[p];
-                    if (c) {
-                        c = c.toUpperCase();
-                        mySet.add(c);
-                        if (!MSA_RESIDUE_SORT_MAP.has(c)) {
-                            throw ("Unknown MSA residue '" + c + "'");
-                        }
-                    }
-
-                }
-                let myArray = forester.setToArray(mySet);
-                myArray.sort(function (a, b) {
-                    return MSA_RESIDUE_SORT_MAP.get(a) - MSA_RESIDUE_SORT_MAP.get(b);
-                });
-                properties.molSeqResiduesPerPosition.push(myArray);
-            }
-        }
 
         properties.branchesWithPositiveLength = bl_counter;
 

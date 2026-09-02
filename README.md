@@ -385,7 +385,6 @@ constants:
 | `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree's own properties. |
 | `propertiesToIgnoreForNodeVisualization` | `null` | Properties to skip when doing so. |
 | `valuesToIgnoreForNodeVisualization` | `null` | Values to skip when doing so. |
-| `enableMsaResidueVisualizations` | `false` | Colour by aligned residue. Only takes effect if the tree has aligned sequences. |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
 | `allowManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
@@ -424,6 +423,7 @@ constants:
 | `controlsFontSize` | The legend has one size. |
 | `controlsFontColor` | This never had any effect; the legend follows the tree's label colour. |
 | `textFieldHeight` | The text fields size themselves to their content. |
+| `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 
 ## Node visualizations

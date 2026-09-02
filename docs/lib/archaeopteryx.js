@@ -196,7 +196,6 @@ if (!phyloXml) {
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     const PNG_EXPORT_FORMAT = 'PNG';
-    const MSA_RESIDUE = 'MSA Residue';
     const RESET_SEARCH_A_BTN_TOOLTIP = 'reset (remove) search result A';
     const RESET_SEARCH_B_BTN_TOOLTIP = 'reset (remove) search result B';
     // Auto-hide Labels is only offered once a tree is dense enough for labels
@@ -256,10 +255,6 @@ if (!phyloXml) {
     const LEGEND_DESCRIPTION = 'legendDescription';
     const LEGEND_LABEL = 'legendLabel';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
-    const MSA_RESIDUE_VIS_CURR_RES_POS_LABEL = 'seq_pos_label_curr_pos';
-    const MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
-    const MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = 'seq_pos_decr_pos';
-    const MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = 'seq_pos_incr_pos';
     // The desktop Archaeopteryx logo (forester/archaeopteryx_icon_assets/
     // archaeopteryx-anime.svg), inlined so the library stays a single file.
     // Gradient ids are prefixed: they were generic enough to collide with an
@@ -323,10 +318,6 @@ if (!phyloXml) {
     const VK_O = 79;
     const VK_P = 80;
     const VK_R = 82;
-    const VK_0 = 48;
-    const VK_9 = 57;
-    const VK_0_NUMPAD = 96;
-    const VK_9_NUMPAD = 105;
     const VK_DELETE = 46;
     const VK_BACKSPACE = 8;
     const VK_HOME = 36;
@@ -340,8 +331,6 @@ if (!phyloXml) {
     const VK_MINUS_N = 109;
     const VK_PAGE_UP = 33;
     const VK_PAGE_DOWN = 34;
-    const VK_OPEN_BRACKET = 219;
-    const VK_CLOSE_BRACKET = 221;
 
 
     // ---------------------------
@@ -469,7 +458,6 @@ if (!phyloXml) {
     let _legendColorScales = {};
     let _legendShapeScales = {};
     let _maxLabelLength = 0;
-    let _msa_residue_vis_curr_res_pos = 0;
     let _nodeVisualizations = null;
     let _nodeLabels = null;
     let _offsetTop = 0;
@@ -963,10 +951,6 @@ if (!phyloXml) {
         return _settings.rootOffset + _options.nodeLabelGap + LABEL_SIZE_CALC_ADDITION + (_maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR);
     }
 
-    function isCanDoMsaResidueVisualizations() {
-        return ((_settings.enableNodeVisualizations === true) && (_settings.enableMsaResidueVisualizations === true) && (_basicTreeProperties.alignedMolSeqs === true) && (_basicTreeProperties.maxMolSeqLength && (_basicTreeProperties.maxMolSeqLength > 1)));
-    }
-
     // ----------------------------
     // Functions for node tooltips
     // ----------------------------
@@ -1301,12 +1285,7 @@ if (!phyloXml) {
                         if (nodeVisualization.shapes && Array.isArray(nodeVisualization.shapes) && (nodeVisualization.shapes.length > 0)) {
 
                             let shapeScale = null;
-                            if (nodeVisualization.label === MSA_RESIDUE) {
-                                shapeScale = d3.scaleOrdinal()
-                                    .range(nodeVisualization.shapes)
-                                    .domain(_basicTreeProperties.molSeqResiduesPerPosition[0]);
-                                scaleType = ORDINAL_SCALE;
-                            } else if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
+                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
                                 shapeScale = d3.scaleOrdinal()
                                     .range(nodeVisualization.shapes)
                                     .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
@@ -1325,7 +1304,7 @@ if (!phyloXml) {
 
                         if (nodeVisualization.colors) {
                             // TODO: Not dealing with nodeVisualization.field, yet.
-                            if ((nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) || (nodeVisualization.label === MSA_RESIDUE)) {
+                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
                                 let colorScale = null;
                                 let altColorScale = null;
 
@@ -1360,10 +1339,7 @@ if (!phyloXml) {
 
                                 if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
                                     scaleType = ORDINAL_SCALE;
-                                    if (nodeVisualization.label === MSA_RESIDUE) {
-                                        colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
-                                            .domain(_basicTreeProperties.molSeqResiduesPerPosition[0]);
-                                    } else {
+                                    {
                                         if (nodeVisualization.colors === 'category20') {
                                             colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
@@ -1608,10 +1584,6 @@ if (!phyloXml) {
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
                 if (i === 0 && description) {
-                    if (description === MSA_RESIDUE) {
-                        return description + ' ' + (_msa_residue_vis_curr_res_pos + 1);
-
-                    }
                     return description;
                 }
             });
@@ -1723,9 +1695,6 @@ if (!phyloXml) {
             .attr('y', yFactorForDesc * legendRectSize)
             .text(function (d, i) {
                 if (i === 0 && description) {
-                    if (description === MSA_RESIDUE) {
-                        return description + ' ' + (_msa_residue_vis_curr_res_pos + 1);
-                    }
                     return description;
                 }
             });
@@ -1910,11 +1879,6 @@ if (!phyloXml) {
         }
 
         updateButtonEnabledState();
-        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
-            if (_settings.enableMsaResidueVisualizations) {
-                updateMsaResidueVisCurrResPosLabel();
-            }
-        }
 
         let node = _svgGroup.selectAll('g.node')
             .data(nodes, function (d) {
@@ -2310,35 +2274,6 @@ if (!phyloXml) {
     let makeBranchColor = function (link) {
 
         const n = link.target;
-        if (_options.showBranchVisualizations && n != null) {
-            if (_currentLabelColorVisualization === MSA_RESIDUE && isCanDoMsaResidueVisualizations()) {
-
-                let exts = forester.getAllExternalNodes(n);
-                let residue = null;
-                for (let i = 0, l = exts.length; i < l; ++i) {
-                    let ext = exts[i];
-                    if (ext.sequences && ext.sequences.length > 0) {
-                        let s = ext.sequences[0];
-                        if (s.mol_seq && s.mol_seq.value && (s.mol_seq.value.length > _msa_residue_vis_curr_res_pos)) {
-                            let res = s.mol_seq.value.charAt(_msa_residue_vis_curr_res_pos).toUpperCase();
-
-                            if (residue != null) {
-                                if (residue !== res) {
-                                    residue = null;
-                                    break;
-                                }
-                            } else {
-                                residue = res;
-                            }
-                        }
-                    }
-                }
-                if (residue != null && residue !== '-' && residue !== '.' && residue !== '?') {
-                    let vis = _visualizations.labelColor[MSA_RESIDUE];
-                    return vis.mappingFn ? vis.mappingFn(residue) : vis.mapping[residue];
-                }
-            }
-        }
         if (!_options.showBranchVisualizations && _options.showBranchColors && link.target.color) {
             let c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
@@ -2426,26 +2361,7 @@ if (!phyloXml) {
     let makeNodeVisShape = function (node) {
         if (_currentNodeShapeVisualization && _visualizations && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_options.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
             let vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
-            if (_currentNodeShapeVisualization === MSA_RESIDUE) {
-
-                if (isCanDoMsaResidueVisualizations()) {
-                    if (node.sequences && node.sequences.length > 0) {
-
-                        let s = node.sequences[0];
-                        if (s.mol_seq && s.mol_seq.value && (s.mol_seq.value.length > _msa_residue_vis_curr_res_pos)) {
-                            let res = s.mol_seq.value.charAt(_msa_residue_vis_curr_res_pos).toUpperCase();
-                            if (vis.mappingFn) {
-                                vis.mappingFn.domain(_basicTreeProperties.molSeqResiduesPerPosition[_msa_residue_vis_curr_res_pos]);
-                            }
-                            if (vis.mapping) {
-                                vis.mapping.domain(_basicTreeProperties.molSeqResiduesPerPosition[_msa_residue_vis_curr_res_pos]);
-                            }
-                            return produceVis(vis, res);
-                        }
-                    }
-                }
-                return null;
-            } else {
+            {
                 if (vis.field) {
                     let fieldValue = node[vis.field];
                     if (fieldValue) {
@@ -2513,9 +2429,6 @@ if (!phyloXml) {
         if (!_currentLabelColorVisualization || !_visualizations || !_visualizations.labelColor) {
             return null;
         }
-        if (_currentLabelColorVisualization === MSA_RESIDUE) {
-            return makeMsaResidueVisualizationColor(node, _visualizations.labelColor[MSA_RESIDUE]);
-        }
         let vis = _visualizations.labelColor[_currentLabelColorVisualization];
         if (vis) {
             return makeVisColor(node, vis) || null;
@@ -2528,25 +2441,6 @@ if (!phyloXml) {
             return _options.backgroundColorDefault;
         }
         return visualizationColorFor(node) || _options.backgroundColorDefault;
-    };
-
-    let makeMsaResidueVisualizationColor = function (node, vis) {
-        if (isCanDoMsaResidueVisualizations()) {
-            if (node.sequences && node.sequences.length > 0) {
-                let s = node.sequences[0];
-                if (s.mol_seq && s.mol_seq.value && s.mol_seq.value.length > _msa_residue_vis_curr_res_pos) {
-                    let res = s.mol_seq.value.charAt(_msa_residue_vis_curr_res_pos).toUpperCase();
-                    if (vis.mappingFn) {
-                        vis.mappingFn.domain(_basicTreeProperties.molSeqResiduesPerPosition[_msa_residue_vis_curr_res_pos]);
-                        return vis.mappingFn(res);
-                    } else if (vis.mapping) {
-                        vis.mapping.domain(_basicTreeProperties.molSeqResiduesPerPosition[_msa_residue_vis_curr_res_pos]);
-                        return vis.mapping[res];
-                    }
-                }
-            }
-        }
-        return null;
     };
 
 
@@ -3031,6 +2925,7 @@ if (!phyloXml) {
         controlsFontSize: 'the legend has one size',
         controlsFontColor: 'this never had any effect; the legend follows the tree\'s label colour',
         textFieldHeight: 'the text fields size themselves to their content',
+        enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3245,7 +3140,6 @@ if (!phyloXml) {
         if (_settings.enableAccessToDatabases === undefined) {
             _settings.enableAccessToDatabases = true;
         }
-        _settings.enableMsaResidueVisualizations = _settings.enableMsaResidueVisualizations === true && _basicTreeProperties.alignedMolSeqs === true && _basicTreeProperties.maxMolSeqLength > 1;
         if (_settings.zoomToFitUponWindowResize === undefined) {
             _settings.zoomToFitUponWindowResize = true;
         }
@@ -3426,21 +3320,6 @@ if (!phyloXml) {
 
 
         if (settings.enableNodeVisualizations) {
-            if (settings.enableMsaResidueVisualizations && (_basicTreeProperties.alignedMolSeqs === true) && (_basicTreeProperties.maxMolSeqLength && _basicTreeProperties.maxMolSeqLength > 1)) {
-                if (_nodeVisualizations == null) {
-                    _nodeVisualizations = {};
-                }
-                _nodeVisualizations[MSA_RESIDUE] = {
-                    label: MSA_RESIDUE,
-                    description: '',
-                    field: null,
-                    cladeRef: 'na',
-                    regex: false,
-                    shapes: ['square', 'diamond', 'triangle-up', 'triangle-down', 'circle', 'cross'],
-                    colors: 'na',
-                    sizes: null
-                };
-            }
 
             // Intelligent pre-sets: when the caller provides no node
             // visualizations, generate sensible ones from the tree's custom
@@ -4912,12 +4791,6 @@ if (!phyloXml) {
         _options.branchDataFontSize = size;
     }
 
-    function updateMsaResidueVisCurrResPosFromSlider(e, slider) {
-        _msa_residue_vis_curr_res_pos = getSliderValue(e) - 1;
-        showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
-        update(null, 0, true);
-    }
-
     function searchOptionsCaseSenstiveCbClicked() {
         _options.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
         search0();
@@ -5944,13 +5817,6 @@ if (!phyloXml) {
         });
     }
 
-    function updateMsaResidueVisCurrResPosSliderValue() {
-        let el = document.getElementById(MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1);
-        if (el) {
-            el.value = _msa_residue_vis_curr_res_pos + 1;
-        }
-    }
-
 
     function increaseFontSizes() {
         stepFontSizes(SLIDER_STEP * 2);
@@ -6328,68 +6194,6 @@ if (!phyloXml) {
 
 
 
-        // MSA residue visualization: Position control
-        // -------------------------------------------
-        setStylesAll('#' + MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN + ', #' + MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, {
-            'width': '18px'
-        });
-
-        setStyles(byId(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL), {
-            'font': 'inherit',
-            'color': 'inherit',
-            'text-align': 'center',
-            'outline': 'none',
-            'cursor': 'text',
-            'width': '28px'
-        });
-
-        on(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, 'keyup', function (e) {
-            let keycode = e.keyCode;
-            if ((((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD)) && (keycode <= VK_9_NUMPAD)) || (keycode === VK_BACKSPACE) || (keycode === VK_DELETE)) {
-                let i = 0;
-                if ((((keycode >= VK_0) && (keycode <= VK_9)) || ((keycode >= VK_0_NUMPAD) && (keycode <= VK_9_NUMPAD))) && _basicTreeProperties.maxMolSeqLength && (_msa_residue_vis_curr_res_pos >= (_basicTreeProperties.maxMolSeqLength - 1))) {
-                    if (((keycode >= VK_0) && (keycode <= VK_9))) {
-                        i = keycode - 48;
-                    } else {
-                        i = keycode - 96;
-                    }
-                } else {
-                    let x = getValue(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL).trim();
-                    if (x === '') {
-                        return;
-                    }
-                    i = parseInt(x);
-                    if ((i == null) || isNaN(i) || (i < 0)) {
-                        i = 0;
-                    }
-                }
-                showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
-                setMsaResidueVisCurrResPos(i - 1);
-                updateMsaResidueVisCurrResPosLabel();
-                updateMsaResidueVisCurrResPosSliderValue();
-                update(null, 0, true);
-            } else {
-                update(null, 0, true);
-            }
-        });
-
-        onHold(MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN, function () {
-            decrMsaResidueVisCurrResPos();
-            _intervalId = setInterval(decrMsaResidueVisCurrResPos, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-
-        onHold(MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, function () {
-            incrMsaResidueVisCurrResPos();
-            _intervalId = setInterval(incrMsaResidueVisCurrResPos, ZOOM_INTERVAL);
-        }, function () {
-            clearTimeout(_intervalId);
-        });
-
-
-        // -------------------------------------------
-
         document.addEventListener('keyup', function (e) {
             if (e.altKey) {
                 if (e.keyCode === VK_O) {
@@ -6404,14 +6208,6 @@ if (!phyloXml) {
                     cycleDisplay();
                 } else if (e.keyCode === VK_L) {
                     toggleAlignPhylogram();
-                } else if (e.keyCode === VK_OPEN_BRACKET) {
-                    if (isCanDoMsaResidueVisualizations()) {
-                        decrMsaResidueVisCurrResPos();
-                    }
-                } else if (e.keyCode === VK_CLOSE_BRACKET) {
-                    if (isCanDoMsaResidueVisualizations()) {
-                        incrMsaResidueVisCurrResPos();
-                    }
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 escPressed();
@@ -6851,9 +6647,6 @@ if (!phyloXml) {
         function insertVisualizationControls(panel) {
             if (_settings.enableNodeVisualizations && _nodeVisualizations) {
                 panel.insertAdjacentHTML('beforeend', makeVisualControls());
-                if (isCanDoMsaResidueVisualizations()) {
-                    panel.insertAdjacentHTML('beforeend', makeMsaResidueVisCurrResPositionControl());
-                }
             }
         }
 
@@ -6881,18 +6674,6 @@ if (!phyloXml) {
             }
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
-            return h;
-        }
-
-        function makeMsaResidueVisCurrResPositionControl() {
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>MSA Residue Pos.</legend>');
-            h = h.concat(makeSlider(null, MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1));
-            h = h.concat(makeButton('-', MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN, 'to decrease current MSA residue position by 1 (wraps around) (Alt+[)'));
-            h = h.concat(makeTextInput(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, 'the current MSA residue position'));
-            h = h.concat(makeButton('+', MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN, 'to increase current MSA residue position by 1 (wraps around) (Alt+])'));
-            h = h.concat('</fieldset>');
             return h;
         }
 
@@ -7025,7 +6806,6 @@ if (!phyloXml) {
             }
         }
 
-        initSlider(MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1, 1, _basicTreeProperties.maxMolSeqLength, 1, 1, updateMsaResidueVisCurrResPosFromSlider);
 
     }
 
@@ -7099,63 +6879,6 @@ if (!phyloXml) {
         }
     }
 
-    function decrMsaResidueVisCurrResPos() {
-        if (_msa_residue_vis_curr_res_pos <= 0) {
-            _msa_residue_vis_curr_res_pos = _basicTreeProperties.maxMolSeqLength - 1;
-        } else {
-            _msa_residue_vis_curr_res_pos -= 1;
-        }
-        updateMsaResidueVisCurrResPosSliderValue();
-        showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
-        update(null, 0, true);
-    }
-
-    function incrMsaResidueVisCurrResPos() {
-        if (_msa_residue_vis_curr_res_pos >= (_basicTreeProperties.maxMolSeqLength - 1)) {
-            _msa_residue_vis_curr_res_pos = 0;
-        } else {
-            _msa_residue_vis_curr_res_pos += 1;
-        }
-        updateMsaResidueVisCurrResPosSliderValue();
-        showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
-        update(null, 0, true);
-    }
-
-    function showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown() {
-
-        if ((_currentLabelColorVisualization == null || _currentLabelColorVisualization === DEFAULT)
-            && (_currentNodeShapeVisualization !== MSA_RESIDUE) && isCanDoMsaResidueVisualizations()) {
-
-            _currentLabelColorVisualization = MSA_RESIDUE;
-            setValue(LABEL_COLOR_SELECT_MENU, MSA_RESIDUE);
-            addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
-            if (_settings.enableBranchVisualizations) {
-                _options.showBranchVisualizations = true;
-                setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
-            }
-        } else if ((_currentLabelColorVisualization !== MSA_RESIDUE)
-            && (_currentNodeShapeVisualization == null || _currentNodeShapeVisualization === DEFAULT)
-            && isCanDoMsaResidueVisualizations()) {
-            _currentNodeShapeVisualization = MSA_RESIDUE;
-            setValue(NODE_SHAPE_SELECT_MENU, MSA_RESIDUE);
-            addLegend(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-        }
-    }
-
-
-    function updateMsaResidueVisCurrResPosLabel() {
-        setValue(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, _msa_residue_vis_curr_res_pos + 1);
-    }
-
-    function setMsaResidueVisCurrResPos(position) {
-        if (position <= 0) {
-            _msa_residue_vis_curr_res_pos = 0;
-        } else if (_basicTreeProperties.maxMolSeqLength && (position >= (_basicTreeProperties.maxMolSeqLength - 1))) {
-            _msa_residue_vis_curr_res_pos = _basicTreeProperties.maxMolSeqLength - 1;
-        } else {
-            _msa_residue_vis_curr_res_pos = position;
-        }
-    }
 
     function updateButtonEnabledState() {
         if (_in_subtree) {
