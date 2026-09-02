@@ -5589,6 +5589,15 @@ if (!phyloXml) {
             el.addEventListener('mousedown', downHandler);
             el.addEventListener('mouseup', upHandler);
             el.addEventListener('mouseleave', upHandler);
+            // Keyboard activation: Enter or Space raises a click with detail 0
+            // (a real mouse click carries a click count). One step per press,
+            // no repeat -- and the mouse path never reaches this.
+            el.addEventListener('click', function (event) {
+                if (event.detail === 0) {
+                    downHandler();
+                    upHandler();
+                }
+            });
         }
     }
 
@@ -6155,17 +6164,17 @@ if (!phyloXml) {
             clearTimeout(_intervalId);
         });
 
-        on(ZOOM_TO_FIT, 'mousedown', zoomToFit);
+        on(ZOOM_TO_FIT, 'click', zoomToFit);
 
-        on(ZOOM_TO_EXPAND_Y, 'mousedown', zoomToExpandY);
+        on(ZOOM_TO_EXPAND_Y, 'click', zoomToExpandY);
 
-        on(RETURN_TO_SUPERTREE_BUTTON, 'mousedown', returnToSupertreeButtonPressed);
+        on(RETURN_TO_SUPERTREE_BUTTON, 'click', returnToSupertreeButtonPressed);
 
-        on(RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'mousedown', returnToSupertreeButtonByOnePressed);
+        on(RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'click', returnToSupertreeButtonByOnePressed);
 
-        on(LADDERIZE_BUTTON, 'mousedown', ladderizeButtonPressed);
+        on(LADDERIZE_BUTTON, 'click', ladderizeButtonPressed);
 
-        on(MIDPOINT_ROOT_BUTTON, 'mousedown', midpointRootButtonPressed);
+        on(MIDPOINT_ROOT_BUTTON, 'click', midpointRootButtonPressed);
 
         // Search Controls
         // ---------------
@@ -6173,8 +6182,8 @@ if (!phyloXml) {
         on(SEARCH_OPTIONS_CASE_SENSITIVE_CB, 'click', searchOptionsCaseSenstiveCbClicked);
         on(SEARCH_OPTIONS_NEGATE_RES_CB, 'click', searchOptionsNegateResultCbClicked);
 
-        on(RESET_SEARCH_A_BTN, 'mousedown', resetSearch0);
-        on(RESET_SEARCH_B_BTN, 'mousedown', resetSearch1);
+        on(RESET_SEARCH_A_BTN, 'click', resetSearch0);
+        on(RESET_SEARCH_B_BTN, 'click', resetSearch1);
 
         // Visualization Legends
         // ---------------------
@@ -6187,11 +6196,11 @@ if (!phyloXml) {
         // ----------------
 
         if (downloadButton) {
-            downloadButton.addEventListener('mousedown', downloadButtonPressed);
+            downloadButton.addEventListener('click', downloadButtonPressed);
         }
 
         if (submitSelectedButton) {
-            submitSelectedButton.addEventListener('mousedown', submitSelectedPressed);
+            submitSelectedButton.addEventListener('click', submitSelectedPressed);
         }
 
         setStyles(byId(EXPORT_FORMAT_SELECT), {
