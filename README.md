@@ -2,9 +2,6 @@
 Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.
 
 
-### Website
-https://sites.google.com/view/archaeopteryxjs
-
 ### npm
 https://www.npmjs.com/package/archaeopteryx
 
@@ -24,13 +21,15 @@ they run entirely in your browser:
 * [Bcl-2 family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=bcl2)
 * [Confidence values](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=confidences)
 * [Branch events](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=branch_events)
+* [Caliciviridae (97 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_100)
+* [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
+* [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
+* [Influenza A H5Nx (354 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flu_h5)
+* [Herpesviridae DNA polymerase (201 tips)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=herpes_dnapol)
 
 
 ### Detailed developer documentation
 https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/edit
-
-### Version History
-https://github.com/cmzmasek/archaeopteryx-js/wiki/Archaeopteryx.js-Version-History
 
 ### Dependencies
 Archaeopteryx.js has the following dependencies:
