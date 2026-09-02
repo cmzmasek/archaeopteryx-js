@@ -142,6 +142,7 @@ runTest("node type field            : ", testNodeTypeField);
 runTest("inverse is field-scoped    : ", testInverseFieldScoped);
 runTest("invalid input fails closed : ", testInvalidInputFailsClosed);
 runTest("distinct values            : ", testDistinctValues);
+runTest("phylogeny wrapper skipped  : ", testPhylogenyWrapperNotSearchable);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -404,5 +405,33 @@ function testDistinctValues() {
     if (forester.distinctSearchValues(f.phy, field(f.phy, 'TS'), 2).length !== 2) return false;
     // node type is enumerable
     if (forester.distinctSearchValues(f.phy, field(f.phy, 'NT')).join('|') !== 'internal|leaf|root') return false;
+    return true;
+}
+
+// The phyloXML parser hands back a wrapper object carrying the phylogeny's own
+// name, with the real root as its single child. Searching used to match that
+// wrapper, so a term occurring in the TREE's name lit up a phantom root.
+function testPhylogenyWrapperNotSearchable() {
+    // "Origin" deliberately carries no letter "a": the search is case
+    // insensitive by default, so a root named "RealRoot" would match a search
+    // for "A" through its lowercase one and confuse what is being tested.
+    var inner = forester.parseNewHampshire('((A:0.1,B:0.2)AB:0.3,C:0.15)Origin;');
+    var wrapper = {
+        name: 'Influenza A virus phylogeny',   // the tree's name, not a node's
+        description: 'a test tree',
+        children: [inner]
+    };
+    inner.parent = wrapper;
+
+    // "Influenza" appears only in the wrapper: nothing should match it
+    if (forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'Influenza')).size !== 0) return false;
+    if (forester.searchWithSpec(wrapper, spec(wrapper, 'ANY', 'contains', 'Influenza')).size !== 0) return false;
+
+    // the real nodes are still searchable, the real root included
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'Origin'))) !== 'Origin') return false;
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'A'))) !== 'A,AB') return false;
+
+    // and the wrapper does not sneak in through an inverse search either
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'A', {inverse: true}))) !== 'B,C,Origin') return false;
     return true;
 }

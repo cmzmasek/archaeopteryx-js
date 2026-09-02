@@ -1984,9 +1984,25 @@
 
     // Run one search spec { field, mode, value, value2, caseSensitive, inverse }
     // over the tree and return the Set of matching nodes.
+    // The phyloXML parser returns a wrapper object holding the phylogeny's own
+    // name and description, with the real root as its single child. It is not a
+    // node of the tree, so it must not be searchable: its "name" is the name of
+    // the TREE, and any search matching that lit up a phantom root. Same test
+    // getTreeRoot uses, but without that function's walk UP the tree, which
+    // would escape a subtree the caller deliberately scoped the search to.
+    function nodesRootOf(root) {
+        if (!root.parent && root.children && root.children.length === 1) {
+            return root.children[0];
+        }
+        return root;
+    }
+
     forester.searchWithSpec = function (root, spec) {
         let result = new Set();
         if (!root || !spec || !spec.field) return result;
+        // Metrics stay relative to what the caller passed, so depth and distance
+        // values are unchanged; only the set of nodes considered is narrowed.
+        let nodes = nodesRootOf(root);
         let field = spec.field;
         if (field.key === 'CS' || field.key === 'DE' || field.key === 'DR' || field.key === 'NC') computeSearchMetrics(root);
 
@@ -2044,12 +2060,12 @@
             };
         }
 
-        forester.preOrderTraversalAll(root, function (n) { if (test(n)) result.add(n); });
+        forester.preOrderTraversalAll(nodes, function (n) { if (test(n)) result.add(n); });
 
         if (spec.inverse) {
             // Complement, scoped to nodes that actually carry this field.
             let inv = new Set();
-            forester.preOrderTraversalAll(root, function (n) {
+            forester.preOrderTraversalAll(nodes, function (n) {
                 if (!result.has(n) && forester.extractSearchValues(n, field, root).length > 0) inv.add(n);
             });
             return inv;
