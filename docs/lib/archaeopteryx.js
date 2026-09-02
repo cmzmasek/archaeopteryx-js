@@ -1303,6 +1303,19 @@ if (!phyloXml) {
         }
     }
 
+    function hasVisualizationsOfKind(kind) {
+        return !!(_visualizations && _visualizations[kind]
+            && Object.keys(_visualizations[kind]).length > 0);
+    }
+
+    function hasColorVisualizations() {
+        return hasVisualizationsOfKind('labelColor');
+    }
+
+    function hasShapeVisualizations() {
+        return hasVisualizationsOfKind('nodeShape');
+    }
+
     function addLabelColorVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType, altMappingFn) {
         if (arguments.length < 8) {
             throw('expected at least 8 arguments, got ' + arguments.length);
@@ -3331,18 +3344,20 @@ if (!phyloXml) {
             });
         }
 
+        // Every launch starts from a clean slate. These used to be assigned only
+        // when the caller supplied them, so launching a second tree in the same
+        // page without them inherited the first tree's visualizations -- and the
+        // built maps in _visualizations were merged on top of the old ones rather
+        // than replacing them.
         let callerProvidedNodeVisualizations = !!nodeVisualizations;
-        if (nodeVisualizations) {
-            _nodeVisualizations = nodeVisualizations;
-        }
-        if (nodeLabels) {
-            _nodeLabels = nodeLabels;
-        }
-
-
-        if (specialVisualizations) {
-            _specialVisualizations = specialVisualizations;
-        }
+        _nodeVisualizations = nodeVisualizations ? nodeVisualizations : null;
+        _nodeLabels = nodeLabels ? nodeLabels : null;
+        _specialVisualizations = specialVisualizations ? specialVisualizations : null;
+        _visualizations = null;
+        _currentLabelColorVisualization = null;
+        _currentNodeShapeVisualization = null;
+        _legendColorScales = {};
+        _legendShapeScales = {};
 
 
         initializeOptions(options, settings);
@@ -3431,10 +3446,6 @@ if (!phyloXml) {
         }
 
         createGui();
-
-        if (settings.enableNodeVisualizations || settings.enableBranchVisualizations) {
-            d3.select(window)
-        }
 
         _baseSvg = d3.select(id).append('svg')
             .attr('width', _displayWidth)
@@ -6794,16 +6805,25 @@ if (!phyloXml) {
         // --------------------------------------------------------------
         // Functions to make visualization controls
         // --------------------------------------------------------------
+        // A menu whose only entry would be "default" offers nothing to choose, so
+        // it is not shown; if neither has anything, the whole section goes.
         function makeVisualControls() {
+            if (!hasColorVisualizations() && !hasShapeVisualizations()) {
+                return '';
+            }
             let h = "";
             h = h.concat('<form action="#">');
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
-            h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
-            h = h.concat('<br>');
-            h = h.concat('<br>');
-            h = h.concat(makeSelectMenu('Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
-            h = h.concat('<br>');
+            if (hasColorVisualizations()) {
+                h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
+                h = h.concat('<br>');
+                h = h.concat('<br>');
+            }
+            if (hasShapeVisualizations()) {
+                h = h.concat(makeSelectMenu('Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
+                h = h.concat('<br>');
+            }
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
             return h;

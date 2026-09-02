@@ -63,20 +63,6 @@
                                             <common_name>Chicken</common_name>
                                             <rank>species</rank>
                                         </taxonomy>
-                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2012</property>
-                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Paraguay
-                                        </property>
-                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H3N2
-                                        </property>
-                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
-                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human
-                                        </property>
-                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">South
-                                            America
-                                        </property>
-                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
-                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">-2012
-                                        </property>
 
                                     </clade>
                                     <clade>
@@ -89,19 +75,6 @@
                                             <common_name>African clawed frog</common_name>
                                             <rank>species</rank>
                                         </taxonomy>
-                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
-                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">China
-                                        </property>
-                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H2N2
-                                        </property>
-                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
-                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human
-                                        </property>
-                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">Asia
-                                        </property>
-                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
-                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2012
-                                        </property>
                                     </clade>
                                 </clade>
                                 <clade>
@@ -114,15 +87,6 @@
                                     <events>
                                         <duplications>1</duplications>
                                     </events>
-                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2014</property>
-                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">China</property>
-                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H2N2</property>
-                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">3</property>
-                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Human</property>
-                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">Asia</property>
-                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">2</property>
-                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2012
-                                    </property>
                                     <clade>
                                         <name>115_MOUSE</name>
                                         <branch_length>0.16838</branch_length>
@@ -133,19 +97,6 @@
                                             <common_name>Mouse</common_name>
                                             <rank>species</rank>
                                         </taxonomy>
-                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2010</property>
-                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Japan
-                                        </property>
-                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6
-                                        </property>
-                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">5</property>
-                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Monkey
-                                        </property>
-                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">Asia
-                                        </property>
-                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">3</property>
-                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2011
-                                        </property>
                                     </clade>
                                     <clade>
                                         <branch_length>1.0E-5</branch_length>
@@ -153,18 +104,6 @@
                                         <events>
                                             <speciations>1</speciations>
                                         </events>
-                                        <property ref="ird:Year" datatype="xsd:string" applies_to="node">2009</property>
-                                        <property ref="ird:Country" datatype="xsd:string" applies_to="node">Canada
-                                        </property>
-                                        <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6
-                                        </property>
-                                        <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                        <property ref="ird:Host" datatype="xsd:string" applies_to="node">Duck</property>
-                                        <property ref="ird:Region" datatype="xsd:string" applies_to="node">America
-                                        </property>
-                                        <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                        <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2011
-                                        </property>
                                         <clade>
                                             <name>74_BOVIN</name>
                                             <branch_length>0.09416</branch_length>
@@ -175,20 +114,6 @@
                                                 <common_name>Bovine</common_name>
                                                 <rank>species</rank>
                                             </taxonomy>
-                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2010
-                                            </property>
-                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">Japan
-                                            </property>
-                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6
-                                            </property>
-                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">5</property>
-                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Monkey
-                                            </property>
-                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">Asia
-                                            </property>
-                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">3</property>
-                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2011
-                                            </property>
                                         </clade>
                                         <clade>
                                             <name>9_HUMAN</name>
@@ -200,20 +125,6 @@
                                                 <common_name>Human</common_name>
                                                 <rank>species</rank>
                                             </taxonomy>
-                                            <property ref="ird:Year" datatype="xsd:string" applies_to="node">2009
-                                            </property>
-                                            <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA
-                                            </property>
-                                            <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6
-                                            </property>
-                                            <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                            <property ref="ird:Host" datatype="xsd:string" applies_to="node">Duck
-                                            </property>
-                                            <property ref="ird:Region" datatype="xsd:string" applies_to="node">America
-                                            </property>
-                                            <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                            <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2010
-                                            </property>
                                         </clade>
                                     </clade>
                                 </clade>
@@ -224,14 +135,6 @@
                                 <events>
                                     <speciations>1</speciations>
                                 </events>
-                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2009</property>
-                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">USA</property>
-                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6</property>
-                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Duck</property>
-                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">America</property>
-                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2010</property>
                                 <clade>
                                     <name>52_CHICK</name>
                                     <branch_length>0.27747</branch_length>
@@ -242,17 +145,6 @@
                                         <common_name>Chicken</common_name>
                                         <rank>species</rank>
                                     </taxonomy>
-                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2010</property>
-                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">Mexico
-                                    </property>
-                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6</property>
-                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Bat</property>
-                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">America
-                                    </property>
-                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2010
-                                    </property>
                                 </clade>
                                 <clade>
                                     <name>144_XENLA</name>
@@ -264,17 +156,6 @@
                                         <common_name>African clawed frog</common_name>
                                         <rank>species</rank>
                                     </taxonomy>
-                                    <property ref="ird:Year" datatype="xsd:string" applies_to="node">2010</property>
-                                    <property ref="ird:Country" datatype="xsd:string" applies_to="node">Mexico
-                                    </property>
-                                    <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6</property>
-                                    <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                    <property ref="ird:Host" datatype="xsd:string" applies_to="node">Frog</property>
-                                    <property ref="ird:Region" datatype="xsd:string" applies_to="node">America
-                                    </property>
-                                    <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                    <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2010
-                                    </property>
                                 </clade>
                             </clade>
                         </clade>
@@ -291,14 +172,6 @@
                                     <id provider="uniprot">9347</id>
                                     <scientific_name>Eutheria</scientific_name>
                                 </taxonomy>
-                                <property ref="ird:Year" datatype="xsd:string" applies_to="node">2009</property>
-                                <property ref="ird:Country" datatype="xsd:string" applies_to="node">Mexico</property>
-                                <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6</property>
-                                <property ref="ird:HA" datatype="xsd:string" applies_to="node">1</property>
-                                <property ref="ird:Host" datatype="xsd:string" applies_to="node">Bat</property>
-                                <property ref="ird:Region" datatype="xsd:string" applies_to="node">America</property>
-                                <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
-                                <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2009</property>
                                 <events>
                                     <duplications>1</duplications>
                                 </events>
