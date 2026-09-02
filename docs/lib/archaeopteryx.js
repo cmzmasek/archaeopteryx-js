@@ -121,6 +121,11 @@ if (!phyloXml) {
     const FOUND0AND1_COLOR_DEFAULT = '#F0E442';  // A and B   — yellow
     const SELECTED_COLOR_DEFAULT = '#009E73';    // Selected  — bluish green
     const LABEL_COLOR_DEFAULT = '#202020';
+    // The tree's own dark palette, so the light/dark switch takes the drawing
+    // with it and not just the panel.
+    const BACKGROUND_COLOR_DARK = '#182029';
+    const BRANCH_COLOR_DARK = '#8fa1b3';
+    const LABEL_COLOR_DARK = '#e7eef5';
     const NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
     const NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
     const NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
@@ -169,8 +174,11 @@ if (!phyloXml) {
     const BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
     const CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
     const DEFAULT = 'default';
-    const DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
-    const DUPLICATION_COLOR = '#ff0000';
+    // The desktop's own event colours (TreeColorSet): Okabe-Ito vermillion,
+    // bluish-green and amber, which stay apart for colour-vision-deficient
+    // viewers where the old pure red / green / yellow did not.
+    const DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#E69F00';
+    const DUPLICATION_COLOR = '#D55E00';
     const FASTA_EXPORT_FORMAT = 'Fasta';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
@@ -205,7 +213,7 @@ if (!phyloXml) {
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
-    const SPECIATION_COLOR = '#00ff00';
+    const SPECIATION_COLOR = '#009E73';
     const SVG_EXPORT_FORMAT = 'SVG';
     const TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     const TRANSITION_DURATION_DEFAULT = 750;
@@ -566,14 +574,40 @@ if (!phyloXml) {
     let _overviewViewport = null;// the "you are here" rectangle
     let _overviewMap = null;     // {scale, tx, ty} mapping tree coords -> overview coords
     let _overviewCorner = 0;     // 0 bottom-right, 1 bottom-left, 2 top-left, 3 top-right
+    let _overviewPos = null;     // {x,y} once dragged; null means "use the corner"
+    const OVERVIEW_GRIP_HEIGHT = 9;
 
     function loadOverviewCorner() {
         try {
             let stored = parseInt(localStorage.getItem('aptx-overview-corner'), 10);
             _overviewCorner = (stored >= 0 && stored <= 3) ? stored : 0;
+            let free = localStorage.getItem('aptx-overview-pos');
+            _overviewPos = free ? JSON.parse(free) : null;
         } catch (e) {
             _overviewCorner = 0; // storage unavailable (private mode, blocked cookies)
+            _overviewPos = null;
         }
+    }
+
+    function saveOverviewPos() {
+        try {
+            if (_overviewPos) {
+                localStorage.setItem('aptx-overview-pos', JSON.stringify(_overviewPos));
+            } else {
+                localStorage.removeItem('aptx-overview-pos');
+            }
+        } catch (e) {
+            // storage unavailable; the position still applies for this session
+        }
+    }
+
+    // Keep a dragged overview inside the display, which also fixes it up after
+    // the window is made smaller.
+    function clampOverviewPos(pos, size) {
+        return {
+            x: Math.max(0, Math.min(size.w - OVERVIEW_WIDTH, pos.x)),
+            y: Math.max(0, Math.min(size.h - OVERVIEW_HEIGHT, pos.y))
+        };
     }
 
     function overviewCornerPos(corner, size) {
@@ -598,6 +632,8 @@ if (!phyloXml) {
     // reach the others; a predictable cycle is easier to use. The panels can be
     // hidden if a corner under one is wanted.)
     function moveOverviewToNextCorner() {
+        _overviewPos = null; // O goes back to corner snapping, wherever it was dragged
+        saveOverviewPos();
         _overviewCorner = (_overviewCorner + 1) % 4;
         try {
             localStorage.setItem('aptx-overview-corner', String(_overviewCorner));
@@ -612,7 +648,13 @@ if (!phyloXml) {
         if (!_overviewGroup || !size) {
             return;
         }
-        let pos = overviewCornerPos(_overviewCorner, size);
+        let pos;
+        if (_overviewPos) {
+            pos = clampOverviewPos(_overviewPos, size);
+            _overviewPos = pos;
+        } else {
+            pos = overviewCornerPos(_overviewCorner, size);
+        }
         _overviewGroup.attr('transform', 'translate(' + pos.x + ',' + pos.y + ')');
     }
 
@@ -644,7 +686,7 @@ if (!phyloXml) {
             .style('stroke', '#9a9a9a').style('stroke-width', 1)
             .style('pointer-events', 'all')
             .style('cursor', 'pointer');
-        bg.append('title').text('Click or drag to move the view. Press O to move this overview to the next corner.');
+        bg.append('title').text('Click or drag to move the view. Drag the grip at the top to move this overview; press O to send it to the next corner.');
         bindOverviewNavigation(bg);
         _overviewContent = _overviewGroup.append('g').attr('class', 'aptx-overview-tree');
         // a light wash plus a firm outline: enough to read at a glance without
@@ -652,6 +694,80 @@ if (!phyloXml) {
         _overviewViewport = _overviewGroup.append('rect').attr('class', 'aptx-overview-viewport')
             .style('fill', '#7f7f7f').style('fill-opacity', 0.10)
             .style('stroke', '#333333').style('stroke-width', 1.2);
+
+        // A grip along the top edge, drawn last so it sits over the miniature.
+        // Dragging inside the overview already means "move the view there", so
+        // moving the overview itself needs its own handle rather than a
+        // modifier key nobody would find.
+        let grip = _overviewGroup.append('g').attr('class', 'aptx-overview-grip')
+            .style('pointer-events', 'all')
+            .style('cursor', 'move');
+        grip.append('rect')
+            .attr('x', 1).attr('y', 1)
+            .attr('width', OVERVIEW_WIDTH - 2).attr('height', OVERVIEW_GRIP_HEIGHT)
+            .attr('rx', 3).attr('ry', 3)
+            .style('fill', '#9a9a9a').style('fill-opacity', 0.22);
+        for (let i = -2; i <= 2; ++i) {
+            grip.append('circle')
+                .attr('cx', (OVERVIEW_WIDTH / 2) + (i * 5))
+                .attr('cy', 1 + (OVERVIEW_GRIP_HEIGHT / 2))
+                .attr('r', 1).style('fill', '#5b5b5b').style('fill-opacity', 0.75);
+        }
+        grip.append('title').text('Drag to move the overview');
+        bindOverviewMove(grip);
+    }
+
+    // Drag the grip to place the overview anywhere in the display. Like the
+    // navigation handlers, every step stops propagation so the tree's own
+    // zoom/pan behaviour on the same svg does not also act on the drag.
+    function bindOverviewMove(handle) {
+        let moving = false;
+        let grabDx = 0;
+        let grabDy = 0;
+        handle.on('pointerdown', function (event) {
+            let size = svgSize();
+            if (!size) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            moving = true;
+            let p = d3.pointer(event, _baseSvg.node());
+            let at = _overviewPos ? _overviewPos : overviewCornerPos(_overviewCorner, size);
+            grabDx = p[0] - at.x; // keep the grab point under the pointer
+            grabDy = p[1] - at.y;
+            try {
+                this.setPointerCapture(event.pointerId);
+            } catch (e) {
+                // no pointer capture available; the move handler still works
+            }
+        });
+        handle.on('pointermove', function (event) {
+            if (!moving) {
+                return;
+            }
+            event.stopPropagation();
+            let size = svgSize();
+            if (!size) {
+                return;
+            }
+            let p = d3.pointer(event, _baseSvg.node());
+            _overviewPos = clampOverviewPos({x: p[0] - grabDx, y: p[1] - grabDy}, size);
+            positionOverview();
+        });
+        handle.on('pointerup pointercancel pointerleave', function (event) {
+            if (!moving) {
+                return;
+            }
+            event.stopPropagation();
+            moving = false;
+            try {
+                this.releasePointerCapture(event.pointerId);
+            } catch (e) {
+                // capture was never taken
+            }
+            saveOverviewPos();
+        });
     }
 
     // Centre the main view on the tree position under an overview point, keeping
@@ -3074,10 +3190,10 @@ if (!phyloXml) {
         // dense enough to need them.
         _options.branchWidthDefault = _basicTreeProperties.externalNodesCount <= SMALL_TREE_MAX_EXT_NODES
             ? BRANCH_WIDTH_SMALL_TREE : BRANCH_WIDTH_DEFAULT;
-        _options.branchColorDefault = BRANCH_COLOR_DEFAULT;
-        _options.labelColorDefault = LABEL_COLOR_DEFAULT;
-        _options.backgroundColorDefault = BACKGROUND_COLOR_DEFAULT;
-        _options.backgroundColorForPrintExportDefault = BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
+        // Set from the saved (or OS) light/dark choice before the first render,
+        // so a dark session draws dark from the start rather than flashing light.
+        loadPanelTheme();
+        applyTreeTheme();
         // Fixed, not configurable: these are the colour-vision-safe Okabe-Ito
         // colours the search and selection highlighting depends on, and they have
         // to stay distinguishable from each other and from the tree.
@@ -5021,6 +5137,32 @@ if (!phyloXml) {
         return makeGlyph(panelDarkActive() ? 'sun' : 'moon');
     }
 
+    // The tree's colours follow the same light/dark choice as the panel. They
+    // live in _options because that is where every renderer reads them from, so
+    // switching is a matter of reassigning the three and redrawing.
+    function applyTreeTheme() {
+        let dark = panelDarkActive();
+        _options.backgroundColorDefault = dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_DEFAULT;
+        _options.branchColorDefault = dark ? BRANCH_COLOR_DARK : BRANCH_COLOR_DEFAULT;
+        _options.labelColorDefault = dark ? LABEL_COLOR_DARK : LABEL_COLOR_DEFAULT;
+        // PNG and SVG export swap in this background for the duration of the
+        // download. It has to follow the theme too: on a dark page the labels
+        // are near-white, and forcing the usual white ground would have written
+        // out a file with white text on white.
+        _options.backgroundColorForPrintExportDefault = dark
+            ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
+        if (!_baseSvg) {
+            return; // called before the tree exists; launch applies it later
+        }
+        changeBaseBackgoundColor(_options.backgroundColorDefault);
+        if (_overviewGroup) {
+            // opaque, and in the same colour, or the real tree shows through it
+            _overviewGroup.select('rect.aptx-overview-bg')
+                .style('fill', _options.backgroundColorDefault);
+        }
+        update(null, 0);
+    }
+
     // Apply the current theme choice to every panel and refresh the switch icons.
     function applyPanelTheme() {
         let panels = document.querySelectorAll('.aptx-panel');
@@ -5034,6 +5176,7 @@ if (!phyloXml) {
         for (let i = 0; i < btns.length; ++i) {
             btns[i].innerHTML = panelThemeIcon(); // a drawn glyph, not a text character
         }
+        applyTreeTheme();
     }
 
     function togglePanelTheme() {
@@ -5284,13 +5427,13 @@ if (!phyloXml) {
         }
         // Dark palette tokens, shared by the system-preference default and the
         // explicit "dark" choice from the header light/dark switch.
-        let dark = '  --p-bg:rgba(24,35,46,0.94); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
+        let dark = '  --p-bg:rgba(24,35,46,0.90); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
             + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
             + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
             + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4);';
         let css = ''
             + '.aptx-panel {'
-            + '  --p-bg: rgba(255,255,255,0.94); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.90); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '  --p-shadow-sm:0 1px 2px rgba(23,34,46,0.12);'
@@ -5478,8 +5621,11 @@ if (!phyloXml) {
             + '.aptx-panel > .aptx-body::-webkit-scrollbar { width:9px; }'
             + '.aptx-panel > .aptx-body::-webkit-scrollbar-thumb { background:var(--p-line-strong); border-radius:9px; border:2px solid var(--p-bg); }'
             + '.aptx-panel legend.aptx-legend-toggle { display:flex; align-items:center; width:100%; cursor:pointer; }'
-            + '.aptx-panel legend.aptx-legend-toggle::after { content:"\\25BE"; margin-left:auto; font-size:8px; color:var(--p-faint); transition:transform .15s; }'
+            + '.aptx-panel legend.aptx-legend-toggle::after { content:"\\25BE"; margin-left:auto; font-size:12px;'
+            + '  line-height:1; color:var(--p-muted); transition:transform .15s,color .15s; }'
+            + '.aptx-panel legend.aptx-legend-toggle:hover::after { color:var(--p-accent-ink); }'
             + '.aptx-panel legend.aptx-legend-toggle:hover { color:var(--p-accent-ink); }'
+            + '.aptx-panel #' + EXPORT_FORMAT_SELECT + ' { margin-left:6px; }'
             + '.aptx-panel fieldset.aptx-collapsed > legend.aptx-legend-toggle::after { transform:rotate(-90deg); }'
             + '.aptx-panel fieldset.aptx-collapsed > legend { margin-bottom:0; }'
             + '.aptx-panel fieldset.aptx-collapsed > .aptx-fieldset-body { display:none; }'
