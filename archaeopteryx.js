@@ -683,7 +683,7 @@ if (!phyloXml) {
             // opaque: a branch of the real tree showing through the panel would
             // read as part of the miniature
             .style('fill', _options.backgroundColorDefault)
-            .style('stroke', '#9a9a9a').style('stroke-width', 1)
+            .style('stroke-width', 1)
             .style('pointer-events', 'all')
             .style('cursor', 'pointer');
         bg.append('title').text('Click or drag to move the view. Drag the grip at the top to move this overview; press O to send it to the next corner.');
@@ -692,8 +692,7 @@ if (!phyloXml) {
         // a light wash plus a firm outline: enough to read at a glance without
         // obscuring the miniature underneath it
         _overviewViewport = _overviewGroup.append('rect').attr('class', 'aptx-overview-viewport')
-            .style('fill', '#7f7f7f').style('fill-opacity', 0.10)
-            .style('stroke', '#333333').style('stroke-width', 1.2);
+            .style('stroke-width', 1.2);
 
         // A grip along the top edge, drawn last so it sits over the miniature.
         // Dragging inside the overview already means "move the view there", so
@@ -706,15 +705,38 @@ if (!phyloXml) {
             .attr('x', 1).attr('y', 1)
             .attr('width', OVERVIEW_WIDTH - 2).attr('height', OVERVIEW_GRIP_HEIGHT)
             .attr('rx', 3).attr('ry', 3)
-            .style('fill', '#9a9a9a').style('fill-opacity', 0.22);
+            .attr('class', 'aptx-overview-grip-bar').style('fill-opacity', 0.22);
         for (let i = -2; i <= 2; ++i) {
             grip.append('circle')
                 .attr('cx', (OVERVIEW_WIDTH / 2) + (i * 5))
                 .attr('cy', 1 + (OVERVIEW_GRIP_HEIGHT / 2))
-                .attr('r', 1).style('fill', '#5b5b5b').style('fill-opacity', 0.75);
+                .attr('r', 1).attr('class', 'aptx-overview-grip-dot').style('fill-opacity', 0.75);
         }
         grip.append('title').text('Drag to move the overview');
         bindOverviewMove(grip);
+        applyOverviewTheme();
+    }
+
+    // The overview sits on the tree, so its outline, its "you are here"
+    // rectangle and its grip all have to be readable against whichever
+    // background the tree currently has. On dark they were near-invisible:
+    // a #333333 viewport outline over a #182029 miniature.
+    function applyOverviewTheme() {
+        if (!_overviewGroup) {
+            return;
+        }
+        let dark = panelDarkActive();
+        _overviewGroup.select('rect.aptx-overview-bg')
+            .style('fill', _options.backgroundColorDefault)
+            .style('stroke', dark ? '#5d6b7a' : '#9a9a9a');
+        _overviewGroup.select('rect.aptx-overview-viewport')
+            .style('fill', dark ? '#cfe0f2' : '#7f7f7f')
+            .style('fill-opacity', dark ? 0.16 : 0.10)
+            .style('stroke', dark ? '#dbe7f3' : '#333333');
+        _overviewGroup.select('rect.aptx-overview-grip-bar')
+            .style('fill', dark ? '#7f8d9c' : '#9a9a9a');
+        _overviewGroup.selectAll('circle.aptx-overview-grip-dot')
+            .style('fill', dark ? '#e7eef5' : '#5b5b5b');
     }
 
     // Drag the grip to place the overview anywhere in the display. Like the
@@ -5155,11 +5177,7 @@ if (!phyloXml) {
             return; // called before the tree exists; launch applies it later
         }
         changeBaseBackgoundColor(_options.backgroundColorDefault);
-        if (_overviewGroup) {
-            // opaque, and in the same colour, or the real tree shows through it
-            _overviewGroup.select('rect.aptx-overview-bg')
-                .style('fill', _options.backgroundColorDefault);
-        }
+        applyOverviewTheme();
         update(null, 0);
     }
 
@@ -5427,13 +5445,13 @@ if (!phyloXml) {
         }
         // Dark palette tokens, shared by the system-preference default and the
         // explicit "dark" choice from the header light/dark switch.
-        let dark = '  --p-bg:rgba(24,35,46,0.90); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
+        let dark = '  --p-bg:rgba(24,35,46,0.86); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
             + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
             + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
             + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4);';
         let css = ''
             + '.aptx-panel {'
-            + '  --p-bg: rgba(255,255,255,0.90); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.86); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '  --p-shadow-sm:0 1px 2px rgba(23,34,46,0.12);'
