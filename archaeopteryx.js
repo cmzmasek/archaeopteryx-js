@@ -861,6 +861,11 @@ if (!phyloXml) {
     // ----------------------------
 
     function mouseover() {
+        // Start empty so the previous node's text cannot flash while this one
+        // fades in; mousemove fills it in immediately after. Clearing here
+        // rather than on the way out is what keeps the tooltip from collapsing
+        // to a pill as it fades (see mouseout).
+        _node_mouseover_div.html('');
         _node_mouseover_div.transition()
             .duration(300)
             .style('opacity', 0.95); // only the fade -- the rest is set at creation
@@ -1110,8 +1115,10 @@ if (!phyloXml) {
     }
 
     function mouseout() {
-        _node_mouseover_div
-            .html('')
+        // Fade only. Emptying the tooltip here collapsed it to nothing but its
+        // padding and border -- a small rounded pill -- and THAT is what sat
+        // there fading out afterwards. The content is cleared on the next
+        // mouseover instead, where the tooltip is invisible anyway.
         _node_mouseover_div.transition()
             .duration(300)
             .style('opacity', 1e-6);
