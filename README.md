@@ -366,7 +366,7 @@ constants:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `enableDynamicSizing` | `true` | Size the tree to the window and follow resizes. |
+| `enableDynamicSizing` | `true` | Size the tree to its container, and follow window resizes. |
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |

@@ -188,7 +188,6 @@ if (!phyloXml) {
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const LINEAR_SCALE = 'linear';
     const NH_EXPORT_FORMAT = 'Newick';
-    const HEIGHT_OFFSET = 40;
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
     const ORDINAL_SCALE = 'ordinal';
@@ -219,7 +218,6 @@ if (!phyloXml) {
     const WARNING = 'ArchaeopteryxJS: WARNING';
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
-    const WIDTH_OFFSET = 14; // Needed in Firefox Quantum (2018-02-22)
     const ZOOM_INTERVAL = 200;
 
     // ---------------------------
@@ -3125,17 +3123,27 @@ if (!phyloXml) {
     }
 
 
+    // Dynamic sizing means "fill the container the tree was given". It used to
+    // mean that for the width and something else for the height: the height came
+    // from window.innerHeight minus the container's top minus 40, i.e. the
+    // distance from the container down to the bottom of the WINDOW. On a page
+    // where the container is not "everything from here down" -- an ordinary host
+    // page with a header, say -- the tree overflowed or underfilled it. The reset
+    // path already measured the container, so the two disagreed with each other.
+    function displaySizeFromContainer() {
+        let element = d3.select(_id).node();
+        if (!element) {
+            return null;
+        }
+        return {w: element.clientWidth, h: element.clientHeight};
+    }
+
     function intitializeDisplaySize() {
         if (_settings.enableDynamicSizing) {
-            if (_baseSvg) {
-                _displayHeight = _baseSvg.attr('height');
-                _displayWidth = _baseSvg.attr('width');
-            } else {
-                let element = d3.select(_id).node();
-                let width = element.getBoundingClientRect().width - WIDTH_OFFSET;
-                let top = element.getBoundingClientRect().top;
-                _displayHeight = window.innerHeight - (top + HEIGHT_OFFSET);
-                _displayWidth = width;
+            let size = displaySizeFromContainer();
+            if (size) {
+                _displayWidth = size.w;
+                _displayHeight = size.h;
             }
         } else {
             _displayHeight = _settings.displayHeight;
@@ -3333,15 +3341,15 @@ if (!phyloXml) {
         if (_settings.enableDynamicSizing) {
             d3.select(window)
                 .on('resize', function () {
-                    let element = d3.select(_id).node();
-                    let width = element.getBoundingClientRect().width - WIDTH_OFFSET;
-                    let top = element.getBoundingClientRect().top;
-                    let height = window.innerHeight - (top + HEIGHT_OFFSET);
+                    let size = displaySizeFromContainer();
+                    if (!size) {
+                        return;
+                    }
+                    _displayWidth = size.w;
+                    _displayHeight = size.h;
 
-                    _baseSvg.style('overflow', 'scroll !important;');
-
-                    _baseSvg.attr('width', width);
-                    _baseSvg.attr('height', height);
+                    _baseSvg.attr('width', size.w);
+                    _baseSvg.attr('height', size.h);
                     rebuildOverview();
                     if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
                         zoomToFit();
@@ -4267,11 +4275,15 @@ if (!phyloXml) {
 
         let width = 0;
         if (_settings.enableDynamicSizing) {
-            let container = document.getElementById(_id.replace('#', ''));
-            if (container) {
-                _displayHeight = container.clientHeight;
-                _displayWidth = container.clientWidth;
-                width = _displayWidth;
+            let size = displaySizeFromContainer();
+            if (size) {
+                _displayWidth = size.w;
+                _displayHeight = size.h;
+                width = size.w;
+                // the canvas has to follow, or the layout is computed for one
+                // size and drawn on another
+                _baseSvg.attr('width', size.w);
+                _baseSvg.attr('height', size.h);
             }
         }
         // Where the user dragged the legend to is their choice; a resize is no
