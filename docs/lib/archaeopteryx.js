@@ -74,6 +74,10 @@ if (!phyloXml) {
 
     const VERSION = '2.3.2';
     const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
+    const DESKTOP_WEBSITE = 'https://cmzmasek.github.io/archaeopteryx/';
+    const SOURCE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js';
+    const LICENSE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js/blob/master/LICENSE';
+    const LICENSE_NAME = 'LGPL-2.1-or-later';
     const NAME = 'Archaeopteryx.js';
 
     // The 20-colour categorical palettes below were removed from d3 in v5. These
@@ -247,6 +251,11 @@ if (!phyloXml) {
     const MSA_RESIDUE_VIS_CURR_RES_POS_SLIDER_1 = 'seq_pos_slider_1';
     const MSA_RESIDUE_VIS_DECR_CURR_RES_POS_BTN = 'seq_pos_decr_pos';
     const MSA_RESIDUE_VIS_INCR_CURR_RES_POS_BTN = 'seq_pos_incr_pos';
+    // The desktop Archaeopteryx logo (forester/archaeopteryx_icon_assets/
+    // archaeopteryx-anime.svg), inlined so the library stays a single file.
+    // Gradient ids are prefixed: they were generic enough to collide with an
+    // embedding page's own defs.
+    const ARCHAEOPTERYX_LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Archaeopteryx"> <defs> <linearGradient id="aptxlogo-wg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#4f46e5"/><stop offset="0.55" stop-color="#38bdf8"/><stop offset="1" stop-color="#a7f3d0"/> </linearGradient> <linearGradient id="aptxlogo-wg2" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#3730a3"/><stop offset="1" stop-color="#4f79e0"/> </linearGradient> <linearGradient id="aptxlogo-tg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#f43f5e"/><stop offset="0.5" stop-color="#fb923c"/><stop offset="1" stop-color="#fde047"/> </linearGradient> <linearGradient id="aptxlogo-bg" x1="0" y1="0" x2="0" y2="1"> <stop offset="0" stop-color="#fff7e0"/><stop offset="1" stop-color="#fcd34d"/> </linearGradient> </defs> <g transform="translate(28.9,18.0) scale(0.9091)"> <g stroke="#25304f" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"> <path d="M 78.0,152.0 C 49.3,150.6 12.5,173.3 -4.4,194.3 C 25.1,192.0 66.1,175.5 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 48.1,143.8 3.5,158.8 -19.7,176.6 C 12.1,181.2 59.5,173.7 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 51.8,138.2 6.9,142.5 -18.7,154.0 C 10.0,164.8 56.0,167.9 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 58.9,135.3 20.6,130.3 -2.8,135.1 C 18.9,149.7 56.6,161.2 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 118.0,126.0 C 110.4,106.2 84.4,93.0 65.5,92.1 C 75.9,110.5 99.0,129.6 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 115.6,103.3 92.6,79.7 73.5,71.3 C 79.1,93.8 97.5,122.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 123.0,106.1 110.4,79.8 96.5,67.4 C 94.4,87.9 101.6,117.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 106,172 L 101,202 M 132,172 L 129,202" fill="none" stroke-width="9"/> <path d="M 101,202 L 88,209 M 101,202 L 112,210 M 101,202 L 99,213 M 129,202 L 116,209 M 129,202 L 140,210 M 129,202 L 128,213" fill="none" stroke-width="6"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="url(#aptxlogo-bg)"/> <path d="M 100,174 C 86,166 82,150 90,138 C 96,146 108,152 122,152 C 136,152 148,148 156,140 C 160,156 150,172 128,177 C 118,179 108,178 100,174 Z" fill="#fff6dd" stroke="none"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="none"/> <path d="M 150.0,60.0 C 159.5,51.2 158.7,35.2 152.9,25.9 C 145.3,35.7 141.5,51.8 150.0,60.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 164.0,56.0 C 174.4,51.0 177.8,37.3 175.2,28.0 C 166.2,34.2 158.9,46.9 164.0,56.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 136.0,66.0 C 141.8,56.5 137.0,44.2 129.6,38.5 C 125.7,48.3 126.7,61.9 136.0,66.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 158,58 C 186,54 208,72 208,96 C 208,120 188,136 164,134 C 140,132 126,114 128,92 C 130,72 142,60 158,58 Z" fill="url(#aptxlogo-bg)"/> <path d="M 203,82 C 216,84 230,92 238,100 C 230,108 216,113 202,112 C 206,104 206,90 203,82 Z" fill="#fb923c"/> <path d="M 204,101 C 214,102 224,103 234,101" fill="none" stroke-width="4"/> <path d="M 128.0,116.0 C 113.1,91.9 75.3,80.3 50.0,83.2 C 68.3,104.8 103.7,124.6 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 118.0,85.8 79.7,60.2 51.1,54.1 C 65.4,83.1 98.9,116.3 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 127.0,83.7 97.3,47.3 71.5,32.7 C 76.9,65.0 99.8,107.4 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 136.1,88.7 121.1,50.1 103.3,30.9 C 99.0,59.5 106.6,101.2 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> </g> <g> <ellipse cx="172" cy="94" rx="15" ry="17" fill="#25304f"/> <ellipse cx="172" cy="97" rx="10" ry="11" fill="#38bdf8"/> <circle cx="167" cy="88" r="6" fill="#ffffff"/> <circle cx="178" cy="103" r="3" fill="#ffffff" opacity="0.9"/> <ellipse cx="146" cy="112" rx="9" ry="5" fill="#fb7185" opacity="0.75"/> <path d="M 52,53 C 53.62,59.75 54.25,60.38 61,62 C 54.25,63.62 53.62,64.25 52,71 C 50.38,64.25 49.75,63.62 43,62 C 49.75,60.38 50.38,59.75 52,53 Z" fill="#fde68a"/> <path d="M 222,161 C 223.26,166.25 223.75,166.74 229,168 C 223.75,169.26 223.26,169.75 222,175 C 220.74,169.75 220.25,169.26 215,168 C 220.25,166.74 220.74,166.25 222,161 Z" fill="#fde68a"/> <path d="M 86,208 C 87.08,212.5 87.5,212.92 92,214 C 87.5,215.08 87.08,215.5 86,220 C 84.92,215.5 84.5,215.08 80,214 C 84.5,212.92 84.92,212.5 86,208 Z" fill="#fde68a"/> </g> </g> </svg>';
     const NODE_DATA = 'node_data_dialog';
     const NODE_EVENTS_CB = 'nevts_cb';
     const NODE_NAME_CB = 'nn_cb';
@@ -257,6 +266,7 @@ if (!phyloXml) {
     const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
     const PHYLOGRAM_BUTTON = 'phy_b';
     const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
+    const ABOUT_DIALOG = 'aptx_about';
     const PROG_NAME = 'progname';
     const PROGNAMELINK = 'prognamelink';
     const TREE_DESC = 'tree_desc';
@@ -5374,7 +5384,22 @@ if (!phyloXml) {
             + '.aptx-tip .aptx-dialog-key { flex:0 0 auto; min-width:96px; }'
             + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
+            + '.aptx-panel .' + PROGNAMELINK + ' { background:none; padding:0; margin:0; cursor:pointer;'
+            + '  font-family:inherit; font-weight:inherit; letter-spacing:inherit; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
+            + '.aptx-dialog-body.aptx-about { padding-top:13px; }'
+            // the label column is narrower here than for node data: these values
+            // are URLs, and they should not have to wrap mid-word
+            + '.aptx-about .aptx-dialog-key { flex-basis:31%; }'
+            + '.aptx-about-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; }'
+            + '.aptx-about-logo { flex:none; width:56px; height:56px; }'
+            + '.aptx-about-logo svg { width:100%; height:100%; display:block; }'
+            + '.aptx-about-name { font-size:15px; font-weight:650; letter-spacing:-0.01em; }'
+            + '.aptx-about-version { color:var(--p-muted); }'
+            + '.aptx-about-blurb { margin:0 0 11px; color:var(--p-muted); }'
+            + '.aptx-about .aptx-dialog-val a,.aptx-about .aptx-dialog-val a:link,'
+            + '.aptx-about .aptx-dialog-val a:visited { color:var(--p-accent-ink); text-decoration:none; }'
+            + '.aptx-about .aptx-dialog-val a:hover { text-decoration:underline; }'
             // Tree name + description: clamped to a few lines with the full text
             // in a tooltip (click toggles the clamp). overflow-wrap:anywhere
             // guarantees even an unbroken string can never widen the panel.
@@ -5504,7 +5529,15 @@ if (!phyloXml) {
             let actions = document.createElement('div');
             actions.className = 'aptx-actions';
 
-            if (header.querySelector('.' + PROGNAMELINK)) {
+            let progName = header.querySelector('.' + PROGNAMELINK);
+            if (progName) {
+                // Clicking the title used to navigate away to the project site;
+                // it opens the About box, which links there among other places.
+                progName.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    showAboutDialog();
+                });
+
                 let themeBtn = document.createElement('button');
                 themeBtn.type = 'button';
                 themeBtn.className = 'aptx-theme-btn';
@@ -5660,13 +5693,16 @@ if (!phyloXml) {
         }).join('');
     }
 
-    function showNodeDataDialog(title, htmlContent, mono, width, height) {
-        let existing = document.getElementById(NODE_DATA);
+    // The shell every modal shares: title bar with a close button, a body, the
+    // panel's light/dark choice, and removal on close. Returns the body for the
+    // caller to fill. Only one dialog of a given id exists at a time.
+    function makeDialogShell(id, title, width) {
+        let existing = document.getElementById(id);
         if (existing) {
             existing.remove();
         }
         let dialog = document.createElement('dialog');
-        dialog.id = NODE_DATA;
+        dialog.id = id;
         dialog.className = 'aptx-dialog';
         if (_panelTheme) {
             dialog.classList.add('aptx-' + _panelTheme); // follow the panel's light/dark choice
@@ -5692,12 +5728,7 @@ if (!phyloXml) {
         titlebar.appendChild(closeButton);
 
         let body = document.createElement('div');
-        body.className = 'aptx-dialog-body' + (mono ? ' aptx-dialog-mono' : '');
-        // htmlContent is built from tree-file text with <br> separators; escape
-        // everything else so a crafted name / property value cannot inject markup.
-        let escaped = escapeHtmlKeepBreaks(htmlContent);
-        body.innerHTML = mono ? escaped : markUpDataLabels(escaped);
-        body.style.maxHeight = height + 'px';
+        body.className = 'aptx-dialog-body';
 
         dialog.appendChild(titlebar);
         dialog.appendChild(body);
@@ -5705,7 +5736,76 @@ if (!phyloXml) {
         dialog.addEventListener('close', function () {
             dialog.remove();
         });
-        dialog.showModal();
+        return {dialog: dialog, body: body};
+    }
+
+    function showNodeDataDialog(title, htmlContent, mono, width, height) {
+        let shell = makeDialogShell(NODE_DATA, title, width);
+        if (mono) {
+            shell.body.classList.add('aptx-dialog-mono');
+        }
+        // htmlContent is built from tree-file text with <br> separators; escape
+        // everything else so a crafted name / property value cannot inject markup.
+        let escaped = escapeHtmlKeepBreaks(htmlContent);
+        shell.body.innerHTML = mono ? escaped : markUpDataLabels(escaped);
+        shell.body.style.maxHeight = height + 'px';
+        shell.dialog.showModal();
+    }
+
+    // The About box behind the panel's title. Everything here is fixed text and
+    // fixed URLs -- no tree data reaches it -- so the links are built as real
+    // elements rather than markup.
+    function showAboutDialog() {
+        let shell = makeDialogShell(ABOUT_DIALOG, 'About', 380);
+        shell.body.classList.add('aptx-about');
+
+        let head = document.createElement('div');
+        head.className = 'aptx-about-head';
+        let logo = document.createElement('div');
+        logo.className = 'aptx-about-logo';
+        logo.innerHTML = ARCHAEOPTERYX_LOGO_SVG;
+        head.appendChild(logo);
+
+        let titles = document.createElement('div');
+        let n = document.createElement('div');
+        n.className = 'aptx-about-name';
+        n.textContent = NAME;
+        let v = document.createElement('div');
+        v.className = 'aptx-about-version';
+        v.textContent = 'Version ' + VERSION;
+        titles.appendChild(n);
+        titles.appendChild(v);
+        head.appendChild(titles);
+        shell.body.appendChild(head);
+
+        let blurb = document.createElement('p');
+        blurb.className = 'aptx-about-blurb';
+        blurb.textContent = 'Visualization and analysis of highly annotated phylogenetic trees.';
+        shell.body.appendChild(blurb);
+
+        [['Website', WEBSITE, 'cmzmasek.github.io/archaeopteryx-js'],
+            ['Desktop version', DESKTOP_WEBSITE, 'cmzmasek.github.io/archaeopteryx'],
+            ['Source code', SOURCE_WEBSITE, 'github.com/cmzmasek/archaeopteryx-js'],
+            ['License', LICENSE_WEBSITE, LICENSE_NAME]].forEach(function (row) {
+            let line = document.createElement('div');
+            line.className = 'aptx-dialog-line';
+            let key = document.createElement('span');
+            key.className = 'aptx-dialog-key';
+            key.textContent = row[0];
+            let val = document.createElement('span');
+            val.className = 'aptx-dialog-val';
+            let a = document.createElement('a');
+            a.href = row[1];
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = row[2];
+            val.appendChild(a);
+            line.appendChild(key);
+            line.appendChild(val);
+            shell.body.appendChild(line);
+        });
+
+        shell.dialog.showModal();
     }
 
     // Makes an element draggable within its offset parent using pointer events
@@ -6406,7 +6506,7 @@ if (!phyloXml) {
         function makeProgramDesc() {
             let h = "";
             h = h.concat('<div class=' + PROG_NAME + '>');
-            h = h.concat('<a class="' + PROGNAMELINK + '" href="' + WEBSITE + '" target="_blank">' + NAME + ' ' + VERSION + '</a>');
+            h = h.concat('<button type="button" class="' + PROGNAMELINK + '" title="About ' + NAME + '">' + NAME + ' ' + VERSION + '</button>');
             h = h.concat('</div>');
             return h;
         }
