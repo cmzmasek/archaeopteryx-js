@@ -86,7 +86,6 @@ if (!phyloXml) {
     // -----------------------------
     // Named colors and orientations
     // -----------------------------
-    const LIGHT_BLUE = '#2590FD';
     const WHITE = '#ffffff';
 
     // ------------------------------
@@ -164,9 +163,6 @@ if (!phyloXml) {
     const BUTTON_ZOOM_IN_FACTOR_SLOW = 1.05;
     const BUTTON_ZOOM_OUT_FACTOR = 1 / BUTTON_ZOOM_IN_FACTOR;
     const BUTTON_ZOOM_OUT_FACTOR_SLOW = 1 / BUTTON_ZOOM_IN_FACTOR_SLOW;
-    const COLOR_FOR_ACTIVE_ELEMENTS = LIGHT_BLUE;
-    const COLOR_PICKER_BACKGROUND_BORDER_COLOR = '#808080';
-    const COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR = '#000000';
     const CONFIDENCE_VALUE_DIGITS_DEFAULT = 2;
     const DEFAULT = 'default';
     const DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#ffff00';
@@ -179,7 +175,6 @@ if (!phyloXml) {
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const LINEAR_SCALE = 'linear';
-    const MOVE_INTERVAL = 150;
     const NH_EXPORT_FORMAT = 'Newick';
     const HEIGHT_OFFSET = 40;
     const NODE_SIZE_MAX = 9;
@@ -231,8 +226,6 @@ if (!phyloXml) {
     const LAYOUT_RECT_BUTTON = 'layout_rect_b';
     const LAYOUT_CIRC_BUTTON = 'layout_circ_b';
     const CLADOGRAM_BUTTON = 'cla_b';
-    const COLOR_PICKER = 'col_pick';
-    const COLOR_PICKER_LABEL = 'colorPickerLabel';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const CONTROLS_0 = 'controls0';
     const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
@@ -445,10 +438,7 @@ if (!phyloXml) {
     // ---------------------------
     let _baseSvg = null;
     let _basicTreeProperties = null;
-    let _colorPickerData = null;
-    let _colorsForColorPicker = null;
     let _currentLabelColorVisualization = null;
-    let _legendDragged = false;
     let _currentNodeShapeVisualization = null;
     let _displayHeight = 0;
     let _displayWidth = 0;
@@ -476,11 +466,9 @@ if (!phyloXml) {
     let _searchBox0Empty = true;
     let _searchBox1Empty = true;
     let _settings = null;
-    let _showColorPicker = false;
     let _svgGroup = null;
     let _treeData = null;
     let _treeFn = null;
-    let _usedColorCategories = new Set();
     let _visualizations = null;
     let _w = null;
     let _yScale = null;
@@ -1247,36 +1235,28 @@ if (!phyloXml) {
                                     if (nodeVisualization.label === MSA_RESIDUE) {
                                         colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                                             .domain(_basicTreeProperties.molSeqResiduesPerPosition[0]);
-                                        _usedColorCategories.add('category20');
                                     } else {
                                         if (nodeVisualization.colors === 'category20') {
                                             colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category20');
                                         } else if (nodeVisualization.colors === 'category20b') {
                                             colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20B)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category20b');
                                         } else if (nodeVisualization.colors === 'category20c') {
                                             colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20C)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category20c');
                                         } else if (nodeVisualization.colors === 'category10') {
                                             colorScale = d3.scaleOrdinal(d3.schemeCategory10)
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category10');
                                         } else if (nodeVisualization.colors === 'category50') {
                                             colorScale = category50()
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category50');
                                         } else if (nodeVisualization.colors === 'category50b') {
                                             colorScale = category50b()
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category50b');
                                         } else if (nodeVisualization.colors === 'category50c') {
                                             colorScale = category50c()
                                                 .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                            _usedColorCategories.add('category50c');
                                         } else {
                                             throw new Error('do not know how to process ' + nodeVisualization.colors);
                                         }
@@ -1403,17 +1383,8 @@ if (!phyloXml) {
 
         legendEnter.append('rect')
             .attr('class', LEGEND_SWATCH)
-            .style('cursor', 'pointer')
             .attr('width', null)
-            .attr('height', null)
-            .on('click', function (event, clickedName) {
-                if (_legendDragged) {
-                    return; // the pointer moved: that was a drag, not a pick
-                }
-                // d3 v6+ no longer passes the index; derive it from the domain.
-                let clickedIndex = colorScale.domain().indexOf(clickedName);
-                legendColorRectClicked(colorScale, label, description, clickedName, clickedIndex);
-            });
+            .attr('height', null);
 
         legendEnter.append('text')
             .attr('class', LEGEND)
@@ -1659,15 +1630,12 @@ if (!phyloXml) {
                         // otherwise the same mousedown starts a pan of the tree
                         event.sourceEvent.stopPropagation();
                     }
-                    _legendDragged = false;
                 })
                 .on('drag', function (event) {
-                    _legendDragged = true;
                     _options.visualizationsLegendXpos =
                         Math.max(0, Math.min(_displayWidth - 20, _options.visualizationsLegendXpos + event.dx));
                     _options.visualizationsLegendYpos =
                         Math.max(0, Math.min(_displayHeight, _options.visualizationsLegendYpos + event.dy));
-                    removeColorPicker();
                     addLegends();
                 }));
     }
@@ -1711,294 +1679,11 @@ if (!phyloXml) {
     // --------------------------------------------------------------
     // Functions for color picker
     // --------------------------------------------------------------
-    function obtainPredefinedColors(name) {
-        let twenty = [Array(20).keys()];
-        let fifty = [Array(50).keys()];
-        let colorScale = null;
-        let l = 0;
-        if (name === 'category20') {
-            l = 20;
-            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
-                .domain(twenty);
-        } else if (name === 'category20b') {
-            l = 20;
-            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20B)
-                .domain(twenty);
-        } else if (name === 'category20c') {
-            l = 20;
-            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20C)
-                .domain(twenty);
-        } else if (name === 'category10') {
-            l = 10;
-            colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-                .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        } else if (name === 'category50') {
-            l = 50;
-            colorScale = category50()
-                .domain(fifty);
-        } else if (name === 'category50b') {
-            l = 50;
-            colorScale = category50b()
-                .domain(fifty);
-        } else if (name === 'category50c') {
-            l = 50;
-            colorScale = category50c()
-                .domain(fifty);
-        } else {
-            throw new Error('do not know ' + name);
-        }
-        let colors = [];
-        for (let i = 0; i < l; ++i) {
-            colors.push(colorScale(i));
-        }
-        return colors;
-    }
-
-    function addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
-        _colorPickerData = {};
-        _colorPickerData.targetScale = targetScale;
-        _colorPickerData.legendLabel = legendLabel;
-        _colorPickerData.legendDescription = legendDescription;
-        _colorPickerData.clickedName = clickedName;
-        _colorPickerData.clickedIndex = clickedIndex;
-        _colorPickerData.clickedOrigColor = targetScale(clickedName);
-        _showColorPicker = true;
-    }
-
-    function removeColorPicker() {
-        _showColorPicker = false;
-        _colorPickerData = null;
-        _baseSvg.selectAll('g.' + COLOR_PICKER).remove();
-    }
-
-    function prepareColorsForColorPicker() {
-        const DEFAULT_COLORS_FOR_COLORPICKER = [// Red
-            '#FFEBEE', '#FFCDD2', '#EF9A9A', '#E57373', '#EF5350', '#F44336', '#E53935', '#D32F2F', '#C62828', '#B71C1C', '#FF8A80', '#FF5252', '#FF1744', '#D50000', // Pink
-            '#FCE4EC', '#F8BBD0', '#F48FB1', '#F06292', '#EC407A', '#E91E63', '#D81B60', '#C2185B', '#AD1457', '#880E4F', '#FF80AB', '#FF4081', '#F50057', '#C51162', // Purple
-            '#F3E5F5', '#E1BEE7', '#CE93D8', '#BA68C8', '#AB47BC', '#9C27B0', '#8E24AA', '#7B1FA2', '#6A1B9A', '#4A148C', '#EA80FC', '#E040FB', '#D500F9', '#AA00FF', // Deep Purple
-            '#EDE7F6', '#D1C4E9', '#B39DDB', '#9575CD', '#7E57C2', '#673AB7', '#5E35B1', '#512DA8', '#4527A0', '#311B92', '#B388FF', '#7C4DFF', '#651FFF', '#6200EA', // Indigo
-            '#E8EAF6', '#C5CAE9', '#9FA8DA', '#7986CB', '#5C6BC0', '#3F51B5', '#3949AB', '#303F9F', '#283593', '#1A237E', '#8C9EFF', '#536DFE', '#3D5AFE', '#304FFE', // Blue
-            '#E3F2FD', '#BBDEFB', '#90CAF9', '#64B5F6', '#42A5F5', '#2196F3', '#1E88E5', '#1976D2', '#1565C0', '#0D47A1', '#82B1FF', '#448AFF', '#2979FF', '#2962FF', // Light Blue
-            '#E1F5FE', '#B3E5FC', '#81D4FA', '#4FC3F7', '#29B6F6', '#03A9F4', '#039BE5', '#0288D1', '#0277BD', '#01579B', '#80D8FF', '#40C4FF', '#00B0FF', '#0091EA', // Cyan
-            '#E0F7FA', '#B2EBF2', '#80DEEA', '#4DD0E1', '#26C6DA', '#00BCD4', '#00ACC1', '#0097A7', '#00838F', '#006064', '#84FFFF', '#18FFFF', '#00E5FF', '#00B8D4', // Teal
-            '#E0F2F1', '#B2DFDB', '#80CBC4', '#4DB6AC', '#26A69A', '#009688', '#00897B', '#00796B', '#00695C', '#004D40', '#A7FFEB', '#64FFDA', '#1DE9B6', '#00BFA5', // Green
-            '#E8F5E9', '#C8E6C9', '#A5D6A7', '#81C784', '#66BB6A', '#4CAF50', '#43A047', '#388E3C', '#2E7D32', '#1B5E20', '#B9F6CA', '#69F0AE', '#00E676', '#00C853', // Light Green
-            '#F1F8E9', '#DCEDC8', '#C5E1A5', '#AED581', '#9CCC65', '#8BC34A', '#7CB342', '#689F38', '#558B2F', '#33691E', '#CCFF90', '#B2FF59', '#76FF03', '#64DD17', // Lime
-            '#F9FBE7', '#F0F4C3', '#E6EE9C', '#DCE775', '#D4E157', '#CDDC39', '#C0CA33', '#AFB42B', '#9E9D24', '#827717', '#F4FF81', '#EEFF41', '#C6FF00', '#AEEA00', // Yellow
-            '#FFFDE7', '#FFF9C4', '#FFF59D', '#FFF176', '#FFEE58', '#FFEB3B', '#FDD835', '#FBC02D', '#F9A825', '#F57F17', '#FFFF8D', '#FFFF00', '#FFEA00', '#FFD600', // Amber
-            '#FFF8E1', '#FFECB3', '#FFE082', '#FFD54F', '#FFCA28', '#FFC107', '#FFB300', '#FFA000', '#FF8F00', '#FF6F00', '#FFE57F', '#FFD740', '#FFC400', '#FFAB00', // Orange
-            '#FFF3E0', '#FFE0B2', '#FFCC80', '#FFB74D', '#FFA726', '#FF9800', '#FB8C00', '#F57C00', '#EF6C00', '#E65100', '#FFD180', '#FFAB40', '#FF9100', '#FF6D00', // Deep Orange
-            '#FBE9E7', '#FFCCBC', '#FFAB91', '#FF8A65', '#FF7043', '#FF5722', '#F4511E', '#E64A19', '#D84315', '#BF360C', '#FF9E80', '#FF6E40', '#FF3D00', '#DD2C00', // Brown
-            '#EFEBE9', '#D7CCC8', '#BCAAA4', '#A1887F', '#8D6E63', '#795548', '#6D4C41', '#5D4037', '#4E342E', '#3E2723', // Grey
-            '#FAFAFA', '#F5F5F5', '#EEEEEE', '#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#616161', '#424242', '#212121', // Blue Grey
-            '#ECEFF1', '#CFD8DC', '#B0BEC5', '#90A4AE', '#78909C', '#607D8B', '#546E7A', '#455A64', '#37474F', '#263238', // Basic
-            '#FFFFFF', '#999999', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF', _options.backgroundColorDefault];
-        _colorsForColorPicker = [];
-
-        const dcpl = DEFAULT_COLORS_FOR_COLORPICKER.length;
-        for (let dci = 0; dci < dcpl; ++dci) {
-            _colorsForColorPicker.push(DEFAULT_COLORS_FOR_COLORPICKER[dci]);
-        }
-
-        _usedColorCategories.forEach(function (e) {
-            let cs = obtainPredefinedColors(e);
-            let csl = cs.length;
-            for (let csi = 0; csi < csl; ++csi) {
-                _colorsForColorPicker.push(cs[csi]);
-            }
-        });
-    }
-
-    function makeColorPicker(id) {
-
-        let xPos = 0;
-        let yPos = 0;
-
-        xPos = _options.visualizationsLegendXpos + 140;
-        yPos = _options.visualizationsLegendYpos - 10;
-
-        if (xPos < 20) {
-            xPos = 20;
-        }
-        if (yPos < 20) {
-            yPos = 20;
-        }
-
-        if (!_colorsForColorPicker) {
-            prepareColorsForColorPicker();
-        }
-
-        let fs = _settings.controlsFontSize.toString() + 'px';
-
-        let clickedOrigColorIndex = -1;
-
-        let lbls = [];
-        for (let ii = 0; ii < _colorsForColorPicker.length; ++ii) {
-            lbls[ii] = ii;
-            if (clickedOrigColorIndex < 0 && (colorToHex(_colorsForColorPicker[ii]) === colorToHex(_colorPickerData.clickedOrigColor))) {
-                clickedOrigColorIndex = ii;
-            }
-        }
-
-        let colorPickerColors = d3.scaleLinear()
-            .domain(lbls)
-            .range(_colorsForColorPicker);
-
-        let colorPickerSize = 14;
-        let rectSize = 10;
-
-        let xCorrectionForLabel = -1;
-        let yFactorForDesc = -0.5;
-
-        let colorPicker = _baseSvg.selectAll('g.' + id)
-            .data(colorPickerColors.domain());
-
-        let colorPickerEnter = colorPicker.enter().append('g')
-            .attr('class', id);
-
-        colorPickerEnter.append('rect')
-            .style('cursor', 'pointer')
-            .attr('width', null)
-            .attr('height', null)
-            .on('click', function (event, d) {
-                colorPickerClicked(colorPickerColors(d));
-            });
-
-        colorPickerEnter.append('text')
-            .attr('class', COLOR_PICKER_LABEL)
-            .style('color', _settings.controlsFontColor)
-            .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        let colorPickerUpdate = colorPicker
-            .attr('transform', function (d, i) {
-                if (i >= 234) {
-                    i += 4;
-                    if (i >= 248) {
-                        i += 4;
-                    }
-                    if (i >= 262) {
-                        i += 4;
-                    }
-                    if (i >= 276) {
-                        i += 4;
-                    }
-                    if (i >= 290) {
-                        i += 4;
-                    }
-                    if (i >= 304) {
-                        i += 4;
-                    }
-                    if (i >= 318) {
-                        i += 4;
-                    }
-                    if (i >= 332) {
-                        i += 4;
-                    }
-                    if (i >= 346) {
-                        i += 4;
-                    }
-                }
-                let x = xPos + Math.floor((i / colorPickerSize)) * rectSize;
-                let y = yPos + ((i % colorPickerSize) * rectSize);
-                return 'translate(' + x + ',' + y + ')';
-            });
-
-        colorPickerUpdate.select('rect')
-            .attr('width', rectSize)
-            .attr('height', rectSize)
-            .style('fill', colorPickerColors)
-            .style('stroke', function (d, i) {
-                if (i === clickedOrigColorIndex) {
-                    return COLOR_PICKER_CLICKED_ORIG_COLOR_BORDER_COLOR;
-                } else if (i === 263) {
-                    return COLOR_PICKER_BACKGROUND_BORDER_COLOR;
-                }
-                return WHITE;
-            });
-
-        colorPickerUpdate.select('text.' + COLOR_PICKER_LABEL)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForDesc * rectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return 'Choose ' + _colorPickerData.legendLabel.toLowerCase() + ' for ' + _colorPickerData.legendDescription.toLowerCase() + ' "' + _colorPickerData.clickedName + '":';
-                }
-            });
-
-        colorPicker.exit().remove();
-
-        function colorToHex(color) {
-            // From http://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
-            // Convert any CSS color to a hex representation
-            let rgba, hex;
-            rgba = colorToRGBA(color);
-            hex = [0, 1, 2].map(function (idx) {
-                return byteToHex(rgba[idx]);
-            }).join('');
-            return '#' + hex;
-
-            function colorToRGBA(color) {
-                let cvs, ctx;
-                cvs = document.createElement('canvas');
-                cvs.height = 1;
-                cvs.width = 1;
-                ctx = cvs.getContext('2d');
-                ctx.fillStyle = color;
-                ctx.fillRect(0, 0, 1, 1);
-                return ctx.getImageData(0, 0, 1, 1).data;
-            }
-
-            function byteToHex(num) {
-                return ('0' + num.toString(16)).slice(-2);
-            }
-        }
-
-    } // makeColorPicker
 
 
-    function colorPickerClicked(colorPicked) {
 
-        let vis = _visualizations.labelColor[_colorPickerData.legendDescription];
-        let mf = vis.mappingFn;
 
-        let scaleType = vis.scaleType;
-        if (scaleType === ORDINAL_SCALE) {
-            let ord = _colorPickerData.targetScale;
-            let domain = ord.domain();
-            let range = ord.range();
-            let newColorRange = range.slice();
-            for (let di = 0, len = range.length; di < len; ++di) {
-                let curName = domain[di];
-                if (curName !== undefined) {
-                    if (curName === _colorPickerData.clickedName) {
-                        newColorRange[di] = colorPicked;
-                    } else {
-                        newColorRange[di] = ord(curName);
-                    }
-                }
-            }
-            mf.range(newColorRange);
-        } else if (scaleType === LINEAR_SCALE) {
-            let lin = _colorPickerData.targetScale;
-            let domain = lin.domain();
-            let newColorRange = [];
-            for (let dii = 0, domainLength = domain.length; dii < domainLength; ++dii) {
-                let curName = domain[dii];
-                if (curName === _colorPickerData.clickedName) {
-                    newColorRange[dii] = colorPicked;
-                } else {
-                    newColorRange[dii] = lin(curName);
-                }
-            }
-            mf.range(newColorRange);
-        }
 
-        update();
-    }
 
     // --------------------------------------------------------------
 
@@ -2020,9 +1705,6 @@ if (!phyloXml) {
 
         if (_settings.enableNodeVisualizations) {
             addLegends();
-            if (_showColorPicker) {
-                makeColorPicker(COLOR_PICKER);
-            }
         }
 
         _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT), _w]);
@@ -3888,10 +3570,6 @@ if (!phyloXml) {
 
         function nodeClick(event, d) {
 
-            if (_showColorPicker === true) {
-                removeColorPicker();
-                update();
-            }
 
             function displayNodeData(n) {
                 let title = 'Node Data';
@@ -4425,15 +4103,6 @@ if (!phyloXml) {
     }
 
 
-    document.documentElement.addEventListener('click', function (d) {
-        let attrClass = d.target.getAttribute('class');
-        if (attrClass === BASE_BACKGROUND) {
-            if (_showColorPicker === true) {
-                removeColorPicker();
-            }
-        }
-    });
-
 
     function updateNodeVisualizationsAndLegends(tree) {
         _visualizations = null;
@@ -4569,7 +4238,6 @@ if (!phyloXml) {
             calcMaxExtLabel();
             intitializeDisplaySize();
             initializeSettings(_settings);
-            removeColorPicker();
             setZoomScale(1);
             update(_root, 0);
             if (_options.circular) {
@@ -4715,7 +4383,6 @@ if (!phyloXml) {
         removeLegend(LEGEND_LABEL_COLOR);
         removeLegendForShapes(LEGEND_NODE_SHAPE);
 
-        removeColorPicker();
 
         let width = 0;
         if (_settings.enableDynamicSizing) {
@@ -5174,7 +4841,6 @@ if (!phyloXml) {
     }
 
     function updateMsaResidueVisCurrResPosFromSlider(e, slider) {
-        removeColorPicker();
         _msa_residue_vis_curr_res_pos = getSliderValue(e) - 1;
         showMsaResidueVisualizationAsLabelColorIfNotAlreadyShown();
         update(null, 0, true);
@@ -5201,11 +4867,6 @@ if (!phyloXml) {
 
 
 
-
-    function legendColorRectClicked(targetScale, legendLabel, legendDescription, clickedName, clickedIndex) {
-        addColorPicker(targetScale, legendLabel, legendDescription, clickedName, clickedIndex);
-        update();
-    }
 
     function setRadioButtonValue(id, value) {
         let radio = byId(id);
@@ -6344,7 +6005,6 @@ if (!phyloXml) {
                 _currentLabelColorVisualization = null;
                 removeLegend(LEGEND_LABEL_COLOR);
             }
-            removeColorPicker();
             update(null, 0);
         });
 
@@ -6366,7 +6026,6 @@ if (!phyloXml) {
             } else {
                 _currentLabelColorVisualization = null;
             }
-            removeColorPicker();
             update(null, 0);
         });
 
@@ -6389,7 +6048,6 @@ if (!phyloXml) {
             } else {
                 _currentLabelColorVisualization = null;
             }
-            removeColorPicker();
             update(null, 0);
         });
 
@@ -6411,7 +6069,6 @@ if (!phyloXml) {
             } else {
                 _currentLabelColorVisualization = null;
             }
-            removeColorPicker();
             update(null, 0);
         });
 
@@ -6432,7 +6089,6 @@ if (!phyloXml) {
                 _currentNodeShapeVisualization = null;
                 removeLegendForShapes(LEGEND_NODE_SHAPE);
             }
-            removeColorPicker();
             resetVis();
             update(null, 0);
             update(null, 0);
