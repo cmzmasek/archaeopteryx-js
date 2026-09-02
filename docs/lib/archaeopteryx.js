@@ -455,20 +455,20 @@ if (!phyloXml) {
     let _maxLabelLength = 0;
     let _nodeVisualizations = null;
     let _nodeLabels = null;
-    let _options = null;
+    let _state = null;      // live display state: what the control panel writes to
     let _root = null;
     let _root_const = null;
     let _in_subtree = false;
     let _searchBox0Empty = true;
     let _searchBox1Empty = true;
-    let _settings = null;
+    let _settings = null;   // fixed for the life of the launch; never written after init
     let _svgGroup = null;
     let _treeData = null;
     let _treeFn = null;
     let _visualizations = null;
     let _w = null;
     let _yScale = null;
-    let _radial = null;   // circular-layout params (set per render when _options.circularDisplay)
+    let _radial = null;   // circular-layout params (set per render when _state.circularDisplay)
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
@@ -648,7 +648,7 @@ if (!phyloXml) {
             .attr('rx', 4).attr('ry', 4)
             // opaque: a branch of the real tree showing through the panel would
             // read as part of the miniature
-            .style('fill', _options.backgroundColorDefault)
+            .style('fill', _state.backgroundColorDefault)
             .style('stroke-width', 1)
             .style('pointer-events', 'all')
             .style('cursor', 'pointer');
@@ -693,7 +693,7 @@ if (!phyloXml) {
         }
         let dark = panelDarkActive();
         _overviewGroup.select('rect.aptx-overview-bg')
-            .style('fill', _options.backgroundColorDefault)
+            .style('fill', _state.backgroundColorDefault)
             .style('stroke', dark ? '#5d6b7a' : '#9a9a9a');
         _overviewGroup.select('rect.aptx-overview-viewport')
             .style('fill', dark ? '#cfe0f2' : '#7f7f7f')
@@ -877,7 +877,7 @@ if (!phyloXml) {
                 return d;
             })
             .style('fill', 'none')
-            .style('stroke', _options.branchColorDefault)
+            .style('stroke', _state.branchColorDefault)
             .style('stroke-width', 1)
             .style('vector-effect', 'non-scaling-stroke'); // stays a hairline however far it is scaled down
         updateOverviewViewport();
@@ -941,7 +941,7 @@ if (!phyloXml) {
     }
 
     function calcMaxTreeLengthForDisplay() {
-        return _settings.rootOffset + _options.nodeLabelGap + LABEL_SIZE_CALC_ADDITION + (_maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR);
+        return _settings.rootOffset + _state.nodeLabelGap + LABEL_SIZE_CALC_ADDITION + (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR);
     }
 
     // ----------------------------
@@ -1525,7 +1525,7 @@ if (!phyloXml) {
         // SVG text is painted by fill, not color -- which is why the old
         // 'color' style did nothing. It goes on the plain selection: set on
         // the transition below it does not stick.
-        legend.selectAll('text').style('fill', _options.labelColorDefault);
+        legend.selectAll('text').style('fill', _state.labelColorDefault);
 
         let legendUpdate = legend.transition()
             .duration(0)
@@ -1557,7 +1557,7 @@ if (!phyloXml) {
                     } else if (((linearRangeLength === 2 && i === 1) || (linearRangeLength === 3 && i === 2))) {
                         return d + ' (max)';
                     } else if (linearRangeLength === 3 && i === 1) {
-                        return preciseRound(d, _options.decimalsForLinearRangeMeanValue) + ' (mean)';
+                        return preciseRound(d, _state.decimalsForLinearRangeMeanValue) + ' (mean)';
                     }
                 }
                 return d;
@@ -1653,7 +1653,7 @@ if (!phyloXml) {
         // SVG text is painted by fill, not color -- which is why the old
         // 'color' style did nothing. It goes on the plain selection: set on
         // the transition below it does not stick.
-        legend.selectAll('text').style('fill', _options.labelColorDefault);
+        legend.selectAll('text').style('fill', _state.labelColorDefault);
 
         let legendUpdate = legend
             .attr('transform', function (d, i) {
@@ -1710,7 +1710,7 @@ if (!phyloXml) {
                     return d3SymbolType(shapeScale(values[i]));
                 }))
             .style('fill', 'none')
-            .style('stroke', _options.branchColorDefault);
+            .style('stroke', _state.branchColorDefault);
 
 
         legend.exit().remove();
@@ -1739,17 +1739,17 @@ if (!phyloXml) {
                     }
                 })
                 .on('drag', function (event) {
-                    _options.visualizationsLegendXpos =
-                        Math.max(0, Math.min(_displayWidth - 20, _options.visualizationsLegendXpos + event.dx));
-                    _options.visualizationsLegendYpos =
-                        Math.max(0, Math.min(_displayHeight, _options.visualizationsLegendYpos + event.dy));
+                    _state.visualizationsLegendXpos =
+                        Math.max(0, Math.min(_displayWidth - 20, _state.visualizationsLegendXpos + event.dx));
+                    _state.visualizationsLegendYpos =
+                        Math.max(0, Math.min(_displayHeight, _state.visualizationsLegendYpos + event.dy));
                     addLegends();
                 }));
     }
 
     function addLegends() {
-        let xPos = _options.visualizationsLegendXpos;
-        let yPos = _options.visualizationsLegendYpos;
+        let xPos = _state.visualizationsLegendXpos;
+        let yPos = _state.visualizationsLegendYpos;
         // Legends stack downwards. The button that switched them to a row went
         // with the rest of the Vis Legend controls.
         let yPosIncr = 10;
@@ -1771,7 +1771,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_options.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
+        if (_state.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Shape';
             desc = _currentNodeShapeVisualization;
             counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
@@ -1840,13 +1840,13 @@ if (!phyloXml) {
         let links = hierarchy.links().map(function (link) {
             return {source: link.source.data, target: link.target.data};
         });
-        let gap = _options.nodeLabelGap;
+        let gap = _state.nodeLabelGap;
 
-        if (_options.phylogram === true) {
+        if (_state.phylogram === true) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
 
-        if (_options.circularDisplay) {
+        if (_state.circularDisplay) {
             let maxY = 0;
             for (let i = 0; i < nodes.length; ++i) {
                 if (nodes[i].y > maxY) {
@@ -1863,9 +1863,9 @@ if (!phyloXml) {
             _radial = null;
         }
 
-        if (_options.dynahide) {
+        if (_state.dynahide) {
             _dynahide_counter = 0;
-            _dynahide_factor = Math.round(_options.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
+            _dynahide_factor = Math.round(_state.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
             forester.preOrderTraversal(_root, function (n) {
                 n.hide = !n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0);
             });
@@ -1923,23 +1923,23 @@ if (!phyloXml) {
             .attr('text-anchor', function (d) {
                 return d.children ? "end" : "start";
             })
-            .style('font-family', _options.defaultFont)
+            .style('font-family', _state.defaultFont)
             .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
             .attr('class', 'bllabel')
-            .style('font-family', _options.defaultFont)
+            .style('font-family', _state.defaultFont)
             .style('fill-opacity', 0.5);
 
         nodeEnter.append('text')
             .attr('class', 'conflabel')
             .attr('text-anchor', 'middle')
-            .style('font-family', _options.defaultFont);
+            .style('font-family', _state.defaultFont);
 
         nodeEnter.append('text')
             .attr('class', 'brancheventlabel')
             .attr('text-anchor', 'middle')
-            .style('font-family', _options.defaultFont);
+            .style('font-family', _state.defaultFont);
 
         // Grab the exit selection BEFORE merging. In d3 v3 the exit selection
         // survived on the merged result, but in v4+ merge() returns a NEW
@@ -1955,7 +1955,7 @@ if (!phyloXml) {
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
-                return d.children ? _options.internalNodeFontSize + 'px' : _options.externalNodeFontSize + 'px';
+                return d.children ? _state.internalNodeFontSize + 'px' : _state.externalNodeFontSize + 'px';
             })
             .style('fill', makeLabelColor)
             .style('stroke', function (d) {
@@ -1966,13 +1966,13 @@ if (!phyloXml) {
             })
             .style('paint-order', 'stroke')
             .attr('text-anchor', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return labelFlip(d) ? 'end' : 'start';
                 }
                 return d.children ? 'end' : 'start';
             })
             .attr('transform', function (d) {
-                if (!_options.circularDisplay) {
+                if (!_state.circularDisplay) {
                     return null;
                 }
                 // external labels are pulled out to the common outer ring;
@@ -1981,17 +1981,17 @@ if (!phyloXml) {
                 return 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
             })
             .attr('dy', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return '0.32em';
                 }
-                return d.children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
+                return d.children ? 0.3 * _state.internalNodeFontSize + 'px' : 0.3 * _state.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return labelFlip(d) ? -gap : gap;
                 }
                 if (!(d.children)) {
-                    if (_options.phylogram && _options.alignPhylogram) {
+                    if (_state.phylogram && _state.alignPhylogram) {
                         return (-_yScale(d.distToRoot) + _w + gap);
                     } else {
                         return gap;
@@ -2002,16 +2002,16 @@ if (!phyloXml) {
             });
 
         node.select('text.bllabel')
-            .style('font-size', _options.branchDataFontSize + 'px')
+            .style('font-size', _state.branchDataFontSize + 'px')
             .attr('text-anchor', function () {
-                return _options.circularDisplay ? 'middle' : null;
+                return _state.circularDisplay ? 'middle' : null;
             })
             .attr('transform', function (d) {
-                return _options.circularDisplay ? branchLabelTransform(d) : null;
+                return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2022,13 +2022,13 @@ if (!phyloXml) {
             });
 
         node.select('text.conflabel')
-            .style('font-size', _options.branchDataFontSize + 'px')
+            .style('font-size', _state.branchDataFontSize + 'px')
             .attr('transform', function (d) {
-                return _options.circularDisplay ? branchLabelTransform(d) : null;
+                return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
-            .attr('dy', _options.branchDataFontSize)
+            .attr('dy', _state.branchDataFontSize)
             .attr('x', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2039,13 +2039,13 @@ if (!phyloXml) {
             });
 
         node.select('text.brancheventlabel')
-            .style('font-size', _options.branchDataFontSize + 'px')
+            .style('font-size', _state.branchDataFontSize + 'px')
             .attr('transform', function (d) {
-                return _options.circularDisplay ? branchLabelTransform(d) : null;
+                return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_options.circularDisplay) {
+                if (_state.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2055,7 +2055,7 @@ if (!phyloXml) {
 
         node.select('circle.nodeCircle')
             .attr('r', function (d) {
-                if (((_options.showVisualizations && !_options.showNodeEvents) && (makeNodeFillColor(d) === _options.backgroundColorDefault))) {
+                if (((_state.showVisualizations && !_state.showNodeEvents) && (makeNodeFillColor(d) === _state.backgroundColorDefault))) {
                     return 0;
                 }
                 return makeNodeSize(d);
@@ -2063,9 +2063,9 @@ if (!phyloXml) {
             .style('stroke', function (d) {
                 return makeNodeStrokeColor(d);
             })
-            .style('stroke-width', _options.branchWidthDefault)
+            .style('stroke-width', _state.branchWidthDefault)
             .style('fill', function (d) {
-                return (_options.showVisualizations || _options.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
+                return (_state.showVisualizations || _state.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _state.backgroundColorDefault;
             });
 
 
@@ -2080,30 +2080,30 @@ if (!phyloXml) {
 
         nodeUpdate.select('text.extlabel')
             .text(function (d) {
-                if (!_options.dynahide || !d.hide) {
+                if (!_state.dynahide || !d.hide) {
                     return makeNodeLabel(d);
                 }
             });
 
         nodeUpdate.select('text.bllabel')
-            .text(_options.showBranchLengthValues ? makeBranchLengthLabel : null);
+            .text(_state.showBranchLengthValues ? makeBranchLengthLabel : null);
 
         nodeUpdate.select('text.conflabel')
-            .text(_options.showConfidenceValues ? makeConfidenceValuesLabel : null);
+            .text(_state.showConfidenceValues ? makeConfidenceValuesLabel : null);
 
         nodeUpdate.select('text.brancheventlabel')
-            .text(_options.showBranchEvents ? makeBranchEventsLabel : null);
+            .text(_state.showBranchEvents ? makeBranchEventsLabel : null);
 
         nodeUpdate.select('path')
-            .style('stroke', _options.showVisualizations ? makeVisNodeBorderColor : null)
-            .style('stroke-width', _options.branchWidthDefault)
-            .style('fill', _options.showVisualizations ? makeVisNodeFillColor : null)
-            .style('opacity', _options.nodeVisualizationsOpacity)
-            .attr('d', _options.showVisualizations ? makeNodeVisShape : null);
+            .style('stroke', _state.showVisualizations ? makeVisNodeBorderColor : null)
+            .style('stroke-width', _state.branchWidthDefault)
+            .style('fill', _state.showVisualizations ? makeVisNodeFillColor : null)
+            .style('opacity', _state.nodeVisualizationsOpacity)
+            .attr('d', _state.showVisualizations ? makeNodeVisShape : null);
 
         node.each(function (d) {
             if (d.children) {
-                if (!_options.showVisualizations && makeNodeVisShape(d) === null) {
+                if (!_state.showVisualizations && makeNodeVisShape(d) === null) {
                     d3.select(this).select('path').transition().duration(transitionDuration)
                         .attr('d', function () {
                             return 'M0,0';
@@ -2179,17 +2179,17 @@ if (!phyloXml) {
         // _svgGroup, so that name put them in the way of selectAll('path.link')
         // -- the main link data-join, and the overview's miniature.
         _svgGroup.selectAll('g.aptx-align-ext').remove();
-        if (!_options.circularDisplay && _options.phylogram && _options.alignPhylogram && _options.showExternalLabels
-            && (_options.showNodeName || _options.showTaxonomy || _options.showSequence)) {
+        if (!_state.circularDisplay && _state.phylogram && _state.alignPhylogram && _state.showExternalLabels
+            && (_state.showNodeName || _state.showTaxonomy || _state.showSequence)) {
             let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
             ext.selectAll('path')
                 .data(links.filter(function (d) {
-                    return (!d.target.children && !(_options.dynahide && d.target.hide));
+                    return (!d.target.children && !(_state.dynahide && d.target.hide));
                 }))
                 .enter().append('path')
                 .attr('fill', 'none')
                 .attr('stroke-width', 1)
-                .attr('stroke', _options.branchColorDefault)
+                .attr('stroke', _state.branchColorDefault)
                 .style('stroke-opacity', 0.25)
                 .attr('d', function (d) {
                     return connection(d.target);
@@ -2199,14 +2199,14 @@ if (!phyloXml) {
         // circular: a thin dashed connector from each external node out to the
         // common label ring (so labels line up like iTOL's aligned display).
         _svgGroup.selectAll('g.aptx-radial-conn').remove();
-        if (_options.circularDisplay && _options.showExternalLabels) {
+        if (_state.circularDisplay && _state.showExternalLabels) {
             let conn = _svgGroup.insert('g', 'g').attr('class', 'aptx-radial-conn');
             conn.selectAll('line')
                 .data(nodes.filter(function (d) {
-                    return !d.children && !(_options.dynahide && d.hide);
+                    return !d.children && !(_state.dynahide && d.hide);
                 }))
                 .enter().append('line')
-                .attr('stroke', _options.branchColorDefault)
+                .attr('stroke', _state.branchColorDefault)
                 .attr('stroke-width', 0.5)
                 .style('stroke-opacity', 0.3)
                 .style('stroke-dasharray', '1.5,2.5')
@@ -2234,43 +2234,43 @@ if (!phyloXml) {
     // d3.symbol() takes an AREA, while nodeSizeDefault is a radius; this is the
     // conversion the size visualization used to apply on its way out.
     function nodeSymbolArea() {
-        return 2 * _options.nodeSizeDefault * _options.nodeSizeDefault;
+        return 2 * _state.nodeSizeDefault * _state.nodeSizeDefault;
     }
 
     let makeNodeSize = function (node) {
 
-        if ((_options.showNodeEvents && node.events && node.children && (node.events.duplications || node.events.speciations)) || isNodeFound(node) || isNodeSelected(node)) {
-            return _options.nodeSizeDefault;
+        if ((_state.showNodeEvents && node.events && node.children && (node.events.duplications || node.events.speciations)) || isNodeFound(node) || isNodeSelected(node)) {
+            return _state.nodeSizeDefault;
         }
 
         // A colour visualization must actually be SELECTED, not just the Node Vis
         // switch turned on: otherwise every node would sprout a circle whenever
         // that switch is on with no visualization chosen.
-        let visualized = _options.nodeSizeDefault > 0 && node.parent
-            && _options.showVisualizations && !node.hasVis
+        let visualized = _state.nodeSizeDefault > 0 && node.parent
+            && _state.showVisualizations && !node.hasVis
             && _currentLabelColorVisualization != null;
 
         // a zero-length branch off the root would otherwise be invisible
-        let zeroLengthRootChild = _options.phylogram && node.parent && !node.parent.parent
+        let zeroLengthRootChild = _state.phylogram && node.parent && !node.parent.parent
             && (!node.branch_length || node.branch_length <= 0);
 
-        return (visualized || zeroLengthRootChild) ? _options.nodeSizeDefault : 0;
+        return (visualized || zeroLengthRootChild) ? _state.nodeSizeDefault : 0;
     };
 
     let makeBranchWidth = function (link) {
         if (link.target.width) {
             return link.target.width;
         }
-        return _options.branchWidthDefault;
+        return _state.branchWidthDefault;
     };
 
     let makeBranchColor = function (link) {
 
-        if (_options.showBranchColors && link.target.color) {
+        if (_state.showBranchColors && link.target.color) {
             let c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
         }
-        return _options.branchColorDefault;
+        return _state.branchColorDefault;
     };
 
     function makeNodeEventsDependentColor(ev) {
@@ -2289,12 +2289,12 @@ if (!phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        if (_options.showNodeEvents && phynode.events && phynode.children && (phynode.events.speciations || phynode.events.duplications)) {
+        if (_state.showNodeEvents && phynode.events && phynode.children && (phynode.events.speciations || phynode.events.duplications)) {
             let evColor = makeNodeEventsDependentColor(phynode.events);
             if (evColor !== null) {
                 return evColor;
             } else {
-                return _options.backgroundColorDefault;
+                return _state.backgroundColorDefault;
             }
         }
         return makeVisNodeFillColor(phynode);
@@ -2318,18 +2318,18 @@ if (!phyloXml) {
         if (outline) {
             return outline;
         }
-        if (_options.showNodeEvents && phynode.events && phynode.children) {
+        if (_state.showNodeEvents && phynode.events && phynode.children) {
             let evColor = makeNodeEventsDependentColor(phynode.events);
             if (evColor !== null) {
                 return evColor;
             }
-        } else if (_options.showVisualizations) {
+        } else if (_state.showVisualizations) {
             return makeVisNodeBorderColor(phynode);
-        } else if (_options.showBranchColors && phynode.color) {
+        } else if (_state.showBranchColors && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
-        return _options.branchColorDefault;
+        return _state.branchColorDefault;
     };
 
     let makeLabelColor = function (phynode) {
@@ -2337,21 +2337,21 @@ if (!phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        if (_options.showVisualizations && _currentLabelColorVisualization) {
+        if (_state.showVisualizations && _currentLabelColorVisualization) {
             let color = makeVisLabelColor(phynode);
             if (color) {
                 return color;
             }
         }
-        if (_options.showBranchColors && phynode.color) {
+        if (_state.showBranchColors && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
-        return _options.labelColorDefault;
+        return _state.labelColorDefault;
     };
 
     let makeNodeVisShape = function (node) {
-        if (_currentNodeShapeVisualization && _visualizations && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_options.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
+        if (_currentNodeShapeVisualization && _visualizations && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_state.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
             let vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
             {
                 if (vis.field) {
@@ -2418,10 +2418,10 @@ if (!phyloXml) {
     }
 
     let makeVisNodeFillColor = function (node) {
-        if (!_options.showVisualizations) {
-            return _options.backgroundColorDefault;
+        if (!_state.showVisualizations) {
+            return _state.backgroundColorDefault;
         }
-        return visualizationColorFor(node) || _options.backgroundColorDefault;
+        return visualizationColorFor(node) || _state.backgroundColorDefault;
     };
 
 
@@ -2482,28 +2482,28 @@ if (!phyloXml) {
 
     let makeVisNodeBorderColor = function (node) {
         const c = makeVisNodeFillColor(node);
-        if (c === _options.backgroundColorDefault) {
-            return _options.branchColorDefault
+        if (c === _state.backgroundColorDefault) {
+            return _state.branchColorDefault
         }
         return c;
     };
 
     let makeVisLabelColor = function (node) {
-        return visualizationColorFor(node) || _options.labelColorDefault;
+        return visualizationColorFor(node) || _state.labelColorDefault;
     };
 
     function getFoundColor(phynode) {
         if (_selectedNodes.has(phynode)) {
-            return _options.selectedColorDefault;
+            return _state.selectedColorDefault;
         }
         // _foundNodes0/1 already reflect the Inverse toggle (complement is applied
         // inside searchWithSpec), so colouring is a plain membership test.
         if (_foundNodes0 && _foundNodes1 && _foundNodes0.has(phynode) && _foundNodes1.has(phynode)) {
-            return _options.found0and1ColorDefault;
+            return _state.found0and1ColorDefault;
         } else if (_foundNodes0 && _foundNodes0.has(phynode)) {
-            return _options.found0ColorDefault;
+            return _state.found0ColorDefault;
         } else if (_foundNodes1 && _foundNodes1.has(phynode)) {
-            return _options.found1ColorDefault;
+            return _state.found1ColorDefault;
         }
         return null;
     }
@@ -2517,10 +2517,10 @@ if (!phyloXml) {
     }
 
     let makeNodeLabel = function (phynode) {
-        if (!_options.showExternalLabels && !(phynode.children)) {
+        if (!_state.showExternalLabels && !(phynode.children)) {
             return null;
         }
-        if (!_options.showInternalLabels && (phynode.children)) {
+        if (!_state.showInternalLabels && (phynode.children)) {
             return null;
         }
         if (!phynode.parent) {
@@ -2529,29 +2529,29 @@ if (!phyloXml) {
         }
 
         let l = "";
-        if (_options.showNodeName && phynode.name) {
-            if (_options.shortenNodeNames && phynode.name.length > SHORTEN_NAME_MAX_LENGTH) {
+        if (_state.showNodeName && phynode.name) {
+            if (_state.shortenNodeNames && phynode.name.length > SHORTEN_NAME_MAX_LENGTH) {
                 l = append(l, shortenName(phynode.name, 8));
             } else {
                 l = append(l, phynode.name);
             }
         }
 
-        if (_options.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
+        if (_state.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
             let t = phynode.taxonomies[0];
-            if (_options.showTaxonomyCode) {
+            if (_state.showTaxonomyCode) {
                 l = append(l, t.code);
             }
-            if (_options.showTaxonomyScientificName) {
+            if (_state.showTaxonomyScientificName) {
                 l = append(l, t.scientific_name);
             }
-            if (_options.showTaxonomyCommonName) {
+            if (_state.showTaxonomyCommonName) {
                 l = appendP(l, t.common_name);
             }
-            if (_options.showTaxonomyRank) {
+            if (_state.showTaxonomyRank) {
                 l = appendP(l, t.rank);
             }
-            if (_options.showTaxonomySynonyms) {
+            if (_state.showTaxonomySynonyms) {
                 if (t.synonyms && t.synonyms.length > 0) {
                     let syn = t.synonyms;
                     for (let i = 0; i < syn.length; ++i) {
@@ -2560,18 +2560,18 @@ if (!phyloXml) {
                 }
             }
         }
-        if (_options.showSequence && phynode.sequences && phynode.sequences.length > 0) {
+        if (_state.showSequence && phynode.sequences && phynode.sequences.length > 0) {
             let s = phynode.sequences[0];
-            if (_options.showSequenceSymbol) {
+            if (_state.showSequenceSymbol) {
                 l = append(l, s.symbol);
             }
-            if (_options.showSequenceName) {
+            if (_state.showSequenceName) {
                 l = append(l, s.name);
             }
-            if (_options.showSequenceGeneSymbol) {
+            if (_state.showSequenceGeneSymbol) {
                 l = appendP(l, s.gene_name);
             }
-            if (_options.showSequenceAccession && s.accession && s.accession.value) {
+            if (_state.showSequenceAccession && s.accession && s.accession.value) {
                 l = appendP(l, s.accession.value);
             }
         }
@@ -2598,7 +2598,7 @@ if (!phyloXml) {
         }
 
 
-        if (_options.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
+        if (_state.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
             let d = phynode.distributions;
             for (let ii = 0; ii < d.length; ++ii) {
                 l = appendB(l, d[ii].desc);
@@ -2649,7 +2649,7 @@ if (!phyloXml) {
 
     let makeBranchLengthLabel = function (phynode) {
         if (phynode.branch_length) {
-            if (_options.phylogram && _options.minBranchLengthValueToShow && phynode.branch_length < _options.minBranchLengthValueToShow) {
+            if (_state.phylogram && _state.minBranchLengthValueToShow && phynode.branch_length < _state.minBranchLengthValueToShow) {
                 return;
             }
             return +phynode.branch_length.toFixed(BRANCH_LENGTH_DIGITS_DEFAULT);
@@ -2660,10 +2660,10 @@ if (!phyloXml) {
         if (phynode.confidences && phynode.confidences.length > 0) {
             let c = phynode.confidences;
             let cl = c.length;
-            if (_options.minConfidenceValueToShow) {
+            if (_state.minConfidenceValueToShow) {
                 let show = false;
                 for (let i = 0; i < cl; ++i) {
-                    if (c[i].value >= _options.minConfidenceValueToShow) {
+                    if (c[i].value >= _state.minConfidenceValueToShow) {
                         show = true;
                         break;
                     }
@@ -2711,7 +2711,7 @@ if (!phyloXml) {
     };
 
     // ---- radial (circular) layout helpers ----
-    // When _options.circularDisplay is on, the cluster's cross-axis position (node.x) is
+    // When _state.circularDisplay is on, the cluster's cross-axis position (node.x) is
     // reinterpreted as an angle and its depth position (node.y) as a radius, so the
     // same layout renders as a circular tree. _radial is set per render in update().
     function radialAngle(x) {
@@ -2728,7 +2728,7 @@ if (!phyloXml) {
         return polarXY(radialAngle(x), radialRadius(y));
     }
     function nodeTransform(d) {
-        if (_options.circularDisplay) {
+        if (_state.circularDisplay) {
             let p = radialXY(d.x, d.y);
             return 'translate(' + p[0] + ',' + p[1] + ')';
         }
@@ -2755,7 +2755,7 @@ if (!phyloXml) {
     }
 
     let elbow = function (d) {
-        if (_options.circularDisplay) {
+        if (_state.circularDisplay) {
             let sa = radialAngle(d.source.x), ta = radialAngle(d.target.x);
             let sr = radialRadius(d.source.y), tr = radialRadius(d.target.y);
             let sp = polarXY(sa, sr), mp = polarXY(ta, sr), tp = polarXY(ta, tr);
@@ -2766,7 +2766,7 @@ if (!phyloXml) {
     };
 
     let connection = function (n) {
-        if (_options.phylogram) {
+        if (_state.phylogram) {
             let x1 = n.y + 5;
             let y = n.x;
             let x = (n.y - _yScale(n.distToRoot) + _w);
@@ -2916,16 +2916,16 @@ if (!phyloXml) {
 
     // ---- the public config surface ----------------------------------------
     //
-    // launch() takes ONE config object. Internally the keys still land in two
-    // places -- _options seeds the live display state that the GUI then writes
-    // to, _settings stays fixed for the life of the launch -- but that split is
-    // our bookkeeping, and a caller had no way to derive which bag a name
-    // belonged in short of consulting a table. These two lists do the routing,
-    // and they double as the allow-list, so a misspelled key throws instead of
-    // doing nothing.
-    const OPTION_KEYS = [
+    // launch() takes ONE config object. Internally its keys still land in two
+    // places -- STATE_KEYS seed _state, the live display state the control panel
+    // then writes to; SETTING_KEYS go to _settings, which nothing writes after
+    // initialization. That is a real distinction, but it is ours: a caller had
+    // no way to derive which half a name belonged to short of consulting a
+    // table, and putting it in the wrong one used to fail silently. These lists
+    // do the routing, and they double as the allow-list, so a misspelled key
+    // throws instead of doing nothing.
+    const STATE_KEYS = [
         'circularDisplay',
-        'pngExportScale',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -2945,6 +2945,7 @@ if (!phyloXml) {
         'filterValues',
         'ladderizeTree',
         'nhExportWriteConfidences',
+        'pngExportScale',
         'rootOffset',
         'zoomToFitUponWindowResize'
     ];
@@ -2981,17 +2982,17 @@ if (!phyloXml) {
         }
 
         let unknown = Object.keys(given).filter(function (k) {
-            return OPTION_KEYS.indexOf(k) < 0 && SETTING_KEYS.indexOf(k) < 0;
+            return STATE_KEYS.indexOf(k) < 0 && SETTING_KEYS.indexOf(k) < 0;
         });
         if (unknown.length > 0) {
             throw new Error(ERROR + 'unknown config key(s) passed to launch: "'
                 + unknown.join('", "') + '"');
         }
 
-        let split = {options: {}, settings: {}};
-        OPTION_KEYS.forEach(function (k) {
+        let split = {state: {}, settings: {}};
+        STATE_KEYS.forEach(function (k) {
             if (given[k] !== undefined) {
-                split.options[k] = given[k];
+                split.state[k] = given[k];
             }
         });
         SETTING_KEYS.forEach(function (k) {
@@ -3010,8 +3011,8 @@ if (!phyloXml) {
         return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
     }
 
-    function initializeOptions(options) {
-        _options = options;
+    function initializeState(state) {
+        _state = state;
 
         // Intelligent pre-sets: any display option the caller does NOT set
         // explicitly is derived from what the loaded tree actually contains
@@ -3028,64 +3029,64 @@ if (!phyloXml) {
         // carry one. A tree where a handful of branches have a length and the
         // rest do not is not a phylogram with gaps -- it is a cladogram.
         let branchCount = _basicTreeProperties.nodeCount - 1;
-        _options.phylogram = branchCount > 0
+        _state.phylogram = branchCount > 0
             && (_basicTreeProperties.branchesWithPositiveLength / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
-        _options.alignPhylogram = false;
-        if (_options.circularDisplay === undefined) {
-            _options.circularDisplay = false;
+        _state.alignPhylogram = false;
+        if (_state.circularDisplay === undefined) {
+            _state.circularDisplay = false;
         }
-        _options.dynahide = true;
+        _state.dynahide = true;
 
-        if (_options.searchAinitialValue && (typeof _options.searchAinitialValue === 'string' || _options.searchAinitialValue instanceof String) && _options.searchAinitialValue.trim().length > 0) {
-            _options.searchAinitialValue = _options.searchAinitialValue.trim();
-            console.log(MESSAGE + 'Setting initial search value for A to: ' + _options.searchAinitialValue);
+        if (_state.searchAinitialValue && (typeof _state.searchAinitialValue === 'string' || _state.searchAinitialValue instanceof String) && _state.searchAinitialValue.trim().length > 0) {
+            _state.searchAinitialValue = _state.searchAinitialValue.trim();
+            console.log(MESSAGE + 'Setting initial search value for A to: ' + _state.searchAinitialValue);
         } else {
-            _options.searchAinitialValue = null;
+            _state.searchAinitialValue = null;
         }
-        if (_options.searchBinitialValue && (typeof _options.searchBinitialValue === 'string' || _options.searchBinitialValue instanceof String) && _options.searchBinitialValue.trim().length > 0) {
-            _options.searchBinitialValue = _options.searchBinitialValue.trim();
-            console.log(MESSAGE + 'Setting initial search value for B to: ' + _options.searchBinitialValue);
+        if (_state.searchBinitialValue && (typeof _state.searchBinitialValue === 'string' || _state.searchBinitialValue instanceof String) && _state.searchBinitialValue.trim().length > 0) {
+            _state.searchBinitialValue = _state.searchBinitialValue.trim();
+            console.log(MESSAGE + 'Setting initial search value for B to: ' + _state.searchBinitialValue);
         } else {
-            _options.searchBinitialValue = null;
+            _state.searchBinitialValue = null;
         }
-        _options.searchIsCaseSensitive = false;
-        _options.searchNegateResult = false;
+        _state.searchIsCaseSensitive = false;
+        _state.searchNegateResult = false;
 
         // What to label with is read off the tree: show what it actually has.
-        _options.showNodeName = _basicTreeProperties.nodeNames === true;
-        _options.showTaxonomy = _basicTreeProperties.taxonomies === true;
-        _options.showSequence = _basicTreeProperties.sequences === true;
-        _options.showConfidenceValues = _basicTreeProperties.confidences === true;
-        _options.showNodeEvents = _basicTreeProperties.nodeEvents === true;
-        _options.showBranchEvents = _basicTreeProperties.branchEvents === true;
-        _options.showBranchLengthValues = false;
-        _options.showDistributions = false;
-        _options.showInternalLabels = false;
-        _options.showExternalLabels = true;
-        _options.showBranchColors = true;
+        _state.showNodeName = _basicTreeProperties.nodeNames === true;
+        _state.showTaxonomy = _basicTreeProperties.taxonomies === true;
+        _state.showSequence = _basicTreeProperties.sequences === true;
+        _state.showConfidenceValues = _basicTreeProperties.confidences === true;
+        _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
+        _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
+        _state.showBranchLengthValues = false;
+        _state.showDistributions = false;
+        _state.showInternalLabels = false;
+        _state.showExternalLabels = true;
+        _state.showBranchColors = true;
         // Long names are shortened from the start; the checkbox is always there
         // to turn that off.
-        _options.shortenNodeNames = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
+        _state.shortenNodeNames = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
 
         // Which taxonomy fields to label with is decided from the tree, not
         // configured: show the scientific name and code when present, and fall
         // back to the common name only when there is no scientific name.
-        _options.showTaxonomyCode = presentFields.has('TC');
-        _options.showTaxonomyScientificName = presentFields.has('TS');
-        _options.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
-        _options.showTaxonomyRank = false;
-        _options.showTaxonomySynonyms = false;
+        _state.showTaxonomyCode = presentFields.has('TC');
+        _state.showTaxonomyScientificName = presentFields.has('TS');
+        _state.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
+        _state.showTaxonomyRank = false;
+        _state.showTaxonomySynonyms = false;
         // Likewise ONE good sequence identifier rather than all of them, in
         // order of preference: sequence name, gene name, symbol, accession.
-        _options.showSequenceName = presentFields.has('SN');
-        _options.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
-        _options.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
-        _options.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
+        _state.showSequenceName = presentFields.has('SN');
+        _state.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
+        _state.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
+        _state.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
             && !presentFields.has('GN') && !presentFields.has('SS');
 
         // A small tree is drawn with a heavier stroke; hairlines are for trees
         // dense enough to need them.
-        _options.branchWidthDefault = _basicTreeProperties.externalNodesCount <= SMALL_TREE_MAX_EXT_NODES
+        _state.branchWidthDefault = _basicTreeProperties.externalNodesCount <= SMALL_TREE_MAX_EXT_NODES
             ? BRANCH_WIDTH_SMALL_TREE : BRANCH_WIDTH_DEFAULT;
         // Set from the saved (or OS) light/dark choice before the first render,
         // so a dark session draws dark from the start rather than flashing light.
@@ -3094,50 +3095,50 @@ if (!phyloXml) {
         // Fixed, not configurable: these are the colour-vision-safe Okabe-Ito
         // colours the search and selection highlighting depends on, and they have
         // to stay distinguishable from each other and from the tree.
-        _options.found0ColorDefault = FOUND0_COLOR_DEFAULT;
-        _options.found1ColorDefault = FOUND1_COLOR_DEFAULT;
-        _options.selectedColorDefault = SELECTED_COLOR_DEFAULT;
-        _options.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
-        _options.defaultFont = FONT_DEFAULTS;
-        _options.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
+        _state.found0ColorDefault = FOUND0_COLOR_DEFAULT;
+        _state.found1ColorDefault = FOUND1_COLOR_DEFAULT;
+        _state.selectedColorDefault = SELECTED_COLOR_DEFAULT;
+        _state.found0and1ColorDefault = FOUND0AND1_COLOR_DEFAULT;
+        _state.defaultFont = FONT_DEFAULTS;
+        _state.nodeSizeDefault = NODE_SIZE_DEFAULT_DEFAULT;
         // Every label shares one font size (as the desktop does). The three
-        // _options fields the renderer reads are always kept equal.
-        _options.fontSize = FONT_SIZE_DEFAULT;
-        _options.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
-        _options.minBranchLengthValueToShow = null;
-        _options.minConfidenceValueToShow = null;
+        // _state fields the renderer reads are always kept equal.
+        _state.fontSize = FONT_SIZE_DEFAULT;
+        _state.nodeLabelGap = NODE_LABEL_GAP_DEFAULT;
+        _state.minBranchLengthValueToShow = null;
+        _state.minConfidenceValueToShow = null;
 
-        _options.showVisualizations = false;
-        _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
-        _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
+        _state.showVisualizations = false;
+        _state.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
+        _state.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
 
         // The tree names itself; a caller-supplied name only ever disagreed with
         // the file. It is the stem of every download filename.
-        _options.treeName = _treeData.name ? _treeData.name.trim().replace(/\W+/g, '_') : null;
-        _options.nameForNhDownload = _options.treeName
-            ? (_options.treeName + NH_SUFFIX) : NAME_FOR_NH_DOWNLOAD_DEFAULT;
-        _options.nameForPhyloXmlDownload = _options.treeName
-            ? (_options.treeName + XML_SUFFIX) : NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
-        _options.nameForPngDownload = _options.treeName
-            ? (_options.treeName + PNG_SUFFIX) : NAME_FOR_PNG_DOWNLOAD_DEFAULT;
-        _options.nameForSvgDownload = _options.treeName
-            ? (_options.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
-        _options.nameForFastaDownload = _options.treeName
-            ? (_options.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
+        _state.treeName = _treeData.name ? _treeData.name.trim().replace(/\W+/g, '_') : null;
+        _state.nameForNhDownload = _state.treeName
+            ? (_state.treeName + NH_SUFFIX) : NAME_FOR_NH_DOWNLOAD_DEFAULT;
+        _state.nameForPhyloXmlDownload = _state.treeName
+            ? (_state.treeName + XML_SUFFIX) : NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
+        _state.nameForPngDownload = _state.treeName
+            ? (_state.treeName + PNG_SUFFIX) : NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+        _state.nameForSvgDownload = _state.treeName
+            ? (_state.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
+        _state.nameForFastaDownload = _state.treeName
+            ? (_state.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
 
-        if (!_options.visualizationsLegendXpos) {
+        if (!_state.visualizationsLegendXpos) {
             // The legend was hard-coded to 220 and so came up underneath the
             // control panel, exactly as the root did. It starts where the tree
             // starts instead.
-            _options.visualizationsLegendXpos = leftPanelClearance();
+            _state.visualizationsLegendXpos = leftPanelClearance();
         }
-        if (!_options.visualizationsLegendYpos) {
-            _options.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
+        if (!_state.visualizationsLegendYpos) {
+            _state.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
         }
-        _options.visualizationsLegendXposOrig = _options.visualizationsLegendXpos;
-        _options.visualizationsLegendYposOrig = _options.visualizationsLegendYpos;
+        _state.visualizationsLegendXposOrig = _state.visualizationsLegendXpos;
+        _state.visualizationsLegendYposOrig = _state.visualizationsLegendYpos;
 
-        setFontSizes(parseInt(_options.fontSize));
+        setFontSizes(parseInt(_state.fontSize));
     }
 
     function initializeSettings(settings) {
@@ -3268,10 +3269,10 @@ if (!phyloXml) {
         if (_settings.ladderizeTree) {
             ladderizeSubtree(_root, true);   // one pass: a definite arrangement
         }
-        if (_options.searchAinitialValue) {
+        if (_state.searchAinitialValue) {
             search0();
         }
-        if (_options.searchBinitialValue) {
+        if (_state.searchBinitialValue) {
             search1();
         }
 
@@ -3344,7 +3345,7 @@ if (!phyloXml) {
         _legendShapeScales = {};
 
 
-        initializeOptions(cfg.options);
+        initializeState(cfg.state);
         initializeSettings(cfg.settings);
 
 
@@ -3463,7 +3464,7 @@ if (!phyloXml) {
     };
 
     function calcMaxExtLabel() {
-        _maxLabelLength = _options.nodeLabelGap;
+        _maxLabelLength = _state.nodeLabelGap;
         forester.preOrderTraversal(_root, function (d) {
             if (!d.children) {
                 let l = makeNodeLabel(d);
@@ -4079,7 +4080,7 @@ if (!phyloXml) {
 
         initializeNodeVisualizations(nodeProperties);
 
-        if (_settings.enableVisualizations && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
+        if (_settings.enableVisualizations && (_legendColorScales[LEGEND_LABEL_COLOR] || (_state.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
                 removeLegend(LEGEND_LABEL_COLOR);
                 addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
@@ -4113,7 +4114,7 @@ if (!phyloXml) {
 
     function keepViewportCentred(applyZoom) {
         let size = svgSize();
-        if (_options.circularDisplay || !_baseSvg || !size) {
+        if (_state.circularDisplay || !_baseSvg || !size) {
             applyZoom();
             return;
         }
@@ -4206,7 +4207,7 @@ if (!phyloXml) {
             initializeSettings(_settings);
             setZoomScale(1);
             update(_root, 0);
-            if (_options.circularDisplay) {
+            if (_state.circularDisplay) {
                 fitCircular();
             } else {
                 centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
@@ -4222,7 +4223,7 @@ if (!phyloXml) {
         if (!_radial || !_radial.maxRad) {
             return;
         }
-        let labelSpace = (_maxLabelLength * _options.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
+        let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
         let outer = _radial.maxRad + labelSpace;
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
@@ -4240,7 +4241,7 @@ if (!phyloXml) {
             update(_root, 0);
             _zoomed_x_or_y = true;
             const uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
-            _displayHeight = _options.externalNodeFontSize * (uncollsed_nodes * 1.3);
+            _displayHeight = _state.externalNodeFontSize * (uncollsed_nodes * 1.3);
             const min = 40;
             if (_displayHeight < min) {
                 _displayHeight = min;
@@ -4374,13 +4375,13 @@ if (!phyloXml) {
                 });
             }
         }
-        if (_options.searchAinitialValue) {
-            setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
+        if (_state.searchAinitialValue) {
+            setValue(SEARCH_FIELD_0, _state.searchAinitialValue);
         } else {
             setValue(SEARCH_FIELD_0, '');
         }
-        if (_options.searchBinitialValue) {
-            setValue(SEARCH_FIELD_1, _options.searchBinitialValue);
+        if (_state.searchBinitialValue) {
+            setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
 
         } else {
             setValue(SEARCH_FIELD_1, '');
@@ -4501,8 +4502,8 @@ if (!phyloXml) {
             mode: mode,
             value: getValue(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1),
             value2: getValue(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1),
-            caseSensitive: _options.searchIsCaseSensitive === true,
-            inverse: _options.searchNegateResult === true
+            caseSensitive: _state.searchIsCaseSensitive === true,
+            inverse: _state.searchNegateResult === true
         };
     }
 
@@ -4600,28 +4601,28 @@ if (!phyloXml) {
 
 
     function toPhylogram() {
-        _options.phylogram = true;
-        _options.alignPhylogram = false;
+        _state.phylogram = true;
+        _state.alignPhylogram = false;
         setDisplayTypeButtons();
         update(null, 0);
     }
 
     function toAlignedPhylogram() {
-        _options.phylogram = true;
-        _options.alignPhylogram = true;
+        _state.phylogram = true;
+        _state.alignPhylogram = true;
         setDisplayTypeButtons();
         update(null, 0);
     }
 
     function toCladegram() {
-        _options.phylogram = false;
-        _options.alignPhylogram = false;
+        _state.phylogram = false;
+        _state.alignPhylogram = false;
         setDisplayTypeButtons();
         update(null, 0);
     }
 
     function layoutButtonClicked() {
-        _options.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
+        _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
         zoomToFit();
     }
 
@@ -4629,17 +4630,17 @@ if (!phyloXml) {
     // keyboard shortcut). Alignment only applies to phylograms, so this is a
     // no-op in cladogram mode.
     function toggleAlignPhylogram() {
-        if (_options.phylogram) {
-            _options.alignPhylogram = !_options.alignPhylogram;
+        if (_state.phylogram) {
+            _state.alignPhylogram = !_state.alignPhylogram;
             setDisplayTypeButtons();
             update(null, 0);
         }
     }
 
     function nodeNameCbClicked() {
-        _options.showNodeName = getCheckboxValue(NODE_NAME_CB);
-        if (_options.showNodeName) {
-            _options.showExternalLabels = true;
+        _state.showNodeName = getCheckboxValue(NODE_NAME_CB);
+        if (_state.showNodeName) {
+            _state.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         search0();
@@ -4665,9 +4666,9 @@ if (!phyloXml) {
     }
 
     function taxonomyCbClicked() {
-        _options.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
-        if (_options.showTaxonomy) {
-            _options.showExternalLabels = true;
+        _state.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
+        if (_state.showTaxonomy) {
+            _state.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         search0();
@@ -4676,9 +4677,9 @@ if (!phyloXml) {
     }
 
     function sequenceCbClicked() {
-        _options.showSequence = getCheckboxValue(SEQUENCE_CB);
-        if (_options.showSequence) {
-            _options.showExternalLabels = true;
+        _state.showSequence = getCheckboxValue(SEQUENCE_CB);
+        if (_state.showSequence) {
+            _state.showExternalLabels = true;
             setCheckboxValue(EXTERNAL_LABEL_CB, true);
         }
         search0();
@@ -4687,59 +4688,59 @@ if (!phyloXml) {
     }
 
     function confidenceValuesCbClicked() {
-        _options.showConfidenceValues = getCheckboxValue(CONFIDENCE_VALUES_CB);
+        _state.showConfidenceValues = getCheckboxValue(CONFIDENCE_VALUES_CB);
         search0();
         search1();
         update();
     }
 
     function branchLengthsCbClicked() {
-        _options.showBranchLengthValues = getCheckboxValue(BRANCH_LENGTH_VALUES_CB);
+        _state.showBranchLengthValues = getCheckboxValue(BRANCH_LENGTH_VALUES_CB);
         update();
     }
 
     function nodeEventsCbClicked() {
-        _options.showNodeEvents = getCheckboxValue(NODE_EVENTS_CB);
+        _state.showNodeEvents = getCheckboxValue(NODE_EVENTS_CB);
         search0();
         search1();
         update();
     }
 
     function branchEventsCbClicked() {
-        _options.showBranchEvents = getCheckboxValue(BRANCH_EVENTS_CB);
+        _state.showBranchEvents = getCheckboxValue(BRANCH_EVENTS_CB);
         search0();
         search1();
         update();
     }
 
     function internalLabelsCbClicked() {
-        _options.showInternalLabels = getCheckboxValue(INTERNAL_LABEL_CB);
+        _state.showInternalLabels = getCheckboxValue(INTERNAL_LABEL_CB);
         search0();
         search1();
         update();
     }
 
     function externalLabelsCbClicked() {
-        _options.showExternalLabels = getCheckboxValue(EXTERNAL_LABEL_CB);
+        _state.showExternalLabels = getCheckboxValue(EXTERNAL_LABEL_CB);
         search0();
         search1();
         update();
     }
 
     function visCbClicked() {
-        _options.showVisualizations = getCheckboxValue(VIS_CB);
+        _state.showVisualizations = getCheckboxValue(VIS_CB);
         resetVis();
         update(null, 0);
         update(null, 0);
     }
 
     function branchColorsCbClicked() {
-        _options.showBranchColors = getCheckboxValue(BRANCH_COLORS_CB);
+        _state.showBranchColors = getCheckboxValue(BRANCH_COLORS_CB);
         update(null, 0);
     }
 
     function dynaHideCbClicked() {
-        _options.dynahide = getCheckboxValue(DYNAHIDE_CB);
+        _state.dynahide = getCheckboxValue(DYNAHIDE_CB);
         resetVis();
         search0();
         search1();
@@ -4748,7 +4749,7 @@ if (!phyloXml) {
     }
 
     function shortenCbClicked() {
-        _options.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
+        _state.shortenNodeNames = getCheckboxValue(SHORTEN_NODE_NAME_CB);
         resetVis();
         search0();
         search1();
@@ -4775,12 +4776,12 @@ if (!phyloXml) {
     }
 
     function changeBranchWidth(e, slider) {
-        _options.branchWidthDefault = getSliderValue(e);
+        _state.branchWidthDefault = getSliderValue(e);
         update(null, 0, true);
     }
 
     function changeNodeSize(e, slider) {
-        _options.nodeSizeDefault = getSliderValue(e);
+        _state.nodeSizeDefault = getSliderValue(e);
         update(null, 0, true);
     }
 
@@ -4798,19 +4799,19 @@ if (!phyloXml) {
 
     function setFontSizes(size) {
         size = clampFontSize(size);
-        _options.externalNodeFontSize = size;
-        _options.internalNodeFontSize = size;
-        _options.branchDataFontSize = size;
+        _state.externalNodeFontSize = size;
+        _state.internalNodeFontSize = size;
+        _state.branchDataFontSize = size;
     }
 
     function searchOptionsCaseSenstiveCbClicked() {
-        _options.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
+        _state.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
         search0();
         search1();
     }
 
     function searchOptionsNegateResultCbClicked() {
-        _options.searchNegateResult = getCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB);
+        _state.searchNegateResult = getCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB);
         search0();
         search1();
     }
@@ -4951,23 +4952,23 @@ if (!phyloXml) {
     }
 
     // The tree's colours follow the same light/dark choice as the panel. They
-    // live in _options because that is where every renderer reads them from, so
+    // live in _state because that is where every renderer reads them from, so
     // switching is a matter of reassigning the three and redrawing.
     function applyTreeTheme() {
         let dark = panelDarkActive();
-        _options.backgroundColorDefault = dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_DEFAULT;
-        _options.branchColorDefault = dark ? BRANCH_COLOR_DARK : BRANCH_COLOR_DEFAULT;
-        _options.labelColorDefault = dark ? LABEL_COLOR_DARK : LABEL_COLOR_DEFAULT;
+        _state.backgroundColorDefault = dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_DEFAULT;
+        _state.branchColorDefault = dark ? BRANCH_COLOR_DARK : BRANCH_COLOR_DEFAULT;
+        _state.labelColorDefault = dark ? LABEL_COLOR_DARK : LABEL_COLOR_DEFAULT;
         // PNG and SVG export swap in this background for the duration of the
         // download. It has to follow the theme too: on a dark page the labels
         // are near-white, and forcing the usual white ground would have written
         // out a file with white text on white.
-        _options.backgroundColorForPrintExportDefault = dark
+        _state.backgroundColorForPrintExportDefault = dark
             ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
         if (!_baseSvg) {
             return; // called before the tree exists; launch applies it later
         }
-        changeBaseBackgoundColor(_options.backgroundColorDefault);
+        changeBaseBackgoundColor(_state.backgroundColorDefault);
         applyOverviewTheme();
         update(null, 0);
     }
@@ -5842,12 +5843,12 @@ if (!phyloXml) {
 
     // The keyboard font-size shortcuts, in terms of the single base size.
     function stepFontSizes(step) {
-        let base = clampFontSize(_options.externalNodeFontSize + step);
-        if (base === _options.externalNodeFontSize) {
+        let base = clampFontSize(_state.externalNodeFontSize + step);
+        if (base === _state.externalNodeFontSize) {
             return; // already at the end of the range
         }
         setFontSizes(base);
-        setSliderValue(FONT_SIZE_SLIDER, _options.externalNodeFontSize);
+        setSliderValue(FONT_SIZE_SLIDER, _state.externalNodeFontSize);
         update(null, 0, true);
     }
 
@@ -6073,7 +6074,7 @@ if (!phyloXml) {
                 // One colour now paints the label AND the node, so choosing one
                 // switches node visualizations on -- otherwise half of what the
                 // control promises would not show.
-                _options.showVisualizations = true;
+                _state.showVisualizations = true;
                 setCheckboxValue(VIS_CB, true);
                 if (_visualizations.labelColor[_currentLabelColorVisualization] != null) {
                     addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
@@ -6100,7 +6101,7 @@ if (!phyloXml) {
             if (v && v !== DEFAULT) {
                 _currentNodeShapeVisualization = v;
                 addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-                _options.showVisualizations = true;
+                _state.showVisualizations = true;
                 setCheckboxValue(VIS_CB, true);
             } else {
                 _currentNodeShapeVisualization = null;
@@ -6111,11 +6112,11 @@ if (!phyloXml) {
             update(null, 0);
         });
 
-        initSlider(NODE_SIZE_SLIDER, NODE_SIZE_MIN, NODE_SIZE_MAX, SLIDER_STEP, _options.nodeSizeDefault, changeNodeSize);
+        initSlider(NODE_SIZE_SLIDER, NODE_SIZE_MIN, NODE_SIZE_MAX, SLIDER_STEP, _state.nodeSizeDefault, changeNodeSize);
 
-        initSlider(BRANCH_WIDTH_SLIDER, BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX, SLIDER_STEP, _options.branchWidthDefault, changeBranchWidth);
+        initSlider(BRANCH_WIDTH_SLIDER, BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX, SLIDER_STEP, _state.branchWidthDefault, changeBranchWidth);
 
-        initSlider(FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _options.externalNodeFontSize, changeFontSize);
+        initSlider(FONT_SIZE_SLIDER, FONT_SIZE_MIN, FONT_SIZE_MAX, SLIDER_STEP, _state.externalNodeFontSize, changeFontSize);
 
         setStylesAll('#' + SEARCH_FIELD_0 + ', #' + SEARCH_FIELD_1, {
             'font': 'inherit',
@@ -6524,7 +6525,7 @@ if (!phyloXml) {
             // than one that is simply there.
             // "Auto-hide Labels" matches the desktop, which renamed the historical
             // "Dyna Hide" because that named the mechanism rather than what the user
-            // sees. The _options.dynahide field keeps its name internally.
+            // sees. The _state.dynahide field keeps its name internally.
             opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
 
@@ -6751,19 +6752,19 @@ if (!phyloXml) {
 
         setDisplayTypeButtons();
 
-        setCheckboxValue(NODE_NAME_CB, _options.showNodeName);
-        setCheckboxValue(TAXONOMY_CB, _options.showTaxonomy);
-        setCheckboxValue(SEQUENCE_CB, _options.showSequence)
-        setCheckboxValue(CONFIDENCE_VALUES_CB, _options.showConfidenceValues);
-        setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _options.showBranchLengthValues);
-        setCheckboxValue(NODE_EVENTS_CB, _options.showNodeEvents);
-        setCheckboxValue(BRANCH_EVENTS_CB, _options.showBranchEvents);
-        setCheckboxValue(INTERNAL_LABEL_CB, _options.showInternalLabels);
-        setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
-        setCheckboxValue(BRANCH_COLORS_CB, _options.showBranchColors);
-        setCheckboxValue(VIS_CB, _options.showVisualizations);
-        setCheckboxValue(DYNAHIDE_CB, _options.dynahide);
-        setCheckboxValue(SHORTEN_NODE_NAME_CB, _options.shortenNodeNames);
+        setCheckboxValue(NODE_NAME_CB, _state.showNodeName);
+        setCheckboxValue(TAXONOMY_CB, _state.showTaxonomy);
+        setCheckboxValue(SEQUENCE_CB, _state.showSequence)
+        setCheckboxValue(CONFIDENCE_VALUES_CB, _state.showConfidenceValues);
+        setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _state.showBranchLengthValues);
+        setCheckboxValue(NODE_EVENTS_CB, _state.showNodeEvents);
+        setCheckboxValue(BRANCH_EVENTS_CB, _state.showBranchEvents);
+        setCheckboxValue(INTERNAL_LABEL_CB, _state.showInternalLabels);
+        setCheckboxValue(EXTERNAL_LABEL_CB, _state.showExternalLabels);
+        setCheckboxValue(BRANCH_COLORS_CB, _state.showBranchColors);
+        setCheckboxValue(VIS_CB, _state.showVisualizations);
+        setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
+        setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         initializeVisualizationMenu();
         initializeSearchOptions();
         makeBackground();
@@ -6775,7 +6776,7 @@ if (!phyloXml) {
             .attr('height', '100%')
             .style('opacity', 1)
             .attr('class', BASE_BACKGROUND)
-            .attr('fill', _options.backgroundColorDefault);
+            .attr('fill', _state.backgroundColorDefault);
     }
 
 
@@ -6830,15 +6831,15 @@ if (!phyloXml) {
     }
 
     function initializeSearchOptions() {
-        _options.searchNegateResult = false;
-        setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _options.searchIsCaseSensitive);
-        setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _options.searchNegateResult);
+        _state.searchNegateResult = false;
+        setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _state.searchIsCaseSensitive);
+        setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _state.searchNegateResult);
 
-        if (_options.searchAinitialValue) {
-            setValue(SEARCH_FIELD_0, _options.searchAinitialValue);
+        if (_state.searchAinitialValue) {
+            setValue(SEARCH_FIELD_0, _state.searchAinitialValue);
         }
-        if (_options.searchBinitialValue) {
-            setValue(SEARCH_FIELD_1, _options.searchBinitialValue);
+        if (_state.searchBinitialValue) {
+            setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
         }
     }
 
@@ -6883,25 +6884,25 @@ if (!phyloXml) {
     }
 
     function cycleDisplay() {
-        if (_options.phylogram && !_options.alignPhylogram) {
-            _options.alignPhylogram = true;
+        if (_state.phylogram && !_state.alignPhylogram) {
+            _state.alignPhylogram = true;
 
-        } else if (_options.phylogram && _options.alignPhylogram) {
-            _options.phylogram = false;
-            _options.alignPhylogram = false;
-        } else if (!_options.phylogram && !_options.alignPhylogram) {
-            _options.phylogram = true;
+        } else if (_state.phylogram && _state.alignPhylogram) {
+            _state.phylogram = false;
+            _state.alignPhylogram = false;
+        } else if (!_state.phylogram && !_state.alignPhylogram) {
+            _state.phylogram = true;
         }
         setDisplayTypeButtons();
         update(null, 0);
     }
 
     function setDisplayTypeButtons() {
-        setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
-        setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
-        setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
-        setCheckboxValue(LAYOUT_CIRC_BUTTON, _options.circularDisplay);
-        setCheckboxValue(LAYOUT_RECT_BUTTON, !_options.circularDisplay);
+        setRadioButtonValue(PHYLOGRAM_BUTTON, _state.phylogram && !_state.alignPhylogram);
+        setRadioButtonValue(CLADOGRAM_BUTTON, !_state.phylogram && !_state.alignPhylogram);
+        setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _state.alignPhylogram && _state.phylogram);
+        setCheckboxValue(LAYOUT_CIRC_BUTTON, _state.circularDisplay);
+        setCheckboxValue(LAYOUT_RECT_BUTTON, !_state.circularDisplay);
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
@@ -6932,7 +6933,7 @@ if (!phyloXml) {
                     b.style.background = '';
                     b.style.color = '';
                 } else {
-                    b.style.background = _options.found0ColorDefault;
+                    b.style.background = _state.found0ColorDefault;
                     b.style.color = WHITE;
                 }
                 let nd0 = _foundNodes0.size === 1 ? 'node' : 'nodes';
@@ -6956,7 +6957,7 @@ if (!phyloXml) {
                     b.style.background = '';
                     b.style.color = '';
                 } else {
-                    b.style.background = _options.found1ColorDefault;
+                    b.style.background = _state.found1ColorDefault;
                     b.style.color = WHITE;
                 }
                 let nd1 = _foundNodes1.size === 1 ? 'node' : 'nodes';
@@ -7020,21 +7021,21 @@ if (!phyloXml) {
 
     function downloadTree(format) {
         if (format === PNG_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_options.backgroundColorForPrintExportDefault);
+            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
             downloadAsPng();
-            changeBaseBackgoundColor(_options.backgroundColorDefault);
+            changeBaseBackgoundColor(_state.backgroundColorDefault);
         } else if (format === SVG_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_options.backgroundColorForPrintExportDefault);
+            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
             downloadAsSVG();
-            changeBaseBackgoundColor(_options.backgroundColorDefault);
+            changeBaseBackgoundColor(_state.backgroundColorDefault);
         } else if (format === NH_EXPORT_FORMAT) {
             downloadAsNH();
         } else if (format === PHYLOXML_EXPORT_FORMAT) {
             downloadAsPhyloXml();
         } else if (format === PDF_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_options.backgroundColorForPrintExportDefault);
+            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
             downloadAsPdf();
-            changeBaseBackgoundColor(_options.backgroundColorDefault);
+            changeBaseBackgoundColor(_state.backgroundColorDefault);
         } else if (format === FASTA_EXPORT_FORMAT) {
             downloadAsFastaAll();
         }
@@ -7069,7 +7070,7 @@ if (!phyloXml) {
 
     function downloadAsPhyloXml() {
         let x = phyloXml.toPhyloXML(_root, 9);
-        saveAs(new Blob([x], {type: "application/xml"}), _options.nameForPhyloXmlDownload);
+        saveAs(new Blob([x], {type: "application/xml"}), _state.nameForPhyloXmlDownload);
     }
 
     function downloadAsNH() {
@@ -7077,17 +7078,17 @@ if (!phyloXml) {
         // not a preference: writing them out produces a file that will not parse
         // back in.
         let nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
-        saveAs(new Blob([nh], {type: "application/txt"}), _options.nameForNhDownload);
+        saveAs(new Blob([nh], {type: "application/txt"}), _state.nameForNhDownload);
     }
 
     function downloadAsSVG() {
         let svg = getTreeAsSvg();
-        saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _options.nameForSvgDownload);
+        saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _state.nameForSvgDownload);
     }
 
     function downloadAsFastaAll() {
         let fasta_text = forester.getMolecularSequencesAsFasta(_root, '\n');
-        saveAs(new Blob([fasta_text], {type: "application/txt"}), _options.nameForFastaDownload);
+        saveAs(new Blob([fasta_text], {type: "application/txt"}), _state.nameForFastaDownload);
     }
 
     function downloadAsPdf() {
@@ -7097,9 +7098,9 @@ if (!phyloXml) {
         let svg = getTreeAsSvg();
         // Render onto an up-scaled canvas so the exported PNG is high-resolution
         // rather than 1:1 with the on-screen SVG. Scale is configurable via
-        // _options.pngExportScale (default 4x).
+        // _settings.pngExportScale (default 4x).
         let svgEl = document.getElementById(_id.replace('#', '')).querySelector('svg');
-        let scale = _options.pngExportScale > 0 ? _options.pngExportScale : 4;
+        let scale = _settings.pngExportScale > 0 ? _settings.pngExportScale : 4;
         let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
         let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
         let canvas = document.createElement('canvas');
@@ -7107,7 +7108,7 @@ if (!phyloXml) {
         canvas.height = Math.round(h * scale);
         canvg(canvas, svg, {ignoreDimensions: true, scaleWidth: canvas.width, scaleHeight: canvas.height});
         canvas.toBlob(function (blob) {
-            saveAs(blob, _options.nameForPngDownload);
+            saveAs(blob, _state.nameForPngDownload);
         });
     }
 
