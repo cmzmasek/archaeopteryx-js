@@ -203,8 +203,7 @@ archaeopteryx.launchArchaeopteryx(id, location, data, options, settings,
 var tree = archaeopteryx.parseTree(location, data,
                                    nhConfidenceValuesInBrackets,
                                    nhConfidenceValuesAsInternalNames);
-archaeopteryx.launch(id, tree, options, settings,
-                     nodeVisualizations, nodeLabels, specialVisualizations);
+archaeopteryx.launch(id, tree, options, settings, nodeVisualizations, nodeLabels);
 ```
 
 `location` is only used to pick a parser: a name ending in `xml` is read as
@@ -391,9 +390,6 @@ constants:
 | `propertiesToIgnoreForNodeVisualization` | `null` | Properties to skip when doing so. |
 | `valuesToIgnoreForNodeVisualization` | `null` | Values to skip when doing so. |
 | `enableMsaResidueVisualizations` | `false` | Colour by aligned residue. Only takes effect if the tree has aligned sequences. |
-| `enableSpecialVisualizations2` | `false` | Enable special visualization 2 — used together with the `specialVisualizations` argument to `launch()`. |
-| `enableSpecialVisualizations3` | `false` | Enable special visualization 3, likewise. |
-| `enableSpecialVisualizations4` | `false` | Enable special visualization 4, likewise. |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
 | `allowManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
@@ -425,7 +421,11 @@ constants:
 | `controls1Top` | The visualization menus moved into the main control panel. |
 | `groupSpecies` | This setting was never read; it did nothing. |
 | `groupYears` | This setting was never read; it did nothing. |
+| `enableSpecialVisualizations2` | The special visualizations were removed. |
+| `enableSpecialVisualizations3` | The special visualizations were removed. |
+| `enableSpecialVisualizations4` | The special visualizations were removed. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
+
 ## Node visualizations
 
 `launch()`'s `nodeVisualizations` argument, and the
