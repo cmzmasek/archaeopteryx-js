@@ -209,7 +209,7 @@ if (!phyloXml) {
     const PANEL_STYLE_ID = 'aptx-panel-styles';
     // How wide a legend row is treated as, for grabbing it with the mouse.
     const LEGEND_HIT_WIDTH = 140;
-    const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and the right-panel (c1) positioning so the two can't drift
+    const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and leftPanelClearance() so the two can't drift
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
     const SPECIATION_COLOR = '#009E73';
@@ -2925,10 +2925,10 @@ if (!phyloXml) {
         }
     }
 
-    // Where content has to start to clear the left control panel. Both the root
-    // and the visualizations legend need this, and neither may hard-code it:
-    // the panel's own geometry is the only honest source, and a caller who
-    // asks for no left panel should not pay for one.
+    // Where content has to start to clear the control panel. Both the root and
+    // the visualizations legend need this, and neither may hard-code it: the
+    // panel's own geometry is the only honest source, or the two drift apart --
+    // which is exactly how the root ended up drawn behind the panel once.
     function leftPanelClearance() {
         return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
     }

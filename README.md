@@ -370,7 +370,7 @@ constants:
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
-| `rootOffset` | clears the control panel, or `30` without one | Distance from the left edge to the root. |
+| `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
 | `enableDownloads` | `true` | Offer the download buttons. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `enableNodeVisualizations` | `false` | Offer node visualizations. |
