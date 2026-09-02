@@ -143,6 +143,7 @@ runTest("inverse is field-scoped    : ", testInverseFieldScoped);
 runTest("invalid input fails closed : ", testInvalidInputFailsClosed);
 runTest("distinct values            : ", testDistinctValues);
 runTest("phylogeny wrapper skipped  : ", testPhylogenyWrapperNotSearchable);
+runTest("super-root not a tree node : ", testSuperRootNotCountedAsNode);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -433,5 +434,27 @@ function testPhylogenyWrapperNotSearchable() {
 
     // and the wrapper does not sneak in through an inverse search either
     if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'A', {inverse: true}))) !== 'B,C,Origin') return false;
+    return true;
+}
+
+// A parsed tree hangs off a synthetic super-root, which is not a node of the
+// phylogeny: counting it added a node and a branch that do not exist, and from
+// phyloXML it contributed the TREE's name as the longest node name.
+function testSuperRootNotCountedAsNode() {
+    // Newick: the super-root is unnamed, so only the counts are affected
+    var nh = forester.parseNewHampshire('((a:1,b:1)AB:1,c:1)R;');
+    var p = forester.collectBasicTreeProperties(nh);
+    if (p.nodeCount !== 5) return false;                       // R, AB, a, b, c
+    if (p.branchesWithPositiveLength !== 4) return false;       // every branch but R's
+    if (p.nodeCount - 1 !== p.branchesWithPositiveLength) return false; // so the fraction is 1
+
+    // phyloXML-shaped: the super-root also carries the tree's own name
+    var inner = forester.parseNewHampshire('((a:1,b:1)AB:1,c:1)R;');
+    var real = forester.getTreeRoot(inner);
+    var wrapper = {name: 'A very long phylogeny name indeed', description: 'x', children: [real]};
+    real.parent = wrapper;
+    var q = forester.collectBasicTreeProperties(wrapper);
+    if (q.nodeCount !== 5) return false;
+    if (q.longestNodeName !== 2) return false;   // "AB", not the 33-character tree name
     return true;
 }

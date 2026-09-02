@@ -894,7 +894,11 @@
         let bl_counter = 0;
         let bl_sum = 0;
         let molSeqs = [];
-        forester.preOrderTraversalAll(tree, function (n) {
+        // Counting the super-root would add a node and a branch that do not
+        // exist -- skewing the branch-length fraction the viewer uses to choose
+        // between a phylogram and a cladogram -- and from phyloXML would take
+        // the tree's own name for the longest node name.
+        forester.preOrderTraversalAll(realRootOf(tree), function (n) {
             properties.nodeCount += 1;
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
@@ -1984,13 +1988,17 @@
 
     // Run one search spec { field, mode, value, value2, caseSensitive, inverse }
     // over the tree and return the Set of matching nodes.
-    // The phyloXML parser returns a wrapper object holding the phylogeny's own
-    // name and description, with the real root as its single child. It is not a
-    // node of the tree, so it must not be searchable: its "name" is the name of
-    // the TREE, and any search matching that lit up a phantom root. Same test
-    // getTreeRoot uses, but without that function's walk UP the tree, which
-    // would escape a subtree the caller deliberately scoped the search to.
-    function nodesRootOf(root) {
+    // A parsed tree is anchored on a SUPER-ROOT: a synthetic node whose single
+    // child is the tree's actual root. It is not a node of the phylogeny -- it
+    // exists to give the root a parent slot, which is what lets reRoot() move
+    // the root around and what toNewHampshire() writes from. Both formats have
+    // one; from phyloXML it also carries the <phylogeny> element's own name and
+    // description, so it looks like a node with the TREE's name on it.
+    //
+    // Anything that reasons about the phylogeny's own nodes has to step over it.
+    // This is the test getTreeRoot uses, minus that function's walk UP the tree,
+    // which would escape a subtree a caller had deliberately scoped to.
+    function realRootOf(root) {
         if (!root.parent && root.children && root.children.length === 1) {
             return root.children[0];
         }
@@ -2002,7 +2010,7 @@
         if (!root || !spec || !spec.field) return result;
         // Metrics stay relative to what the caller passed, so depth and distance
         // values are unchanged; only the set of nodes considered is narrowed.
-        let nodes = nodesRootOf(root);
+        let nodes = realRootOf(root);
         let field = spec.field;
         if (field.key === 'CS' || field.key === 'DE' || field.key === 'DR' || field.key === 'NC') computeSearchMetrics(root);
 
