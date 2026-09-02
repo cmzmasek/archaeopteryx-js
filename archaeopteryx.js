@@ -266,7 +266,7 @@ if (!phyloXml) {
     const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
     const NODE_SIZE_SLIDER = 'ns_sl';
     const NODE_VIS_CB = 'nodevis_cb';
-    const ORDER_BUTTON = 'ord_b';
+    const LADDERIZE_BUTTON = 'ladderize_b';
     const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
     const PHYLOGRAM_BUTTON = 'phy_b';
     const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
@@ -2906,6 +2906,7 @@ if (!phyloXml) {
         nhExportReplaceIllegalChars: 'always on; Newick cannot carry those characters',
         propertiesToIgnoreForNodeVisualization: 'every property the tree carries is offered; choose what to show in the panel',
         valuesToIgnoreForNodeVisualization: 'every value is shown; choose what to show in the panel',
+        orderTree: 'renamed to "ladderizeTree", to match the wording used everywhere else',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3126,8 +3127,8 @@ if (!phyloXml) {
         if (_settings.allowManualNodeSelection === undefined) {
             _settings.allowManualNodeSelection = false;
         }
-        if (_settings.orderTree === undefined) {
-            _settings.orderTree = false;
+        if (_settings.ladderizeTree === undefined) {
+            _settings.ladderizeTree = true;
         }
 
 
@@ -3194,8 +3195,8 @@ if (!phyloXml) {
         _svgGroup = _baseSvg.append('g');
         makeOverview(); // appended after the tree group, so it paints on top of it
 
-        if (_settings.orderTree) {
-            orderSubtree(_root, true);
+        if (_settings.ladderizeTree) {
+            ladderizeSubtree(_root, true);   // one pass: a definite arrangement
         }
         if (_options.searchAinitialValue) {
             search0();
@@ -3928,15 +3929,15 @@ if (!phyloXml) {
                 // redrawn with no transition: animating a swap sends the two
                 // clades sliding across each other, which is just noise
                 items.push({label: 'Swap Descendants', action: function () { swapChildren(d); update(null, 0); }});
-                items.push({label: 'Order Subtree', action: function () {
+                items.push({label: 'Ladderize Subtree', action: function () {
                     if (!_treeFn.visData) {
                         _treeFn.visData = {};
                     }
-                    if (_treeFn.visData.order === undefined) {
-                        _treeFn.visData.order = true;
+                    if (_treeFn.visData.ladderize === undefined) {
+                        _treeFn.visData.ladderize = true;
                     }
-                    orderSubtree(d, _treeFn.visData.order);
-                    _treeFn.visData.order = !_treeFn.visData.order;
+                    ladderizeSubtree(d, _treeFn.visData.ladderize, true);
+                    _treeFn.visData.ladderize = !_treeFn.visData.ladderize;
                     update(null, 0);
                 }});
             }
@@ -4227,20 +4228,20 @@ if (!phyloXml) {
     }
 
 
-    function orderButtonPressed() {
+    function ladderizeButtonPressed() {
         if (_root) {
             if (!_treeFn.visData) {
                 _treeFn.visData = {};
             }
-            if (_treeFn.visData.order === undefined) {
-                _treeFn.visData.order = true;
+            if (_treeFn.visData.ladderize === undefined) {
+                _treeFn.visData.ladderize = true;
             }
-            orderSubtree(_root, _treeFn.visData.order);
-            _treeFn.visData.order = !_treeFn.visData.order;
-            // The glyph shows the direction the NEXT press will order in.
-            let orderBtn = byId(ORDER_BUTTON);
+            ladderizeSubtree(_root, _treeFn.visData.ladderize, true);
+            _treeFn.visData.ladderize = !_treeFn.visData.ladderize;
+            // The glyph shows the direction the NEXT press will ladderize in.
+            let orderBtn = byId(LADDERIZE_BUTTON);
             if (orderBtn) {
-                orderBtn.innerHTML = makeGlyph(_treeFn.visData.order ? 'ladderize_asc' : 'ladderize_desc');
+                orderBtn.innerHTML = makeGlyph(_treeFn.visData.ladderize ? 'ladderize_asc' : 'ladderize_desc');
             }
             update(null, 0);
         }
@@ -5086,7 +5087,7 @@ if (!phyloXml) {
         return toBar ? (s + glyphLine(14, 18, 14, 82)) : s;
     }
 
-    // "Order all" (ladderize): a root spine with branches whose lengths cascade,
+    // "Ladderize all": a root spine with branches whose lengths cascade,
     // depicting the ladderized silhouette the next press will produce.
     function glyphLadderize(ascending) {
         let s = glyphLine(14, 6, 14, 94);
@@ -6075,7 +6076,7 @@ if (!phyloXml) {
 
         on(RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'mousedown', returnToSupertreeButtonByOnePressed);
 
-        on(ORDER_BUTTON, 'mousedown', orderButtonPressed);
+        on(LADDERIZE_BUTTON, 'mousedown', ladderizeButtonPressed);
 
         on(MIDPOINT_ROOT_BUTTON, 'mousedown', midpointRootButtonPressed);
 
@@ -6135,7 +6136,7 @@ if (!phyloXml) {
         document.addEventListener('keyup', function (e) {
             if (e.altKey) {
                 if (e.keyCode === VK_O) {
-                    orderButtonPressed();
+                    ladderizeButtonPressed();
                 } else if (e.keyCode === VK_R) {
                     returnToSupertreeButtonByOnePressed();
                 } else if (e.keyCode === VK_M) {
@@ -6474,7 +6475,7 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
-            h = h.concat(makeGlyphButton('ladderize_asc', ORDER_BUTTON, 'order all (Alt+O)'));
+            h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all (Alt+O)'));
             h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'return to supertree by one branch (if in subtree) (Alt+R)'));
             h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return to supertree (if in subtree)'));
             h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
@@ -6761,11 +6762,20 @@ if (!phyloXml) {
     }
 
 
-    function orderSubtree(n, order) {
+    // Ladderize: at every two-child node put the larger clade first when
+    // largestFirst, the smaller when not.
+    //
+    // alternateIfUnchanged is what makes repeated presses of the button
+    // alternate: a pass that changes nothing means the subtree was already
+    // ladderized that way, so it flips and runs again. That is right for a
+    // button and wrong for anything that wants a definite result -- with it on,
+    // ladderizing a tree that is already ladderized REVERSES it, so the outcome
+    // depends on the order the tree happened to arrive in.
+    function ladderizeSubtree(n, largestFirst, alternateIfUnchanged) {
         let changed = false;
         ord(n);
-        if (!changed) {
-            order = !order;
+        if (alternateIfUnchanged && !changed) {
+            largestFirst = !largestFirst;
             ord(n);
         }
 
@@ -6778,7 +6788,7 @@ if (!phyloXml) {
             if (l === 2) {
                 let e0 = forester.calcSumOfAllExternalDescendants(c[0]);
                 let e1 = forester.calcSumOfAllExternalDescendants(c[1]);
-                if (e0 !== e1 && e0 < e1 === order) {
+                if (e0 !== e1 && e0 < e1 === largestFirst) {
                     changed = true;
                     let c0 = c[0];
                     c[0] = c[1];

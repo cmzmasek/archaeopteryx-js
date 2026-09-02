@@ -384,7 +384,7 @@ constants:
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
 | `allowManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
-| `orderTree` | `false` | Order (ladderize) the tree on load. |
+| `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
 
 ### Removed — passing these throws
 
@@ -424,6 +424,7 @@ constants:
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
+| `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 
 ## Node visualizations
