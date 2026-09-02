@@ -1231,6 +1231,8 @@
                     } else if (element === ')') {
                         x = ancs.pop();
                     } else if (element === ':') {
+                        // the separator before a branch length: the length itself
+                        // is read by the branch below, so there is nothing to do here
                     } else {
                         let e = ss[i - 1];
                         if (e) {
@@ -1624,7 +1626,7 @@
                     nh += replaceUnsafeChars(node.name);
                 } else {
                     let myName = node.name.replace(/\s+/g, ' ');
-                    if (/[\s,():;'"\[\]]/.test(myName)) {
+                    if (/[\s,():;'"[\]]/.test(myName)) {
                         if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1)) {
                             nh += '"' + myName.replace(/"/g, "'") + '"';
                         } else if (myName.indexOf('"') > -1) {
@@ -1657,7 +1659,7 @@
         }
 
         function replaceUnsafeChars(str) {
-            return str.replace(/[\s,():;'"\[\]]+/g, '_');
+            return str.replace(/[\s,():;'"[\]]+/g, '_');
         }
     };
 
@@ -1785,7 +1787,7 @@
                 : term;
             let re;
             try { re = new RegExp(src, caseSensitive ? 'u' : 'iu'); }
-            catch (e) { return null; }
+            catch { return null; }
             return s => (s !== null && s !== undefined && re.test(String(s)));
         }
         let t = caseSensitive ? term : term.toLowerCase();

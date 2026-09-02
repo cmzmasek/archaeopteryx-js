@@ -235,7 +235,6 @@ if (!phyloXml) {
     const LAYOUT_CIRC_BUTTON = 'layout_circ_b';
     const CLADOGRAM_BUTTON = 'cla_b';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
-    const DISPLAY_DATA_CONTROLGROUP = 'display_data_g';
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
@@ -548,7 +547,7 @@ if (!phyloXml) {
             _overviewCorner = (stored >= 0 && stored <= 3) ? stored : 0;
             let free = localStorage.getItem('aptx-overview-pos');
             _overviewPos = free ? JSON.parse(free) : null;
-        } catch (e) {
+        } catch {
             _overviewCorner = 0; // storage unavailable (private mode, blocked cookies)
             _overviewPos = null;
         }
@@ -561,7 +560,7 @@ if (!phyloXml) {
             } else {
                 localStorage.removeItem('aptx-overview-pos');
             }
-        } catch (e) {
+        } catch {
             // storage unavailable; the position still applies for this session
         }
     }
@@ -602,7 +601,7 @@ if (!phyloXml) {
         _overviewCorner = (_overviewCorner + 1) % 4;
         try {
             localStorage.setItem('aptx-overview-corner', String(_overviewCorner));
-        } catch (e) {
+        } catch {
             // storage unavailable; the move still applies for this session
         }
         positionOverview();
@@ -725,7 +724,7 @@ if (!phyloXml) {
             grabDy = p[1] - at.y;
             try {
                 this.setPointerCapture(event.pointerId);
-            } catch (e) {
+            } catch {
                 // no pointer capture available; the move handler still works
             }
         });
@@ -750,7 +749,7 @@ if (!phyloXml) {
             moving = false;
             try {
                 this.releasePointerCapture(event.pointerId);
-            } catch (e) {
+            } catch {
                 // capture was never taken
             }
             saveOverviewPos();
@@ -786,7 +785,7 @@ if (!phyloXml) {
             dragging = true;
             try {
                 this.setPointerCapture(event.pointerId);
-            } catch (e) {
+            } catch {
                 // no pointer capture available; the move handler still works
             }
             goTo(event);
@@ -805,7 +804,7 @@ if (!phyloXml) {
             dragging = false;
             try {
                 this.releasePointerCapture(event.pointerId);
-            } catch (e) {
+            } catch {
                 // nothing captured
             }
             event.stopPropagation();
@@ -841,7 +840,7 @@ if (!phyloXml) {
         let box = null;
         try {
             box = _svgGroup.node().getBBox(); // in un-zoomed tree coordinates
-        } catch (e) {
+        } catch {
             box = null;
         }
         if (!size || !box || box.width <= 0 || box.height <= 0) {
@@ -2581,7 +2580,7 @@ if (!phyloXml) {
         if (_nodeLabels && phynode.properties) {
             const props_length = phynode.properties.length;
             if (props_length > 0) {
-                for (const [key, value] of Object.entries(_nodeLabels)) {
+                for (const value of Object.values(_nodeLabels)) {
                     if (value.selected === true && value.propertyRef) {
                         let prop_text = '';
                         for (let pm = 0; pm < props_length; ++pm) {
@@ -4308,13 +4307,11 @@ if (!phyloXml) {
         removeLegendForShapes(LEGEND_NODE_SHAPE);
 
 
-        let width = 0;
         if (_settings.enableDynamicSizing) {
             let size = displaySizeFromContainer();
             if (size) {
                 _displayWidth = size.w;
                 _displayHeight = size.h;
-                width = size.w;
                 // the canvas has to follow, or the layout is computed for one
                 // size and drawn on another
                 _baseSvg.attr('width', size.w);
@@ -4609,7 +4606,7 @@ if (!phyloXml) {
     function customCbClicked(cb_id) {
         if (_nodeLabels) {
             const cb_value = getCheckboxValue(cb_id);
-            for (const [key, value] of Object.entries(_nodeLabels)) {
+            for (const value of Object.values(_nodeLabels)) {
                 if (value.label && value.showButton === true && value.propertyRef && value.description) {
                     if (value.cb_id === cb_id) {
                         value.selected = cb_value;
@@ -4732,12 +4729,12 @@ if (!phyloXml) {
         });
     }
 
-    function changeBranchWidth(e, slider) {
+    function changeBranchWidth(e) {
         _state.branchWidthDefault = getSliderValue(e);
         update(null, 0, true);
     }
 
-    function changeNodeSize(e, slider) {
+    function changeNodeSize(e) {
         _state.nodeSizeDefault = getSliderValue(e);
         update(null, 0, true);
     }
@@ -4745,7 +4742,7 @@ if (!phyloXml) {
 
     // One slider, one font size for every label -- external, internal and branch
     // data alike, as the desktop does it.
-    function changeFontSize(e, slider) {
+    function changeFontSize(e) {
         setFontSizes(getSliderValue(e));
         update(null, 0, true);
     }
@@ -4945,7 +4942,7 @@ if (!phyloXml) {
         _panelTheme = panelDarkActive() ? 'light' : 'dark';
         try {
             localStorage.setItem('aptx-panel-theme', _panelTheme);
-        } catch (e) {
+        } catch {
             // localStorage may be unavailable (private mode); the choice just
             // won't persist across reloads.
         }
@@ -4958,7 +4955,7 @@ if (!phyloXml) {
             if (saved === 'light' || saved === 'dark') {
                 _panelTheme = saved;
             }
-        } catch (e) {
+        } catch {
             // ignore
         }
     }
@@ -6693,10 +6690,6 @@ if (!phyloXml) {
                 return label + input;
             }
             return input;
-        }
-
-        function makeTextInput(id, tooltip) {
-            return '<input title="' + tooltip + '" type="text" name="' + id + '" id="' + id + '">';
         }
 
     } // function createGui()
