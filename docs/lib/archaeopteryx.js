@@ -152,7 +152,6 @@ if (!phyloXml) {
     // used when there is no left control panel to clear at all.
     const ROOT_CLEARANCE = 20;
     const ROOTOFFSET_NO_PANEL_DEFAULT = 30;
-    const TEXT_INPUT_FIELD_DEFAULT_HEIGHT = '10px';
 
     // ------------------------------
     // Various constants and settings
@@ -3031,6 +3030,7 @@ if (!phyloXml) {
         controlsFont: 'the legend uses the same sans-serif as the rest of the interface',
         controlsFontSize: 'the legend has one size',
         controlsFontColor: 'this never had any effect; the legend follows the tree\'s label colour',
+        textFieldHeight: 'the text fields size themselves to their content',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3235,9 +3235,6 @@ if (!phyloXml) {
         }
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = false;
-        }
-        if (_settings.textFieldHeight === undefined) {
-            _settings.textFieldHeight = TEXT_INPUT_FIELD_DEFAULT_HEIGHT;
         }
         if (_settings.nhExportReplaceIllegalChars === undefined) {
             _settings.nhExportReplaceIllegalChars = true;
@@ -6343,8 +6340,7 @@ if (!phyloXml) {
             'text-align': 'center',
             'outline': 'none',
             'cursor': 'text',
-            'width': '28px',
-            'height': _settings.textFieldHeight
+            'width': '28px'
         });
 
         on(MSA_RESIDUE_VIS_CURR_RES_POS_LABEL, 'keyup', function (e) {
