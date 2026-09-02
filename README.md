@@ -457,3 +457,28 @@ anywhere and both move together, keeping their stacked order. The old Vis
 Legend fieldset (Show / Dir / four arrows / R) is gone; so is the shift- or
 alt-click placement it documented. `visualizationsLegendXpos` and
 `visualizationsLegendYpos` still set where they start out.
+
+## Node selection
+
+With `enableManualNodeSelection` on, the node menu gains **Select/Deselect Node**
+and **Select/Deselect All Ext Nodes**, and the selection is readable from outside
+the viewer:
+
+```js
+var selected = archaeopteryx.getSelectedNodes();   // array of node objects
+```
+
+Selected nodes are drawn in the selection colour, which is fixed so that it
+stays distinguishable from the two search colours.
+
+### The "Submit Selected" button is dormant
+
+There is also a **Submit Selected** button in the source, which would dispatch a
+`submit_selected_nodes_event` on `document` for the surrounding application to
+listen for. **It is not wired up**: the call that would add the button to the
+control panel is commented out, so the button never appears and the event is
+never fired. Poll `getSelectedNodes()` instead.
+
+This is left as it is on purpose, rather than either finished or deleted, until
+there is a reason to decide one way or the other. If you are looking for the
+event because something upstream expects it, that is the reason — say so.
