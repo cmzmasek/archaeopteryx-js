@@ -141,9 +141,11 @@ if (!phyloXml) {
     // ---------------------------
     const CONTROLS_0_LEFT_DEFAULT = 20;
     const CONTROLS_0_TOP_DEFAULT = 10;
-    const CONTROLS_FONT_COLOR_DEFAULT = '#505050';
-    const CONTROLS_FONT_DEFAULTS = ['Arial', 'Helvetica', 'Times'];
-    const CONTROLS_FONT_SIZE_DEFAULT = 8;
+    // The legend drawn over the tree. It used to take its type from three
+    // settings named for the control panel, which had stopped styling the
+    // panel long ago; its colour follows the tree's label colour, so it
+    // turns light with the rest of the drawing in dark mode.
+    const LEGEND_FONT_SIZE = 10;
     const DISPLY_HEIGHT_DEFAULT = 600;
     const DISPLAY_WIDTH_DEFAULT = 800;
     // Gap between the control panel's right edge and the root, and the offset
@@ -1514,7 +1516,7 @@ if (!phyloXml) {
 
         makeLegendDraggable(legendEnter);
 
-        let fs = _settings.controlsFontSize.toString() + 'px';
+        let fs = LEGEND_FONT_SIZE + 'px';
 
         legendEnter.append('rect')
             .attr('class', LEGEND_HIT)
@@ -1528,33 +1530,34 @@ if (!phyloXml) {
 
         legendEnter.append('text')
             .attr('class', LEGEND)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
             .style('text-decoration', 'none');
 
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
 
         legend = legendEnter.merge(legend);
+        // SVG text is painted by fill, not color -- which is why the old
+        // 'color' style did nothing. It goes on the plain selection: set on
+        // the transition below it does not stick.
+        legend.selectAll('text').style('fill', _options.labelColorDefault);
 
         let legendUpdate = legend.transition()
             .duration(0)
@@ -1649,7 +1652,7 @@ if (!phyloXml) {
 
         makeLegendDraggable(legendEnter);
 
-        let fs = _settings.controlsFontSize.toString() + 'px';
+        let fs = LEGEND_FONT_SIZE + 'px';
 
         legendEnter.append('rect')
             .attr('class', LEGEND_HIT)
@@ -1660,30 +1663,33 @@ if (!phyloXml) {
 
         legendEnter.append('text')
             .attr('class', LEGEND)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'normal')
             .style('text-decoration', 'none');
 
         legendEnter.append('text')
             .attr('class', LEGEND_LABEL)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
 
         legendEnter.append('text')
             .attr('class', LEGEND_DESCRIPTION)
-            .style('color', _settings.controlsFontColor)
             .style('font-size', fs)
-            .style('font-family', _settings.controlsFont)
+            .style('font-family', FONT_DEFAULTS)
             .style('font-style', 'normal')
             .style('font-weight', 'bold')
             .style('text-decoration', 'none');
+
+        legend = legendEnter.merge(legend);
+        // SVG text is painted by fill, not color -- which is why the old
+        // 'color' style did nothing. It goes on the plain selection: set on
+        // the transition below it does not stick.
+        legend.selectAll('text').style('fill', _options.labelColorDefault);
 
         let legendUpdate = legend
             .attr('transform', function (d, i) {
@@ -3021,6 +3027,10 @@ if (!phyloXml) {
         enableSpecialVisualizations2: 'the special visualizations were removed',
         enableSpecialVisualizations3: 'the special visualizations were removed',
         enableSpecialVisualizations4: 'the special visualizations were removed',
+        // these three had stopped styling the controls; they styled the legend
+        controlsFont: 'the legend uses the same sans-serif as the rest of the interface',
+        controlsFontSize: 'the legend has one size',
+        controlsFontColor: 'this never had any effect; the legend follows the tree\'s label colour',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3202,15 +3212,6 @@ if (!phyloXml) {
         if ((!_settings.displayHeight) && (!_settings.enableDynamicSizing)) {
             _settings.displayHeight = DISPLY_HEIGHT_DEFAULT;
         }
-        if (!_settings.controlsFontSize) {
-            _settings.controlsFontSize = CONTROLS_FONT_SIZE_DEFAULT;
-        }
-        if (!_settings.controlsFontColor) {
-            _settings.controlsFontColor = CONTROLS_FONT_COLOR_DEFAULT;
-        }
-        if (!_settings.controlsFont) {
-            _settings.controlsFont = CONTROLS_FONT_DEFAULTS;
-        }
         if (!_settings.controls0) {
             _settings.controls0 = CONTROLS_0;
         }
@@ -3267,7 +3268,6 @@ if (!phyloXml) {
             _settings.orderTree = false;
         }
 
-        _settings.controlsFontSize = parseInt(_settings.controlsFontSize);
 
         intitializeDisplaySize();
     }

@@ -371,9 +371,6 @@ constants:
 | `controls0` | `'controls0'` | Id of the div for the control panel. |
 | `controls0Left` | `20` | Position of the main panel. |
 | `controls0Top` | `10` | Position of the main panel. |
-| `controlsFont` | `['Arial', 'Helvetica', 'Times']` | Control-panel font stack. |
-| `controlsFontSize` | `8` | Control-panel font size. |
-| `controlsFontColor` | `'#505050'` | Control-panel text colour. |
 | `textFieldHeight` | `'10px'` | Height of the text input fields. |
 | `border` | none | CSS border for the tree div. |
 | `enableDynamicSizing` | `true` | Size the tree to the window and follow resizes. |
@@ -424,6 +421,9 @@ constants:
 | `enableSpecialVisualizations2` | The special visualizations were removed. |
 | `enableSpecialVisualizations3` | The special visualizations were removed. |
 | `enableSpecialVisualizations4` | The special visualizations were removed. |
+| `controlsFont` | The legend uses the same sans-serif as the rest of the interface. |
+| `controlsFontSize` | The legend has one size. |
+| `controlsFontColor` | This never had any effect; the legend follows the tree's label colour. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 
 ## Node visualizations
