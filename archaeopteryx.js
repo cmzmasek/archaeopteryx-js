@@ -2003,6 +2003,7 @@ if (!phyloXml) {
 
         node.select('text.bllabel')
             .style('font-size', _state.branchDataFontSize + 'px')
+            .style('fill', _state.labelColorDefault)
             .attr('text-anchor', function () {
                 return _state.circularDisplay ? 'middle' : null;
             })
@@ -2023,6 +2024,7 @@ if (!phyloXml) {
 
         node.select('text.conflabel')
             .style('font-size', _state.branchDataFontSize + 'px')
+            .style('fill', _state.labelColorDefault)
             .attr('transform', function (d) {
                 return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
@@ -2040,6 +2042,7 @@ if (!phyloXml) {
 
         node.select('text.brancheventlabel')
             .style('font-size', _state.branchDataFontSize + 'px')
+            .style('fill', _state.labelColorDefault)
             .attr('transform', function (d) {
                 return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
@@ -4959,12 +4962,10 @@ if (!phyloXml) {
         _state.backgroundColorDefault = dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_DEFAULT;
         _state.branchColorDefault = dark ? BRANCH_COLOR_DARK : BRANCH_COLOR_DEFAULT;
         _state.labelColorDefault = dark ? LABEL_COLOR_DARK : LABEL_COLOR_DEFAULT;
-        // PNG and SVG export swap in this background for the duration of the
-        // download. It has to follow the theme too: on a dark page the labels
-        // are near-white, and forcing the usual white ground would have written
-        // out a file with white text on white.
-        _state.backgroundColorForPrintExportDefault = dark
-            ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
+        // Always white, in both themes: getTreeAsSvg() rewrites the dark label
+        // and branch colours to their light counterparts on the way out, so an
+        // export can no longer end up as white text on a white ground.
+        _state.backgroundColorForPrintExportDefault = BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT;
         if (!_baseSvg) {
             return; // called before the tree exists; launch applies it later
         }
@@ -6998,10 +6999,55 @@ if (!phyloXml) {
         }
     }
 
+    // The tree's own <svg>. Deliberately NOT container.querySelector('svg'):
+    // the control panel is inside the tree container and every one of its glyph
+    // icons is an <svg> too, so that picked whichever came first in the DOM --
+    // a 14x14 icon -- and exported that instead of the tree.
+    function treeSvgElement() {
+        return _baseSvg ? _baseSvg.node() : null;
+    }
+
+    // An export is always light, whatever the screen is set to: a dark PNG or
+    // SVG is wrong on paper, in a slide and in a paper figure, and it is the
+    // file that outlives the session. Only the four theme colours are swapped,
+    // and only by exact value, so search hits, selections and every colour
+    // visualization come through the export untouched.
+    //
+    // Done on the serialized COPY rather than by repainting the live tree: the
+    // display never flickers, and there is no waiting on a redraw to finish
+    // before serializing.
+    const EXPORT_COLOR_SWAPS = [
+        [BACKGROUND_COLOR_DARK, BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT],
+        // the light ground is faintly grey on screen; on white paper the node
+        // dots filled with it would show up as smudges, so it goes white too
+        [BACKGROUND_COLOR_DEFAULT, BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT],
+        [LABEL_COLOR_DARK, LABEL_COLOR_DEFAULT],
+        [BRANCH_COLOR_DARK, BRANCH_COLOR_DEFAULT]
+    ];
+
+    // d3 writes colours through the CSSOM, which normalizes them to rgb(), but
+    // anything set as a plain attribute keeps the hex it was given -- so both
+    // spellings have to be matched.
+    function colorSpellings(hex) {
+        let c = d3.color(hex);
+        return c ? [hex, hex.toUpperCase(), c.formatRgb()] : [hex];
+    }
+
+    function toLightExport(svgText) {
+        EXPORT_COLOR_SWAPS.forEach(function (pair) {
+            let to = pair[1];
+            colorSpellings(pair[0]).forEach(function (from) {
+                svgText = svgText.split(from).join(to);
+            });
+        });
+        return svgText;
+    }
+
     function getTreeAsSvg() {
-        let container = _id.replace('#', '');
-        let wrapper = document.getElementById(container);
-        let svg = wrapper.querySelector('svg');
+        let svg = treeSvgElement();
+        if (!svg) {
+            return null;
+        }
         let svgTree = null;
         if (typeof window.XMLSerializer !== 'undefined') {
             // Serialize a COPY with the overview taken out of it: the overview is
@@ -7012,7 +7058,7 @@ if (!phyloXml) {
             if (overview) {
                 overview.remove();
             }
-            svgTree = (new XMLSerializer()).serializeToString(copy);
+            svgTree = toLightExport((new XMLSerializer()).serializeToString(copy));
         } else if (typeof svg.xml !== 'undefined') {
             svgTree = svg.xml;
         }
@@ -7099,7 +7145,7 @@ if (!phyloXml) {
         // Render onto an up-scaled canvas so the exported PNG is high-resolution
         // rather than 1:1 with the on-screen SVG. Scale is configurable via
         // _settings.pngExportScale (default 4x).
-        let svgEl = document.getElementById(_id.replace('#', '')).querySelector('svg');
+        let svgEl = treeSvgElement();
         let scale = _settings.pngExportScale > 0 ? _settings.pngExportScale : 4;
         let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
         let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
