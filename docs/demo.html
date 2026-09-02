@@ -121,11 +121,10 @@
         // The tree's own name/description (when present) is shown in the viewer's
         // control panel now, so the toolbar no longer repeats a description here.
 
-        // No display options: the viewer's intelligent pre-sets configure the
-        // display from what each tree actually contains (confidences, taxonomy,
-        // sequences, events, ...).
-        var options = {};
-        var settings = {
+        // Almost nothing to configure: the viewer's intelligent pre-sets work
+        // the display out from what each tree actually contains (confidences,
+        // taxonomy, sequences, events, ...).
+        var config = {
             enableDynamicSizing: true,
             enableVisualizations: true
         };
@@ -138,7 +137,7 @@
                 return r.text();
             })
             .then(function (data) {
-                archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, options, settings);
+                archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, config);
             })
             .catch(function (e) {
                 showError('Could not load tree "' + key + '": ' + (e && e.message ? e.message : e));

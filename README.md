@@ -76,8 +76,7 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
 
    <script>
        function load() {
-           var options = {};
-           var settings = {};
+           var config = {};
            var loc = 'http://path/to/apaf.xml';
 
            fetch(loc)
@@ -88,7 +87,7 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
                    return response.text();
                })
                .then(function (data) {
-                   archaeopteryx.launchArchaeopteryx('#phylogram1', loc, data, options, settings);
+                   archaeopteryx.launchArchaeopteryx('#phylogram1', loc, data, config);
                })
                .catch(function (e) {
                    document.getElementById('phylogram1').textContent = 'Error: ' + e.message;
@@ -108,8 +107,7 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
 
 Archaeopteryx.js reports problems by **throwing**, so wrap the call (or use the
 promise's `.catch`, as above) if you want to show the message yourself. See
-[For Developers](#for-developers) below for what goes into `options` and
-`settings`.
+[For Developers](#for-developers) below for what goes into `config`.
 
 
 
@@ -192,7 +190,7 @@ the code, the code is right and this is a bug.
 
 ```js
 // parse and launch in one step (what most callers want)
-archaeopteryx.launchArchaeopteryx(id, location, data, options, settings,
+archaeopteryx.launchArchaeopteryx(id, location, data, config, null,
                                   nhConfidenceValuesInBrackets,
                                   nhConfidenceValuesAsInternalNames,
                                   nodeVisualizations);
@@ -201,29 +199,19 @@ archaeopteryx.launchArchaeopteryx(id, location, data, options, settings,
 var tree = archaeopteryx.parseTree(location, data,
                                    nhConfidenceValuesInBrackets,
                                    nhConfidenceValuesAsInternalNames);
-archaeopteryx.launch(id, tree, options, settings, nodeVisualizations, nodeLabels);
+archaeopteryx.launch(id, tree, config, null, nodeVisualizations, nodeLabels);
 ```
+
+`config` is one object and is optional — `archaeopteryx.launch('#phylogram1',
+tree)` works. The `null` after it is the deprecated second config object, kept
+so older call sites still run; see **Configuration** below.
 
 `location` is only used to pick a parser: a name ending in `xml` is read as
 phyloXML, anything else as New Hampshire (Newick).
 
 Both entry points **throw** on bad input — an undefined or empty tree, an
-unparseable file, or an option name that no longer exists. Nothing is reported
-by a popup any more, and nothing fails silently.
-
-## `options` versus `settings`
-
-The split is not always obvious, so:
-
-* **`options`** describe **the tree drawing**: what is labelled, what is
-  coloured, how big things are. These are the things the control panel can
-  change while the tree is on screen, so an option is really the *initial
-  state* of a control.
-* **`settings`** describe **what the surrounding application allows**: which
-  `<div>`s to draw into, whether downloads and subtree deletion are offered,
-  whether visualizations are enabled at all. The user cannot change these.
-
-Both are optional; `archaeopteryx.launch('#phylogram1', tree, {}, {})` works.
+unparseable file, or a config key that no longer exists. Nothing is reported by
+a popup any more, and nothing fails silently.
 
 ## Intelligent pre-sets
 
@@ -232,43 +220,68 @@ with taxonomies shows taxonomies and offers a Taxonomy control, a tree without
 them shows neither; a tree whose branches mostly carry lengths is drawn to
 scale, one whose branches mostly do not is drawn as a cladogram.
 
-So **the best configuration is usually an empty one**. Six options remain, and
-they are the ones no tree can answer for you: which layout, what to prefill the
-search boxes with, where the legend sits, and how big a PNG to export.
+So **the best configuration is usually an empty one**. What is left is the
+handful of things no tree can answer for you: which layout, how the viewer is
+sized, what the surrounding application allows, and what to prefill the search
+boxes with.
 
 Everything else is either derived, or a control the user can change once the
 tree is on screen. Those controls still have defaults, and the defaults are
 chosen per tree — they are simply no longer yours to set at launch.
 
-## Removed names throw
+## Configuration
 
-Names that no longer exist are rejected by `launch()` with an error naming the
-replacement, rather than being ignored:
+One object, passed as the third argument. It is optional, and the best
+configuration is usually an empty one — almost everything that used to be
+configured is now read off the tree (see **Intelligent pre-sets** above). The
+twenty keys below are the ones no tree can answer for you.
 
-```
-ArchaeopteryxJS: ERROR: removed option(s) passed to launch:
-"externalNodeFontSize" -- all labels share one size now -- use "fontSize"
-```
-
-This is deliberate: an ignored option looks like it worked. If you are
-upgrading, run once and fix whatever it names.
-
-## Options
-
-Almost nothing is left here on purpose. What a tree should look like is now
-read off the tree itself, so the six options below are the ones no tree can
-answer for you.
+There used to be two objects, `options` and `settings`, split by whether the
+user could also change the value from the control panel. That was a fact about
+the internals, not something a caller could derive, and getting it wrong was
+silent: the right name in the wrong object did nothing at all. There is now one
+object. A fourth argument is still accepted and merged, so existing call sites
+keep working; it logs a deprecation warning.
 
 ### Still used
 
-| Option | Default | What it does |
+| Key | Default | What it does |
 | --- | --- | --- |
+| `enableDynamicSizing` | `true` | Size the tree to its container, and follow window resizes. |
+| `displayWidth` | `800` | Width — only when dynamic sizing is off. |
+| `displayHeight` | `600` | Height — only when dynamic sizing is off. |
+| `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
+| `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
 | `circularDisplay` | `false` | Circular layout instead of rectangular. |
+| `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
-| `visualizationsLegendXpos` | `220` | Legend position, x. |
+| `enableVisualizations` | `false` | Offer the Color / Shape visualizations. |
+| `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree’s own properties. |
+| `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
+| `enableDownloads` | `true` | Offer the download buttons. |
 | `pngExportScale` | `4` | PNG export resolution multiplier. |
+| `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
+| `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
+| `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |
+| `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
+| `filterValues` | `null` | Copy node property values from one property to another, keeping only the listed ones. Array of `{source, target, pass}`. |
+
+### Anything else throws
+
+An unrecognised key is an error, whether it was removed in this modernization
+or simply mistyped:
+
+```
+ArchaeopteryxJS: ERROR: removed config key(s) passed to launch:
+"circular" -- renamed to "circularDisplay"
+
+ArchaeopteryxJS: ERROR: unknown config key(s) passed to launch: "enableDownlods"
+```
+
+An ignored key looks like it worked. If you are upgrading, run once and fix
+whatever it names.
 
 ### What replaced the rest
 
@@ -290,144 +303,121 @@ constants:
 
 ### Removed — passing these throws
 
-| Option | Why, and what to do instead |
+All 111 of them, alphabetically:
+
+| Key | Why, and what to do instead |
 | --- | --- |
-| `circular` | Renamed to `circularDisplay`. |
-| `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
-| `showInternalNodes` | Node shapes now appear wherever a node visualization applies. |
-| `searchIsPartial` | Each search box picks its own match mode (contains / starts with / ends with / whole word / regex). |
-| `searchUsesRegex` | Choose the `regex` match mode in the search box instead. |
-| `searchProperties` | Choose the property in the search box's field menu instead. |
-| `externalNodeFontSize` | All labels share one size now -- use `fontSize`. |
-| `internalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `alignPhylogram` | Aligning the tips is a control, not a launch option. |
+| `allowManualNodeSelection` | Renamed to `enableManualNodeSelection`. |
+| `backgroundColorDefault` | The background is fixed. |
+| `backgroundColorForPrintExportDefault` | The export background is fixed. |
+| `border` | Style the tree's svg with CSS instead. |
+| `branchColorDefault` | The default branch colour is fixed. |
 | `branchDataFontSize` | All labels share one size now -- use `fontSize`. |
+| `branchWidthDefault` | Branch width follows the size of the tree. |
+| `circular` | Renamed to `circularDisplay`. |
+| `collapsedLabelLength` | The collapse feature was removed. |
+| `collapseLabelWidth` | The collapse feature was removed. |
+| `controls0` | The control panel is created inside the tree's own container now. |
+| `controls0Left` | The control panel is placed against the tree; drag it to move it. |
+| `controls0Top` | The control panel is placed against the tree; drag it to move it. |
+| `controls1` | The visualization menus moved into the main control panel. |
+| `controls1Left` | The visualization menus moved into the main control panel. |
+| `controls1Top` | The visualization menus moved into the main control panel. |
+| `controls1Width` | The control panel sizes itself. |
+| `controlsBackgroundColor` | The control panel follows the light / dark palette. |
+| `controlsFont` | The legend uses the same sans-serif as the rest of the interface. |
+| `controlsFontColor` | This never had any effect; the legend follows the tree's label colour. |
+| `controlsFontSize` | The legend has one size. |
+| `decimalsForLinearRangeMeanValue` | No longer configurable. |
+| `defaultFont` | Labels use the sans-serif the reader's own system renders best. |
+| `dynahide` | On by default; use the Auto-hide Labels checkbox. |
+| `enableBranchVisualizations` | Merged into `enableVisualizations`. |
+| `enableCollapseByBranchLenghts` | The collapse feature was removed. |
+| `enableCollapseByFeature` | The collapse feature was removed. |
+| `enableCollapseByTaxonomyRank` | The collapse feature was removed. |
+| `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
+| `enableNodeVisualizations` | Merged into `enableVisualizations`. |
+| `enableSpecialVisualizations2` | The special visualizations were removed. |
+| `enableSpecialVisualizations3` | The special visualizations were removed. |
+| `enableSpecialVisualizations4` | The special visualizations were removed. |
+| `externalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `fontSize` | One default size for every label; the font-size slider changes it. |
+| `found0and1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
+| `found0ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
+| `found1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
+| `groupSpecies` | This setting was never read; it did nothing. |
+| `groupYears` | This setting was never read; it did nothing. |
+| `initialCollapseDepth` | The collapse feature was removed. |
+| `initialCollapseFeature` | The collapse feature was removed. |
+| `initialLabelColorVisualization` | Choose the visualization in the Visualizations panel. |
+| `initialNodeFillColorVisualization` | Choose the visualization in the Visualizations panel. |
+| `internalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `labelColorDefault` | The default label colour is fixed. |
+| `minBranchLengthValueToShow` | No longer configurable. |
+| `minConfidenceValueToShow` | No longer configurable. |
+| `nameForFastaDownload` | Download names follow `treeName`. |
 | `nameForNhDownload` | Download names follow `treeName`. |
 | `nameForPhyloXmlDownload` | Download names follow `treeName`. |
 | `nameForPngDownload` | Download names follow `treeName`. |
 | `nameForSvgDownload` | Download names follow `treeName`. |
-| `nameForFastaDownload` | Download names follow `treeName`. |
-| `showTaxonomyCode` | Taxonomy labelling follows what the tree contains. |
-| `showTaxonomyScientificName` | Taxonomy labelling follows what the tree contains. |
-| `showTaxonomyCommonName` | Taxonomy labelling follows what the tree contains. |
-| `showTaxonomyRank` | Taxonomy labelling follows what the tree contains. |
-| `showTaxonomySynonyms` | Taxonomy labelling follows what the tree contains. |
-| `showSequenceName` | Sequence labelling follows what the tree contains. |
-| `showSequenceGeneSymbol` | Sequence labelling follows what the tree contains. |
-| `showSequenceSymbol` | Sequence labelling follows what the tree contains. |
-| `showSequenceAccession` | Sequence labelling follows what the tree contains. |
-| `found0ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
-| `found1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
-| `found0and1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
-| `selectedColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
-| `collapsedLabelLength` | The collapse feature was removed. |
-| `initialCollapseDepth` | The collapse feature was removed. |
-| `initialCollapseFeature` | The collapse feature was removed. |
-| `searchNegateResult` | This is the state of the Inverse checkbox, not an input. |
-| `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
-| `visualizationsLegendYposOrig` | Internal bookkeeping; set visualizationsLegendYpos. |
-| `phylogram` | The tree is drawn to scale when most of its branches have a length. |
-| `alignPhylogram` | Aligning the tips is a control, not a launch option. |
-| `treeName` | The name comes from the tree file. |
-| `fontSize` | One default size for every label; the font-size slider changes it. |
-| `defaultFont` | Labels use the sans-serif the reader's own system renders best. |
-| `labelColorDefault` | The default label colour is fixed. |
-| `branchColorDefault` | The default branch colour is fixed. |
-| `branchWidthDefault` | Branch width follows the size of the tree. |
-| `backgroundColorDefault` | The background is fixed. |
-| `backgroundColorForPrintExportDefault` | The export background is fixed. |
-| `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |
+| `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `nodeLabelGap` | The label gap is fixed. |
-| `showNodeName` | Shown when the tree has node names. |
-| `showTaxonomy` | Shown when the tree has taxonomies. |
-| `showSequence` | Shown when the tree has sequences. |
-| `showConfidenceValues` | Shown when the tree has confidences. |
-| `showNodeEvents` | Shown when the tree has node events. |
+| `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |
+| `nodeVisualizationsOpacity` | No longer configurable. |
+| `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
+| `phylogram` | The tree is drawn to scale when most of its branches have a length. |
+| `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
+| `searchFieldWidth` | The search boxes size themselves to the control panel. |
+| `searchIsCaseSensitive` | Off by default; use the Match case checkbox. |
+| `searchIsPartial` | Each search box picks its own match mode (contains / starts with / ends with / whole word / regex). |
+| `searchNegateResult` | This is the state of the Inverse checkbox, not an input. |
+| `searchProperties` | Choose the property in the search box's field menu instead. |
+| `searchUsesRegex` | Choose the `regex` match mode in the search box instead. |
+| `selectedColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
+| `shortenNodeNames` | On by default when the tree has long node names; use the Short Names checkbox. |
+| `showBranchColors` | On by default. |
+| `showBranchColorsButton` | Shown automatically when the tree has branch colours. |
 | `showBranchEvents` | Shown when the tree has branch events. |
 | `showBranchLengthValues` | Off by default; use the Branch Length checkbox. |
-| `showInternalLabels` | Off by default; use the Int. Labels checkbox. |
-| `showExternalLabels` | On by default; use the Ext. Labels checkbox. |
-| `showDistributions` | Off by default. |
-| `showBranchColors` | On by default. |
-| `shortenNodeNames` | On by default when the tree has long node names; use the Short Names checkbox. |
-| `dynahide` | On by default; use the Auto-hide Labels checkbox. |
-| `minConfidenceValueToShow` | No longer configurable. |
-| `minBranchLengthValueToShow` | No longer configurable. |
-| `showVisualizations` | Off by default; use the Visualizations checkbox. |
-| `showNodeVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
 | `showBranchVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
-| `nodeVisualizationsOpacity` | No longer configurable. |
-| `initialNodeFillColorVisualization` | Choose the visualization in the Visualizations panel. |
-| `initialLabelColorVisualization` | Choose the visualization in the Visualizations panel. |
-| `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
-| `decimalsForLinearRangeMeanValue` | No longer configurable. |
-| `searchIsCaseSensitive` | Off by default; use the Match case checkbox. |
-
-## Settings
-
-### Still used
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| `enableDynamicSizing` | `true` | Size the tree to its container, and follow window resizes. |
-| `displayWidth` | `800` | Width — only when dynamic sizing is off. |
-| `displayHeight` | `600` | Height — only when dynamic sizing is off. |
-| `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
-| `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
-| `enableDownloads` | `true` | Offer the download buttons. |
-| `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
-| `enableVisualizations` | `false` | Offer the Color / Shape visualizations. |
-| `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree's own properties. |
-| `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
-| `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
-| `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
-| `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
-
-### Removed — passing these throws
-
-| Setting | Why, and what to do instead |
-| --- | --- |
-| `showExternalNodesButton` | The Ext. Nodes switch no longer exists. |
-| `showInternalNodesButton` | The Int. Nodes switch no longer exists. |
-| `showSearchPropertiesButton` | Properties are searched by choosing them in a search box's field menu. |
-| `searchFieldWidth` | The search boxes size themselves to the control panel. |
-| `showNodeNameButton` | Shown automatically when the tree has node names. |
-| `showTaxonomyButton` | Shown automatically when the tree has taxonomies. |
-| `showSequenceButton` | Shown automatically when the tree has sequences. |
-| `showBranchColorsButton` | Shown automatically when the tree has branch colours. |
+| `showConfidenceValues` | Shown when the tree has confidences. |
+| `showDistributions` | Off by default. |
 | `showDynahideButton` | Shown automatically once the tree has enough tips to need it. |
-| `showShortenNodeNamesButton` | Shown automatically when the tree has long node names. |
+| `showExternalLabels` | On by default; use the Ext. Labels checkbox. |
 | `showExternalLabelsButton` | Always shown. |
+| `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
+| `showExternalNodesButton` | The Ext. Nodes switch no longer exists. |
+| `showInternalLabels` | Off by default; use the Int. Labels checkbox. |
 | `showInternalLabelsButton` | Shown automatically when the tree has internal node data. |
-| `collapseLabelWidth` | The collapse feature was removed. |
-| `enableCollapseByBranchLenghts` | The collapse feature was removed. |
-| `enableCollapseByFeature` | The collapse feature was removed. |
-| `enableCollapseByTaxonomyRank` | The collapse feature was removed. |
-| `controls1Width` | The control panel sizes itself. |
-| `controls1` | The visualization menus moved into the main control panel. |
-| `controls1Left` | The visualization menus moved into the main control panel. |
-| `controls1Top` | The visualization menus moved into the main control panel. |
-| `groupSpecies` | This setting was never read; it did nothing. |
-| `groupYears` | This setting was never read; it did nothing. |
-| `enableSpecialVisualizations2` | The special visualizations were removed. |
-| `enableSpecialVisualizations3` | The special visualizations were removed. |
-| `enableSpecialVisualizations4` | The special visualizations were removed. |
-| `controlsFont` | The legend uses the same sans-serif as the rest of the interface. |
-| `controlsFontSize` | The legend has one size. |
-| `controlsFontColor` | This never had any effect; the legend follows the tree's label colour. |
+| `showInternalNodes` | Node shapes now appear wherever a node visualization applies. |
+| `showInternalNodesButton` | The Int. Nodes switch no longer exists. |
+| `showNodeEvents` | Shown when the tree has node events. |
+| `showNodeName` | Shown when the tree has node names. |
+| `showNodeNameButton` | Shown automatically when the tree has node names. |
+| `showNodeVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
+| `showSearchPropertiesButton` | Properties are searched by choosing them in a search box's field menu. |
+| `showSequence` | Shown when the tree has sequences. |
+| `showSequenceAccession` | Sequence labelling follows what the tree contains. |
+| `showSequenceButton` | Shown automatically when the tree has sequences. |
+| `showSequenceGeneSymbol` | Sequence labelling follows what the tree contains. |
+| `showSequenceName` | Sequence labelling follows what the tree contains. |
+| `showSequenceSymbol` | Sequence labelling follows what the tree contains. |
+| `showShortenNodeNamesButton` | Shown automatically when the tree has long node names. |
+| `showTaxonomy` | Shown when the tree has taxonomies. |
+| `showTaxonomyButton` | Shown automatically when the tree has taxonomies. |
+| `showTaxonomyCode` | Taxonomy labelling follows what the tree contains. |
+| `showTaxonomyCommonName` | Taxonomy labelling follows what the tree contains. |
+| `showTaxonomyRank` | Taxonomy labelling follows what the tree contains. |
+| `showTaxonomyScientificName` | Taxonomy labelling follows what the tree contains. |
+| `showTaxonomySynonyms` | Taxonomy labelling follows what the tree contains. |
+| `showVisualizations` | Off by default; use the Visualizations checkbox. |
 | `textFieldHeight` | The text fields size themselves to their content. |
-| `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
-| `border` | Style the tree's svg with CSS instead. |
-| `allowManualNodeSelection` | Renamed to `enableManualNodeSelection`. |
-| `enableNodeVisualizations` | Merged into `enableVisualizations`. |
-| `enableBranchVisualizations` | Merged into `enableVisualizations`. |
-| `controls0` | The control panel is created inside the tree's own container now. |
-| `controls0Left` | The control panel is placed against the tree; drag it to move it. |
-| `controls0Top` | The control panel is placed against the tree; drag it to move it. |
-| `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
-| `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
+| `treeName` | The name comes from the tree file. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
-| `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
-| `controlsBackgroundColor` | The control panel follows the light / dark palette. |
+| `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
+| `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
+| `visualizationsLegendYposOrig` | Internal bookkeeping; set visualizationsLegendYpos. |
 
 ## Node visualizations
 

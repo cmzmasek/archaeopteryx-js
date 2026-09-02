@@ -456,7 +456,6 @@ if (!phyloXml) {
     let _nodeVisualizations = null;
     let _nodeLabels = null;
     let _options = null;
-    let _options_orig = null;
     let _root = null;
     let _root_const = null;
     let _in_subtree = false;
@@ -2778,11 +2777,15 @@ if (!phyloXml) {
     };
 
 
-    // Options and settings this version no longer has, with what to do instead.
-    // Passing one is an ERROR rather than a silent no-op: a caller who sets it is
+    // Config keys this version no longer has, with what to do instead. Passing
+    // one is an ERROR rather than a silent no-op: a caller who sets it is
     // expecting behaviour that will not happen, and quietly ignoring it hides
     // that until somebody notices the display is wrong.
-    const REMOVED_OPTIONS = {
+    //
+    // One list, because there is one config object. Checking each of the two old
+    // bags only against its own list meant the right name in the wrong bag was
+    // silently ignored -- the very failure this list exists to prevent.
+    const REMOVED_CONFIG = {
         circular: 'renamed to "circularDisplay"',
         showExternalNodes: 'node shapes now appear wherever a node visualization applies',
         showInternalNodes: 'node shapes now appear wherever a node visualization applies',
@@ -2857,9 +2860,9 @@ if (!phyloXml) {
         initialLabelColorVisualization: 'choose the visualization in the Visualizations panel',
         visualizationsLegendOrientation: 'the legend orientation is fixed; the legend has its own control',
         decimalsForLinearRangeMeanValue: 'no longer configurable',
-        searchIsCaseSensitive: 'off by default; use the Match case checkbox'
-    };
-    const REMOVED_SETTINGS = {
+        searchIsCaseSensitive: 'off by default; use the Match case checkbox',
+
+        // ---- keys that used to be passed in the separate settings bag ----
         showExternalNodesButton: 'the Ext. Nodes switch no longer exists',
         showInternalNodesButton: 'the Int. Nodes switch no longer exists',
         showSearchPropertiesButton: 'properties are searched by choosing them in a search box\'s field menu',
@@ -2911,19 +2914,92 @@ if (!phyloXml) {
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
-    function rejectRemoved(given, removed, kind) {
-        if (!given) {
-            return;
+    // ---- the public config surface ----------------------------------------
+    //
+    // launch() takes ONE config object. Internally the keys still land in two
+    // places -- _options seeds the live display state that the GUI then writes
+    // to, _settings stays fixed for the life of the launch -- but that split is
+    // our bookkeeping, and a caller had no way to derive which bag a name
+    // belonged in short of consulting a table. These two lists do the routing,
+    // and they double as the allow-list, so a misspelled key throws instead of
+    // doing nothing.
+    const OPTION_KEYS = [
+        'circularDisplay',
+        'pngExportScale',
+        'searchAinitialValue',
+        'searchBinitialValue',
+        'visualizationsLegendXpos',
+        'visualizationsLegendYpos'
+    ];
+
+    const SETTING_KEYS = [
+        'displayHeight',
+        'displayWidth',
+        'dynamicallyAddNodeVisualizations',
+        'enableAccessToDatabases',
+        'enableDownloads',
+        'enableDynamicSizing',
+        'enableManualNodeSelection',
+        'enableSubtreeDeletion',
+        'enableVisualizations',
+        'filterValues',
+        'ladderizeTree',
+        'nhExportWriteConfidences',
+        'rootOffset',
+        'zoomToFitUponWindowResize'
+    ];
+
+    // Merges the caller's config (and the deprecated second bag, if given) and
+    // splits it into the two internal stores. Both a removed key and an unknown
+    // one throw: a config entry that quietly does nothing is the bug that costs
+    // an afternoon to find. The returned objects are ours, not the caller's --
+    // the display state is written to constantly, and writing through to an
+    // object the caller still holds is not our business.
+    function readConfig(config, legacySettings) {
+        if (legacySettings) {
+            console.warn(WARNING + ': launch() now takes ONE config object; passing a'
+                + ' separate settings object is deprecated -- merge it into the third argument');
         }
-        let found = Object.keys(removed).filter(function (k) {
-            return given[k] !== undefined;
+
+        let given = {};
+        [config, legacySettings].forEach(function (bag) {
+            if (bag) {
+                Object.keys(bag).forEach(function (k) {
+                    given[k] = bag[k];
+                });
+            }
         });
-        if (found.length > 0) {
-            throw new Error(ERROR + 'removed ' + kind + ' passed to launch: '
-                + found.map(function (k) {
-                    return '"' + k + '" -- ' + removed[k];
+
+        let removed = Object.keys(given).filter(function (k) {
+            return REMOVED_CONFIG[k] !== undefined;
+        });
+        if (removed.length > 0) {
+            throw new Error(ERROR + 'removed config key(s) passed to launch: '
+                + removed.map(function (k) {
+                    return '"' + k + '" -- ' + REMOVED_CONFIG[k];
                 }).join('; '));
         }
+
+        let unknown = Object.keys(given).filter(function (k) {
+            return OPTION_KEYS.indexOf(k) < 0 && SETTING_KEYS.indexOf(k) < 0;
+        });
+        if (unknown.length > 0) {
+            throw new Error(ERROR + 'unknown config key(s) passed to launch: "'
+                + unknown.join('", "') + '"');
+        }
+
+        let split = {options: {}, settings: {}};
+        OPTION_KEYS.forEach(function (k) {
+            if (given[k] !== undefined) {
+                split.options[k] = given[k];
+            }
+        });
+        SETTING_KEYS.forEach(function (k) {
+            if (given[k] !== undefined) {
+                split.settings[k] = given[k];
+            }
+        });
+        return split;
     }
 
     // Where content has to start to clear the control panel. Both the root and
@@ -2934,9 +3010,8 @@ if (!phyloXml) {
         return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
     }
 
-    function initializeOptions(options, settings) {
-        rejectRemoved(options, REMOVED_OPTIONS, 'option(s)');
-        _options = options ? options : {};
+    function initializeOptions(options) {
+        _options = options;
 
         // Intelligent pre-sets: any display option the caller does NOT set
         // explicitly is derived from what the loaded tree actually contains
@@ -3066,8 +3141,7 @@ if (!phyloXml) {
     }
 
     function initializeSettings(settings) {
-        rejectRemoved(settings, REMOVED_SETTINGS, 'setting(s)');
-        _settings = settings ? settings : {};
+        _settings = settings;
 
         if (_settings.enableDynamicSizing === undefined) {
             _settings.enableDynamicSizing = true;
@@ -3210,7 +3284,10 @@ if (!phyloXml) {
         search1();
     }
 
-    archaeopteryx.launch = function (id, phylo, options, settings, nodeVisualizations, nodeLabels, specialVisualizations) {
+    // The third argument is the whole config. The fourth is the old settings
+    // bag, still accepted and merged so existing call sites keep working; new
+    // code puts everything in the third.
+    archaeopteryx.launch = function (id, phylo, config, legacySettings, nodeVisualizations, nodeLabels, specialVisualizations) {
 
 
         // Bad input is the caller's bug, so it is thrown at the caller. It used
@@ -3236,10 +3313,11 @@ if (!phyloXml) {
             })
             .on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
-        _options_orig = structuredClone(_options);
 
-        if (settings.filterValues) {
-            settings.filterValues.forEach(function (e) {
+        let cfg = readConfig(config, legacySettings);
+
+        if (cfg.settings.filterValues) {
+            cfg.settings.filterValues.forEach(function (e) {
                 if (e && e.source && e.target && e.pass && e.pass.length > 0) {
                     console.log(MESSAGE + ' Filtering values from \"' + e.source + '\" to \"' + e.target + ', allowed values ' + e.pass);
                     filterValues(_treeData, e.source, e.target, e.pass);
@@ -3266,11 +3344,11 @@ if (!phyloXml) {
         _legendShapeScales = {};
 
 
-        initializeOptions(options, settings);
-        initializeSettings(settings);
+        initializeOptions(cfg.options);
+        initializeSettings(cfg.settings);
 
 
-        if (settings.enableVisualizations) {
+        if (_settings.enableVisualizations) {
 
             // Intelligent pre-sets: when the caller provides no node
             // visualizations, generate sensible ones from the tree's custom
@@ -7085,7 +7163,7 @@ if (!phyloXml) {
      * @param newHamphshireConfidenceValuesAsInternalNames
      * @param nodeVisualizations
      */
-    archaeopteryx.launchArchaeopteryx = function (label, location, data, options, settings, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames, nodeVisualizations) {
+    archaeopteryx.launchArchaeopteryx = function (label, location, data, config, legacySettings, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames, nodeVisualizations) {
         let tree;
         try {
             tree = archaeopteryx.parseTree(location, data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
@@ -7098,7 +7176,7 @@ if (!phyloXml) {
         // launch() already reports its own failures well enough; wrapping them
         // added nothing but a prefix, and swallowing them left the caller with
         // a blank page and no way to find out why.
-        archaeopteryx.launch(label, tree, options, settings, nodeVisualizations);
+        archaeopteryx.launch(label, tree, config, legacySettings, nodeVisualizations);
     };
 
 
