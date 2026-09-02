@@ -227,7 +227,6 @@ if (!phyloXml) {
     const BRANCH_COLORS_CB = 'brnch_col_cb';
     const BRANCH_EVENTS_CB = 'brevts_cb';
     const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
-    const BRANCH_VIS_CB = 'branchvis_cb';
     const BRANCH_WIDTH_SLIDER = 'bw_sl';
     // The layout row: rectangular (root at left) vs circular. An exclusive pair,
     // as in the desktop -- which offers three more layouts (root at top / bottom,
@@ -261,7 +260,7 @@ if (!phyloXml) {
     const NODE_NAME_CB = 'nn_cb';
     const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
     const NODE_SIZE_SLIDER = 'ns_sl';
-    const NODE_VIS_CB = 'nodevis_cb';
+    const VIS_CB = 'vis_cb';
     const LADDERIZE_BUTTON = 'ladderize_b';
     const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
     const PHYLOGRAM_BUTTON = 'phy_b';
@@ -470,7 +469,7 @@ if (!phyloXml) {
     let _visualizations = null;
     let _w = null;
     let _yScale = null;
-    let _radial = null;   // circular-layout params (set per render when _options.circular)
+    let _radial = null;   // circular-layout params (set per render when _options.circularDisplay)
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
@@ -1773,7 +1772,7 @@ if (!phyloXml) {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
+        if (_options.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
             label = 'Shape';
             desc = _currentNodeShapeVisualization;
             counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
@@ -1812,7 +1811,7 @@ if (!phyloXml) {
             }
         }
 
-        if (_settings.enableNodeVisualizations) {
+        if (_settings.enableVisualizations) {
             addLegends();
         }
 
@@ -1848,7 +1847,7 @@ if (!phyloXml) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
 
-        if (_options.circular) {
+        if (_options.circularDisplay) {
             let maxY = 0;
             for (let i = 0; i < nodes.length; ++i) {
                 if (nodes[i].y > maxY) {
@@ -1968,13 +1967,13 @@ if (!phyloXml) {
             })
             .style('paint-order', 'stroke')
             .attr('text-anchor', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return labelFlip(d) ? 'end' : 'start';
                 }
                 return d.children ? 'end' : 'start';
             })
             .attr('transform', function (d) {
-                if (!_options.circular) {
+                if (!_options.circularDisplay) {
                     return null;
                 }
                 // external labels are pulled out to the common outer ring;
@@ -1983,13 +1982,13 @@ if (!phyloXml) {
                 return 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
             })
             .attr('dy', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return '0.32em';
                 }
                 return d.children ? 0.3 * _options.internalNodeFontSize + 'px' : 0.3 * _options.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return labelFlip(d) ? -gap : gap;
                 }
                 if (!(d.children)) {
@@ -2006,14 +2005,14 @@ if (!phyloXml) {
         node.select('text.bllabel')
             .style('font-size', _options.branchDataFontSize + 'px')
             .attr('text-anchor', function () {
-                return _options.circular ? 'middle' : null;
+                return _options.circularDisplay ? 'middle' : null;
             })
             .attr('transform', function (d) {
-                return _options.circular ? branchLabelTransform(d) : null;
+                return _options.circularDisplay ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2026,11 +2025,11 @@ if (!phyloXml) {
         node.select('text.conflabel')
             .style('font-size', _options.branchDataFontSize + 'px')
             .attr('transform', function (d) {
-                return _options.circular ? branchLabelTransform(d) : null;
+                return _options.circularDisplay ? branchLabelTransform(d) : null;
             })
             .attr('dy', _options.branchDataFontSize)
             .attr('x', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2043,11 +2042,11 @@ if (!phyloXml) {
         node.select('text.brancheventlabel')
             .style('font-size', _options.branchDataFontSize + 'px')
             .attr('transform', function (d) {
-                return _options.circular ? branchLabelTransform(d) : null;
+                return _options.circularDisplay ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_options.circular) {
+                if (_options.circularDisplay) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2057,7 +2056,7 @@ if (!phyloXml) {
 
         node.select('circle.nodeCircle')
             .attr('r', function (d) {
-                if (((_options.showNodeVisualizations && !_options.showNodeEvents) && (makeNodeFillColor(d) === _options.backgroundColorDefault))) {
+                if (((_options.showVisualizations && !_options.showNodeEvents) && (makeNodeFillColor(d) === _options.backgroundColorDefault))) {
                     return 0;
                 }
                 return makeNodeSize(d);
@@ -2067,7 +2066,7 @@ if (!phyloXml) {
             })
             .style('stroke-width', _options.branchWidthDefault)
             .style('fill', function (d) {
-                return (_options.showNodeVisualizations || _options.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
+                return (_options.showVisualizations || _options.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _options.backgroundColorDefault;
             });
 
 
@@ -2097,15 +2096,15 @@ if (!phyloXml) {
             .text(_options.showBranchEvents ? makeBranchEventsLabel : null);
 
         nodeUpdate.select('path')
-            .style('stroke', _options.showNodeVisualizations ? makeVisNodeBorderColor : null)
+            .style('stroke', _options.showVisualizations ? makeVisNodeBorderColor : null)
             .style('stroke-width', _options.branchWidthDefault)
-            .style('fill', _options.showNodeVisualizations ? makeVisNodeFillColor : null)
+            .style('fill', _options.showVisualizations ? makeVisNodeFillColor : null)
             .style('opacity', _options.nodeVisualizationsOpacity)
-            .attr('d', _options.showNodeVisualizations ? makeNodeVisShape : null);
+            .attr('d', _options.showVisualizations ? makeNodeVisShape : null);
 
         node.each(function (d) {
             if (d.children) {
-                if (!_options.showNodeVisualizations && makeNodeVisShape(d) === null) {
+                if (!_options.showVisualizations && makeNodeVisShape(d) === null) {
                     d3.select(this).select('path').transition().duration(transitionDuration)
                         .attr('d', function () {
                             return 'M0,0';
@@ -2181,7 +2180,7 @@ if (!phyloXml) {
         // _svgGroup, so that name put them in the way of selectAll('path.link')
         // -- the main link data-join, and the overview's miniature.
         _svgGroup.selectAll('g.aptx-align-ext').remove();
-        if (!_options.circular && _options.phylogram && _options.alignPhylogram && _options.showExternalLabels
+        if (!_options.circularDisplay && _options.phylogram && _options.alignPhylogram && _options.showExternalLabels
             && (_options.showNodeName || _options.showTaxonomy || _options.showSequence)) {
             let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
             ext.selectAll('path')
@@ -2201,7 +2200,7 @@ if (!phyloXml) {
         // circular: a thin dashed connector from each external node out to the
         // common label ring (so labels line up like iTOL's aligned display).
         _svgGroup.selectAll('g.aptx-radial-conn').remove();
-        if (_options.circular && _options.showExternalLabels) {
+        if (_options.circularDisplay && _options.showExternalLabels) {
             let conn = _svgGroup.insert('g', 'g').attr('class', 'aptx-radial-conn');
             conn.selectAll('line')
                 .data(nodes.filter(function (d) {
@@ -2249,7 +2248,7 @@ if (!phyloXml) {
         // switch turned on: otherwise every node would sprout a circle whenever
         // that switch is on with no visualization chosen.
         let visualized = _options.nodeSizeDefault > 0 && node.parent
-            && _options.showNodeVisualizations && !node.hasVis
+            && _options.showVisualizations && !node.hasVis
             && _currentLabelColorVisualization != null;
 
         // a zero-length branch off the root would otherwise be invisible
@@ -2268,8 +2267,7 @@ if (!phyloXml) {
 
     let makeBranchColor = function (link) {
 
-        const n = link.target;
-        if (!_options.showBranchVisualizations && _options.showBranchColors && link.target.color) {
+        if (_options.showBranchColors && link.target.color) {
             let c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
         }
@@ -2326,7 +2324,7 @@ if (!phyloXml) {
             if (evColor !== null) {
                 return evColor;
             }
-        } else if (_options.showNodeVisualizations) {
+        } else if (_options.showVisualizations) {
             return makeVisNodeBorderColor(phynode);
         } else if (_options.showBranchColors && phynode.color) {
             let c = phynode.color;
@@ -2340,7 +2338,7 @@ if (!phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        if (_currentLabelColorVisualization) {
+        if (_options.showVisualizations && _currentLabelColorVisualization) {
             let color = makeVisLabelColor(phynode);
             if (color) {
                 return color;
@@ -2421,7 +2419,7 @@ if (!phyloXml) {
     }
 
     let makeVisNodeFillColor = function (node) {
-        if (!_options.showNodeVisualizations) {
+        if (!_options.showVisualizations) {
             return _options.backgroundColorDefault;
         }
         return visualizationColorFor(node) || _options.backgroundColorDefault;
@@ -2714,7 +2712,7 @@ if (!phyloXml) {
     };
 
     // ---- radial (circular) layout helpers ----
-    // When _options.circular is on, the cluster's cross-axis position (node.x) is
+    // When _options.circularDisplay is on, the cluster's cross-axis position (node.x) is
     // reinterpreted as an angle and its depth position (node.y) as a radius, so the
     // same layout renders as a circular tree. _radial is set per render in update().
     function radialAngle(x) {
@@ -2731,7 +2729,7 @@ if (!phyloXml) {
         return polarXY(radialAngle(x), radialRadius(y));
     }
     function nodeTransform(d) {
-        if (_options.circular) {
+        if (_options.circularDisplay) {
             let p = radialXY(d.x, d.y);
             return 'translate(' + p[0] + ',' + p[1] + ')';
         }
@@ -2758,7 +2756,7 @@ if (!phyloXml) {
     }
 
     let elbow = function (d) {
-        if (_options.circular) {
+        if (_options.circularDisplay) {
             let sa = radialAngle(d.source.x), ta = radialAngle(d.target.x);
             let sr = radialRadius(d.source.y), tr = radialRadius(d.target.y);
             let sp = polarXY(sa, sr), mp = polarXY(ta, sr), tp = polarXY(ta, tr);
@@ -2785,6 +2783,7 @@ if (!phyloXml) {
     // expecting behaviour that will not happen, and quietly ignoring it hides
     // that until somebody notices the display is wrong.
     const REMOVED_OPTIONS = {
+        circular: 'renamed to "circularDisplay"',
         showExternalNodes: 'node shapes now appear wherever a node visualization applies',
         showInternalNodes: 'node shapes now appear wherever a node visualization applies',
         searchIsPartial: 'each search box picks its own match mode (contains / starts with / ends with / whole word / regex)',
@@ -2850,8 +2849,9 @@ if (!phyloXml) {
         dynahide: 'on by default; use the Auto-hide Labels checkbox',
         minConfidenceValueToShow: 'no longer configurable',
         minBranchLengthValueToShow: 'no longer configurable',
-        showNodeVisualizations: 'off by default; use the Node Vis checkbox',
-        showBranchVisualizations: 'off by default; use the Branch Vis checkbox',
+        showVisualizations: 'off by default; use the Visualizations checkbox',
+        showNodeVisualizations: 'node and branch visualizations are one switch now; use the Visualizations checkbox',
+        showBranchVisualizations: 'node and branch visualizations are one switch now; use the Visualizations checkbox',
         nodeVisualizationsOpacity: 'no longer configurable',
         initialNodeFillColorVisualization: 'choose the visualization in the Visualizations panel',
         initialLabelColorVisualization: 'choose the visualization in the Visualizations panel',
@@ -2898,6 +2898,9 @@ if (!phyloXml) {
         textFieldHeight: 'the text fields size themselves to their content',
         enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
         border: 'style the tree\'s svg with CSS instead',
+        allowManualNodeSelection: 'renamed to "enableManualNodeSelection"',
+        enableNodeVisualizations: 'merged into "enableVisualizations"',
+        enableBranchVisualizations: 'merged into "enableVisualizations"',
         controls0: 'the control panel is created inside the tree\'s own container now',
         controls0Left: 'the control panel is placed against the tree; drag it to move it',
         controls0Top: 'the control panel is placed against the tree; drag it to move it',
@@ -2953,8 +2956,8 @@ if (!phyloXml) {
         _options.phylogram = branchCount > 0
             && (_basicTreeProperties.branchesWithPositiveLength / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
         _options.alignPhylogram = false;
-        if (_options.circular === undefined) {
-            _options.circular = false;
+        if (_options.circularDisplay === undefined) {
+            _options.circularDisplay = false;
         }
         _options.dynahide = true;
 
@@ -3029,8 +3032,7 @@ if (!phyloXml) {
         _options.minBranchLengthValueToShow = null;
         _options.minConfidenceValueToShow = null;
 
-        _options.showNodeVisualizations = false;
-        _options.showBranchVisualizations = false;
+        _options.showVisualizations = false;
         _options.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
         _options.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
 
@@ -3090,11 +3092,8 @@ if (!phyloXml) {
         if (_settings.enableDownloads === undefined) {
             _settings.enableDownloads = true;
         }
-        if (_settings.enableBranchVisualizations === undefined) {
-            _settings.enableBranchVisualizations = false;
-        }
-        if (_settings.enableNodeVisualizations === undefined) {
-            _settings.enableNodeVisualizations = false;
+        if (_settings.enableVisualizations === undefined) {
+            _settings.enableVisualizations = false;
         }
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = true;
@@ -3111,8 +3110,8 @@ if (!phyloXml) {
         if (_settings.dynamicallyAddNodeVisualizations === undefined) {
             _settings.dynamicallyAddNodeVisualizations = false;
         }
-        if (_settings.allowManualNodeSelection === undefined) {
-            _settings.allowManualNodeSelection = false;
+        if (_settings.enableManualNodeSelection === undefined) {
+            _settings.enableManualNodeSelection = false;
         }
         if (_settings.ladderizeTree === undefined) {
             _settings.ladderizeTree = true;
@@ -3271,7 +3270,7 @@ if (!phyloXml) {
         initializeSettings(settings);
 
 
-        if (settings.enableNodeVisualizations) {
+        if (settings.enableVisualizations) {
 
             // Intelligent pre-sets: when the caller provides no node
             // visualizations, generate sensible ones from the tree's custom
@@ -3944,7 +3943,7 @@ if (!phyloXml) {
                 && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
                 items.push({label: 'Reroot', action: function () { forester.reRoot(tree, d, -1); zoomToFit(); }});
             }
-            if (_settings.allowManualNodeSelection) {
+            if (_settings.enableManualNodeSelection) {
                 items.push({label: 'Select/Deselect Node', action: function () { selectDeselectNode(d); }});
                 items.push({label: 'Select/Deselect All Ext Nodes', action: function () { selectDeselectNodeExtNodes(d); }});
             }
@@ -4002,7 +4001,7 @@ if (!phyloXml) {
 
         initializeNodeVisualizations(nodeProperties);
 
-        if (((_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showNodeVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE])))) {
+        if (_settings.enableVisualizations && (_legendColorScales[LEGEND_LABEL_COLOR] || (_options.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
             if (_legendColorScales[LEGEND_LABEL_COLOR]) {
                 removeLegend(LEGEND_LABEL_COLOR);
                 addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
@@ -4036,7 +4035,7 @@ if (!phyloXml) {
 
     function keepViewportCentred(applyZoom) {
         let size = svgSize();
-        if (_options.circular || !_baseSvg || !size) {
+        if (_options.circularDisplay || !_baseSvg || !size) {
             applyZoom();
             return;
         }
@@ -4129,7 +4128,7 @@ if (!phyloXml) {
             initializeSettings(_settings);
             setZoomScale(1);
             update(_root, 0);
-            if (_options.circular) {
+            if (_options.circularDisplay) {
                 fitCircular();
             } else {
                 centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
@@ -4289,7 +4288,7 @@ if (!phyloXml) {
         // Where the user dragged the legend to is their choice; a resize is no
         // reason to undo it.
         zoomToFit();
-        if (_settings.enableNodeVisualizations || _settings.enableBranchVisualizations) {
+        if (_settings.enableVisualizations) {
             let c0 = document.querySelector(_id + ' > .aptx-panel');
             if (c0) {
                 setStyles(c0, {
@@ -4544,7 +4543,7 @@ if (!phyloXml) {
     }
 
     function layoutButtonClicked() {
-        _options.circular = getCheckboxValue(LAYOUT_CIRC_BUTTON);
+        _options.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
         zoomToFit();
     }
 
@@ -4649,15 +4648,8 @@ if (!phyloXml) {
         update();
     }
 
-    function nodeVisCbClicked() {
-        _options.showNodeVisualizations = getCheckboxValue(NODE_VIS_CB);
-        resetVis();
-        update(null, 0);
-        update(null, 0);
-    }
-
-    function branchVisCbClicked() {
-        _options.showBranchVisualizations = getCheckboxValue(BRANCH_VIS_CB);
+    function visCbClicked() {
+        _options.showVisualizations = getCheckboxValue(VIS_CB);
         resetVis();
         update(null, 0);
         update(null, 0);
@@ -5869,7 +5861,7 @@ if (!phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeSearchBoxes());
 
-            if (_settings.allowManualNodeSelection) {
+            if (_settings.enableManualNodeSelection) {
                 //c0.append(makeSubmitSection()); //~~~
             }
 
@@ -5969,9 +5961,8 @@ if (!phyloXml) {
 
         on(EXTERNAL_LABEL_CB, 'click', externalLabelsCbClicked);
 
-        on(NODE_VIS_CB, 'click', nodeVisCbClicked);
+        on(VIS_CB, 'click', visCbClicked);
 
-        on(BRANCH_VIS_CB, 'click', branchVisCbClicked);
 
         on(BRANCH_COLORS_CB, 'click', branchColorsCbClicked);
 
@@ -6004,8 +5995,8 @@ if (!phyloXml) {
                 // One colour now paints the label AND the node, so choosing one
                 // switches node visualizations on -- otherwise half of what the
                 // control promises would not show.
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
+                _options.showVisualizations = true;
+                setCheckboxValue(VIS_CB, true);
                 if (_visualizations.labelColor[_currentLabelColorVisualization] != null) {
                     addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
                 }
@@ -6031,8 +6022,8 @@ if (!phyloXml) {
             if (v && v !== DEFAULT) {
                 _currentNodeShapeVisualization = v;
                 addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-                _options.showNodeVisualizations = true;
-                setCheckboxValue(NODE_VIS_CB, true);
+                _options.showVisualizations = true;
+                setCheckboxValue(VIS_CB, true);
             } else {
                 _currentNodeShapeVisualization = null;
                 removeLegendForShapes(LEGEND_NODE_SHAPE);
@@ -6445,11 +6436,8 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchColors) { // only when the tree carries any
                 nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
             }
-            if (_settings.enableNodeVisualizations) {
-                nodes.push(makeCheckboxItem('Node Vis', NODE_VIS_CB, 'to show/hide node visualizations (colors, shapes, sizes), set with the Visualizations sub-menu'));
-            }
-            if (_settings.enableBranchVisualizations) {
-                nodes.push(makeCheckboxItem('Branch Vis', BRANCH_VIS_CB, 'to show/hide branch visualizations, set with the Visualizations sub-menu'));
+            if (_settings.enableVisualizations) {
+                nodes.push(makeCheckboxItem('Visualizations', VIS_CB, 'to show or hide the Color and Shape visualizations chosen above'));
             }
 
             // --- Options ---
@@ -6600,7 +6588,7 @@ if (!phyloXml) {
         // on the right. They belong with every other control, and above Display
         // Data, which is where the desktop puts them.
         function insertVisualizationControls(panel) {
-            if (_settings.enableNodeVisualizations && _nodeVisualizations) {
+            if (_settings.enableVisualizations && _nodeVisualizations) {
                 panel.insertAdjacentHTML('beforeend', makeVisualControls());
             }
         }
@@ -6695,8 +6683,7 @@ if (!phyloXml) {
         setCheckboxValue(INTERNAL_LABEL_CB, _options.showInternalLabels);
         setCheckboxValue(EXTERNAL_LABEL_CB, _options.showExternalLabels);
         setCheckboxValue(BRANCH_COLORS_CB, _options.showBranchColors);
-        setCheckboxValue(NODE_VIS_CB, _options.showNodeVisualizations);
-        setCheckboxValue(BRANCH_VIS_CB, _options.showBranchVisualizations);
+        setCheckboxValue(VIS_CB, _options.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _options.dynahide);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _options.shortenNodeNames);
         initializeVisualizationMenu();
@@ -6835,8 +6822,8 @@ if (!phyloXml) {
         setRadioButtonValue(PHYLOGRAM_BUTTON, _options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(CLADOGRAM_BUTTON, !_options.phylogram && !_options.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _options.alignPhylogram && _options.phylogram);
-        setCheckboxValue(LAYOUT_CIRC_BUTTON, _options.circular);
-        setCheckboxValue(LAYOUT_RECT_BUTTON, !_options.circular);
+        setCheckboxValue(LAYOUT_CIRC_BUTTON, _options.circularDisplay);
+        setCheckboxValue(LAYOUT_RECT_BUTTON, !_options.circularDisplay);
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);

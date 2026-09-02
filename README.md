@@ -263,7 +263,7 @@ answer for you.
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `circular` | `false` | Circular layout instead of rectangular. |
+| `circularDisplay` | `false` | Circular layout instead of rectangular. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
 | `visualizationsLegendXpos` | `220` | Legend position, x. |
@@ -292,6 +292,7 @@ constants:
 
 | Option | Why, and what to do instead |
 | --- | --- |
+| `circular` | Renamed to `circularDisplay`. |
 | `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `showInternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `searchIsPartial` | Each search box picks its own match mode (contains / starts with / ends with / whole word / regex). |
@@ -351,8 +352,9 @@ constants:
 | `dynahide` | On by default; use the Auto-hide Labels checkbox. |
 | `minConfidenceValueToShow` | No longer configurable. |
 | `minBranchLengthValueToShow` | No longer configurable. |
-| `showNodeVisualizations` | Off by default; use the Node Vis checkbox. |
-| `showBranchVisualizations` | Off by default; use the Branch Vis checkbox. |
+| `showVisualizations` | Off by default; use the Visualizations checkbox. |
+| `showNodeVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
+| `showBranchVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
 | `nodeVisualizationsOpacity` | No longer configurable. |
 | `initialNodeFillColorVisualization` | Choose the visualization in the Visualizations panel. |
 | `initialLabelColorVisualization` | Choose the visualization in the Visualizations panel. |
@@ -373,12 +375,11 @@ constants:
 | `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
 | `enableDownloads` | `true` | Offer the download buttons. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
-| `enableNodeVisualizations` | `false` | Offer node visualizations. |
-| `enableBranchVisualizations` | `false` | Offer branch visualizations. |
+| `enableVisualizations` | `false` | Offer the Color / Shape visualizations. |
 | `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree's own properties. |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the "Access DB" link in the node menu. |
-| `allowManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
+| `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
 
 ### Removed — passing these throws
@@ -416,6 +417,9 @@ constants:
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
 | `border` | Style the tree's svg with CSS instead. |
+| `allowManualNodeSelection` | Renamed to `enableManualNodeSelection`. |
+| `enableNodeVisualizations` | Merged into `enableVisualizations`. |
+| `enableBranchVisualizations` | Merged into `enableVisualizations`. |
 | `controls0` | The control panel is created inside the tree's own container now. |
 | `controls0Left` | The control panel is placed against the tree; drag it to move it. |
 | `controls0Top` | The control panel is placed against the tree; drag it to move it. |
