@@ -2927,6 +2927,7 @@ if (!phyloXml) {
         textFieldHeight: 'the text fields size themselves to their content',
         enableMsaResidueVisualizations: 'colouring by aligned residue was removed',
         border: 'style the tree\'s svg with CSS instead',
+        nhExportReplaceIllegalChars: 'always on; Newick cannot carry those characters',
         controlsBackgroundColor: 'the control panel follows the light / dark palette'
     };
 
@@ -3121,7 +3122,7 @@ if (!phyloXml) {
             _settings.rootOffset = leftPanelClearance(_settings);
         }
         if (_settings.enableDownloads === undefined) {
-            _settings.enableDownloads = false;
+            _settings.enableDownloads = true;
         }
         if (_settings.enableBranchVisualizations === undefined) {
             _settings.enableBranchVisualizations = false;
@@ -3130,10 +3131,7 @@ if (!phyloXml) {
             _settings.enableNodeVisualizations = false;
         }
         if (_settings.nhExportWriteConfidences === undefined) {
-            _settings.nhExportWriteConfidences = false;
-        }
-        if (_settings.nhExportReplaceIllegalChars === undefined) {
-            _settings.nhExportReplaceIllegalChars = true;
+            _settings.nhExportWriteConfidences = true;
         }
         if (_settings.enableSubtreeDeletion === undefined) {
             _settings.enableSubtreeDeletion = true;
@@ -7038,7 +7036,10 @@ if (!phyloXml) {
     }
 
     function downloadAsNH() {
-        let nh = forester.toNewHampshire(_root, 9, _settings.nhExportReplaceIllegalChars, _settings.nhExportWriteConfidences);
+        // Newick cannot carry those characters unescaped, so replacing them is
+        // not a preference: writing them out produces a file that will not parse
+        // back in.
+        let nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
         saveAs(new Blob([nh], {type: "application/txt"}), _options.nameForNhDownload);
     }
 

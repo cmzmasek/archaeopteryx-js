@@ -376,9 +376,8 @@ constants:
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
 | `rootOffset` | clears the control panel, or `30` without one | Distance from the left edge to the root. |
-| `enableDownloads` | `false` | Offer the download buttons. |
-| `nhExportWriteConfidences` | `false` | Write confidences into exported Newick. |
-| `nhExportReplaceIllegalChars` | `true` | Replace illegal characters in exported Newick. |
+| `enableDownloads` | `true` | Offer the download buttons. |
+| `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `enableNodeVisualizations` | `false` | Offer node visualizations. |
 | `enableBranchVisualizations` | `false` | Offer branch visualizations. |
 | `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree's own properties. |
@@ -424,6 +423,7 @@ constants:
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `enableMsaResidueVisualizations` | Colouring by aligned residue was removed. |
 | `border` | Style the tree's svg with CSS instead. |
+| `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `controlsBackgroundColor` | The control panel follows the light / dark palette. |
 
 ## Node visualizations
