@@ -814,6 +814,23 @@
         {id: 'seq:gene_name', kind: 'sequence', label: 'Gene Name', get: function (s) { return s.gene_name; }}
     ];
 
+    // "geographic_group" reads like a database column; a menu should say
+    // "Geographic Group". Underscores become spaces, camelCase is split
+    // (FluSeason -> Flu Season, GlobalH1Clade -> Global H1 Clade), and
+    // all-lowercase words are capitalized. Words that already carry capitals
+    // (PANGO, HA, H5N1) are left exactly as written.
+    function prettifyVisLabel(name) {
+        return name
+            .replace(/_/g, ' ')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/([0-9])([A-Z][a-z])/g, '$1 $2')
+            .split(' ')
+            .map(function (w) {
+                return /^[a-z]/.test(w) ? w.charAt(0).toUpperCase() + w.substring(1) : w;
+            })
+            .join(' ');
+    }
+
     forester.visualizationCandidates = function (tree) {
         let total = 0;
         let stats = {};   // id -> {kind, ref, label, nodes, values:Set, multi}
@@ -922,9 +939,10 @@
                 id: id,
                 kind: s.kind,
                 ref: s.ref,
-                // property labels drop the namespace prefix; a cross-namespace
-                // collision is resolved below by restoring the full ref
-                label: s.label || (s.ref.indexOf(':') >= 0 ? s.ref.substring(s.ref.indexOf(':') + 1) : s.ref),
+                // property labels drop the namespace prefix and are prettified;
+                // a cross-namespace collision is resolved below by restoring
+                // the full ref verbatim
+                label: s.label || prettifyVisLabel(s.ref.indexOf(':') >= 0 ? s.ref.substring(s.ref.indexOf(':') + 1) : s.ref),
                 numeric: numeric,
                 coverage: covered,
                 total: total,

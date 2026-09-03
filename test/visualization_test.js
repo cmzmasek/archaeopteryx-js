@@ -271,7 +271,7 @@ function testDescriptorStats() {
     var hg = byId['prop:BVBRC:host_group'];
     if (!hg || hg.coverage !== 149 || hg.total !== 201 || hg.values.length !== 4) return false;
     if (hg.numeric !== false || hg.kind !== 'property' || hg.ref !== 'BVBRC:host_group') return false;
-    if (hg.label !== 'host_group') return false;
+    if (hg.label !== 'Host Group') return false;
     // counts must sum to the coverage, and the score must be a sane fraction
     var sum = 0;
     hg.values.forEach(function (v) { sum += hg.counts[v]; });
@@ -504,6 +504,30 @@ function testLabelSuffixGate() {
     return forester.nodeLabelProperty(phy) === null;
 }
 
+// Menu labels are prettified from the property refs: underscores to
+// spaces, camelCase split, lowercase words capitalized -- and words that
+// already carry capitals (PANGO, HA, H5N1) left exactly as written.
+function testPrettyLabels() {
+    function labels(tree) {
+        var out = {};
+        forester.visualizationCandidates(loadTree(tree)).forEach(function (c) { out[c.id] = c.label; });
+        return out;
+    }
+    var h = labels('herpes_dnapol');
+    if (h['prop:BVBRC:geographic_group'] !== 'Geographic Group') return false;
+    if (h['prop:BVBRC:collection_year'] !== 'Collection Year') return false;
+    var b = labels('branch_events');
+    if (b['prop:vipr:PANGO_Lineage_L0'] !== 'PANGO Lineage L0') return false;
+    if (b['prop:vipr:Year_Month'] !== 'Year Month') return false;
+    var c = labels('confidences');
+    if (c['prop:ird:FluSeason'] !== 'Flu Season') return false;
+    if (c['prop:ird:GlobalH1Clade'] !== 'Global H1 Clade') return false;
+    var i = labels('influenza');
+    if (i['prop:ird:H5Clade'] !== 'H5 Clade') return false;
+    if (i['prop:ird:HA'] !== 'HA') return false;
+    return true;
+}
+
 // --------------------------------------------------------------
 // The shared-prefix detector (forester.commonNamePrefix)
 // --------------------------------------------------------------
@@ -628,6 +652,7 @@ runTest("label property, fixtures   : ", testLabelPropertyFixtures);
 runTest("label: readable names stand: ", testLabelReadableNamesStand);
 runTest("label: wordy gate          : ", testLabelWordyGate);
 runTest("label: suffix gate         : ", testLabelSuffixGate);
+runTest("pretty menu labels         : ", testPrettyLabels);
 runTest("prefix, fixtures           : ", testPrefixFixtures);
 runTest("prefix, word boundary      : ", testPrefixWordBoundary);
 runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
