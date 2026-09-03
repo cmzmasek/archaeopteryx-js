@@ -2032,7 +2032,13 @@ if (!phyloXml) {
                 if (radialDisplay()) {
                     return '0.32em';
                 }
-                return d.children ? 0.3 * _state.internalNodeFontSize + 'px' : 0.3 * _state.externalNodeFontSize + 'px';
+                if (d.children) {
+                    // the desktop's above-branch internal label: the baseline
+                    // is lifted so the glyph bottoms sit just clear of the
+                    // horizontal branch line, instead of straddling it
+                    return -(Math.round(0.2 * _state.internalNodeFontSize) + 1) + 'px';
+                }
+                return 0.3 * _state.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
                 if (radialDisplay()) {
@@ -2045,6 +2051,18 @@ if (!phyloXml) {
                         return gap;
                     }
                 } else {
+                    // right-aligned so the label ends just left of the node
+                    // (the desktop's publication-style placement); a long
+                    // label on a node near the root shifts right so its
+                    // leading characters stay on the canvas rather than
+                    // clipping off the left edge
+                    let label = makeNodeLabel(d) || '';
+                    let est = label.length * _state.internalNodeFontSize * 0.55;
+                    let leftmost = d.y - gap - est;
+                    let minX = 2 - _settings.rootOffset;
+                    if (leftmost < minX) {
+                        return -gap + (minX - leftmost);
+                    }
                     return -gap;
                 }
             });
