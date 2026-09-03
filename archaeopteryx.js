@@ -1145,8 +1145,18 @@ if (!phyloXml) {
     // the only input. Each candidate carries its scales, built once per
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
+    // The tree as displayed right now: the subtree the user switched into,
+    // otherwise the (possibly edited) full tree.
+    function displayedRoot() {
+        return _in_subtree ? _root : _treeData;
+    }
+
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSortById: {}, colorModeById: {}, legendExpandedById: {}, hasStyles: false};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null,
+            labelRef: null, labelPrefix: null,
+            legendSortById: {}, colorModeById: {}, legendExpandedById: {},
+            colorMemory: {}, colorNext: {}, shapeMemory: {}, shapeNext: {},
+            hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
@@ -1181,32 +1191,7 @@ if (!phyloXml) {
         if (!_settings.enableVisualizations) {
             return;
         }
-        forester.visualizationCandidates(_treeData).forEach(function (c) {
-            if (c.numeric) {
-                let nums = c.values.map(Number);
-                let mean = nums.reduce(function (a, b) {
-                    return a + b;
-                }, 0) / nums.length;
-                c.rangeScale = d3.scaleLinear()
-                    .range(VIS_COLOR_RAMP)
-                    .domain([nums[0], mean, nums[nums.length - 1]]);
-            }
-            // a switchable candidate needs both scales standing by
-            if (c.colorMode === 'category' || c.switchable) {
-                let range = VIS_COLOR_PALETTE;
-                if (c.values.length > VIS_COLOR_PALETTE.length) {
-                    range = c.values.map(function (_, i) {
-                        return extendedPaletteColor(i);
-                    });
-                }
-                c.categoryScale = d3.scaleOrdinal().range(range).domain(c.values);
-            }
-            if (c.shape) {
-                c.shapeScale = d3.scaleOrdinal().range(VIS_SHAPES).domain(c.values);
-            }
-            _vis.candidates.push(c);
-            _vis.byId[c.id] = c;
-        });
+        computeVisualizationCandidates(_treeData);
         // Auto-apply the best candidate: the classifier returns them best
         // first, so a tree opens already coloured by its most informative
         // field instead of grey with a menu to discover. A wide field
@@ -1218,12 +1203,75 @@ if (!phyloXml) {
         }
     }
 
+    // Candidates, bands, counts and legends describe the DISPLAYED tree; a
+    // value's colour and shape are launch-lifetime identities. The memory maps
+    // remember every (field, value) -> colour/shape ever assigned, so a value
+    // keeps its look across subtree views and survives deletions unshifted;
+    // values first met in a smaller view extend the memory with the next free
+    // palette slots. (On the launch view this assigns the sorted domain
+    // 0,1,2,... -- exactly the old fixed-palette behaviour.)
+    function computeVisualizationCandidates(viewRoot) {
+        _vis.candidates = [];
+        _vis.byId = {};
+        forester.visualizationCandidates(viewRoot).forEach(function (c) {
+            if (c.numeric) {
+                // ramps are POSITION in the view's range, not identity: a
+                // subtree spanning six years gets a full-width gradient
+                let nums = c.values.map(Number);
+                let mean = nums.reduce(function (a, b) {
+                    return a + b;
+                }, 0) / nums.length;
+                c.rangeScale = d3.scaleLinear()
+                    .range(VIS_COLOR_RAMP)
+                    .domain([nums[0], mean, nums[nums.length - 1]]);
+            }
+            function memoryKey(v) {
+                return c.kind === 'property' ? v.toLowerCase() : v;
+            }
+            // a switchable candidate needs both scales standing by
+            if (c.colorMode === 'category' || c.switchable) {
+                let mem = _vis.colorMemory[c.id] || (_vis.colorMemory[c.id] = {});
+                let next = _vis.colorNext[c.id] || 0;
+                c.values.forEach(function (v) {
+                    let k = memoryKey(v);
+                    if (!(k in mem)) {
+                        mem[k] = extendedPaletteColor(next++);
+                    }
+                });
+                _vis.colorNext[c.id] = next;
+                c.categoryScale = d3.scaleOrdinal()
+                    .domain(c.values)
+                    .range(c.values.map(function (v) {
+                        return mem[memoryKey(v)];
+                    }));
+            }
+            if (c.shape) {
+                let mem = _vis.shapeMemory[c.id] || (_vis.shapeMemory[c.id] = {});
+                let next = _vis.shapeNext[c.id] || 0;
+                c.values.forEach(function (v) {
+                    let k = memoryKey(v);
+                    if (!(k in mem)) {
+                        mem[k] = VIS_SHAPES[next++ % VIS_SHAPES.length];
+                    }
+                });
+                _vis.shapeNext[c.id] = next;
+                c.shapeScale = d3.scaleOrdinal()
+                    .domain(c.values)
+                    .range(c.values.map(function (v) {
+                        return mem[memoryKey(v)];
+                    }));
+            }
+            _vis.candidates.push(c);
+            _vis.byId[c.id] = c;
+        });
+    }
+
     function currentColorVis() {
-        return (_vis && _vis.colorId) ? _vis.byId[_vis.colorId] : null;
+        return ((_vis && _vis.colorId) ? _vis.byId[_vis.colorId] : null) || null;
     }
 
     function currentShapeVis() {
-        return (_vis && _vis.shapeId) ? _vis.byId[_vis.shapeId] : null;
+        return ((_vis && _vis.shapeId) ? _vis.byId[_vis.shapeId] : null) || null;
     }
 
     // A candidate's colour mode, honouring the legend's [colors] / [gradient]
@@ -3625,6 +3673,7 @@ if (!phyloXml) {
                         fakeNode.y0 = 0;
                         _root = fakeNode;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+                        refreshVisualizations();
                         search0();
                         search1();
                         zoomToFit();
@@ -3737,7 +3786,7 @@ if (!phyloXml) {
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
-                        rebuildVisualizations();
+                        refreshVisualizations();
                         search0();
                         search1();
                         zoomToFit();
@@ -3757,21 +3806,19 @@ if (!phyloXml) {
     // fields do. Plain subtree NAVIGATION does not come through here -- a
     // subtree keeps its parent tree's visualizations, so colours stay
     // stable diving in and out.
-    function rebuildVisualizations() {
-        let colorId = _vis ? _vis.colorId : null;
-        let shapeId = _vis ? _vis.shapeId : null;
-        let show = _state.showVisualizations;
-        let shorten = _state.shortenNodeNames;
-        let legendSortById = _vis ? _vis.legendSortById : {};
-        let colorModeById = _vis ? _vis.colorModeById : {};
-        let legendExpandedById = _vis ? _vis.legendExpandedById : {};
-        initializeVisualizations();
-        _vis.legendSortById = legendSortById;
-        _vis.colorModeById = colorModeById;
-        _vis.legendExpandedById = legendExpandedById;
-        // the rebuild is not a user choice: neither checkbox moves
-        _state.showVisualizations = show;
-        _state.shortenNodeNames = shorten;
+    // The view changed -- into or out of a subtree, or the tree was edited.
+    // Candidates, menus and legends are recomputed for what is displayed; the
+    // user's choices survive when their fields do (otherwise the menu goes
+    // back to default and the tree to plain ink -- honest, not a silent
+    // switch); colour/shape identities persist via the memory maps; and no
+    // checkbox moves, because a view change is not a user choice.
+    function refreshVisualizations() {
+        if (!_vis) {
+            return;
+        }
+        let colorId = _vis.colorId;
+        let shapeId = _vis.shapeId;
+        computeVisualizationCandidates(displayedRoot());
         _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
         _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
         populateVisualizationMenus();
@@ -3942,6 +3989,7 @@ if (!phyloXml) {
             _root = _root_const;
             _in_subtree = false;
             _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+            refreshVisualizations();
             search0();
             search1();
             zoomToFit();
@@ -3980,6 +4028,7 @@ if (!phyloXml) {
                 }
 
                 _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+                refreshVisualizations();
                 search0();
                 search1();
                 zoomToFit();
@@ -4026,10 +4075,11 @@ if (!phyloXml) {
 
         initializeSettings(_settings);
 
-        // Esc resets to the launch state -- which includes the auto-applied
-        // colour, not a grey tree.
+        refreshVisualizations();
+        // Esc resets to the launch state -- the auto-applied colour, when its
+        // field still exists in what remains of the tree.
         if (_vis) {
-            _vis.colorId = _vis.autoColorId;
+            _vis.colorId = (_vis.autoColorId && _vis.byId[_vis.autoColorId]) ? _vis.autoColorId : null;
             _vis.shapeId = null;
             _vis.legendSortById = {};
             _vis.colorModeById = {};

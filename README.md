@@ -464,11 +464,21 @@ sits below one that actually splits the tree. **The best candidate is applied
 automatically on load**: a tree opens coloured by its most informative field
 rather than grey with a menu to discover. Esc resets back to that state.
 
-Colours are assigned from the **complete** tree, so a value keeps its colour
-inside a subtree view even when the subtree does not contain it; the menus and
-choices survive diving into and out of subtrees unchanged. Choosing a Color
-also switches the Visualizations checkbox on, since one colour paints both the
-label and the node.
+**Local candidacy, stable identity.** Candidates, bands, counts, menus and
+legends always describe the **displayed** tree: switch into a subtree (or
+delete part of the tree) and everything is re-derived, so a field that was
+refused on the full tree — Species at 66 values, say — is offered inside a
+clade where it has six. A value's **colour and shape, by contrast, are
+identities**: assigned once per launch and remembered, so nothing recolours
+when you dive in and out, and deleting a clade never shifts the colours of
+what survives. Numeric ramps are the exception by design — a ramp's colour is
+position in the view's range, so a six-year subtree gets a full-width
+gradient. Your Color/Shape choice survives a view change when its field is
+still a candidate there; otherwise the menu returns to default (and the tree
+falls back to `style:` colours where the file carries them). Auto-apply
+happens only at launch, and view changes never touch any checkbox. Choosing a
+Color also switches the Visualizations checkbox on, since one colour paints
+both the label and the node.
 
 ### Value grouping (normalization + synonym dictionary)
 
