@@ -417,6 +417,10 @@ if (!phyloXml) {
     let _menuConsumedEsc = false;         // the popup's Esc(keydown) must not also fire escPressed(keyup)
     let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
     const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
+    // the radial layouts' uniform zoom scales BOTH display extents between
+    // these bounds on min(width, height) -- the desktop's diameter clamps
+    const RADIAL_MIN_EXTENT = 95;
+    const RADIAL_MAX_EXTENT = 24000;
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
@@ -4394,10 +4398,19 @@ if (!phyloXml) {
     function zoomInY(zoomInFactor) {
         keepViewportCentred(function () {
             _zoomed_x_or_y = true;
-            if (zoomInFactor) {
-                _displayHeight = _displayHeight * zoomInFactor;
+            let f = zoomInFactor ? zoomInFactor : BUTTON_ZOOM_IN_FACTOR;
+            if (radialDisplay()) {
+                // ONE uniform zoom in the radial layouts: both extents scale
+                // together. Growing only the height let min(width, height) --
+                // the radius -- hit its ceiling while the height kept
+                // inflating invisibly, and zooming out then had to spend the
+                // excess before anything shrank.
+                if (Math.min(_displayWidth, _displayHeight) * f <= RADIAL_MAX_EXTENT) {
+                    _displayWidth = _displayWidth * f;
+                    _displayHeight = _displayHeight * f;
+                }
             } else {
-                _displayHeight = _displayHeight * BUTTON_ZOOM_IN_FACTOR;
+                _displayHeight = _displayHeight * f;
             }
             update(null, 0);
         });
@@ -4426,14 +4439,18 @@ if (!phyloXml) {
     function zoomOutY(zoomOutFactor) {
         keepViewportCentred(function () {
             _zoomed_x_or_y = true;
-            if (zoomOutFactor) {
-                _displayHeight = _displayHeight * zoomOutFactor;
+            let f = zoomOutFactor ? zoomOutFactor : BUTTON_ZOOM_OUT_FACTOR;
+            if (radialDisplay()) {
+                if (Math.min(_displayWidth, _displayHeight) * f >= RADIAL_MIN_EXTENT) {
+                    _displayWidth = _displayWidth * f;
+                    _displayHeight = _displayHeight * f;
+                }
             } else {
-                _displayHeight = _displayHeight * BUTTON_ZOOM_OUT_FACTOR;
-            }
-            let min = 40;
-            if (_displayHeight < min) {
-                _displayHeight = min;
+                _displayHeight = _displayHeight * f;
+                let min = 40;
+                if (_displayHeight < min) {
+                    _displayHeight = min;
+                }
             }
             update(null, 0);
         });
