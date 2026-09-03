@@ -122,8 +122,7 @@ if (!phyloXml) {
     const BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT = '#ffffff';
     const BRANCH_COLOR_DEFAULT = '#909090';
     const BRANCH_WIDTH_DEFAULT = 1;
-    const DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT = 0;
-    const FONT_SIZE_DEFAULT = 11; // one size for every label, as on the desktop
+        const FONT_SIZE_DEFAULT = 11; // one size for every label, as on the desktop
     // Whatever sans-serif the reader's own system renders best: system-ui first,
     // then the named faces for platforms that do not honour it, then the generic.
     const FONT_DEFAULTS = ['system-ui', '-apple-system', 'Segoe UI', 'Roboto',
@@ -158,7 +157,6 @@ if (!phyloXml) {
     // settings named for the control panel, which had stopped styling the
     // panel long ago; its colour follows the tree's label colour, so it
     // turns light with the rest of the drawing in dark mode.
-    const LEGEND_FONT_SIZE = 10;
     const DISPLY_HEIGHT_DEFAULT = 600;
     const DISPLAY_WIDTH_DEFAULT = 800;
     // Gap between the control panel's right edge and the root, and the offset
@@ -199,11 +197,9 @@ if (!phyloXml) {
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
-    const LINEAR_SCALE = 'linear';
     const NH_EXPORT_FORMAT = 'Newick';
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
-    const ORDINAL_SCALE = 'ordinal';
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     const PNG_EXPORT_FORMAT = 'PNG';
@@ -220,7 +216,6 @@ if (!phyloXml) {
     const SHORTEN_NAME_MAX_LENGTH = 18;
     const PANEL_STYLE_ID = 'aptx-panel-styles';
     // How wide a legend row is treated as, for grabbing it with the mouse.
-    const LEGEND_HIT_WIDTH = 140;
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and leftPanelClearance() so the two can't drift
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
@@ -256,11 +251,6 @@ if (!phyloXml) {
     const EXTERNAL_LABEL_CB = 'extl_cb';
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
-    const LEGEND = 'legend';
-    const LEGEND_HIT = 'legendHit';
-    const LEGEND_SWATCH = 'legendSwatch';
-    const LEGEND_DESCRIPTION = 'legendDescription';
-    const LEGEND_LABEL = 'legendLabel';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
     // The desktop Archaeopteryx logo (forester/archaeopteryx_icon_assets/
     // archaeopteryx-anime.svg), inlined so the library stays a single file.
@@ -1141,7 +1131,7 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSort: 'count'};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
@@ -1229,278 +1219,225 @@ if (!phyloXml) {
         _baseSvg.selectAll('g.' + id).remove();
     }
 
-    function makeColorLegend(id, xPos, yPos, colorScale, scaleType, label, description) {
+    // ---- legends ----------------------------------------------------------
+    //
+    // Drawn as cards over the tree, modelled on the desktop's legend box:
+    // a titled, bordered panel; value rows with counts; a [by count] / [A-Z]
+    // sort toggle in the title row (count-first is the desktop's default);
+    // and for numeric ranges a horizontal gradient bar with the min and max
+    // beneath it. Unlike the desktop there is no "+N more" cap machinery:
+    // the classifier already refuses fields above 20 values, so a legend
+    // can never overflow.
+    //
+    // The cards live in the tree's own svg, so they ride along into the PNG
+    // and SVG exports, and their colours are the four theme colours the
+    // export rewrite already knows how to turn light.
 
-        if (!label) {
-            throw new Error('legend label is missing');
+    let _legendMeasureCtx = null;
+
+    function legendTextWidth(text, font) {
+        if (!_legendMeasureCtx) {
+            _legendMeasureCtx = document.createElement('canvas').getContext('2d');
+        }
+        _legendMeasureCtx.font = font;
+        return _legendMeasureCtx.measureText(text).width;
+    }
+
+    // The card's row order: count-first ranks by frequency (ties
+    // alphabetical); A-Z keeps the candidate's own domain order, which is
+    // alphabetical for categories and numeric for numbers.
+    function orderedLegendValues(vis) {
+        let vals = vis.values.slice();
+        if (_vis.legendSort === 'count') {
+            vals.sort(function (a, b) {
+                let d = (vis.counts[b] || 0) - (vis.counts[a] || 0);
+                if (d !== 0) {
+                    return d;
+                }
+                let la = a.toLowerCase();
+                let lb = b.toLowerCase();
+                return la < lb ? -1 : (la > lb ? 1 : 0);
+            });
+        }
+        return vals;
+    }
+
+    function legendNumberLabel(v) {
+        let n = Number(v);
+        return Number.isInteger(n) ? String(n) : preciseRound(n, 2);
+    }
+
+    // Draws one legend card and returns its height.
+    function drawLegendCard(id, x, y, vis, kind) {
+        // The legend reads at the same size as the tree's labels, but never
+        // below 11 -- it is a key, and a key one cannot read is furniture.
+        const FS = Math.max(11, _state.externalNodeFontSize || 11);
+        const PAD = 9;
+        const ROW = FS + 6;
+        const SWATCH = 9;
+        const GAP = 6;
+        const ELLIPSIS_AT = 28;
+        const rowFont = FS + 'px ' + FONT_DEFAULTS;
+        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
+        const ink = _state.labelColorDefault;
+        const frame = _state.branchColorDefault;
+        const isRange = kind === 'color' && vis.colorMode === 'range';
+
+        let rows = [];
+        if (!isRange) {
+            orderedLegendValues(vis).forEach(function (v) {
+                let text = v.length > ELLIPSIS_AT ? v.substring(0, ELLIPSIS_AT - 1) + '\u2026' : v;
+                rows.push({value: v, text: text, count: vis.counts[v] || 0, noValue: false});
+            });
+        }
+        let missing = vis.total - vis.coverage;
+        if (missing > 0) {
+            rows.push({value: null, text: 'no value', count: missing, noValue: true});
         }
 
-        let linearRangeLabel = ' (gradient)';
-        let outOfRangeSymbol = ' *';
-        let isLinearRange = scaleType === LINEAR_SCALE;
-        let linearRangeLength = 0;
-        if (isLinearRange) {
-            label += linearRangeLabel;
-            linearRangeLength = colorScale.domain().length;
-        } else {
-            if (colorScale.domain().length > colorScale.range().length) {
-                label += outOfRangeSymbol;
+        let sortChip = (!isRange && vis.values.length > 1)
+            ? (_vis.legendSort === 'count' ? '[by count]' : '[A-Z]') : null;
+
+        // width: title row (title + chip), then the widest content row
+        const BAR_W = 150;
+        let width = legendTextWidth(vis.label, titleFont)
+            + (sortChip ? GAP + 4 + legendTextWidth(sortChip, rowFont) : 0);
+        rows.forEach(function (r) {
+            let w = SWATCH + GAP + legendTextWidth(r.text, rowFont)
+                + GAP + 4 + legendTextWidth(String(r.count), rowFont);
+            if (w > width) {
+                width = w;
             }
+        });
+        if (isRange) {
+            width = Math.max(width, BAR_W);
+        }
+        width += 2 * PAD;
+
+        let height = PAD + ROW + (rows.length * ROW) + PAD - 2;
+        if (isRange) {
+            height += 10 + 4 + ROW;
         }
 
-        let counter = 0;
+        let g = _baseSvg.append('g').attr('class', id);
+        makeLegendDraggable(g);
 
-        let legendRectSize = 10;
-        let legendSpacing = 4;
+        g.append('rect')
+            .attr('x', x).attr('y', y)
+            .attr('width', width).attr('height', height)
+            .attr('rx', 5)
+            .style('fill', _state.backgroundColorDefault)
+            .style('fill-opacity', 0.92)
+            .style('stroke', frame)
+            .style('stroke-opacity', 0.5);
 
-        let xCorrectionForLabel = -1;
-        let yFactorForLabel = -1.5;
-        let yFactorForDesc = -0.5;
+        let baseline = y + PAD + FS;
+        g.append('text')
+            .attr('x', x + PAD).attr('y', baseline)
+            .style('font', titleFont)
+            .style('fill', ink)
+            .text(vis.label);
 
-        let legend = _baseSvg.selectAll('g.' + id)
-            .data(colorScale.domain());
-
-        let legendEnter = legend.enter().append('g')
-            .attr('class', id);
-
-        makeLegendDraggable(legendEnter);
-
-        let fs = LEGEND_FONT_SIZE + 'px';
-
-        legendEnter.append('rect')
-            .attr('class', LEGEND_HIT)
-            .style('fill', 'none')
-            .style('pointer-events', 'all');
-
-        legendEnter.append('rect')
-            .attr('class', LEGEND_SWATCH)
-            .attr('width', null)
-            .attr('height', null);
-
-        legendEnter.append('text')
-            .attr('class', LEGEND)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_LABEL)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-
-        legend = legendEnter.merge(legend);
-        // SVG text is painted by fill, not color -- which is why the old
-        // 'color' style did nothing. It goes on the plain selection: set on
-        // the transition below it does not stick.
-        legend.selectAll('text').style('fill', _state.labelColorDefault);
-
-        let legendUpdate = legend.transition()
-            .duration(0)
-            .attr('transform', function (d, i) {
-                ++counter;
-                let height = legendRectSize;
-                let x = xPos;
-                let y = yPos + i * height;
-                return 'translate(' + x + ',' + y + ')';
-            });
-
-        legendUpdate.select('rect.' + LEGEND_HIT)
-            .attr('width', LEGEND_HIT_WIDTH)
-            .attr('height', legendRectSize);
-
-        legendUpdate.select('rect.' + LEGEND_SWATCH)
-            .attr('width', legendRectSize)
-            .attr('height', legendRectSize)
-            .style('fill', colorScale)
-            .style('stroke', colorScale);
-
-        legendUpdate.select('text.' + LEGEND)
-            .attr('x', legendRectSize + legendSpacing)
-            .attr('y', legendRectSize - legendSpacing)
-            .text(function (d, i) {
-                if (isLinearRange) {
-                    if (i === 0) {
-                        return d + ' (min)';
-                    } else if (((linearRangeLength === 2 && i === 1) || (linearRangeLength === 3 && i === 2))) {
-                        return d + ' (max)';
-                    } else if (linearRangeLength === 3 && i === 1) {
-                        return preciseRound(d, _state.decimalsForLinearRangeMeanValue) + ' (mean)';
-                    }
-                }
-                return d;
-            });
-
-        legendUpdate.select('text.' + LEGEND_LABEL)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForLabel * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return label;
-                }
-            });
-
-        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForDesc * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0 && description) {
-                    return description;
-                }
-            });
-
-
-        legend.exit().remove();
-
-        return counter;
-    }
-
-    function makeShapeLegend(id, xPos, yPos, shapeScale, label, description) {
-
-        if (!label) {
-            throw new Error('legend label is missing');
-        }
-
-        let outOfRangeSymbol = ' *';
-
-        if (shapeScale.domain().length > shapeScale.range().length) {
-            label += outOfRangeSymbol;
-        }
-
-        let counter = 0;
-
-        let legendRectSize = 10;
-        let legendSpacing = 4;
-
-        let xCorrectionForLabel = -1;
-        let yFactorForLabel = -1.5;
-        let yFactorForDesc = -0.5;
-
-        let legend = _baseSvg.selectAll('g.' + id)
-            .data(shapeScale.domain());
-
-        let legendEnter = legend.enter().append('g')
-            .attr('class', id);
-
-        makeLegendDraggable(legendEnter);
-
-        let fs = LEGEND_FONT_SIZE + 'px';
-
-        legendEnter.append('rect')
-            .attr('class', LEGEND_HIT)
-            .style('fill', 'none')
-            .style('pointer-events', 'all');
-
-        legendEnter.append('path');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'normal')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_LABEL)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        legendEnter.append('text')
-            .attr('class', LEGEND_DESCRIPTION)
-            .style('font-size', fs)
-            .style('font-family', FONT_DEFAULTS)
-            .style('font-style', 'normal')
-            .style('font-weight', 'bold')
-            .style('text-decoration', 'none');
-
-        legend = legendEnter.merge(legend);
-        // SVG text is painted by fill, not color -- which is why the old
-        // 'color' style did nothing. It goes on the plain selection: set on
-        // the transition below it does not stick.
-        legend.selectAll('text').style('fill', _state.labelColorDefault);
-
-        let legendUpdate = legend
-            .attr('transform', function (d, i) {
-                ++counter;
-                let height = legendRectSize;
-                let x = xPos;
-                let y = yPos + i * height;
-                return 'translate(' + x + ',' + y + ')';
-            });
-
-        let values = [];
-
-        legendUpdate.select('text.' + LEGEND)
-            .attr('x', legendRectSize + legendSpacing)
-            .attr('y', legendRectSize - legendSpacing)
-            .text(function (d) {
-                values.push(d);
-                return d;
-            });
-
-        legendUpdate.select('text.' + LEGEND_LABEL)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForLabel * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0) {
-                    return label;
-                }
-            });
-
-        legendUpdate.select('text.' + LEGEND_DESCRIPTION)
-            .attr('x', xCorrectionForLabel)
-            .attr('y', yFactorForDesc * legendRectSize)
-            .text(function (d, i) {
-                if (i === 0 && description) {
-                    return description;
-                }
-            });
-
-        legendUpdate.select('rect.' + LEGEND_HIT)
-            .attr('x', -6)
-            .attr('y', -6)
-            .attr('width', LEGEND_HIT_WIDTH)
-            .attr('height', 12);
-
-        legendUpdate.select('path')
-            .attr('transform', function () {
-                return 'translate(' + 1 + ',' + 3 + ')'
-            })
-            .attr('d', d3.symbol()
-                .size(function () {
-                    return 20;
+        if (sortChip) {
+            g.append('text')
+                .attr('x', x + width - PAD).attr('y', baseline)
+                .attr('text-anchor', 'end')
+                .style('font', rowFont)
+                .style('fill', ink)
+                .style('fill-opacity', 0.75)
+                .style('cursor', 'pointer')
+                .text(sortChip)
+                .append('title').text('switch between sorting by count and alphabetically');
+            g.select('text:last-of-type')
+                .on('mousedown', function (event) {
+                    event.stopPropagation();   // a chip click is not a drag
                 })
-                .type(function (d, i) {
-                    return d3SymbolType(shapeScale(values[i]));
-                }))
-            .style('fill', 'none')
-            .style('stroke', _state.branchColorDefault);
+                .on('click', function (event) {
+                    event.stopPropagation();
+                    _vis.legendSort = _vis.legendSort === 'count' ? 'alpha' : 'count';
+                    addLegends();
+                });
+        }
 
+        if (isRange) {
+            // the desktop's gradient legend: a bordered colour bar, min at
+            // the left end, max at the right. The middle stop sits at the
+            // mean's true position in the range, exactly as the scale does.
+            let nums = vis.values.map(Number);
+            let min = nums[0];
+            let max = nums[nums.length - 1];
+            let mean = nums.reduce(function (a, b) { return a + b; }, 0) / nums.length;
+            let frac = max > min ? (mean - min) / (max - min) : 0.5;
+            let gradId = 'aptx_legend_ramp_' + id;
+            let grad = g.append('defs').append('linearGradient').attr('id', gradId);
+            grad.append('stop').attr('offset', '0%').attr('stop-color', VIS_COLOR_RAMP[0]);
+            grad.append('stop').attr('offset', (100 * Math.max(0.01, Math.min(0.99, frac))) + '%')
+                .attr('stop-color', VIS_COLOR_RAMP[1]);
+            grad.append('stop').attr('offset', '100%').attr('stop-color', VIS_COLOR_RAMP[2]);
+            let barY = baseline + 6;
+            let barW = width - 2 * PAD;
+            g.append('rect')
+                .attr('x', x + PAD).attr('y', barY)
+                .attr('width', barW).attr('height', 10)
+                .style('fill', 'url(#' + gradId + ')')
+                .style('stroke', frame)
+                .style('stroke-opacity', 0.6);
+            let lblY = barY + 10 + FS + 2;
+            g.append('text')
+                .attr('x', x + PAD).attr('y', lblY)
+                .style('font', rowFont).style('fill', ink)
+                .text(legendNumberLabel(min));
+            g.append('text')
+                .attr('x', x + PAD + barW).attr('y', lblY)
+                .attr('text-anchor', 'end')
+                .style('font', rowFont).style('fill', ink)
+                .text(legendNumberLabel(max));
+            baseline = lblY;
+        }
 
-        legend.exit().remove();
+        rows.forEach(function (r) {
+            baseline += ROW;
+            let swY = baseline - SWATCH + 1;
+            if (r.noValue) {
+                g.append('rect')
+                    .attr('x', x + PAD).attr('y', swY)
+                    .attr('width', SWATCH).attr('height', SWATCH)
+                    .attr('rx', 2)
+                    .style('fill', 'none')
+                    .style('stroke', frame)
+                    .style('stroke-dasharray', '2,2');
+            } else if (kind === 'shape') {
+                g.append('path')
+                    .attr('transform', 'translate(' + (x + PAD + SWATCH / 2) + ',' + (swY + SWATCH / 2) + ')')
+                    .attr('d', d3.symbol().type(d3SymbolType(vis.shapeScale(r.value))).size(30)())
+                    .style('fill', 'none')
+                    .style('stroke', frame);
+            } else {
+                g.append('rect')
+                    .attr('x', x + PAD).attr('y', swY)
+                    .attr('width', SWATCH).attr('height', SWATCH)
+                    .attr('rx', 2)
+                    .style('fill', vis.colorScale(r.value));
+            }
+            g.append('text')
+                .attr('x', x + PAD + SWATCH + GAP).attr('y', baseline)
+                .style('font', rowFont)
+                .style('fill', ink)
+                .style('fill-opacity', r.noValue ? 0.6 : 1)
+                .text(r.text);
+            g.append('text')
+                .attr('x', x + width - PAD).attr('y', baseline)
+                .attr('text-anchor', 'end')
+                .style('font', rowFont)
+                .style('fill', ink)
+                .style('fill-opacity', 0.55)
+                .text(r.count);
+        });
 
-        return counter;
+        return height;
     }
 
-
-    function preciseRound(num, decimals) {
+        function preciseRound(num, decimals) {
         let t = Math.pow(10, decimals);
         return (Math.round((num * t) + (decimals > 0 ? 1 : 0) * (Math.sign(num) * (10 / Math.pow(100, decimals)))) / t).toFixed(decimals);
     }
@@ -1529,39 +1466,27 @@ if (!phyloXml) {
     }
 
     function addLegends() {
-        let xPos = _state.visualizationsLegendXpos;
-        let yPos = _state.visualizationsLegendYpos;
-        // Legends stack downwards. The button that switched them to a row went
-        // with the rest of the Vis Legend controls.
-        let yPosIncr = 10;
-        let yPosIncrConst = 40;
-        let counter = 0;
-
+        removeColorLegend(LEGEND_LABEL_COLOR);
+        removeShapeLegend(LEGEND_NODE_SHAPE);
         // Both legends follow the Visualizations switch: with it off nothing
         // is painted, so nothing should claim to be.
-        let colorVis = _state.showVisualizations ? currentColorVis() : null;
-        let shapeVis = _state.showVisualizations ? currentShapeVis() : null;
-
+        if (!_vis || !_state.showVisualizations) {
+            return;
+        }
+        let x = _state.visualizationsLegendXpos;
+        let y = _state.visualizationsLegendYpos;
+        let colorVis = currentColorVis();
+        let shapeVis = currentShapeVis();
         if (colorVis) {
-            removeColorLegend(LEGEND_LABEL_COLOR);
-            counter = makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, colorVis.colorScale,
-                colorVis.colorMode === 'range' ? LINEAR_SCALE : ORDINAL_SCALE, 'Color', colorVis.label);
-            yPos += ((counter * yPosIncr) + yPosIncrConst);
-        } else {
-            removeColorLegend(LEGEND_LABEL_COLOR);
+            y += drawLegendCard(LEGEND_LABEL_COLOR, x, y, colorVis, 'color') + 10;
         }
-
         if (shapeVis) {
-            counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, shapeVis.shapeScale, 'Shape', shapeVis.label);
-            yPos += ((counter * yPosIncr) + yPosIncrConst);
-        } else {
-            removeShapeLegend(LEGEND_NODE_SHAPE);
+            drawLegendCard(LEGEND_NODE_SHAPE, x, y, shapeVis, 'shape');
         }
-
     }
 
 
-    // --------------------------------------------------------------
+        // --------------------------------------------------------------
     // Functions for color picker
     // --------------------------------------------------------------
 
@@ -2826,7 +2751,6 @@ if (!phyloXml) {
 
         _state.showVisualizations = false;
         _state.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
-        _state.decimalsForLinearRangeMeanValue = DECIMALS_FOR_LINEAR_RANGE_MEAN_VALUE_DEFAULT;
 
         // The tree names itself; a caller-supplied name only ever disagreed with
         // the file. It is the stem of every download filename.
@@ -3690,7 +3614,9 @@ if (!phyloXml) {
         let shapeId = _vis ? _vis.shapeId : null;
         let show = _state.showVisualizations;
         let shorten = _state.shortenNodeNames;
+        let legendSort = _vis ? _vis.legendSort : 'count';
         initializeVisualizations();
+        _vis.legendSort = legendSort;
         // the rebuild is not a user choice: neither checkbox moves
         _state.showVisualizations = show;
         _state.shortenNodeNames = shorten;
