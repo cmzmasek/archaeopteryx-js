@@ -5314,7 +5314,7 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-field-label { display:block; margin:8px 0 3px; font-size:10px; color:var(--p-muted); }'
             + '.aptx-panel .aptx-search-row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }'
             + '.aptx-panel .aptx-search-row input[type=text] { flex:1 1 auto; min-width:0; height:26px; }'
-            + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; }'
+            + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; width:26px; padding:0; margin:0; }'
             + '.aptx-panel .aptx-search-menus { display:flex; flex-direction:column; gap:4px; margin:2px 0 3px; }'
             + '.aptx-panel .aptx-search-menus select { width:100%; min-width:0; height:26px; font:inherit; }'
             // red cue for an unmatchable query (bad regex / non-number); box-shadow, since the value boxes carry an inline outline:none
@@ -5347,9 +5347,10 @@ if (!phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
-            + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; width:max-content; }'
+            + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; }'
             + '.aptx-panel .aptx-zoomgrid > input[type=button] { width:100%; margin-right:0; }'
             + '.aptx-panel .aptx-zoomrow { display:flex; }'
+            + '.aptx-panel .aptx-zoomrow .aptx-gbtn { flex:1 1 0; padding:0; }'
             + '.aptx-panel .aptx-zoomrow .aptx-gbtn:last-child { margin-right:0; }'
             + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
             + '.aptx-panel .aptx-seg .aptx-glyph { height:13px; }'
@@ -5888,27 +5889,10 @@ if (!phyloXml) {
         }
 
 
-        setStylesAll('input[type=button]', {
-            'width': '26px',
-            'text-align': 'center',
-            'outline': 'none',
-            'margin': '0px',
-            'font-style': 'normal',
-            'font-weight': 'normal',
-            'text-decoration': 'none'
-        });
-
-
-        setStylesAll('#' + ZOOM_IN_Y + ', #' + ZOOM_OUT_Y, {
-            'width': '104px'
-        });
-
-        // (The zoom pad's buttons used to be forced to 16px here; they now take
-        // the panel's standard button height so the glyph buttons in this row
-        // match the ones in Tools.)
-
-
-
+        // (The text buttons used to get their look forced here as inline styles
+        // -- a fixed 26px width for all, 104px for Y+/Y-, font resets. That is
+        // the stylesheet's job now: the search row sizes its R button, and the
+        // zoom grid stretches Y+/Y- to the exact width of the button row.)
 
         const downloadButton = byId(DOWNLOAD_BUTTON);
 
