@@ -1141,10 +1141,11 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
+        _vis.labelPrefix = forester.commonNamePrefix(_treeData, _vis.labelRef);
         // The Short Names pre-set judged the ORIGINAL names, which is wrong
         // once a name property replaces them on display: flu tips are
         // 13-character ids but 50-character genome names. Re-judge from what
@@ -2233,8 +2234,21 @@ if (!phyloXml) {
         let l = "";
         let displayName = displayNodeName(phynode);
         if (_state.showNodeName && displayName) {
-            if (_state.shortenNodeNames && displayName.length > SHORTEN_NAME_MAX_LENGTH) {
-                l = append(l, shortenName(displayName, 8));
+            if (_state.shortenNodeNames) {
+                let name = displayName;
+                // Shortening drops the prefix every tip shares FIRST -- keeping
+                // the first characters of "Influenza A virus (A/mallard/...)"
+                // keeps exactly the characters that carry no information. The
+                // prefix comparison is case-insensitive, like its computation.
+                if (_vis && _vis.labelPrefix && !phynode.children
+                    && name.length > _vis.labelPrefix.length
+                    && name.substring(0, _vis.labelPrefix.length).toLowerCase() === _vis.labelPrefix.toLowerCase()) {
+                    name = name.substring(_vis.labelPrefix.length);
+                    while (name.length > 0 && ' /|_.-:'.indexOf(name.charAt(0)) >= 0) {
+                        name = name.substring(1);
+                    }
+                }
+                l = append(l, name.length > SHORTEN_NAME_MAX_LENGTH ? shortenName(name, 8) : name);
             } else {
                 l = append(l, displayName);
             }

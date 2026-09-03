@@ -432,7 +432,6 @@ function testBalanceRanksEvenFirst() {
     skewed.push('b');
     var phyS = starTree(skewed, 'x:Skewed');
     var even = ['a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b'];
-    var phyE = starTree(even, 'x:Even');
     // merge the two fields onto ONE tree
     var i2 = 0;
     forester.preOrderTraversalAll(phyS, function (n) {
@@ -503,6 +502,45 @@ function testLabelSuffixGate() {
         n.name = 'ID.' + (i++) + '.456';
     });
     return forester.nodeLabelProperty(phy) === null;
+}
+
+// --------------------------------------------------------------
+// The shared-prefix detector (forester.commonNamePrefix)
+// --------------------------------------------------------------
+
+// Every flu genome name starts "Influenza A virus" (four of them say
+// "Virus" -- the comparison is case-insensitive); the herpes names share
+// nothing. The prefix ends at a clean word boundary even though some names
+// continue with "(" and others with " ".
+function testPrefixFixtures() {
+    var flu = loadTree('flu_h5');
+    var herpes = loadTree('herpes_dnapol');
+    return forester.commonNamePrefix(flu, 'BVBRC:genome_name') === 'Influenza A virus'
+        && forester.commonNamePrefix(herpes, 'BVBRC:genome_name') === ''
+        && forester.commonNamePrefix(loadTree('bcl2'), null) === '';
+}
+
+// A prefix that would split a word is cut back to the last separator -- and
+// if what is left is too short to matter, there is no prefix at all.
+function testPrefixWordBoundary() {
+    function namedTree(names) {
+        var phy = starTree(names.map(function () { return null; }));
+        var i = 0;
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (n.children || n._children) return;
+            n.name = names[i++];
+        });
+        return phy;
+    }
+    // "ABC_ho" splits house/horse; trimming leaves "ABC_" (4 chars): too short
+    if (forester.commonNamePrefix(namedTree(['ABC_house', 'ABC_horse', 'ABC_hound']), null) !== '') return false;
+    // clean boundary at a space survives
+    if (forester.commonNamePrefix(namedTree(['Sample no 12', 'Sample no 47', 'Sample no 99']), null) !== 'Sample no ') return false;
+    // case-insensitive, reported in first-seen casing
+    if (forester.commonNamePrefix(namedTree(['Virus alpha X1', 'virus alpha Y2', 'Virus alpha Z3']), null) !== 'Virus alpha ') return false;
+    // a single name is no evidence of anything shared
+    if (forester.commonNamePrefix(namedTree(['Only one tip here']), null) !== '') return false;
+    return true;
 }
 
 // The value accessor must agree with the classifier: every value the
@@ -590,6 +628,8 @@ runTest("label property, fixtures   : ", testLabelPropertyFixtures);
 runTest("label: readable names stand: ", testLabelReadableNamesStand);
 runTest("label: wordy gate          : ", testLabelWordyGate);
 runTest("label: suffix gate         : ", testLabelSuffixGate);
+runTest("prefix, fixtures           : ", testPrefixFixtures);
+runTest("prefix, word boundary      : ", testPrefixWordBoundary);
 runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
 runTest("node value, element slots  : ", testNodeValueElementSlots);
 runTest("wrapper tolerated          : ", testWrapperTolerated);

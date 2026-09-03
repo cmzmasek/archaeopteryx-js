@@ -1048,6 +1048,77 @@
         return best;
     };
 
+    // The boring part of every tip name. When the displayed names all share
+    // a long prefix ("Influenza A virus ..."), a shortener that keeps the
+    // first characters keeps exactly the characters that carry no
+    // information. This returns the longest common prefix of the displayed
+    // external names -- the label property's value where one is in effect,
+    // the node name otherwise -- cut back to the last separator so no word
+    // is split, and only when it is long enough to matter (>= 6 characters).
+    // The Short Names rendering strips it before truncating, so what
+    // survives is the part that tells the tips apart. The comparison is
+    // case-insensitive -- "Influenza A virus" and "Influenza A Virus" are
+    // the same boring prefix -- so callers must strip by LENGTH, comparing
+    // case-insensitively, not by exact match.
+    forester.commonNamePrefix = function (tree, labelProperty) {
+        let names = [];
+        let slot = labelProperty ? {kind: 'property', ref: labelProperty} : null;
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children || n._children) {
+                return;
+            }
+            let name = slot ? forester.visualizationNodeValue(n, slot) : null;
+            if (name === null && n.name !== undefined && n.name !== null) {
+                let s = String(n.name).trim();
+                if (s.length > 0) {
+                    name = s;
+                }
+            }
+            if (name !== null) {
+                names.push(name);
+            }
+        });
+        if (names.length < 2) {
+            return '';
+        }
+        let prefix = names[0];
+        for (let k = 1; k < names.length && prefix.length > 0; ++k) {
+            let a = prefix.toLowerCase();
+            let b = names[k].toLowerCase();
+            let max = Math.min(a.length, b.length);
+            let i = 0;
+            while (i < max && a.charCodeAt(i) === b.charCodeAt(i)) {
+                ++i;
+            }
+            if (i < prefix.length) {
+                prefix = prefix.substring(0, i);
+            }
+        }
+        if (prefix.length === 0) {
+            return '';
+        }
+        // Trim back to the last separator ONLY when the prefix actually
+        // splits a word -- "ABC_ho" against "ABC_house"/"ABC_horse" does,
+        // "Influenza A virus" against "...virus A/x" and "...virus(A/y)"
+        // does not, whatever character each name continues with.
+        let alnum = /[A-Za-z0-9]/;
+        let splitsWord = alnum.test(prefix.charAt(prefix.length - 1))
+            && names.some(function (name) {
+                return name.length > prefix.length && alnum.test(name.charAt(prefix.length));
+            });
+        if (splitsWord) {
+            let cut = -1;
+            for (let i = prefix.length - 1; i >= 0; --i) {
+                if (' /|_.-:'.indexOf(prefix.charAt(i)) >= 0) {
+                    cut = i;
+                    break;
+                }
+            }
+            prefix = cut >= 0 ? prefix.substring(0, cut + 1) : '';
+        }
+        return prefix.length >= 6 ? prefix : '';
+    };
+
     // Reads a node's value for one candidate, exactly as the classifier read
     // it when it built the candidate -- the two must never drift, or a node
     // could carry a value that maps to no colour. Returns the trimmed value,

@@ -465,6 +465,11 @@ instead (`forester.nodeLabelProperty` makes the call, under test). Readable
 names are never overridden, exports and the node-data dialog keep the real
 name, and searching Node Name still searches the real name.
 
+Shortened names drop the boring part first: when every tip shares a long
+prefix ("Influenza A virus …"), Short Names strips it before truncating, so
+what survives is the part that tells the tips apart ("A/duck/V..668/2017"
+rather than 300 identical "Influenz.." labels).
+
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
 
