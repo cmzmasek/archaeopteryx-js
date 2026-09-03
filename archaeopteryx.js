@@ -802,6 +802,37 @@ if (!phyloXml) {
             .style('stroke', _state.branchColorDefault)
             .style('stroke-width', 1)
             .style('vector-effect', 'non-scaling-stroke'); // stays a hairline however far it is scaled down
+
+        // Search hits (and selected nodes) are marked in the miniature too, as
+        // on the desktop: dots in the search colours, so hits outside the
+        // current viewport can be spotted and steered to. Search results
+        // re-run update(), which ends here, so the dots track every search.
+        // Visible nodes only (children, not _children): a hit inside a
+        // collapsed clade has no drawn position.
+        let hits = [];
+        if (_root) {
+            forester.preOrderTraversal(_root, function (n) {
+                let c = getFoundColor(n);
+                if (c) {
+                    hits.push({node: n, color: c});
+                }
+            });
+        }
+        let dots = _overviewContent.selectAll('circle').data(hits);
+        dots.exit().remove();
+        dots.enter().append('circle')
+            .merge(dots)
+            .attr('cx', function (h) {
+                return _state.circularDisplay ? radialXY(h.node.x, h.node.y)[0] : h.node.y;
+            })
+            .attr('cy', function (h) {
+                return _state.circularDisplay ? radialXY(h.node.x, h.node.y)[1] : h.node.x;
+            })
+            .attr('r', 2.2 / scale) // constant on screen, whatever the miniature's scale
+            .style('fill', function (h) {
+                return h.color;
+            })
+            .style('stroke', 'none');
         updateOverviewViewport();
     }
 
