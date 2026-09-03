@@ -2277,6 +2277,194 @@
 
 
     // --------------------------------------------------------------
+    // Multiple sequence alignment (the desktop's alignment track)
+    // --------------------------------------------------------------
+    // Residue palettes, gap handling, conservation scoring and the hover
+    // readout data -- all pure, shared by the viewer's alignment track.
+    // Palettes are the desktop's (MsaColors.java): a Zappo-style 7-class
+    // physico-chemical scheme for amino acids, one colour per base for
+    // nucleotides, muted grey for ambiguity codes, and NO fill for a gap.
+
+    const MSA_GAP_CHARS = {'-': true, '.': true, ' ': true, '~': true};
+
+    // [r, g, b] triples so the letter-ink contrast rule can read them.
+    const MSA_AA_CLASSES = [
+        {residues: 'ILVAM', clazz: 'aliphatic (hydrophobic)', rgb: [240, 170, 170]},
+        {residues: 'FWY', clazz: 'aromatic', rgb: [240, 190, 90]},
+        {residues: 'KRH', clazz: 'positively charged', rgb: [120, 130, 240]},
+        {residues: 'DE', clazz: 'negatively charged', rgb: [230, 100, 100]},
+        {residues: 'STNQ', clazz: 'polar (hydrophilic)', rgb: [120, 200, 120]},
+        {residues: 'PG', clazz: 'conformationally special', rgb: [220, 130, 220]},
+        {residues: 'C', clazz: 'cysteine', rgb: [235, 220, 110]}
+    ];
+    const MSA_NT_RGB = {
+        A: [120, 200, 120],
+        C: [120, 130, 240],
+        G: [230, 185, 80],
+        T: [230, 110, 110],
+        U: [230, 110, 110]
+    };
+    const MSA_UNKNOWN_RGB = [205, 205, 205];
+
+    const MSA_AA_RGB = {};
+    const MSA_AA_CLASS = {};
+    MSA_AA_CLASSES.forEach(function (c) {
+        for (let i = 0; i < c.residues.length; ++i) {
+            MSA_AA_RGB[c.residues.charAt(i)] = c.rgb;
+            MSA_AA_CLASS[c.residues.charAt(i)] = c.clazz;
+        }
+    });
+
+    // Kyte-Doolittle hydropathy and full residue names, for the hover readout.
+    const MSA_HYDROPATHY = {
+        I: 4.5, V: 4.2, L: 3.8, F: 2.8, C: 2.5, M: 1.9, A: 1.8, G: -0.4,
+        T: -0.7, S: -0.8, W: -0.9, Y: -1.3, P: -1.6, H: -3.2, E: -3.5,
+        Q: -3.5, D: -3.5, N: -3.5, K: -3.9, R: -4.5
+    };
+    const MSA_AA_NAMES = {
+        A: 'Alanine', R: 'Arginine', N: 'Asparagine', D: 'Aspartate',
+        C: 'Cysteine', E: 'Glutamate', Q: 'Glutamine', G: 'Glycine',
+        H: 'Histidine', I: 'Isoleucine', L: 'Leucine', K: 'Lysine',
+        M: 'Methionine', F: 'Phenylalanine', P: 'Proline', S: 'Serine',
+        T: 'Threonine', W: 'Tryptophan', Y: 'Tyrosine', V: 'Valine',
+        B: 'Asx (Asn/Asp)', Z: 'Glx (Gln/Glu)', X: 'unknown residue', '*': 'stop'
+    };
+    const MSA_NT_NAMES = {
+        A: 'Adenine', C: 'Cytosine', G: 'Guanine', T: 'Thymine',
+        U: 'Uracil', N: 'any base'
+    };
+
+    forester.isMsaGap = function (ch) {
+        return MSA_GAP_CHARS[ch] === true;
+    };
+
+    // The residue's fill as an [r,g,b] triple, or null for a gap (drawn as a
+    // faint dash, not a filled cell).
+    forester.msaResidueRgb = function (ch, nucleotide) {
+        if (ch === undefined || ch === null || forester.isMsaGap(ch)) {
+            return null;
+        }
+        let u = ch.toUpperCase();
+        let rgb = nucleotide ? MSA_NT_RGB[u] : MSA_AA_RGB[u];
+        return rgb ? rgb : MSA_UNKNOWN_RGB;
+    };
+
+    // Black or white letter ink over the given cell colour, by luminance --
+    // the same rule the desktop uses.
+    forester.msaLetterInk = function (rgb) {
+        let luminance = (0.299 * rgb[0]) + (0.587 * rgb[1]) + (0.114 * rgb[2]);
+        return luminance < 140 ? '#ffffff' : '#000000';
+    };
+
+    // Amino acid or nucleotide? Judged on the actual residues, never on any
+    // declared type: the fraction of non-gap characters that are plausible
+    // bases (ACGTUN) decides.
+    forester.msaIsNucleotide = function (seq) {
+        if (!seq) {
+            return false;
+        }
+        let bases = 0;
+        let residues = 0;
+        for (let i = 0; i < seq.length; ++i) {
+            let ch = seq.charAt(i);
+            if (forester.isMsaGap(ch)) {
+                continue;
+            }
+            ++residues;
+            if ('ACGTUNacgtun'.indexOf(ch) >= 0) {
+                ++bases;
+            }
+        }
+        return residues > 0 && (bases / residues) > 0.9;
+    };
+
+    // Per-column conservation over the given rows (gapped strings; a short
+    // row's missing tail counts as gaps). Two measures, both in [0,1]:
+    // 'identity' -- the fraction of ROWS carrying the column's most common
+    // residue (gaps stay in the denominator); 'information' -- the Schneider
+    // & Stephens sequence-logo information content, normalized by log2(K)
+    // (K = 4 or 20) and scaled by the column's non-gap fraction. Consensus is
+    // the most common NON-gap residue, ties broken alphabetically so figures
+    // are reproducible.
+    forester.msaConservation = function (rows, length, measure, nucleotide) {
+        let n = rows.length;
+        let scores = new Array(length);
+        let consensus = new Array(length);
+        let K = nucleotide ? 4 : 20;
+        let log2K = Math.log(K) / Math.LN2;
+        for (let c = 0; c < length; ++c) {
+            let counts = {};
+            let nonGap = 0;
+            for (let r = 0; r < n; ++r) {
+                let row = rows[r];
+                let ch = (row && c < row.length) ? row.charAt(c) : '-';
+                if (forester.isMsaGap(ch)) {
+                    continue;
+                }
+                ch = ch.toUpperCase();
+                ++nonGap;
+                counts[ch] = (counts[ch] || 0) + 1;
+            }
+            let best = null;
+            let bestCount = 0;
+            Object.keys(counts).sort().forEach(function (ch) {
+                if (counts[ch] > bestCount) {
+                    bestCount = counts[ch];
+                    best = ch;
+                }
+            });
+            consensus[c] = best;
+            if (n < 1 || nonGap < 1) {
+                scores[c] = 0;
+            } else if (measure === 'information') {
+                let H = 0;
+                Object.keys(counts).forEach(function (ch) {
+                    let p = counts[ch] / nonGap;
+                    H -= p * (Math.log(p) / Math.LN2);
+                });
+                let info = (log2K - H) / log2K;
+                scores[c] = Math.max(0, info) * (nonGap / n);
+            } else {
+                scores[c] = bestCount / n;
+            }
+        }
+        return {scores: scores, consensus: consensus};
+    };
+
+    // The hover readout's description of one residue: full name, class (amino
+    // acids), Kyte-Doolittle hydropathy. Returns null for a gap.
+    forester.msaResidueInfo = function (ch, nucleotide) {
+        if (ch === undefined || ch === null || forester.isMsaGap(ch)) {
+            return null;
+        }
+        let u = ch.toUpperCase();
+        if (nucleotide) {
+            return {name: MSA_NT_NAMES[u] || 'ambiguity code', clazz: null, hydropathy: null};
+        }
+        return {
+            name: MSA_AA_NAMES[u] || 'ambiguity code',
+            clazz: MSA_AA_CLASS[u] || null,
+            hydropathy: (MSA_HYDROPATHY[u] !== undefined) ? MSA_HYDROPATHY[u] : null
+        };
+    };
+
+    // The residue's 1-based position within its own UNGAPPED sequence -- the
+    // coordinate that maps back onto the real molecule -- or null on a gap.
+    forester.msaUngappedPosition = function (row, col) {
+        if (!row || col >= row.length || forester.isMsaGap(row.charAt(col))) {
+            return null;
+        }
+        let pos = 0;
+        for (let i = 0; i <= col; ++i) {
+            if (!forester.isMsaGap(row.charAt(i))) {
+                ++pos;
+            }
+        }
+        return pos;
+    };
+
+
+    // --------------------------------------------------------------
     // Unrooted (equal-angle) layout
     // --------------------------------------------------------------
     // The desktop's unrooted display: Meacham's equal-angle algorithm, one

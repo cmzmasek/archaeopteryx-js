@@ -1148,6 +1148,73 @@ runTest("unrooted: wedge shares     : ", testEqualAngleWedges);
 runTest("unrooted: spoke lengths    : ", testEqualAngleLengths);
 runTest("unrooted: fixture geometry : ", testEqualAngleFixture);
 
+// --------------------------------------------------------------
+// MSA helpers (the alignment track's pure pieces)
+// --------------------------------------------------------------
+
+function testMsaColorsAndGaps() {
+    var ok = forester.msaResidueRgb('-', false) === null;      // gap chars have no fill
+    ok = ok && forester.msaResidueRgb('.', false) === null;
+    ok = ok && forester.msaResidueRgb('~', true) === null;
+    ok = ok && forester.msaResidueRgb('L', false).join(',') === '240,170,170';  // aliphatic
+    ok = ok && forester.msaResidueRgb('k', false).join(',') === '120,130,240';  // case-blind
+    ok = ok && forester.msaResidueRgb('X', false).join(',') === '205,205,205';  // ambiguity
+    ok = ok && forester.msaResidueRgb('G', true).join(',') === '230,185,80';    // base G
+    ok = ok && forester.msaResidueRgb('U', true).join(',') === forester.msaResidueRgb('T', true).join(',');
+    ok = ok && forester.msaLetterInk([120, 130, 240]) === '#ffffff';  // dark bg -> white ink
+    ok = ok && forester.msaLetterInk([240, 190, 90]) === '#000000';   // light bg -> black ink
+    return ok;
+}
+
+function testMsaNucleotideGuess() {
+    return forester.msaIsNucleotide('ACGT-ACGTNNAC') === true
+        && forester.msaIsNucleotide('MKTAYIAKQR-QISFVKSHFSRQ') === false
+        && forester.msaIsNucleotide('----') === false;
+}
+
+function testMsaConservationIdentity() {
+    // column 0: A,A,A -> 1.0; column 1: A,C,C -> 2/3 consensus C;
+    // column 2: A,-,- -> 1/3 (gaps stay in the denominator), consensus A;
+    // column 3 exists only in row 1 (short rows tolerated): 1/3
+    var r = forester.msaConservation(['AAAA', 'ACA', 'AC-'], 4, 'identity', true);
+    var eps = 1e-9;
+    return Math.abs(r.scores[0] - 1) < eps && r.consensus[0] === 'A'
+        && Math.abs(r.scores[1] - (2 / 3)) < eps && r.consensus[1] === 'C'
+        && Math.abs(r.scores[2] - (2 / 3)) < eps && r.consensus[2] === 'A'
+        && Math.abs(r.scores[3] - (1 / 3)) < eps && r.consensus[3] === 'A';
+}
+
+function testMsaConservationInformation() {
+    // a fully conserved, fully occupied nucleotide column carries maximum
+    // information (1.0); an even two-way split over 4 bases carries half
+    var r = forester.msaConservation(['AA', 'AC', 'AG', 'AT'], 2, 'information', true);
+    var eps = 1e-9;
+    return Math.abs(r.scores[0] - 1) < eps && Math.abs(r.scores[1] - 0) < eps;
+}
+
+function testMsaUngappedPosition() {
+    return forester.msaUngappedPosition('MK-TA', 0) === 1
+        && forester.msaUngappedPosition('MK-TA', 2) === null   // the gap itself
+        && forester.msaUngappedPosition('MK-TA', 3) === 3      // gap skipped
+        && forester.msaUngappedPosition('MK-TA', 9) === null;
+}
+
+function testMsaResidueInfo() {
+    var w = forester.msaResidueInfo('W', false);
+    var a = forester.msaResidueInfo('a', true);
+    return w.name === 'Tryptophan' && w.clazz === 'aromatic' && w.hydropathy === -0.9
+        && a.name === 'Adenine' && forester.msaResidueInfo('-', false) === null;
+}
+
+console.log("\nMSA helpers\n");
+
+runTest("msa: colors and gaps       : ", testMsaColorsAndGaps);
+runTest("msa: nucleotide guess      : ", testMsaNucleotideGuess);
+runTest("msa: identity conservation : ", testMsaConservationIdentity);
+runTest("msa: information content   : ", testMsaConservationInformation);
+runTest("msa: ungapped position     : ", testMsaUngappedPosition);
+runTest("msa: residue info          : ", testMsaResidueInfo);
+
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);

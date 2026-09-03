@@ -92,7 +92,9 @@
         {key: 'apaf', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny with confidence values.'},
         {key: 'bcl2', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations and sequences.'},
         {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
-        {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'}
+        {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'},
+        {key: 'alignment', label: 'Sequence alignment', desc: 'A six-tip tree with an embedded 34-column protein alignment, shown as a residue track beside the tree.'},
+        {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Sequence Alignment</name>
+  <description>Synthetic 34-column protein alignment (one aligned gap) beside a six-tip tree, embedded as per-tip mol_seq elements. The Alignment checkbox under Display Data toggles the track. HOVER A RESIDUE for its alignment column, its number within that sequence&apos;s own ungapped residues, its full name and physico-chemical class, and its Kyte-Doolittle hydropathy. Under the alignment, the CONSERVATION TRACK shows a bar per column and the consensus residue beneath it.</description>
+  <clade>
+    <branch_length>0.0</branch_length>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>Human</name>
+        <branch_length>0.03</branch_length>
+        <sequence>
+          <mol_seq is_aligned="true">MKTAYIAKQR-QISFVKSHFSRQLEERLGLIEVQ</mol_seq>
+        </sequence>
+      </clade>
+      <clade>
+        <name>Chimp</name>
+        <branch_length>0.03</branch_length>
+        <sequence>
+          <mol_seq is_aligned="true">MKTAYIAKQR-QISFVKSHFSRQLDERLGLIEVQ</mol_seq>
+        </sequence>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>Gorilla</name>
+        <branch_length>0.04</branch_length>
+        <sequence>
+          <mol_seq is_aligned="true">MKTAYIAKQR-QVSFVKSHFSRQLEERLGLIEVQ</mol_seq>
+        </sequence>
+      </clade>
+      <clade>
+        <branch_length>0.04</branch_length>
+        <clade>
+          <name>Mouse</name>
+          <branch_length>0.06</branch_length>
+          <sequence>
+            <mol_seq is_aligned="true">MKTAYIAKQR-QISFVKSHFKRQLDERLGLIEVQ</mol_seq>
+          </sequence>
+        </clade>
+        <clade>
+          <branch_length>0.03</branch_length>
+          <clade>
+            <name>Chicken</name>
+            <branch_length>0.08</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">MKTGYIAKQR-QISFVKSHFSRQLEKRLGLIEVQ</mol_seq>
+            </sequence>
+          </clade>
+          <clade>
+            <name>Frog</name>
+            <branch_length>0.09</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">MKSAYIAKQR-QISFVKSHFSRQLEERLGLVEVQ</mol_seq>
+            </sequence>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

@@ -258,6 +258,8 @@ if (!phyloXml) {
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
+    const MSA_CB = 'msa_cb';
+    const MSA_SCROLL_ID = 'aptxmsascroll';
     const EXPORT_FORMAT_SELECT = 'exp_f_sel';
     const FONT_SIZE_SLIDER = 'fs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
@@ -405,6 +407,20 @@ if (!phyloXml) {
     let _yScale = null;
     let _radial = null;
     let _unroot = null;   // unrooted-layout extent {maxRad}, set per render
+    // ------ sequence-alignment track (the desktop's MSA display) ------
+    const MSA_TRACK_GAP = 8;              // px between the labels' reservation and the track
+    const MSA_COL_WIDTH = 7;              // px per alignment column
+    const MSA_LETTER_MIN_HEIGHT = 8;      // rows shorter than this drop the letters
+    const MSA_MIN_BAND_PX = 120;          // the window never shrinks below this
+    const MSA_MAX_VIEWPORT_FRACTION = 0.6;// nor grows past this share of the display
+    const MSA_CONS_BAR_H = 22;            // conservation bar band height
+    const MSA_CONS_TOP_GAP = 4;
+    const MSA_BOTTOM_RESERVE = 56;        // vertical room under the rows (conservation + ruler)
+    const MSA_MIN_TREE_PX = 220;          // the tree itself never shrinks below this
+    let _msaColOffset = 0;                // first shown alignment column (0-based)
+    let _msaReserve = 0;                  // horizontal px reserved for the track, set with _w
+    let _msaScroller = null;              // the fixed HTML range input, created lazily
+    let _msaGeom = null;                  // window geometry of the last draw, for the hover readout
     let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
     const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
@@ -1708,7 +1724,19 @@ if (!phyloXml) {
         }
 
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
-            _w = _displayWidth - calcMaxTreeLengthForDisplay();
+            // the alignment track reserves its window on the right, so the
+            // tree and labels compress to make room rather than overlapping
+            _msaReserve = 0;
+            if (msaShown()) {
+                let fullPx = _basicTreeProperties.maxMolSeqLength * MSA_COL_WIDTH;
+                let band = Math.max(MSA_MIN_BAND_PX, Math.round(_displayWidth * MSA_MAX_VIEWPORT_FRACTION));
+                // a wide alignment must not squeeze the tree itself away: the
+                // band yields until the tree keeps its minimum share
+                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
+                band = Math.max(MSA_MIN_BAND_PX, Math.min(band, maxBand));
+                _msaReserve = MSA_TRACK_GAP + Math.min(fullPx, band);
+            }
+            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve;
             if (_w < 1) {
                 _w = 1;
             }
@@ -1718,7 +1746,8 @@ if (!phyloXml) {
             addLegends();
         }
 
-        _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT), _w]);
+        _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+            - (msaShown() ? MSA_BOTTOM_RESERVE : 0), _w]);
 
         _treeFn = _treeFn.separation(function separation(a, b) {
             return a.parent === b.parent ? 1 : 1;
@@ -2245,6 +2274,7 @@ if (!phyloXml) {
 
         rebuildOverview();
         updateSearchHitNavigation();
+        drawMsaTrack();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -3022,6 +3052,7 @@ if (!phyloXml) {
     const STATE_KEYS = [
         'circularDisplay',
         'unrootedDisplay',
+        'showMsa',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -3162,6 +3193,10 @@ if (!phyloXml) {
         // (that is driven by _basicTreeProperties.confidences where the panel
         // is built) but starts unchecked: confidence values clutter the tree.
         _state.showConfidenceValues = false;
+        // A tree carrying an aligned mol_seq per tip shows its alignment
+        // track from the start, as the desktop auto-enables it on load.
+        _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
+            && _basicTreeProperties.maxMolSeqLength > 0;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
@@ -3465,6 +3500,7 @@ if (!phyloXml) {
         _nodeLabels = nodeLabels ? nodeLabels : null;
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
+        _msaColOffset = 0;
         if (specialVisualizations) {
             throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
                 + ' along with the enableSpecialVisualizations2/3/4 settings');
@@ -4344,6 +4380,385 @@ if (!phyloXml) {
         }
     }
 
+    // ===================== Sequence-alignment track =====================
+    // The desktop's MSA display: one row of residue cells per tip to the
+    // right of the labels (rectangular layout only -- an alignment is
+    // inherently horizontal), a conservation bar band with the consensus
+    // beneath the rows, and a 1-based column ruler. Long alignments show a
+    // WINDOW of at most MSA_MAX_VIEWPORT_FRACTION of the display, scrolled
+    // with the slider at the window bottom or the wheel over the track; the
+    // tree itself never moves when the columns scroll.
+
+    function msaShown() {
+        return _state.showMsa === true && !radialDisplay()
+            && _basicTreeProperties.alignedMolSeqs === true
+            && _basicTreeProperties.maxMolSeqLength > 0;
+    }
+
+    function msaRowSeq(d) {
+        if (d.sequences && d.sequences.length > 0) {
+            let s = d.sequences[0];
+            if (s.mol_seq && s.mol_seq.is_aligned && s.mol_seq.value) {
+                return s.mol_seq.value;
+            }
+        }
+        return '';
+    }
+
+    // The largest 1/2/5 x 10^k step giving at most ~8 numbered columns.
+    function msaColumnStep(visibleCols) {
+        let bases = [1, 2, 5];
+        for (let mag = 1; mag <= 1000000; mag *= 10) {
+            for (let bi = 0; bi < bases.length; ++bi) {
+                let s = bases[bi] * mag;
+                if (visibleCols / s <= 8) {
+                    return s;
+                }
+            }
+        }
+        return 1000000;
+    }
+
+    function drawMsaTrack() {
+        if (!_svgGroup) {
+            return;
+        }
+        _svgGroup.selectAll('g.aptx-msa').remove();
+        if (!msaShown() || !_root) {
+            _msaGeom = null;
+            updateMsaScrollbar(0, 1, 0);
+            return;
+        }
+        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+            return d.x !== undefined;
+        }).sort(function (p, q) {
+            return p.x - q.x;
+        });
+        let total = _basicTreeProperties.maxMolSeqLength;
+        if (tips.length < 1 || total < 1) {
+            _msaGeom = null;
+            updateMsaScrollbar(0, 1, 0);
+            return;
+        }
+        let cw = MSA_COL_WIDTH;
+        let bandPx = Math.max(1, _msaReserve - MSA_TRACK_GAP);
+        let visible = Math.max(1, Math.min(total, Math.floor(bandPx / cw)));
+        let maxOffset = Math.max(0, total - visible);
+        if (_msaColOffset > maxOffset) {
+            _msaColOffset = maxOffset;
+        }
+        if (_msaColOffset < 0) {
+            _msaColOffset = 0;
+        }
+        let offset = _msaColOffset;
+        // the fitted view translates the layout right by rootOffset, so
+        // the track anchors at (displayWidth - rootOffset - band): its right
+        // edge then lands exactly on the canvas edge
+        let originX = _displayWidth - _settings.rootOffset - bandPx;
+        let isNuc = false;
+        for (let t = 0; t < tips.length; ++t) {
+            let s0 = msaRowSeq(tips[t]);
+            if (s0) {
+                isNuc = forester.msaIsNucleotide(s0);
+                break;
+            }
+        }
+        let g = _svgGroup.append('g').attr('class', 'aptx-msa');
+
+        // Row bands: each shared boundary is derived ONCE, as the midpoint
+        // between adjacent tip rows. Deriving it per row from y +- half a row
+        // height rounds a pixel apart and paints a seam right across the
+        // alignment -- a desktop bug not worth reimporting.
+        let n = tips.length;
+        let pad = n > 1 ? ((tips[n - 1].x - tips[0].x) / (n - 1)) / 2
+            : Math.max(4, _state.externalNodeFontSize / 2);
+        let bounds = new Array(n + 1);
+        bounds[0] = tips[0].x - pad;
+        for (let r = 1; r < n; ++r) {
+            bounds[r] = (tips[r - 1].x + tips[r].x) / 2;
+        }
+        bounds[n] = tips[n - 1].x + pad;
+
+        let rowH = Math.max(1, Math.round(bounds[1]) - Math.round(bounds[0]));
+        let fontPx = Math.max(6, Math.min(13, Math.round(Math.min(cw, rowH) * 0.8)));
+        let drawLetters = cw >= 7 && rowH >= MSA_LETTER_MIN_HEIGHT;
+        let ink = _state.branchColorDefault;
+
+        for (let r = 0; r < n; ++r) {
+            let row = msaRowSeq(tips[r]);
+            let cy = Math.round(bounds[r]);
+            let rh = Math.max(1, Math.round(bounds[r + 1]) - cy);
+            // consecutive same-colour cells merge into one rect when the
+            // letters are off, which is what keeps huge trees drawable
+            let runStart = -1;
+            let runRgb = null;
+            let flush = function (endI) {
+                if (runStart < 0) {
+                    return;
+                }
+                let x0 = Math.round(originX + (runStart * cw));
+                let x1 = Math.round(originX + (endI * cw));
+                g.append('rect').attr('x', x0).attr('y', cy)
+                    .attr('width', Math.max(1, x1 - x0)).attr('height', rh)
+                    .attr('fill', 'rgb(' + runRgb.join(',') + ')');
+                runStart = -1;
+                runRgb = null;
+            };
+            for (let i = 0; i < visible; ++i) {
+                let c = offset + i;
+                let ch = c < row.length ? row.charAt(c) : null;
+                let rgb = (ch === null) ? null : forester.msaResidueRgb(ch, isNuc);
+                if (rgb === null) {
+                    flush(i);
+                    if (ch !== null) {
+                        // a gap: a faint dash, so runs of gaps join into a
+                        // line and the alignment's extent stays visible
+                        let mid = cy + (rh / 2);
+                        g.append('line')
+                            .attr('x1', Math.round(originX + (i * cw))).attr('y1', mid)
+                            .attr('x2', Math.round(originX + ((i + 1) * cw))).attr('y2', mid)
+                            .attr('stroke', ink).attr('stroke-opacity', 0.35).attr('stroke-width', 1);
+                    }
+                    continue;
+                }
+                if (drawLetters) {
+                    let x0 = Math.round(originX + (i * cw));
+                    let x1 = Math.round(originX + ((i + 1) * cw));
+                    g.append('rect').attr('x', x0).attr('y', cy)
+                        .attr('width', Math.max(1, x1 - x0)).attr('height', rh)
+                        .attr('fill', 'rgb(' + rgb.join(',') + ')');
+                    g.append('text').attr('x', x0 + ((x1 - x0) / 2)).attr('y', cy + (rh / 2))
+                        .attr('text-anchor', 'middle').attr('dy', '0.35em')
+                        .style('font-family', 'monospace').style('font-size', fontPx + 'px')
+                        .style('fill', forester.msaLetterInk(rgb))
+                        .text(ch.toUpperCase());
+                } else if (runRgb && runRgb[0] === rgb[0] && runRgb[1] === rgb[1] && runRgb[2] === rgb[2]) {
+                    // the run extends
+                } else {
+                    flush(i);
+                    runStart = i;
+                    runRgb = rgb;
+                }
+            }
+            flush(visible);
+        }
+
+        let rowsTop = Math.round(bounds[0]);
+        let rowsBottom = Math.round(bounds[n]);
+        let trackW = Math.round(originX + (visible * cw)) - Math.round(originX);
+        // only a TRUE alignment edge gets a boundary line, so a scroll
+        // cutoff is distinguishable from the real start or end
+        if (offset <= 0) {
+            g.append('line').attr('x1', Math.round(originX)).attr('x2', Math.round(originX))
+                .attr('y1', rowsTop).attr('y2', rowsBottom)
+                .attr('stroke', ink).attr('stroke-opacity', 0.7).attr('stroke-width', 1);
+        }
+        if ((offset + visible) >= total) {
+            let xe = Math.round(originX + (visible * cw));
+            g.append('line').attr('x1', xe).attr('x2', xe)
+                .attr('y1', rowsTop).attr('y2', rowsBottom)
+                .attr('stroke', ink).attr('stroke-opacity', 0.7).attr('stroke-width', 1);
+        }
+
+        // conservation band (consensus identity) + consensus letters
+        let cons = forester.msaConservation(tips.map(msaRowSeq), total, 'identity', isNuc);
+        let consTop = rowsBottom + MSA_CONS_TOP_GAP;
+        g.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
+            .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
+            .attr('fill', ink).attr('fill-opacity', 0.08);
+        for (let i = 0; i < visible; ++i) {
+            let score = cons.scores[offset + i] || 0;
+            if (score <= 0) {
+                continue;
+            }
+            let bh = Math.max(1, Math.round(score * MSA_CONS_BAR_H));
+            let x0 = Math.round(originX + (i * cw));
+            let x1 = Math.round(originX + ((i + 1) * cw));
+            g.append('rect').attr('x', x0).attr('y', (consTop + MSA_CONS_BAR_H) - bh)
+                .attr('width', Math.max(1, x1 - x0)).attr('height', bh)
+                .attr('fill', ink).attr('fill-opacity', 0.7);
+        }
+        if (trackW > 170) {
+            g.append('text').attr('x', Math.round(originX) + trackW - 3).attr('y', consTop + 9)
+                .attr('text-anchor', 'end')
+                .style('font-size', '8px').style('fill', ink).style('fill-opacity', 0.9)
+                .text('Consensus identity (n = ' + n + ')');
+        }
+        let consensusRow = cw >= 7;
+        if (consensusRow) {
+            for (let i = 0; i < visible; ++i) {
+                let cc = cons.consensus[offset + i];
+                if (!cc) {
+                    continue;
+                }
+                g.append('text').attr('x', Math.round(originX + (i * cw)) + (cw / 2))
+                    .attr('y', consTop + MSA_CONS_BAR_H + 10)
+                    .attr('text-anchor', 'middle')
+                    .style('font-family', 'monospace').style('font-size', '8px')
+                    .style('fill', ink)
+                    .text(cc);
+            }
+        }
+
+        // the 1-based column ruler: absolute column numbers at nice steps,
+        // and always the first and last column when their edge is in view
+        let rulerY = consTop + MSA_CONS_BAR_H + (consensusRow ? 13 : 3);
+        g.append('line').attr('x1', Math.round(originX)).attr('x2', Math.round(originX) + trackW)
+            .attr('y1', rulerY).attr('y2', rulerY)
+            .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
+        let lastRight = -Infinity;
+        let drawTick = function (c) {
+            let i = c - 1 - offset;
+            if (i < 0 || i >= visible) {
+                return;
+            }
+            let x = Math.round(originX + (i * cw)) + (cw / 2);
+            g.append('line').attr('x1', x).attr('x2', x).attr('y1', rulerY).attr('y2', rulerY + 4)
+                .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
+            let label = String(c);
+            let half = label.length * 2.8;
+            if ((x - half) >= (lastRight + 4)) {
+                g.append('text').attr('x', x).attr('y', rulerY + 14).attr('text-anchor', 'middle')
+                    .style('font-size', '9px').style('fill', ink)
+                    .text(label);
+                lastRight = x + half;
+            }
+        };
+        drawTick(1);
+        let step = msaColumnStep(visible);
+        for (let c = Math.ceil((offset + 1) / step) * step; c <= (offset + visible); c += step) {
+            drawTick(c);
+        }
+        drawTick(total);
+
+        // hover + wheel surface over the rows
+        g.append('rect').attr('class', 'aptx-msa-hover')
+            .attr('x', Math.round(originX)).attr('y', rowsTop)
+            .attr('width', trackW).attr('height', Math.max(1, rowsBottom - rowsTop))
+            .attr('fill', 'transparent')
+            .on('mousemove', msaHoverMove)
+            .on('mouseout', msaHoverOut)
+            .on('wheel', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                let delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+                if (delta === 0) {
+                    return;
+                }
+                let next = Math.max(0, Math.min(maxOffset, _msaColOffset + (delta > 0 ? 3 : -3)));
+                if (next !== _msaColOffset) {
+                    _msaColOffset = next;
+                    drawMsaTrack();
+                }
+            });
+        _msaGeom = {
+            originX: originX, cw: cw, offset: offset, visible: visible, total: total,
+            bounds: bounds, tips: tips, isNuc: isNuc
+        };
+        updateMsaScrollbar(offset, visible, total);
+    }
+
+    // The dedicated column scroller: a fixed HTML range input at the window
+    // bottom, shown only while the alignment is wider than its window. Lives
+    // outside the svg, so exports never include it.
+    function updateMsaScrollbar(offset, visible, total) {
+        if (!_msaScroller) {
+            let el = document.createElement('input');
+            el.type = 'range';
+            el.id = MSA_SCROLL_ID;
+            el.className = 'aptx-msa-scroll';
+            el.min = '0';
+            el.step = '1';
+            el.title = 'scroll the alignment columns (the mouse wheel over the alignment works too)';
+            el.addEventListener('input', function () {
+                let v = parseInt(el.value, 10);
+                if (!isNaN(v) && v !== _msaColOffset) {
+                    _msaColOffset = v;
+                    drawMsaTrack();
+                }
+            });
+            document.body.appendChild(el);
+            _msaScroller = el;
+        }
+        let scrollable = msaShown() && total > visible;
+        _msaScroller.style.display = scrollable ? 'block' : 'none';
+        if (scrollable) {
+            _msaScroller.max = String(total - visible);
+            _msaScroller.value = String(offset);
+        }
+    }
+
+    // The hover readout, as on the desktop: the tip, the 1-based alignment
+    // column (a property of the alignment), the residue's position within
+    // its own ungapped sequence (the coordinate that maps back onto the real
+    // molecule), its full name, class and Kyte-Doolittle hydropathy.
+    function msaHoverMove(event) {
+        if (!_msaGeom) {
+            return;
+        }
+        let p = d3.pointer(event, _svgGroup.node());
+        let i = Math.floor((p[0] - _msaGeom.originX) / _msaGeom.cw);
+        if (i < 0 || i >= _msaGeom.visible) {
+            msaHoverOut();
+            return;
+        }
+        let c = _msaGeom.offset + i;
+        let r = -1;
+        for (let k = 0; k < _msaGeom.tips.length; ++k) {
+            if (p[1] >= _msaGeom.bounds[k] && p[1] < _msaGeom.bounds[k + 1]) {
+                r = k;
+                break;
+            }
+        }
+        if (r < 0) {
+            msaHoverOut();
+            return;
+        }
+        let tip = _msaGeom.tips[r];
+        let row = msaRowSeq(tip);
+        let ch = c < row.length ? row.charAt(c) : '-';
+        let txt = 'Tip: ' + (displayNodeName(tip) || '?') + '<br>'
+            + 'Column: ' + (c + 1) + ' of ' + _msaGeom.total + '<br>';
+        if (forester.isMsaGap(ch)) {
+            txt += 'Residue: gap';
+        } else {
+            let info = forester.msaResidueInfo(ch, _msaGeom.isNuc);
+            let pos = forester.msaUngappedPosition(row, c);
+            txt += 'Residue: ' + ch.toUpperCase() + ' -- ' + info.name + '<br>';
+            if (pos !== null) {
+                txt += 'Position in Sequence: ' + pos + '<br>';
+            }
+            if (info.clazz) {
+                txt += 'Class: ' + info.clazz + '<br>';
+            }
+            if (info.hydropathy !== null) {
+                txt += 'Hydropathy (Kyte-Doolittle): ' + info.hydropathy;
+            }
+        }
+        let tip_el = _node_mouseover_div.node();
+        tip_el.classList.remove('aptx-light', 'aptx-dark');
+        if (_panelTheme) {
+            tip_el.classList.add('aptx-' + _panelTheme);
+        }
+        // the track hugs the right edge, so the readout flips to the left
+        // of the pointer when it would otherwise run off the window
+        let left = (event.pageX + 290) > window.innerWidth ? (event.pageX - 280) : (event.pageX + 14);
+        _node_mouseover_div
+            .html(markUpDataLabels(escapeHtmlKeepBreaks(txt)))
+            .style('left', left + 'px')
+            .style('top', (event.pageY + 14) + 'px');
+        _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
+    }
+
+    function msaHoverOut() {
+        _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
+    }
+
+    function msaCbClicked() {
+        _state.showMsa = getCheckboxValue(MSA_CB);
+        update(null, 0);
+    }
+
     // Fit the circular tree into the viewport, centred. The root is at the
     // group origin (0,0), so we place that at the viewport centre and scale so
     // the outer label ring fits. Computed from the known radial extent rather
@@ -4502,6 +4917,7 @@ if (!phyloXml) {
 
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
+        _msaColOffset = 0;
         syncZoomRowButtons();
         refreshVisualizations();
         // Esc resets to the launch state -- the auto-applied colour, when its
@@ -4816,6 +5232,10 @@ if (!phyloXml) {
         let dyna = byId(DYNAHIDE_CB);
         if (dyna) {
             dyna.disabled = _state.unrootedDisplay;
+        }
+        let msaCb = byId(MSA_CB);
+        if (msaCb) {
+            msaCb.disabled = radialDisplay(); // an alignment is inherently horizontal
         }
         if (radialDisplay()) {
             minus.innerHTML = makeGlyph('rotate_ccw');
@@ -5719,6 +6139,7 @@ if (!phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
+            + '.aptx-msa-scroll { position:fixed; bottom:10px; left:55%; transform:translateX(-50%); width:260px; display:none; z-index:20; }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { opacity:0.4; }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { cursor:default; }'
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
@@ -6344,6 +6765,7 @@ if (!phyloXml) {
         on(VISUAL_STYLES_CB, 'click', visualStylesCbClicked);
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
+        on(MSA_CB, 'click', msaCbClicked);
 
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
 
@@ -6787,6 +7209,9 @@ if (!phyloXml) {
             if (_basicTreeProperties.confidences) {
                 labels.push(makeCheckboxItem('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
             }
+            if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
+                labels.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
+            }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
@@ -7066,6 +7491,7 @@ if (!phyloXml) {
         setCheckboxValue(VISUAL_STYLES_CB, _state.useVisualStyles);
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
+        setCheckboxValue(MSA_CB, _state.showMsa);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         populateVisualizationMenus();
         initializeSearchOptions();
