@@ -82,19 +82,20 @@
 
 <script>
     var TREES = {
-        apaf: {file: 'data/apaf.xml', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny.'},
-        bcl2: {file: 'data/bcl2.xml', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations.'},
-        influenza: {file: 'data/influenza.xml', label: 'Influenza HA (annotated)', desc: 'Richly annotated: Year, Country, Host, Subtype.'},
-        confidences: {file: 'data/confidences.xml', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
-        branch_events: {file: 'data/branch_events.xml', label: 'Branch events', desc: 'A tree with branch (duplication/speciation) events.'},
-        // Real ViPR/BV-BRC virus family trees: larger than the rest, and carrying
-        // the custom properties (Genus, Host, Species, Strain, Year) the automatic
-        // visualizations have to make sense of.
+        // Real ViPR/BV-BRC virus family trees first: larger than the rest, and
+        // carrying the custom properties (Genus, Host, Species, Strain, Year)
+        // the automatic visualizations have to make sense of.
         caliciviridae_100: {file: 'data/Caliciviridae_100.xml', label: 'Caliciviridae (97 strains)', desc: 'ViPR whole-genome tree with Genus, Host, Species, Strain and Year properties.'},
         caliciviridae_500: {file: 'data/Caliciviridae_500.xml', label: 'Caliciviridae (186 strains)', desc: 'The same family, larger sample.'},
         adenoviridae: {file: 'data/Adenoviridae.xml', label: 'Adenoviridae (321 strains)', desc: 'ViPR hexon-gene tree; the largest of the demos.'},
         flu_h5: {file: 'data/flu_h5.xml', label: 'Influenza A H5Nx (354 strains)', desc: 'BV-BRC tree carrying subtype, strain, species and genome id.'},
-        herpes_dnapol: {file: 'data/herpes_dnapol.xml', label: 'Herpesviridae DNA polymerase (201 tips)', desc: 'The most heavily annotated demo: 13 BV-BRC properties, from host group to geography.'}
+        herpes_dnapol: {file: 'data/herpes_dnapol.xml', label: 'Herpesviridae DNA polymerase (201 tips)', desc: 'The most heavily annotated demo: 13 BV-BRC properties, from host group to geography.'},
+        // The classic smaller demos.
+        influenza: {file: 'data/influenza.xml', label: 'Influenza HA (annotated)', desc: 'Richly annotated: Year, Country, Host, Subtype.'},
+        apaf: {file: 'data/apaf.xml', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny.'},
+        bcl2: {file: 'data/bcl2.xml', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations.'},
+        confidences: {file: 'data/confidences.xml', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
+        branch_events: {file: 'data/branch_events.xml', label: 'Branch events', desc: 'A tree with branch (duplication/speciation) events.'}
     };
     var DEFAULT_TREE = 'influenza';
 
