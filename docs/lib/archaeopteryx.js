@@ -5605,11 +5605,23 @@ if (!phyloXml) {
         if (!minus || !plus || !expandV || !fitW) {
             return;
         }
+        let yIn = byId(ZOOM_IN_Y);
+        let yOut = byId(ZOOM_OUT_Y);
         if (radialDisplay()) {
+            // both axes of a circle are its one diameter, so the Y pair
+            // becomes the plain +/- zoom, as on the desktop
+            if (yIn) {
+                yIn.value = '+';
+                yIn.title = 'zoom in (or mousewheel over the tree)';
+            }
+            if (yOut) {
+                yOut.value = '-';
+                yOut.title = 'zoom out (or mousewheel over the tree)';
+            }
             minus.innerHTML = makeGlyph('rotate_ccw');
-            minus.title = 'rotate counter-clockwise (Alt+Left or Shift+Alt+mousewheel)';
+            minus.title = 'rotate counter-clockwise';
             plus.innerHTML = makeGlyph('rotate_cw');
-            plus.title = 'rotate clockwise (Alt+Right or Shift+Alt+mousewheel)';
+            plus.title = 'rotate clockwise';
             // as on the desktop: no vertical expansion in circular, and the
             // fit-width slot -- redundant with fit there, a circle has just
             // its one diameter -- becomes the label-direction flip. Its face
@@ -5621,6 +5633,14 @@ if (!phyloXml) {
             fitW.title = 'node labels: ' + (_radialLabelsHorizontal ? 'horizontal' : 'radial')
                 + ' -- click to flip (Alt+W)';
         } else {
+            if (yIn) {
+                yIn.value = 'Y+';
+                yIn.title = 'zoom in vertically (Alt+Up or Shift+mousewheel)';
+            }
+            if (yOut) {
+                yOut.value = 'Y-';
+                yOut.title = 'zoom out vertically (Alt+Down or Shift+mousewheel)';
+            }
             minus.textContent = 'X-';
             minus.title = 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)';
             plus.textContent = 'X+';
@@ -7352,22 +7372,30 @@ if (!phyloXml) {
                 } else if (e.keyCode === VK_DOWN) {
                     zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                 } else if (e.keyCode === VK_LEFT) {
-                    zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                    if (!radialDisplay()) {
+                        zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW); // rotation is buttons-only
+                    }
                 } else if (e.keyCode === VK_RIGHT) {
-                    zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                    if (!radialDisplay()) {
+                        zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                    }
                 } else if (e.keyCode === VK_PLUS || e.keyCode === VK_PLUS_N) {
                     if (e.shiftKey) {
                         increaseFontSizes();
                     } else {
                         zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                        zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                        if (!radialDisplay()) {
+                            zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                        }
                     }
                 } else if (e.keyCode === VK_MINUS || e.keyCode === VK_MINUS_N) {
                     if (e.shiftKey) {
                         decreaseFontSizes();
                     } else {
                         zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                        zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                        if (!radialDisplay()) {
+                            zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                        }
                     }
                 }
             }
@@ -7393,15 +7421,17 @@ if (!phyloXml) {
                 if (delta > 0) {
                     if (e.ctrlKey) {
                         decreaseFontSizes();
-                    } else if (e.altKey) {
+                    } else if (e.altKey && !radialDisplay()) {
                         zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                     } else {
+                        // in the radial layouts EVERY wheel zoom is the one
+                        // uniform zoom -- the wheel never rotates
                         zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
                     }
                 } else {
                     if (e.ctrlKey) {
                         increaseFontSizes();
-                    } else if (e.altKey) {
+                    } else if (e.altKey && !radialDisplay()) {
                         zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
                     } else {
                         zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
@@ -7421,10 +7451,14 @@ if (!phyloXml) {
             }
             if (e.deltaY > 0) {
                 zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
+                if (!radialDisplay()) {
+                    zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW); // radial: zoom only, never rotate
+                }
             } else if (e.deltaY < 0) {
                 zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                if (!radialDisplay()) {
+                    zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
+                }
             }
             e.preventDefault();
         }, {passive: false});
@@ -7545,16 +7579,18 @@ if (!phyloXml) {
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<div class="aptx-modebar">');
-            h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
-            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat('</div>');
+            // the LAYOUT row sits ON TOP of the display-type row, as on the
+            // desktop
             let layoutGroup = 'layout_control_radio';
             h = h.concat('<div class="aptx-segmented">');
             h = h.concat(makeSegment(makeGlyph('rectangular'), LAYOUT_RECT_BUTTON, layoutGroup, 'rectangular, root at left'));
             h = h.concat(makeSegment(makeGlyph('circular'), LAYOUT_CIRC_BUTTON, layoutGroup, 'circular'));
             h = h.concat(makeSegment(makeGlyph('unrooted'), LAYOUT_UNROOTED_BUTTON, layoutGroup, 'unrooted (equal-angle)'));
+            h = h.concat('</div>');
+            h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
+            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
