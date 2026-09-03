@@ -369,6 +369,12 @@ if (!phyloXml) {
     let _dynahide_factor = 0;
     let _foundNodes0 = new Set();
     let _foundNodes1 = new Set();
+    // "Dim Non-Matches", as on the desktop: while a search has at least one
+    // VISIBLE hit, everything that is not a hit (and not selected) fades so
+    // the hits stand out. The opacity is the complement of the desktop's
+    // 72% blend toward the background. Recomputed once per update().
+    const DIM_NON_MATCH_OPACITY = 0.28;
+    let _dimNonMatches = false;
     let _selectedNodes = new Set();
     let _i = 0;
     let _id = null;
@@ -1724,6 +1730,19 @@ if (!phyloXml) {
         let nodes = hierarchy.descendants().map(function (hn) {
             return hn.data;
         }).reverse();
+
+        // The dim gate: only while a hit is actually DRAWN, so the tree never
+        // washes out with nothing emphasised (a 0-hit search, or every hit
+        // hidden inside a collapsed clade / outside the displayed subtree).
+        _dimNonMatches = false;
+        if ((_foundNodes0 && _foundNodes0.size > 0) || (_foundNodes1 && _foundNodes1.size > 0)) {
+            for (let i = 0, len = nodes.length; i !== len; ++i) {
+                if (isNodeFound(nodes[i])) {
+                    _dimNonMatches = true;
+                    break;
+                }
+            }
+        }
         let links = hierarchy.links().map(function (link) {
             return {source: link.source.data, target: link.target.data};
         });
@@ -1983,6 +2002,14 @@ if (!phyloXml) {
                 return (_state.showVisualizations || _state.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _state.backgroundColorDefault;
             });
 
+
+        // Dim Non-Matches: one opacity on the node GROUP dims its labels, dot,
+        // shape and branch-data numbers together; the branch lines are separate
+        // path.link elements and keep their full colour, as on the desktop.
+        // Hits and selected nodes (getFoundColor) are never dimmed.
+        node.style('opacity', function (d) {
+            return (_dimNonMatches && !getFoundColor(d)) ? DIM_NON_MATCH_OPACITY : null;
+        });
 
         let nodeUpdate = node.transition()
             .duration(transitionDuration)
