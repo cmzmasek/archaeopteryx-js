@@ -45,5 +45,17 @@
   "bugs": {
     "url": "https://github.com/cmzmasek/archaeopteryx-js/issues"
   },
-  "homepage": "https://github.com/cmzmasek/archaeopteryx-js#readme"
+  "homepage": "https://github.com/cmzmasek/archaeopteryx-js#readme",
+  "peerDependencies": {
+    "jspdf": "^2.5.0",
+    "svg2pdf.js": "^2.2.0"
+  },
+  "peerDependenciesMeta": {
+    "jspdf": {
+      "optional": true
+    },
+    "svg2pdf.js": {
+      "optional": true
+    }
+  }
 }

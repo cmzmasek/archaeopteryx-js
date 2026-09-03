@@ -121,6 +121,7 @@ if (!phyloXml) {
     // File suffixes
     // ------------------------------
     const NH_SUFFIX = '.tre';
+    const PDF_SUFFIX = '.pdf';
     const PNG_SUFFIX = '.png';
     const SVG_SUFFIX = '.svg';
     const XML_SUFFIX = '.xml';
@@ -152,6 +153,7 @@ if (!phyloXml) {
     const LABEL_COLOR_DARK = '#e7eef5';
     const NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
     const NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
+    const NAME_FOR_PDF_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PDF_SUFFIX;
     const NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
     const NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + SVG_SUFFIX;
     const NAME_FOR_FASTA_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + FASTA_SUFFIX;
@@ -3459,6 +3461,8 @@ if (!phyloXml) {
             ? (_state.treeName + XML_SUFFIX) : NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
         _state.nameForPngDownload = _state.treeName
             ? (_state.treeName + PNG_SUFFIX) : NAME_FOR_PNG_DOWNLOAD_DEFAULT;
+        _state.nameForPdfDownload = _state.treeName
+            ? (_state.treeName + PDF_SUFFIX) : NAME_FOR_PDF_DOWNLOAD_DEFAULT;
         _state.nameForSvgDownload = _state.treeName
             ? (_state.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
         _state.nameForFastaDownload = _state.treeName
@@ -7745,7 +7749,9 @@ if (!phyloXml) {
             h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
-            // h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
+            if (pdfExportAvailable()) {
+                h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
+            }
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
@@ -8279,7 +8285,55 @@ if (!phyloXml) {
         saveAs(new Blob([fasta_text], {type: "application/txt"}), _state.nameForFastaDownload);
     }
 
+    // Vector PDF via the OPTIONAL page-level libraries jsPDF and svg2pdf.js
+    // (the PDF entry only appears in the format menu when both are loaded --
+    // see the docs pages for the script tags). The input is the same cleaned,
+    // light-theme SVG the SVG download saves, so the graphic exports always
+    // agree; the PDF page is sized to the drawing, and the text stays real,
+    // selectable text.
+    function pdfExportAvailable() {
+        return !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API
+            && window.jspdf.jsPDF.API.svg);
+    }
+
     function downloadAsPdf() {
+        if (!pdfExportAvailable()) {
+            console.error(ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
+            return;
+        }
+        let svg = getTreeAsSvg();
+        let el = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+        // the full-canvas background rect is sized in percentages, which
+        // svg2pdf renders literally (a dark 100pt square at the origin); the
+        // PDF page is white anyway, so the rect is simply dropped
+        let bg = el.querySelector('rect.' + BASE_BACKGROUND);
+        if (bg) {
+            bg.remove();
+        }
+        // svg2pdf resolves styles through getComputedStyle, which needs the
+        // element rendered (off-screen is fine; display:none is not)
+        let holder = document.createElement('div');
+        holder.style.position = 'fixed';
+        holder.style.left = '-100000px';
+        holder.style.top = '0';
+        holder.appendChild(el);
+        document.body.appendChild(holder);
+        let svgEl = treeSvgElement();
+        let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
+        let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
+        let pdf = new window.jspdf.jsPDF({
+            orientation: w >= h ? 'landscape' : 'portrait',
+            unit: 'pt',
+            format: [w, h],
+            compress: true
+        });
+        pdf.svg(el, {x: 0, y: 0, width: w, height: h}).then(function () {
+            pdf.save(_state.nameForPdfDownload);
+            holder.remove();
+        }, function (err) {
+            holder.remove();
+            console.error(ERROR + 'PDF export failed: ' + err);
+        });
     }
 
     function downloadAsPng() {

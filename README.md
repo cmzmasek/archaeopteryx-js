@@ -42,6 +42,11 @@ For graphics (PNG) export, the following two libraries are required as well:
  * canvg: https://www.npmjs.com/package/canvg
  * rgbcolor: https://www.npmjs.com/package/rgbcolor
 
+For **vector PDF export** (optional — the PDF entry appears in the Download
+menu only when both are loaded before archaeopteryx.js):
+ * jspdf (2.x): https://www.npmjs.com/package/jspdf
+ * svg2pdf.js (2.x): https://www.npmjs.com/package/svg2pdf.js
+
 File (Newick/New Hampshire, phyloXML, FASTA) and SVG download, as well as saving
 the exported PNG, use native browser APIs (`Blob`, `canvas.toBlob()`, and an
 `<a download>` link), so Blob.js, canvas-toBlob.js and FileSaver.js are no longer
@@ -129,7 +134,8 @@ and decides by itself what is worth showing. There is nothing to configure.
 * The **legend** is a card you can **drag anywhere**. It shows a colour and
   a **count** per value, `[by count]` / `[A-Z]` toggles the order, a dashed
   **no value** row counts the nodes the field does not cover, and very long
-  legends show the top 20 with a `[+N more]` chip. Legends are part of PNG
+  legends show the top 20 with a `[+N more]` chip. Legends are part of PNG,
+  PDF
   and SVG exports (exports always come out light).
 * **Switch into a subtree** (or delete part of the tree) and the menus,
   counts and legends are re-derived for what is on screen — a field with too
