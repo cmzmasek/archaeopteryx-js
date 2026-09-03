@@ -386,7 +386,8 @@ if (!phyloXml) {
     let _vis = null;        // the automatic visualizations: candidates, scales, choices
     let _w = null;
     let _yScale = null;
-    let _radial = null;   // circular-layout params (set per render when _state.circularDisplay)
+    let _radial = null;
+    let _radialRotation = 0;   // radians added to the circular layout's angles (X+/X- rotate buttons)   // circular-layout params (set per render when _state.circularDisplay)
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
@@ -2546,7 +2547,9 @@ if (!phyloXml) {
     // reinterpreted as an angle and its depth position (node.y) as a radius, so the
     // same layout renders as a circular tree. _radial is set per render in update().
     function radialAngle(x) {
-        return _radial ? (x / _radial.clusterH) * _radial.angleSpan : 0;
+        // the rotation offset is left UN-normalized: arcs are drawn from
+        // angle differences, which wrapping individual angles would break
+        return _radial ? ((x / _radial.clusterH) * _radial.angleSpan + _radialRotation) : 0;
     }
     function radialRadius(y) {
         return (_radial && _radial.maxY > 0) ? (y / _radial.maxY) * _radial.maxRad : 0;
@@ -2573,7 +2576,11 @@ if (!phyloXml) {
     // Nodes on the left half of the circle need their text flipped 180° so it
     // isn't upside-down.
     function labelFlip(d) {
-        return radialAngle(d.x) >= Math.PI;
+        let a = radialAngle(d.x) % (2 * Math.PI);
+        if (a < 0) {
+            a += 2 * Math.PI;
+        }
+        return a >= Math.PI;
     }
     // Transform for a branch-data label (confidence / branch length / events):
     // rotate to the node's angle and sit at the midpoint of the branch (radially).
@@ -3118,6 +3125,7 @@ if (!phyloXml) {
                 + ' visualizations are determined automatically from the tree itself');
         }
         _nodeLabels = nodeLabels ? nodeLabels : null;
+        _radialRotation = 0;
         if (specialVisualizations) {
             throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
                 + ' along with the enableSpecialVisualizations2/3/4 settings');
@@ -3871,7 +3879,20 @@ if (!phyloXml) {
             .scale(t.k));
     }
 
+    // The desktop's radial rotation: each press turns the circular layout by
+    // pi/32, wrapping. While the circular layout is on, the X+/X- buttons do
+    // this instead of zooming -- both axes of a circle are its one diameter,
+    // so horizontal zoom would be redundant there.
+    function rotateRadial(clockwise) {
+        _radialRotation = (_radialRotation + (clockwise ? 1 : -1) * Math.PI / 32) % (2 * Math.PI);
+        update(null, 0, true);
+    }
+
     function zoomInX(zoomInFactor) {
+        if (_state.circularDisplay) {
+            rotateRadial(true);
+            return;
+        }
         keepViewportCentred(function () {
             _zoomed_x_or_y = true;
             if (zoomInFactor) {
@@ -3896,6 +3917,10 @@ if (!phyloXml) {
     }
 
     function zoomOutX(zoomOutFactor) {
+        if (_state.circularDisplay) {
+            rotateRadial(false);
+            return;
+        }
         keepViewportCentred(function () {
             _zoomed_x_or_y = true;
             let newDisplayWidth;
@@ -4069,6 +4094,7 @@ if (!phyloXml) {
 
         initializeSettings(_settings);
 
+        _radialRotation = 0;
         refreshVisualizations();
         // Esc resets to the launch state -- the auto-applied colour, when its
         // field still exists in what remains of the tree.
@@ -4354,7 +4380,31 @@ if (!phyloXml) {
 
     function layoutButtonClicked() {
         _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
+        syncZoomXButtons();
         zoomToFit();
+    }
+
+    // While the circular layout is on, X-/X+ wear the desktop's rotate faces
+    // and rotate the display; in the rectangular layout they are the plain
+    // horizontal zoom pair. Same buttons, same bindings -- only the face and
+    // the meaning change with the layout.
+    function syncZoomXButtons() {
+        let minus = byId(ZOOM_OUT_X);
+        let plus = byId(ZOOM_IN_X);
+        if (!minus || !plus) {
+            return;
+        }
+        if (_state.circularDisplay) {
+            minus.innerHTML = makeGlyph('rotate_ccw');
+            minus.title = 'rotate counter-clockwise (Alt+Left or Shift+Alt+mousewheel)';
+            plus.innerHTML = makeGlyph('rotate_cw');
+            plus.title = 'rotate clockwise (Alt+Right or Shift+Alt+mousewheel)';
+        } else {
+            minus.textContent = 'X-';
+            minus.title = 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)';
+            plus.textContent = 'X+';
+            plus.title = 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)';
+        }
     }
 
     // Toggles alignment of the labels in phylogram mode (bound to the 'L'
@@ -4861,6 +4911,27 @@ if (!phyloXml) {
 
     // "Fit everything": a rounded window frame with a two-headed diagonal arrow
     // pushing outward against it.
+    // The desktop's rotate pair: an open pivot dot at the centre, a
+    // 300-degree orbit arc, and a filled head capping the arc with its tip
+    // pointing the way of travel, into the 60-degree gap.
+    function glyphRotate(cw) {
+        let start = cw ? 170 : 10;
+        let sweep = cw ? 300 : -300;
+        let term = (start + sweep) * Math.PI / 180;
+        let r = 37;
+        let len = 26;
+        let half = 13;
+        let px = 50 + r * Math.cos(term);
+        let py = 50 + r * Math.sin(term);
+        let t = term + (cw ? Math.PI / 2 : -Math.PI / 2);
+        let nx = -Math.sin(t);
+        let ny = Math.cos(t);
+        return glyphDot(50, 50, 12) + glyphArc(50, 50, r, start, sweep)
+            + glyphPoly([px + Math.cos(t) * len, py + Math.sin(t) * len,
+                px + nx * half, py + ny * half,
+                px - nx * half, py - ny * half]);
+    }
+
     function glyphFitAll() {
         return '<rect x="4" y="4" width="92" height="92" rx="18" ry="18"/>'
             + glyphArrow(55, 55, 84, 84, 20)
@@ -4942,6 +5013,8 @@ if (!phyloXml) {
             case 'rectangular': cap = 'round'; body = glyphRectangular(); break;
             case 'circular': cap = 'round'; body = glyphCircular(); break;
             case 'fit_all': sw = 6.5; body = glyphFitAll(); break;
+            case 'rotate_cw': body = glyphRotate(true); break;
+            case 'rotate_ccw': body = glyphRotate(false); break;
             case 'expand_vertical': body = glyphExpandVertical(); break;
             case 'whole_tree': sw = 11; join = 'miter'; body = glyphBackArrow(true); break;
             case 'up_one_level': sw = 11; join = 'miter'; body = glyphBackArrow(false); break;
@@ -6261,10 +6334,10 @@ if (!phyloXml) {
             h = h.concat('<legend>Zoom</legend>');
             h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
             h = h.concat('<br>');
-            h = h.concat(makeButton('X-', ZOOM_OUT_X, 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)'));
+            h = h.concat(makeGlyphButton('rotate_ccw', ZOOM_OUT_X, ''));
             h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
             h = h.concat(makeGlyphButton('expand_vertical', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
-            h = h.concat(makeButton('X+', ZOOM_IN_X, 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)'));
+            h = h.concat(makeGlyphButton('rotate_cw', ZOOM_IN_X, ''));
             h = h.concat('<br>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
             h = h.concat('</fieldset>');
@@ -6464,6 +6537,7 @@ if (!phyloXml) {
     function initializeGui() {
 
         setDisplayTypeButtons();
+        syncZoomXButtons();
 
         setCheckboxValue(NODE_NAME_CB, _state.showNodeName);
         setCheckboxValue(TAXONOMY_CB, _state.showTaxonomy);
