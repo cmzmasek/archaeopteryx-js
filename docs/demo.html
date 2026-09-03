@@ -129,12 +129,11 @@
         // The tree's own name/description (when present) is shown in the viewer's
         // control panel now, so the toolbar no longer repeats a description here.
 
-        // Almost nothing to configure: the viewer's intelligent pre-sets work
-        // the display out from what each tree actually contains (confidences,
-        // taxonomy, sequences, events, ...).
+        // Nothing to configure: the viewer works the display out from what
+        // each tree actually contains -- including which fields to offer as
+        // Color / Shape visualizations.
         var config = {
-            enableDynamicSizing: true,
-            enableVisualizations: true
+            enableDynamicSizing: true
         };
 
         fetch(tree.file, {cache: 'no-cache'})

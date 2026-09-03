@@ -400,6 +400,45 @@ function testLabelCollision() {
         && labels.indexOf('vipr:Host') >= 0;
 }
 
+// The value accessor must agree with the classifier: every value the
+// classifier counted must be readable back off its node, and a node
+// without one answers null.
+function testNodeValueAgreesWithClassifier() {
+    var phy = loadTree('herpes_dnapol');
+    var cands = forester.visualizationCandidates(phy);
+    var hg = null;
+    cands.forEach(function (c) { if (c.id === 'prop:BVBRC:host_group') hg = c; });
+    if (!hg) return false;
+    var seen = 0, missing = 0, alien = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        var v = forester.visualizationNodeValue(n, hg);
+        if (v === null) { missing++; return; }
+        seen++;
+        if (hg.values.indexOf(v) < 0) alien++;
+    });
+    return seen === hg.coverage && missing === hg.total - hg.coverage && alien === 0;
+}
+
+// ... and for the taxonomy / sequence slots too.
+function testNodeValueElementSlots() {
+    var phy = loadTree('bcl2');
+    var cands = forester.visualizationCandidates(phy);
+    var code = null;
+    cands.forEach(function (c) { if (c.id === 'tax:code') code = c; });
+    if (!code) return false;
+    var ok = true, seen = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        var v = forester.visualizationNodeValue(n, code);
+        if (v !== null) {
+            seen++;
+            if (code.values.indexOf(v) < 0) ok = false;
+        }
+    });
+    return ok && seen === code.coverage;
+}
+
 // The classifier accepts the phylogeny wrapper (super-root) or the real
 // root alike, and answers identically.
 function testWrapperTolerated() {
@@ -440,6 +479,8 @@ runTest("numeric identifier guard   : ", testNumericIdentifierGuard);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
 runTest("label collision            : ", testLabelCollision);
+runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
+runTest("node value, element slots  : ", testNodeValueElementSlots);
 runTest("wrapper tolerated          : ", testWrapperTolerated);
 
 if (_testFailures > 0) {

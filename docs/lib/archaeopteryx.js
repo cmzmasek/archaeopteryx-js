@@ -83,9 +83,22 @@ if (!phyloXml) {
     // The 20-colour categorical palettes below were removed from d3 in v5. These
     // are the exact colour arrays from d3 v3's d3.scale.category20/20b/20c, kept
     // so d3.scaleOrdinal(...) reproduces the original colours after the upgrade.
-    const SCHEME_CATEGORY20 = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c', '#98df8a', '#d62728', '#ff9896', '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', '#bcbd22', '#dbdb8d', '#17becf', '#9edae5'];
-    const SCHEME_CATEGORY20B = ['#393b79', '#5254a3', '#6b6ecf', '#9c9ede', '#637939', '#8ca252', '#b5cf6b', '#cedb9c', '#8c6d31', '#bd9e39', '#e7ba52', '#e7cb94', '#843c39', '#ad494a', '#d6616b', '#e7969c', '#7b4173', '#a55194', '#ce6dbd', '#de9ed6'];
-    const SCHEME_CATEGORY20C = ['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#31a354', '#74c476', '#a1d99b', '#c7e9c0', '#756bb1', '#9e9ac8', '#bcbddd', '#dadaeb', '#636363', '#969696', '#bdbdbd', '#d9d9d9'];
+    // Categorical visualization palette: Observable10 (2023; clearer colour-
+    // vision separation than the old category10) followed by a darkened
+    // counterpart of each for fields of 11-20 values. ONE palette for every
+    // cardinality -- the old category10/20/50 switch recoloured the whole
+    // tree whenever a field crossed a threshold.
+    const VIS_COLOR_PALETTE = [
+        '#4269d0', '#efb118', '#ff725c', '#6cc5b0', '#3ca951',
+        '#ff8ab7', '#a463f2', '#97bbf5', '#9c6b4e', '#9498a0',
+        '#304c97', '#ad8011', '#b95343', '#4e8f80', '#2c7b3b',
+        '#b96485', '#7748b0', '#6e88b2', '#714e39', '#6b6e74'];
+    // 3-stop viridis for numeric ranges (colour-vision-safe); domain is the
+    // field's min / mean / max over the whole tree.
+    const VIS_COLOR_RAMP = ['#440154', '#21908C', '#FDE725'];
+    // The 7 distinct fill symbols d3 v7 actually has -- the old auto list
+    // offered triangle-up AND triangle-down, which v7 renders identically.
+    const VIS_SHAPES = ['circle', 'square', 'diamond', 'triangle', 'cross', 'star', 'wye'];
 
     // -----------------------------
     // Named colors and orientations
@@ -342,102 +355,11 @@ if (!phyloXml) {
     // ---------------------------
 
 
-    const col_category50 = [// 1 Red
-        '#FF1744', // 2 Purple
-        '#D500F9', // 3 Deep Purple
-        '#651FFF', // 4 Indigo
-        '#3D5AFE', // 5 Blue
-        '#2979FF', // 6 Cyan
-        '#00E5FF', // 7 Teal
-        '#1DE9B6', // 8 Green
-        '#00E676', // 9 Light Green
-        '#76FF03', // 10 Lime
-        '#C6FF00', // 11 Yellow
-        '#FFEA00', // 12 Amber
-        '#FFC400', // 13 Orange
-        '#FF9100', // 13 Deep Orange
-        '#FF3D00', // 15 Brown
-        '#6D4C41', // 16 Grey
-        '#757575', //
-        // 17 Red
-        '#B71C1C', // 18 Pink
-        '#880E4F', // 19 Purple
-        '#4A148C', // 20 Deep Purple
-        '#311B92', // 21 Indigo
-        '#1A237E', // 22 Blue
-        '#0D47A1', // 23 Cyan
-        '#006064', // 24 Teal
-        '#004D40', // 25 Green
-        '#1B5E20', // 26 Light Green
-        '#33691E', // 27 Lime
-        '#827717', // 28 Yellow
-        '#F57F17', // 29 Amber
-        '#FF6F00', // 30 Orange
-        '#E65100', // 31 Deep Orange
-        '#BF360C', // 32 Brown
-        '#4E342E', // 33 Grey
-        '#424242', //
-        // 34 Red
-        '#EF9A9A', // 35 Pink
-        '#F48FB1', // 36 Purple
-        '#CE93D8', // 37 Deep Purple
-        '#B39DDB', // 38 Indigo
-        '#9FA8DA', // 39 Blue
-        '#90CAF9', // 40 Cyan
-        '#80DEEA', // 41 Teal
-        '#80CBC4', // 42 Green
-        '#A5D6A7', // 43 Light Green
-        '#C5E1A5', // 44 Lime
-        '#E6EE9C', // 45 Amber
-        '#FFE082', // 46 Orange
-        '#FFCC80', // 47 Deep Orange
-        '#FFAB91', // 48 Brown
-        '#BCAAA4', // 49 Grey
-        '#E0E0E0', // 50 Grey
-        '#505050'];
-
-
-    const col_category50b = ["#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87", "#5A0007", "#809693", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80", "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#D16100", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F", "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09", "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66"];
-
-    const col_category50c = [// Red
-        '#FF5252', '#FF1744', '#D50000', // Pink
-        '#FF4081', '#F50057', '#C51162', // Purple
-        '#E040FB', '#D500F9', '#AA00FF', // Deep Purple
-        '#7C4DFF', '#651FFF', '#6200EA', // Indigo
-        '#536DFE', '#3D5AFE', '#304FFE', // Blue
-        '#448AFF', '#2979FF', '#2962FF', // Cyan
-        '#18FFFF', '#00E5FF', '#00B8D4', // Teal
-        '#64FFDA', '#1DE9B6', '#00BFA5', // Green
-        '#69F0AE', '#00E676', '#00C853', // Light Green
-        '#B2FF59', '#76FF03', '#64DD17', // Lime
-        '#EEFF41', '#C6FF00', '#AEEA00', // Yellow
-        '#FFFF00', '#FFEA00', '#FFD600', // Amber
-        '#FFD740', '#FFC400', '#FFAB00', // Orange
-        '#FFAB40', '#FF9100', '#FF6D00', // Deep Orange
-        '#FF6E40', '#FF3D00', '#DD2C00', // Brown
-        '#5D4037', '#4E342E', '#3E2723', // Grey
-        '#9E9E9E', '#616161'];
-
-    const category50 = function () {
-        return d3.scaleOrdinal().domain([]).range(col_category50);
-    };
-
-    const category50b = function () {
-        return d3.scaleOrdinal().domain([]).range(col_category50b);
-    };
-
-    const category50c = function () {
-        return d3.scaleOrdinal().domain([]).range(col_category50c);
-    };
-
-
     // ---------------------------
     // "Instance variables"
     // ---------------------------
     let _baseSvg = null;
     let _basicTreeProperties = null;
-    let _currentLabelColorVisualization = null;
-    let _currentNodeShapeVisualization = null;
     let _displayHeight = 0;
     let _displayWidth = 0;
     let _dynahide_counter = 0;
@@ -448,10 +370,7 @@ if (!phyloXml) {
     let _i = 0;
     let _id = null;
     let _intervalId = 0;
-    let _legendColorScales = {};
-    let _legendShapeScales = {};
     let _maxLabelLength = 0;
-    let _nodeVisualizations = null;
     let _nodeLabels = null;
     let _state = null;      // live display state: what the control panel writes to
     let _root = null;
@@ -463,7 +382,7 @@ if (!phyloXml) {
     let _svgGroup = null;
     let _treeData = null;
     let _treeFn = null;
-    let _visualizations = null;
+    let _vis = null;        // the automatic visualizations: candidates, scales, choices
     let _w = null;
     let _yScale = null;
     let _radial = null;   // circular-layout params (set per render when _state.circularDisplay)
@@ -1212,226 +1131,60 @@ if (!phyloXml) {
 
     // ----------------------------
 
-    function createVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, // mappingFn is a scale
-                                 scaleType, altMappingFn) {
-        if (arguments.length < 8) {
-            throw('expected at least 8 arguments, got ' + arguments.length);
+    // Everything the automatic visualizations are, in one structure with one
+    // reset point (this replaces a sprawl of seven module-level structures,
+    // whose scattered resets once let one tree's visualizations leak into
+    // the next launch).
+    //
+    // The candidates come from forester.visualizationCandidates: the tree is
+    // the only input. Each candidate carries its scales, built once per
+    // launch from the COMPLETE tree -- so a value keeps its colour inside a
+    // subtree view even when the subtree does not contain it.
+    function initializeVisualizations() {
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null};
+        if (!_settings.enableVisualizations) {
+            return;
         }
-
-        if (!label || label.length < 1) {
-            throw('need to have label');
-        }
-        let visualization = {};
-        visualization.label = label;
-        if (description) {
-            visualization.description = description;
-        }
-        if (field) {
-            if (cladePropertyRef) {
-                throw('need to have either field or clade property ref (but not both)');
+        forester.visualizationCandidates(_treeData).forEach(function (c) {
+            if (c.colorMode === 'range') {
+                let nums = c.values.map(Number);
+                let mean = nums.reduce(function (a, b) {
+                    return a + b;
+                }, 0) / nums.length;
+                c.colorScale = d3.scaleLinear()
+                    .range(VIS_COLOR_RAMP)
+                    .domain([nums[0], mean, nums[nums.length - 1]]);
+            } else {
+                c.colorScale = d3.scaleOrdinal().range(VIS_COLOR_PALETTE).domain(c.values);
             }
-            visualization.field = field;
-        } else if (cladePropertyRef) {
-            visualization.cladePropertyRef = cladePropertyRef;
-        } else {
-            throw('need to have either field or clade property ref');
-        }
-        visualization.isRegex = isRegex;
-        if (mapping) {
-            if (mappingFn) {
-                throw('need to have either mapping or mappingFn');
+            if (c.shape) {
+                c.shapeScale = d3.scaleOrdinal().range(VIS_SHAPES).domain(c.values);
             }
-            visualization.mapping = mapping;
-        } else if (mappingFn) {
-
-            visualization.mappingFn = mappingFn;
-            if (scaleType === ORDINAL_SCALE) {
-                if (mappingFn.domain() && mappingFn.range() && mappingFn.domain().length > mappingFn.range().length) {
-                    if (altMappingFn && altMappingFn.domain() && altMappingFn.range()) {
-                        visualization.mappingFn = altMappingFn;
-                        scaleType = LINEAR_SCALE;
-                    } else {
-                        let s = cladePropertyRef ? cladePropertyRef : field;
-                        console.log(WARNING + ': Ordinal scale mapping for ' + label + ' (' + s + '): domain > range: ' + mappingFn.domain().length + ' > ' + mappingFn.range().length);
-                    }
-                }
-            }
-        } else {
-            throw('need to have either mapping or mappingFn');
-        }
-        visualization.scaleType = scaleType;
-        return visualization;
+            _vis.candidates.push(c);
+            _vis.byId[c.id] = c;
+        });
     }
 
-    function initializeNodeVisualizations(nodeProperties) {
-        if (_nodeVisualizations) {
-            for (let key in _nodeVisualizations) {
-                if (_nodeVisualizations.hasOwnProperty(key)) {
-
-                    let nodeVisualization = _nodeVisualizations[key];
-
-                    if (nodeVisualization.label) {
-
-                        let scaleType = '';
-                        if (nodeVisualization.shapes && Array.isArray(nodeVisualization.shapes) && (nodeVisualization.shapes.length > 0)) {
-
-                            let shapeScale = null;
-                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
-                                shapeScale = d3.scaleOrdinal()
-                                    .range(nodeVisualization.shapes)
-                                    .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                scaleType = ORDINAL_SCALE;
-                            } else if (nodeVisualization.field && nodeProperties[nodeVisualization.field] && forester.setToArray(nodeProperties[nodeVisualization.field]).length > 0) {
-                                shapeScale = d3.scaleOrdinal()
-                                    .range(nodeVisualization.shapes)
-                                    .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.field]));
-                                scaleType = ORDINAL_SCALE;
-                            }
-
-                            if (shapeScale) {
-                                addNodeShapeVisualization(nodeVisualization.label, nodeVisualization.description, nodeVisualization.field ? nodeVisualization.field : null, nodeVisualization.cladeRef ? nodeVisualization.cladeRef : null, nodeVisualization.regex, null, shapeScale, scaleType);
-                            }
-                        }
-
-                        if (nodeVisualization.colors) {
-                            // TODO: Not dealing with nodeVisualization.field, yet.
-                            if (nodeVisualization.cladeRef && nodeProperties[nodeVisualization.cladeRef] && forester.setToArray(nodeProperties[nodeVisualization.cladeRef]).length > 0) {
-                                let colorScale = null;
-                                let altColorScale = null;
-
-                                if (Array.isArray(nodeVisualization.colors)) {
-                                    scaleType = LINEAR_SCALE;
-                                    if (nodeVisualization.colors.length === 3) {
-                                        colorScale = d3.scaleLinear()
-                                            .range(nodeVisualization.colors)
-                                            .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                    } else if (nodeVisualization.colors.length === 2) {
-                                        colorScale = d3.scaleLinear()
-                                            .range(nodeVisualization.colors)
-                                            .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                    } else {
-                                        throw new Error('Number of colors has to be either 2 or 3');
-                                    }
-                                }
-
-                                if (Array.isArray(nodeVisualization.colorsAlt)) {
-                                    if (nodeVisualization.colorsAlt.length === 3) {
-                                        altColorScale = d3.scaleLinear()
-                                            .range(nodeVisualization.colorsAlt)
-                                            .domain(forester.calcMinMeanMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                    } else if (nodeVisualization.colorsAlt.length === 2) {
-                                        altColorScale = d3.scaleLinear()
-                                            .range(nodeVisualization.colorsAlt)
-                                            .domain(forester.calcMinMaxInSet(nodeProperties[nodeVisualization.cladeRef]));
-                                    } else {
-                                        throw new Error('Number of colors has to be either 2 or 3');
-                                    }
-                                }
-
-                                if (forester.isString(nodeVisualization.colors) && nodeVisualization.colors.length > 0) {
-                                    scaleType = ORDINAL_SCALE;
-                                    {
-                                        if (nodeVisualization.colors === 'category20') {
-                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20)
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category20b') {
-                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20B)
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category20c') {
-                                            colorScale = d3.scaleOrdinal(SCHEME_CATEGORY20C)
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category10') {
-                                            colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category50') {
-                                            colorScale = category50()
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category50b') {
-                                            colorScale = category50b()
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else if (nodeVisualization.colors === 'category50c') {
-                                            colorScale = category50c()
-                                                .domain(forester.setToSortedArray(nodeProperties[nodeVisualization.cladeRef]));
-                                        } else {
-                                            throw new Error('do not know how to process ' + nodeVisualization.colors);
-                                        }
-                                    }
-                                }
-
-                                if (colorScale) {
-                                    // One colour visualization drives BOTH the label and
-                                    // the node fill. These used to be registered twice,
-                                    // from the same scale, into two identical maps.
-                                    addLabelColorVisualization(nodeVisualization.label, nodeVisualization.description, null, nodeVisualization.cladeRef, nodeVisualization.regex, null, colorScale, scaleType, altColorScale);
-                                }
-                            }
-                        }
-
-                        if (nodeVisualization.sizes) {
-                            throw new Error(ERROR + 'node visualization "' + nodeVisualization.label
-                                + '" asks to vary node size; size visualizations were removed'
-                                + ' -- use "colors" or "shapes" instead');
-                        }
-                    }
-                }
-            }
-        }
+    function currentColorVis() {
+        return (_vis && _vis.colorId) ? _vis.byId[_vis.colorId] : null;
     }
 
-
-    function addNodeShapeVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType) {
-        if (arguments.length !== 8) {
-            throw('expected 8 arguments, got ' + arguments.length);
-        }
-        if (!_visualizations) {
-            _visualizations = {};
-        }
-        if (!_visualizations.nodeShape) {
-            _visualizations.nodeShape = {};
-        }
-        if (_visualizations.nodeShape[label]) {
-            console.log(MESSAGE + 'node shape visualization for "' + label + '" already exists');
-        }
-        let vis = createVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType);
-        if (vis) {
-            _visualizations.nodeShape[vis.label] = vis;
-        }
+    function currentShapeVis() {
+        return (_vis && _vis.shapeId) ? _vis.byId[_vis.shapeId] : null;
     }
 
-    function hasVisualizationsOfKind(kind) {
-        return !!(_visualizations && _visualizations[kind]
-            && Object.keys(_visualizations[kind]).length > 0);
-    }
-
-    function hasColorVisualizations() {
-        return hasVisualizationsOfKind('labelColor');
+        function hasColorVisualizations() {
+        return !!(_vis && _vis.candidates.length > 0);
     }
 
     function hasShapeVisualizations() {
-        return hasVisualizationsOfKind('nodeShape');
-    }
-
-    function addLabelColorVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType, altMappingFn) {
-        if (arguments.length < 8) {
-            throw('expected at least 8 arguments, got ' + arguments.length);
-        }
-        if (!_visualizations) {
-            _visualizations = {};
-        }
-        if (!_visualizations.labelColor) {
-            _visualizations.labelColor = {};
-        }
-        if (_visualizations.labelColor[label]) {
-            console.log(MESSAGE + 'label color visualization for "' + label + '" already exists');
-        }
-        let vis = createVisualization(label, description, field, cladePropertyRef, isRegex, mapping, mappingFn, scaleType, altMappingFn);
-        if (vis) {
-            _visualizations.labelColor[vis.label] = vis;
-        }
+        return !!(_vis && _vis.candidates.some(function (c) {
+            return c.shape;
+        }));
     }
 
 
-    function resetVis() {
+        function resetVis() {
         forester.preOrderTraversal(_root, function (n) {
             n.hasVis = undefined;
         });
@@ -1752,27 +1505,24 @@ if (!phyloXml) {
         // with the rest of the Vis Legend controls.
         let yPosIncr = 10;
         let yPosIncrConst = 40;
-        let label = '';
-        let desc = '';
         let counter = 0;
-        let scaleType = '';
 
-        if (_legendColorScales[LEGEND_LABEL_COLOR] && _visualizations.labelColor[_currentLabelColorVisualization]) {
+        // Both legends follow the Visualizations switch: with it off nothing
+        // is painted, so nothing should claim to be.
+        let colorVis = _state.showVisualizations ? currentColorVis() : null;
+        let shapeVis = _state.showVisualizations ? currentShapeVis() : null;
+
+        if (colorVis) {
             removeColorLegend(LEGEND_LABEL_COLOR);
-            label = 'Color';
-            desc = _currentLabelColorVisualization;
-
-            scaleType = _visualizations.labelColor[_currentLabelColorVisualization].scaleType;
-            counter = makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, _legendColorScales[LEGEND_LABEL_COLOR], scaleType, label, desc);
+            counter = makeColorLegend(LEGEND_LABEL_COLOR, xPos, yPos, colorVis.colorScale,
+                colorVis.colorMode === 'range' ? LINEAR_SCALE : ORDINAL_SCALE, 'Color', colorVis.label);
             yPos += ((counter * yPosIncr) + yPosIncrConst);
         } else {
             removeColorLegend(LEGEND_LABEL_COLOR);
         }
 
-        if (_state.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]) {
-            label = 'Shape';
-            desc = _currentNodeShapeVisualization;
-            counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, _legendShapeScales[LEGEND_NODE_SHAPE], label, desc);
+        if (shapeVis) {
+            counter = makeShapeLegend(LEGEND_NODE_SHAPE, xPos, yPos, shapeVis.shapeScale, 'Shape', shapeVis.label);
             yPos += ((counter * yPosIncr) + yPosIncrConst);
         } else {
             removeShapeLegend(LEGEND_NODE_SHAPE);
@@ -2248,7 +1998,7 @@ if (!phyloXml) {
         // that switch is on with no visualization chosen.
         let visualized = _state.nodeSizeDefault > 0 && node.parent
             && _state.showVisualizations && !node.hasVis
-            && _currentLabelColorVisualization != null;
+            && currentColorVis() !== null;
 
         // a zero-length branch off the root would otherwise be invisible
         let zeroLengthRootChild = _state.phylogram && node.parent && !node.parent.parent
@@ -2337,7 +2087,7 @@ if (!phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        if (_state.showVisualizations && _currentLabelColorVisualization) {
+        if (_state.showVisualizations && currentColorVis()) {
             let color = makeVisLabelColor(phynode);
             if (color) {
                 return color;
@@ -2351,70 +2101,32 @@ if (!phyloXml) {
     };
 
     let makeNodeVisShape = function (node) {
-        if (_currentNodeShapeVisualization && _visualizations && _visualizations.nodeShape && _visualizations.nodeShape[_currentNodeShapeVisualization] && !isNodeFound(node) && !isNodeSelected(node) && !(_state.showNodeEvents && (node.events && (node.events.duplications || node.events.speciations)))) {
-            let vis = _visualizations.nodeShape[_currentNodeShapeVisualization];
-            {
-                if (vis.field) {
-                    let fieldValue = node[vis.field];
-                    if (fieldValue) {
-                        if (vis.isRegex) {
-                            for (let key in vis.mapping) {
-                                if (vis.mapping.hasOwnProperty(key)) {
-                                    let re = new RegExp(key);
-                                    if (re && fieldValue.search(re) > -1) {
-                                        return produceVis(vis, key);
-                                    }
-                                }
-                            }
-                        } else {
-                            return produceVis(vis, fieldValue);
-                        }
-                    }
-                } else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
-
-                    let ref_name = vis.cladePropertyRef;
-                    let propertiesLength = node.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        let p = node.properties[i];
-                        if (p.value && p.ref === ref_name) {
-                            return produceVis(vis, p.value);
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
-
-        function produceVis(vis, key) {
-            if (vis.mappingFn) {
-                if (vis.mappingFn(key)) {
-                    return makeShape(node, vis.mappingFn(key));
-                }
-            } else if (vis.mapping[key]) {
-                return makeShape(node, vis.mapping[key]);
-            }
+        let vis = currentShapeVis();
+        if (!vis || isNodeFound(node) || isNodeSelected(node)
+            || (_state.showNodeEvents && node.events && (node.events.duplications || node.events.speciations))) {
             return null;
         }
-
-        function makeShape(node, shape) {
-            node.hasVis = true;
-            return d3.symbol().type(d3SymbolType(shape)).size(nodeSymbolArea())();
+        let value = forester.visualizationNodeValue(node, vis);
+        if (value === null) {
+            return null;
         }
+        node.hasVis = true;
+        return d3.symbol().type(d3SymbolType(vis.shapeScale(value))).size(nodeSymbolArea())();
     };
 
-    // ONE colour visualization drives both the label and the node fill -- these
+        // ONE colour visualization drives both the label and the node fill -- these
     // were two identical code paths over two identical maps. Returns null when
     // nothing applies, so each caller supplies its own fallback.
     function visualizationColorFor(node) {
-        if (!_currentLabelColorVisualization || !_visualizations || !_visualizations.labelColor) {
+        let vis = currentColorVis();
+        if (!vis) {
             return null;
         }
-        let vis = _visualizations.labelColor[_currentLabelColorVisualization];
-        if (vis) {
-            return makeVisColor(node, vis) || null;
+        let value = forester.visualizationNodeValue(node, vis);
+        if (value === null) {
+            return null;
         }
-        return null;
+        return vis.colorMode === 'range' ? vis.colorScale(Number(value)) : vis.colorScale(value);
     }
 
     let makeVisNodeFillColor = function (node) {
@@ -2424,63 +2136,7 @@ if (!phyloXml) {
         return visualizationColorFor(node) || _state.backgroundColorDefault;
     };
 
-
-    let makeVisColor = function (node, vis) {
-        if (vis.field) {
-            let fieldValue = node[vis.field];
-            if (fieldValue) {
-                if (vis.isRegex) {
-                    for (let key in vis.mapping) {
-                        if (vis.mapping.hasOwnProperty(key)) {
-                            let re = new RegExp(key);
-                            if (re && fieldValue.search(re) > -1) {
-                                return produceVis(vis, key);
-                            }
-                        }
-                    }
-                } else {
-                    return produceVis(vis, fieldValue);
-                }
-            }
-        } else if (vis.cladePropertyRef && node.properties && node.properties.length > 0) {
-            let ref_name = vis.cladePropertyRef;
-            let propertiesLength = node.properties.length;
-            for (let i = 0; i < propertiesLength; ++i) {
-                let p = node.properties[i];
-                if (p.value && p.ref === ref_name) {
-                    return produceVis(vis, p.value);
-                }
-            }
-        }
-
-        return null;
-
-        function produceVis(vis, key) {
-            return vis.mappingFn ? vis.mappingFn(key) : vis.mapping[key];
-        }
-    };
-
-    function addLegend(type, vis) {
-        if (vis) {
-            _legendColorScales[type] = vis.mappingFn ? vis.mappingFn : null;
-        }
-    }
-
-    function addLegendForShapes(type, vis) {
-        if (vis) {
-            _legendShapeScales[type] = vis.mappingFn ? vis.mappingFn : null;
-        }
-    }
-
-    function removeLegend(type) {
-        _legendColorScales[type] = null;
-    }
-
-    function removeLegendForShapes(type) {
-        _legendShapeScales[type] = null;
-    }
-
-    let makeVisNodeBorderColor = function (node) {
+        let makeVisNodeBorderColor = function (node) {
         const c = makeVisNodeFillColor(node);
         if (c === _state.backgroundColorDefault) {
             return _state.branchColorDefault
@@ -2911,7 +2567,8 @@ if (!phyloXml) {
         valuesToIgnoreForNodeVisualization: 'every value is shown; choose what to show in the panel',
         orderTree: 'renamed to "ladderizeTree", to match the wording used everywhere else',
         controlsBackgroundColor: 'the control panel follows the light / dark palette',
-        filterValues: 'reshape the tree\'s properties yourself before calling launch'
+        filterValues: 'reshape the tree\'s properties yourself before calling launch',
+        dynamicallyAddNodeVisualizations: 'visualizations are always derived automatically from the tree now'
     };
 
     // ---- the public config surface ----------------------------------------
@@ -2935,7 +2592,6 @@ if (!phyloXml) {
     const SETTING_KEYS = [
         'displayHeight',
         'displayWidth',
-        'dynamicallyAddNodeVisualizations',
         'enableAccessToDatabases',
         'enableDownloads',
         'enableDynamicSizing',
@@ -3167,7 +2823,7 @@ if (!phyloXml) {
             _settings.enableDownloads = true;
         }
         if (_settings.enableVisualizations === undefined) {
-            _settings.enableVisualizations = false;
+            _settings.enableVisualizations = true;
         }
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = true;
@@ -3180,9 +2836,6 @@ if (!phyloXml) {
         }
         if (_settings.zoomToFitUponWindowResize === undefined) {
             _settings.zoomToFitUponWindowResize = true;
-        }
-        if (_settings.dynamicallyAddNodeVisualizations === undefined) {
-            _settings.dynamicallyAddNodeVisualizations = false;
         }
         if (_settings.enableManualNodeSelection === undefined) {
             _settings.enableManualNodeSelection = false;
@@ -3246,7 +2899,6 @@ if (!phyloXml) {
 
         zoomToFit();
 
-        updateNodeVisualizationsAndLegends(_root);
         search0();
         search1();
     }
@@ -3283,88 +2935,26 @@ if (!phyloXml) {
 
         let cfg = readConfig(config, legacySettings);
 
-        // Every launch starts from a clean slate. These used to be assigned only
-        // when the caller supplied them, so launching a second tree in the same
-        // page without them inherited the first tree's visualizations -- and the
-        // built maps in _visualizations were merged on top of the old ones rather
-        // than replacing them.
-        let callerProvidedNodeVisualizations = !!nodeVisualizations;
-        _nodeVisualizations = nodeVisualizations ? nodeVisualizations : null;
+        // Every launch starts from a clean slate: _vis is rebuilt below and
+        // _nodeLabels reassigned, never inherited from a previous launch in
+        // the same page.
+        if (nodeVisualizations) {
+            throw new Error(ERROR + 'the "nodeVisualizations" argument was removed:'
+                + ' visualizations are determined automatically from the tree itself');
+        }
         _nodeLabels = nodeLabels ? nodeLabels : null;
         if (specialVisualizations) {
             throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
                 + ' along with the enableSpecialVisualizations2/3/4 settings');
         }
-        _visualizations = null;
-        _currentLabelColorVisualization = null;
-        _currentNodeShapeVisualization = null;
-        _legendColorScales = {};
-        _legendShapeScales = {};
+        _vis = null;
 
 
         initializeState(cfg.state);
         initializeSettings(cfg.settings);
 
 
-        if (_settings.enableVisualizations) {
-
-            // Intelligent pre-sets: when the caller provides no node
-            // visualizations, generate sensible ones from the tree's custom
-            // properties (dynamicallyAddNodeVisualizations forces this even
-            // when some were provided). A numeric property gets a continuous
-            // color ramp plus a size mapping; a categorical one gets a palette
-            // sized to its number of distinct values, and shapes when there
-            // are few enough of them. Classification (numeric vs categorical,
-            // distinct values) reuses the tested per-tree field discovery.
-            if (_settings.dynamicallyAddNodeVisualizations === true || !callerProvidedNodeVisualizations) {
-                if (_nodeVisualizations == null) {
-                    _nodeVisualizations = {};
-                }
-                forester.availableSearchFields(_treeData).forEach(function (f) {
-                    if (!f.propRef) {
-                        return; // only custom properties get auto visualizations
-                    }
-                    let ref = f.propRef;
-                    let name = ref.indexOf(':') >= 0 ? ref.substring(ref.indexOf(':') + 1) : ref;
-                    if (_nodeVisualizations.hasOwnProperty(name)) {
-                        return;
-                    }
-                    let vis;
-                    if (f.numeric) {
-                        vis = {
-                            label: name,
-                            description: 'the ' + name,
-                            field: null,
-                            cladeRef: ref,
-                            regex: false,
-                            shapes: null,
-                            colors: ['#440154', '#21908C', '#FDE725'], // viridis ramp (CVD-safe)
-                            sizes: [12, 42]
-                        };
-                    } else {
-                        let distinct = forester.distinctSearchValues(_treeData, f).length;
-                        if (distinct < 1 || distinct > 50) {
-                            return; // empty, or unique-ID-like: no useful visualization
-                        }
-                        vis = {
-                            label: name,
-                            description: 'the ' + name,
-                            field: null,
-                            cladeRef: ref,
-                            regex: false,
-                            shapes: distinct <= 6 ? ['square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'circle'] : null,
-                            colors: distinct <= 10 ? 'category10' : (distinct <= 20 ? 'category20' : 'category50'),
-                            sizes: null
-                        };
-                    }
-                    _nodeVisualizations[name] = vis;
-                    console.log(MESSAGE + 'Auto node visualization for property ' + ref + ' (' + (f.numeric ? 'numeric' : 'categorical') + ')');
-                });
-            }
-
-            let nodeProperties = forester.collectProperties(_treeData, 'node', false);
-            initializeNodeVisualizations(nodeProperties);
-        }
+        initializeVisualizations();
 
         createGui();
 
@@ -3902,7 +3492,6 @@ if (!phyloXml) {
                         fakeNode.y0 = 0;
                         _root = fakeNode;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                        updateNodeVisualizationsAndLegends(_root);
                         search0();
                         search1();
                         zoomToFit();
@@ -4015,7 +3604,7 @@ if (!phyloXml) {
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
-                        updateNodeVisualizationsAndLegends(_treeData);
+                        rebuildVisualizations();
                         search0();
                         search1();
                         zoomToFit();
@@ -4030,26 +3619,24 @@ if (!phyloXml) {
     }
 
 
-    function updateNodeVisualizationsAndLegends(tree) {
-        _visualizations = null;
-        let nodeProperties = forester.collectProperties(tree, 'node', false);
-
-        initializeNodeVisualizations(nodeProperties);
-
-        if (_settings.enableVisualizations && (_legendColorScales[LEGEND_LABEL_COLOR] || (_state.showVisualizations && _legendShapeScales[LEGEND_NODE_SHAPE]))) {
-            if (_legendColorScales[LEGEND_LABEL_COLOR]) {
-                removeLegend(LEGEND_LABEL_COLOR);
-                addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
-            }
-            if (_legendShapeScales[LEGEND_NODE_SHAPE]) {
-                removeShapeLegend(LEGEND_NODE_SHAPE);
-                addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
-            }
-        }
+    // After a permanent tree edit (subtree deletion), the candidates are
+    // re-derived from what is left; the user's choices survive when their
+    // fields do. Plain subtree NAVIGATION does not come through here -- a
+    // subtree keeps its parent tree's visualizations, so colours stay
+    // stable diving in and out.
+    function rebuildVisualizations() {
+        let colorId = _vis ? _vis.colorId : null;
+        let shapeId = _vis ? _vis.shapeId : null;
+        initializeVisualizations();
+        _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
+        _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
+        populateVisualizationMenus();
+        removeColorLegend(LEGEND_LABEL_COLOR);
+        removeShapeLegend(LEGEND_NODE_SHAPE);
     }
 
 
-    // Zooming rescales the LAYOUT, and the rectangular layout grows from its
+        // Zooming rescales the LAYOUT, and the rectangular layout grows from its
     // top-left origin -- so without compensating, the tree creeps away toward a
     // corner as you zoom and you lose what you were looking at. Keep whatever
     // sits under the middle of the viewport there.
@@ -4211,7 +3798,6 @@ if (!phyloXml) {
             _root = _root_const;
             _in_subtree = false;
             _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-            updateNodeVisualizationsAndLegends(_root);
             search0();
             search1();
             zoomToFit();
@@ -4250,7 +3836,6 @@ if (!phyloXml) {
                 }
 
                 _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                updateNodeVisualizationsAndLegends(_root);
                 search0();
                 search1();
                 zoomToFit();
@@ -4300,11 +3885,12 @@ if (!phyloXml) {
         setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
         setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);
 
-        _currentLabelColorVisualization = null;
-        _currentNodeShapeVisualization = null;
-
-        removeLegend(LEGEND_LABEL_COLOR);
-        removeLegendForShapes(LEGEND_NODE_SHAPE);
+        if (_vis) {
+            _vis.colorId = null;
+            _vis.shapeId = null;
+        }
+        removeColorLegend(LEGEND_LABEL_COLOR);
+        removeShapeLegend(LEGEND_NODE_SHAPE);
 
 
         if (_settings.enableDynamicSizing) {
@@ -4342,7 +3928,6 @@ if (!phyloXml) {
         }
 
         update(null, 0);
-        updateNodeVisualizationsAndLegends(_root);
         search0();
         search1();
 
@@ -6026,47 +5611,36 @@ if (!phyloXml) {
 
         on(LABEL_COLOR_SELECT_MENU, 'change', function () {
             let v = this.value;
-            if (v && v !== DEFAULT) {
-                _currentLabelColorVisualization = v;
-                // One colour now paints the label AND the node, so choosing one
-                // switches node visualizations on -- otherwise half of what the
+            if (v && v !== DEFAULT && _vis && _vis.byId[v]) {
+                _vis.colorId = v;
+                // One colour paints the label AND the node, so choosing one
+                // switches visualizations on -- otherwise half of what the
                 // control promises would not show.
                 _state.showVisualizations = true;
                 setCheckboxValue(VIS_CB, true);
-                if (_visualizations.labelColor[_currentLabelColorVisualization] != null) {
-                    addLegend(LEGEND_LABEL_COLOR, _visualizations.labelColor[_currentLabelColorVisualization]);
-                }
-            } else {
-                _currentLabelColorVisualization = null;
-                removeLegend(LEGEND_LABEL_COLOR);
+            } else if (_vis) {
+                _vis.colorId = null;
             }
+            removeColorLegend(LEGEND_LABEL_COLOR);
             update(null, 0);
         });
 
-
-
-
-
-
-
-
         on(NODE_SHAPE_SELECT_MENU, 'change', function () {
             let v = this.value;
-            if (v && v !== DEFAULT) {
-                _currentNodeShapeVisualization = v;
-                addLegendForShapes(LEGEND_NODE_SHAPE, _visualizations.nodeShape[_currentNodeShapeVisualization]);
+            if (v && v !== DEFAULT && _vis && _vis.byId[v] && _vis.byId[v].shape) {
+                _vis.shapeId = v;
                 _state.showVisualizations = true;
                 setCheckboxValue(VIS_CB, true);
-            } else {
-                _currentNodeShapeVisualization = null;
-                removeLegendForShapes(LEGEND_NODE_SHAPE);
+            } else if (_vis) {
+                _vis.shapeId = null;
             }
+            removeShapeLegend(LEGEND_NODE_SHAPE);
             resetVis();
             update(null, 0);
             update(null, 0);
         });
 
-        initSlider(NODE_SIZE_SLIDER, NODE_SIZE_MIN, NODE_SIZE_MAX, SLIDER_STEP, _state.nodeSizeDefault, changeNodeSize);
+                initSlider(NODE_SIZE_SLIDER, NODE_SIZE_MIN, NODE_SIZE_MAX, SLIDER_STEP, _state.nodeSizeDefault, changeNodeSize);
 
         initSlider(BRANCH_WIDTH_SLIDER, BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX, SLIDER_STEP, _state.branchWidthDefault, changeBranchWidth);
 
@@ -6466,7 +6040,7 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchColors) { // only when the tree carries any
                 nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
             }
-            if (_settings.enableVisualizations) {
+            if (hasColorVisualizations()) {
                 nodes.push(makeCheckboxItem('Visualizations', VIS_CB, 'to show or hide the Color and Shape visualizations chosen above'));
             }
 
@@ -6618,7 +6192,7 @@ if (!phyloXml) {
         // on the right. They belong with every other control, and above Display
         // Data, which is where the desktop puts them.
         function insertVisualizationControls(panel) {
-            if (_settings.enableVisualizations && _nodeVisualizations) {
+            if (_settings.enableVisualizations) {
                 panel.insertAdjacentHTML('beforeend', makeVisualControls());
             }
         }
@@ -6711,7 +6285,7 @@ if (!phyloXml) {
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
-        initializeVisualizationMenu();
+        populateVisualizationMenus();
         initializeSearchOptions();
         makeBackground();
     }
@@ -6726,56 +6300,36 @@ if (!phyloXml) {
     }
 
 
-    function initializeVisualizationMenu() {
-
-        _currentLabelColorVisualization = DEFAULT;
-
-        addOption(NODE_SHAPE_SELECT_MENU, DEFAULT, 'default');
-        addOption(LABEL_COLOR_SELECT_MENU, DEFAULT, 'default');
-
-
-
-
-
-        if (_visualizations) {
-            if (_visualizations.labelColor) {
-                for (let key in _visualizations.labelColor) {
-                    if (_visualizations.labelColor.hasOwnProperty(key)) {
-                        let key_html = key;
-                        if (key_html.length > 15) {
-                            key_html = key_html.substring(0, 15);
-                        }
-                        addOption(LABEL_COLOR_SELECT_MENU, key, key_html);
-                    }
-                }
-            }
-            if (_visualizations.nodeShape) {
-                for (let key in _visualizations.nodeShape) {
-                    if (_visualizations.nodeShape.hasOwnProperty(key)) {
-                        let key_html = key;
-                        if (key_html.length > 15) {
-                            key_html = key_html.substring(0, 15);
-                        }
-                        addOption(NODE_SHAPE_SELECT_MENU, key, key_html);
-                    }
-                }
-            }
-            if (_visualizations.labelColor) {
-                for (let key in _visualizations.labelColor) {
-                    if (_visualizations.labelColor.hasOwnProperty(key)) {
-                        let key_html = key;
-                        if (key_html.length > 15) {
-                            key_html = key_html.substring(0, 15);
-                        }
-                    }
-                }
-            }
+    // Fills the Color and Shape menus from the current candidates and points
+    // them at the current choices. Called at launch and again after a
+    // permanent tree edit changes what there is to offer.
+    function populateVisualizationMenus() {
+        if (!_vis) {
+            return;
         }
-
-
+        let colorMenu = byId(LABEL_COLOR_SELECT_MENU);
+        if (colorMenu) {
+            colorMenu.innerHTML = '';
+            addOption(LABEL_COLOR_SELECT_MENU, DEFAULT, 'default');
+            _vis.candidates.forEach(function (c) {
+                addOption(LABEL_COLOR_SELECT_MENU, c.id, c.label);
+            });
+            setSelectMenuValue(LABEL_COLOR_SELECT_MENU, _vis.colorId || DEFAULT);
+        }
+        let shapeMenu = byId(NODE_SHAPE_SELECT_MENU);
+        if (shapeMenu) {
+            shapeMenu.innerHTML = '';
+            addOption(NODE_SHAPE_SELECT_MENU, DEFAULT, 'default');
+            _vis.candidates.forEach(function (c) {
+                if (c.shape) {
+                    addOption(NODE_SHAPE_SELECT_MENU, c.id, c.label);
+                }
+            });
+            setSelectMenuValue(NODE_SHAPE_SELECT_MENU, _vis.shapeId || DEFAULT);
+        }
     }
 
-    function initializeSearchOptions() {
+        function initializeSearchOptions() {
         _state.searchNegateResult = false;
         setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _state.searchIsCaseSensitive);
         setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _state.searchNegateResult);

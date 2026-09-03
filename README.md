@@ -191,14 +191,13 @@ the code, the code is right and this is a bug.
 // parse and launch in one step (what most callers want)
 archaeopteryx.launchArchaeopteryx(id, location, data, config, null,
                                   nhConfidenceValuesInBrackets,
-                                  nhConfidenceValuesAsInternalNames,
-                                  nodeVisualizations);
+                                  nhConfidenceValuesAsInternalNames);
 
 // or parse yourself, then launch
 var tree = archaeopteryx.parseTree(location, data,
                                    nhConfidenceValuesInBrackets,
                                    nhConfidenceValuesAsInternalNames);
-archaeopteryx.launch(id, tree, config, null, nodeVisualizations, nodeLabels);
+archaeopteryx.launch(id, tree, config, null, null, nodeLabels);
 ```
 
 `config` is one object and is optional — `archaeopteryx.launch('#phylogram1',
@@ -233,7 +232,7 @@ chosen per tree — they are simply no longer yours to set at launch.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-nineteen keys below are the ones no tree can answer for you.
+eighteen keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -255,8 +254,7 @@ keep working; it logs a deprecation warning.
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
-| `enableVisualizations` | `false` | Offer the Color / Shape visualizations. |
-| `dynamicallyAddNodeVisualizations` | `false` | Build visualizations from the tree’s own properties. |
+| `enableVisualizations` | `true` | Offer the Color / Shape visualizations (which fields they cover is decided from the tree). |
 | `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `enableDownloads` | `true` | Offer the download buttons. |
@@ -301,7 +299,7 @@ constants:
 
 ### Removed — passing these throws
 
-All 112 of them, alphabetically:
+All 113 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
@@ -330,6 +328,7 @@ All 112 of them, alphabetically:
 | `decimalsForLinearRangeMeanValue` | No longer configurable. |
 | `defaultFont` | Labels use the sans-serif the reader's own system renders best. |
 | `dynahide` | On by default; use the Auto-hide Labels checkbox. |
+| `dynamicallyAddNodeVisualizations` | Visualizations are always derived automatically from the tree now. |
 | `enableBranchVisualizations` | Merged into `enableVisualizations`. |
 | `enableCollapseByBranchLenghts` | The collapse feature was removed. |
 | `enableCollapseByFeature` | The collapse feature was removed. |
@@ -420,34 +419,36 @@ All 112 of them, alphabetically:
 
 ## Node visualizations
 
-`launch()`'s `nodeVisualizations` argument, and the
-`dynamicallyAddNodeVisualizations` setting, register the entries offered in the
-Visualizations panel. There are **two** kinds:
+The **Color** and **Shape** menus are filled **from the tree alone**. There is
+nothing to configure and nothing to pass in: `launch()`'s old
+`nodeVisualizations` argument and the `dynamicallyAddNodeVisualizations`
+setting are gone, and passing either throws. The decision of what is worth
+offering lives in `forester.visualizationCandidates(tree)` and is under test
+(`test/visualization_test.js` holds all ten demo trees as fixtures).
 
-| Menu | Key | What it does |
-| --- | --- | --- |
-| **Color** | `colors` | Colours the node label **and** the node itself, in the same colour. |
-| **Shape** | `shapes` | Gives the node a shape. Best for a property with only a few distinct values. |
+What gets offered, briefly:
 
-There used to be four menus. Label Color and Node Fill Color were registered
-from the same colour scale into two identical maps and then offered as two
-separate menus that could be set to disagree with each other; they are now the
-single **Color** menu, and choosing a colour switches node visualizations on so
-that both halves of what it promises actually show. **Node Shape** is now just
-**Shape**. Node Size, which varied the node's radius by a property, is gone.
+* Candidates are taxonomy (code, scientific name, common name), sequence
+  (name, symbol, gene name), and node properties. The `style:` namespace is
+  never offered — the desktop reserves it for rendering instructions.
+* A field must cover at least **⅔ of the external nodes** and have at least
+  2 — and fewer than all — distinct values. Identifier-like fields
+  (accessions, genome ids) are refused.
+* Up to **20** distinct values → **Color** (one fixed, colour-vision-aware
+  palette at every cardinality). Numeric fields become a **colour ramp**
+  (viridis), never categorical colours — order is the point of numbers.
+* Up to **7** distinct values → also **Shape** (the seven distinct d3 symbols).
+* A node without a value keeps the default look, and the legend names the
+  field so partial coverage is visible.
 
-So `sizes` now throws:
-
-```
-ArchaeopteryxJS: ERROR: node visualization "Year" asks to vary node size;
-size visualizations were removed -- use "colors" or "shapes" instead
-```
-
-The **Node size** slider in the control panel is unrelated and still there: it
-sets one size for every node.
+Colours are assigned from the **complete** tree, so a value keeps its colour
+inside a subtree view even when the subtree does not contain it; the menus and
+choices survive diving into and out of subtrees unchanged. Choosing a Color
+also switches the Visualizations checkbox on, since one colour paints both the
+label and the node.
 
 Both menus live in the single control panel, above Display Data, which is where
-the desktop puts them. There is no second panel any more.
+the desktop puts them.
 
 ### Moving the legends
 

@@ -940,6 +940,52 @@
         return candidates;
     };
 
+    // Reads a node's value for one candidate, exactly as the classifier read
+    // it when it built the candidate -- the two must never drift, or a node
+    // could carry a value that maps to no colour. Returns the trimmed value,
+    // or null when the node has none (the node then keeps the default look).
+    // Multi-valued refs never become candidates, so "the first value" is
+    // "the only value".
+    forester.visualizationNodeValue = function (node, candidate) {
+        function clean(v) {
+            if (v === undefined || v === null) {
+                return null;
+            }
+            let s = String(v).trim();
+            return s.length > 0 ? s : null;
+        }
+        if (candidate.kind === 'property') {
+            if (node.properties) {
+                for (let i = 0; i < node.properties.length; ++i) {
+                    let p = node.properties[i];
+                    if (p.ref === candidate.ref && p.applies_to === 'node') {
+                        let v = clean(p.value);
+                        if (v !== null) {
+                            return v;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        let list = candidate.kind === 'taxonomy' ? node.taxonomies : node.sequences;
+        if (!list) {
+            return null;
+        }
+        for (let i = 0; i < VIS_ELEMENT_SLOTS.length; ++i) {
+            if (VIS_ELEMENT_SLOTS[i].id === candidate.id) {
+                for (let j = 0; j < list.length; ++j) {
+                    let v = clean(VIS_ELEMENT_SLOTS[i].get(list[j]));
+                    if (v !== null) {
+                        return v;
+                    }
+                }
+                return null;
+            }
+        }
+        return null;
+    };
+
 
     /**
      *
