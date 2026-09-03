@@ -1215,6 +1215,64 @@ runTest("msa: information content   : ", testMsaConservationInformation);
 runTest("msa: ungapped position     : ", testMsaUngappedPosition);
 runTest("msa: residue info          : ", testMsaResidueInfo);
 
+// --------------------------------------------------------------
+// Geologic time scale + time-tree detection
+// --------------------------------------------------------------
+
+function testGeoBandRanks() {
+    var a = forester.geoBandRanks(66).join('/') === 'period/epoch';
+    var b = forester.geoBandRanks(538.8).join('/') === 'period/epoch';   // epochs cover to 538.8
+    var c = forester.geoBandRanks(1000).join('/') === 'era/period';
+    var d = forester.geoBandRanks(3000).join('/') === 'eon/era';
+    return a && b && c && d;
+}
+
+function testGeoQueries() {
+    var cret = forester.geoAt('period', 100);
+    var atBoundary = forester.geoAt('period', 66); // young <= age < old -> Cretaceous
+    var over = forester.geoOverlapping('era', 0, 70).map(function (iv) {
+        return iv.name;
+    }).join('/');
+    return cret && cret.name === 'Cretaceous' && cret.color === '#7FC64E'
+        && atBoundary && atBoundary.name === 'Cretaceous'
+        && over === 'Cenozoic/Mesozoic'
+        && forester.geoCoverage('epoch') === 538.8
+        && forester.geoAt('epoch', 150).name === 'Late Jurassic';
+}
+
+function testTimeAxisDetection() {
+    var mk = function (unit, vals) {
+        return {name: 'r', date: {unit: unit, value: vals[0]}, children: vals.slice(1).map(function (v, i) {
+            return {name: 't' + i, date: {unit: unit, value: v}};
+        })};
+    };
+    var geo = forester.timeAxisInfo(mk('mya', [250, 0, 66, 100]));
+    var cal = forester.timeAxisInfo(mk('year', [2019.9, 2021, 2022, 2020]));
+    var magGeo = forester.timeAxisInfo(mk(null, [250, 1, 66, 3]));       // magnitude fallback
+    var magCal = forester.timeAxisInfo(mk(null, [2019, 2021, 2022]));
+    var none = forester.timeAxisInfo({name: 'r', children: [{name: 'a'}, {name: 'b'}]});
+    return geo.type === 'geologic' && geo.rootAge === 250 && geo.dated === true
+        && cal.type === 'calendar' && cal.presentDate === 2022
+        && magGeo.type === 'geologic' && magCal.type === 'calendar'
+        && none.type === null && none.dated === false;
+}
+
+function testTimeAxisTicks() {
+    var ma = forester.maAxisTickValues(250).join(',');
+    var yrs = forester.calendarTickYears(2019.4, 2022.6).join(',');
+    return ma === '0,50,100,150,200,250'
+        && yrs === '2020,2021,2022'
+        && forester.niceAxisStep(0.03) === 0.05
+        && forester.niceAxisStep(31.25) === 50;
+}
+
+console.log("\ngeologic time scale\n");
+
+runTest("time: band rank pairs      : ", testGeoBandRanks);
+runTest("time: interval queries     : ", testGeoQueries);
+runTest("time: axis-type detection  : ", testTimeAxisDetection);
+runTest("time: tick mathematics     : ", testTimeAxisTicks);
+
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);

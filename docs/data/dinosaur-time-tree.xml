@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" branch_length_unit="My" rerootable="true">
+  <name>Dinosaur time tree (demo)</name>
+  <description>A schematic, time-calibrated archosaur tree (ages in Ma), with Archaeopteryx in the Late Jurassic. It is auto-detected as a time tree and draws the coloured ICS geologic axis (Period over Epoch) beneath the phylogram; the Time Axis checkbox under Display Data toggles it. Extant tips (Crocodylia, modern birds) are at 0 Ma so the axis reaches the present; the extinct taxa sit at their ages. Schematic, not a rigorous phylogeny.</description>
+  <clade>
+    <name>Archosauria</name>
+    <branch_length>0.0</branch_length>
+    <date unit="mya">
+      <value>250.0</value>
+    </date>
+    <clade>
+      <name>Crocodylia</name>
+      <branch_length>250.0</branch_length>
+      <date unit="mya">
+        <value>0.0</value>
+      </date>
+    </clade>
+    <clade>
+      <name>Dinosauria</name>
+      <branch_length>10.0</branch_length>
+      <date unit="mya">
+        <value>240.0</value>
+      </date>
+      <clade>
+        <name>Ornithischia</name>
+        <branch_length>5.0</branch_length>
+        <date unit="mya">
+          <value>235.0</value>
+        </date>
+        <clade>
+          <name>Stegosaurus</name>
+          <branch_length>85.0</branch_length>
+          <date unit="mya">
+            <value>150.0</value>
+          </date>
+        </clade>
+        <clade>
+          <name>Triceratops</name>
+          <branch_length>169.0</branch_length>
+          <date unit="mya">
+            <value>66.0</value>
+          </date>
+        </clade>
+      </clade>
+      <clade>
+        <name>Saurischia</name>
+        <branch_length>8.0</branch_length>
+        <date unit="mya">
+          <value>232.0</value>
+        </date>
+        <clade>
+          <name>Diplodocus</name>
+          <branch_length>82.0</branch_length>
+          <date unit="mya">
+            <value>150.0</value>
+          </date>
+        </clade>
+        <clade>
+          <name>Theropoda</name>
+          <branch_length>1.0</branch_length>
+          <date unit="mya">
+            <value>231.0</value>
+          </date>
+          <clade>
+            <name>Tyrannosaurus</name>
+            <branch_length>165.0</branch_length>
+            <date unit="mya">
+              <value>66.0</value>
+            </date>
+          </clade>
+          <clade>
+            <name>Paraves</name>
+            <branch_length>66.0</branch_length>
+            <date unit="mya">
+              <value>165.0</value>
+            </date>
+            <clade>
+              <name>Archaeopteryx</name>
+              <branch_length>15.0</branch_length>
+              <date unit="mya">
+                <value>150.0</value>
+              </date>
+            </clade>
+            <clade>
+              <name>Aves (modern birds)</name>
+              <branch_length>165.0</branch_length>
+              <date unit="mya">
+                <value>0.0</value>
+              </date>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

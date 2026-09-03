@@ -259,6 +259,7 @@ if (!phyloXml) {
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
+    const TIME_AXIS_CB = 'timeaxis_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
     const EXPORT_FORMAT_SELECT = 'exp_f_sel';
     const FONT_SIZE_SLIDER = 'fs_sl';
@@ -421,6 +422,13 @@ if (!phyloXml) {
     let _msaReserve = 0;                  // horizontal px reserved for the track, set with _w
     let _msaScroller = null;              // the fixed HTML range input, created lazily
     let _msaGeom = null;                  // window geometry of the last draw, for the hover readout
+    // ------ time axis (the desktop's geologic / calendar overlays) ------
+    const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
+    const TIME_CAL_RESERVE = 26;          // the calendar year ruler
+    const TIME_BAND_ROW_H = 13;
+    const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, FigTree-like
+    const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
+    let _timeInfo = null;                 // forester.timeAxisInfo of the launched tree
     let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
     const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
@@ -953,6 +961,17 @@ if (!phyloXml) {
         }
         if (d.branch_length) {
             mo_text += 'Distance to Parent: ' + d.branch_length + '<br>';
+        }
+        if (d.date && (typeof d.date.value === 'number'
+            || (typeof d.date.minimum === 'number' && typeof d.date.maximum === 'number'))) {
+            let dv = typeof d.date.value === 'number' ? String(d.date.value) : '';
+            if (typeof d.date.minimum === 'number' && typeof d.date.maximum === 'number') {
+                dv += ' [' + d.date.minimum + ' - ' + d.date.maximum + ']';
+            }
+            if (d.date.unit) {
+                dv += ' ' + d.date.unit;
+            }
+            mo_text += 'Date: ' + dv.trim() + '<br>';
         }
         mo_text += 'Depth: ' + forester.calcDepth(d) + '<br>';
         let i = 0;
@@ -1747,7 +1766,7 @@ if (!phyloXml) {
         }
 
         _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
-            - (msaShown() ? MSA_BOTTOM_RESERVE : 0), _w]);
+            - (msaShown() ? MSA_BOTTOM_RESERVE : 0) - timeAxisBottomReserve(), _w]);
 
         _treeFn = _treeFn.separation(function separation(a, b) {
             return a.parent === b.parent ? 1 : 1;
@@ -2275,6 +2294,7 @@ if (!phyloXml) {
         rebuildOverview();
         updateSearchHitNavigation();
         drawMsaTrack();
+        drawTimeOverlays();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -3053,6 +3073,7 @@ if (!phyloXml) {
         'circularDisplay',
         'unrootedDisplay',
         'showMsa',
+        'showTimeAxis',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -3197,6 +3218,11 @@ if (!phyloXml) {
         // track from the start, as the desktop auto-enables it on load.
         _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
             && _basicTreeProperties.maxMolSeqLength > 0;
+        // Likewise a dated tree draws its time axis from the start --
+        // geologic ICS bands or calendar years, decided from the <date>
+        // elements by forester.timeAxisInfo.
+        _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
+        _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
@@ -4759,6 +4785,234 @@ if (!phyloXml) {
         update(null, 0);
     }
 
+    // ===================== Time axis =====================
+    // The desktop's time overlays, drawn beneath a rectangular PHYLOGRAM of
+    // a dated tree: the two-band ICS geologic axis with a "Ma before
+    // present" ruler (or a calendar-year ruler), HPD age bars on dated
+    // internal nodes and sepia fossil-range (FAD/LAD) bars on dated tips.
+    // The tree layout itself never changes -- time is an overlay anchored to
+    // the tree's own branch scale, so the bands line up with the branches
+    // even on a fossil-only tree whose youngest tip is far from the present.
+
+    function timeAxisShown() {
+        return _state.showTimeAxis === true && !radialDisplay()
+            && _state.phylogram === true
+            && _timeInfo !== null && _timeInfo.type !== null
+            && _basicTreeProperties.branchLengths === true;
+    }
+
+    function timeAxisBottomReserve() {
+        if (!timeAxisShown()) {
+            return 0;
+        }
+        return _timeInfo.type === 'geologic' ? TIME_GEO_RESERVE : TIME_CAL_RESERVE;
+    }
+
+    function hexToRgbTriple(hex) {
+        let h = hex.charAt(0) === '#' ? hex.substring(1) : hex;
+        return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16),
+            parseInt(h.substring(4, 6), 16)];
+    }
+
+    function drawTimeOverlays() {
+        if (!_svgGroup) {
+            return;
+        }
+        _svgGroup.selectAll('g.aptx-time').remove();
+        if (!timeAxisShown() || !_root || !_yScale) {
+            return;
+        }
+        // recomputed per draw, so a subtree view calibrates to ITS oldest node
+        let info = forester.timeAxisInfo(_root);
+        if (!info.type) {
+            return;
+        }
+        let corr = Math.abs(_yScale(1) - _yScale(0));
+        if (!isFinite(corr) || corr <= 0) {
+            return;
+        }
+        // Anchor the age->x mapping at the DEEPEST DATED TIP rather than the
+        // root: the root and its direct children carry a synthetic half-
+        // average branch length (see bl()), which would shift every band.
+        let anchor = null;
+        let maxTipX = 0;
+        forester.preOrderTraversal(_root, function (n) {
+            if (n.children) {
+                return;
+            }
+            if (n.y > maxTipX) {
+                maxTipX = n.y;
+            }
+            if (n.date && typeof n.date.value === 'number') {
+                if (!anchor || n.distToRoot > anchor.distToRoot) {
+                    anchor = n;
+                }
+            }
+        });
+        let g = _svgGroup.append('g').attr('class', 'aptx-time');
+        let ink = _state.branchColorDefault;
+        let axisTop = (_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+            - (msaShown() ? MSA_BOTTOM_RESERVE : 0) - timeAxisBottomReserve()) + 6;
+
+        let sc = info.type === 'calendar' ? -corr : corr;
+
+        // ---- HPD age bars (internal) + fossil range bars (tips) ----
+        forester.preOrderTraversal(_root, function (d) {
+            if (!d.date || typeof d.date.minimum !== 'number' || typeof d.date.maximum !== 'number'
+                || d.y === undefined) {
+                return;
+            }
+            let min = d.date.minimum;
+            let max = d.date.maximum;
+            let value = typeof d.date.value === 'number' ? d.date.value : (min + max) / 2;
+            // fossil ranges are a geologic-age concept: unsigned corr always;
+            // HPD bars flip with the calendar (a year INcreases toward the tips)
+            let s = d.children ? sc : corr;
+            let xa = d.y - ((max - value) * s);
+            let xb = d.y + ((value - min) * s);
+            let left = Math.min(xa, xb);
+            let w = Math.max(1, Math.abs(xb - xa));
+            let y = d.x;
+            if (d.children) {
+                g.append('rect').attr('x', left).attr('y', y - 3.5)
+                    .attr('width', w).attr('height', 7)
+                    .attr('fill', HPD_BAR_COLOR);
+            } else {
+                g.append('rect').attr('x', left).attr('y', y - 2.5)
+                    .attr('width', w).attr('height', 5)
+                    .attr('fill', FOSSIL_BAR_COLOR);
+                // FAD/LAD end caps, so the range reads as a bracketed interval
+                [left, left + w].forEach(function (cx) {
+                    g.append('line').attr('x1', cx).attr('x2', cx)
+                        .attr('y1', y - 4).attr('y2', y + 4)
+                        .attr('stroke', FOSSIL_BAR_COLOR).attr('stroke-width', 1);
+                });
+            }
+        });
+
+        if (info.type === 'geologic') {
+            let rootAge = info.rootAge;
+            if (!(rootAge > 0)) {
+                return;
+            }
+            let anchorAge = anchor ? anchor.date.value : rootAge;
+            let anchorX = anchor ? anchor.y : _root.y;
+            let xOfAge = function (age) {
+                return anchorX + ((anchorAge - age) * corr);
+            };
+            let youngBound = Math.max(0, anchorAge - ((maxTipX - anchorX) / corr));
+            let ranks = forester.geoBandRanks(rootAge);
+            for (let b = 0; b < 2; ++b) {
+                let rowY = axisTop + (b * TIME_BAND_ROW_H);
+                let ivs = forester.geoOverlapping(ranks[b], youngBound, rootAge);
+                for (let i = 0; i < ivs.length; ++i) {
+                    let iv = ivs[i];
+                    let x0 = xOfAge(Math.min(iv.old, rootAge));
+                    let x1 = xOfAge(Math.max(iv.young, youngBound));
+                    let left = Math.min(x0, x1);
+                    let w = Math.abs(x1 - x0);
+                    if (w <= 0) {
+                        continue;
+                    }
+                    g.append('rect').attr('x', left).attr('y', rowY)
+                        .attr('width', w).attr('height', TIME_BAND_ROW_H)
+                        .attr('fill', iv.color)
+                        .attr('stroke', ink).attr('stroke-opacity', 0.5).attr('stroke-width', 0.5);
+                    if ((iv.name.length * 5.5) + 4 <= w) {
+                        g.append('text').attr('x', left + (w / 2)).attr('y', rowY + TIME_BAND_ROW_H - 3.5)
+                            .attr('text-anchor', 'middle')
+                            .style('font-size', '9px')
+                            .style('fill', forester.msaLetterInk(hexToRgbTriple(iv.color)))
+                            .text(iv.name);
+                    }
+                }
+            }
+            // the "Ma before present" ruler
+            let rulerY = axisTop + (2 * TIME_BAND_ROW_H) + 4;
+            g.append('line').attr('x1', xOfAge(rootAge)).attr('x2', xOfAge(youngBound))
+                .attr('y1', rulerY).attr('y2', rulerY)
+                .attr('stroke', ink).attr('stroke-width', 1);
+            let labels = [];
+            forester.maAxisTickValues(rootAge).forEach(function (v) {
+                if (v >= youngBound - 1e-9 && v <= rootAge + 1e-9) {
+                    labels.push({age: v, priority: 0});
+                }
+            });
+            if (youngBound > 0) {
+                // a fossil-only tree's youngest age is the headline value:
+                // it is drawn first, whatever it costs the round ticks
+                labels.push({age: Math.round(youngBound * 100) / 100, priority: 1});
+            }
+            labels.sort(function (p, q) {
+                return q.priority - p.priority || xOfAge(p.age) - xOfAge(q.age);
+            });
+            let placed = [];
+            labels.forEach(function (l) {
+                let x = xOfAge(l.age);
+                g.append('line').attr('x1', x).attr('x2', x)
+                    .attr('y1', rulerY).attr('y2', rulerY + 4)
+                    .attr('stroke', ink).attr('stroke-width', 1);
+                let text = String(l.age);
+                let half = text.length * 2.8;
+                let ok = true;
+                for (let i = 0; i < placed.length; ++i) {
+                    if (Math.abs(placed[i] - x) < (half * 2) + 6) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok || l.priority > 0) {
+                    g.append('text').attr('x', x).attr('y', rulerY + 14)
+                        .attr('text-anchor', 'middle')
+                        .style('font-size', '9px').style('fill', ink)
+                        .text(text);
+                    placed.push(x);
+                }
+            });
+            g.append('text').attr('x', xOfAge(youngBound) + 8).attr('y', rulerY + 14)
+                .attr('text-anchor', 'start')
+                .style('font-size', '9px').style('fill', ink)
+                .text('Ma');
+        } else {
+            // calendar: a year ruler under the tree, the present at the tips
+            let present = info.presentDate;
+            if (!(present > 0)) {
+                return;
+            }
+            let anchorYear = anchor ? anchor.date.value : present;
+            let anchorX = anchor ? anchor.y : maxTipX;
+            let xOfYear = function (yv) {
+                return anchorX - ((anchorYear - yv) * corr);
+            };
+            let rootYear = anchorYear - ((anchorX - _root.y) / corr);
+            let rulerY = axisTop + 4;
+            g.append('line').attr('x1', xOfYear(rootYear)).attr('x2', xOfYear(present))
+                .attr('y1', rulerY).attr('y2', rulerY)
+                .attr('stroke', ink).attr('stroke-width', 1);
+            let lastRight = -Infinity;
+            forester.calendarTickYears(rootYear, present).forEach(function (yv) {
+                let x = xOfYear(yv);
+                g.append('line').attr('x1', x).attr('x2', x)
+                    .attr('y1', rulerY).attr('y2', rulerY + 4)
+                    .attr('stroke', ink).attr('stroke-width', 1);
+                let text = String(Math.round(yv));
+                let half = text.length * 2.8;
+                if ((x - half) >= lastRight + 4) {
+                    g.append('text').attr('x', x).attr('y', rulerY + 14)
+                        .attr('text-anchor', 'middle')
+                        .style('font-size', '9px').style('fill', ink)
+                        .text(text);
+                    lastRight = x + half;
+                }
+            });
+        }
+    }
+
+    function timeAxisCbClicked() {
+        _state.showTimeAxis = getCheckboxValue(TIME_AXIS_CB);
+        update(null, 0);
+    }
+
     // Fit the circular tree into the viewport, centred. The root is at the
     // group origin (0,0), so we place that at the viewport centre and scale so
     // the outer label ring fits. Computed from the known radial extent rather
@@ -5236,6 +5490,10 @@ if (!phyloXml) {
         let msaCb = byId(MSA_CB);
         if (msaCb) {
             msaCb.disabled = radialDisplay(); // an alignment is inherently horizontal
+        }
+        let timeCb = byId(TIME_AXIS_CB);
+        if (timeCb) {
+            timeCb.disabled = radialDisplay();
         }
         if (radialDisplay()) {
             minus.innerHTML = makeGlyph('rotate_ccw');
@@ -6766,6 +7024,7 @@ if (!phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
+        on(TIME_AXIS_CB, 'click', timeAxisCbClicked);
 
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
 
@@ -7212,6 +7471,11 @@ if (!phyloXml) {
             if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
                 labels.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
             }
+            if (_timeInfo && _timeInfo.type) {
+                labels.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
+                    + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
+                    + ' and node-age bars (phylogram, rectangular layout only)'));
+            }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
@@ -7492,6 +7756,7 @@ if (!phyloXml) {
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(MSA_CB, _state.showMsa);
+        setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         populateVisualizationMenus();
         initializeSearchOptions();

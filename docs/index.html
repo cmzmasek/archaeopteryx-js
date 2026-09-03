@@ -94,7 +94,10 @@
         {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
         {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'},
         {key: 'alignment', label: 'Sequence alignment', desc: 'A six-tip tree with an embedded 34-column protein alignment, shown as a residue track beside the tree.'},
-        {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'}
+        {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'},
+        {key: 'dinosaur', label: 'Dinosaur time tree', desc: 'A time-calibrated archosaur tree with the coloured ICS geologic axis (Period over Epoch) beneath the phylogram.'},
+        {key: 'ammonite', label: 'Ammonite time tree (fossil ranges)', desc: 'Every genus extinct: the geologic axis stops at the K-Pg (66 Ma), and tips carry sepia fossil-range bars.'},
+        {key: 'sarscov2', label: 'SARS-CoV-2 time tree (calendar)', desc: 'A tip-dated phylodynamic tree on a calendar-year axis, with HPD age bars on dated internal nodes.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {

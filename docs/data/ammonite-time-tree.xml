@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" branch_length_unit="My" rerootable="true">
+  <name>Ammonite time tree (fossil-only, demo)</name>
+  <description>A schematic ammonite (Ammonoidea) tree (ages in Ma) in which EVERY genus is extinct: the youngest tips (Baculites, Scaphites) die at the end-Cretaceous (K-Pg, 66 Ma), so NO tip reaches the present. The geologic axis therefore stops at 66 Ma, labelled at the tips even though 66 is not a round tick. Tips with a minimum/maximum date range carry sepia FOSSIL-RANGE (FAD/LAD) bars with end caps. Schematic, not a rigorous phylogeny.</description>
+  <clade>
+    <name>Ammonoidea</name>
+    <branch_length>0.0</branch_length>
+    <date unit="mya">
+      <value>250.0</value>
+    </date>
+    <clade>
+      <name>Ceratites</name>
+      <branch_length>15.0</branch_length>
+      <date unit="mya">
+        <value>235.0</value>
+        <minimum>235.0</minimum>
+        <maximum>245.0</maximum>
+      </date>
+    </clade>
+    <clade>
+      <branch_length>40.0</branch_length>
+      <date unit="mya">
+        <value>210.0</value>
+      </date>
+      <clade>
+        <name>Psiloceras</name>
+        <branch_length>11.0</branch_length>
+        <date unit="mya">
+          <value>199.0</value>
+          <minimum>199.0</minimum>
+          <maximum>201.0</maximum>
+        </date>
+      </clade>
+      <clade>
+        <branch_length>40.0</branch_length>
+        <date unit="mya">
+          <value>170.0</value>
+        </date>
+        <clade>
+          <name>Perisphinctes</name>
+          <branch_length>18.0</branch_length>
+          <date unit="mya">
+            <value>152.0</value>
+            <minimum>152.0</minimum>
+            <maximum>163.0</maximum>
+          </date>
+        </clade>
+        <clade>
+          <branch_length>75.0</branch_length>
+          <date unit="mya">
+            <value>95.0</value>
+          </date>
+          <clade>
+            <name>Baculites</name>
+            <branch_length>29.0</branch_length>
+            <date unit="mya">
+              <value>66.0</value>
+              <minimum>66.0</minimum>
+              <maximum>83.0</maximum>
+            </date>
+          </clade>
+          <clade>
+            <name>Scaphites</name>
+            <branch_length>29.0</branch_length>
+            <date unit="mya">
+              <value>66.0</value>
+              <minimum>66.0</minimum>
+              <maximum>90.0</maximum>
+            </date>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

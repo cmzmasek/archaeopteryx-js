@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" branch_length_unit="years" rerootable="true">
+  <name>SARS-CoV-2 time tree (demo)</name>
+  <description>A schematic, time-calibrated SARS-CoV-2 phylodynamic tree: the tips are named lineages/variants with their sampling dates as calendar years (Wuhan-Hu-1 late 2019 through Omicron sub-lineages in 2022), so the tree is tip-dated and non-ultrametric. The calendar-year axis is auto-detected from the date units; internal nodes carry a date range drawn as a translucent blue HPD age bar. Schematic, not a rigorous phylogeny.</description>
+  <clade>
+    <name>SARS-CoV-2 MRCA</name>
+    <branch_length>0.0</branch_length>
+    <date unit="year">
+      <value>2019.9</value>
+      <minimum>2019.78</minimum>
+      <maximum>2019.98</maximum>
+    </date>
+    <clade>
+      <name>Wuhan-Hu-1</name>
+      <branch_length>0.08</branch_length>
+      <date unit="year">
+        <value>2019.98</value>
+      </date>
+    </clade>
+    <clade>
+      <branch_length>0.1</branch_length>
+      <date unit="year">
+        <value>2020.0</value>
+        <minimum>2019.88</minimum>
+        <maximum>2020.08</maximum>
+      </date>
+      <clade>
+        <name>B.1 (early 2020)</name>
+        <branch_length>0.2</branch_length>
+        <date unit="year">
+          <value>2020.2</value>
+        </date>
+      </clade>
+      <clade>
+        <branch_length>0.3</branch_length>
+        <date unit="year">
+          <value>2020.3</value>
+          <minimum>2020.18</minimum>
+          <maximum>2020.38</maximum>
+        </date>
+        <clade>
+          <name>Alpha (B.1.1.7)</name>
+          <branch_length>0.65</branch_length>
+          <date unit="year">
+            <value>2020.95</value>
+          </date>
+        </clade>
+        <clade>
+          <branch_length>0.2</branch_length>
+          <date unit="year">
+            <value>2020.5</value>
+            <minimum>2020.38</minimum>
+            <maximum>2020.58</maximum>
+          </date>
+          <clade>
+            <name>Delta (B.1.617.2)</name>
+            <branch_length>1.0</branch_length>
+            <date unit="year">
+              <value>2021.5</value>
+            </date>
+          </clade>
+          <clade>
+            <name>Omicron</name>
+            <branch_length>0.5</branch_length>
+            <date unit="year">
+              <value>2021.0</value>
+              <minimum>2020.88</minimum>
+              <maximum>2021.08</maximum>
+            </date>
+            <clade>
+              <name>Omicron BA.1</name>
+              <branch_length>0.95</branch_length>
+              <date unit="year">
+                <value>2021.95</value>
+              </date>
+            </clade>
+            <clade>
+              <branch_length>1.0</branch_length>
+              <date unit="year">
+                <value>2022.0</value>
+                <minimum>2021.88</minimum>
+                <maximum>2022.08</maximum>
+              </date>
+              <clade>
+                <name>Omicron BA.2</name>
+                <branch_length>0.3</branch_length>
+                <date unit="year">
+                  <value>2022.3</value>
+                </date>
+              </clade>
+              <clade>
+                <name>Omicron BA.5</name>
+                <branch_length>0.5</branch_length>
+                <date unit="year">
+                  <value>2022.5</value>
+                </date>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

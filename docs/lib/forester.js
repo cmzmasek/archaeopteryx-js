@@ -2277,6 +2277,288 @@
 
 
     // --------------------------------------------------------------
+    // Geologic time scale + time-tree detection (the desktop's time axes)
+    // --------------------------------------------------------------
+    // The ICS International Chronostratigraphic Chart as the desktop embeds
+    // it (GeologicTimeScale.java): {name, young, old, color}, ages in Ma,
+    // colours the official ICS ones (kept even in monochrome exports -- the
+    // timescale IS a colour key). Reference: Cohen, K.M., Harper, D.A.T.,
+    // Gibbard, P.L. & Car, N. (2025, updated), The ICS International
+    // Chronostratigraphic Chart this decade, Episodes 48: 105-115;
+    // International Commission on Stratigraphy, www.stratigraphy.org.
+
+    const GEO_SCALE = {
+        eon: [
+            {name: 'Phanerozoic', young: 0, old: 538.8, color: '#9AD9DD'},
+            {name: 'Proterozoic', young: 538.8, old: 2500, color: '#FF70B8'},
+            {name: 'Archean', young: 2500, old: 4031, color: '#FF3399'}
+        ],
+        era: [
+            {name: 'Cenozoic', young: 0, old: 66, color: '#F2F91D'},
+            {name: 'Mesozoic', young: 66, old: 251.902, color: '#67C5CA'},
+            {name: 'Paleozoic', young: 251.902, old: 538.8, color: '#99C08D'},
+            {name: 'Neoproterozoic', young: 538.8, old: 1000, color: '#FF9BCD'},
+            {name: 'Mesoproterozoic', young: 1000, old: 1600, color: '#FF7EBF'},
+            {name: 'Paleoproterozoic', young: 1600, old: 2500, color: '#E665A6'},
+            {name: 'Neoarchean', young: 2500, old: 2800, color: '#FF5CAD'},
+            {name: 'Mesoarchean', young: 2800, old: 3200, color: '#E62E8A'},
+            {name: 'Paleoarchean', young: 3200, old: 3600, color: '#CC297A'},
+            {name: 'Eoarchean', young: 3600, old: 4031, color: '#B2246B'}
+        ],
+        period: [
+            {name: 'Quaternary', young: 0, old: 2.58, color: '#F9F97F'},
+            {name: 'Neogene', young: 2.58, old: 23.04, color: '#FFE619'},
+            {name: 'Paleogene', young: 23.04, old: 66, color: '#FD9A52'},
+            {name: 'Cretaceous', young: 66, old: 143.1, color: '#7FC64E'},
+            {name: 'Jurassic', young: 143.1, old: 201.4, color: '#34B2C9'},
+            {name: 'Triassic', young: 201.4, old: 251.902, color: '#812B92'},
+            {name: 'Permian', young: 251.902, old: 298.9, color: '#F04028'},
+            {name: 'Carboniferous', young: 298.9, old: 358.86, color: '#67A599'},
+            {name: 'Devonian', young: 358.86, old: 419.62, color: '#CB8C37'},
+            {name: 'Silurian', young: 419.62, old: 443.1, color: '#B3E1B6'},
+            {name: 'Ordovician', young: 443.1, old: 486.85, color: '#009270'},
+            {name: 'Cambrian', young: 486.85, old: 538.8, color: '#7FA056'},
+            {name: 'Ediacaran', young: 538.8, old: 635, color: '#FFC3E1'},
+            {name: 'Cryogenian', young: 635, old: 720, color: '#FFAFD7'},
+            {name: 'Tonian', young: 720, old: 1000, color: '#FFA5D2'},
+            {name: 'Stenian', young: 1000, old: 1200, color: '#FFA5D2'},
+            {name: 'Ectasian', young: 1200, old: 1400, color: '#FF98CC'},
+            {name: 'Calymmian', young: 1400, old: 1600, color: '#FF8BC5'},
+            {name: 'Statherian', young: 1600, old: 1800, color: '#EE93C1'},
+            {name: 'Orosirian', young: 1800, old: 2050, color: '#E874AF'},
+            {name: 'Rhyacian', young: 2050, old: 2300, color: '#EB84B8'},
+            {name: 'Siderian', young: 2300, old: 2500, color: '#E874AF'}
+        ],
+        epoch: [
+            {name: 'Holocene', young: 0, old: 0.0117, color: '#FEF2E0'},
+            {name: 'Pleistocene', young: 0.0117, old: 2.58, color: '#FFF2AE'},
+            {name: 'Pliocene', young: 2.58, old: 5.333, color: '#FFFF99'},
+            {name: 'Miocene', young: 5.333, old: 23.04, color: '#FFFF00'},
+            {name: 'Oligocene', young: 23.04, old: 33.9, color: '#FDC07A'},
+            {name: 'Eocene', young: 33.9, old: 56, color: '#FDB46C'},
+            {name: 'Paleocene', young: 56, old: 66, color: '#FDA75F'},
+            {name: 'Late Cretaceous', young: 66, old: 100.5, color: '#A6D84A'},
+            {name: 'Early Cretaceous', young: 100.5, old: 143.1, color: '#8CCD57'},
+            {name: 'Late Jurassic', young: 143.1, old: 161.5, color: '#B3E3EE'},
+            {name: 'Middle Jurassic', young: 161.5, old: 174.7, color: '#80CFD8'},
+            {name: 'Early Jurassic', young: 174.7, old: 201.4, color: '#42AED0'},
+            {name: 'Late Triassic', young: 201.4, old: 237, color: '#BD8CC3'},
+            {name: 'Middle Triassic', young: 237, old: 246.7, color: '#B168B1'},
+            {name: 'Early Triassic', young: 246.7, old: 251.902, color: '#983999'},
+            {name: 'Lopingian', young: 251.902, old: 259.51, color: '#FBA794'},
+            {name: 'Guadalupian', young: 259.51, old: 274.4, color: '#FB745C'},
+            {name: 'Cisuralian', young: 274.4, old: 298.9, color: '#EF5845'},
+            {name: 'Pennsylvanian', young: 298.9, old: 323.4, color: '#99C2B5'},
+            {name: 'Mississippian', young: 323.4, old: 358.86, color: '#678F66'},
+            {name: 'Late Devonian', young: 358.86, old: 382.31, color: '#F1E19D'},
+            {name: 'Middle Devonian', young: 382.31, old: 393.47, color: '#F1C868'},
+            {name: 'Early Devonian', young: 393.47, old: 419.62, color: '#E5AC4D'},
+            {name: 'Pridoli', young: 419.62, old: 422.7, color: '#E6F5E1'},
+            {name: 'Ludlow', young: 422.7, old: 426.7, color: '#BFE6CF'},
+            {name: 'Wenlock', young: 426.7, old: 432.9, color: '#B3E1C2'},
+            {name: 'Llandovery', young: 432.9, old: 443.1, color: '#99D7B3'},
+            {name: 'Late Ordovician', young: 443.1, old: 458.2, color: '#7FCA93'},
+            {name: 'Middle Ordovician', young: 458.2, old: 471.3, color: '#4DB47E'},
+            {name: 'Early Ordovician', young: 471.3, old: 486.85, color: '#1A9D6F'},
+            {name: 'Furongian', young: 486.85, old: 497, color: '#B3E095'},
+            {name: 'Miaolingian', young: 497, old: 506.5, color: '#A6CF86'},
+            {name: 'Series 2', young: 506.5, old: 521, color: '#99C078'},
+            {name: 'Terreneuvian', young: 521, old: 538.8, color: '#8CB06C'}
+        ]
+    };
+
+    forester.geoIntervals = function (rank) {
+        return GEO_SCALE[rank] || [];
+    };
+
+    // How far back a rank's intervals reach (its oldest boundary, Ma).
+    forester.geoCoverage = function (rank) {
+        let ivs = forester.geoIntervals(rank);
+        return ivs.length > 0 ? ivs[ivs.length - 1].old : 0;
+    };
+
+    // The [coarse, fine] rank pair for a tree reaching back oldMa: always the
+    // finest pair that still fully covers the range, so a deep tree never
+    // shows blank band segments.
+    forester.geoBandRanks = function (oldMa) {
+        if (oldMa <= forester.geoCoverage('epoch')) {
+            return ['period', 'epoch'];
+        }
+        if (oldMa <= forester.geoCoverage('period')) {
+            return ['era', 'period'];
+        }
+        return ['eon', 'era'];
+    };
+
+    // The rank's intervals overlapping [youngMa, oldMa] (a zero-width window
+    // becomes a point query).
+    forester.geoOverlapping = function (rank, youngMa, oldMa) {
+        return forester.geoIntervals(rank).filter(function (iv) {
+            if (oldMa === youngMa) {
+                return iv.young <= youngMa && youngMa < iv.old;
+            }
+            return iv.old > youngMa && iv.young < oldMa;
+        });
+    };
+
+    // The rank's interval containing ageMa (young <= age < old), or null.
+    forester.geoAt = function (rank, ageMa) {
+        let ivs = forester.geoIntervals(rank);
+        for (let i = 0; i < ivs.length; ++i) {
+            if (ivs[i].young <= ageMa && ageMa < ivs[i].old) {
+                return ivs[i];
+            }
+        }
+        return null;
+    };
+
+    // ---- time-tree detection -------------------------------------------
+    // Two date conventions: GEOLOGIC ages (Ma before present, decreasing
+    // toward the tips) and CALENDAR years (increasing toward the tips).
+    // Decided from the <date> unit attributes, with a magnitude fallback for
+    // unitless dates: values mostly in [1500, 2200] read as years; values
+    // spanning from large down toward ~0 read as ages.
+    const GEO_DATE_UNITS = {
+        mya: 1, ma: 1, myr: 1, myrs: 1, my: 1, ga: 1, gya: 1, bya: 1, kya: 1,
+        'million years': 1, 'billion years': 1
+    };
+    const CAL_DATE_UNITS = {
+        year: 1, years: 1, yr: 1, yrs: 1, cal: 1, ce: 1, ad: 1, calendar: 1,
+        'calendar year': 1, 'calendar years': 1
+    };
+
+    // Everything the viewer needs to decide about and draw a time axis:
+    // {type: 'geologic'|'calendar'|null, rootAge, presentDate, dated,
+    //  hasInternalIntervals, hasExternalIntervals}. rootAge (geologic) and
+    // presentDate (calendar) are both the LARGEST date value -- the oldest
+    // node for ages, the most recent tip for years.
+    forester.timeAxisInfo = function (root) {
+        let values = [];
+        let geoUnits = 0;
+        let calUnits = 0;
+        let internal = 0;
+        let external = 0;
+        let datedInternal = 0;
+        let datedExternal = 0;
+        let hasInternalIntervals = false;
+        let hasExternalIntervals = false;
+        forester.preOrderTraversalAll(root, function (n) {
+            let isExt = !n.children && !n._children;
+            if (isExt) {
+                ++external;
+            } else {
+                ++internal;
+            }
+            let d = n.date;
+            if (!d) {
+                return;
+            }
+            let interval = (typeof d.minimum === 'number') && (typeof d.maximum === 'number');
+            if (interval) {
+                if (isExt) {
+                    hasExternalIntervals = true;
+                } else {
+                    hasInternalIntervals = true;
+                }
+            }
+            if (typeof d.value !== 'number') {
+                return;
+            }
+            values.push(d.value);
+            if (isExt) {
+                ++datedExternal;
+            } else {
+                ++datedInternal;
+            }
+            if (d.unit) {
+                let u = String(d.unit).trim().toLowerCase();
+                if (GEO_DATE_UNITS[u]) {
+                    ++geoUnits;
+                } else if (CAL_DATE_UNITS[u]) {
+                    ++calUnits;
+                }
+            }
+        });
+        let type = null;
+        if (values.length > 0) {
+            if (geoUnits > 0 && geoUnits >= calUnits) {
+                type = 'geologic';
+            } else if (calUnits > 0) {
+                type = 'calendar';
+            } else {
+                let max = Math.max.apply(null, values);
+                let min = Math.min.apply(null, values);
+                let calendarish = values.filter(function (v) {
+                    return v >= 1500 && v <= 2200;
+                }).length;
+                if (calendarish * 2 > values.length) {
+                    type = 'calendar';
+                } else if (max > 10 && min <= max * 0.05) {
+                    type = 'geologic';
+                }
+            }
+        }
+        let dated = (datedInternal >= 2 && (datedInternal * 2) > internal)
+            || (datedExternal >= 2 && (datedExternal * 2) > external);
+        let maxValue = values.length > 0 ? Math.max.apply(null, values) : 0;
+        return {
+            type: type,
+            rootAge: type === 'geologic' ? maxValue : 0,
+            presentDate: type === 'calendar' ? maxValue : 0,
+            dated: dated,
+            hasInternalIntervals: hasInternalIntervals,
+            hasExternalIntervals: hasExternalIntervals
+        };
+    };
+
+    // ---- axis tick mathematics -----------------------------------------
+    // The smallest 1/2/5 x 10^k (k may be negative) step >= target.
+    forester.niceAxisStep = function (target) {
+        if (!(target > 0) || !isFinite(target)) {
+            return 1;
+        }
+        let mag = Math.pow(10, Math.floor(Math.log(target) / Math.LN10));
+        let candidates = [1, 2, 5, 10];
+        for (let i = 0; i < candidates.length; ++i) {
+            let s = candidates[i] * mag;
+            if (s >= target - 1e-12) {
+                return s;
+            }
+        }
+        return 10 * mag;
+    };
+
+    // Tick ages for a "Ma before present" ruler: ~8 nice steps from 0 back
+    // to the root age.
+    forester.maAxisTickValues = function (rootAge) {
+        if (!(rootAge > 0)) {
+            return [];
+        }
+        let step = forester.niceAxisStep(rootAge / 8);
+        let vals = [];
+        for (let v = 0; v <= rootAge + 1e-9; v += step) {
+            vals.push(Math.round(v * 1e6) / 1e6);
+        }
+        return vals;
+    };
+
+    // Whole-year calendar ticks over [from, to]: nice 1/2/5 x 10^k integer
+    // steps, ~7 ticks.
+    forester.calendarTickYears = function (from, to) {
+        let span = to - from;
+        if (!(span > 0)) {
+            return [];
+        }
+        let step = Math.max(1, Math.round(forester.niceAxisStep(span / 7)));
+        let vals = [];
+        for (let y = Math.ceil(from / step) * step; y <= to + 1e-9; y += step) {
+            vals.push(y);
+        }
+        return vals;
+    };
+
+
+    // --------------------------------------------------------------
     // Multiple sequence alignment (the desktop's alignment track)
     // --------------------------------------------------------------
     // Residue palettes, gap handling, conservation scoring and the hover
