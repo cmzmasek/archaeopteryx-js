@@ -428,7 +428,10 @@ if (!phyloXml) {
     const TIME_BAND_ROW_H = 13;
     const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, FigTree-like
     const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
-    let _timeInfo = null;                 // forester.timeAxisInfo of the launched tree
+    let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
+    let _clusterH = 0;                    // the cluster layout's vertical extent, set per render
+    let _docListenersBound = false;       // page-level key/wheel handlers bind once, not per launch
+    let _menuConsumedEsc = false;         // the popup's Esc(keydown) must not also fire escPressed(keyup)
     let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
     const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
@@ -1199,6 +1202,7 @@ if (!phyloXml) {
         };
         let onKey = function (e) {
             if (e.key === 'Escape') {
+                _menuConsumedEsc = true; // the same press's keyup must not also reset the view
                 removeNodeMenu();
             }
         };
@@ -1742,13 +1746,22 @@ if (!phyloXml) {
             transitionDuration = TRANSITION_DURATION_DEFAULT;
         }
 
+        // recalibrated per render: a subtree view may lose (or change) its
+        // dates, and the reserve must follow what will actually be drawn
+        _timeInfo = _root ? forester.timeAxisInfo(_root) : null;
+
         if ((!doNotRecalculateWidth || doNotRecalculateWidth === false) || !_w) {
             // the alignment track reserves its window on the right, so the
             // tree and labels compress to make room rather than overlapping
             _msaReserve = 0;
             if (msaShown()) {
                 let fullPx = _basicTreeProperties.maxMolSeqLength * MSA_COL_WIDTH;
-                let band = Math.max(MSA_MIN_BAND_PX, Math.round(_displayWidth * MSA_MAX_VIEWPORT_FRACTION));
+                // budgeted from the VIEWPORT: sizing it from the zoomed layout
+                // width let every X+ press silently widen the window (and
+                // multiply the cell count)
+                let vp = svgSize();
+                let vw = Math.min(_displayWidth, (vp && vp.w) ? vp.w : _displayWidth);
+                let band = Math.max(MSA_MIN_BAND_PX, Math.round(vw * MSA_MAX_VIEWPORT_FRACTION));
                 // a wide alignment must not squeeze the tree itself away: the
                 // band yields until the tree keeps its minimum share
                 let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
@@ -1765,8 +1778,9 @@ if (!phyloXml) {
             addLegends();
         }
 
-        _treeFn = _treeFn.size([_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
-            - (msaShown() ? MSA_BOTTOM_RESERVE : 0) - timeAxisBottomReserve(), _w]);
+        _clusterH = Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+            - bottomOverlayReserve());
+        _treeFn = _treeFn.size([_clusterH, _w]);
 
         _treeFn = _treeFn.separation(function separation(a, b) {
             return a.parent === b.parent ? 1 : 1;
@@ -2107,6 +2121,12 @@ if (!phyloXml) {
             });
 
         node.select('circle.foundHalo')
+            .attr('class', function (d) {
+                // the animated class ONLY on hits: hundreds of idle infinite
+                // animations otherwise composite on every frame for the life
+                // of the page
+                return isNodeFound(d) ? 'foundHalo aptx-found-halo' : 'foundHalo';
+            })
             .attr('r', function (d) {
                 return isNodeFound(d) ? 4 : 0;
             })
@@ -2205,7 +2225,8 @@ if (!phyloXml) {
             .attr('stroke', makeBranchColor)
             .attr('d', function () {
                 let o = {
-                    x: source.x0, y: source.y0
+                    x: source.x0, y: source.y0,
+                    ux: source.ux, uy: source.uy
                 };
                 return elbow({
                     source: o, target: o
@@ -2291,10 +2312,10 @@ if (!phyloXml) {
             d.y0 = d.y;
         }
 
-        rebuildOverview();
-        updateSearchHitNavigation();
         drawMsaTrack();
         drawTimeOverlays();
+        rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
+        updateSearchHitNavigation();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -2522,11 +2543,19 @@ if (!phyloXml) {
     function orderedFoundNodes() {
         let hits = [];
         if (_root && ((_foundNodes0 && _foundNodes0.size > 0) || (_foundNodes1 && _foundNodes1.size > 0))) {
-            forester.preOrderTraversal(_root, function (n) {
+            // natural (top-to-bottom) drawing order -- forester's preorder
+            // walks children in reverse, which made the NEXT arrow step upward
+            let walk = function (n) {
                 if (isNodeFound(n)) {
                     hits.push(n);
                 }
-            });
+                if (n.children) {
+                    for (let i = 0; i < n.children.length; ++i) {
+                        walk(n.children[i]);
+                    }
+                }
+            };
+            walk(_root);
         }
         return hits;
     }
@@ -2879,7 +2908,8 @@ if (!phyloXml) {
     // Transform for a branch-data label (confidence / branch length / events):
     // rotate to the node's angle and sit at the midpoint of the branch (radially).
     function branchLabelTransform(d) {
-        if (!d.parent) {
+        if (!d.parent || (_state.unrootedDisplay && d.parent.ux === undefined)) {
+            // no laid-out parent (the displayed subtree's root): angle only
             return 'rotate(' + labelAngleDeg(d) + ')';
         }
         let mid;
@@ -3262,8 +3292,20 @@ if (!phyloXml) {
             let joinFrag = function (a, b) {
                 return (b && String(b).length > 0) ? (a ? a + ' | ' + b : String(b)) : a;
             };
+            // the name judged is the one that will be PRINTED: on trees whose
+            // tips carry id-like names with the readable name in a property,
+            // the substitution decides what the label rules see
+            let labelRef = forester.nodeLabelProperty(_treeData);
             let suggested = forester.suggestLabelFields(forester.getTreeRoot(_treeData), {
                 name: function (n) {
+                    if (labelRef && n.properties) {
+                        for (let pi = 0; pi < n.properties.length; ++pi) {
+                            let p = n.properties[pi];
+                            if (p.ref === labelRef && p.applies_to === 'node' && p.value) {
+                                return String(p.value);
+                            }
+                        }
+                    }
                     return n.name || null;
                 },
                 taxonomy: function (n) {
@@ -3539,6 +3581,29 @@ if (!phyloXml) {
 
 
         initializeVisualizations();
+
+        // launch() may run again on the same container (tree switchers do
+        // exactly that): tear the previous viewer's DOM down first, or the
+        // duplicated element ids leave the NEW panel's controls wired to the
+        // OLD, invisible one.
+        d3.select(id).selectAll('svg').remove();
+        document.querySelectorAll(id + ' .aptx-panel').forEach(function (p) {
+            p.remove();
+        });
+        _selectedNodes = new Set();
+        // and null the old tree: the initialization sequence runs update()
+        // once mid-way (applyTreeTheme), which on the first launch is a no-op
+        // because _root is null -- a relaunch must start from the same state,
+        // not render the OLD tree against half-reset globals
+        _root = null;
+        _root_const = null;
+        _in_subtree = false;
+        _baseSvg = null;
+        _svgGroup = null;
+        _overviewGroup = null;
+        _overviewContent = null;
+        _overviewViewport = null;
+        _overviewMap = null;
 
         createGui();
 
@@ -4243,14 +4308,13 @@ if (!phyloXml) {
     // translate(d.y, d.x) with d.x in [0, vertical] and d.y in [0, horizontal],
     // so these are exactly what a zoom rescales.
     function layoutSpans() {
-        // Clamped exactly like update() clamps _w: with very long labels the
-        // raw difference goes to (or below) zero while the layout itself never
-        // shrinks past 1, and an anchor ratio taken from the unclamped value
-        // would be wildly wrong (it once flung the whole tree off-screen after
-        // three X+ presses on a long-labelled tree).
+        // Clamped exactly like update() clamps _w and the cluster height --
+        // INCLUDING the alignment-track and time-axis reserves, which are
+        // part of the real spans (an anchor ratio taken from anything else
+        // once flung the whole tree off-screen after three X+ presses).
         return {
-            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay()),
-            vertical: Math.max(1, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT))
+            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve),
+            vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT) - bottomOverlayReserve())
         };
     }
 
@@ -4283,9 +4347,13 @@ if (!phyloXml) {
         // this way is exact for labels anchored at the far edge and a close
         // approximation for the rest; scaling the whole distance made the
         // display race off horizontally on long-labelled trees.
-        let bx = Math.min(cx, before.horizontal);
-        let nx = bx * (after.horizontal / before.horizontal) + (cx - bx);
-        let ny = cy * (after.vertical / before.vertical);
+        // ... and the same at the OTHER end: a centre panned before the root
+        // (negative) or past the span is empty margin too, and scaling it
+        // flings the tree the way the label overshoot once did.
+        let bx = Math.max(0, Math.min(cx, before.horizontal));
+        let nx = (bx * (after.horizontal / before.horizontal)) + (cx - bx);
+        let by = Math.max(0, Math.min(cy, before.vertical));
+        let ny = (by * (after.vertical / before.vertical)) + (cy - by);
         _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
             .translate((size.w / 2) - (nx * t.k), (size.h / 2) - (ny * t.k))
             .scale(t.k));
@@ -4469,6 +4537,13 @@ if (!phyloXml) {
         let cw = MSA_COL_WIDTH;
         let bandPx = Math.max(1, _msaReserve - MSA_TRACK_GAP);
         let visible = Math.max(1, Math.min(total, Math.floor(bandPx / cw)));
+        if (!isFinite(visible)) {
+            // half-initialized globals (mid-launch) can make the window NaN;
+            // draw nothing rather than feeding it downstream
+            _msaGeom = null;
+            updateMsaScrollbar(0, 1, 0);
+            return;
+        }
         let maxOffset = Math.max(0, total - visible);
         if (_msaColOffset > maxOffset) {
             _msaColOffset = maxOffset;
@@ -4499,11 +4574,11 @@ if (!phyloXml) {
         let pad = n > 1 ? ((tips[n - 1].x - tips[0].x) / (n - 1)) / 2
             : Math.max(4, _state.externalNodeFontSize / 2);
         let bounds = new Array(n + 1);
-        bounds[0] = tips[0].x - pad;
+        bounds[0] = Math.max(0, tips[0].x - pad);
         for (let r = 1; r < n; ++r) {
             bounds[r] = (tips[r - 1].x + tips[r].x) / 2;
         }
-        bounds[n] = tips[n - 1].x + pad;
+        bounds[n] = Math.min(_clusterH, tips[n - 1].x + pad);
 
         let rowH = Math.max(1, Math.round(bounds[1]) - Math.round(bounds[0]));
         let fontPx = Math.max(6, Math.min(13, Math.round(Math.min(cw, rowH) * 0.8)));
@@ -4530,6 +4605,20 @@ if (!phyloXml) {
                 runStart = -1;
                 runRgb = null;
             };
+            // a RUN of gaps is one line, not one dash per column -- both for
+            // the drawing (they join seamlessly) and for the element count
+            let gapStart = -1;
+            let flushGap = function (endI) {
+                if (gapStart < 0) {
+                    return;
+                }
+                let mid = cy + (rh / 2);
+                g.append('line')
+                    .attr('x1', Math.round(originX + (gapStart * cw))).attr('y1', mid)
+                    .attr('x2', Math.round(originX + (endI * cw))).attr('y2', mid)
+                    .attr('stroke', ink).attr('stroke-opacity', 0.35).attr('stroke-width', 1);
+                gapStart = -1;
+            };
             for (let i = 0; i < visible; ++i) {
                 let c = offset + i;
                 let ch = c < row.length ? row.charAt(c) : null;
@@ -4537,16 +4626,15 @@ if (!phyloXml) {
                 if (rgb === null) {
                     flush(i);
                     if (ch !== null) {
-                        // a gap: a faint dash, so runs of gaps join into a
-                        // line and the alignment's extent stays visible
-                        let mid = cy + (rh / 2);
-                        g.append('line')
-                            .attr('x1', Math.round(originX + (i * cw))).attr('y1', mid)
-                            .attr('x2', Math.round(originX + ((i + 1) * cw))).attr('y2', mid)
-                            .attr('stroke', ink).attr('stroke-opacity', 0.35).attr('stroke-width', 1);
+                        if (gapStart < 0) {
+                            gapStart = i;
+                        }
+                    } else {
+                        flushGap(i); // the row ended: no line past its last column
                     }
                     continue;
                 }
+                flushGap(i);
                 if (drawLetters) {
                     let x0 = Math.round(originX + (i * cw));
                     let x1 = Math.round(originX + ((i + 1) * cw));
@@ -4567,6 +4655,7 @@ if (!phyloXml) {
                 }
             }
             flush(visible);
+            flushGap(visible);
         }
 
         let rowsTop = Math.round(bounds[0]);
@@ -4587,13 +4676,17 @@ if (!phyloXml) {
         }
 
         // conservation band (consensus identity) + consensus letters
-        let cons = forester.msaConservation(tips.map(msaRowSeq), total, 'identity', isNuc);
-        let consTop = rowsBottom + MSA_CONS_TOP_GAP;
+        // scored over the visible WINDOW only -- the whole alignment would
+        // cost rows x total per redraw; indices below are window-relative
+        let cons = forester.msaConservation(tips.map(function (t) {
+            return msaRowSeq(t).slice(offset, offset + visible);
+        }), visible, 'identity', isNuc);
+        let consTop = _clusterH + MSA_CONS_TOP_GAP;
         g.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
             .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
             .attr('fill', ink).attr('fill-opacity', 0.08);
         for (let i = 0; i < visible; ++i) {
-            let score = cons.scores[offset + i] || 0;
+            let score = cons.scores[i] || 0;
             if (score <= 0) {
                 continue;
             }
@@ -4613,7 +4706,7 @@ if (!phyloXml) {
         let consensusRow = cw >= 7;
         if (consensusRow) {
             for (let i = 0; i < visible; ++i) {
-                let cc = cons.consensus[offset + i];
+                let cc = cons.consensus[i];
                 if (!cc) {
                     continue;
                 }
@@ -4633,7 +4726,7 @@ if (!phyloXml) {
             .attr('y1', rulerY).attr('y2', rulerY)
             .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
         let lastRight = -Infinity;
-        let drawTick = function (c) {
+        let drawTick = function (c, force) {
             let i = c - 1 - offset;
             if (i < 0 || i >= visible) {
                 return;
@@ -4643,19 +4736,19 @@ if (!phyloXml) {
                 .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
             let label = String(c);
             let half = label.length * 2.8;
-            if ((x - half) >= (lastRight + 4)) {
+            if (force || (x - half) >= (lastRight + 4)) {
                 g.append('text').attr('x', x).attr('y', rulerY + 14).attr('text-anchor', 'middle')
                     .style('font-size', '9px').style('fill', ink)
                     .text(label);
                 lastRight = x + half;
             }
         };
-        drawTick(1);
+        drawTick(1, true);
         let step = msaColumnStep(visible);
         for (let c = Math.ceil((offset + 1) / step) * step; c <= (offset + visible); c += step) {
             drawTick(c);
         }
-        drawTick(total);
+        drawTick(total, true); // the true edges always carry their number
 
         // hover + wheel surface over the rows
         g.append('rect').attr('class', 'aptx-msa-hover')
@@ -4688,6 +4781,10 @@ if (!phyloXml) {
     // bottom, shown only while the alignment is wider than its window. Lives
     // outside the svg, so exports never include it.
     function updateMsaScrollbar(offset, visible, total) {
+        let scrollable = msaShown() && total > visible;
+        if (!_msaScroller && !scrollable) {
+            return; // never park a page-level slider under a tree that has no use for it
+        }
         if (!_msaScroller) {
             let el = document.createElement('input');
             el.type = 'range';
@@ -4706,7 +4803,6 @@ if (!phyloXml) {
             document.body.appendChild(el);
             _msaScroller = el;
         }
-        let scrollable = msaShown() && total > visible;
         _msaScroller.style.display = scrollable ? 'block' : 'none';
         if (scrollable) {
             _msaScroller.max = String(total - visible);
@@ -4808,6 +4904,13 @@ if (!phyloXml) {
         return _timeInfo.type === 'geologic' ? TIME_GEO_RESERVE : TIME_CAL_RESERVE;
     }
 
+    // The MSA footer sits under the alignment band (right) and the time axis
+    // under the tree (left) -- horizontally disjoint, so the two reserves
+    // share the same strip rather than stacking.
+    function bottomOverlayReserve() {
+        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE : 0, timeAxisBottomReserve());
+    }
+
     function hexToRgbTriple(hex) {
         let h = hex.charAt(0) === '#' ? hex.substring(1) : hex;
         return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16),
@@ -4851,8 +4954,7 @@ if (!phyloXml) {
         });
         let g = _svgGroup.append('g').attr('class', 'aptx-time');
         let ink = _state.branchColorDefault;
-        let axisTop = (_displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
-            - (msaShown() ? MSA_BOTTOM_RESERVE : 0) - timeAxisBottomReserve()) + 6;
+        let axisTop = _clusterH + 6;
 
         let sc = info.type === 'calendar' ? -corr : corr;
 
@@ -4865,9 +4967,11 @@ if (!phyloXml) {
             let min = d.date.minimum;
             let max = d.date.maximum;
             let value = typeof d.date.value === 'number' ? d.date.value : (min + max) / 2;
-            // fossil ranges are a geologic-age concept: unsigned corr always;
-            // HPD bars flip with the calendar (a year INcreases toward the tips)
-            let s = d.children ? sc : corr;
+            // the calendar convention flips the sign for EVERY bar (a year
+            // increases toward the tips, an age decreases toward them), so the
+            // earlier bound always lands left; on a geologic tree sc === corr
+            // and the tip bars keep their FAD/LAD age semantics unchanged
+            let s = sc;
             let xa = d.y - ((max - value) * s);
             let xb = d.y + ((value - min) * s);
             let left = Math.min(xa, xb);
@@ -5136,7 +5240,7 @@ if (!phyloXml) {
     function midpointRootButtonPressed(event) {
         if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
             let ev = event;
-            if (!ev || ev.pageX === undefined) {
+            if (!ev || ev.pageX === undefined || (ev.pageX === 0 && ev.pageY === 0)) {
                 // keyboard invocation (Alt+M): anchor the popup at the button
                 let b = byId(MIDPOINT_ROOT_BUTTON);
                 if (b) {
@@ -5469,16 +5573,15 @@ if (!phyloXml) {
     // horizontal zoom pair. Same buttons, same bindings -- only the face and
     // the meaning change with the layout.
     function syncZoomRowButtons() {
-        let minus = byId(ZOOM_OUT_X);
-        let plus = byId(ZOOM_IN_X);
-        let expandV = byId(ZOOM_TO_EXPAND_Y);
-        let fitW = byId(FIT_WIDTH_BUTTON);
-        if (!minus || !plus || !expandV || !fitW) {
-            return;
-        }
         // layout-restricted controls, as on the desktop: unrooted has no
         // common label edge to align to and no even row spacing to auto-hide
-        // against, so those two controls grey out there.
+        // against; an alignment / time axis is inherently horizontal. Synced
+        // BEFORE the zoom-row early return, and (via updateButtonEnabledState)
+        // on every render, so subtree switches keep them honest.
+        let phyBtn = byId(PHYLOGRAM_BUTTON);
+        if (phyBtn) {
+            phyBtn.disabled = _basicTreeProperties.branchLengths !== true;
+        }
         let alignBtn = byId(PHYLOGRAM_ALIGNED_BUTTON);
         if (alignBtn) {
             alignBtn.disabled = _state.unrootedDisplay || _basicTreeProperties.branchLengths !== true;
@@ -5489,11 +5592,18 @@ if (!phyloXml) {
         }
         let msaCb = byId(MSA_CB);
         if (msaCb) {
-            msaCb.disabled = radialDisplay(); // an alignment is inherently horizontal
+            msaCb.disabled = radialDisplay();
         }
         let timeCb = byId(TIME_AXIS_CB);
         if (timeCb) {
             timeCb.disabled = radialDisplay();
+        }
+        let minus = byId(ZOOM_OUT_X);
+        let plus = byId(ZOOM_IN_X);
+        let expandV = byId(ZOOM_TO_EXPAND_Y);
+        let fitW = byId(FIT_WIDTH_BUTTON);
+        if (!minus || !plus || !expandV || !fitW) {
+            return;
         }
         if (radialDisplay()) {
             minus.innerHTML = makeGlyph('rotate_ccw');
@@ -5526,6 +5636,9 @@ if (!phyloXml) {
     // keyboard shortcut). Alignment only applies to phylograms, so this is a
     // no-op in cladogram mode.
     function toggleAlignPhylogram() {
+        if (_state.unrootedDisplay) {
+            return; // nothing to align labels to
+        }
         if (_state.phylogram) {
             _state.alignPhylogram = !_state.alignPhylogram;
             setDisplayTypeButtons();
@@ -6402,7 +6515,8 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-seg:has(input:disabled) { cursor:default; }'
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
             + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
-            + '.aptx-found-halo { opacity:0.35; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
+            + '.aptx-panel .aptx-searchnav .aptx-gbtn:last-child { margin-right:0; }'
+            + '.aptx-found-halo { opacity:0.35; transform-box:fill-box; transform-origin:center; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
             + '@keyframes aptx-halo-pulse { 0%,100% { transform:scale(1); opacity:0.35; } 50% { transform:scale(2.5); opacity:0.12; } }'
             + '@media (prefers-reduced-motion: reduce) { .aptx-found-halo { animation:none; } }'
             + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; }'
@@ -6889,9 +7003,11 @@ if (!phyloXml) {
         // live. Injecting twice is a no-op.
         injectPanelStyles();
 
-        _node_mouseover_div = d3.select("body").append("div")
-            .attr("class", "node_mouseover_tooltip aptx-tip")
-            .style("opacity", 1e-6);
+        if (!_node_mouseover_div) {
+            _node_mouseover_div = d3.select("body").append("div")
+                .attr("class", "node_mouseover_tooltip aptx-tip")
+                .style("opacity", 1e-6);
+        }
 
 
         let c0 = makeControlPanelElement();
@@ -7183,7 +7299,15 @@ if (!phyloXml) {
 
 
 
+        // the page-level handlers bind ONCE: a relaunch must not stack a
+        // second copy of every shortcut and wheel action
+        if (!_docListenersBound) {
+        _docListenersBound = true;
+
         document.addEventListener('keyup', function (e) {
+            if (isTypingTarget(e.target)) {
+                return; // Home/Esc/Alt shortcuts must not fire from inside a text box
+            }
             if (e.altKey) {
                 if (e.keyCode === VK_O) {
                     ladderizeButtonPressed();
@@ -7207,7 +7331,11 @@ if (!phyloXml) {
                     stepToFoundNode(e.shiftKey ? -1 : 1);
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
-                escPressed();
+                if (_menuConsumedEsc) {
+                    _menuConsumedEsc = false; // that Esc only closed the popup
+                } else {
+                    escPressed();
+                }
             } else if ((e.keyCode === VK_O) && !e.ctrlKey && !e.metaKey && !e.shiftKey
                 && !isTypingTarget(e.target)) {
                 moveOverviewToNextCorner(); // as on the desktop
@@ -7215,6 +7343,9 @@ if (!phyloXml) {
         });
 
         document.addEventListener('keydown', function (e) {
+            if (isTypingTarget(e.target)) {
+                return;
+            }
             if (e.altKey) {
                 if (e.keyCode === VK_UP) {
                     zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
@@ -7297,6 +7428,7 @@ if (!phyloXml) {
             }
             e.preventDefault();
         }, {passive: false});
+        }
 
         // --------------------------------------------------------------
         // Functions to make GUI elements
@@ -7856,6 +7988,14 @@ if (!phyloXml) {
     }
 
     function cycleDisplay() {
+        if (_state.unrootedDisplay) {
+            // no aligned display in unrooted: P and C simply swap
+            _state.alignPhylogram = false;
+            _state.phylogram = !_state.phylogram;
+            setDisplayTypeButtons();
+            update(null, 0);
+            return;
+        }
         if (_state.phylogram && !_state.alignPhylogram) {
             _state.alignPhylogram = true;
 
@@ -7884,6 +8024,7 @@ if (!phyloXml) {
 
 
     function updateButtonEnabledState() {
+        syncZoomRowButtons(); // layout- and tree-dependent disables track every render
         if (_in_subtree) {
             enableButton(byId(RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
             enableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
@@ -8030,6 +8171,11 @@ if (!phyloXml) {
             if (overview) {
                 overview.remove();
             }
+            // the halo discs' translucency and pulse live in page CSS the
+            // export cannot carry -- serialized as-is they become solid blobs
+            copy.querySelectorAll('circle.foundHalo').forEach(function (h) {
+                h.remove();
+            });
             svgTree = toLightExport((new XMLSerializer()).serializeToString(copy));
         } else if (typeof svg.xml !== 'undefined') {
             svgTree = svg.xml;

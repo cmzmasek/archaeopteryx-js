@@ -1120,25 +1120,40 @@ function testEqualAngleLengths() {
 }
 
 function testEqualAngleFixture() {
-    // a real tree: every child's wedge is proportional to its tips, wedges
-    // tile the parent's exactly, and positions equal parent + polar step
+    // a real tree, checked against an INDEPENDENT recomputation of the
+    // equal-angle rule (an earlier version of this test asserted only that
+    // positions matched the angles the code itself chose -- which any layout
+    // satisfies): each child's expected mid-angle is low + sum(prev tip
+    // shares) + half its own share of the parent's wedge.
     var root = forester.getTreeRoot(loadTree('apaf'));
     var r = forester.equalAngleLayout(root, -Math.PI / 2, function () {
         return 7;
     });
-    var eps = 1e-6;
+    var eps = 1e-9;
+    var tipsOf = function (n) {
+        if (!n.children || n.children.length < 1) { return 1; }
+        var c = 0;
+        for (var i = 0; i < n.children.length; ++i) { c += tipsOf(n.children[i]); }
+        return c;
+    };
     var ok = r.maxRad > 0;
-    forester.preOrderTraversal(root, function (n) {
-        if (!n.children || !ok) {
-            return;
-        }
+    var check = function (n, low, high) {
+        if (!n.children || !ok) { return; }
+        var total = tipsOf(n);
+        var current = low;
         for (var i = 0; i < n.children.length; ++i) {
             var d = n.children[i];
+            var arc = (tipsOf(d) / total) * (high - low);
+            var expectedMid = current + (arc / 2);
+            if (Math.abs(d.uangle - expectedMid) > eps) { ok = false; }
             var dx = d.ux - n.ux, dy = d.uy - n.uy;
             if (Math.abs(Math.hypot(dx, dy) - 7) > eps) { ok = false; }
-            if (Math.abs(Math.atan2(dy, dx) - Math.atan2(Math.sin(d.uangle), Math.cos(d.uangle))) > eps) { ok = false; }
+            check(d, current, current + arc);
+            current += arc;
         }
-    });
+        if (Math.abs(current - high) > 1e-9) { ok = false; } // wedges tile exactly
+    };
+    check(root, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI));
     return ok;
 }
 
@@ -1173,9 +1188,9 @@ function testMsaNucleotideGuess() {
 }
 
 function testMsaConservationIdentity() {
-    // column 0: A,A,A -> 1.0; column 1: A,C,C -> 2/3 consensus C;
-    // column 2: A,-,- -> 1/3 (gaps stay in the denominator), consensus A;
-    // column 3 exists only in row 1 (short rows tolerated): 1/3
+    // column 0: A,A,A -> 1.0; column 1: A,C,C -> 2/3, consensus C;
+    // column 2: A,A,- -> 2/3 (gaps stay in the denominator), consensus A;
+    // column 3 exists only in row 0 (short rows read as gaps): 1/3
     var r = forester.msaConservation(['AAAA', 'ACA', 'AC-'], 4, 'identity', true);
     var eps = 1e-9;
     return Math.abs(r.scores[0] - 1) < eps && r.consensus[0] === 'A'
@@ -1272,6 +1287,95 @@ runTest("time: band rank pairs      : ", testGeoBandRanks);
 runTest("time: interval queries     : ", testGeoQueries);
 runTest("time: axis-type detection  : ", testTimeAxisDetection);
 runTest("time: tick mathematics     : ", testTimeAxisTicks);
+
+// --------------------------------------------------------------
+// audit regressions (2026-09-03 code audit)
+// --------------------------------------------------------------
+
+function testAuditInfinityDates() {
+    // 1e400 parses to Infinity; it must be ignored, and the tick generators
+    // must never loop on a non-finite bound (this once hung the browser)
+    var root = {name: 'r', date: {unit: 'mya', value: Infinity}, children: [
+        {name: 'a', date: {unit: 'mya', value: 250}},
+        {name: 'b', date: {unit: 'mya', value: 0}}
+    ]};
+    var info = forester.timeAxisInfo(root);
+    return info.rootAge === 250
+        && forester.maAxisTickValues(Infinity).length === 0
+        && forester.calendarTickYears(2020, Infinity).length === 0
+        && forester.niceAxisStep(31.25) === 50;
+}
+
+function testAuditSparseFieldNeverWins() {
+    // a field carried by 2 of 100 tips must not win the label budget and
+    // leave 98 tips unlabelled: identifying power is judged over ALL tips
+    var leaves = [];
+    for (var i = 0; i < 100; ++i) {
+        var l = {name: 'a rather long node name that repeats every other tip number ' + (i % 50)};
+        if (i < 2) {
+            l.sequences = [{name: 'utterly unique sequence identifier number ' + i}];
+        }
+        leaves.push(l);
+    }
+    var r = forester.suggestLabelFields({name: 'r', children: leaves}, {
+        name: function (n) { return n.name || null; },
+        taxonomy: function () { return null; },
+        sequence: function (n) {
+            return (n.sequences && n.sequences[0]) ? n.sequences[0].name : null;
+        }
+    });
+    return r.showNodeName === true && r.showSequence === false;
+}
+
+function testAuditMsaGuards() {
+    var ink = forester.msaLetterInk(null) === '#404040';
+    var neg = forester.msaUngappedPosition('MK-TA', -1) === null;
+    var frozen = true;
+    var rgb = forester.msaResidueRgb('L', false);
+    try { rgb[0] = 0; } catch (e) { /* frozen throws in strict mode */ }
+    frozen = forester.msaResidueRgb('V', false)[0] === 240;
+    return ink && neg && frozen;
+}
+
+function testAuditResidueInfoParity() {
+    var u = forester.msaResidueInfo('U', false);
+    var d = forester.msaResidueInfo('D', false);
+    var c = forester.msaResidueInfo('C', false);
+    var x = forester.msaResidueInfo('X', false);
+    var g = forester.msaResidueInfo('g', true);
+    var t = forester.msaResidueInfo('T', true);
+    return u.name === 'Selenocysteine' && d.name === 'Aspartic acid'
+        && c.clazz === 'cysteine (disulphide-forming)'
+        && x.name === 'Any amino acid' && x.clazz === 'non-standard / ambiguity code'
+        && g.clazz === 'purine' && t.clazz === 'pyrimidine';
+}
+
+function testAuditConservationDetails() {
+    // alphabetical consensus tie-break, and the information measure's
+    // gap-occupancy factor (half-empty conserved column carries half the bits)
+    var tie = forester.msaConservation(['AC', 'CA'], 2, 'identity', true);
+    var inf = forester.msaConservation(['AA', 'A-', 'AA', 'A-'], 2, 'information', true);
+    var eps = 1e-9;
+    return tie.consensus[0] === 'A' && tie.consensus[1] === 'A'
+        && Math.abs(inf.scores[0] - 1) < eps
+        && Math.abs(inf.scores[1] - 0.5) < eps;
+}
+
+function testAuditGeoWindows() {
+    // a reversed window normalizes; a zero-width window is a point query
+    var rev = forester.geoOverlapping('era', 70, 0).map(function (iv) { return iv.name; }).join('/');
+    var pt = forester.geoOverlapping('period', 100, 100).map(function (iv) { return iv.name; }).join('/');
+    return rev === 'Cenozoic/Mesozoic' && pt === 'Cretaceous';
+}
+
+console.log("\naudit regressions\n");
+
+runTest("audit: Infinity dates      : ", testAuditInfinityDates);
+runTest("audit: sparse field budget : ", testAuditSparseFieldNeverWins);
+runTest("audit: msa guards + freeze : ", testAuditMsaGuards);
+runTest("audit: residue info parity : ", testAuditResidueInfoParity);
+runTest("audit: conservation detail : ", testAuditConservationDetails);
+runTest("audit: geo window queries  : ", testAuditGeoWindows);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

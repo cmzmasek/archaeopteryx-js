@@ -2393,11 +2393,13 @@
     // The rank's intervals overlapping [youngMa, oldMa] (a zero-width window
     // becomes a point query).
     forester.geoOverlapping = function (rank, youngMa, oldMa) {
+        let lo = Math.min(youngMa, oldMa);
+        let hi = Math.max(youngMa, oldMa);
         return forester.geoIntervals(rank).filter(function (iv) {
-            if (oldMa === youngMa) {
-                return iv.young <= youngMa && youngMa < iv.old;
+            if (hi === lo) {
+                return iv.young <= lo && lo < iv.old;
             }
-            return iv.old > youngMa && iv.young < oldMa;
+            return iv.old > lo && iv.young < hi;
         });
     };
 
@@ -2434,6 +2436,8 @@
     // node for ages, the most recent tip for years.
     forester.timeAxisInfo = function (root) {
         let values = [];
+        let maxVal = -Infinity; // running, not Math.max.apply: 150k dated tips overflow the call stack
+        let minVal = Infinity;
         let geoUnits = 0;
         let calUnits = 0;
         let internal = 0;
@@ -2461,10 +2465,16 @@
                     hasInternalIntervals = true;
                 }
             }
-            if (typeof d.value !== 'number') {
-                return;
+            if (typeof d.value !== 'number' || !isFinite(d.value)) {
+                return; // 1e400 parses to Infinity and must never reach the tick loops
             }
             values.push(d.value);
+            if (d.value > maxVal) {
+                maxVal = d.value;
+            }
+            if (d.value < minVal) {
+                minVal = d.value;
+            }
             if (isExt) {
                 ++datedExternal;
             } else {
@@ -2486,21 +2496,19 @@
             } else if (calUnits > 0) {
                 type = 'calendar';
             } else {
-                let max = Math.max.apply(null, values);
-                let min = Math.min.apply(null, values);
                 let calendarish = values.filter(function (v) {
                     return v >= 1500 && v <= 2200;
                 }).length;
                 if (calendarish * 2 > values.length) {
                     type = 'calendar';
-                } else if (max > 10 && min <= max * 0.05) {
+                } else if (maxVal > 10 && minVal <= maxVal * 0.05) {
                     type = 'geologic';
                 }
             }
         }
         let dated = (datedInternal >= 2 && (datedInternal * 2) > internal)
             || (datedExternal >= 2 && (datedExternal * 2) > external);
-        let maxValue = values.length > 0 ? Math.max.apply(null, values) : 0;
+        let maxValue = values.length > 0 ? maxVal : 0;
         return {
             type: type,
             rootAge: type === 'geologic' ? maxValue : 0,
@@ -2531,7 +2539,7 @@
     // Tick ages for a "Ma before present" ruler: ~8 nice steps from 0 back
     // to the root age.
     forester.maAxisTickValues = function (rootAge) {
-        if (!(rootAge > 0)) {
+        if (!(rootAge > 0) || !isFinite(rootAge)) {
             return [];
         }
         let step = forester.niceAxisStep(rootAge / 8);
@@ -2546,7 +2554,7 @@
     // steps, ~7 ticks.
     forester.calendarTickYears = function (from, to) {
         let span = to - from;
-        if (!(span > 0)) {
+        if (!(span > 0) || !isFinite(span) || !isFinite(from)) {
             return [];
         }
         let step = Math.max(1, Math.round(forester.niceAxisStep(span / 7)));
@@ -2596,6 +2604,20 @@
             MSA_AA_CLASS[c.residues.charAt(i)] = c.clazz;
         }
     });
+    // The palette triples and the geologic table are handed out by reference;
+    // freezing them keeps one careless caller mutation from permanently
+    // recolouring a whole residue class (or renaming the Cretaceous).
+    MSA_AA_CLASSES.forEach(function (c) {
+        Object.freeze(c.rgb);
+    });
+    Object.keys(MSA_NT_RGB).forEach(function (k) {
+        Object.freeze(MSA_NT_RGB[k]);
+    });
+    Object.freeze(MSA_UNKNOWN_RGB);
+    Object.keys(GEO_SCALE).forEach(function (rank) {
+        GEO_SCALE[rank].forEach(Object.freeze);
+        Object.freeze(GEO_SCALE[rank]);
+    });
 
     // Kyte-Doolittle hydropathy and full residue names, for the hover readout.
     const MSA_HYDROPATHY = {
@@ -2604,16 +2626,21 @@
         Q: -3.5, D: -3.5, N: -3.5, K: -3.9, R: -4.5
     };
     const MSA_AA_NAMES = {
-        A: 'Alanine', R: 'Arginine', N: 'Asparagine', D: 'Aspartate',
-        C: 'Cysteine', E: 'Glutamate', Q: 'Glutamine', G: 'Glycine',
+        A: 'Alanine', R: 'Arginine', N: 'Asparagine', D: 'Aspartic acid',
+        C: 'Cysteine', E: 'Glutamic acid', Q: 'Glutamine', G: 'Glycine',
         H: 'Histidine', I: 'Isoleucine', L: 'Leucine', K: 'Lysine',
         M: 'Methionine', F: 'Phenylalanine', P: 'Proline', S: 'Serine',
         T: 'Threonine', W: 'Tryptophan', Y: 'Tyrosine', V: 'Valine',
-        B: 'Asx (Asn/Asp)', Z: 'Glx (Gln/Glu)', X: 'unknown residue', '*': 'stop'
+        U: 'Selenocysteine', O: 'Pyrrolysine',
+        B: 'Asparagine or aspartic acid', Z: 'Glutamine or glutamic acid',
+        X: 'Any amino acid', '*': 'stop'
     };
     const MSA_NT_NAMES = {
         A: 'Adenine', C: 'Cytosine', G: 'Guanine', T: 'Thymine',
         U: 'Uracil', N: 'any base'
+    };
+    const MSA_NT_CLASS = {
+        A: 'purine', G: 'purine', C: 'pyrimidine', T: 'pyrimidine', U: 'pyrimidine'
     };
 
     forester.isMsaGap = function (ch) {
@@ -2634,6 +2661,9 @@
     // Black or white letter ink over the given cell colour, by luminance --
     // the same rule the desktop uses.
     forester.msaLetterInk = function (rgb) {
+        if (!rgb) {
+            return '#404040'; // over a gap / unfilled cell, as on the desktop
+        }
         let luminance = (0.299 * rgb[0]) + (0.587 * rgb[1]) + (0.114 * rgb[2]);
         return luminance < 140 ? '#ffffff' : '#000000';
     };
@@ -2669,6 +2699,10 @@
     // the most common NON-gap residue, ties broken alphabetically so figures
     // are reproducible.
     forester.msaConservation = function (rows, length, measure, nucleotide) {
+        if (!(length >= 0) || !isFinite(length)) {
+            return {scores: [], consensus: []};
+        }
+        length = Math.floor(length);
         let n = rows.length;
         let scores = new Array(length);
         let consensus = new Array(length);
@@ -2721,11 +2755,19 @@
         }
         let u = ch.toUpperCase();
         if (nucleotide) {
-            return {name: MSA_NT_NAMES[u] || 'ambiguity code', clazz: null, hydropathy: null};
+            return {
+                name: MSA_NT_NAMES[u] || 'ambiguity code',
+                clazz: MSA_NT_CLASS[u] || null,
+                hydropathy: null
+            };
+        }
+        let clazz = MSA_AA_CLASS[u] || 'non-standard / ambiguity code';
+        if (u === 'C') {
+            clazz = 'cysteine (disulphide-forming)';
         }
         return {
             name: MSA_AA_NAMES[u] || 'ambiguity code',
-            clazz: MSA_AA_CLASS[u] || null,
+            clazz: clazz,
             hydropathy: (MSA_HYDROPATHY[u] !== undefined) ? MSA_HYDROPATHY[u] : null
         };
     };
@@ -2733,7 +2775,7 @@
     // The residue's 1-based position within its own UNGAPPED sequence -- the
     // coordinate that maps back onto the real molecule -- or null on a gap.
     forester.msaUngappedPosition = function (row, col) {
-        if (!row || col >= row.length || forester.isMsaGap(row.charAt(col))) {
+        if (!row || col < 0 || col >= row.length || forester.isMsaGap(row.charAt(col))) {
             return null;
         }
         let pos = 0;
@@ -2824,10 +2866,12 @@
     //
     // 2. Length budget: if the median combined label of the remaining fields
     //    still exceeds 50 characters, only the single most IDENTIFYING field
-    //    stays: the one with the highest ratio of distinct values to labelled
-    //    nodes (a label's job is telling nodes apart). Within a tie (0.05)
-    //    the priority order wins, unless a later field is SUBSTANTIALLY more
-    //    economical (median length under 60% of the leader's).
+    //    stays: the one with the highest ratio of distinct values to ALL
+    //    external nodes (a label's job is telling nodes apart -- and a field
+    //    carried by only a few tips cannot identify the rest, however unique
+    //    its few values are). Within a tie (0.05) the priority order wins,
+    //    unless a later field is SUBSTANTIALLY more economical (median length
+    //    under 60% of the leader's).
     //
     // A field with no values at all is never checked. This only decides the
     // INITIAL state; the caller's UI stays free to override.
@@ -2873,8 +2917,8 @@
                 medianLength: median(present.map(function (s) {
                     return s.length;
                 })),
-                distinctRatio: present.length
-                    ? (new Set(present.map(norm)).size / present.length) : 0
+                distinctRatio: (present.length > 0 && ext.length > 0)
+                    ? (new Set(present.map(norm)).size / ext.length) : 0
             };
         });
         let checked = {};
@@ -2931,14 +2975,23 @@
             return checked[f];
         });
         if (medianCombined > BUDGET_CHARS && kept.length > 1) {
-            let best = kept[0];
-            for (let k = 1; k < kept.length; ++k) {
-                let c = kept[k];
-                let d = stats[c].distinctRatio - stats[best].distinctRatio;
-                if (d > TIE_EPSILON
-                    || (Math.abs(d) <= TIE_EPSILON
-                        && stats[c].medianLength < LENGTH_ADVANTAGE * stats[best].medianLength)) {
-                    best = c;
+            // top distinct-ratio first (a greedy pairwise chain is not
+            // transitive within the tie window); everything within the tie
+            // window then competes by priority order, with the economy rule
+            // as the only override
+            let maxDr = 0;
+            kept.forEach(function (f) {
+                if (stats[f].distinctRatio > maxDr) {
+                    maxDr = stats[f].distinctRatio;
+                }
+            });
+            let contenders = kept.filter(function (f) {
+                return stats[f].distinctRatio >= maxDr - TIE_EPSILON;
+            });
+            let best = contenders[0];
+            for (let k = 1; k < contenders.length; ++k) {
+                if (stats[contenders[k]].medianLength < LENGTH_ADVANTAGE * stats[best].medianLength) {
+                    best = contenders[k];
                 }
             }
             FIELDS.forEach(function (f) {
