@@ -1881,7 +1881,7 @@ if (!phyloXml) {
 
         node.select('text.bllabel')
             .style('font-size', _state.branchDataFontSize + 'px')
-            .style('fill', _state.labelColorDefault)
+            .style('fill', _state.branchColorDefault)
             .attr('text-anchor', function () {
                 return _state.circularDisplay ? 'middle' : null;
             })
@@ -1900,9 +1900,12 @@ if (!phyloXml) {
                 }
             });
 
+        // confidence and branch-length values wear the BRANCH colour, not the
+        // label colour: they annotate the branch they sit on, and the quieter
+        // tone keeps them from competing with the node labels.
         node.select('text.conflabel')
             .style('font-size', _state.branchDataFontSize + 'px')
-            .style('fill', _state.labelColorDefault)
+            .style('fill', _state.branchColorDefault)
             .attr('transform', function (d) {
                 return _state.circularDisplay ? branchLabelTransform(d) : null;
             })
@@ -2910,7 +2913,10 @@ if (!phyloXml) {
         _state.showNodeName = _basicTreeProperties.nodeNames === true;
         _state.showTaxonomy = _basicTreeProperties.taxonomies === true;
         _state.showSequence = _basicTreeProperties.sequences === true;
-        _state.showConfidenceValues = _basicTreeProperties.confidences === true;
+        // The Confidence checkbox APPEARS whenever the tree has support values
+        // (that is driven by _basicTreeProperties.confidences where the panel
+        // is built) but starts unchecked: confidence values clutter the tree.
+        _state.showConfidenceValues = false;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
