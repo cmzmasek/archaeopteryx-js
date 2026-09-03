@@ -1145,6 +1145,24 @@ if (!phyloXml) {
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
+        // The Short Names pre-set judged the ORIGINAL names, which is wrong
+        // once a name property replaces them on display: flu tips are
+        // 13-character ids but 50-character genome names. Re-judge from what
+        // is actually shown. (The wrapper is skipped -- its "name" is the
+        // tree's own name, which is not a node label.)
+        if (_vis.labelRef) {
+            let longest = 0;
+            forester.preOrderTraversalAll(_treeData, function (n) {
+                if (!n.parent) {
+                    return;
+                }
+                let name = displayNodeName(n);
+                if (name && name.length > longest) {
+                    longest = name.length;
+                }
+            });
+            _state.shortenNodeNames = longest > SHORTEN_NAME_MAX_LENGTH;
+        }
         if (!_settings.enableVisualizations) {
             return;
         }
@@ -3657,8 +3675,11 @@ if (!phyloXml) {
         let colorId = _vis ? _vis.colorId : null;
         let shapeId = _vis ? _vis.shapeId : null;
         let show = _state.showVisualizations;
+        let shorten = _state.shortenNodeNames;
         initializeVisualizations();
-        _state.showVisualizations = show;   // the rebuild is not a user choice
+        // the rebuild is not a user choice: neither checkbox moves
+        _state.showVisualizations = show;
+        _state.shortenNodeNames = shorten;
         _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
         _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
         populateVisualizationMenus();
