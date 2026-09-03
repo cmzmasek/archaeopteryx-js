@@ -66,7 +66,9 @@ function loadTree(basename) {
 }
 
 // One line per candidate: "id mode" or "id mode+shape", in the classifier's
-// own (deterministic, label-sorted) order.
+// own order: best first (categorical ahead of ranges, then by score --
+// coverage x balance -- then alphabetically). The first entry is what the
+// viewer auto-applies on load.
 function summarize(candidates) {
     return candidates.map(function (c) {
         return c.id + ' ' + c.colorMode + (c.shape ? '+shape' : '');
@@ -166,16 +168,19 @@ function testBcl2() {
 // normalization (the raw file wraps values across lines) -- so it just
 // fits the 7-shape limit. Year is numeric with two values: a two-point
 // ramp, plus shapes, which for two years is genuinely readable.
+// The ranking puts the 14 well-spread PANGO lineages first and the two
+// heavily skewed 2-value fields (Host, L0) near the bottom -- balance, not
+// just presence, decides the order.
 function testBranchEvents() {
     return expectExactly('branch_events', [
-        'prop:vipr:Country category',
-        'prop:vipr:Host category+shape',
         'prop:vipr:PANGO_Lineage category',
-        'prop:vipr:PANGO_Lineage_L0 category+shape',
-        'prop:vipr:PANGO_Lineage_L1 category',
         'prop:vipr:Region category+shape',
-        'prop:vipr:Year range+shape',
-        'prop:vipr:Year_Month category'
+        'prop:vipr:PANGO_Lineage_L1 category',
+        'prop:vipr:Country category',
+        'prop:vipr:Year_Month category',
+        'prop:vipr:Host category+shape',
+        'prop:vipr:PANGO_Lineage_L0 category+shape',
+        'prop:vipr:Year range+shape'
     ]);
 }
 
@@ -206,12 +211,15 @@ function testFluH5() {
 // fields (201 unique each), state_province (9% coverage) and strain/
 // genome_name (near-unique) are all refused.
 function testHerpesDnapol() {
+    // geographic_group first: 90% coverage over six well-spread continents.
+    // host_group is LAST of the categoricals -- 92% of its nodes say
+    // "Nonhuman Mammal", and the balance term knows it.
     return expectExactly('herpes_dnapol', [
-        'prop:BVBRC:collection_year range',
         'prop:BVBRC:geographic_group category+shape',
+        'prop:BVBRC:isolation_country category',
         'prop:BVBRC:host_common_name category',
         'prop:BVBRC:host_group category+shape',
-        'prop:BVBRC:isolation_country category'
+        'prop:BVBRC:collection_year range'
     ]);
 }
 
@@ -221,13 +229,13 @@ function testHerpesDnapol() {
 function testInfluenza() {
     return expectExactly('influenza', [
         'prop:ird:Country category+shape',
-        'prop:ird:H5Clade category+shape',
-        'prop:ird:HA range+shape',
         'prop:ird:Host category+shape',
-        'prop:ird:NA range+shape',
-        'prop:ird:Region category+shape',
         'prop:ird:Subtype category+shape',
-        'prop:ird:Year range+shape'
+        'prop:ird:Region category+shape',
+        'prop:ird:H5Clade category+shape',
+        'prop:ird:Year range+shape',
+        'prop:ird:NA range+shape',
+        'prop:ird:HA range+shape'
     ]);
 }
 
@@ -264,6 +272,11 @@ function testDescriptorStats() {
     if (!hg || hg.coverage !== 149 || hg.total !== 201 || hg.values.length !== 4) return false;
     if (hg.numeric !== false || hg.kind !== 'property' || hg.ref !== 'BVBRC:host_group') return false;
     if (hg.label !== 'host_group') return false;
+    // counts must sum to the coverage, and the score must be a sane fraction
+    var sum = 0;
+    hg.values.forEach(function (v) { sum += hg.counts[v]; });
+    if (sum !== hg.coverage) return false;
+    if (!(hg.score > 0 && hg.score < 1)) return false;
     var cy = byId['prop:BVBRC:collection_year'];
     if (!cy || cy.numeric !== true || cy.coverage !== 164 || cy.values.length !== 48) return false;
     // numeric values are sorted numerically
@@ -400,6 +413,98 @@ function testLabelCollision() {
         && labels.indexOf('vipr:Host') >= 0;
 }
 
+// Categorical candidates outrank numeric ranges even when the range scores
+// higher: on the 97-strain Caliciviridae tree Year's score beats Genus's,
+// and Genus still comes first.
+function testCategoricalTierFirst() {
+    var cands = forester.visualizationCandidates(loadTree('Caliciviridae_100'));
+    if (cands.length !== 2) return false;
+    var genus = cands[0], year = cands[1];
+    return genus.id === 'prop:vipr:Genus' && year.id === 'prop:vipr:Year'
+        && year.score > genus.score;
+}
+
+// Balance, not just coverage: full coverage with a 90/10 split ranks below
+// full coverage with an even split.
+function testBalanceRanksEvenFirst() {
+    var skewed = [];
+    for (var i = 0; i < 9; ++i) skewed.push('a');
+    skewed.push('b');
+    var phyS = starTree(skewed, 'x:Skewed');
+    var even = ['a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b'];
+    var phyE = starTree(even, 'x:Even');
+    // merge the two fields onto ONE tree
+    var i2 = 0;
+    forester.preOrderTraversalAll(phyS, function (n) {
+        if (n.children || n._children) return;
+        n.properties.push({ref: 'x:Even', value: even[i2++], datatype: 'xsd:string', applies_to: 'node'});
+    });
+    var cands = forester.visualizationCandidates(phyS);
+    return cands.length === 2
+        && cands[0].ref === 'x:Even'
+        && cands[1].ref === 'x:Skewed'
+        && cands[0].score > cands[1].score;
+}
+
+// --------------------------------------------------------------
+// The readable-name inference (forester.nodeLabelProperty)
+// --------------------------------------------------------------
+
+// Exactly the two BV-BRC trees whose tips are PATRIC / genome identifiers
+// get their genome_name property as the display label; every other demo
+// tree keeps its own names.
+function testLabelPropertyFixtures() {
+    var expected = {
+        Adenoviridae: null, Caliciviridae_100: null, Caliciviridae_500: null,
+        apaf: null, bcl2: null, branch_events: null, confidences: null,
+        flu_h5: 'BVBRC:genome_name', herpes_dnapol: 'BVBRC:genome_name',
+        influenza: null
+    };
+    return Object.keys(expected).every(function (k) {
+        var got = forester.nodeLabelProperty(loadTree(k));
+        if (got !== expected[k]) {
+            console.log('    ' + k + ': expected ' + expected[k] + ', got ' + got);
+            return false;
+        }
+        return true;
+    });
+}
+
+// Readable node names are never overridden, however good the name property.
+function testLabelReadableNamesStand() {
+    var phy = starTree(['x', 'x', 'y'], 'x:genome_name');
+    var i = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        n.name = 'Homo sapiens strain ' + (i++);   // wordy names
+        n.properties = [{ref: 'x:genome_name', value: 'Readable name ' + i, datatype: 'xsd:string', applies_to: 'node'}];
+    });
+    return forester.nodeLabelProperty(phy) === null;
+}
+
+// A name-suffixed field of terse codes (strain-like) does not qualify: the
+// values must be mostly wordy.
+function testLabelWordyGate() {
+    var phy = starTree(['KOS1', 'C27', 'F123'], 'x:genome_name');
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        n.name = 'PATRIC.' + Math.abs(n.name ? n.name.length : 1) + '.123';
+    });
+    return forester.nodeLabelProperty(phy) === null;
+}
+
+// Only fields that say they are names qualify -- a wordy Host field must not
+// become the tip label.
+function testLabelSuffixGate() {
+    var phy = starTree(['Sea Mammal one', 'Sea Mammal two', 'Lab strain three'], 'x:Host');
+    var i = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        n.name = 'ID.' + (i++) + '.456';
+    });
+    return forester.nodeLabelProperty(phy) === null;
+}
+
 // The value accessor must agree with the classifier: every value the
 // classifier counted must be readable back off its node, and a node
 // without one answers null.
@@ -479,6 +584,12 @@ runTest("numeric identifier guard   : ", testNumericIdentifierGuard);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
 runTest("label collision            : ", testLabelCollision);
+runTest("categorical tier first     : ", testCategoricalTierFirst);
+runTest("balance ranks even first   : ", testBalanceRanksEvenFirst);
+runTest("label property, fixtures   : ", testLabelPropertyFixtures);
+runTest("label: readable names stand: ", testLabelReadableNamesStand);
+runTest("label: wordy gate          : ", testLabelWordyGate);
+runTest("label: suffix gate         : ", testLabelSuffixGate);
 runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
 runTest("node value, element slots  : ", testNodeValueElementSlots);
 runTest("wrapper tolerated          : ", testWrapperTolerated);

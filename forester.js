@@ -859,7 +859,7 @@
             Object.keys(perNode).forEach(function (id) {
                 let g = perNode[id];
                 if (!stats[id]) {
-                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label, nodes: 0, values: new Set(), multi: false};
+                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label, nodes: 0, values: new Set(), counts: {}, multi: false};
                 }
                 let s = stats[id];
                 s.nodes++;
@@ -868,6 +868,7 @@
                 }
                 for (let i = 0; i < g.values.length; ++i) {
                     s.values.add(g.values[i]);
+                    s.counts[g.values[i]] = (s.counts[g.values[i]] || 0) + 1;
                 }
             });
         });
@@ -906,6 +907,17 @@
                 colorMode = 'category';
                 values.sort();
             }
+            // Rank by how much a visualization would actually show: coverage
+            // times balance, where balance is the normalized entropy of the
+            // value distribution. A field that is one value on 92% of nodes
+            // scores low even with full coverage; an even 4-way split on 90%
+            // of nodes scores high.
+            let entropy = 0;
+            values.forEach(function (v) {
+                let p = s.counts[v] / covered;
+                entropy -= p * Math.log(p);
+            });
+            let balance = entropy / Math.log(distinct);
             candidates.push({
                 id: id,
                 kind: s.kind,
@@ -917,6 +929,8 @@
                 coverage: covered,
                 total: total,
                 values: values,
+                counts: s.counts,
+                score: (covered / total) * balance,
                 colorMode: colorMode,
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
@@ -932,12 +946,106 @@
             }
         });
 
+        // Best first: categorical fields ahead of numeric ranges (a
+        // categorical colouring shows the tree's structure; a ramp is the
+        // more specialised view), then by score, ties alphabetically. The
+        // first entry is what the viewer applies on load.
         candidates.sort(function (a, b) {
+            if (a.colorMode !== b.colorMode) {
+                return a.colorMode === 'category' ? -1 : 1;
+            }
+            if (a.score !== b.score) {
+                return b.score - a.score;
+            }
             let la = a.label.toLowerCase();
             let lb = b.label.toLowerCase();
             return la < lb ? -1 : (la > lb ? 1 : (a.id < b.id ? -1 : 1));
         });
         return candidates;
+    };
+
+    // Decides whether a property should REPLACE the node names as the
+    // displayed tip label, and which one. Database exports often name their
+    // tips with identifiers (PATRIC.10334.249.FJ478159..., 11320.305060)
+    // while carrying the readable name in a property such as
+    // BVBRC:genome_name. All of the following must hold, or the answer is
+    // null and the names stand:
+    //
+    //   - at least 80% of the named external nodes have identifier-like
+    //     names (no spaces, at least one digit) -- readable names are never
+    //     overridden;
+    //   - the property's local name ends in "name" (genome_name,
+    //     sample_name, ...): only fields that say they are names qualify;
+    //   - it covers at least 90% of the external nodes, is mostly distinct
+    //     (>= 50%), and is mostly wordy (>= 50% of values contain a space)
+    //     -- which is what separates genome_name from strain codes.
+    //
+    // Of several qualifiers, the best-covered wins, ties alphabetically.
+    forester.nodeLabelProperty = function (tree) {
+        let total = 0;
+        let named = 0;
+        let idLike = 0;
+        let refs = {};   // ref -> {covered, values:Set, wordy}
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children || n._children) {
+                return;
+            }
+            total++;
+            if (n.name && String(n.name).trim().length > 0) {
+                named++;
+                let name = String(n.name).trim();
+                if (!/\s/.test(name) && /\d/.test(name)) {
+                    idLike++;
+                }
+            }
+            if (n.properties) {
+                let seen = {};
+                for (let i = 0; i < n.properties.length; ++i) {
+                    let p = n.properties[i];
+                    if (!p.ref || p.applies_to !== 'node' || seen[p.ref]
+                        || p.ref.indexOf(VIS_EXCLUDED_REF_PREFIX) === 0) {
+                        continue;
+                    }
+                    let local = p.ref.indexOf(':') >= 0 ? p.ref.substring(p.ref.indexOf(':') + 1) : p.ref;
+                    if (!/name$/i.test(local)) {
+                        continue;
+                    }
+                    let v = (p.value === undefined || p.value === null) ? '' : String(p.value).trim();
+                    if (v.length === 0) {
+                        continue;
+                    }
+                    seen[p.ref] = true;
+                    if (!refs[p.ref]) {
+                        refs[p.ref] = {covered: 0, values: new Set(), wordy: 0};
+                    }
+                    refs[p.ref].covered++;
+                    refs[p.ref].values.add(v);
+                    if (v.indexOf(' ') >= 0) {
+                        refs[p.ref].wordy++;
+                    }
+                }
+            }
+        });
+        if (named === 0 || idLike * 10 < named * 8) {
+            return null;
+        }
+        let best = null;
+        Object.keys(refs).sort().forEach(function (ref) {
+            let r = refs[ref];
+            if (r.covered * 10 < total * 9) {
+                return;
+            }
+            if (r.values.size * 2 < r.covered) {
+                return;
+            }
+            if (r.wordy * 2 < r.covered) {
+                return;
+            }
+            if (!best || r.covered > refs[best].covered) {
+                best = ref;
+            }
+        });
+        return best;
     };
 
     // Reads a node's value for one candidate, exactly as the classifier read

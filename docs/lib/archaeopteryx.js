@@ -1141,7 +1141,10 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null};
+        // The readable-name inference stands on its own: it applies even when
+        // the Color / Shape menus are disabled.
+        _vis.labelRef = forester.nodeLabelProperty(_treeData);
         if (!_settings.enableVisualizations) {
             return;
         }
@@ -1163,6 +1166,14 @@ if (!phyloXml) {
             _vis.candidates.push(c);
             _vis.byId[c.id] = c;
         });
+        // Auto-apply the best candidate: the classifier returns them best
+        // first, so a tree opens already coloured by its most informative
+        // field instead of grey with a menu to discover.
+        if (_vis.candidates.length > 0) {
+            _vis.autoColorId = _vis.candidates[0].id;
+            _vis.colorId = _vis.autoColorId;
+            _state.showVisualizations = true;
+        }
     }
 
     function currentColorVis() {
@@ -2172,6 +2183,23 @@ if (!phyloXml) {
         return _selectedNodes.has(phynode);
     }
 
+    // The name displayed for a node. Usually the node's own name -- but when
+    // a tree names its tips with database identifiers (PATRIC.10334...,
+    // 11320.305060) while carrying the readable name in a property,
+    // forester.nodeLabelProperty spots that at launch and the property is
+    // shown instead. Exports and the node-data dialog keep the real name.
+    function displayNodeName(phynode) {
+        if (_vis && _vis.labelRef && !phynode.children && phynode.properties) {
+            for (let i = 0; i < phynode.properties.length; ++i) {
+                let p = phynode.properties[i];
+                if (p.ref === _vis.labelRef && p.applies_to === 'node' && p.value) {
+                    return String(p.value);
+                }
+            }
+        }
+        return phynode.name;
+    }
+
     let makeNodeLabel = function (phynode) {
         if (!_state.showExternalLabels && !(phynode.children)) {
             return null;
@@ -2185,11 +2213,12 @@ if (!phyloXml) {
         }
 
         let l = "";
-        if (_state.showNodeName && phynode.name) {
-            if (_state.shortenNodeNames && phynode.name.length > SHORTEN_NAME_MAX_LENGTH) {
-                l = append(l, shortenName(phynode.name, 8));
+        let displayName = displayNodeName(phynode);
+        if (_state.showNodeName && displayName) {
+            if (_state.shortenNodeNames && displayName.length > SHORTEN_NAME_MAX_LENGTH) {
+                l = append(l, shortenName(displayName, 8));
             } else {
-                l = append(l, phynode.name);
+                l = append(l, displayName);
             }
         }
 
@@ -3627,7 +3656,9 @@ if (!phyloXml) {
     function rebuildVisualizations() {
         let colorId = _vis ? _vis.colorId : null;
         let shapeId = _vis ? _vis.shapeId : null;
+        let show = _state.showVisualizations;
         initializeVisualizations();
+        _state.showVisualizations = show;   // the rebuild is not a user choice
         _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
         _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
         populateVisualizationMenus();
@@ -3882,13 +3913,14 @@ if (!phyloXml) {
 
         initializeSettings(_settings);
 
-        setSelectMenuValue(LABEL_COLOR_SELECT_MENU, DEFAULT);
-        setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);
-
+        // Esc resets to the launch state -- which includes the auto-applied
+        // colour, not a grey tree.
         if (_vis) {
-            _vis.colorId = null;
+            _vis.colorId = _vis.autoColorId;
             _vis.shapeId = null;
         }
+        setSelectMenuValue(LABEL_COLOR_SELECT_MENU, (_vis && _vis.colorId) || DEFAULT);
+        setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);
         removeColorLegend(LEGEND_LABEL_COLOR);
         removeShapeLegend(LEGEND_NODE_SHAPE);
 

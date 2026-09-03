@@ -441,11 +441,29 @@ What gets offered, briefly:
 * A node without a value keeps the default look, and the legend names the
   field so partial coverage is visible.
 
+The menus are ordered **best first** — categorical fields ahead of numeric
+ramps, then by coverage × balance (the normalized entropy of the value
+distribution), so a field that reads "Nonhuman Mammal" on 92% of its nodes
+sits below one that actually splits the tree. **The best candidate is applied
+automatically on load**: a tree opens coloured by its most informative field
+rather than grey with a menu to discover. Esc resets back to that state.
+
 Colours are assigned from the **complete** tree, so a value keeps its colour
 inside a subtree view even when the subtree does not contain it; the menus and
 choices survive diving into and out of subtrees unchanged. Choosing a Color
 also switches the Visualizations checkbox on, since one colour paints both the
 label and the node.
+
+### Readable tip names
+
+Database exports often name their tips with identifiers
+(`PATRIC.10334.249.FJ478159…`, `11320.305060`) while carrying the readable
+name in a property such as `BVBRC:genome_name`. When at least 80% of the tip
+names look like identifiers and a `…name` property is well-covered, mostly
+distinct and mostly wordy, that property is **displayed as the tip label**
+instead (`forester.nodeLabelProperty` makes the call, under test). Readable
+names are never overridden, exports and the node-data dialog keep the real
+name, and searching Node Name still searches the real name.
 
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
