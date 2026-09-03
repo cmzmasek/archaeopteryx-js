@@ -252,6 +252,7 @@ if (!phyloXml) {
     // unrooted) that this viewer does not draw.
     const LAYOUT_RECT_BUTTON = 'layout_rect_b';
     const LAYOUT_CIRC_BUTTON = 'layout_circ_b';
+    const LAYOUT_UNROOTED_BUTTON = 'layout_unrooted_b';
     const CLADOGRAM_BUTTON = 'cla_b';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const DOWNLOAD_BUTTON = 'dl_b';
@@ -403,7 +404,9 @@ if (!phyloXml) {
     let _w = null;
     let _yScale = null;
     let _radial = null;
-    let _radialRotation = 0;          // radians added to the circular layout's angles (X+/X- rotate buttons)
+    let _unroot = null;   // unrooted-layout extent {maxRad}, set per render
+    let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
+    const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
@@ -837,10 +840,10 @@ if (!phyloXml) {
         dots.enter().append('circle')
             .merge(dots)
             .attr('cx', function (h) {
-                return _state.circularDisplay ? radialXY(h.node.x, h.node.y)[0] : h.node.y;
+                return layoutPointXY(h.node)[0];
             })
             .attr('cy', function (h) {
-                return _state.circularDisplay ? radialXY(h.node.x, h.node.y)[1] : h.node.x;
+                return layoutPointXY(h.node)[1];
             })
             .attr('r', 2.2 / scale) // constant on screen, whatever the miniature's scale
             .style('fill', function (h) {
@@ -1773,16 +1776,59 @@ if (!phyloXml) {
                 maxY: maxY,
                 maxRad: Math.min(_displayWidth, _displayHeight) * 0.42
             };
+            _unroot = null;
+        } else if (_state.unrootedDisplay) {
+            _radial = null;
+            // The desktop's unrooted display: equal-angle, computed by
+            // forester.equalAngleLayout. Spoke lengths come from the branch
+            // lengths in phylogram mode (via the distToRoot differences
+            // branchLengthScaling just wrote) and are one constant step per
+            // level in cladogram mode; the radial budget matches circular's.
+            let budget = Math.min(_displayWidth, _displayHeight) * 0.42;
+            let lengthOf;
+            if (_state.phylogram) {
+                let maxDist = 0;
+                forester.preOrderTraversal(_root, function (n) {
+                    if (!n.children && n.distToRoot > maxDist) {
+                        maxDist = n.distToRoot;
+                    }
+                });
+                let factor = maxDist > 0 ? budget / maxDist : 1;
+                lengthOf = function (n) {
+                    return Math.max(0, n.distToRoot - (n.parent ? n.parent.distToRoot : 0)) * factor;
+                };
+            } else {
+                let maxDepth = 0;
+                for (let i = 0; i < nodes.length; ++i) {
+                    if (nodes[i].depth > maxDepth) {
+                        maxDepth = nodes[i].depth;
+                    }
+                }
+                let step = budget / Math.max(1, maxDepth);
+                lengthOf = function () {
+                    return step;
+                };
+            }
+            _unroot = forester.equalAngleLayout(_root, UNROOTED_START_ANGLE + _radialRotation, lengthOf);
         } else {
             _radial = null;
+            _unroot = null;
         }
 
         if (_state.dynahide) {
-            _dynahide_counter = 0;
-            _dynahide_factor = Math.round(_state.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
-            forester.preOrderTraversal(_root, function (n) {
-                n.hide = !n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0);
-            });
+            if (_state.unrootedDisplay) {
+                // as on the desktop: no label auto-hiding in unrooted (there
+                // is no even row spacing to decimate against)
+                forester.preOrderTraversal(_root, function (n) {
+                    n.hide = false;
+                });
+            } else {
+                _dynahide_counter = 0;
+                _dynahide_factor = Math.round(_state.externalNodeFontSize / ((0.8 * _displayHeight) / uncollsed_nodes));
+                forester.preOrderTraversal(_root, function (n) {
+                    n.hide = !n.children && _dynahide_factor >= 2 && (++_dynahide_counter % _dynahide_factor !== 0);
+                });
+            }
         }
 
         updateButtonEnabledState();
@@ -1903,12 +1949,18 @@ if (!phyloXml) {
             })
             .style('paint-order', 'stroke')
             .attr('text-anchor', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return labelFlip(d) ? 'end' : 'start';
                 }
                 return d.children ? 'end' : 'start';
             })
             .attr('transform', function (d) {
+                if (_state.unrootedDisplay) {
+                    if (_radialLabelsHorizontal) {
+                        return null; // upright at the node
+                    }
+                    return 'rotate(' + labelAngleDeg(d) + ')' + (labelFlip(d) ? ' rotate(180)' : '');
+                }
                 if (!_state.circularDisplay) {
                     return null;
                 }
@@ -1928,13 +1980,13 @@ if (!phyloXml) {
                 return 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
             })
             .attr('dy', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return '0.32em';
                 }
                 return d.children ? 0.3 * _state.internalNodeFontSize + 'px' : 0.3 * _state.externalNodeFontSize + 'px';
             })
             .attr('x', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return labelFlip(d) ? -gap : gap;
                 }
                 if (!(d.children)) {
@@ -1952,14 +2004,14 @@ if (!phyloXml) {
             .style('font-size', _state.branchDataFontSize + 'px')
             .style('fill', _state.branchColorDefault)
             .attr('text-anchor', function () {
-                return _state.circularDisplay ? 'middle' : null;
+                return radialDisplay() ? 'middle' : null;
             })
             .attr('transform', function (d) {
-                return _state.circularDisplay ? branchLabelTransform(d) : null;
+                return radialDisplay() ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return 0;
                 }
                 if (d.parent) {
@@ -1976,11 +2028,11 @@ if (!phyloXml) {
             .style('font-size', _state.branchDataFontSize + 'px')
             .style('fill', _state.branchColorDefault)
             .attr('transform', function (d) {
-                return _state.circularDisplay ? branchLabelTransform(d) : null;
+                return radialDisplay() ? branchLabelTransform(d) : null;
             })
             .attr('dy', _state.branchDataFontSize)
             .attr('x', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return 0;
                 }
                 if (d.parent) {
@@ -1994,11 +2046,11 @@ if (!phyloXml) {
             .style('font-size', _state.branchDataFontSize + 'px')
             .style('fill', _state.labelColorDefault)
             .attr('transform', function (d) {
-                return _state.circularDisplay ? branchLabelTransform(d) : null;
+                return radialDisplay() ? branchLabelTransform(d) : null;
             })
             .attr('dy', '-.25em')
             .attr('x', function (d) {
-                if (_state.circularDisplay) {
+                if (radialDisplay()) {
                     return 0;
                 }
                 if (d.parent) {
@@ -2148,7 +2200,7 @@ if (!phyloXml) {
         // _svgGroup, so that name put them in the way of selectAll('path.link')
         // -- the main link data-join, and the overview's miniature.
         _svgGroup.selectAll('g.aptx-align-ext').remove();
-        if (!_state.circularDisplay && _state.phylogram && _state.alignPhylogram && _state.showExternalLabels
+        if (!radialDisplay() && _state.phylogram && _state.alignPhylogram && _state.showExternalLabels
             && (_state.showNodeName || _state.showTaxonomy || _state.showSequence)) {
             let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
             ext.selectAll('path')
@@ -2449,8 +2501,9 @@ if (!phyloXml) {
         let size = svgSize();
         if (size && _baseSvg) {
             let t = d3.zoomTransform(_baseSvg.node());
-            let lx = _state.circularDisplay ? radialXY(hit.x, hit.y)[0] : hit.y;
-            let ly = _state.circularDisplay ? radialXY(hit.x, hit.y)[1] : hit.x;
+            let p = layoutPointXY(hit);
+            let lx = p[0];
+            let ly = p[1];
             _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
                 .translate((size.w / 2) - (lx * t.k), (size.h / 2) - (ly * t.k))
                 .scale(t.k));
@@ -2710,6 +2763,13 @@ if (!phyloXml) {
     };
 
     // ---- radial (circular) layout helpers ----
+    // Either of the desktop's two "radial" layouts. Circular and unrooted
+    // share rotation, the label-direction flip, single-axis zoom and all the
+    // radial label mathematics below.
+    function radialDisplay() {
+        return _state.circularDisplay || _state.unrootedDisplay;
+    }
+
     // When _state.circularDisplay is on, the cluster's cross-axis position (node.x) is
     // reinterpreted as an angle and its depth position (node.y) as a radius, so the
     // same layout renders as a circular tree. _radial is set per render in update().
@@ -2728,26 +2788,43 @@ if (!phyloXml) {
     function radialXY(x, y) {
         return polarXY(radialAngle(x), radialRadius(y));
     }
-    function nodeTransform(d) {
-        if (_state.circularDisplay) {
-            let p = radialXY(d.x, d.y);
-            return 'translate(' + p[0] + ',' + p[1] + ')';
+    // The node's position in the tree group's coordinate frame, whatever the
+    // current layout (rectangular / circular / unrooted).
+    function layoutPointXY(d) {
+        if (_state.unrootedDisplay) {
+            return [d.ux, d.uy];
         }
-        return 'translate(' + d.y + ',' + d.x + ')';
+        if (_state.circularDisplay) {
+            return radialXY(d.x, d.y);
+        }
+        return [d.y, d.x];
+    }
+
+    function nodeTransform(d) {
+        let p = layoutPointXY(d);
+        return 'translate(' + p[0] + ',' + p[1] + ')';
+    }
+
+    // The screen angle (radians, y down) of the node's spoke: the direction
+    // its incoming branch points away from the centre. Circular derives it
+    // from the cluster position; unrooted carries it from the equal-angle
+    // layout (forester.equalAngleLayout).
+    function spokeAngle(d) {
+        return _state.unrootedDisplay ? d.uangle : (radialAngle(d.x) - (Math.PI / 2));
     }
 
     // Degrees to rotate a label so it reads along the radius at node d's angle.
     function labelAngleDeg(d) {
-        return radialAngle(d.x) * 180 / Math.PI - 90;
+        return spokeAngle(d) * 180 / Math.PI;
     }
     // Nodes on the left half of the circle need their text flipped 180° so it
     // isn't upside-down.
     function labelFlip(d) {
-        let a = radialAngle(d.x) % (2 * Math.PI);
-        if (a < 0) {
-            a += 2 * Math.PI;
+        let m = spokeAngle(d) % (2 * Math.PI);
+        if (m < 0) {
+            m += 2 * Math.PI;
         }
-        return a >= Math.PI;
+        return m > (Math.PI / 2) && m < (1.5 * Math.PI);
     }
     // Transform for a branch-data label (confidence / branch length / events):
     // rotate to the node's angle and sit at the midpoint of the branch (radially).
@@ -2755,11 +2832,21 @@ if (!phyloXml) {
         if (!d.parent) {
             return 'rotate(' + labelAngleDeg(d) + ')';
         }
-        let mid = (radialRadius(d.parent.y) - radialRadius(d.y)) / 2;
+        let mid;
+        if (_state.unrootedDisplay) {
+            let dx = d.ux - d.parent.ux;
+            let dy = d.uy - d.parent.uy;
+            mid = -Math.sqrt((dx * dx) + (dy * dy)) / 2;
+        } else {
+            mid = (radialRadius(d.parent.y) - radialRadius(d.y)) / 2;
+        }
         return 'rotate(' + labelAngleDeg(d) + ') translate(' + mid + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
     }
 
     let elbow = function (d) {
+        if (_state.unrootedDisplay) {
+            return 'M' + d.source.ux + ',' + d.source.uy + 'L' + d.target.ux + ',' + d.target.uy;
+        }
         if (_state.circularDisplay) {
             let sa = radialAngle(d.source.x), ta = radialAngle(d.target.x);
             let sr = radialRadius(d.source.y), tr = radialRadius(d.target.y);
@@ -2934,6 +3021,7 @@ if (!phyloXml) {
     // throws instead of doing nothing.
     const STATE_KEYS = [
         'circularDisplay',
+        'unrootedDisplay',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -3040,6 +3128,12 @@ if (!phyloXml) {
         _state.alignPhylogram = false;
         if (_state.circularDisplay === undefined) {
             _state.circularDisplay = false;
+        }
+        if (_state.unrootedDisplay === undefined) {
+            _state.unrootedDisplay = false;
+        }
+        if (_state.circularDisplay && _state.unrootedDisplay) {
+            throw new Error(ERROR + '"circularDisplay" and "unrootedDisplay" cannot both be true');
         }
         _state.dynahide = true;
 
@@ -4100,7 +4194,7 @@ if (!phyloXml) {
 
     function keepViewportCentred(applyZoom) {
         let size = svgSize();
-        if (_state.circularDisplay || !_baseSvg || !size) {
+        if (radialDisplay() || !_baseSvg || !size) {
             applyZoom();
             return;
         }
@@ -4150,7 +4244,7 @@ if (!phyloXml) {
     // becomes the node-label-direction flip instead: external labels either
     // ride their radial spokes or stand upright (horizontal) at the ring.
     function fitWidthButtonPressed() {
-        if (_state.circularDisplay) {
+        if (radialDisplay()) {
             _radialLabelsHorizontal = !_radialLabelsHorizontal;
             syncZoomRowButtons();
             update(null, 0, true);
@@ -4169,7 +4263,7 @@ if (!phyloXml) {
     }
 
     function zoomInX(zoomInFactor) {
-        if (_state.circularDisplay) {
+        if (radialDisplay()) {
             rotateRadial(true);
             return;
         }
@@ -4197,7 +4291,7 @@ if (!phyloXml) {
     }
 
     function zoomOutX(zoomOutFactor) {
-        if (_state.circularDisplay) {
+        if (radialDisplay()) {
             rotateRadial(false);
             return;
         }
@@ -4242,6 +4336,8 @@ if (!phyloXml) {
             update(_root, 0);
             if (_state.circularDisplay) {
                 fitCircular();
+            } else if (_state.unrootedDisplay) {
+                fitUnrooted();
             } else {
                 centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
             }
@@ -4253,11 +4349,19 @@ if (!phyloXml) {
     // the outer label ring fits. Computed from the known radial extent rather
     // than getBBox(), which would read stale positions during the transition.
     function fitCircular() {
-        if (!_radial || !_radial.maxRad) {
+        fitRadialExtent(_radial && _radial.maxRad);
+    }
+
+    function fitUnrooted() {
+        fitRadialExtent(_unroot && _unroot.maxRad);
+    }
+
+    function fitRadialExtent(maxRad) {
+        if (!maxRad) {
             return;
         }
         let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
-        let outer = _radial.maxRad + labelSpace;
+        let outer = maxRad + labelSpace;
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
         if (!isFinite(scale) || scale <= 0) {
@@ -4685,6 +4789,7 @@ if (!phyloXml) {
 
     function layoutButtonClicked() {
         _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
+        _state.unrootedDisplay = getCheckboxValue(LAYOUT_UNROOTED_BUTTON);
         syncZoomRowButtons();
         zoomToFit();
     }
@@ -4701,7 +4806,18 @@ if (!phyloXml) {
         if (!minus || !plus || !expandV || !fitW) {
             return;
         }
-        if (_state.circularDisplay) {
+        // layout-restricted controls, as on the desktop: unrooted has no
+        // common label edge to align to and no even row spacing to auto-hide
+        // against, so those two controls grey out there.
+        let alignBtn = byId(PHYLOGRAM_ALIGNED_BUTTON);
+        if (alignBtn) {
+            alignBtn.disabled = _state.unrootedDisplay || _basicTreeProperties.branchLengths !== true;
+        }
+        let dyna = byId(DYNAHIDE_CB);
+        if (dyna) {
+            dyna.disabled = _state.unrootedDisplay;
+        }
+        if (radialDisplay()) {
             minus.innerHTML = makeGlyph('rotate_ccw');
             minus.title = 'rotate counter-clockwise (Alt+Left or Shift+Alt+mousewheel)';
             plus.innerHTML = makeGlyph('rotate_cw');
@@ -5230,6 +5346,18 @@ if (!phyloXml) {
         return s;
     }
 
+    // The unrooted layout, as the desktop draws it: a free-form three-spoke
+    // star with irregular angles and no hub, so it cannot be read as the
+    // circular icon.
+    function glyphUnrooted() {
+        let s = '';
+        [-105, 20, 145].forEach(function (deg) {
+            let rad = deg * Math.PI / 180;
+            s += glyphLine(50, 50, 50 + Math.cos(rad) * 42, 50 + Math.sin(rad) * 42);
+        });
+        return s;
+    }
+
     // "Fit everything": a rounded window frame with a two-headed diagonal arrow
     // pushing outward against it.
     // The desktop's rotate pair: an open pivot dot at the centre, a
@@ -5369,6 +5497,7 @@ if (!phyloXml) {
                 w = 100 * GLYPH_DT_ASPECT; sw = 6; join = 'miter'; body = glyphDisplayType(kind); break;
             case 'rectangular': cap = 'round'; body = glyphRectangular(); break;
             case 'circular': cap = 'round'; body = glyphCircular(); break;
+            case 'unrooted': cap = 'round'; body = glyphUnrooted(); break;
             case 'fit_all': sw = 6.5; body = glyphFitAll(); break;
             case 'fit_width': sw = 6.5; body = glyphFitWidth(); break;
             case 'rotate_cw': body = glyphRotate(true); break;
@@ -5590,6 +5719,8 @@ if (!phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
+            + '.aptx-panel .aptx-seg:has(input:disabled) { opacity:0.4; }'
+            + '.aptx-panel .aptx-seg:has(input:disabled) { cursor:default; }'
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
             + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
             + '.aptx-found-halo { opacity:0.35; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
@@ -6217,6 +6348,7 @@ if (!phyloXml) {
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
 
         on(LAYOUT_CIRC_BUTTON, 'click', layoutButtonClicked);
+        on(LAYOUT_UNROOTED_BUTTON, 'click', layoutButtonClicked);
 
         on(SHORTEN_NODE_NAME_CB, 'click', shortenCbClicked);
 
@@ -6609,6 +6741,7 @@ if (!phyloXml) {
             h = h.concat('<div class="aptx-segmented">');
             h = h.concat(makeSegment(makeGlyph('rectangular'), LAYOUT_RECT_BUTTON, layoutGroup, 'rectangular, root at left'));
             h = h.concat(makeSegment(makeGlyph('circular'), LAYOUT_CIRC_BUTTON, layoutGroup, 'circular'));
+            h = h.concat(makeSegment(makeGlyph('unrooted'), LAYOUT_UNROOTED_BUTTON, layoutGroup, 'unrooted (equal-angle)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -7050,7 +7183,8 @@ if (!phyloXml) {
         setRadioButtonValue(CLADOGRAM_BUTTON, !_state.phylogram && !_state.alignPhylogram);
         setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _state.alignPhylogram && _state.phylogram);
         setCheckboxValue(LAYOUT_CIRC_BUTTON, _state.circularDisplay);
-        setCheckboxValue(LAYOUT_RECT_BUTTON, !_state.circularDisplay);
+        setCheckboxValue(LAYOUT_UNROOTED_BUTTON, _state.unrootedDisplay);
+        setCheckboxValue(LAYOUT_RECT_BUTTON, !radialDisplay());
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);

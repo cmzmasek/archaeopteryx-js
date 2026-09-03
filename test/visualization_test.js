@@ -1078,6 +1078,76 @@ runTest("labels: apaf               : ", testSuggestApaf);
 runTest("labels: bcl2               : ", testSuggestBcl2);
 runTest("labels: influenza          : ", testSuggestInfluenza);
 
+// --------------------------------------------------------------
+// forester.equalAngleLayout: the unrooted (equal-angle) layout
+// --------------------------------------------------------------
+
+function testEqualAngleWedges() {
+    // (a,(b,c)): a (1 tip) gets 1/3 of the circle, (b,c) gets 2/3, split
+    // evenly between b and c; every node sits at its wedge's mid-angle.
+    var A = {name: 'a'}, B = {name: 'b'}, C = {name: 'c'};
+    var inner = {name: 'i', children: [B, C]};
+    var root = {name: 'r', children: [A, inner]};
+    var s0 = -Math.PI / 2;
+    var r = forester.equalAngleLayout(root, s0, function () {
+        return 10;
+    });
+    var eps = 1e-9;
+    var ok = Math.abs(A.uangle - (s0 + (Math.PI / 3))) < eps;
+    ok = ok && Math.abs(inner.uangle - (s0 + (4 * Math.PI / 3))) < eps;
+    ok = ok && Math.abs(B.uangle - (s0 + Math.PI)) < eps;
+    ok = ok && Math.abs(C.uangle - (s0 + (5 * Math.PI / 3))) < eps;
+    ok = ok && root.ux === 0 && root.uy === 0;
+    ok = ok && Math.abs(Math.hypot(A.ux, A.uy) - 10) < eps;
+    ok = ok && Math.abs(Math.hypot(B.ux - inner.ux, B.uy - inner.uy) - 10) < eps;
+    var expectedMax = Math.max(Math.hypot(B.ux, B.uy), Math.hypot(C.ux, C.uy), 10);
+    ok = ok && Math.abs(r.maxRad - expectedMax) < eps;
+    return ok;
+}
+
+function testEqualAngleLengths() {
+    // two tips split the circle in half; each sits at its own spoke length
+    var A = {name: 'a'}, B = {name: 'b'};
+    var root = {name: 'r', children: [A, B]};
+    var L = {a: 5, b: 20};
+    forester.equalAngleLayout(root, 0, function (n) {
+        return L[n.name];
+    });
+    var eps = 1e-9;
+    // a's wedge [0, pi), mid pi/2 -> (0, +5); b's [pi, 2pi), mid 3pi/2 -> (0, -20)
+    return Math.abs(A.ux) < eps && Math.abs(A.uy - 5) < eps
+        && Math.abs(B.ux) < eps && Math.abs(B.uy + 20) < eps;
+}
+
+function testEqualAngleFixture() {
+    // a real tree: every child's wedge is proportional to its tips, wedges
+    // tile the parent's exactly, and positions equal parent + polar step
+    var root = forester.getTreeRoot(loadTree('apaf'));
+    var r = forester.equalAngleLayout(root, -Math.PI / 2, function () {
+        return 7;
+    });
+    var eps = 1e-6;
+    var ok = r.maxRad > 0;
+    forester.preOrderTraversal(root, function (n) {
+        if (!n.children || !ok) {
+            return;
+        }
+        for (var i = 0; i < n.children.length; ++i) {
+            var d = n.children[i];
+            var dx = d.ux - n.ux, dy = d.uy - n.uy;
+            if (Math.abs(Math.hypot(dx, dy) - 7) > eps) { ok = false; }
+            if (Math.abs(Math.atan2(dy, dx) - Math.atan2(Math.sin(d.uangle), Math.cos(d.uangle))) > eps) { ok = false; }
+        }
+    });
+    return ok;
+}
+
+console.log("\nunrooted (equal-angle) layout\n");
+
+runTest("unrooted: wedge shares     : ", testEqualAngleWedges);
+runTest("unrooted: spoke lengths    : ", testEqualAngleLengths);
+runTest("unrooted: fixture geometry : ", testEqualAngleFixture);
+
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);

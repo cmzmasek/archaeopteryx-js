@@ -2277,6 +2277,68 @@
 
 
     // --------------------------------------------------------------
+    // Unrooted (equal-angle) layout
+    // --------------------------------------------------------------
+    // The desktop's unrooted display: Meacham's equal-angle algorithm, one
+    // pass, no daylight iterations. The root sits at (0,0) and owns the full
+    // circle [startAngle, startAngle + 2*pi); each child receives a wedge of
+    // its parent's proportional to the external nodes it encloses and sits at
+    // its wedge's mid-angle, at the distance lengthOf(child) gives (branch
+    // length times the caller's scale factor, or a constant for a cladogram).
+    // Angles are ABSOLUTE screen angles (radians, y down), inherited and
+    // subdivided -- never re-referenced to the incoming branch, whose
+    // direction is implicitly each wedge's midpoint.
+    //
+    // Writes ux, uy (position) and uangle (the incoming spoke's screen angle)
+    // onto every node; returns {maxRad}, the largest distance from the root.
+    forester.equalAngleLayout = function (root, startAngle, lengthOf) {
+        let counts = new Map();
+        let countExt = function (n) {
+            let c;
+            if (!n.children || n.children.length < 1) {
+                c = 1;
+            } else {
+                c = 0;
+                for (let i = 0; i < n.children.length; ++i) {
+                    c += countExt(n.children[i]);
+                }
+            }
+            counts.set(n, c);
+            return c;
+        };
+        countExt(root);
+        let maxRad = 0;
+        root.ux = 0;
+        root.uy = 0;
+        root.uangle = startAngle;
+        let recurse = function (n, low, high) {
+            if (!n.children || n.children.length < 1) {
+                return;
+            }
+            let total = counts.get(n);
+            let current = low;
+            for (let i = 0; i < n.children.length; ++i) {
+                let desc = n.children[i];
+                let arc = (counts.get(desc) / total) * (high - low);
+                let mid = current + (arc / 2);
+                let len = lengthOf(desc);
+                desc.ux = n.ux + (Math.cos(mid) * len);
+                desc.uy = n.uy + (Math.sin(mid) * len);
+                desc.uangle = mid;
+                let r = Math.sqrt((desc.ux * desc.ux) + (desc.uy * desc.uy));
+                if (r > maxRad) {
+                    maxRad = r;
+                }
+                recurse(desc, current, current + arc);
+                current += arc;
+            }
+        };
+        recurse(root, startAngle, startAngle + (2 * Math.PI));
+        return {maxRad: maxRad};
+    };
+
+
+    // --------------------------------------------------------------
     // Label-field suggestion
     // --------------------------------------------------------------
     // Decides which of the three label groups (node name, taxonomy, sequence)
