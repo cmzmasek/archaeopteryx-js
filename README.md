@@ -299,7 +299,7 @@ constants:
 
 ### Removed — passing these throws
 
-All 113 of them, alphabetically:
+All 114 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
@@ -374,8 +374,8 @@ All 113 of them, alphabetically:
 | `searchUsesRegex` | Choose the `regex` match mode in the search box instead. |
 | `selectedColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
 | `shortenNodeNames` | On by default when the tree has long node names; use the Short Names checkbox. |
-| `showBranchColors` | On by default. |
-| `showBranchColorsButton` | Shown automatically when the tree has branch colours. |
+| `showBranchColors` | Merged into the Visual Styles checkbox, like the desktop's `Visual Styles/Branch Colors`. |
+| `showBranchColorsButton` | The Visual Styles checkbox appears when the tree has branch colours or style properties. |
 | `showBranchEvents` | Shown when the tree has branch events. |
 | `showBranchLengthValues` | Off by default; use the Branch Length checkbox. |
 | `showBranchVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
@@ -412,6 +412,7 @@ All 113 of them, alphabetically:
 | `showVisualizations` | Off by default; use the Visualizations checkbox. |
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `treeName` | The name comes from the tree file. |
+| `useVisualStyles` | On by default; use the Visual Styles checkbox. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
 | `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
 | `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
@@ -472,6 +473,22 @@ rather than 300 identical "Influenz.." labels).
 
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
+
+### Visual styles (the desktop's `style:` namespace)
+
+phyloXML written by the desktop, ViPR or BV-BRC can carry per-node rendering
+instructions as properties in the reserved `style:` namespace. Five are
+honoured: `style:font_color`, `style:node_color`, `style:node_shape`
+(circle / rectangle / diamond), `style:font_size` and `style:font_style`
+(italic / bold / bold_italic). The rest of the vocabulary (font name,
+`node_size`, `node_transparency`, `node_fill_type`) is not, yet.
+
+The **Visual Styles** checkbox — the desktop's "Visual Styles/Branch Colors",
+shown when the tree carries either, on by default — turns them off and on,
+and gates phyloXML `<color>` branch colours too, exactly as on the desktop.
+An active Color visualization outranks `style:font_color`, also as on the
+desktop: set the Color menu to default to see the tree as its file styled it.
+`style:` never appears in the Color / Shape menus — it is rendering, not data.
 
 ### Moving the legends
 

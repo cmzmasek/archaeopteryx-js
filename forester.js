@@ -1066,6 +1066,57 @@
         return best;
     };
 
+    // The desktop's reserved "style:" namespace, read back as the rendering
+    // instruction it is (NodeVisualData on the desktop): per-node font colour,
+    // node colour, node shape, font size and font style. The rest of the
+    // vocabulary (font name, node_size, node_transparency, node_fill_type) is
+    // not honoured by this viewer yet. Returns null when the node carries
+    // none of the five.
+    forester.nodeVisualStyle = function (node) {
+        if (!node.properties) {
+            return null;
+        }
+        let style = null;
+        function put(key, value) {
+            if (style === null) {
+                style = {};
+            }
+            style[key] = value;
+        }
+        for (let i = 0; i < node.properties.length; ++i) {
+            let p = node.properties[i];
+            if (!p.ref || p.applies_to !== 'node' || p.value === undefined || p.value === null) {
+                continue;
+            }
+            let v = String(p.value).trim();
+            if (v.length === 0) {
+                continue;
+            }
+            if (p.ref === 'style:font_color') {
+                put('fontColor', v);
+            } else if (p.ref === 'style:node_color') {
+                put('nodeColor', v);
+            } else if (p.ref === 'style:node_shape') {
+                // the desktop's shape names; rectangle renders as our square
+                if (v === 'rectangle') {
+                    put('shape', 'square');
+                } else if (v === 'circle' || v === 'diamond') {
+                    put('shape', v);
+                }
+            } else if (p.ref === 'style:font_size') {
+                let n = Number(v);
+                if (Number.isFinite(n) && n > 0) {
+                    put('fontSize', Math.min(48, Math.max(4, n)));
+                }
+            } else if (p.ref === 'style:font_style') {
+                if (v === 'italic' || v === 'bold' || v === 'bold_italic' || v === 'plain') {
+                    put('fontStyle', v);
+                }
+            }
+        }
+        return style;
+    };
+
     // The boring part of every tip name. When the displayed names all share
     // a long prefix ("Influenza A virus ..."), a shortener that keeps the
     // first characters keeps exactly the characters that carry no

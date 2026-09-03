@@ -529,6 +529,51 @@ function testPrettyLabels() {
 }
 
 // --------------------------------------------------------------
+// The style: reader (forester.nodeVisualStyle)
+// --------------------------------------------------------------
+
+// Every Adenoviridae tip carries a style:font_color from ViPR; reading them
+// back must find exactly the externals, each with a colour value.
+function testNodeStyleFixture() {
+    var phy = loadTree('Adenoviridae');
+    var styled = 0, bad = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        var s = forester.nodeVisualStyle(n);
+        if (s) {
+            styled++;
+            if (!s.fontColor || s.fontColor.charAt(0) !== '#') bad++;
+        }
+    });
+    return styled === 321 && bad === 0;
+}
+
+// The five honoured refs parse (rectangle becomes our square, size clamps),
+// everything else in and out of the namespace is ignored.
+function testNodeStyleParsing() {
+    var n = {properties: [
+        {ref: 'style:font_color', value: '#ce1616', applies_to: 'node'},
+        {ref: 'style:node_color', value: '#1660ce', applies_to: 'node'},
+        {ref: 'style:node_shape', value: 'rectangle', applies_to: 'node'},
+        {ref: 'style:font_size', value: '200', applies_to: 'node'},
+        {ref: 'style:font_style', value: 'bold_italic', applies_to: 'node'},
+        {ref: 'style:node_transparency', value: '0.5', applies_to: 'node'},
+        {ref: 'vipr:Host', value: 'Human', applies_to: 'node'}
+    ]};
+    var s = forester.nodeVisualStyle(n);
+    if (!s) return false;
+    if (s.fontColor !== '#ce1616' || s.nodeColor !== '#1660ce') return false;
+    if (s.shape !== 'square') return false;
+    if (s.fontSize !== 48) return false;               // clamped
+    if (s.fontStyle !== 'bold_italic') return false;
+    if ('node_transparency' in s || 'nodeTransparency' in s) return false;
+    // wrong applies_to, and no style at all, both answer null
+    if (forester.nodeVisualStyle({properties: [{ref: 'style:font_color', value: '#fff', applies_to: 'parent_branch'}]}) !== null) return false;
+    if (forester.nodeVisualStyle({properties: [{ref: 'x:y', value: 'z', applies_to: 'node'}]}) !== null) return false;
+    return true;
+}
+
+// --------------------------------------------------------------
 // The shared-prefix detector (forester.commonNamePrefix)
 // --------------------------------------------------------------
 
@@ -653,6 +698,8 @@ runTest("label: readable names stand: ", testLabelReadableNamesStand);
 runTest("label: wordy gate          : ", testLabelWordyGate);
 runTest("label: suffix gate         : ", testLabelSuffixGate);
 runTest("pretty menu labels         : ", testPrettyLabels);
+runTest("style: fixture             : ", testNodeStyleFixture);
+runTest("style: parsing             : ", testNodeStyleParsing);
 runTest("prefix, fixtures           : ", testPrefixFixtures);
 runTest("prefix, word boundary      : ", testPrefixWordBoundary);
 runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);

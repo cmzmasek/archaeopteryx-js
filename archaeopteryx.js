@@ -232,7 +232,7 @@ if (!phyloXml) {
     // Names for GUI elements
     // ---------------------------
     const BASE_BACKGROUND = 'basebackground';
-    const BRANCH_COLORS_CB = 'brnch_col_cb';
+    const VISUAL_STYLES_CB = 'vstyles_cb';
     const BRANCH_EVENTS_CB = 'brevts_cb';
     const BRANCH_LENGTH_VALUES_CB = 'bl_cb';
     const BRANCH_WIDTH_SLIDER = 'bw_sl';
@@ -1131,11 +1131,20 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSort: 'count'};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSort: 'count', hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
         _vis.labelPrefix = forester.commonNamePrefix(_treeData, _vis.labelRef);
+        // The desktop's style: namespace, honoured as the rendering
+        // instructions it is. Cached on the nodes once per launch; the
+        // Visual Styles checkbox gates their USE, not their existence.
+        forester.preOrderTraversalAll(_treeData, function (n) {
+            n._style = forester.nodeVisualStyle(n);
+            if (n._style) {
+                _vis.hasStyles = true;
+            }
+        });
         // The Short Names pre-set judged the ORIGINAL names, which is wrong
         // once a name property replaces them on display: flu tips are
         // 13-character ids but 50-character genome names. Re-judge from what
@@ -1191,6 +1200,15 @@ if (!phyloXml) {
 
     function currentShapeVis() {
         return (_vis && _vis.shapeId) ? _vis.byId[_vis.shapeId] : null;
+    }
+
+    // A node's style: instructions, when the Visual Styles switch is on.
+    function nodeStyle(node) {
+        return (_state.useVisualStyles && node._style) ? node._style : null;
+    }
+
+    function stylesActive() {
+        return !!(_state.useVisualStyles && _vis && _vis.hasStyles);
     }
 
         function hasColorVisualizations() {
@@ -1657,7 +1675,19 @@ if (!phyloXml) {
 
         node.select("text.extlabel")
             .style('font-size', function (d) {
+                let style = nodeStyle(d);
+                if (style && style.fontSize) {
+                    return style.fontSize + 'px';
+                }
                 return d.children ? _state.internalNodeFontSize + 'px' : _state.externalNodeFontSize + 'px';
+            })
+            .style('font-style', function (d) {
+                let style = nodeStyle(d);
+                return (style && (style.fontStyle === 'italic' || style.fontStyle === 'bold_italic')) ? 'italic' : null;
+            })
+            .style('font-weight', function (d) {
+                let style = nodeStyle(d);
+                return (style && (style.fontStyle === 'bold' || style.fontStyle === 'bold_italic')) ? 'bold' : null;
             })
             .style('fill', makeLabelColor)
             .style('stroke', function (d) {
@@ -1799,16 +1829,17 @@ if (!phyloXml) {
         nodeUpdate.select('text.brancheventlabel')
             .text(_state.showBranchEvents ? makeBranchEventsLabel : null);
 
+        let drawShapes = _state.showVisualizations || stylesActive();
         nodeUpdate.select('path')
-            .style('stroke', _state.showVisualizations ? makeVisNodeBorderColor : null)
+            .style('stroke', drawShapes ? makeNodeStrokeColor : null)
             .style('stroke-width', _state.branchWidthDefault)
-            .style('fill', _state.showVisualizations ? makeVisNodeFillColor : null)
+            .style('fill', drawShapes ? makeNodeFillColor : null)
             .style('opacity', _state.nodeVisualizationsOpacity)
-            .attr('d', _state.showVisualizations ? makeNodeVisShape : null);
+            .attr('d', drawShapes ? makeNodeVisShape : null);
 
         node.each(function (d) {
             if (d.children) {
-                if (!_state.showVisualizations && makeNodeVisShape(d) === null) {
+                if (!drawShapes && makeNodeVisShape(d) === null) {
                     d3.select(this).select('path').transition().duration(transitionDuration)
                         .attr('d', function () {
                             return 'M0,0';
@@ -1955,11 +1986,17 @@ if (!phyloXml) {
             && _state.showVisualizations && !node.hasVis
             && currentColorVis() !== null;
 
+        // a style:node_color also earns the node its dot (font_color alone
+        // does not -- that paints the label, exactly as on the desktop)
+        let styleOf = nodeStyle(node);
+        let styled = _state.nodeSizeDefault > 0 && node.parent && !node.hasVis
+            && styleOf !== null && !!styleOf.nodeColor;
+
         // a zero-length branch off the root would otherwise be invisible
         let zeroLengthRootChild = _state.phylogram && node.parent && !node.parent.parent
             && (!node.branch_length || node.branch_length <= 0);
 
-        return (visualized || zeroLengthRootChild) ? _state.nodeSizeDefault : 0;
+        return (visualized || styled || zeroLengthRootChild) ? _state.nodeSizeDefault : 0;
     };
 
     let makeBranchWidth = function (link) {
@@ -1971,7 +2008,7 @@ if (!phyloXml) {
 
     let makeBranchColor = function (link) {
 
-        if (_state.showBranchColors && link.target.color) {
+        if (_state.useVisualStyles && link.target.color) {
             let c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
         }
@@ -2002,7 +2039,15 @@ if (!phyloXml) {
                 return _state.backgroundColorDefault;
             }
         }
-        return makeVisNodeFillColor(phynode);
+        let visColor = makeVisNodeFillColor(phynode);
+        if (visColor !== _state.backgroundColorDefault) {
+            return visColor;
+        }
+        let style = nodeStyle(phynode);
+        if (style && (style.nodeColor || style.fontColor)) {
+            return style.nodeColor || style.fontColor;
+        }
+        return visColor;
     };
 
     // A darker shade of a node's found/selected highlight color, used as a thin
@@ -2028,9 +2073,18 @@ if (!phyloXml) {
             if (evColor !== null) {
                 return evColor;
             }
-        } else if (_state.showVisualizations) {
-            return makeVisNodeBorderColor(phynode);
-        } else if (_state.showBranchColors && phynode.color) {
+        }
+        if (_state.showVisualizations) {
+            let v = makeVisNodeFillColor(phynode);
+            if (v !== _state.backgroundColorDefault) {
+                return v;
+            }
+        }
+        let style = nodeStyle(phynode);
+        if (style && (style.nodeColor || style.fontColor)) {
+            return style.nodeColor || style.fontColor;
+        }
+        if (_state.useVisualStyles && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -2048,7 +2102,13 @@ if (!phyloXml) {
                 return color;
             }
         }
-        if (_state.showBranchColors && phynode.color) {
+        // an active Color visualization outranks style:font_color, as on the
+        // desktop; clear the Color menu to see the tree as its file styled it
+        let style = nodeStyle(phynode);
+        if (style && style.fontColor) {
+            return style.fontColor;
+        }
+        if (_state.useVisualStyles && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
         }
@@ -2056,17 +2116,24 @@ if (!phyloXml) {
     };
 
     let makeNodeVisShape = function (node) {
-        let vis = currentShapeVis();
-        if (!vis || isNodeFound(node) || isNodeSelected(node)
+        if (isNodeFound(node) || isNodeSelected(node)
             || (_state.showNodeEvents && node.events && (node.events.duplications || node.events.speciations))) {
             return null;
         }
-        let value = forester.visualizationNodeValue(node, vis);
-        if (value === null) {
-            return null;
+        let vis = _state.showVisualizations ? currentShapeVis() : null;
+        if (vis) {
+            let value = forester.visualizationNodeValue(node, vis);
+            if (value !== null) {
+                node.hasVis = true;
+                return d3.symbol().type(d3SymbolType(vis.shapeScale(value))).size(nodeSymbolArea())();
+            }
         }
-        node.hasVis = true;
-        return d3.symbol().type(d3SymbolType(vis.shapeScale(value))).size(nodeSymbolArea())();
+        let style = nodeStyle(node);
+        if (style && style.shape) {
+            node.hasVis = true;
+            return d3.symbol().type(d3SymbolType(style.shape)).size(nodeSymbolArea())();
+        }
+        return null;
     };
 
         // ONE colour visualization drives both the label and the node fill -- these
@@ -2089,14 +2156,6 @@ if (!phyloXml) {
             return _state.backgroundColorDefault;
         }
         return visualizationColorFor(node) || _state.backgroundColorDefault;
-    };
-
-        let makeVisNodeBorderColor = function (node) {
-        const c = makeVisNodeFillColor(node);
-        if (c === _state.backgroundColorDefault) {
-            return _state.branchColorDefault
-        }
-        return c;
     };
 
     let makeVisLabelColor = function (node) {
@@ -2488,7 +2547,7 @@ if (!phyloXml) {
         showInternalLabels: 'off by default; use the Int. Labels checkbox',
         showExternalLabels: 'on by default; use the Ext. Labels checkbox',
         showDistributions: 'off by default',
-        showBranchColors: 'on by default',
+        showBranchColors: 'merged into the Visual Styles checkbox, like the desktop\'s "Visual Styles/Branch Colors"',
         shortenNodeNames: 'on by default when the tree has long node names; use the Short Names checkbox',
         dynahide: 'on by default; use the Auto-hide Labels checkbox',
         minConfidenceValueToShow: 'no longer configurable',
@@ -2512,7 +2571,7 @@ if (!phyloXml) {
         showNodeNameButton: 'shown automatically when the tree has node names',
         showTaxonomyButton: 'shown automatically when the tree has taxonomies',
         showSequenceButton: 'shown automatically when the tree has sequences',
-        showBranchColorsButton: 'shown automatically when the tree has branch colours',
+        showBranchColorsButton: 'the Visual Styles checkbox appears when the tree has branch colours or style properties',
         showDynahideButton: 'shown automatically once the tree has enough tips to need it',
         showShortenNodeNamesButton: 'shown automatically when the tree has long node names',
         showExternalLabelsButton: 'always shown',
@@ -2554,7 +2613,8 @@ if (!phyloXml) {
         orderTree: 'renamed to "ladderizeTree", to match the wording used everywhere else',
         controlsBackgroundColor: 'the control panel follows the light / dark palette',
         filterValues: 'reshape the tree\'s properties yourself before calling launch',
-        dynamicallyAddNodeVisualizations: 'visualizations are always derived automatically from the tree now'
+        dynamicallyAddNodeVisualizations: 'visualizations are always derived automatically from the tree now',
+        useVisualStyles: 'on by default; use the Visual Styles checkbox'
     };
 
     // ---- the public config surface ----------------------------------------
@@ -2704,7 +2764,7 @@ if (!phyloXml) {
         _state.showDistributions = false;
         _state.showInternalLabels = false;
         _state.showExternalLabels = true;
-        _state.showBranchColors = true;
+        _state.useVisualStyles = true;
         // Long names are shortened from the start; the checkbox is always there
         // to turn that off.
         _state.shortenNodeNames = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
@@ -4266,8 +4326,9 @@ if (!phyloXml) {
         update(null, 0);
     }
 
-    function branchColorsCbClicked() {
-        _state.showBranchColors = getCheckboxValue(BRANCH_COLORS_CB);
+    function visualStylesCbClicked() {
+        _state.useVisualStyles = getCheckboxValue(VISUAL_STYLES_CB);
+        resetVis();
         update(null, 0);
     }
 
@@ -5578,7 +5639,7 @@ if (!phyloXml) {
         on(VIS_CB, 'click', visCbClicked);
 
 
-        on(BRANCH_COLORS_CB, 'click', branchColorsCbClicked);
+        on(VISUAL_STYLES_CB, 'click', visualStylesCbClicked);
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
 
@@ -6030,8 +6091,8 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchEvents) {
                 nodes.push(makeCheckboxItem('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-            if (_basicTreeProperties.branchColors) { // only when the tree carries any
-                nodes.push(makeCheckboxItem('Branch Colors', BRANCH_COLORS_CB, 'to use/ignore branch colors (if present in tree file)'));
+            if (_basicTreeProperties.branchColors || (_vis && _vis.hasStyles)) { // only when the tree carries either
+                nodes.push(makeCheckboxItem('Visual Styles', VISUAL_STYLES_CB, 'to use visual styles (node and font colors, shapes) and branch colors, if present in the tree file'));
             }
             if (hasColorVisualizations()) {
                 nodes.push(makeCheckboxItem('Visualizations', VIS_CB, 'to show or hide the Color and Shape visualizations chosen above'));
@@ -6274,7 +6335,7 @@ if (!phyloXml) {
         setCheckboxValue(BRANCH_EVENTS_CB, _state.showBranchEvents);
         setCheckboxValue(INTERNAL_LABEL_CB, _state.showInternalLabels);
         setCheckboxValue(EXTERNAL_LABEL_CB, _state.showExternalLabels);
-        setCheckboxValue(BRANCH_COLORS_CB, _state.showBranchColors);
+        setCheckboxValue(VISUAL_STYLES_CB, _state.useVisualStyles);
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
