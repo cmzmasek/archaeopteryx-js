@@ -111,6 +111,36 @@ promise's `.catch`, as above) if you want to show the message yourself. See
 
 
 
+## Using the visualizations
+
+A tree opens **already coloured** by its most informative field — the viewer
+inspects what the tree carries (taxonomy, sequence fields, custom properties)
+and decides by itself what is worth showing. There is nothing to configure.
+
+* The **Color** and **Shape** menus (top of the control panel) list every
+  field worth visualizing, best first. Colouring paints the node label and
+  the node itself; shapes draw a symbol per value. Fields with many values
+  (hosts, species) sit at the end of the Color list — they are offered, but
+  never chosen for you.
+* Numeric fields with few values are treated as **codes** (H5N1 vs H5N2)
+  and get individual colours; with many values they become a **gradient**
+  (years). The legend's `[colors]` / `[gradient]` chip switches between the
+  two where both make sense.
+* The **legend** is a card you can **drag anywhere**. It shows a colour and
+  a **count** per value, `[by count]` / `[A-Z]` toggles the order, a dashed
+  **no value** row counts the nodes the field does not cover, and very long
+  legends show the top 20 with a `[+N more]` chip. Legends are part of PNG
+  and SVG exports (exports always come out light).
+* **Switch into a subtree** (or delete part of the tree) and the menus,
+  counts and legends are re-derived for what is on screen — a field with too
+  many values on the full tree may become available inside a clade. Colours
+  never change when you do this: a value keeps its colour for the whole
+  session.
+* The **Visualizations** checkbox hides the chosen colours/shapes; the
+  **Visual Styles** checkbox controls colours embedded in the tree file
+  itself (and phyloXML branch colours). Search hits and selections always
+  outrank visualization colours. **Esc** returns to the opening state.
+
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
 
@@ -418,14 +448,32 @@ All 114 of them, alphabetically:
 | `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
 | `visualizationsLegendYposOrig` | Internal bookkeeping; set visualizationsLegendYpos. |
 
-## Node visualizations
+## The automatic visualization system (developer spec)
+
+This section, together with **Value grouping** below, is written to be
+sufficient for a skilled developer (or another Claude) to rebuild the
+system. The division of labour is strict:
+
+* **forester.js decides** — pure, DOM-free, Node-testable functions:
+  `visualizationCandidates(tree)` (what to offer and how),
+  `visualizationNodeValue(node, candidate)` (a node's folded value),
+  `nodeLabelProperty(tree)` (readable tip names),
+  `commonNamePrefix(tree, ref)` (shared-prefix for shortening),
+  `nodeVisualStyle(node)` (the `style:` namespace), and the `VIS_SYNONYMS`
+  dictionary.
+* **archaeopteryx.js renders** — builds d3 scales from the descriptors,
+  owns one state object (`_vis`), the menus, the legends, and the
+  precedence chains below. It contains no classification logic.
 
 The **Color** and **Shape** menus are filled **from the tree alone**. There is
 nothing to configure and nothing to pass in: `launch()`'s old
 `nodeVisualizations` argument and the `dynamicallyAddNodeVisualizations`
-setting are gone, and passing either throws. The decision of what is worth
-offering lives in `forester.visualizationCandidates(tree)` and is under test
-(`test/visualization_test.js` holds all ten demo trees as fixtures).
+setting are gone, and passing either throws. What is worth offering is
+decided by `forester.visualizationCandidates(tree)` and is under test
+(`test/visualization_test.js`, 45 tests; the ten demo trees under
+`docs/data/` are the fixtures and the executable spec — five of them real
+ViPR / BV-BRC virus trees whose messy annotations the rules were tuned
+against).
 
 What gets offered, briefly:
 
@@ -479,6 +527,134 @@ falls back to `style:` colours where the file carries them). Auto-apply
 happens only at launch, and view changes never touch any checkbox. Choosing a
 Color also switches the Visualizations checkbox on, since one colour paints
 both the label and the node.
+
+### Candidate descriptors
+
+`visualizationCandidates` returns an ordered array of plain objects:
+
+```js
+{ id: 'prop:vipr:Genus',        // 'prop:'+ref | 'tax:code' | 'seq:name' | ...
+  kind: 'property',             // 'property' | 'taxonomy' | 'sequence'
+  ref: 'vipr:Genus',            // property ref; null for element slots
+  label: 'Genus',               // prettified for menus and legend titles
+  numeric: false,
+  coverage: 307, total: 321,    // nodes with a value / external nodes
+  values: ['Aviadenovirus', …], // one entry per GROUP (sorted; numeric fields numerically)
+  counts: {Aviadenovirus: 12, …},
+  canon: {aviadenovirus: 'Aviadenovirus', …},  // group key → display (property fields)
+  cut: null,                    // ';' | ':' | null (host/country qualifier)
+  score: 0.704,                 // coverage/total × normalized entropy
+  colorMode: 'category',        // 'category' | 'range' (the DEFAULT mode)
+  switchable: false,            // numeric ≤20 distinct: legend chip may flip the mode
+  wide: false,                  // categorical 21+ distinct (legend caps at 20)
+  shape: true }                 // ≤7 distinct: also offered in the Shape menu
+```
+
+Labels are prettified from refs (underscores → spaces, camelCase split,
+lowercase words capitalized, words with capitals kept: `PANGO_Lineage_L0` →
+"PANGO Lineage L0"); a cross-namespace label collision falls back to the
+verbatim refs.
+
+### Ranking and auto-apply
+
+`score = (coverage / total) × (H / ln distinct)` where
+`H = −Σ p·ln p` over the groups, `p = groupCount / coverage` — coverage
+times the normalized entropy of the value distribution, so a field that
+reads one value on 92% of nodes ranks low even at full coverage. Candidates
+sort by **tier** (clean categorical → range → wide), then score descending,
+ties by label case-insensitively then id. At launch the viewer applies
+`candidates[0]` automatically — unless it is wide — and turns the
+Visualizations checkbox on. Auto-apply happens **only** at launch.
+
+### Palettes, scales and shapes
+
+* **Categorical**: `VIS_COLOR_PALETTE`, exactly 20 entries — Observable10
+  (`#4269d0 #efb118 #ff725c #6cc5b0 #3ca951 #ff8ab7 #a463f2 #97bbf5
+  #9c6b4e #9498a0`) followed by each darkened (× 0.7^0.9 per RGB channel).
+  Past 20 (wide fields), `extendedPaletteColor(i)` continues it: cycle
+  `k = ⌊i/20⌋` re-uses entry `i mod 20` blended `min(0.55, 0.2·k)` toward
+  white (odd cycles) or black (even), via d3.interpolateRgb.
+* **Ranges**: 3-stop viridis `#440154 #21908C #FDE725` on a linear scale
+  with domain `[min, mean, max]` of the view's **distinct** numeric values
+  (mean of distinct values, not of nodes).
+* **Shapes**: `['circle','square','diamond','triangle','cross','star','wye']`
+  — the 7 genuinely distinct d3 v7 fill symbols.
+
+### Views: local candidacy, stable identity
+
+Candidates, bands, counts, menus and legends always describe the
+**displayed** tree. On every view change — switch to subtree, return (whole
+or by one), subtree deletion, Esc — `refreshVisualizations()` re-runs the
+classifier on `displayedRoot()` (`_in_subtree ? _root : _treeData`). A field
+refused on the full tree is offered inside a clade that earns it.
+
+Colour and shape are **identities**, held in launch-lifetime memory maps
+(`_vis.colorMemory` / `shapeMemory`, keyed `fieldId → normalizedValue →
+colour`; values lowercased for property fields, verbatim for element slots).
+First assignment wins forever; new values met in smaller views take the next
+free palette slot (`colorNext`/`shapeNext` counters). The launch view
+assigns its sorted domain 0,1,2,…, so first-view behaviour equals a plain
+indexed palette. **Numeric ramps are the deliberate exception**: their
+domain is recomputed per view (a ramp's colour is position in the view's
+range, and a six-year subtree deserves a full-width gradient).
+
+A selection survives a view change when its field is still a candidate;
+otherwise the menu returns to `default` and the tree falls back down the
+precedence chain (often to `style:` colours). View changes move no
+checkbox. Esc re-applies the launch auto-choice only if its field still
+exists, and clears the per-legend chip states.
+
+### Rendering precedence
+
+Highest first, at each paint:
+
+* **Label colour**: search/selection highlight → active Color visualization
+  → `style:font_color` → phyloXML branch colour → theme ink.
+* **Node fill**: highlight → duplication/speciation event colour → active
+  Color visualization → `style:node_color` (else `style:font_color`) →
+  background.
+* **Node outline**: darkened highlight → event colour → visualization fill
+  → style colour → branch colour → branch default.
+* **Node shape path**: suppressed for highlighted/event nodes; chosen Shape
+  visualization → `style:node_shape`. A node earns its default dot when a
+  Color visualization is active (and no shape was drawn), or when it
+  carries `style:node_color` — `font_color` alone paints only the label.
+
+### Legend anatomy
+
+One draggable SVG card per active visualization (colour, then shape,
+stacked; both move together, positions from
+`visualizationsLegendXpos/Ypos`). Card: background `backgroundColorDefault`
+at 0.92 opacity, border `branchColorDefault` at 0.5, radius 5 — all theme
+colours, so the always-light export rewrite handles them. Title row: the
+candidate's label plus chips laid right-to-left, each shown only when
+meaningful: sort (`[by count]` ⇄ `[A-Z]`/`[by value]`; numeric legends
+default to value order, word legends to count order), mode
+(`[colors]` ⇄ `[gradient]`, switchable numeric fields), expand
+(`[+N more]` ⇄ `[fewer]`, wide fields; the cap keeps the 20 most frequent
+under either sort order). Rows: 9px rounded swatch (or stroked shape
+glyph), value text (ellipsized past 28 chars), count right-aligned at 0.55
+opacity; a dashed **no value** row (total − coverage) pinned last. Gradient
+legends: a 10px bar filled by an SVG linearGradient whose middle stop sits
+at the mean's true position in `[min,max]`, min/max labels beneath, no
+sort/expand chips. Text measured with a canvas 2D context in the legend's
+font: the tree's font size floored at 11. Chip clicks stopPropagation on
+mousedown so they do not start a drag; per-legend chip state lives in
+`_vis.legendSortById / colorModeById / legendExpandedById` (keyed by field
+id, surviving view changes, cleared by Esc).
+
+### State and code map
+
+All viewer state is one object, `_vis`, reset per launch:
+`candidates`, `byId`, `colorId`, `shapeId` (current choices),
+`autoColorId`, `labelRef`, `labelPrefix`, `hasStyles` (launch-frozen),
+`legendSortById`, `colorModeById`, `legendExpandedById` (per-legend chips),
+`colorMemory`, `colorNext`, `shapeMemory`, `shapeNext` (identity maps).
+Key viewer functions: `initializeVisualizations` (launch),
+`computeVisualizationCandidates(viewRoot)` (descriptors → scales),
+`refreshVisualizations` (view change), `visualizationColorFor` /
+`makeNodeVisShape` (per-node paint), `displayNodeName` (readable names),
+`drawLegendCard` / `addLegends`, `populateVisualizationMenus`.
 
 ### Value grouping (normalization + synonym dictionary)
 
