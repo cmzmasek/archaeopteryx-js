@@ -100,6 +100,21 @@ if (!phyloXml) {
     // offered triangle-up AND triangle-down, which v7 renders identically.
     const VIS_SHAPES = ['circle', 'square', 'diamond', 'triangle', 'cross', 'star', 'wye'];
 
+    // Past the palette's 20 entries, wide categorical fields continue the
+    // desktop's qualitativeColor scheme: each further cycle re-uses the
+    // palette blended increasingly toward white (odd cycles) then black
+    // (even), capped at 0.55 -- deterministic for any number of values.
+    function extendedPaletteColor(i) {
+        const len = VIS_COLOR_PALETTE.length;
+        let c = VIS_COLOR_PALETTE[i % len];
+        let cycle = Math.floor(i / len);
+        if (cycle === 0) {
+            return c;
+        }
+        let f = Math.min(0.55, 0.2 * cycle);
+        return d3.interpolateRgb(c, (cycle % 2) === 1 ? '#ffffff' : '#000000')(f);
+    }
+
     // -----------------------------
     // Named colors and orientations
     // -----------------------------
@@ -1131,7 +1146,7 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSortById: {}, colorModeById: {}, hasStyles: false};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSortById: {}, colorModeById: {}, legendExpandedById: {}, hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
@@ -1178,7 +1193,13 @@ if (!phyloXml) {
             }
             // a switchable candidate needs both scales standing by
             if (c.colorMode === 'category' || c.switchable) {
-                c.categoryScale = d3.scaleOrdinal().range(VIS_COLOR_PALETTE).domain(c.values);
+                let range = VIS_COLOR_PALETTE;
+                if (c.values.length > VIS_COLOR_PALETTE.length) {
+                    range = c.values.map(function (_, i) {
+                        return extendedPaletteColor(i);
+                    });
+                }
+                c.categoryScale = d3.scaleOrdinal().range(range).domain(c.values);
             }
             if (c.shape) {
                 c.shapeScale = d3.scaleOrdinal().range(VIS_SHAPES).domain(c.values);
@@ -1188,8 +1209,9 @@ if (!phyloXml) {
         });
         // Auto-apply the best candidate: the classifier returns them best
         // first, so a tree opens already coloured by its most informative
-        // field instead of grey with a menu to discover.
-        if (_vis.candidates.length > 0) {
+        // field instead of grey with a menu to discover. A wide field
+        // (21+ values, legend capped) is offered but never imposed.
+        if (_vis.candidates.length > 0 && !_vis.candidates[0].wide) {
             _vis.autoColorId = _vis.candidates[0].id;
             _vis.colorId = _vis.autoColorId;
             _state.showVisualizations = true;
@@ -1275,23 +1297,35 @@ if (!phyloXml) {
         return _legendMeasureCtx.measureText(text).width;
     }
 
-    // The card's row order: count-first ranks by frequency (ties
-    // alphabetical); A-Z keeps the candidate's own domain order, which is
-    // alphabetical for categories and numeric for numbers.
-    function orderedLegendValues(vis) {
-        let vals = vis.values.slice();
-        if (legendSortOf(vis) === 'count') {
-            vals.sort(function (a, b) {
-                let d = (vis.counts[b] || 0) - (vis.counts[a] || 0);
-                if (d !== 0) {
-                    return d;
-                }
-                let la = a.toLowerCase();
-                let lb = b.toLowerCase();
-                return la < lb ? -1 : (la > lb ? 1 : 0);
-            });
+    // The card's row order and cap, the desktop's way: rank by count first
+    // so a cap keeps the most significant values, cut, then re-sort the
+    // SHOWN subset when the chip says by-value / A-Z. Returns the rows and
+    // how many were cut.
+    function orderedLegendValues(vis, cap) {
+        let byCount = vis.values.slice().sort(function (a, b) {
+            let d = (vis.counts[b] || 0) - (vis.counts[a] || 0);
+            if (d !== 0) {
+                return d;
+            }
+            let la = a.toLowerCase();
+            let lb = b.toLowerCase();
+            return la < lb ? -1 : (la > lb ? 1 : 0);
+        });
+        let shown = (cap && byCount.length > cap) ? byCount.slice(0, cap) : byCount;
+        if (legendSortOf(vis) !== 'count') {
+            if (vis.numeric) {
+                shown.sort(function (a, b) {
+                    return Number(a) - Number(b);
+                });
+            } else {
+                shown.sort(function (a, b) {
+                    let la = a.toLowerCase();
+                    let lb = b.toLowerCase();
+                    return la < lb ? -1 : (la > lb ? 1 : 0);
+                });
+            }
         }
-        return vals;
+        return {values: shown, hidden: byCount.length - shown.length};
     }
 
     function legendNumberLabel(v) {
@@ -1315,9 +1349,14 @@ if (!phyloXml) {
         const frame = _state.branchColorDefault;
         const isRange = kind === 'color' && colorModeOf(vis) === 'range';
 
+        const LEGEND_MAX_ROWS = 20;
         let rows = [];
+        let hidden = 0;
         if (!isRange) {
-            orderedLegendValues(vis).forEach(function (v) {
+            let expanded = !!_vis.legendExpandedById[vis.id];
+            let ordered = orderedLegendValues(vis, expanded ? null : LEGEND_MAX_ROWS);
+            hidden = ordered.hidden;
+            ordered.values.forEach(function (v) {
                 let text = v.length > ELLIPSIS_AT ? v.substring(0, ELLIPSIS_AT - 1) + '\u2026' : v;
                 rows.push({value: v, text: text, count: vis.counts[v] || 0, noValue: false});
             });
@@ -1349,6 +1388,16 @@ if (!phyloXml) {
                 act: function () {
                     _vis.colorModeById[vis.id] = isRange ? 'category' : 'range';
                     update(null, 0);
+                }
+            });
+        }
+        if (!isRange && (hidden > 0 || (_vis.legendExpandedById[vis.id] && vis.values.length > LEGEND_MAX_ROWS))) {
+            chips.push({
+                text: hidden > 0 ? '[+' + hidden + ' more]' : '[fewer]',
+                tip: hidden > 0 ? 'show all ' + vis.values.length + ' values' : 'show only the 20 most frequent',
+                act: function () {
+                    _vis.legendExpandedById[vis.id] = hidden > 0;
+                    addLegends();
                 }
             });
         }
@@ -3715,9 +3764,11 @@ if (!phyloXml) {
         let shorten = _state.shortenNodeNames;
         let legendSortById = _vis ? _vis.legendSortById : {};
         let colorModeById = _vis ? _vis.colorModeById : {};
+        let legendExpandedById = _vis ? _vis.legendExpandedById : {};
         initializeVisualizations();
         _vis.legendSortById = legendSortById;
         _vis.colorModeById = colorModeById;
+        _vis.legendExpandedById = legendExpandedById;
         // the rebuild is not a user choice: neither checkbox moves
         _state.showVisualizations = show;
         _state.shortenNodeNames = shorten;
@@ -3982,6 +4033,7 @@ if (!phyloXml) {
             _vis.shapeId = null;
             _vis.legendSortById = {};
             _vis.colorModeById = {};
+            _vis.legendExpandedById = {};
         }
         setSelectMenuValue(LABEL_COLOR_SELECT_MENU, (_vis && _vis.colorId) || DEFAULT);
         setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);

@@ -436,7 +436,13 @@ What gets offered, briefly:
   2 — and fewer than all — distinct values. Identifier-like fields
   (accessions, genome ids) are refused.
 * Up to **20** distinct values → **Color** (one fixed, colour-vision-aware
-  palette at every cardinality). Numeric fields come in three bands: up to
+  palette at every cardinality). Fields with **21+ values** (hosts, species)
+  are still offered — every value coloured, desktop-style, by extending the
+  palette with lightened / darkened cycles — provided their values genuinely
+  repeat (distinct ≤ 60% of covered nodes; near-unique fields like strains
+  stay out). Their legends show the 20 most frequent values with a
+  `[+N more]` chip to expand, and they are listed last and never
+  auto-applied. Numeric fields come in three bands: up to
   **10** distinct values default to individual colours — numbers that few are
   usually codes, like HA/NA subtypes — **11–20** default to a viridis
   **colour ramp**, and both of those carry a `[colors]` / `[gradient]` switch

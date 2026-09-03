@@ -71,7 +71,8 @@ function loadTree(basename) {
 // viewer auto-applies on load.
 function summarize(candidates) {
     return candidates.map(function (c) {
-        return c.id + ' ' + c.colorMode + (c.shape ? '+shape' : '') + (c.switchable ? ' [switch]' : '');
+        return c.id + ' ' + c.colorMode + (c.shape ? '+shape' : '')
+            + (c.switchable ? ' [switch]' : '') + (c.wide ? ' [wide]' : '');
     });
 }
 
@@ -121,9 +122,12 @@ function only(phy) {
 // Strain (228), Collection_Date (151), the sequence names (253) and the
 // scientific names (234) are all beyond 20 categories.
 function testAdenoviridae() {
+    // Host: 125 hosts over 273 covered nodes (repeat ratio 0.46) -- wide,
+    // offered last, never auto-applied.
     return expectExactly('Adenoviridae', [
         'prop:vipr:Genus category+shape',
-        'prop:vipr:Year range'
+        'prop:vipr:Year range',
+        'prop:vipr:Host category [wide]'
     ]);
 }
 
@@ -131,18 +135,26 @@ function testAdenoviridae() {
 function testCaliciviridae100() {
     // Year at 29 distinct values: over the 20-colour line, so a range with
     // no switch to individual colours.
+    // Host squeaks past the wide guard at 47/89 = 0.528 -- the reason the
+    // repeat line is 0.6 and not 0.5.
     return expectExactly('Caliciviridae_100', [
         'prop:vipr:Genus category',
-        'prop:vipr:Year range'
+        'prop:vipr:Year range',
+        'prop:vipr:Host category [wide]'
     ]);
 }
 
 // Same family at a different sample size must give the SAME menu -- the
 // instability of the old distinct<=50 cliff is what this pair guards against.
 function testCaliciviridae500() {
+    // Scientific Name and Species carry the same 82 values (the file
+    // duplicates its taxonomy into a property) -- both honestly admitted.
     return expectExactly('Caliciviridae_500', [
         'prop:vipr:Genus category',
-        'prop:vipr:Year range'
+        'prop:vipr:Year range',
+        'tax:scientific_name category [wide]',
+        'prop:vipr:Species category [wide]',
+        'prop:vipr:Host category [wide]'
     ]);
 }
 
@@ -258,7 +270,9 @@ function testRefusals() {
         [herpes, 'prop:BVBRC:accession'],        // identifier
         [flu, 'prop:BVBRC:species'],             // one value on every node
         [flu, 'prop:BVBRC:genome_name'],         // 346 distinct of 354
-        [flu, 'prop:BVBRC:genome_id']            // numeric identifier
+        [flu, 'prop:BVBRC:genome_id'],           // numeric identifier
+        [herpes, 'prop:BVBRC:strain'],           // wide guard: 183/199 barely repeat
+        [flu, 'prop:BVBRC:strain']               // wide guard: 346/354
     ];
     return refused.every(function (r) {
         if (r[0].indexOf(r[1]) >= 0) {
@@ -394,6 +408,31 @@ function testNumericBands() {
     return cat !== null && cat.switchable === false;
 }
 
+// The wide band: 21+ distinct categorical values are admitted when they
+// repeat (distinct/covered <= 0.6), refused when they barely do -- and a
+// wide field always ranks behind clean categoricals and ranges.
+function testWideBand() {
+    function wideTree(distinct, covered) {
+        var vals = [];
+        for (var i = 0; i < covered; ++i) vals.push('v' + (i % distinct));
+        return starTree(vals);
+    }
+    var atLimit = only(wideTree(21, 35));         // 21/35 = 0.6 exactly
+    if (!atLimit || atLimit.wide !== true || atLimit.colorMode !== 'category') return false;
+    if (atLimit.switchable !== false || atLimit.shape !== false) return false;
+    if (forester.visualizationCandidates(wideTree(21, 34)).length !== 0) return false;   // 0.617: out
+    // tier: a low-scoring clean categorical still outranks a high-scoring wide
+    var phy = wideTree(25, 60);
+    var i = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        n.properties.push({ref: 'x:Clean', value: (i++ < 55) ? 'a' : 'b', datatype: 'xsd:string', applies_to: 'node'});
+    });
+    var cands = forester.visualizationCandidates(phy);
+    return cands.length === 2 && cands[0].ref === 'x:Clean' && cands[1].wide === true
+        && cands[1].score > cands[0].score;
+}
+
 // The identifier guard: 9 distinct numbers on 10 nodes (ratio 0.9) is still
 // a measurement; 10 on 10 is an id column.
 function testNumericIdentifierGuard() {
@@ -450,7 +489,7 @@ function testLabelCollision() {
 // and Genus still comes first.
 function testCategoricalTierFirst() {
     var cands = forester.visualizationCandidates(loadTree('Caliciviridae_100'));
-    if (cands.length !== 2) return false;
+    if (cands.length !== 3) return false;   // Genus, Year, and wide Host
     var genus = cands[0], year = cands[1];
     return genus.id === 'prop:vipr:Genus' && year.id === 'prop:vipr:Year'
         && year.score > genus.score;
@@ -719,6 +758,7 @@ runTest("coverage boundary 2/3      : ", testCoverageBoundary);
 runTest("category limit 20          : ", testCategoryLimit);
 runTest("shape limit 7              : ", testShapeLimit);
 runTest("numeric bands              : ", testNumericBands);
+runTest("wide band + tier           : ", testWideBand);
 runTest("numeric values sort as nums: ", testNumericValuesSortNumerically);
 runTest("numeric identifier guard   : ", testNumericIdentifierGuard);
 runTest("applies_to filtered        : ", testAppliesToFiltered);

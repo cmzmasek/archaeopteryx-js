@@ -785,6 +785,12 @@
     //   categorical <= 20 distinct values -> Color. Above ~12 the reader
     //               leans on the legend, but the real trees cluster at
     //               15-17 (host names, countries, taxonomy codes).
+    //   wide        21+ distinct values are still offered -- as the desktop
+    //               does, every value gets a colour and the LEGEND caps the
+    //               display -- but only when values genuinely repeat:
+    //               distinct/covered <= 0.6, or near-unique fields (strains,
+    //               species names, dates) would flood the menus. Wide fields
+    //               rank after everything else and are never auto-applied.
     //   numeric     every value parses as a finite number. Up to 10 distinct
     //               values default to individual colours -- numbers that few
     //               are usually codes (HA/NA subtypes), and ten is what the
@@ -805,6 +811,8 @@
     const VIS_MAX_COLOR_CATEGORIES = 20;
     const VIS_MAX_SHAPE_CATEGORIES = 7;
     const VIS_NUMERIC_CATEGORY_MAX = 10;   // <= this many distinct numbers -> colours by default
+    const VIS_WIDE_REPEAT_NUM = 3;         // wide categorical: distinct/covered <= 0.6,
+    const VIS_WIDE_REPEAT_DEN = 5;         // held integer-exact
     const VIS_MAX_NUMERIC_UNIQUE_NUM = 9;    // distinct/covered <= 0.9,
     const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
@@ -915,6 +923,7 @@
             });
             let colorMode;
             let switchable = false;
+            let wide = false;
             if (numeric) {
                 if (distinct * VIS_MAX_NUMERIC_UNIQUE_DEN > covered * VIS_MAX_NUMERIC_UNIQUE_NUM) {
                     return;
@@ -925,8 +934,14 @@
                     return Number(a) - Number(b);
                 });
             } else {
-                if (distinct >= total || distinct > VIS_MAX_COLOR_CATEGORIES) {
+                if (distinct >= total) {
                     return;
+                }
+                if (distinct > VIS_MAX_COLOR_CATEGORIES) {
+                    if (distinct * VIS_WIDE_REPEAT_DEN > covered * VIS_WIDE_REPEAT_NUM) {
+                        return;
+                    }
+                    wide = true;
                 }
                 colorMode = 'category';
                 values.sort();
@@ -958,6 +973,7 @@
                 score: (covered / total) * balance,
                 colorMode: colorMode,
                 switchable: switchable,
+                wide: wide,
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
         });
@@ -972,13 +988,21 @@
             }
         });
 
-        // Best first: categorical fields ahead of numeric ranges (a
-        // categorical colouring shows the tree's structure; a ramp is the
-        // more specialised view), then by score, ties alphabetically. The
-        // first entry is what the viewer applies on load.
+        // Best first: clean categorical fields, then numeric ranges, then the
+        // wide categoricals (offered, never leading) -- within each tier by
+        // score, ties alphabetically. The first entry is what the viewer
+        // applies on load.
+        function tierOf(c) {
+            if (c.colorMode === 'category') {
+                return c.wide ? 2 : 0;
+            }
+            return 1;
+        }
         candidates.sort(function (a, b) {
-            if (a.colorMode !== b.colorMode) {
-                return a.colorMode === 'category' ? -1 : 1;
+            let ta = tierOf(a);
+            let tb = tierOf(b);
+            if (ta !== tb) {
+                return ta - tb;
             }
             if (a.score !== b.score) {
                 return b.score - a.score;
