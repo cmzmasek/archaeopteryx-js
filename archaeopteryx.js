@@ -288,6 +288,10 @@ if (!phyloXml) {
     const RETURN_TO_SUPERTREE_BUTTON_BY_ONE = 'ret1_b';
     const SEARCH_FIELD_0 = 'sf0';
     const SEARCH_FIELD_1 = 'sf1';
+    const SEARCH_NAV_ROW = 'searchnavrow';
+    const SEARCH_NAV_PREV = 'searchnavprev';
+    const SEARCH_NAV_NEXT = 'searchnavnext';
+    const SEARCH_NAV_LABEL = 'searchnavlabel';
     const SEARCH_OPTIONS_CASE_SENSITIVE_CB = 'so_cs_cb';
     const SEARCH_OPTIONS_GROUP = 'search_opts_g';
     const SEARCH_OPTIONS_NEGATE_RES_CB = 'so_neg_cb';
@@ -321,6 +325,7 @@ if (!phyloXml) {
     // ---------------------------
     const VK_ESC = 27;
     const VK_C = 67;
+    const VK_G = 71;
     const VK_L = 76;
     const VK_M = 77;
     const VK_O = 79;
@@ -375,6 +380,9 @@ if (!phyloXml) {
     // 72% blend toward the background. Recomputed once per update().
     const DIM_NON_MATCH_OPACITY = 0.28;
     let _dimNonMatches = false;
+    // The "k / N" step-through position among the search hits (-1 = not
+    // positioned yet); restarts whenever a search re-runs.
+    let _searchHitIndex = -1;
     let _selectedNodes = new Set();
     let _i = 0;
     let _id = null;
@@ -1801,6 +1809,14 @@ if (!phyloXml) {
             });
 
 
+        // "Pulse Found Nodes", as on the desktop: a translucent breathing
+        // disc in the hit's colour behind each hit (first in the group, so
+        // everything else draws over it; never a pointer target).
+        nodeEnter.append('circle')
+            .attr('class', 'foundHalo aptx-found-halo')
+            .attr('r', 0)
+            .style('pointer-events', 'none');
+
         nodeEnter.append('path')
             .attr('d', 'M0,0');
 
@@ -1872,6 +1888,9 @@ if (!phyloXml) {
                 return (style && (style.fontStyle === 'italic' || style.fontStyle === 'bold_italic')) ? 'italic' : null;
             })
             .style('font-weight', function (d) {
+                if (getFoundColor(d)) {
+                    return 'bold'; // hits (and selected nodes) stand out in bold, as on the desktop
+                }
                 let style = nodeStyle(d);
                 return (style && (style.fontStyle === 'bold' || style.fontStyle === 'bold_italic')) ? 'bold' : null;
             })
@@ -1985,6 +2004,14 @@ if (!phyloXml) {
                 if (d.parent) {
                     return (0.5 * (d.parent.y - d.y));
                 }
+            });
+
+        node.select('circle.foundHalo')
+            .attr('r', function (d) {
+                return isNodeFound(d) ? 4 : 0;
+            })
+            .style('fill', function (d) {
+                return isNodeFound(d) ? getFoundColor(d) : 'none';
             });
 
         node.select('circle.nodeCircle')
@@ -2165,6 +2192,7 @@ if (!phyloXml) {
         }
 
         rebuildOverview();
+        updateSearchHitNavigation();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -2386,6 +2414,71 @@ if (!phyloXml) {
 
     function isNodeFound(phynode) {
         return (_foundNodes0 && _foundNodes0.has(phynode)) || (_foundNodes1 && _foundNodes1.has(phynode));
+    }
+
+    // The search hits in a stable tree order, for the step-through navigator.
+    function orderedFoundNodes() {
+        let hits = [];
+        if (_root && ((_foundNodes0 && _foundNodes0.size > 0) || (_foundNodes1 && _foundNodes1.size > 0))) {
+            forester.preOrderTraversal(_root, function (n) {
+                if (isNodeFound(n)) {
+                    hits.push(n);
+                }
+            });
+        }
+        return hits;
+    }
+
+    // Center the next (dir=+1) or previous (dir=-1) search hit in the
+    // viewport, wrapping around in both directions -- the desktop's
+    // step-through navigator. The first step lands on the first (or, going
+    // backwards, the last) hit.
+    function stepToFoundNode(dir) {
+        let hits = orderedFoundNodes();
+        if (hits.length < 1) {
+            _searchHitIndex = -1;
+            updateSearchHitNavigation();
+            return;
+        }
+        if (_searchHitIndex < 0) {
+            _searchHitIndex = (dir >= 0) ? 0 : (hits.length - 1);
+        } else {
+            _searchHitIndex = (((_searchHitIndex + dir) % hits.length) + hits.length) % hits.length;
+        }
+        let hit = hits[_searchHitIndex];
+        let size = svgSize();
+        if (size && _baseSvg) {
+            let t = d3.zoomTransform(_baseSvg.node());
+            let lx = _state.circularDisplay ? radialXY(hit.x, hit.y)[0] : hit.y;
+            let ly = _state.circularDisplay ? radialXY(hit.x, hit.y)[1] : hit.x;
+            _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
+                .translate((size.w / 2) - (lx * t.k), (size.h / 2) - (ly * t.k))
+                .scale(t.k));
+        }
+        updateSearchHitNavigation();
+    }
+
+    // Show, hide and relabel the "< k / N >" row under the search boxes; it
+    // only exists while a search has hits.
+    function updateSearchHitNavigation() {
+        let row = byId(SEARCH_NAV_ROW);
+        if (!row) {
+            return;
+        }
+        let count = orderedFoundNodes().length;
+        if (count < 1) {
+            _searchHitIndex = -1;
+            row.style.display = 'none';
+            return;
+        }
+        if (_searchHitIndex >= count) {
+            _searchHitIndex = -1; // the hit list shrank under the position
+        }
+        row.style.display = 'flex';
+        let label = byId(SEARCH_NAV_LABEL);
+        if (label) {
+            label.textContent = (_searchHitIndex >= 0 ? (_searchHitIndex + 1) : '\u2013') + ' / ' + count;
+        }
     }
 
     function isNodeSelected(phynode) {
@@ -4381,6 +4474,7 @@ if (!phyloXml) {
 
         _foundNodes0 = new Set();
         _foundNodes1 = new Set();
+        _searchHitIndex = -1; // new results restart the step-through
         _searchBox0Empty = !aActive;
         _searchBox1Empty = !bActive;
 
@@ -5496,6 +5590,11 @@ if (!phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
+            + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
+            + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
+            + '.aptx-found-halo { opacity:0.35; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
+            + '@keyframes aptx-halo-pulse { 0%,100% { transform:scale(1); opacity:0.35; } 50% { transform:scale(2.5); opacity:0.12; } }'
+            + '@media (prefers-reduced-motion: reduce) { .aptx-found-halo { animation:none; } }'
             + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; }'
             + '.aptx-panel .aptx-zoomgrid > input[type=button] { width:100%; margin-right:0; }'
             + '.aptx-panel .aptx-zoomrow { display:flex; }'
@@ -6091,6 +6190,12 @@ if (!phyloXml) {
         on(SEQUENCE_CB, 'click', sequenceCbClicked);
 
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
+        on(SEARCH_NAV_PREV, 'click', function () {
+            stepToFoundNode(-1);
+        });
+        on(SEARCH_NAV_NEXT, 'click', function () {
+            stepToFoundNode(1);
+        });
 
         on(BRANCH_LENGTH_VALUES_CB, 'click', branchLengthsCbClicked);
 
@@ -6285,6 +6390,8 @@ if (!phyloXml) {
                     toggleAlignPhylogram();
                 } else if (e.keyCode === VK_W) {
                     fitWidthButtonPressed();
+                } else if (e.keyCode === VK_G) {
+                    stepToFoundNode(e.shiftKey ? -1 : 1);
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 escPressed();
@@ -6675,6 +6782,13 @@ if (!phyloXml) {
             h = h.concat('<legend>Search</legend>');
             h = h.concat(makeSearchBox('Search A', 0));
             h = h.concat(makeSearchBox('Search B', 1));
+            h = h.concat('<div class="aptx-searchnav" id="' + SEARCH_NAV_ROW + '" style="display:none">');
+            h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_PREV
+                + '" title="center the previous search hit (Shift+Alt+G)">&#9664;</button>');
+            h = h.concat('<span id="' + SEARCH_NAV_LABEL + '" title="position among the search hits"></span>');
+            h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_NEXT
+                + '" title="center the next search hit (Alt+G)">&#9654;</button>');
+            h = h.concat('</div>');
             h = h.concat('<div class="aptx-combine" id="' + SEARCH_COMBINE_ROW + '" style="display:none">');
             h = h.concat('<label class="aptx-field-label" for="' + SEARCH_COMBINE_SELECT + '">Combine A &amp; B</label>');
             h = h.concat('<select id="' + SEARCH_COMBINE_SELECT + '" name="' + SEARCH_COMBINE_SELECT + '" title="how to combine the two searches">');
