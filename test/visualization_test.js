@@ -867,6 +867,217 @@ runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
 runTest("node value, element slots  : ", testNodeValueElementSlots);
 runTest("wrapper tolerated          : ", testWrapperTolerated);
 
+// --------------------------------------------------------------
+// forester.suggestLabelFields: which of the three label checkboxes
+// (node name, taxonomy, sequence) start checked for a loaded tree.
+// --------------------------------------------------------------
+
+function suggestLeafTree(leaves) {
+    return {
+        name: 'r',
+        children: leaves.map(function (l) {
+            var n = {name: l.name || null};
+            if (l.tax) {
+                n.taxonomies = [{scientific_name: l.tax}];
+            }
+            if (l.seq) {
+                n.sequences = [{name: l.seq}];
+            }
+            return n;
+        })
+    };
+}
+
+function runSuggest(root) {
+    return forester.suggestLabelFields(root, {
+        name: function (n) {
+            return n.name || null;
+        },
+        taxonomy: function (n) {
+            return (n.taxonomies && n.taxonomies[0]) ? n.taxonomies[0].scientific_name : null;
+        },
+        sequence: function (n) {
+            return (n.sequences && n.sequences[0]) ? n.sequences[0].name : null;
+        }
+    });
+}
+
+function suggestSig(r) {
+    return (r.showNodeName ? 'N' : '') + (r.showTaxonomy ? 'T' : '') + (r.showSequence ? 'S' : '');
+}
+
+// Runs the suggestion on a docs/data fixture with the same taxonomy /
+// sequence subfield cascade the viewer applies (one good identifier each).
+function suggestForFixture(basename) {
+    var root = forester.getTreeRoot(loadTree(basename));
+    var fields = {};
+    forester.getAllExternalNodes(root).forEach(function (n) {
+        if (n.taxonomies && n.taxonomies[0]) {
+            var t = n.taxonomies[0];
+            if (t.code) { fields.TC = true; }
+            if (t.scientific_name) { fields.TS = true; }
+            if (t.common_name) { fields.TN = true; }
+        }
+        if (n.sequences && n.sequences[0]) {
+            var q = n.sequences[0];
+            if (q.symbol) { fields.SS = true; }
+            if (q.name) { fields.SN = true; }
+            if (q.gene_name) { fields.GN = true; }
+            if (q.accession && q.accession.value) { fields.SA = true; }
+        }
+    });
+    var showTC = !!fields.TC, showTS = !!fields.TS, showTN = fields.TN && !fields.TS;
+    var showSN = !!fields.SN, showGN = fields.GN && !fields.SN;
+    var showSS = fields.SS && !fields.SN && !fields.GN;
+    var showSA = fields.SA && !fields.SN && !fields.GN && !fields.SS;
+    var joinFrag = function (a, b) {
+        return (b && String(b).length > 0) ? (a ? a + ' | ' + b : String(b)) : a;
+    };
+    return forester.suggestLabelFields(root, {
+        name: function (n) {
+            return n.name || null;
+        },
+        taxonomy: function (n) {
+            if (!n.taxonomies || !n.taxonomies[0]) { return null; }
+            var t = n.taxonomies[0];
+            var l = '';
+            if (showTC) { l = joinFrag(l, t.code); }
+            if (showTS) { l = joinFrag(l, t.scientific_name); }
+            if (showTN) { l = joinFrag(l, t.common_name); }
+            return l || null;
+        },
+        sequence: function (n) {
+            if (!n.sequences || !n.sequences[0]) { return null; }
+            var q = n.sequences[0];
+            var l = '';
+            if (showSS) { l = joinFrag(l, q.symbol); }
+            if (showSN) { l = joinFrag(l, q.name); }
+            if (showGN) { l = joinFrag(l, q.gene_name); }
+            if (showSA && q.accession) { l = joinFrag(l, q.accession.value); }
+            return l || null;
+        }
+    });
+}
+
+function testSuggestKeepsAllWhenShortAndDistinct() {
+    var r = runSuggest(suggestLeafTree([
+        {name: 'n1', tax: 'Alpha', seq: 'q1'},
+        {name: 'n2', tax: 'Beta', seq: 'q2'},
+        {name: 'n3', tax: 'Gamma', seq: 'q3'}
+    ]));
+    return suggestSig(r) === 'NTS';
+}
+
+function testSuggestContainmentDropsRedundant() {
+    // the taxonomy's text sits inside every name (underscore vs space must
+    // not matter), so it adds nothing
+    var r = runSuggest(suggestLeafTree([
+        {name: 'Feline_calicivirus|A1', tax: 'Feline calicivirus'},
+        {name: 'Feline_calicivirus|B2', tax: 'Feline calicivirus'},
+        {name: 'Feline_calicivirus|C3', tax: 'Feline calicivirus'}
+    ]));
+    return suggestSig(r) === 'N';
+}
+
+function testSuggestMutualContainmentKeepsName() {
+    var r = runSuggest(suggestLeafTree([
+        {name: 'Alpha x', tax: 'Alpha x'},
+        {name: 'Beta y', tax: 'Beta y'}
+    ]));
+    return suggestSig(r) === 'N';
+}
+
+function testSuggestBudgetKeepsMostIdentifying() {
+    // identical names, unique long sequences: over the budget the sequence's
+    // distinct ratio wins
+    var mk = function (i) {
+        return {name: 'isolate', seq: 'unique sequence identifier number ' + i + ' padded to be quite long indeed'};
+    };
+    var r = runSuggest(suggestLeafTree([mk(1), mk(2), mk(3), mk(4)]));
+    return suggestSig(r) === 'S';
+}
+
+function testSuggestBudgetTieFavorsName() {
+    // both unique and the sequence only slightly shorter: the name's
+    // priority holds within the tie window
+    var mk = function (i) {
+        return {
+            name: 'name number ' + i + ' is this long avec padding xxxxxxx',
+            seq: 'sequence identifier ' + i + ' also long padding xx'
+        };
+    };
+    var r = runSuggest(suggestLeafTree([mk(1), mk(2), mk(3)]));
+    return suggestSig(r) === 'N';
+}
+
+function testSuggestBudgetEconomyDisplaces() {
+    // equally identifying but the sequence is under 60% of the name's
+    // length: economy displaces priority
+    var mk = function (i) {
+        return {
+            name: 'an unbearably long node name identifier variant number ' + i + ' with plenty of padding',
+            seq: 'seq-' + i
+        };
+    };
+    var r = runSuggest(suggestLeafTree([mk(1), mk(2), mk(3)]));
+    return suggestSig(r) === 'S';
+}
+
+function testSuggestAbsentFieldStaysOff() {
+    var r = runSuggest(suggestLeafTree([
+        {name: 'n1', tax: 'Alpha'},
+        {name: 'n2', tax: 'Beta'}
+    ]));
+    return suggestSig(r) === 'NT';
+}
+
+function testSuggestContainmentNeedsTwoPairs() {
+    // only one leaf carries both fields: too little evidence to call the
+    // taxonomy redundant
+    var r = runSuggest(suggestLeafTree([
+        {name: 'Alpha virus|x1', tax: 'Alpha virus'},
+        {name: 'n2'},
+        {name: 'n3'}
+    ]));
+    return suggestSig(r) === 'NT';
+}
+
+function testSuggestCalici500() {
+    return suggestSig(suggestForFixture('Caliciviridae_500')) === 'N';
+}
+
+function testSuggestCalici100() {
+    return suggestSig(suggestForFixture('Caliciviridae_100')) === 'N';
+}
+
+function testSuggestApaf() {
+    return suggestSig(suggestForFixture('apaf')) === 'N';
+}
+
+function testSuggestBcl2() {
+    return suggestSig(suggestForFixture('bcl2')) === 'NT';
+}
+
+function testSuggestInfluenza() {
+    return suggestSig(suggestForFixture('influenza')) === 'NS';
+}
+
+console.log("\nlabel-field suggestion\n");
+
+runTest("labels: all kept           : ", testSuggestKeepsAllWhenShortAndDistinct);
+runTest("labels: containment drop   : ", testSuggestContainmentDropsRedundant);
+runTest("labels: mutual keeps name  : ", testSuggestMutualContainmentKeepsName);
+runTest("labels: budget identifying : ", testSuggestBudgetKeepsMostIdentifying);
+runTest("labels: budget tie -> name : ", testSuggestBudgetTieFavorsName);
+runTest("labels: economy displaces  : ", testSuggestBudgetEconomyDisplaces);
+runTest("labels: absent stays off   : ", testSuggestAbsentFieldStaysOff);
+runTest("labels: one pair no verdict: ", testSuggestContainmentNeedsTwoPairs);
+runTest("labels: Caliciviridae 186  : ", testSuggestCalici500);
+runTest("labels: Caliciviridae 97   : ", testSuggestCalici100);
+runTest("labels: apaf               : ", testSuggestApaf);
+runTest("labels: bcl2               : ", testSuggestBcl2);
+runTest("labels: influenza          : ", testSuggestInfluenza);
+
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);

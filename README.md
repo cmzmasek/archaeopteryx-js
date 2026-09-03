@@ -257,6 +257,12 @@ Everything else is either derived, or a control the user can change once the
 tree is on screen. Those controls still have defaults, and the defaults are
 chosen per tree — they are simply no longer yours to set at launch.
 
+That includes **which label checkboxes start checked**: instead of blindly
+showing every field the tree carries, the viewer measures the actual label
+text and unchecks fields that only repeat another field or that would make
+the combined labels uselessly long (see *Initial label fields* in the
+developer spec below). The checkboxes are still there to override it.
+
 ## Configuration
 
 One object, passed as the third argument. It is optional, and the best
@@ -738,6 +744,35 @@ rather than 300 identical "Influenz.." labels).
 
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
+
+### Initial label fields
+
+Which of the three label checkboxes — Node Name, Taxonomy, Sequence — start
+checked is decided per tree by `forester.suggestLabelFields(root, extractors)`
+(pure, under test). The viewer hands it, per external node, exactly the text
+each field would print with the subfield cascade already applied (one good
+taxonomy identifier, one good sequence identifier; the raw node name — Short
+Names shortening and the readable-tip-name substitution are display niceties
+applied later). Two rules, in order:
+
+1. **Redundancy.** For each ordered pair of fields (priority: name >
+   taxonomy > sequence), if one field's text is *contained* in the other's —
+   compared lowercased with spaces and underscores stripped — on **≥ 90%** of
+   the nodes carrying both (and at least 2 such nodes), the contained field
+   starts unchecked; on mutual containment the higher-priority field is kept.
+   This is what removes ` | Feline calicivirus` from tips already named
+   `Feline_calicivirus|CH-JL2|…`, and ` | MOUSE` from `22_MOUSE`.
+2. **Length budget.** If the median length of the combined remaining label
+   (fragments joined with `" | "`) still exceeds **50 characters**, only the
+   single most *identifying* field stays: highest ratio of distinct
+   (normalized) values to labelled nodes; within a tie of **0.05** the
+   priority order wins unless a later field's median length is under **60%**
+   of the leader's (substantially more economical).
+
+A field with no printable values is never checked (apaf's sequences carry
+only domain architectures, so its Sequence box starts unchecked). The choice
+is logged to the console at launch, and the user can recheck anything — the
+rules only set the initial state.
 
 ### Visual styles (the desktop's `style:` namespace)
 

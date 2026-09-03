@@ -2904,7 +2904,9 @@ if (!phyloXml) {
         _state.searchIsCaseSensitive = false;
         _state.searchNegateResult = false;
 
-        // What to label with is read off the tree: show what it actually has.
+        // What to label with is read off the tree: show what it actually
+        // has -- refined below by forester.suggestLabelFields once the
+        // taxonomy / sequence subfield choices are made.
         _state.showNodeName = _basicTreeProperties.nodeNames === true;
         _state.showTaxonomy = _basicTreeProperties.taxonomies === true;
         _state.showSequence = _basicTreeProperties.sequences === true;
@@ -2935,6 +2937,78 @@ if (!phyloXml) {
         _state.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
         _state.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
             && !presentFields.has('GN') && !presentFields.has('SS');
+
+        // Which of the three groups start CHECKED is then decided from the
+        // label text itself (forester.suggestLabelFields): a field whose text
+        // is already contained in another field's adds nothing, and when the
+        // combined label is still too long only the most identifying field
+        // stays. The extractors hand forester exactly the fragments the
+        // renderer would print with the subfield choices made above (the raw
+        // node name: shortening and label-property substitution are display
+        // niceties applied later). The checkboxes always allow overriding.
+        if (_treeData) {
+            let joinFrag = function (a, b) {
+                return (b && String(b).length > 0) ? (a ? a + ' | ' + b : String(b)) : a;
+            };
+            let suggested = forester.suggestLabelFields(forester.getTreeRoot(_treeData), {
+                name: function (n) {
+                    return n.name || null;
+                },
+                taxonomy: function (n) {
+                    if (!n.taxonomies || n.taxonomies.length < 1) {
+                        return null;
+                    }
+                    let t = n.taxonomies[0];
+                    let l = '';
+                    if (_state.showTaxonomyCode) {
+                        l = joinFrag(l, t.code);
+                    }
+                    if (_state.showTaxonomyScientificName) {
+                        l = joinFrag(l, t.scientific_name);
+                    }
+                    if (_state.showTaxonomyCommonName) {
+                        l = joinFrag(l, t.common_name);
+                    }
+                    return l || null;
+                },
+                sequence: function (n) {
+                    if (!n.sequences || n.sequences.length < 1) {
+                        return null;
+                    }
+                    let s = n.sequences[0];
+                    let l = '';
+                    if (_state.showSequenceSymbol) {
+                        l = joinFrag(l, s.symbol);
+                    }
+                    if (_state.showSequenceName) {
+                        l = joinFrag(l, s.name);
+                    }
+                    if (_state.showSequenceGeneSymbol) {
+                        l = joinFrag(l, s.gene_name);
+                    }
+                    if (_state.showSequenceAccession && s.accession) {
+                        l = joinFrag(l, s.accession.value);
+                    }
+                    return l || null;
+                }
+            });
+            _state.showNodeName = suggested.showNodeName;
+            _state.showTaxonomy = suggested.showTaxonomy;
+            _state.showSequence = suggested.showSequence;
+            let chosen = [];
+            if (suggested.showNodeName) {
+                chosen.push('node name');
+            }
+            if (suggested.showTaxonomy) {
+                chosen.push('taxonomy');
+            }
+            if (suggested.showSequence) {
+                chosen.push('sequence');
+            }
+            console.log(MESSAGE + 'initial label fields: ' + (chosen.join(' + ') || 'none')
+                + ' (median combined label would be ' + Math.round(suggested.stats.medianCombinedLength)
+                + ' characters)');
+        }
 
         // A small tree is drawn with a heavier stroke; hairlines are for trees
         // dense enough to need them.

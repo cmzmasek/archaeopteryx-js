@@ -2277,6 +2277,152 @@
 
 
     // --------------------------------------------------------------
+    // Label-field suggestion
+    // --------------------------------------------------------------
+    // Decides which of the three label groups (node name, taxonomy, sequence)
+    // should START checked when a tree is loaded. Two rules, judged on the
+    // external nodes' actual label text (supplied by the caller's extractors,
+    // so the decision is made on exactly what would be printed):
+    //
+    // 1. Redundancy: a field whose text is CONTAINED in another checked
+    //    field's text (case-insensitively, ignoring spaces and underscores)
+    //    for at least 90% of the nodes carrying both adds nothing and starts
+    //    unchecked. On mutual containment the earlier field in the priority
+    //    order name > taxonomy > sequence is kept.
+    //
+    // 2. Length budget: if the median combined label of the remaining fields
+    //    still exceeds 50 characters, only the single most IDENTIFYING field
+    //    stays: the one with the highest ratio of distinct values to labelled
+    //    nodes (a label's job is telling nodes apart). Within a tie (0.05)
+    //    the priority order wins, unless a later field is SUBSTANTIALLY more
+    //    economical (median length under 60% of the leader's).
+    //
+    // A field with no values at all is never checked. This only decides the
+    // INITIAL state; the caller's UI stays free to override.
+    //
+    // extractors: {name, taxonomy, sequence}, each a function(externalNode)
+    // returning the text that field would contribute to the node's label, or
+    // null / '' when it contributes nothing.
+    forester.suggestLabelFields = function (root, extractors) {
+        const FIELDS = ['name', 'taxonomy', 'sequence'];
+        const CONTAINMENT_MIN = 0.9;
+        const BUDGET_CHARS = 50;
+        const MIN_PAIRS = 2;
+        const TIE_EPSILON = 0.05;
+        const LENGTH_ADVANTAGE = 0.6;
+        let ext = forester.getAllExternalNodes(root);
+        let norm = function (s) {
+            return s.toLowerCase().replace(/[\s_]+/g, '');
+        };
+        let median = function (arr) {
+            if (arr.length < 1) {
+                return 0;
+            }
+            let a = arr.slice().sort(function (x, y) {
+                return x - y;
+            });
+            let m = a.length >> 1;
+            return (a.length % 2) ? a[m] : (a[m - 1] + a[m]) / 2;
+        };
+        let vals = {};
+        FIELDS.forEach(function (f) {
+            let get = extractors ? extractors[f] : null;
+            vals[f] = ext.map(function (n) {
+                let v = get ? get(n) : null;
+                v = (v === undefined || v === null) ? '' : String(v).trim();
+                return v.length > 0 ? v : null;
+            });
+        });
+        let stats = {};
+        FIELDS.forEach(function (f) {
+            let present = vals[f].filter(Boolean);
+            stats[f] = {
+                count: present.length,
+                medianLength: median(present.map(function (s) {
+                    return s.length;
+                })),
+                distinctRatio: present.length
+                    ? (new Set(present.map(norm)).size / present.length) : 0
+            };
+        });
+        let checked = {};
+        FIELDS.forEach(function (f) {
+            checked[f] = stats[f].count > 0;
+        });
+
+        let containedFrac = function (inner, outer) {
+            let both = 0;
+            let contained = 0;
+            for (let i = 0; i < ext.length; ++i) {
+                let a = vals[outer][i];
+                let b = vals[inner][i];
+                if (a && b) {
+                    ++both;
+                    if (norm(a).indexOf(norm(b)) >= 0) {
+                        ++contained;
+                    }
+                }
+            }
+            return both >= MIN_PAIRS ? contained / both : 0;
+        };
+        for (let i = 0; i < FIELDS.length; ++i) {
+            for (let j = i + 1; j < FIELDS.length; ++j) {
+                let a = FIELDS[i];
+                let b = FIELDS[j];
+                if (!checked[a] || !checked[b]) {
+                    continue;
+                }
+                // on mutual containment this still drops b: a is earlier in
+                // the keep-priority order
+                if (containedFrac(b, a) >= CONTAINMENT_MIN) {
+                    checked[b] = false;
+                } else if (containedFrac(a, b) >= CONTAINMENT_MIN) {
+                    checked[a] = false;
+                }
+            }
+        }
+
+        let combined = [];
+        for (let i = 0; i < ext.length; ++i) {
+            let parts = [];
+            FIELDS.forEach(function (f) {
+                if (checked[f] && vals[f][i]) {
+                    parts.push(vals[f][i]);
+                }
+            });
+            if (parts.length > 0) {
+                combined.push(parts.join(' | ').length);
+            }
+        }
+        let medianCombined = median(combined);
+        let kept = FIELDS.filter(function (f) {
+            return checked[f];
+        });
+        if (medianCombined > BUDGET_CHARS && kept.length > 1) {
+            let best = kept[0];
+            for (let k = 1; k < kept.length; ++k) {
+                let c = kept[k];
+                let d = stats[c].distinctRatio - stats[best].distinctRatio;
+                if (d > TIE_EPSILON
+                    || (Math.abs(d) <= TIE_EPSILON
+                        && stats[c].medianLength < LENGTH_ADVANTAGE * stats[best].medianLength)) {
+                    best = c;
+                }
+            }
+            FIELDS.forEach(function (f) {
+                checked[f] = (f === best);
+            });
+        }
+        return {
+            showNodeName: checked.name,
+            showTaxonomy: checked.taxonomy,
+            showSequence: checked.sequence,
+            stats: {fields: stats, medianCombinedLength: medianCombined}
+        };
+    };
+
+
+    // --------------------------------------------------------------
     // For exporting
     // --------------------------------------------------------------
     if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser) module.exports.forester = forester; else if (typeof window !== "undefined") window.forester = forester; else this.forester = forester;
