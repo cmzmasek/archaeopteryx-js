@@ -451,16 +451,11 @@ What gets offered, briefly:
 * Up to **7** distinct values → also **Shape** (the seven distinct d3 symbols).
 * A node without a value keeps the default look, and the legend names the
   field so partial coverage is visible.
-* Property values are **grouped for colouring after normalization**:
-  spelling variants fold together (case, underscores, whitespace), refs
-  literally named `host` / `country` drop trailing qualifiers
-  (`Homo sapiens; sex: M` → `Homo sapiens`, `USA:CA` → `USA`), and a small
-  dictionary folds common-animal synonyms into one capitalized name —
-  `cow`, `bovine`, `calf`, `cattle` and `Bos taurus` are all **Cow**;
-  `human` and `Homo sapiens` are **Human**. Matching is whole-value only
-  (a *ferret badger* is not a Ferret), the dictionary lives in one constant
-  in forester.js (`VIS_SYNONYMS`) for easy extending, and raw values remain
-  untouched everywhere else — exports, search, and the node-data dialog.
+* Property values are **grouped for colouring after normalization** —
+  spelling variants, host/country qualifiers, and a common-animal synonym
+  dictionary. The exact algorithm is specified under **Value grouping**
+  below; raw values remain untouched everywhere else — exports, search,
+  and the node-data dialog.
 
 The menus are ordered **best first** — categorical fields ahead of numeric
 ramps, then by coverage × balance (the normalized entropy of the value
@@ -474,6 +469,70 @@ inside a subtree view even when the subtree does not contain it; the menus and
 choices survive diving into and out of subtrees unchanged. Choosing a Color
 also switches the Visualizations checkbox on, since one colour paints both the
 label and the node.
+
+### Value grouping (normalization + synonym dictionary)
+
+Applies to **node property values only**, and only for colouring/legends:
+taxonomy and sequence elements are used verbatim, and node names, exports,
+search, autocomplete and the node-data dialog always see the raw values.
+Grouping runs **before** classification, so distinct-value counts, the
+category/range/wide bands, and the entropy score are all computed on groups.
+
+Each raw value maps to its **display form** by these steps, in order:
+
+1. **Qualifier cut** — only when the ref's local name (the part after the
+   last `:` in the ref, compared case-insensitively) is exactly `host` or
+   exactly `country`. For `host`, cut at the first `;`; for `country`, at
+   the first `:`. No other refs are cut (`host_group`,
+   `isolation_country` etc. keep their full values).
+2. **Parenthesis repair** — if a cut left an unclosed `(`, truncate at the
+   first unmatched `(`. (`Saimiri boliviensis (squirrel monkey; voucher:
+   SBB04)` → cut at `;` → repair → `Saimiri boliviensis`.)
+3. **Spelling fold** — trim; replace every `_` with a space; collapse each
+   whitespace run to a single space. A value that becomes empty is dropped.
+4. **Dictionary lookup** — lowercase the whole folded value and look it up
+   in the synonym table below (each canonical name matches itself too). If
+   there is no hit and the value ends in a parenthetical, retry once with
+   one trailing `(...)` removed (`Bos taurus (cattle)` → `bos taurus`). On
+   a hit, the display form is the canonical name. Matching is **whole-value
+   only, never substring** — `ferret badger` and `42-day-old pig` keep
+   their own groups.
+
+The **group key** is the display form lowercased; values sharing a key are
+one group (one legend row, one colour, counts summed). The legend shows the
+group's **representative**: the canonical name for dictionary hits;
+otherwise the group's most frequent display spelling (ties broken by
+code-point order, ascending) with its first character uppercased.
+
+The dictionary (`VIS_SYNONYMS` in forester.js — one constant, extend it
+there). Synonyms are matched lowercase:
+
+| canonical | synonyms |
+| --- | --- |
+| Human | humans, homo sapiens, h. sapiens |
+| Cow | bovine, calf, cattle, bull, heifer, bos taurus, b. taurus |
+| Chicken | broiler chicken, broiler, hen, rooster, gallus gallus, g. gallus, gallus gallus domesticus |
+| Mouse | house mouse, murine, mus musculus, m. musculus |
+| Rat | brown rat, norway rat, black rat, rattus norvegicus, r. norvegicus, rattus rattus |
+| Ferret | domestic ferret, mustela putorius furo, mustela furo, m. putorius furo |
+| Guinea pig | cavy, domestic guinea pig, cavia porcellus, c. porcellus |
+| Rhesus monkey | rhesus macaque, macaca mulatta, m. mulatta |
+| Rabbit | european rabbit, oryctolagus cuniculus, o. cuniculus |
+| Dog | canine, canis familiaris, canis lupus familiaris, c. familiaris |
+| Cat | feline, domestic cat, felis catus, f. catus, felis silvestris catus |
+| Duck | mallard, mallard duck, domestic duck, anas platyrhynchos, a. platyrhynchos |
+| Pig | swine, porcine, hog, piglet, sus scrofa, s. scrofa, sus scrofa domesticus |
+| Horse | equine, mare, stallion, equus caballus, e. caballus |
+| Sheep | ovine, lamb, ewe, ovis aries, o. aries |
+| Goat | caprine, capra hircus, c. hircus |
+| Camel | dromedary, bactrian camel, camelus dromedarius, camelus bactrianus, c. dromedarius |
+
+This is deliberately **display grouping, not data cleaning**: spelling and
+a short list of unambiguous synonyms, nothing semantic beyond it. It goes
+one step further than the desktop (which folds spellings and
+`human → Homo sapiens` only) — the dictionary, the parenthesis repair, and
+folding to capitalized common names (`Human`, not `Homo sapiens`) are this
+viewer's own choices.
 
 ### Readable tip names
 
