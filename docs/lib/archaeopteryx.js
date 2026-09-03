@@ -311,6 +311,7 @@ if (!phyloXml) {
     const ZOOM_OUT_Y = 'zoomin_y';
     const ZOOM_TO_FIT = 'zoomtofit';
     const ZOOM_TO_EXPAND_Y = 'zoomtoexpandy';
+    const EXPAND_HORIZ_BUTTON = 'expandhoriz';
 
 
 
@@ -325,6 +326,7 @@ if (!phyloXml) {
     const VK_O = 79;
     const VK_P = 80;
     const VK_R = 82;
+    const VK_W = 87;
     const VK_DELETE = 46;
     const VK_BACKSPACE = 8;
     const VK_HOME = 36;
@@ -387,7 +389,8 @@ if (!phyloXml) {
     let _w = null;
     let _yScale = null;
     let _radial = null;
-    let _radialRotation = 0;   // radians added to the circular layout's angles (X+/X- rotate buttons)   // circular-layout params (set per render when _state.circularDisplay)
+    let _radialRotation = 0;          // radians added to the circular layout's angles (X+/X- rotate buttons)
+    let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
@@ -1840,6 +1843,16 @@ if (!phyloXml) {
                 if (!_state.circularDisplay) {
                     return null;
                 }
+                if (_radialLabelsHorizontal) {
+                    if (d.children) {
+                        return null;
+                    }
+                    // upright labels: move straight (in screen space) from the
+                    // node to its point on the outer ring, no rotation at all.
+                    let p = radialXY(d.x, d.y);
+                    let q = polarXY(radialAngle(d.x), _radial.maxRad);
+                    return 'translate(' + (q[0] - p[0]) + ',' + (q[1] - p[1]) + ')';
+                }
                 // external labels are pulled out to the common outer ring;
                 // internal labels sit at their node.
                 let off = d.children ? 0 : (_radial.maxRad - radialRadius(d.y));
@@ -3126,6 +3139,7 @@ if (!phyloXml) {
         }
         _nodeLabels = nodeLabels ? nodeLabels : null;
         _radialRotation = 0;
+        _radialLabelsHorizontal = false;
         if (specialVisualizations) {
             throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
                 + ' along with the enableSpecialVisualizations2/3/4 settings');
@@ -3888,6 +3902,17 @@ if (!phyloXml) {
         update(null, 0, true);
     }
 
+    // Circular layout only: flip the external labels between riding their
+    // radial spokes and standing upright (horizontal) at the outer ring.
+    function labelDirectionPressed() {
+        if (!_state.circularDisplay) {
+            return;
+        }
+        _radialLabelsHorizontal = !_radialLabelsHorizontal;
+        syncZoomRowButtons();
+        update(null, 0, true);
+    }
+
     function zoomInX(zoomInFactor) {
         if (_state.circularDisplay) {
             rotateRadial(true);
@@ -4077,10 +4102,32 @@ if (!phyloXml) {
         }
     }
 
-    function midpointRootButtonPressed() {
+    // Midpoint re-rooting rearranges the whole tree and its button is easy to
+    // hit by accident, so it asks first -- through the same little popup the
+    // node menu uses (click anywhere else or press Esc to cancel).
+    function midpointRootButtonPressed(event) {
         if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
-            forester.midpointRoot(_root);
-            zoomToFit();
+            let ev = event;
+            if (!ev || ev.pageX === undefined) {
+                // keyboard invocation (Alt+M): anchor the popup at the button
+                let b = byId(MIDPOINT_ROOT_BUTTON);
+                if (b) {
+                    let r = b.getBoundingClientRect();
+                    ev = {pageX: window.scrollX + r.right + 4, pageY: window.scrollY + r.top};
+                }
+            }
+            showNodeMenu([
+                {
+                    label: 'Midpoint re-root', action: function () {
+                        forester.midpointRoot(_root);
+                        zoomToFit();
+                    }
+                },
+                {
+                    label: 'Cancel', action: function () {
+                    }
+                }
+            ], ev, 'midpoint re-root the tree?');
         }
     }
 
@@ -4095,6 +4142,8 @@ if (!phyloXml) {
         initializeSettings(_settings);
 
         _radialRotation = 0;
+        _radialLabelsHorizontal = false;
+        syncZoomRowButtons();
         refreshVisualizations();
         // Esc resets to the launch state -- the auto-applied colour, when its
         // field still exists in what remains of the tree.
@@ -4380,7 +4429,7 @@ if (!phyloXml) {
 
     function layoutButtonClicked() {
         _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
-        syncZoomXButtons();
+        syncZoomRowButtons();
         zoomToFit();
     }
 
@@ -4388,10 +4437,12 @@ if (!phyloXml) {
     // and rotate the display; in the rectangular layout they are the plain
     // horizontal zoom pair. Same buttons, same bindings -- only the face and
     // the meaning change with the layout.
-    function syncZoomXButtons() {
+    function syncZoomRowButtons() {
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
-        if (!minus || !plus) {
+        let expandV = byId(ZOOM_TO_EXPAND_Y);
+        let expandH = byId(EXPAND_HORIZ_BUTTON);
+        if (!minus || !plus || !expandV || !expandH) {
             return;
         }
         if (_state.circularDisplay) {
@@ -4399,11 +4450,24 @@ if (!phyloXml) {
             minus.title = 'rotate counter-clockwise (Alt+Left or Shift+Alt+mousewheel)';
             plus.innerHTML = makeGlyph('rotate_cw');
             plus.title = 'rotate clockwise (Alt+Right or Shift+Alt+mousewheel)';
+            // as on the desktop: no vertical expansion in circular, and the
+            // horizontal-expand slot becomes the label-direction flip. Its
+            // face shows the direction a click switches TO, its tooltip the
+            // current one.
+            expandV.disabled = true;
+            expandH.disabled = false;
+            expandH.innerHTML = makeGlyph(_radialLabelsHorizontal ? 'labels_radial' : 'labels_horizontal');
+            expandH.title = 'node labels: ' + (_radialLabelsHorizontal ? 'horizontal' : 'radial')
+                + ' -- click to flip (Alt+W)';
         } else {
             minus.textContent = 'X-';
             minus.title = 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)';
             plus.textContent = 'X+';
             plus.title = 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)';
+            expandV.disabled = false;
+            expandH.disabled = true;
+            expandH.innerHTML = makeGlyph('expand_horizontal');
+            expandH.title = 'expand horizontally to fit labels -- not available in this layout';
         }
     }
 
@@ -4949,6 +5013,46 @@ if (!phyloXml) {
         return s + glyphArrow(50, 28, 50, 1.5, 19) + glyphArrow(50, 72, 50, 98.5, 19);
     }
 
+    // The desktop's horizontal counterpart: label columns pushed apart. The
+    // root-left layouts have no vertical label columns, so the button wearing
+    // this face is always disabled -- in circular it is repurposed as the
+    // label-direction flip below.
+    function glyphExpandHorizontal() {
+        let s = '';
+        [-16, 0, 16].forEach(function (off) {
+            s += glyphLine(50 + off, 22, 50 + off, 78);
+        });
+        return s + glyphArrow(28, 50, 1.5, 50, 19) + glyphArrow(72, 50, 98.5, 50, 19);
+    }
+
+    // Label direction in the circular layout, drawn as on the desktop: a node
+    // (the dot) with its radial spoke, and a thick bar for the label -- either
+    // riding the spoke (radial) or lying flat (horizontal). Like the desktop
+    // icon it shows the direction a click switches TO.
+    function glyphLabelDirection(radial) {
+        let ang = -Math.PI / 4;
+        let cx = 22, cy = 78, dotR = 10, spoke = 52;
+        let sx = cx + Math.cos(ang) * spoke;
+        let sy = cy + Math.sin(ang) * spoke;
+        let s = glyphDot(cx, cy, dotR)
+            + glyphLine(cx + Math.cos(ang) * dotR * 1.6, cy + Math.sin(ang) * dotR * 1.6, sx, sy);
+        let bar = 34;
+        let b0x, b0y, b1x, b1y;
+        if (radial) {
+            b0x = cx + Math.cos(ang) * (spoke + 6);
+            b0y = cy + Math.sin(ang) * (spoke + 6);
+            b1x = cx + Math.cos(ang) * (spoke + 6 + bar);
+            b1y = cy + Math.sin(ang) * (spoke + 6 + bar);
+        } else {
+            b0x = sx + 4;
+            b0y = sy;
+            b1x = sx + 4 + bar;
+            b1y = sy;
+        }
+        return s + '<line x1="' + glyphNum(b0x) + '" y1="' + glyphNum(b0y) + '" x2="' + glyphNum(b1x)
+            + '" y2="' + glyphNum(b1y) + '" stroke-width="17"/>';
+    }
+
     // Back toward the root: an arrow pointing LEFT (in a root-left tree that is
     // literally the direction of the parent clade). With the bar it stops
     // against it reads "all the way back", without it "one step back".
@@ -5016,6 +5120,9 @@ if (!phyloXml) {
             case 'rotate_cw': body = glyphRotate(true); break;
             case 'rotate_ccw': body = glyphRotate(false); break;
             case 'expand_vertical': body = glyphExpandVertical(); break;
+            case 'expand_horizontal': body = glyphExpandHorizontal(); break;
+            case 'labels_radial': body = glyphLabelDirection(true); break;
+            case 'labels_horizontal': body = glyphLabelDirection(false); break;
             case 'whole_tree': sw = 11; join = 'miter'; body = glyphBackArrow(true); break;
             case 'up_one_level': sw = 11; join = 'miter'; body = glyphBackArrow(false); break;
             case 'ladderize_asc': sw = 8; cap = 'round'; body = glyphLadderize(true); break;
@@ -5230,6 +5337,10 @@ if (!phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
+            + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; width:max-content; }'
+            + '.aptx-panel .aptx-zoomgrid > input[type=button] { width:100%; margin-right:0; }'
+            + '.aptx-panel .aptx-zoomrow { display:flex; }'
+            + '.aptx-panel .aptx-zoomrow .aptx-gbtn:last-child { margin-right:0; }'
             + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
             + '.aptx-panel .aptx-seg .aptx-glyph { height:13px; }'
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
@@ -5951,6 +6062,7 @@ if (!phyloXml) {
         on(ZOOM_TO_FIT, 'click', zoomToFit);
 
         on(ZOOM_TO_EXPAND_Y, 'click', zoomToExpandY);
+        on(EXPAND_HORIZ_BUTTON, 'click', labelDirectionPressed);
 
         on(RETURN_TO_SUPERTREE_BUTTON, 'click', returnToSupertreeButtonPressed);
 
@@ -6015,7 +6127,11 @@ if (!phyloXml) {
                 if (e.keyCode === VK_O) {
                     ladderizeButtonPressed();
                 } else if (e.keyCode === VK_R) {
-                    returnToSupertreeButtonByOnePressed();
+                    if (e.shiftKey) {
+                        returnToSupertreeButtonPressed();
+                    } else {
+                        returnToSupertreeButtonByOnePressed();
+                    }
                 } else if (e.keyCode === VK_M) {
                     midpointRootButtonPressed();
                 } else if (e.keyCode === VK_C || e.keyCode === VK_DELETE || e.keyCode === VK_BACKSPACE) {
@@ -6024,6 +6140,8 @@ if (!phyloXml) {
                     cycleDisplay();
                 } else if (e.keyCode === VK_L) {
                     toggleAlignPhylogram();
+                } else if (e.keyCode === VK_W) {
+                    labelDirectionPressed();
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 escPressed();
@@ -6329,17 +6447,24 @@ if (!phyloXml) {
         }
 
         function makeZoomControl() {
+            // The middle row keeps the desktop's left-to-right order: X-,
+            // expand vertically, fit, expand horizontally, X+ (with the X and
+            // expand buttons repurposed in the circular layout, see
+            // syncZoomRowButtons). The Y buttons span the whole row.
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom</legend>');
+            h = h.concat('<div class="aptx-zoomgrid">');
             h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
-            h = h.concat('<br>');
+            h = h.concat('<div class="aptx-zoomrow">');
             h = h.concat(makeGlyphButton('rotate_ccw', ZOOM_OUT_X, ''));
-            h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
             h = h.concat(makeGlyphButton('expand_vertical', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
+            h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
+            h = h.concat(makeGlyphButton('expand_horizontal', EXPAND_HORIZ_BUTTON, ''));
             h = h.concat(makeGlyphButton('rotate_cw', ZOOM_IN_X, ''));
-            h = h.concat('<br>');
+            h = h.concat('</div>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
+            h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
@@ -6350,8 +6475,8 @@ if (!phyloXml) {
             h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
             h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all (Alt+O)'));
-            h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'return to supertree by one branch (if in subtree) (Alt+R)'));
-            h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return to supertree (if in subtree)'));
+            h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree) (Alt+Shift+R)'));
+            h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree) (Alt+R)'));
             h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -6537,7 +6662,7 @@ if (!phyloXml) {
     function initializeGui() {
 
         setDisplayTypeButtons();
-        syncZoomXButtons();
+        syncZoomRowButtons();
 
         setCheckboxValue(NODE_NAME_CB, _state.showNodeName);
         setCheckboxValue(TAXONOMY_CB, _state.showTaxonomy);
