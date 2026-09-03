@@ -328,25 +328,8 @@ if (!phyloXml) {
     // Key codes
     // ---------------------------
     const VK_ESC = 27;
-    const VK_C = 67;
-    const VK_G = 71;
-    const VK_L = 76;
-    const VK_M = 77;
     const VK_O = 79;
-    const VK_P = 80;
-    const VK_R = 82;
-    const VK_W = 87;
-    const VK_DELETE = 46;
-    const VK_BACKSPACE = 8;
     const VK_HOME = 36;
-    const VK_UP = 38;
-    const VK_DOWN = 40;
-    const VK_LEFT = 37;
-    const VK_RIGHT = 39;
-    const VK_PLUS = 187;
-    const VK_MINUS = 189;
-    const VK_PLUS_N = 107;
-    const VK_MINUS_N = 109;
     const VK_PAGE_UP = 33;
     const VK_PAGE_DOWN = 34;
 
@@ -5241,7 +5224,7 @@ if (!phyloXml) {
         if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
             let ev = event;
             if (!ev || ev.pageX === undefined || (ev.pageX === 0 && ev.pageY === 0)) {
-                // keyboard invocation (Alt+M): anchor the popup at the button
+                // keyboard/synthetic invocation: anchor the popup at the button
                 let b = byId(MIDPOINT_ROOT_BUTTON);
                 if (b) {
                     let r = b.getBoundingClientRect();
@@ -5631,38 +5614,24 @@ if (!phyloXml) {
             fitW.disabled = false;
             fitW.innerHTML = makeGlyph(_radialLabelsHorizontal ? 'labels_radial' : 'labels_horizontal');
             fitW.title = 'node labels: ' + (_radialLabelsHorizontal ? 'horizontal' : 'radial')
-                + ' -- click to flip (Alt+W)';
+                + ' -- click to flip';
         } else {
             if (yIn) {
                 yIn.value = 'Y+';
-                yIn.title = 'zoom in vertically (Alt+Up or Shift+mousewheel)';
+                yIn.title = 'zoom in vertically (or Shift+mousewheel)';
             }
             if (yOut) {
                 yOut.value = 'Y-';
-                yOut.title = 'zoom out vertically (Alt+Down or Shift+mousewheel)';
+                yOut.title = 'zoom out vertically (or Shift+mousewheel)';
             }
             minus.textContent = 'X-';
-            minus.title = 'zoom out horizontally (Alt+Left or Shift+Alt+mousewheel)';
+            minus.title = 'zoom out horizontally (or Shift+Alt+mousewheel)';
             plus.textContent = 'X+';
-            plus.title = 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)';
+            plus.title = 'zoom in horizontally (or Shift+Alt+mousewheel)';
             expandV.disabled = false;
             fitW.disabled = false;
             fitW.innerHTML = makeGlyph('fit_width');
-            fitW.title = 'fit the tree to the window width, keeping the current vertical zoom (Alt+W)';
-        }
-    }
-
-    // Toggles alignment of the labels in phylogram mode (bound to the 'L'
-    // keyboard shortcut). Alignment only applies to phylograms, so this is a
-    // no-op in cladogram mode.
-    function toggleAlignPhylogram() {
-        if (_state.unrootedDisplay) {
-            return; // nothing to align labels to
-        }
-        if (_state.phylogram) {
-            _state.alignPhylogram = !_state.alignPhylogram;
-            setDisplayTypeButtons();
-            update(null, 0);
+            fitW.title = 'fit the tree to the window width, keeping the current vertical zoom';
         }
     }
 
@@ -7325,32 +7294,16 @@ if (!phyloXml) {
         _docListenersBound = true;
 
         document.addEventListener('keyup', function (e) {
+            // The DELIBERATELY minimal shortcut set (user decision,
+            // 2026-09-03): Esc/Home reset, O cycles the overview corner,
+            // PageUp/PageDown size the font, and the wheel zooms. Everything
+            // else is a button -- the old Alt+letter combos were near-
+            // undiscoverable (macOS labels the key Option and types glyphs
+            // with it).
             if (isTypingTarget(e.target)) {
-                return; // Home/Esc/Alt shortcuts must not fire from inside a text box
+                return; // nothing fires from inside a text box
             }
-            if (e.altKey) {
-                if (e.keyCode === VK_O) {
-                    ladderizeButtonPressed();
-                } else if (e.keyCode === VK_R) {
-                    if (e.shiftKey) {
-                        returnToSupertreeButtonPressed();
-                    } else {
-                        returnToSupertreeButtonByOnePressed();
-                    }
-                } else if (e.keyCode === VK_M) {
-                    midpointRootButtonPressed();
-                } else if (e.keyCode === VK_C || e.keyCode === VK_DELETE || e.keyCode === VK_BACKSPACE) {
-                    zoomToFit();
-                } else if (e.keyCode === VK_P) {
-                    cycleDisplay();
-                } else if (e.keyCode === VK_L) {
-                    toggleAlignPhylogram();
-                } else if (e.keyCode === VK_W) {
-                    fitWidthButtonPressed();
-                } else if (e.keyCode === VK_G) {
-                    stepToFoundNode(e.shiftKey ? -1 : 1);
-                }
-            } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
+            if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 if (_menuConsumedEsc) {
                     _menuConsumedEsc = false; // that Esc only closed the popup
                 } else {
@@ -7365,39 +7318,6 @@ if (!phyloXml) {
         document.addEventListener('keydown', function (e) {
             if (isTypingTarget(e.target)) {
                 return;
-            }
-            if (e.altKey) {
-                if (e.keyCode === VK_UP) {
-                    zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                } else if (e.keyCode === VK_DOWN) {
-                    zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                } else if (e.keyCode === VK_LEFT) {
-                    if (!radialDisplay()) {
-                        zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW); // rotation is buttons-only
-                    }
-                } else if (e.keyCode === VK_RIGHT) {
-                    if (!radialDisplay()) {
-                        zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                    }
-                } else if (e.keyCode === VK_PLUS || e.keyCode === VK_PLUS_N) {
-                    if (e.shiftKey) {
-                        increaseFontSizes();
-                    } else {
-                        zoomInY(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                        if (!radialDisplay()) {
-                            zoomInX(BUTTON_ZOOM_IN_FACTOR_SLOW);
-                        }
-                    }
-                } else if (e.keyCode === VK_MINUS || e.keyCode === VK_MINUS_N) {
-                    if (e.shiftKey) {
-                        decreaseFontSizes();
-                    } else {
-                        zoomOutY(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                        if (!radialDisplay()) {
-                            zoomOutX(BUTTON_ZOOM_OUT_FACTOR_SLOW);
-                        }
-                    }
-                }
             }
             if (e.keyCode === VK_PAGE_UP) {
                 increaseFontSizes();
@@ -7588,9 +7508,9 @@ if (!phyloXml) {
             h = h.concat(makeSegment(makeGlyph('unrooted'), LAYOUT_UNROOTED_BUTTON, layoutGroup, 'unrooted (equal-angle)'));
             h = h.concat('</div>');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
-            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels  (use Alt+P to cycle between display types)'));
-            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)  (use Alt+P to cycle between display types)'));
+            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)'));
+            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels'));
+            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -7695,15 +7615,15 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Zoom</legend>');
             h = h.concat('<div class="aptx-zoomgrid">');
-            h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (Alt+Up or Shift+mousewheel)'));
+            h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (or Shift+mousewheel)'));
             h = h.concat('<div class="aptx-zoomrow">');
             h = h.concat(makeGlyphButton('rotate_ccw', ZOOM_OUT_X, ''));
             h = h.concat(makeGlyphButton('expand_vertical', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
-            h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
+            h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Home or Esc for an almost complete reset)'));
             h = h.concat(makeGlyphButton('fit_width', FIT_WIDTH_BUTTON, ''));
             h = h.concat(makeGlyphButton('rotate_cw', ZOOM_IN_X, ''));
             h = h.concat('</div>');
-            h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
+            h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (or Shift+mousewheel)'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -7714,10 +7634,10 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Tools</legend>');
             h = h.concat('<div>');
-            h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all (Alt+O)'));
-            h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree) (Alt+Shift+R)'));
-            h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree) (Alt+R)'));
-            h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root (Alt+M)'));
+            h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all'));
+            h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree)'));
+            h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree)'));
+            h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -7774,10 +7694,10 @@ if (!phyloXml) {
             h = h.concat(makeSearchBox('Search B', 1));
             h = h.concat('<div class="aptx-searchnav" id="' + SEARCH_NAV_ROW + '" style="display:none">');
             h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_PREV
-                + '" title="center the previous search hit (Shift+Alt+G)">&#9664;</button>');
+                + '" title="center the previous search hit">&#9664;</button>');
             h = h.concat('<span id="' + SEARCH_NAV_LABEL + '" title="position among the search hits"></span>');
             h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_NEXT
-                + '" title="center the next search hit (Alt+G)">&#9654;</button>');
+                + '" title="center the next search hit">&#9654;</button>');
             h = h.concat('</div>');
             h = h.concat('<div class="aptx-combine" id="' + SEARCH_COMBINE_ROW + '" style="display:none">');
             h = h.concat('<label class="aptx-field-label" for="' + SEARCH_COMBINE_SELECT + '">Combine A &amp; B</label>');
@@ -8021,28 +7941,6 @@ if (!phyloXml) {
                 ord(c[i]);
             }
         }
-    }
-
-    function cycleDisplay() {
-        if (_state.unrootedDisplay) {
-            // no aligned display in unrooted: P and C simply swap
-            _state.alignPhylogram = false;
-            _state.phylogram = !_state.phylogram;
-            setDisplayTypeButtons();
-            update(null, 0);
-            return;
-        }
-        if (_state.phylogram && !_state.alignPhylogram) {
-            _state.alignPhylogram = true;
-
-        } else if (_state.phylogram && _state.alignPhylogram) {
-            _state.phylogram = false;
-            _state.alignPhylogram = false;
-        } else if (!_state.phylogram && !_state.alignPhylogram) {
-            _state.phylogram = true;
-        }
-        setDisplayTypeButtons();
-        update(null, 0);
     }
 
     function setDisplayTypeButtons() {

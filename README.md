@@ -149,11 +149,12 @@ desktop's equal-angle fan, where each subtree opens a wedge proportional to
 how many tips it holds.
 
 In the two radial layouts the zoom row changes meaning, exactly as on the
-desktop: **X− / X+ become rotate** (a 32nd of a turn per press, also
-Alt+Left / Alt+Right or Shift+Alt+mousewheel), the fit-width slot becomes the
-**node label direction** flip — labels riding their spokes or standing
-upright (Alt+W) — and vertical expansion greys out. **Fit** centres and
-scales the fan; **Esc** also resets rotation and label direction. Unrooted
+desktop: **Y+ / Y− become the plain + / − zoom** (a circle has one diameter;
+the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
+32nd of a turn per press), and the fit-width slot becomes the **node label
+direction** flip — labels riding their spokes or standing upright — while
+vertical expansion greys out. **Fit** centres and scales the fan; **Esc**
+also resets rotation and label direction. Unrooted
 additionally greys out the aligned-phylogram option and Auto-hide Labels
 (there is no common label edge, and no even row spacing to hide against).
 
@@ -173,8 +174,16 @@ translucent **pulsing halo** breathes behind each hit, and everything that is
 least one hit is actually visible, so a fruitless search never washes the
 tree out. The **overview** miniature marks every hit as a dot in the same
 colour, and a **◀ k / N ▶** navigator appears under the search boxes: each
-press centres the previous / next hit in the viewport, wrapping around
-(Alt+G / Shift+Alt+G).
+press centres the previous / next hit in the viewport, wrapping around.
+
+## Keyboard
+
+Deliberately minimal: **Esc** or **Home** resets the view, **O** cycles the
+overview between corners, **PageUp / PageDown** change the font size — and
+the **mouse wheel** zooms (Shift: vertical only; Shift+Alt: horizontal;
+Ctrl+Shift: font size). Everything else is a button; the old Alt+letter
+combos are gone (macOS labels that key Option and types glyphs with it).
+Nothing fires while the cursor is in a text box.
 
 ## Sequence alignments
 
