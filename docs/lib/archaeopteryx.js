@@ -2639,6 +2639,60 @@ if (!phyloXml) {
         return phynode.name;
     }
 
+    // The taxonomy text a node's label would show under the ACTIVE taxonomy
+    // checkboxes. Used only for the equality below, so its joins need only be
+    // consistent with themselves -- two nodes sharing a scientific name but
+    // rendering a different code or rank are NOT judged equal, exactly as on
+    // the desktop.
+    function visibleTaxonomyText(phynode) {
+        if (!phynode.taxonomies || phynode.taxonomies.length < 1) {
+            return '';
+        }
+        let t = phynode.taxonomies[0];
+        let parts = [];
+        if (_state.showTaxonomyCode && t.code) {
+            parts.push(t.code);
+        }
+        if (_state.showTaxonomyScientificName && t.scientific_name) {
+            parts.push(t.scientific_name);
+        }
+        if (_state.showTaxonomyCommonName && t.common_name) {
+            parts.push(t.common_name);
+        }
+        if (_state.showTaxonomyRank && t.rank) {
+            parts.push(t.rank);
+        }
+        return parts.join(' | ');
+    }
+
+    // True when a non-root INTERNAL node's visible taxonomy label equals that
+    // of the NEAREST ancestor with a visible one -- the desktop's rule for
+    // decluttering nested same-taxon clades (a clade is marked once, at its
+    // topmost node; common after ancestral-taxonomy inference). Ancestors
+    // carrying a taxonomy that renders no visible label are skipped; the walk
+    // never leaves the DISPLAYED tree, so a subtree view marks its own
+    // topmost occurrence.
+    function isDuplicateOfAncestorTaxon(phynode) {
+        if (!phynode || !phynode.children || !phynode.parent
+            || !phynode.taxonomies || phynode.taxonomies.length < 1) {
+            return false;
+        }
+        let own = visibleTaxonomyText(phynode);
+        if (!own) {
+            return false;
+        }
+        for (let a = phynode === _root ? null : phynode.parent; a; a = (a === _root ? null : a.parent)) {
+            if (!a.taxonomies || a.taxonomies.length < 1) {
+                continue;
+            }
+            let anc = visibleTaxonomyText(a);
+            if (anc) {
+                return own.toLowerCase() === anc.toLowerCase();
+            }
+        }
+        return false;
+    }
+
     let makeNodeLabel = function (phynode) {
         if (!_state.showExternalLabels && !(phynode.children)) {
             return null;
@@ -2674,7 +2728,8 @@ if (!phyloXml) {
             }
         }
 
-        if (_state.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0) {
+        if (_state.showTaxonomy && phynode.taxonomies && phynode.taxonomies.length > 0
+            && !isDuplicateOfAncestorTaxon(phynode)) {
             let t = phynode.taxonomies[0];
             if (_state.showTaxonomyCode) {
                 l = append(l, t.code);
