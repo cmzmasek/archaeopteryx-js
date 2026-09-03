@@ -752,6 +752,195 @@
     };
 
 
+    // ------------------------------------------------------------------
+    // Automatic visualization candidates
+    // ------------------------------------------------------------------
+    //
+    // Decides, from the tree alone, which of its elements are worth offering
+    // as a Color, Color-range, or Shape visualization. This replaces the old
+    // caller-supplied "nodeVisualizations" configuration: the tree is the
+    // only input.
+    //
+    // Only external nodes are considered; the domains always come from the
+    // COMPLETE tree, so a value keeps its colour inside a subtree view even
+    // when the subtree does not contain it.
+    //
+    // Candidates: taxonomy code / scientific name / common name, sequence
+    // name / symbol / gene name, and node properties (applies_to "node").
+    // The "style:" namespace is never a candidate -- the desktop reserves it
+    // for per-node rendering instructions (font_color, node_shape, ...), so
+    // treating it as data would mean colouring by a colour.
+    //
+    // The rules, tuned against the real ViPR / BV-BRC trees in docs/data
+    // (which test/visualization_test.js holds as executable fixtures):
+    //
+    //   coverage    present on >= 2/3 of the external nodes. Database
+    //               exports are always patchy -- demanding 100% would
+    //               reject nearly every field of the BV-BRC trees while a
+    //               field on 9% of nodes (state_province) says nothing.
+    //               Nodes without a value simply keep the default look.
+    //   repetition  at least 2 distinct values (1 paints the whole tree
+    //               alike), and fewer distinct values than external nodes
+    //               (all-unique means identifiers).
+    //   categorical <= 20 distinct values -> Color. Above ~12 the reader
+    //               leans on the legend, but the real trees cluster at
+    //               15-17 (host names, countries, taxonomy codes).
+    //   numeric     every value parses as a finite number -> Color-range
+    //               (a ramp, never categorical colours: order is the one
+    //               thing numbers have). Guard: distinct/covered <= 0.9,
+    //               or "numeric" identifiers (genome ids) become ramps.
+    //   shape       <= 7 distinct values (d3 v7 has exactly 7 distinct
+    //               fill symbols), numeric or not -- two years as two
+    //               shapes is genuinely useful.
+    //   multi-value a ref carried more than once by any external node is
+    //               not a candidate: a node cannot be two colours, and
+    //               picking one silently is worse than not offering it.
+    //
+    const VIS_MIN_COVERAGE_NUM = 2;    // coverage >= 2/3, held as a
+    const VIS_MIN_COVERAGE_DEN = 3;    // fraction so the test is integer-exact
+    const VIS_MAX_COLOR_CATEGORIES = 20;
+    const VIS_MAX_SHAPE_CATEGORIES = 7;
+    const VIS_MAX_NUMERIC_UNIQUE_NUM = 9;    // distinct/covered <= 0.9,
+    const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
+    const VIS_EXCLUDED_REF_PREFIX = 'style:';
+
+    // Fixed candidate slots for the phyloXML elements (properties use their ref).
+    const VIS_ELEMENT_SLOTS = [
+        {id: 'tax:code', kind: 'taxonomy', label: 'Taxonomy Code', get: function (t) { return t.code; }},
+        {id: 'tax:scientific_name', kind: 'taxonomy', label: 'Scientific Name', get: function (t) { return t.scientific_name; }},
+        {id: 'tax:common_name', kind: 'taxonomy', label: 'Common Name', get: function (t) { return t.common_name; }},
+        {id: 'seq:name', kind: 'sequence', label: 'Sequence Name', get: function (s) { return s.name; }},
+        {id: 'seq:symbol', kind: 'sequence', label: 'Sequence Symbol', get: function (s) { return s.symbol; }},
+        {id: 'seq:gene_name', kind: 'sequence', label: 'Gene Name', get: function (s) { return s.gene_name; }}
+    ];
+
+    forester.visualizationCandidates = function (tree) {
+        let total = 0;
+        let stats = {};   // id -> {kind, ref, label, nodes, values:Set, multi}
+
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children || n._children) {
+                return;
+            }
+            total++;
+            // gather this node's values per candidate id first, so carrying
+            // the same ref twice is visible as such
+            let perNode = {};
+            function add(id, kind, ref, label, value) {
+                if (value === undefined || value === null) {
+                    return;
+                }
+                let v = String(value).trim();
+                if (v.length === 0) {
+                    return;
+                }
+                if (!perNode[id]) {
+                    perNode[id] = {kind: kind, ref: ref, label: label, values: []};
+                }
+                perNode[id].values.push(v);
+            }
+            VIS_ELEMENT_SLOTS.forEach(function (slot) {
+                let list = slot.kind === 'taxonomy' ? n.taxonomies : n.sequences;
+                if (list) {
+                    for (let i = 0; i < list.length; ++i) {
+                        add(slot.id, slot.kind, null, slot.label, slot.get(list[i]));
+                    }
+                }
+            });
+            if (n.properties) {
+                for (let i = 0; i < n.properties.length; ++i) {
+                    let p = n.properties[i];
+                    if (p.ref && p.applies_to === 'node'
+                        && p.ref.indexOf(VIS_EXCLUDED_REF_PREFIX) !== 0) {
+                        add('prop:' + p.ref, 'property', p.ref, null, p.value);
+                    }
+                }
+            }
+            Object.keys(perNode).forEach(function (id) {
+                let g = perNode[id];
+                if (!stats[id]) {
+                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label, nodes: 0, values: new Set(), multi: false};
+                }
+                let s = stats[id];
+                s.nodes++;
+                if (g.values.length > 1) {
+                    s.multi = true;
+                }
+                for (let i = 0; i < g.values.length; ++i) {
+                    s.values.add(g.values[i]);
+                }
+            });
+        });
+
+        let candidates = [];
+        Object.keys(stats).forEach(function (id) {
+            let s = stats[id];
+            if (s.multi) {
+                return;
+            }
+            let covered = s.nodes;
+            let distinct = s.values.size;
+            if (covered * VIS_MIN_COVERAGE_DEN < total * VIS_MIN_COVERAGE_NUM) {
+                return;
+            }
+            if (distinct < 2) {
+                return;
+            }
+            let values = Array.from(s.values);
+            let numeric = values.every(function (v) {
+                return Number.isFinite(Number(v));
+            });
+            let colorMode;
+            if (numeric) {
+                if (distinct * VIS_MAX_NUMERIC_UNIQUE_DEN > covered * VIS_MAX_NUMERIC_UNIQUE_NUM) {
+                    return;
+                }
+                colorMode = 'range';
+                values.sort(function (a, b) {
+                    return Number(a) - Number(b);
+                });
+            } else {
+                if (distinct >= total || distinct > VIS_MAX_COLOR_CATEGORIES) {
+                    return;
+                }
+                colorMode = 'category';
+                values.sort();
+            }
+            candidates.push({
+                id: id,
+                kind: s.kind,
+                ref: s.ref,
+                // property labels drop the namespace prefix; a cross-namespace
+                // collision is resolved below by restoring the full ref
+                label: s.label || (s.ref.indexOf(':') >= 0 ? s.ref.substring(s.ref.indexOf(':') + 1) : s.ref),
+                numeric: numeric,
+                coverage: covered,
+                total: total,
+                values: values,
+                colorMode: colorMode,
+                shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
+            });
+        });
+
+        let labelCount = {};
+        candidates.forEach(function (c) {
+            labelCount[c.label] = (labelCount[c.label] || 0) + 1;
+        });
+        candidates.forEach(function (c) {
+            if (labelCount[c.label] > 1 && c.ref) {
+                c.label = c.ref;
+            }
+        });
+
+        candidates.sort(function (a, b) {
+            let la = a.label.toLowerCase();
+            let lb = b.label.toLowerCase();
+            return la < lb ? -1 : (la > lb ? 1 : (a.id < b.id ? -1 : 1));
+        });
+        return candidates;
+    };
+
+
     /**
      *
      * Special method for IRD database.
