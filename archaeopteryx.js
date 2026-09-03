@@ -3856,9 +3856,14 @@ if (!phyloXml) {
     // translate(d.y, d.x) with d.x in [0, vertical] and d.y in [0, horizontal],
     // so these are exactly what a zoom rescales.
     function layoutSpans() {
+        // Clamped exactly like update() clamps _w: with very long labels the
+        // raw difference goes to (or below) zero while the layout itself never
+        // shrinks past 1, and an anchor ratio taken from the unclamped value
+        // would be wildly wrong (it once flung the whole tree off-screen after
+        // three X+ presses on a long-labelled tree).
         return {
-            horizontal: _displayWidth - calcMaxTreeLengthForDisplay(),
-            vertical: _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay()),
+            vertical: Math.max(1, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT))
         };
     }
 
@@ -3877,16 +3882,22 @@ if (!phyloXml) {
         applyZoom();
 
         let after = layoutSpans();
-        if (!(before.horizontal > 0) || !(before.vertical > 0)
-            || !(after.horizontal > 0) || !(after.vertical > 0)) {
-            return;
-        }
         // Taken from the layout spans, NOT from a measured bounding box: nodes
         // and labels are moved by a transition, so straight after update() the
         // rendered geometry is still a mix of old and new and measuring it puts
         // the anchor in the wrong place (which showed up as the tree wandering
         // up the screen while zooming out). The spans are exact and immediate.
-        let nx = cx * (after.horizontal / before.horizontal);
+        //
+        // Horizontally the layout has two zones. Points inside the branch span
+        // SCALE with it, but a viewport centre can also sit over the label
+        // zone beyond it (with long labels, most of the picture) -- label text
+        // keeps its length and only TRANSLATES with its anchor node, so that
+        // part of the distance is carried over unscaled. Splitting the anchor
+        // this way is exact for labels anchored at the far edge and a close
+        // approximation for the rest; scaling the whole distance made the
+        // display race off horizontally on long-labelled trees.
+        let bx = Math.min(cx, before.horizontal);
+        let nx = bx * (after.horizontal / before.horizontal) + (cx - bx);
         let ny = cy * (after.vertical / before.vertical);
         _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
             .translate((size.w / 2) - (nx * t.k), (size.h / 2) - (ny * t.k))
