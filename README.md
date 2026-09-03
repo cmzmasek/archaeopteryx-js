@@ -141,6 +141,78 @@ and decides by itself what is worth showing. There is nothing to configure.
   itself (and phyloXML branch colours). Search hits and selections always
   outrank visualization colours. **Esc** returns to the opening state.
 
+## Layouts
+
+Three layouts, switched with the second row of buttons at the top of the
+panel: **rectangular** (root at left), **circular**, and **unrooted** — the
+desktop's equal-angle fan, where each subtree opens a wedge proportional to
+how many tips it holds.
+
+In the two radial layouts the zoom row changes meaning, exactly as on the
+desktop: **X− / X+ become rotate** (a 32nd of a turn per press, also
+Alt+Left / Alt+Right or Shift+Alt+mousewheel), the fit-width slot becomes the
+**node label direction** flip — labels riding their spokes or standing
+upright (Alt+W) — and vertical expansion greys out. **Fit** centres and
+scales the fan; **Esc** also resets rotation and label direction. Unrooted
+additionally greys out the aligned-phylogram option and Auto-hide Labels
+(there is no common label edge, and no even row spacing to hide against).
+
+## Searching
+
+Two search boxes (A and B), each with its own **field** menu (built from what
+the tree actually carries — names, taxonomy and sequence fields, every custom
+property, branch lengths, confidences, structural values) and **match mode**
+(contains / starts with / ends with / whole word / regex for text;
+`= != < <= > >= range` for numbers). Inside one box, `,` means OR and `+` means AND (plain-text
+modes only); **Combine A & B** intersects or unites the two. **Match case**
+and **Inverse** apply to both.
+
+Hits are hard to miss: their labels take the search colour **in bold**, a
+translucent **pulsing halo** breathes behind each hit, and everything that is
+*not* a hit fades — the desktop's "dim non-matches", engaged only while at
+least one hit is actually visible, so a fruitless search never washes the
+tree out. The **overview** miniature marks every hit as a dot in the same
+colour, and a **◀ k / N ▶** navigator appears under the search boxes: each
+press centres the previous / next hit in the viewport, wrapping around
+(Alt+G / Shift+Alt+G).
+
+## Sequence alignments
+
+A tree whose tips carry `<mol_seq is_aligned="true">` shows the alignment as
+a residue track beside the tree (rectangular layout only — an alignment is
+inherently horizontal). Amino acids use a physico-chemical colour scheme,
+nucleotides one colour per base — decided from the residues themselves — with
+gaps drawn as faint dashes that join into lines, so indel blocks read at a
+glance.
+
+A long alignment shows a scrollable **window** (at most ~60% of the display):
+drag the slider at the window bottom, or roll the mouse wheel over the track;
+the tree itself never moves. Under the rows sit a **conservation** bar per
+column with the consensus residue beneath it (scored over the tips currently
+displayed), and a 1-based **column ruler**. **Hover any residue** for its
+alignment column, its position within that sequence's own ungapped residues,
+its full name, class, and Kyte-Doolittle hydropathy. The **Alignment**
+checkbox under Display Data toggles the whole track.
+
+## Time trees
+
+A tree whose nodes carry phyloXML `<date>` elements is drawn against time.
+Ages (`unit="mya"` and friends, or values that look like ages) get the
+**geologic axis**: two rows of ICS intervals in their official colours —
+Period over Epoch for most trees, coarser pairs for Precambrian-deep ones —
+plus a "Ma before present" ruler. Years (`unit="year"`, or values that look
+like calendar years) get a labelled **calendar axis** instead. The tree's
+layout itself never changes: time is an overlay calibrated by the dates, so
+it also works for a fossil-only tree, where the axis simply stops at the
+youngest tip and labels that age (the ammonite demo ends at the K-Pg, 66).
+
+Nodes with a date **range** (`minimum`/`maximum` — minimum is the younger
+bound) draw uncertainty bars: translucent blue **HPD age bars** on internal
+nodes, sepia **fossil-range (FAD/LAD) bars with end caps** on tips. Node
+tooltips show the date. The **Time Axis** checkbox under Display Data toggles
+everything; the axis needs a phylogram (branch lengths carry the time) and
+the rectangular layout.
+
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
 
@@ -262,6 +334,11 @@ showing every field the tree carries, the viewer measures the actual label
 text and unchecks fields that only repeat another field or that would make
 the combined labels uselessly long (see *Initial label fields* in the
 developer spec below). The checkboxes are still there to override it.
+
+The same data-driven rule applies to the two big overlays: a tree whose tips
+carry an aligned `mol_seq` opens with its **sequence alignment** showing, and
+a tree with phyloXML `<date>` elements opens with its **time axis** drawn —
+each with a checkbox under Display Data to turn it off.
 
 ## Configuration
 
@@ -751,9 +828,10 @@ Which of the three label checkboxes — Node Name, Taxonomy, Sequence — start
 checked is decided per tree by `forester.suggestLabelFields(root, extractors)`
 (pure, under test). The viewer hands it, per external node, exactly the text
 each field would print with the subfield cascade already applied (one good
-taxonomy identifier, one good sequence identifier; the raw node name — Short
-Names shortening and the readable-tip-name substitution are display niceties
-applied later). Two rules, in order:
+taxonomy identifier, one good sequence identifier, and the **displayed** node
+name — when the readable-tip-name substitution applies, the substituted name
+is what gets judged; only Short Names shortening is a later display nicety).
+Two rules, in order:
 
 1. **Redundancy.** For each ordered pair of fields (priority: name >
    taxonomy > sequence), if one field's text is *contained* in the other's —
@@ -765,9 +843,12 @@ applied later). Two rules, in order:
 2. **Length budget.** If the median length of the combined remaining label
    (fragments joined with `" | "`) still exceeds **50 characters**, only the
    single most *identifying* field stays: highest ratio of distinct
-   (normalized) values to labelled nodes; within a tie of **0.05** the
-   priority order wins unless a later field's median length is under **60%**
-   of the leader's (substantially more economical).
+   (normalized) values to **all external nodes** — judged over every tip, not
+   just the labelled ones, so a field carried by a handful of tips cannot win
+   and leave the rest unlabelled. The top ratio is found first; every field
+   within **0.05** of it then competes by the priority order, with one
+   override: a lower-priority contender whose median length is under **60%**
+   of the current pick's (substantially more economical) takes it.
 
 A field with no printable values is never checked (apaf's sequences carry
 only domain architectures, so its Sequence box starts unchecked). The choice
@@ -797,6 +878,108 @@ anywhere and both move together, keeping their stacked order. The old Vis
 Legend fieldset (Show / Dir / four arrows / R) is gone; so is the shift- or
 alt-click placement it documented. `visualizationsLegendXpos` and
 `visualizationsLegendYpos` still set where they start out.
+
+## The layouts, alignment track and time axes (developer spec)
+
+The 2026 additions beyond the visualization system, specified tightly enough
+to rebuild. All pure logic lives in forester.js under `npm test`; the viewer
+draws.
+
+### The unrooted layout
+
+`forester.equalAngleLayout(root, startAngle, lengthOf)` — Meacham's
+equal-angle rule, one pass, no daylight iterations. The root sits at (0,0)
+and owns `[startAngle, startAngle + 2π)`; each child receives a wedge of its
+parent's proportional to the external nodes it encloses, sits at its wedge's
+**mid-angle** at distance `lengthOf(child)`, and recurses into its own wedge.
+Angles are absolute screen radians (y down), inherited and subdivided — never
+re-referenced to the incoming branch, whose direction is implicitly the wedge
+midpoint. Writes `ux, uy, uangle` onto every node; returns `{maxRad}`.
+`startAngle` is `-π/2` (first wedge opens upward) plus the shared rotation
+offset. Spoke lengths: phylogram — `distToRoot` differences × a factor
+fitting the deepest tip into `0.42 × min(displayWidth, displayHeight)`;
+cladogram — one constant step per level (the desktop's integer-division bug
+here was fixed, not ported). Straight branch lines.
+
+Circular and unrooted form the **radial family** (`radialDisplay()`): they
+share rotation, the label-direction flip, single-axis zoom, and the label
+mathematics — `spokeAngle(d)` is `uangle` in unrooted and the cluster angle
+minus π/2 in circular; `labelAngleDeg` rotates a label along its spoke and
+`labelFlip` adds 180° on the left half (`spokeAngle mod 2π ∈ (π/2, 3π/2)`).
+`layoutPointXY(d)` resolves a node's position in any layout for every
+consumer (overview dots, hit navigator, node transforms). Unrooted disables
+aligned phylograms and label auto-hiding, as the desktop does.
+
+### The alignment track
+
+Data model: per-tip `sequences[0].mol_seq = {is_aligned, value}` (the gapped
+row); alignment length = the **max** row length (never assume rectangular —
+a short row's tail reads as gaps). Gate: `showMsa` state (auto-on when
+`alignedMolSeqs && maxMolSeqLength > 0`) AND rectangular layout.
+
+Geometry: the track reserves `MSA_TRACK_GAP(8) + band` from `_w`, where
+`band = clamp(viewportWidth × 0.6, 120 px, whatever leaves the tree ≥ 220
+px)` — budgeted from the **viewport**, not the zoomed layout width. Its right
+edge lands exactly on the canvas edge (the fit translates the layout by
+`rootOffset`, so the track anchors at `displayWidth − rootOffset − band`).
+Rows tile the cluster height: each shared boundary is derived **once** as the
+midpoint between adjacent tip rows (per-row `y ± half` rounds a pixel apart
+and paints a seam); a cell's width is the *next* cell's rounded left edge
+minus its own, so cells abut at fractional widths. Column width is fixed
+(7 px); letters draw when rows are ≥ 8 px tall, in monospace with black or
+white ink by luminance (< 140 → white); when letters are off, same-colour
+runs merge into single rects and gap runs into single lines — that is what
+keeps big trees drawable. Only a true alignment edge gets a boundary line, so
+a scroll cutoff is distinguishable from the end.
+
+Palettes (forester, frozen, byte-matched against the desktop): seven
+Zappo-style amino-acid classes, one colour per base (T ≡ U), grey ambiguity;
+amino-vs-nucleotide judged from the residues of the first non-empty row
+(> 90% ACGTUN of non-gaps → nucleotide). Gap characters: `- . ~ space`.
+Conservation (`forester.msaConservation`, scored over the **visible window**
+only): identity = most-common-residue count / rows (gaps stay in the
+denominator); information = `(log₂K − H)/log₂K × nonGapFraction`, K = 4 or
+20; consensus = most common non-gap residue, ties alphabetical. The hover
+readout (`forester.msaResidueInfo`, `msaUngappedPosition`) names the residue
+(desktop vocabulary, selenocysteine and pyrrolysine included), its class
+(purine/pyrimidine for bases) and Kyte-Doolittle hydropathy. Scrolling: a
+lazily-created fixed HTML range input plus wheel-over-track, both moving
+`_msaColOffset`; the tree never moves.
+
+### The time axes
+
+Data model: per-node `date = {unit, desc, value, minimum, maximum}` —
+**minimum is the younger bound, maximum the older**, everywhere. Detection
+(`forester.timeAxisInfo`): unit sets decide (`mya ma myr(s) my ga gya bya
+kya million/billion years` → geologic; `year(s) yr(s) cal ce ad calendar…` →
+calendar); unitless values fall back to magnitude — a strict majority in
+[1500, 2200] reads as years, `max > 10 && min ≤ 5% of max` as ages.
+Non-finite values are ignored (a `1e400` in a file once hung the tick
+loops). Calibration: the **largest** date value is the root age (geologic)
+or the present (calendar) — no unit conversion is done, so a Ga-valued tree
+is misbanded exactly as on the desktop.
+
+Rendering (phylogram + rectangular only; the layout never changes): age→x is
+`anchorX + (anchorAge − age) × corr` with `corr` the branch-length scale's
+slope, anchored at the **deepest dated tip** rather than the root — the root
+and its direct children carry a synthetic half-average branch length, which
+would shift every band. The geologic axis draws
+`forester.geoBandRanks(rootAge)` — the finest of Period/Epoch, Era/Period,
+Eon/Era that still covers the range — as two 13 px rows of ICS intervals
+(official colours; ink by the same luminance rule), clipped to
+`[youngestTipAge, rootAge]`, then a ruler with ~8 ticks at 1/2/5 × 10ᵏ steps;
+a fossil-only tree's youngest age is labelled even when it is not a round
+tick. The calendar axis is a whole-year ruler over
+`[present − maxDistToRoot, present]`. Uncertainty bars use
+`x ± (bound − value) × s` where `s` is `+corr` for ages and `−corr` for
+years (so the earlier bound always lands left): internal → 7 px translucent
+blue `rgba(70,130,220,.35)`; tips → 5 px sepia `rgba(150,100,55,.86)` with
+±4 px end caps. The MSA footer and the time axis occupy the same bottom
+strip side by side (track right, axis left), so their reserves take
+`max(56, 52 or 26)`, not the sum. The ICS table (`forester.geoIntervals`
+etc., 69 intervals, frozen) is byte-identical to the desktop's; reference:
+Cohen, K.M., Harper, D.A.T., Gibbard, P.L. & Car, N. (2025, updated),
+Episodes 48: 105-115; www.stratigraphy.org.
 
 ## Node selection
 
