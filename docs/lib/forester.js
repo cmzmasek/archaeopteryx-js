@@ -851,6 +851,7 @@
         'Rat': ['brown rat', 'norway rat', 'black rat', 'rattus norvegicus', 'r. norvegicus', 'rattus rattus'],
         'Ferret': ['domestic ferret', 'mustela putorius furo', 'mustela furo', 'm. putorius furo'],
         'Guinea pig': ['cavy', 'domestic guinea pig', 'cavia porcellus', 'c. porcellus'],
+        'Rhesus monkey': ['rhesus macaque', 'macaca mulatta', 'm. mulatta'],
         'Rabbit': ['european rabbit', 'oryctolagus cuniculus', 'o. cuniculus'],
         'Dog': ['canine', 'canis familiaris', 'canis lupus familiaris', 'c. familiaris'],
         'Cat': ['feline', 'domestic cat', 'felis catus', 'f. catus', 'felis silvestris catus'],
