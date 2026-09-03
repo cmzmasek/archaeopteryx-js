@@ -311,7 +311,7 @@ if (!phyloXml) {
     const ZOOM_OUT_Y = 'zoomin_y';
     const ZOOM_TO_FIT = 'zoomtofit';
     const ZOOM_TO_EXPAND_Y = 'zoomtoexpandy';
-    const EXPAND_HORIZ_BUTTON = 'expandhoriz';
+    const FIT_WIDTH_BUTTON = 'fitwidth';
 
 
 
@@ -3902,15 +3902,28 @@ if (!phyloXml) {
         update(null, 0, true);
     }
 
-    // Circular layout only: flip the external labels between riding their
-    // radial spokes and standing upright (horizontal) at the outer ring.
-    function labelDirectionPressed() {
-        if (!_state.circularDisplay) {
+    // The desktop's fit-width button: fit the tree to the window width,
+    // keeping the current vertical zoom. In the circular layout, where it
+    // would duplicate the fit button (a circle has just its one diameter), it
+    // becomes the node-label-direction flip instead: external labels either
+    // ride their radial spokes or stand upright (horizontal) at the ring.
+    function fitWidthButtonPressed() {
+        if (_state.circularDisplay) {
+            _radialLabelsHorizontal = !_radialLabelsHorizontal;
+            syncZoomRowButtons();
+            update(null, 0, true);
             return;
         }
-        _radialLabelsHorizontal = !_radialLabelsHorizontal;
-        syncZoomRowButtons();
-        update(null, 0, true);
+        if (!_root) {
+            return;
+        }
+        keepViewportCentred(function () {
+            calcMaxExtLabel();
+            let keepHeight = _displayHeight;
+            intitializeDisplaySize();
+            _displayHeight = keepHeight;
+            update(null, 0);
+        });
     }
 
     function zoomInX(zoomInFactor) {
@@ -4441,8 +4454,8 @@ if (!phyloXml) {
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
         let expandV = byId(ZOOM_TO_EXPAND_Y);
-        let expandH = byId(EXPAND_HORIZ_BUTTON);
-        if (!minus || !plus || !expandV || !expandH) {
+        let fitW = byId(FIT_WIDTH_BUTTON);
+        if (!minus || !plus || !expandV || !fitW) {
             return;
         }
         if (_state.circularDisplay) {
@@ -4451,13 +4464,14 @@ if (!phyloXml) {
             plus.innerHTML = makeGlyph('rotate_cw');
             plus.title = 'rotate clockwise (Alt+Right or Shift+Alt+mousewheel)';
             // as on the desktop: no vertical expansion in circular, and the
-            // horizontal-expand slot becomes the label-direction flip. Its
-            // face shows the direction a click switches TO, its tooltip the
+            // fit-width slot -- redundant with fit there, a circle has just
+            // its one diameter -- becomes the label-direction flip. Its face
+            // shows the direction a click switches TO, its tooltip the
             // current one.
             expandV.disabled = true;
-            expandH.disabled = false;
-            expandH.innerHTML = makeGlyph(_radialLabelsHorizontal ? 'labels_radial' : 'labels_horizontal');
-            expandH.title = 'node labels: ' + (_radialLabelsHorizontal ? 'horizontal' : 'radial')
+            fitW.disabled = false;
+            fitW.innerHTML = makeGlyph(_radialLabelsHorizontal ? 'labels_radial' : 'labels_horizontal');
+            fitW.title = 'node labels: ' + (_radialLabelsHorizontal ? 'horizontal' : 'radial')
                 + ' -- click to flip (Alt+W)';
         } else {
             minus.textContent = 'X-';
@@ -4465,9 +4479,9 @@ if (!phyloXml) {
             plus.textContent = 'X+';
             plus.title = 'zoom in horizontally (Alt+Right or Shift+Alt+mousewheel)';
             expandV.disabled = false;
-            expandH.disabled = true;
-            expandH.innerHTML = makeGlyph('expand_horizontal');
-            expandH.title = 'expand horizontally to fit labels -- not available in this layout';
+            fitW.disabled = false;
+            fitW.innerHTML = makeGlyph('fit_width');
+            fitW.title = 'fit the tree to the window width, keeping the current vertical zoom (Alt+W)';
         }
     }
 
@@ -5002,6 +5016,14 @@ if (!phyloXml) {
             + glyphArrow(45, 45, 16, 16, 20);
     }
 
+    // The desktop's fit-width: the same window-frame as fit, landscape, with
+    // two horizontal arrows pushing against its sides.
+    function glyphFitWidth() {
+        return '<rect x="2" y="17" width="96" height="66" rx="14" ry="14"/>'
+            + glyphArrow(45, 50, 12, 50, 20)
+            + glyphArrow(55, 50, 88, 50, 20);
+    }
+
     // "Expand to fit labels": the label rows as three short parallel lines with
     // an arrow beyond each outer row pushing the stack apart -- the
     // increase-line-spacing idiom, which is exactly what the button does.
@@ -5011,18 +5033,6 @@ if (!phyloXml) {
             s += glyphLine(22, 50 + off, 78, 50 + off);
         });
         return s + glyphArrow(50, 28, 50, 1.5, 19) + glyphArrow(50, 72, 50, 98.5, 19);
-    }
-
-    // The desktop's horizontal counterpart: label columns pushed apart. The
-    // root-left layouts have no vertical label columns, so the button wearing
-    // this face is always disabled -- in circular it is repurposed as the
-    // label-direction flip below.
-    function glyphExpandHorizontal() {
-        let s = '';
-        [-16, 0, 16].forEach(function (off) {
-            s += glyphLine(50 + off, 22, 50 + off, 78);
-        });
-        return s + glyphArrow(28, 50, 1.5, 50, 19) + glyphArrow(72, 50, 98.5, 50, 19);
     }
 
     // Label direction in the circular layout, drawn as on the desktop: a node
@@ -5117,10 +5127,10 @@ if (!phyloXml) {
             case 'rectangular': cap = 'round'; body = glyphRectangular(); break;
             case 'circular': cap = 'round'; body = glyphCircular(); break;
             case 'fit_all': sw = 6.5; body = glyphFitAll(); break;
+            case 'fit_width': sw = 6.5; body = glyphFitWidth(); break;
             case 'rotate_cw': body = glyphRotate(true); break;
             case 'rotate_ccw': body = glyphRotate(false); break;
             case 'expand_vertical': body = glyphExpandVertical(); break;
-            case 'expand_horizontal': body = glyphExpandHorizontal(); break;
             case 'labels_radial': body = glyphLabelDirection(true); break;
             case 'labels_horizontal': body = glyphLabelDirection(false); break;
             case 'whole_tree': sw = 11; join = 'miter'; body = glyphBackArrow(true); break;
@@ -6062,7 +6072,7 @@ if (!phyloXml) {
         on(ZOOM_TO_FIT, 'click', zoomToFit);
 
         on(ZOOM_TO_EXPAND_Y, 'click', zoomToExpandY);
-        on(EXPAND_HORIZ_BUTTON, 'click', labelDirectionPressed);
+        on(FIT_WIDTH_BUTTON, 'click', fitWidthButtonPressed);
 
         on(RETURN_TO_SUPERTREE_BUTTON, 'click', returnToSupertreeButtonPressed);
 
@@ -6141,7 +6151,7 @@ if (!phyloXml) {
                 } else if (e.keyCode === VK_L) {
                     toggleAlignPhylogram();
                 } else if (e.keyCode === VK_W) {
-                    labelDirectionPressed();
+                    fitWidthButtonPressed();
                 }
             } else if (e.keyCode === VK_ESC || e.keyCode === VK_HOME) {
                 escPressed();
@@ -6448,8 +6458,8 @@ if (!phyloXml) {
 
         function makeZoomControl() {
             // The middle row keeps the desktop's left-to-right order: X-,
-            // expand vertically, fit, expand horizontally, X+ (with the X and
-            // expand buttons repurposed in the circular layout, see
+            // expand vertically, fit, fit width, X+ (with the X, expand and
+            // fit-width buttons repurposed in the circular layout, see
             // syncZoomRowButtons). The Y buttons span the whole row.
             let h = "";
             h = h.concat('<fieldset>');
@@ -6460,7 +6470,7 @@ if (!phyloXml) {
             h = h.concat(makeGlyphButton('rotate_ccw', ZOOM_OUT_X, ''));
             h = h.concat(makeGlyphButton('expand_vertical', ZOOM_TO_EXPAND_Y, 'fit and center tree, expand vertically'));
             h = h.concat(makeGlyphButton('fit_all', ZOOM_TO_FIT, 'fit and center tree display (Alt+C), use Home or Esc for almost complete reset'));
-            h = h.concat(makeGlyphButton('expand_horizontal', EXPAND_HORIZ_BUTTON, ''));
+            h = h.concat(makeGlyphButton('fit_width', FIT_WIDTH_BUTTON, ''));
             h = h.concat(makeGlyphButton('rotate_cw', ZOOM_IN_X, ''));
             h = h.concat('</div>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (Alt+Down or Shift+mousewheel)'));
