@@ -600,6 +600,90 @@ function testPrettyLabels() {
 }
 
 // --------------------------------------------------------------
+// Display normalization (spelling fold, qualifier cut, dictionary)
+// --------------------------------------------------------------
+
+// The motivating case: Caliciviridae-97's Host drops from 47 raw spellings
+// to 35 display groups, with the domestic-animal dictionary collecting the
+// scattered cows (cow / bovine / calf / cattle / Bos taurus (cattle)) into
+// one row, and every node's folded value landing inside the group list.
+function testNormalizationFixture() {
+    var phy = loadTree('Caliciviridae_100');
+    var host = null;
+    forester.visualizationCandidates(phy).forEach(function (c) {
+        if (c.id === 'prop:vipr:Host') host = c;
+    });
+    if (!host || host.values.length !== 35) return false;
+    if (host.counts['Human'] !== 22) return false;
+    if (host.counts['Cow'] !== 13) return false;
+    if (host.counts['Pig'] !== 8) return false;
+    if (host.counts['Chicken'] !== 4) return false;
+    var alien = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children || n._children) return;
+        var v = forester.visualizationNodeValue(n, host);
+        if (v !== null && host.values.indexOf(v) < 0) alien++;
+    });
+    return alien === 0;
+}
+
+// Dictionary folds are WHOLE-VALUE only (after trying a trailing
+// parenthetical stripped): a ferret badger is not a ferret, and a
+// 42-day-old pig keeps its own row.
+function testDictionaryRules() {
+    var phy = starTree(['bovine', 'calf', 'cattle', 'Bos taurus (cattle)', 'cow',
+        'ferret badger', 'ferret badger', '42-day-old pig', '42-day-old pig',
+        'human', 'Homo sapiens', 'ferret badger'], 'x:Host');
+    var c = only(phy);
+    if (!c) return false;
+    if (c.counts['Cow'] !== 5) return false;
+    if (c.counts['Human'] !== 2) return false;
+    if (c.counts['Ferret badger'] !== 3) return false;      // capitalized, unfolded
+    if (c.counts['42-day-old pig'] !== 2) return false;
+    if ('Ferret' in c.counts || 'Pig' in c.counts) return false;
+    return c.values.length === 4;
+}
+
+// The host qualifier cut (';'), with the dangling-parenthesis fix; and the
+// cut applies ONLY to refs literally named host / country -- host_group
+// keeps its semicolons.
+function testQualifierCut() {
+    var phy = starTree([
+        'Homo sapiens; sex: M; age: 4 months', 'human',
+        'Saimiri boliviensis (squirrel monkey; voucher: SBB04)',
+        'Saimiri boliviensis (squirrel monkey; voucher: SBB09)'
+    ], 'vipr:Host');
+    var c = only(phy);
+    if (!c || c.counts['Human'] !== 2) return false;
+    if (c.counts['Saimiri boliviensis'] !== 2) return false;
+    var phy2 = starTree(['USA:CA', 'USA:IL', 'Mexico'], 'vipr:Country');
+    var c2 = only(phy2);
+    if (!c2 || c2.counts['USA'] !== 2 || c2.counts['Mexico'] !== 1) return false;
+    var phy3 = starTree(['A; B', 'A; B', 'C; D'], 'x:host_group');
+    var c3 = only(phy3);
+    return c3 !== null && c3.counts['A; B'] === 2 && c3.counts['C; D'] === 1;
+}
+
+// Non-dictionary groups display their most frequent spelling, capitalized;
+// taxonomy / sequence elements stay verbatim -- 'human' as a taxonomy
+// common name is curated text and is NOT folded.
+function testRepresentativeAndSlots() {
+    var phy = starTree(['north field', 'North Field', 'north field', 'south field'], 'x:Site');
+    var c = only(phy);
+    if (!c || c.values.length !== 2 || c.counts['North field'] !== 3) return false;
+    if (c.counts['South field'] !== 1) return false;
+    var phy2 = starTree([null, null, null]);
+    var i = 0;
+    forester.preOrderTraversalAll(phy2, function (n) {
+        if (n.children || n._children) return;
+        n.taxonomies = [{common_name: (i++ < 2) ? 'human' : 'mouse'}];
+    });
+    var c2 = only(phy2);
+    return c2 !== null && c2.counts['human'] === 2 && c2.counts['mouse'] === 1
+        && !('Human' in c2.counts);
+}
+
+// --------------------------------------------------------------
 // The style: reader (forester.nodeVisualStyle)
 // --------------------------------------------------------------
 
@@ -771,6 +855,10 @@ runTest("label: readable names stand: ", testLabelReadableNamesStand);
 runTest("label: wordy gate          : ", testLabelWordyGate);
 runTest("label: suffix gate         : ", testLabelSuffixGate);
 runTest("pretty menu labels         : ", testPrettyLabels);
+runTest("normalization, fixture     : ", testNormalizationFixture);
+runTest("dictionary rules           : ", testDictionaryRules);
+runTest("qualifier cut              : ", testQualifierCut);
+runTest("representative + slots     : ", testRepresentativeAndSlots);
 runTest("style: fixture             : ", testNodeStyleFixture);
 runTest("style: parsing             : ", testNodeStyleParsing);
 runTest("prefix, fixtures           : ", testPrefixFixtures);

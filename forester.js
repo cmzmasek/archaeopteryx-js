@@ -817,6 +817,107 @@
     const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
 
+    // ---- display normalization --------------------------------------------
+    //
+    // Property values are grouped for colouring after a normalization pass,
+    // following the desktop's PropertyColorScheme with two deliberate
+    // extensions. The desktop's part: values are trimmed, underscores read as
+    // spaces, whitespace runs collapse, grouping is case-insensitive, and for
+    // refs literally named "host" / "country" a trailing qualifier is cut
+    // (everything from the first ';' / ':' -- "USA:CA" groups as "USA",
+    // "Homo sapiens; sex: M" as "Homo sapiens"). Our extensions, chosen for a
+    // VISUALIZATION tool that should look good on the data it is given: a
+    // small dictionary of common-animal synonyms folds scientific names and
+    // spelling variants into one capitalized common name ("bovine", "calf",
+    // "cattle" and "Bos taurus" are all Cow -- including "Human", where the
+    // desktop folds the other way); and a qualifier cut that would leave an
+    // unclosed "(" behind is trimmed back to before it, so
+    // "Saimiri boliviensis (squirrel monkey; voucher: X)" reads as
+    // "Saimiri boliviensis" rather than dangling.
+    //
+    // Matching is WHOLE-VALUE only (after a trailing parenthetical is tried
+    // stripped: "Bos taurus (cattle)" looks up "bos taurus") -- never by
+    // substring, so "ferret badger" (a Melogale, not a ferret) and
+    // "42-day-old pig" keep their own rows. The dictionary applies to
+    // property fields only; taxonomy and sequence elements are curated text
+    // and stay verbatim. Node names, exports, search, and the node-data
+    // dialog always show the raw values -- this is display grouping, nothing
+    // more.
+    const VIS_SYNONYMS = {
+        'Human': ['humans', 'homo sapiens', 'h. sapiens'],
+        'Cow': ['bovine', 'calf', 'cattle', 'bull', 'heifer', 'bos taurus', 'b. taurus'],
+        'Chicken': ['broiler chicken', 'broiler', 'hen', 'rooster', 'gallus gallus', 'g. gallus', 'gallus gallus domesticus'],
+        'Mouse': ['house mouse', 'murine', 'mus musculus', 'm. musculus'],
+        'Rat': ['brown rat', 'norway rat', 'black rat', 'rattus norvegicus', 'r. norvegicus', 'rattus rattus'],
+        'Ferret': ['domestic ferret', 'mustela putorius furo', 'mustela furo', 'm. putorius furo'],
+        'Guinea pig': ['cavy', 'domestic guinea pig', 'cavia porcellus', 'c. porcellus'],
+        'Rabbit': ['european rabbit', 'oryctolagus cuniculus', 'o. cuniculus'],
+        'Dog': ['canine', 'canis familiaris', 'canis lupus familiaris', 'c. familiaris'],
+        'Cat': ['feline', 'domestic cat', 'felis catus', 'f. catus', 'felis silvestris catus'],
+        'Duck': ['mallard', 'mallard duck', 'domestic duck', 'anas platyrhynchos', 'a. platyrhynchos'],
+        'Pig': ['swine', 'porcine', 'hog', 'piglet', 'sus scrofa', 's. scrofa', 'sus scrofa domesticus'],
+        'Horse': ['equine', 'mare', 'stallion', 'equus caballus', 'e. caballus'],
+        'Sheep': ['ovine', 'lamb', 'ewe', 'ovis aries', 'o. aries'],
+        'Goat': ['caprine', 'capra hircus', 'c. hircus'],
+        'Camel': ['dromedary', 'bactrian camel', 'camelus dromedarius', 'camelus bactrianus', 'c. dromedarius']
+    };
+    const VIS_SYNONYM_LOOKUP = {};
+    Object.keys(VIS_SYNONYMS).forEach(function (canon) {
+        VIS_SYNONYM_LOOKUP[canon.toLowerCase()] = canon;
+        VIS_SYNONYMS[canon].forEach(function (syn) {
+            VIS_SYNONYM_LOOKUP[syn] = canon;
+        });
+    });
+
+    // ';' for host fields, ':' for country fields, null otherwise -- matched
+    // on the ref's local name EXACTLY, so host_group and isolation_country
+    // keep their full values.
+    function visQualifierCut(ref) {
+        let i = ref.lastIndexOf(':');
+        let local = (i >= 0 ? ref.substring(i + 1) : ref).toLowerCase();
+        if (local === 'country') {
+            return ':';
+        }
+        if (local === 'host') {
+            return ';';
+        }
+        return null;
+    }
+
+    // The display form a raw property value is grouped under (case is
+    // preserved here; grouping lowercases it).
+    function visDisplayLabel(value, cut) {
+        let s = value;
+        if (cut) {
+            let at = s.indexOf(cut);
+            if (at >= 0) {
+                s = s.substring(0, at);
+                // the cut may land inside a parenthetical; trim back to
+                // before the first unclosed '('
+                let open = [];
+                for (let i = 0; i < s.length; ++i) {
+                    if (s.charAt(i) === '(') {
+                        open.push(i);
+                    } else if (s.charAt(i) === ')') {
+                        open.pop();
+                    }
+                }
+                if (open.length > 0) {
+                    s = s.substring(0, open[0]);
+                }
+            }
+        }
+        s = s.trim().replace(/_/g, ' ').replace(/\s+/g, ' ');
+        let hit = VIS_SYNONYM_LOOKUP[s.toLowerCase()];
+        if (!hit) {
+            let stripped = s.replace(/\s*\([^()]*\)\s*$/, '');
+            if (stripped !== s && stripped.length > 0) {
+                hit = VIS_SYNONYM_LOOKUP[stripped.toLowerCase()];
+            }
+        }
+        return hit || s;
+    }
+
     // Fixed candidate slots for the phyloXML elements (properties use their ref).
     const VIS_ELEMENT_SLOTS = [
         {id: 'tax:code', kind: 'taxonomy', label: 'Taxonomy Code', get: function (t) { return t.code; }},
@@ -889,7 +990,9 @@
             Object.keys(perNode).forEach(function (id) {
                 let g = perNode[id];
                 if (!stats[id]) {
-                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label, nodes: 0, values: new Set(), counts: {}, multi: false};
+                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label,
+                        cut: g.kind === 'property' ? visQualifierCut(g.ref) : null,
+                        nodes: 0, keys: {}, multi: false};
                 }
                 let s = stats[id];
                 s.nodes++;
@@ -897,8 +1000,18 @@
                     s.multi = true;
                 }
                 for (let i = 0; i < g.values.length; ++i) {
-                    s.values.add(g.values[i]);
-                    s.counts[g.values[i]] = (s.counts[g.values[i]] || 0) + 1;
+                    // properties group under their normalized display form;
+                    // taxonomy / sequence elements are curated text, verbatim
+                    let display = g.kind === 'property' ? visDisplayLabel(g.values[i], s.cut) : g.values[i];
+                    if (display.length === 0) {
+                        continue;
+                    }
+                    let key = g.kind === 'property' ? display.toLowerCase() : display;
+                    if (!s.keys[key]) {
+                        s.keys[key] = {count: 0, spellings: {}};
+                    }
+                    s.keys[key].count++;
+                    s.keys[key].spellings[display] = (s.keys[key].spellings[display] || 0) + 1;
                 }
             });
         });
@@ -910,14 +1023,36 @@
                 return;
             }
             let covered = s.nodes;
-            let distinct = s.values.size;
+            // one legend row per group: the dictionary canonical where one
+            // applied (it is then the only recorded spelling), otherwise the
+            // most frequent raw spelling (ties alphabetically), capitalized
+            let canon = {};
+            let counts = {};
+            Object.keys(s.keys).forEach(function (key) {
+                let group = s.keys[key];
+                let rep = null;
+                let best = -1;
+                Object.keys(group.spellings).forEach(function (spelling) {
+                    let n = group.spellings[spelling];
+                    if (n > best || (n === best && spelling < rep)) {
+                        rep = spelling;
+                        best = n;
+                    }
+                });
+                if (s.kind === 'property') {
+                    rep = rep.charAt(0).toUpperCase() + rep.substring(1);
+                }
+                canon[key] = rep;
+                counts[rep] = group.count;
+            });
+            let distinct = Object.keys(canon).length;
             if (covered * VIS_MIN_COVERAGE_DEN < total * VIS_MIN_COVERAGE_NUM) {
                 return;
             }
             if (distinct < 2) {
                 return;
             }
-            let values = Array.from(s.values);
+            let values = Object.keys(counts);
             let numeric = values.every(function (v) {
                 return Number.isFinite(Number(v));
             });
@@ -953,7 +1088,7 @@
             // of nodes scores high.
             let entropy = 0;
             values.forEach(function (v) {
-                let p = s.counts[v] / covered;
+                let p = counts[v] / covered;
                 entropy -= p * Math.log(p);
             });
             let balance = entropy / Math.log(distinct);
@@ -969,7 +1104,9 @@
                 coverage: covered,
                 total: total,
                 values: values,
-                counts: s.counts,
+                counts: counts,
+                canon: s.kind === 'property' ? canon : null,
+                cut: s.cut,
                 score: (covered / total) * balance,
                 colorMode: colorMode,
                 switchable: switchable,
@@ -1241,6 +1378,13 @@
                     if (p.ref === candidate.ref && p.applies_to === 'node') {
                         let v = clean(p.value);
                         if (v !== null) {
+                            // a classifier-built candidate folds the value the
+                            // same way its groups were built; a bare
+                            // {kind, ref} probe (labels, prefixes) reads raw
+                            if (candidate.canon) {
+                                let display = visDisplayLabel(v, candidate.cut || null);
+                                return candidate.canon[display.toLowerCase()] || display;
+                            }
                             return v;
                         }
                     }

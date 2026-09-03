@@ -451,6 +451,16 @@ What gets offered, briefly:
 * Up to **7** distinct values → also **Shape** (the seven distinct d3 symbols).
 * A node without a value keeps the default look, and the legend names the
   field so partial coverage is visible.
+* Property values are **grouped for colouring after normalization**:
+  spelling variants fold together (case, underscores, whitespace), refs
+  literally named `host` / `country` drop trailing qualifiers
+  (`Homo sapiens; sex: M` → `Homo sapiens`, `USA:CA` → `USA`), and a small
+  dictionary folds common-animal synonyms into one capitalized name —
+  `cow`, `bovine`, `calf`, `cattle` and `Bos taurus` are all **Cow**;
+  `human` and `Homo sapiens` are **Human**. Matching is whole-value only
+  (a *ferret badger* is not a Ferret), the dictionary lives in one constant
+  in forester.js (`VIS_SYNONYMS`) for easy extending, and raw values remain
+  untouched everywhere else — exports, search, and the node-data dialog.
 
 The menus are ordered **best first** — categorical fields ahead of numeric
 ramps, then by coverage × balance (the normalized entropy of the value
