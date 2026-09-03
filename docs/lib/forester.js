@@ -194,43 +194,6 @@
     };
 
 
-    forester.filterByNodeProperty = function (positive, phy, propertyMap) {
-        if (!phy) {
-            throw ("cannot delete null tree");
-        }
-        if (!propertyMap) {
-            throw ("property list is null");
-        }
-        const toDelete = [];
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (!n.children && !n._children) {
-                if (n.properties && n.properties.length > 0) {
-                    const propertiesLength = n.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        const property = n.properties[i];
-                        if (property.ref && property.value && property.applies_to === 'node') {
-                            if (positive) {
-                                if (property.ref in propertyMap && !propertyMap[property.ref].includes(property.value)) {
-                                    toDelete.push(n);
-                                }
-                            } else {
-                                if (property.ref in propertyMap && propertyMap[property.ref].includes(property.value)) {
-                                    toDelete.push(n);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        const l = toDelete.length;
-        console.log(toDelete);
-        for (let i = 0; i < l; ++i) {
-            forester.deleteSubtree(phy, toDelete[i]);
-        }
-    };
-
-
     /**
      * To delete a sub-tree or external node.
      *
@@ -579,15 +542,6 @@
         }
     };
 
-    forester.unCollapseAll = function (node) {
-        forester.preOrderTraversal(node, function (d) {
-            if (d._children) {
-                d.children = d._children;
-                d._children = null;
-            }
-        });
-    };
-
     forester.copyBranchData = function (nodeFrom, nodeTo) {
         nodeTo.width = nodeFrom.width;
         nodeTo.color = nodeFrom.color;
@@ -628,127 +582,6 @@
             }
         }
         return s / l;
-    };
-
-    forester.setToArray = function (set) {
-        let array = [];
-        if (set) {
-            set.forEach(function (e) {
-                array.push(e);
-            });
-        }
-        return array;
-    };
-
-    forester.setToSortedArray = function (set) {
-        let array = [];
-        if (set) {
-            set.forEach(function (e) {
-                array.push(e);
-            });
-        }
-        return array.sort();
-    };
-
-    forester.calcMinMaxInSet = function (set) {
-        let array = [];
-        let first = true;
-        let min = 0;
-        let max = 0;
-        if (set) {
-            set.forEach(function (e) {
-                e = parseFloat(e);
-                if (first) {
-                    first = false;
-                    min = e;
-                    max = e;
-                } else {
-                    if (e < min) {
-                        min = e;
-                    }
-                    if (e > max) {
-                        max = e;
-                    }
-                }
-            });
-        }
-        array[0] = min;
-        array[1] = max;
-        return array;
-    };
-
-    forester.calcMinMeanMaxInSet = function (set) {
-        let array = [];
-        let first = true;
-        let min = 0;
-        let max = 0;
-        let mean = 0;
-        let sum = 0;
-        let n = 0;
-        if (set) {
-            set.forEach(function (e) {
-                e = parseFloat(e);
-                ++n;
-                sum += e;
-                if (first) {
-                    first = false;
-                    min = e;
-                    max = e;
-                } else {
-                    if (e < min) {
-                        min = e;
-                    }
-                    if (e > max) {
-                        max = e;
-                    }
-                }
-            });
-        }
-        if (n > 0) {
-            mean = sum / n;
-        }
-        array[0] = min;
-        array[1] = mean;
-        array[2] = max;
-        return array;
-    };
-
-
-    /**
-     * This collects all properties in a tree
-     * and returns them as dictionary of Sets mapping
-     * keys to values.
-     * It only collects properly formed properties
-     * (as per phyloXML standard), which means
-     * that 'applies_to' and 'datatype' have to be present.
-     *
-     *
-     * @param phy - A phyloXML-based tree object or node.
-     * @param appliesTo - 'phylogeny', 'clade', 'node', 'annotation', 'parent_branch', or 'other'.
-     * @param externalOnly - To collect from external nodes only.
-     * @returns {{}}
-     */
-    forester.collectProperties = function (phy, appliesTo, externalOnly) {
-        let props = {};
-        forester.preOrderTraversalAll(phy, function (n) {
-
-            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
-                if (n.properties && n.properties.length > 0) {
-                    let propertiesLength = n.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        let property = n.properties[i];
-                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
-                            let ref = property.ref;
-                            if (!props[ref]) {
-                                props[ref] = new Set();
-                            }
-                            props[ref].add(property.value);
-                        }
-                    }
-                }
-            }
-        });
-        return props;
     };
 
 
@@ -1411,47 +1244,6 @@
         return null;
     };
 
-
-    /**
-     *
-     * Special method for IRD database.
-     * Returns true if at least one 'ird:Host' property with 'Avian' found
-     *
-     * @param phy
-     * @param targetValue
-     * @param fromRef
-     * @param toRef
-     * @returns {boolean}
-     */
-    forester.splitProperty = function (phy, targetValue, fromRef, toRef) {
-        let found = false;
-        let targetValue_ = targetValue + ' ';
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (n.properties && n.properties.length > 0) {
-                let propertiesLength = n.properties.length;
-                for (let i = 0; i < propertiesLength; ++i) {
-                    let property = n.properties[i];
-                    if (property.ref === fromRef && property.value) {
-                        let newValue = '';
-                        if (property.value.startsWith(targetValue_)) {
-                            newValue = targetValue;
-                            found = true;
-                        } else {
-                            newValue = property.value;
-                        }
-                        let newproperty = {};
-                        newproperty.ref = toRef;
-                        newproperty.value = newValue;
-                        newproperty.datatype = 'xsd:string';
-                        newproperty.applies_to = 'node';
-                        n.properties.push(newproperty);
-                    }
-                }
-            }
-        });
-        return found;
-    };
-
     forester.collectPropertyRefs = function (phy, appliesTo, externalOnly) {
         let propertyRefs = new Set();
         forester.preOrderTraversalAll(phy, function (n) {
@@ -1469,37 +1261,6 @@
             }
         });
         return propertyRefs;
-    };
-
-
-    forester.shortenProperties = function (phy, appliesTo, externalOnly, sourceRef, targetRef) {
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
-                if (n.properties && n.properties.length > 0) {
-                    let propertiesLength = n.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        let property = n.properties[i];
-                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
-                            if (property.ref === sourceRef) {
-                                let s = property.value.trim().split(/\s+/);
-                                if (s && s.length > 1) {
-                                    let newProp = {};
-                                    newProp.ref = targetRef;
-                                    if (s.length === 2) {
-                                        newProp.value = s[0];
-                                    } else {
-                                        newProp.value = s[0] + ' ' + s[1];
-                                    }
-                                    newProp.datatype = property.datatype;
-                                    newProp.applies_to = property.applies_to;
-                                    n.properties.push(newProp);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
     };
 
     forester.collectBasicTreeProperties = function (tree) {
@@ -1636,25 +1397,6 @@
         return nodes;
     };
 
-    /**
-     * Returns true if at least one of the child nodes
-     * of node is collapsed.
-     *
-     * @param node - A node.
-     * @returns {boolean} - true if at least one of the child nodes is
-     * collapsed
-     */
-    forester.isHasCollapsedNodes = function (node) {
-        let collapsed = false;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n._children) {
-                collapsed = true;
-
-            }
-        });
-        return collapsed;
-    };
-
     forester.getAllExternalNodes = function (node) {
         let nodes = [];
         forester.preOrderTraversalAll(node, function (n) {
@@ -1744,53 +1486,6 @@
                 n.max = undefined;
             }
         });
-    };
-
-
-    forester.collapseToBranchLength = function (root, branchLength) {
-        if (root.children && root.children.length === 1) {
-            collapseToBranchLengthHelper(root.children[0], branchLength);
-        }
-
-        function collapseToBranchLengthHelper(n, branchLength) {
-            if (!(n.children || n._children)) {
-                return;
-            }
-
-            if (!n.max) {
-                n.max = forester.calcMaxBranchLength(n);
-            }
-            let max = n.max;
-            if (max < branchLength) {
-                forester.collapse(n);
-            } else {
-                forester.unCollapse(n);
-                for (let i = n.children.length - 1; i >= 0; i--) {
-                    collapseToBranchLengthHelper(n.children[i], branchLength);
-                }
-            }
-        }
-    };
-
-    forester.collapseToDepth = function (root, depth) {
-        if (root.children && root.children.length === 1) {
-            collapseToDepthHelper(root.children[0], 0, depth);
-        }
-
-        function collapseToDepthHelper(n, d, depth) {
-            if (!n.children && !n._children) {
-                return;
-            }
-            if (d >= depth) {
-                forester.collapse(n);
-            } else {
-                forester.unCollapse(n);
-                ++d;
-                for (let i = n.children.length - 1; i >= 0; i--) {
-                    collapseToDepthHelper(n.children[i], d, depth);
-                }
-            }
-        }
     };
 
     forester.collapse = function (node) {
@@ -2116,133 +1811,6 @@
             }
         }
         return null;
-    };
-
-    forester.getOneDistinctNodePropertyValue = function (node, propertyRef) {
-        let propValue = null;
-        let result = true;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n.properties && n.properties.length > 0) {
-                let propertiesLength = n.properties.length;
-                let gotIt = false;
-                for (let i = 0; i < propertiesLength; ++i) {
-                    let property = n.properties[i];
-                    if (property.ref && property.value && (property.applies_to === 'node') && (property.ref === propertyRef) && (property.value.length > 0)) {
-                        if (propValue === null) {
-                            propValue = property.value;
-                        } else if (propValue !== property.value) {
-                            result = false;
-                            return;
-                        }
-                        gotIt = true;
-                    }
-                }
-                if (!gotIt && !n.children && !n._children) {
-                    // If an external node lacks propertyRef, return false.
-                    result = false;
-
-                }
-            }
-        });
-        if (propValue === null) {
-            return null;
-        }
-        if (result === true) {
-            return propValue;
-        } else {
-            return null;
-        }
-    };
-
-    /**
-     * To be deprecated!
-     *
-     * @param phy
-     * @returns {{}}
-     */
-    forester.moveSimpleCharacteristicsToProperties = function (phy) {
-        let apptype;
-        if (phy.desc) {
-            apptype = 'ird:'
-        } else {
-            apptype = 'vipr:'
-        }
-
-        let HOST = apptype + 'Host';
-        let COUNTRY = apptype + 'Country';
-        let YEAR = apptype + 'Year';
-        let HA = apptype + 'HA';
-        let NA = apptype + 'NA';
-        let NODE = 'node';
-        let STRING = 'xsd:string';
-        let INT = 'xsd:integer';
-
-        forester.preOrderTraversalAll(phy, function (n) {
-            if (n.simple_characteristics) {
-                let sc = n.simple_characteristics;
-                let props;
-                if (sc.country && sc.country.length > 0) {
-                    props = {};
-                    props.ref = COUNTRY;
-                    props.datatype = STRING;
-                    props.applies_to = NODE;
-                    props.value = sc.country;
-                    addProperties(n, props);
-                }
-                if (sc.host && sc.host.length > 0) {
-                    props = {};
-                    props.ref = HOST;
-                    props.datatype = STRING;
-                    props.applies_to = NODE;
-                    props.value = sc.host;
-                    addProperties(n, props);
-                }
-                if (sc.year && sc.year.length > 0) {
-                    props = {};
-                    props.ref = YEAR;
-                    props.datatype = INT;
-                    props.applies_to = NODE;
-                    props.value = parseInt(sc.year);
-                    addProperties(n, props);
-                }
-                if (sc.ha && sc.ha.length > 0) {
-                    props = {};
-                    props.ref = HA;
-                    props.datatype = INT;
-                    props.applies_to = NODE;
-                    props.value = parseInt(sc.ha);
-                    addProperties(n, props);
-                }
-                if (sc.na && sc.na.length > 0) {
-                    props = {};
-                    props.ref = NA;
-                    props.datatype = INT;
-                    props.applies_to = NODE;
-                    props.value = parseInt(sc.na);
-                    addProperties(n, props);
-                }
-                n.simple_characteristics = undefined;
-            }
-        });
-
-        function addProperties(n, props) {
-            if (props) {
-                if (!n.properties) {
-                    n.properties = [];
-                }
-                let alreadyHave = false;
-                let l = n.properties.length;
-                for (let i = 0; i < l; ++i) {
-                    if (n.properties[i].ref === props.ref) {
-                        alreadyHave = true;
-                        break;
-                    }
-                }
-                if (!alreadyHave) {
-                    n.properties.push(props);
-                }
-            }
-        }
     };
 
 

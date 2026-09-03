@@ -35,7 +35,6 @@ var pth = require('path');
 
 var t0 = pth.join(__dirname, "./data/t0.xml");
 var t1 = pth.join(__dirname, "./data/t1.xml");
-var t_properties = pth.join(__dirname, "./data/properties.xml");
 
 var _testFailures = 0;
 
@@ -65,7 +64,6 @@ runTest("NewHampshire 3             : ", testNewHampshire3);
 runTest("reRoot 1                   : ", testReRoot1);
 runTest("reRoot 2                   : ", testReRoot2);
 runTest("reRoot 3                   : ", testReRoot3);
-runTest("collectProperties          : ", testCollectProperties);
 runTest("delete subtree             : ", testDeleteSubtree);
 
 if (_testFailures > 0) {
@@ -651,7 +649,6 @@ function testNewHampshire() {
     var nh16 = "('a a','b b','c c');";
     var nh17 = "(((a,b,c)[100],(d,e)[1])[30.000002],f)r[100];";
     var nh18 = "((a:0.001,b:0.000001,c:1)abc:0.1[3.39472],d:0.1):2[1];";
-    var nh19 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825[23.4],11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901[0],((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709[0.001],23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)'Strongylocentrotus purpuratus':0.34475):0.26168[1],(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898[-1],29_AEDAE:0.86398)Diptera:0.24915[1],30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134[0],8_BRAFL:0.58563)'Branchiostoma floridae':0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)'Nematostella vectensis':0.28437):0.09305,9_BRAFL:1.09612):0.54836[303.039],((3_BRAFL:0.48766,2_BRAFL:0.65293)'Branchiostoma floridae':0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)'Branchiostoma floridae':0.43438):0.18105)Metazoa[100];";
     var nh20 = "((((a,b)ab:3[2],c)[100],(d,e)de[1]):12[30.000002],f)r[100];";
     var nh21 = "((((((a,b)ab[2]:3,c)[100]:12,(d,e)de)abcde:13[2],f):14[0]):0[0])[0]:0;";
     var nh22 = ' ((( (((a[a] , b[12x])ab[2]:3, "c[z]")[+100]: 12,(d, "e")de)ab[]cde:13[2],[z]f):14[0]):0[0])[0]:0;';
@@ -1009,7 +1006,7 @@ function testNewHampshire2() {
         return false;
     }
 
-    var nh501 = '((((("a" : 1,"b,\'":2)A\'a, :)b\'B:3[99.0] , (\'c[C C]\',\"d\")c":"d[12.0])"abc:d"[78.0] ,((e:2,f,g,"I would (be), illegal;")e\'\'fg[23.0],h)[12.0])"A:x":12[99.0],i),j\'(\')"r\'";';
+    var nh501 = '((((("a" : 1,"b,\'":2)A\'a, :)b\'B:3[99.0] , (\'c[C C]\',"d")c":"d[12.0])"abc:d"[78.0] ,((e:2,f,g,"I would (be), illegal;")e\'\'fg[23.0],h)[12.0])"A:x":12[99.0],i),j\'(\')"r\'";';
     var nh501r = '(((((a:1,"b,\'":2)"Aa, :)bB":3[99],("c[C C]",d)"c:d"[12])"abc:d"[78],((e:2,f,g,"I would (be), illegal;")efg[23],h)[12])"A:x":12[99],i),"j(")"r\'";';
     var phy501 = forester.parseNewHampshire(nh501);
     var phy501nh = forester.toNewHampshire(phy501, 8, false, true);
@@ -1060,16 +1057,6 @@ function testNewHampshire3() {
         return false;
     }
 
-    return true;
-}
-
-function testCollectProperties() {
-    var phy = readPhyloXmlFromFile(t_properties)[0];
-    var appliesTo = "node"; // Only use properties which apply to "node".
-    var externalOnly = true; // Only look at external nodes.
-    var appliesTo = "node"; // Only use properties which apply to "node".
-    var externalOnly = true; // Only look at external nodes.
-    var refs_set = forester.collectPropertyRefs(phy, appliesTo, externalOnly);
     return true;
 }
 

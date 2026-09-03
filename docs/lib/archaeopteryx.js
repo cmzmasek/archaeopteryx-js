@@ -80,9 +80,6 @@ if (!phyloXml) {
     const LICENSE_NAME = 'LGPL-2.1-or-later';
     const NAME = 'Archaeopteryx.js';
 
-    // The 20-colour categorical palettes below were removed from d3 in v5. These
-    // are the exact colour arrays from d3 v3's d3.scale.category20/20b/20c, kept
-    // so d3.scaleOrdinal(...) reproduces the original colours after the upgrade.
     // Categorical visualization palette: Observable10 (2023; clearer colour-
     // vision separation than the old category10) followed by a darkened
     // counterpart of each for fields of 11-20 values. ONE palette for every
@@ -160,7 +157,6 @@ if (!phyloXml) {
     const NAME_FOR_FASTA_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + FASTA_SUFFIX;
     const NODE_LABEL_GAP_DEFAULT = 10;
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
-    const NODE_VISUALIZATIONS_OPACITY_DEFAULT = 1;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
 
     // ---------------------------
@@ -1970,7 +1966,6 @@ if (!phyloXml) {
             .style('stroke', drawShapes ? makeNodeStrokeColor : null)
             .style('stroke-width', _state.branchWidthDefault)
             .style('fill', drawShapes ? makeNodeFillColor : null)
-            .style('opacity', _state.nodeVisualizationsOpacity)
             .attr('d', drawShapes ? makeNodeVisShape : null);
 
         node.each(function (d) {
@@ -2946,7 +2941,6 @@ if (!phyloXml) {
         _state.minConfidenceValueToShow = null;
 
         _state.showVisualizations = false;
-        _state.nodeVisualizationsOpacity = NODE_VISUALIZATIONS_OPACITY_DEFAULT;
 
         // The tree names itself; a caller-supplied name only ever disagreed with
         // the file. It is the stem of every download filename.
@@ -6895,18 +6889,8 @@ if (!phyloXml) {
         return tree;
     };
 
-    /**
-     *
-     *
-     * @param label
-     * @param location
-     * @param data
-     * @param options
-     * @param settings
-     * @param newHamphshireConfidenceValuesInBrackets
-     * @param newHamphshireConfidenceValuesAsInternalNames
-     * @param nodeVisualizations
-     */
+    // Parse-and-launch in one step. The trailing nodeVisualizations parameter
+    // is kept in the signature only so launch() can reject it by name.
     archaeopteryx.launchArchaeopteryx = function (label, location, data, config, legacySettings, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames, nodeVisualizations) {
         let tree;
         try {
