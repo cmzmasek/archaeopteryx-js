@@ -436,8 +436,12 @@ What gets offered, briefly:
   2 — and fewer than all — distinct values. Identifier-like fields
   (accessions, genome ids) are refused.
 * Up to **20** distinct values → **Color** (one fixed, colour-vision-aware
-  palette at every cardinality). Numeric fields become a **colour ramp**
-  (viridis), never categorical colours — order is the point of numbers.
+  palette at every cardinality). Numeric fields come in three bands: up to
+  **10** distinct values default to individual colours — numbers that few are
+  usually codes, like HA/NA subtypes — **11–20** default to a viridis
+  **colour ramp**, and both of those carry a `[colors]` / `[gradient]` switch
+  in their legend; above 20 it is a ramp with no switch. Legends list numeric
+  values in numeric order by default (words sort by count).
 * Up to **7** distinct values → also **Shape** (the seven distinct d3 symbols).
 * A node without a value keeps the default look, and the legend names the
   field so partial coverage is visible.

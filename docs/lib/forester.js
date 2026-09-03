@@ -785,10 +785,14 @@
     //   categorical <= 20 distinct values -> Color. Above ~12 the reader
     //               leans on the legend, but the real trees cluster at
     //               15-17 (host names, countries, taxonomy codes).
-    //   numeric     every value parses as a finite number -> Color-range
-    //               (a ramp, never categorical colours: order is the one
-    //               thing numbers have). Guard: distinct/covered <= 0.9,
-    //               or "numeric" identifiers (genome ids) become ramps.
+    //   numeric     every value parses as a finite number. Up to 10 distinct
+    //               values default to individual colours -- numbers that few
+    //               are usually codes (HA/NA subtypes), and ten is what the
+    //               palette's strong first half holds -- 11 to 20 default to
+    //               a Color-range, and both of those may be switched in the
+    //               legend; above 20 it is a range with no switch. Guard:
+    //               distinct/covered <= 0.9, or "numeric" identifiers
+    //               (genome ids) would become ramps.
     //   shape       <= 7 distinct values (d3 v7 has exactly 7 distinct
     //               fill symbols), numeric or not -- two years as two
     //               shapes is genuinely useful.
@@ -800,6 +804,7 @@
     const VIS_MIN_COVERAGE_DEN = 3;    // fraction so the test is integer-exact
     const VIS_MAX_COLOR_CATEGORIES = 20;
     const VIS_MAX_SHAPE_CATEGORIES = 7;
+    const VIS_NUMERIC_CATEGORY_MAX = 10;   // <= this many distinct numbers -> colours by default
     const VIS_MAX_NUMERIC_UNIQUE_NUM = 9;    // distinct/covered <= 0.9,
     const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
@@ -909,11 +914,13 @@
                 return Number.isFinite(Number(v));
             });
             let colorMode;
+            let switchable = false;
             if (numeric) {
                 if (distinct * VIS_MAX_NUMERIC_UNIQUE_DEN > covered * VIS_MAX_NUMERIC_UNIQUE_NUM) {
                     return;
                 }
-                colorMode = 'range';
+                colorMode = distinct <= VIS_NUMERIC_CATEGORY_MAX ? 'category' : 'range';
+                switchable = distinct <= VIS_MAX_COLOR_CATEGORIES;
                 values.sort(function (a, b) {
                     return Number(a) - Number(b);
                 });
@@ -950,6 +957,7 @@
                 counts: s.counts,
                 score: (covered / total) * balance,
                 colorMode: colorMode,
+                switchable: switchable,
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
         });

@@ -1131,7 +1131,7 @@ if (!phyloXml) {
     // launch from the COMPLETE tree -- so a value keeps its colour inside a
     // subtree view even when the subtree does not contain it.
     function initializeVisualizations() {
-        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSort: 'count', hasStyles: false};
+        _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null, labelRef: null, labelPrefix: null, legendSortById: {}, colorModeById: {}, hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
         _vis.labelRef = forester.nodeLabelProperty(_treeData);
@@ -1167,16 +1167,18 @@ if (!phyloXml) {
             return;
         }
         forester.visualizationCandidates(_treeData).forEach(function (c) {
-            if (c.colorMode === 'range') {
+            if (c.numeric) {
                 let nums = c.values.map(Number);
                 let mean = nums.reduce(function (a, b) {
                     return a + b;
                 }, 0) / nums.length;
-                c.colorScale = d3.scaleLinear()
+                c.rangeScale = d3.scaleLinear()
                     .range(VIS_COLOR_RAMP)
                     .domain([nums[0], mean, nums[nums.length - 1]]);
-            } else {
-                c.colorScale = d3.scaleOrdinal().range(VIS_COLOR_PALETTE).domain(c.values);
+            }
+            // a switchable candidate needs both scales standing by
+            if (c.colorMode === 'category' || c.switchable) {
+                c.categoryScale = d3.scaleOrdinal().range(VIS_COLOR_PALETTE).domain(c.values);
             }
             if (c.shape) {
                 c.shapeScale = d3.scaleOrdinal().range(VIS_SHAPES).domain(c.values);
@@ -1200,6 +1202,18 @@ if (!phyloXml) {
 
     function currentShapeVis() {
         return (_vis && _vis.shapeId) ? _vis.byId[_vis.shapeId] : null;
+    }
+
+    // A candidate's colour mode, honouring the legend's [colors] / [gradient]
+    // switch, and the scale that mode wants.
+    function colorModeOf(vis) {
+        return _vis.colorModeById[vis.id] || vis.colorMode;
+    }
+
+    // Legend row order: numbers list in numeric order by default, words by
+    // count -- unless this legend's sort chip has been clicked.
+    function legendSortOf(vis) {
+        return _vis.legendSortById[vis.id] || (vis.numeric ? 'alpha' : 'count');
     }
 
     // A node's style: instructions, when the Visual Styles switch is on.
@@ -1266,7 +1280,7 @@ if (!phyloXml) {
     // alphabetical for categories and numeric for numbers.
     function orderedLegendValues(vis) {
         let vals = vis.values.slice();
-        if (_vis.legendSort === 'count') {
+        if (legendSortOf(vis) === 'count') {
             vals.sort(function (a, b) {
                 let d = (vis.counts[b] || 0) - (vis.counts[a] || 0);
                 if (d !== 0) {
@@ -1299,7 +1313,7 @@ if (!phyloXml) {
         const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
         const ink = _state.labelColorDefault;
         const frame = _state.branchColorDefault;
-        const isRange = kind === 'color' && vis.colorMode === 'range';
+        const isRange = kind === 'color' && colorModeOf(vis) === 'range';
 
         let rows = [];
         if (!isRange) {
@@ -1313,13 +1327,38 @@ if (!phyloXml) {
             rows.push({value: null, text: 'no value', count: missing, noValue: true});
         }
 
-        let sortChip = (!isRange && vis.values.length > 1)
-            ? (_vis.legendSort === 'count' ? '[by count]' : '[A-Z]') : null;
+        // Title-row chips, drawn right-to-left like the desktop's. The sort
+        // chip names the CURRENT order; the mode chip (only on switchable
+        // numeric fields) names the current rendering; clicking either
+        // switches to the other one.
+        let chips = [];
+        if (!isRange && vis.values.length > 1) {
+            chips.push({
+                text: legendSortOf(vis) === 'count' ? '[by count]' : (vis.numeric ? '[by value]' : '[A-Z]'),
+                tip: 'switch between sorting by count and by ' + (vis.numeric ? 'value' : 'name'),
+                act: function () {
+                    _vis.legendSortById[vis.id] = legendSortOf(vis) === 'count' ? 'alpha' : 'count';
+                    addLegends();
+                }
+            });
+        }
+        if (kind === 'color' && vis.switchable) {
+            chips.push({
+                text: isRange ? '[gradient]' : '[colors]',
+                tip: 'switch between individual colors and a gradient',
+                act: function () {
+                    _vis.colorModeById[vis.id] = isRange ? 'category' : 'range';
+                    update(null, 0);
+                }
+            });
+        }
 
-        // width: title row (title + chip), then the widest content row
+        // width: title row (title + chips), then the widest content row
         const BAR_W = 150;
-        let width = legendTextWidth(vis.label, titleFont)
-            + (sortChip ? GAP + 4 + legendTextWidth(sortChip, rowFont) : 0);
+        let width = legendTextWidth(vis.label, titleFont);
+        chips.forEach(function (chip) {
+            width += GAP + 4 + legendTextWidth(chip.text, rowFont);
+        });
         rows.forEach(function (r) {
             let w = SWATCH + GAP + legendTextWidth(r.text, rowFont)
                 + GAP + 4 + legendTextWidth(String(r.count), rowFont);
@@ -1356,26 +1395,26 @@ if (!phyloXml) {
             .style('fill', ink)
             .text(vis.label);
 
-        if (sortChip) {
-            g.append('text')
-                .attr('x', x + width - PAD).attr('y', baseline)
+        let chipRight = x + width - PAD;
+        chips.forEach(function (chip) {
+            let t = g.append('text')
+                .attr('x', chipRight).attr('y', baseline)
                 .attr('text-anchor', 'end')
                 .style('font', rowFont)
                 .style('fill', ink)
                 .style('fill-opacity', 0.75)
                 .style('cursor', 'pointer')
-                .text(sortChip)
-                .append('title').text('switch between sorting by count and alphabetically');
-            g.select('text:last-of-type')
+                .text(chip.text)
                 .on('mousedown', function (event) {
                     event.stopPropagation();   // a chip click is not a drag
                 })
                 .on('click', function (event) {
                     event.stopPropagation();
-                    _vis.legendSort = _vis.legendSort === 'count' ? 'alpha' : 'count';
-                    addLegends();
+                    chip.act();
                 });
-        }
+            t.append('title').text(chip.tip);
+            chipRight -= legendTextWidth(chip.text, rowFont) + GAP + 4;
+        });
 
         if (isRange) {
             // the desktop's gradient legend: a bordered colour bar, min at
@@ -1435,7 +1474,7 @@ if (!phyloXml) {
                     .attr('x', x + PAD).attr('y', swY)
                     .attr('width', SWATCH).attr('height', SWATCH)
                     .attr('rx', 2)
-                    .style('fill', vis.colorScale(r.value));
+                    .style('fill', vis.categoryScale(r.value));
             }
             g.append('text')
                 .attr('x', x + PAD + SWATCH + GAP).attr('y', baseline)
@@ -2148,7 +2187,7 @@ if (!phyloXml) {
         if (value === null) {
             return null;
         }
-        return vis.colorMode === 'range' ? vis.colorScale(Number(value)) : vis.colorScale(value);
+        return colorModeOf(vis) === 'range' ? vis.rangeScale(Number(value)) : vis.categoryScale(value);
     }
 
     let makeVisNodeFillColor = function (node) {
@@ -3674,9 +3713,11 @@ if (!phyloXml) {
         let shapeId = _vis ? _vis.shapeId : null;
         let show = _state.showVisualizations;
         let shorten = _state.shortenNodeNames;
-        let legendSort = _vis ? _vis.legendSort : 'count';
+        let legendSortById = _vis ? _vis.legendSortById : {};
+        let colorModeById = _vis ? _vis.colorModeById : {};
         initializeVisualizations();
-        _vis.legendSort = legendSort;
+        _vis.legendSortById = legendSortById;
+        _vis.colorModeById = colorModeById;
         // the rebuild is not a user choice: neither checkbox moves
         _state.showVisualizations = show;
         _state.shortenNodeNames = shorten;
@@ -3939,6 +3980,8 @@ if (!phyloXml) {
         if (_vis) {
             _vis.colorId = _vis.autoColorId;
             _vis.shapeId = null;
+            _vis.legendSortById = {};
+            _vis.colorModeById = {};
         }
         setSelectMenuValue(LABEL_COLOR_SELECT_MENU, (_vis && _vis.colorId) || DEFAULT);
         setSelectMenuValue(NODE_SHAPE_SELECT_MENU, DEFAULT);

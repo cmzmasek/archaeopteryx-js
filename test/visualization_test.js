@@ -71,7 +71,7 @@ function loadTree(basename) {
 // viewer auto-applies on load.
 function summarize(candidates) {
     return candidates.map(function (c) {
-        return c.id + ' ' + c.colorMode + (c.shape ? '+shape' : '');
+        return c.id + ' ' + c.colorMode + (c.shape ? '+shape' : '') + (c.switchable ? ' [switch]' : '');
     });
 }
 
@@ -129,6 +129,8 @@ function testAdenoviridae() {
 
 // Genus has 10 values here: colour yes, shape no (7 is the shape limit).
 function testCaliciviridae100() {
+    // Year at 29 distinct values: over the 20-colour line, so a range with
+    // no switch to individual colours.
     return expectExactly('Caliciviridae_100', [
         'prop:vipr:Genus category',
         'prop:vipr:Year range'
@@ -177,10 +179,10 @@ function testBranchEvents() {
         'prop:vipr:Region category+shape',
         'prop:vipr:PANGO_Lineage_L1 category',
         'prop:vipr:Country category',
+        'prop:vipr:Year category+shape [switch]',
         'prop:vipr:Year_Month category',
         'prop:vipr:Host category+shape',
-        'prop:vipr:PANGO_Lineage_L0 category+shape',
-        'prop:vipr:Year range+shape'
+        'prop:vipr:PANGO_Lineage_L0 category+shape'
     ]);
 }
 
@@ -191,8 +193,8 @@ function testBranchEvents() {
 function testConfidences() {
     return expectExactly('confidences', [
         'prop:ird:FluSeason category+shape',
-        'prop:ird:GlobalH1Clade category+shape',
-        'prop:ird:Year range+shape'
+        'prop:ird:Year category+shape [switch]',
+        'prop:ird:GlobalH1Clade category+shape'
     ]);
 }
 
@@ -214,6 +216,7 @@ function testHerpesDnapol() {
     // geographic_group first: 90% coverage over six well-spread continents.
     // host_group is LAST of the categoricals -- 92% of its nodes say
     // "Nonhuman Mammal", and the balance term knows it.
+    // collection_year has 48 distinct values: a range with no switch.
     return expectExactly('herpes_dnapol', [
         'prop:BVBRC:geographic_group category+shape',
         'prop:BVBRC:isolation_country category',
@@ -227,15 +230,18 @@ function testHerpesDnapol() {
 // over 6 covered nodes: 5/6 = 0.83, inside the 0.9 identifier guard, so it
 // stays a ramp -- on a tree this small, near-unique is not proof of an id.
 function testInfluenza() {
+    // HA and NA are subtype CODES that happen to be digits: two distinct
+    // numbers get two colours, not a two-point gradient. Country still edges
+    // Year for the auto-choice on the alphabetical tiebreak at equal score.
     return expectExactly('influenza', [
         'prop:ird:Country category+shape',
+        'prop:ird:Year category+shape [switch]',
         'prop:ird:Host category+shape',
         'prop:ird:Subtype category+shape',
+        'prop:ird:NA category+shape [switch]',
         'prop:ird:Region category+shape',
         'prop:ird:H5Clade category+shape',
-        'prop:ird:Year range+shape',
-        'prop:ird:NA range+shape',
-        'prop:ird:HA range+shape'
+        'prop:ird:HA category+shape [switch]'
     ]);
 }
 
@@ -353,13 +359,39 @@ function testShapeLimit() {
         && eight !== null && eight.shape === false;
 }
 
-// Numeric fields always get a ramp -- order is the point of numbers -- and
-// their values come back sorted numerically, not lexicographically.
-function testNumericIsAlwaysRange() {
+// Numeric values come back sorted numerically, not lexicographically --
+// whatever mode they default to.
+function testNumericValuesSortNumerically() {
     var c = only(starTree(['2', '10', '2', '10', '5', '5']));
-    return c !== null && c.numeric === true && c.colorMode === 'range'
-        && c.shape === true
+    return c !== null && c.numeric === true && c.colorMode === 'category'
+        && c.switchable === true && c.shape === true
         && c.values.join(',') === '2,5,10';
+}
+
+// The three numeric bands: up to 10 distinct numbers default to colours
+// (switchable), 11-20 default to a range (switchable), above 20 a range
+// with no switch. Each tree repeats one value so the identifier guard and
+// the distinct<total rule stay out of the way.
+function testNumericBands() {
+    function numTree(distinct) {
+        var vals = [];
+        for (var i = 1; i <= distinct; ++i) vals.push(String(i));
+        vals.push('1');
+        vals.push('1');
+        vals.push('1');   // ratio distinct/(distinct+3) stays under 0.9 for 21
+        return starTree(vals);
+    }
+    var ten = only(numTree(10));
+    if (!ten || ten.colorMode !== 'category' || ten.switchable !== true) return false;
+    var eleven = only(numTree(11));
+    if (!eleven || eleven.colorMode !== 'range' || eleven.switchable !== true) return false;
+    var twenty = only(numTree(20));
+    if (!twenty || twenty.colorMode !== 'range' || twenty.switchable !== true) return false;
+    var twentyone = only(numTree(21));
+    if (!twentyone || twentyone.colorMode !== 'range' || twentyone.switchable !== false) return false;
+    // string categories are never switchable
+    var cat = only(starTree(['a', 'a', 'b']));
+    return cat !== null && cat.switchable === false;
 }
 
 // The identifier guard: 9 distinct numbers on 10 nodes (ratio 0.9) is still
@@ -686,7 +718,8 @@ runTest("all-unique excluded        : ", testAllUniqueExcluded);
 runTest("coverage boundary 2/3      : ", testCoverageBoundary);
 runTest("category limit 20          : ", testCategoryLimit);
 runTest("shape limit 7              : ", testShapeLimit);
-runTest("numeric is always a range  : ", testNumericIsAlwaysRange);
+runTest("numeric bands              : ", testNumericBands);
+runTest("numeric values sort as nums: ", testNumericValuesSortNumerically);
 runTest("numeric identifier guard   : ", testNumericIdentifierGuard);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
