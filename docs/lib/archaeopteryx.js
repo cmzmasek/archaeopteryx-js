@@ -338,7 +338,6 @@ function (root, d3, forester, phyloXml) {
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const SUPPORT_DOTS_CB = 'suppdots_cb';
     const DOWNLOAD_BUTTON = 'dl_b';
-    const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
     const TIME_AXIS_CB = 'timeaxis_cb';
@@ -6373,11 +6372,6 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    function submitSelectedPressed() {
-        const event = new Event('submit_selected_nodes_event');
-        document.dispatchEvent(event);
-    }
-
     function changeBaseBackgoundColor(color) {
         setStylesAll('.' + BASE_BACKGROUND, {
             'fill': color
@@ -7660,10 +7654,6 @@ function (root, d3, forester, phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeSearchBoxes());
 
-            if (_settings.enableManualNodeSelection) {
-                //c0.append(makeSubmitSection()); //~~~
-            }
-
             if (_settings.enableDownloads) {
                 c0.insertAdjacentHTML('beforeend',makeDownloadSection());
             }
@@ -7703,14 +7693,6 @@ function (root, d3, forester, phyloXml) {
         if (downloadButton) {
             setStyles(downloadButton, {
                 'width': '60px', 'margin-bottom': '3px'
-            });
-        }
-
-        const submitSelectedButton = byId(SUBMIT_SELECTED_NODES_BUTTON);
-
-        if (submitSelectedButton) {
-            setStyles(submitSelectedButton, {
-                'width': '80px', 'margin-bottom': '3px'
             });
         }
 
@@ -7902,10 +7884,6 @@ function (root, d3, forester, phyloXml) {
 
         if (downloadButton) {
             downloadButton.addEventListener('click', downloadButtonPressed);
-        }
-
-        if (submitSelectedButton) {
-            submitSelectedButton.addEventListener('click', submitSelectedPressed);
         }
 
         setStyles(byId(EXPORT_FORMAT_SELECT), {
@@ -8317,16 +8295,6 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
-            return h;
-        }
-
-        function makeSubmitSection() {
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<div class="submit_nodes">');
-            h = h.concat('<input type="button" value="Submit Selected" name="' + SUBMIT_SELECTED_NODES_BUTTON + '" title="to submit the selected nodes" id="' + SUBMIT_SELECTED_NODES_BUTTON + '">');
-            h = h.concat('</div>');
-            h = h.concat('</fieldset>');
             return h;
         }
 
