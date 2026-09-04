@@ -1504,6 +1504,10 @@ function testNexusBeastMcc() {
     if (phy.rooted !== true || phy.name !== "TREE1") {
         return false;
     }
+    // the posterior scale is detectable: the largest confidence is <= 1
+    if (forester.collectBasicTreeProperties(phy).maxConfidence !== 0.98) {
+        return false;
+    }
     var a = forester.findByNodeName(phy, "virusA")[0];
     var c = forester.findByNodeName(phy, "virusC")[0];
     if (!a || !c

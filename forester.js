@@ -1270,6 +1270,9 @@
         properties.longestNodeName = 0;
         properties.branchLengths = false;
         properties.confidences = false;
+        // the largest confidence value seen -- how a caller tells a
+        // posterior-probability tree (max <= 1) from a bootstrap tree
+        properties.maxConfidence = 0;
         properties.nodeEvents = false;
         properties.branchColors = false;
         properties.sequences = false;
@@ -1339,6 +1342,12 @@
             }
             if (n.confidences && n.confidences.length > 0) {
                 properties.confidences = true;
+                for (let ci = 0; ci < n.confidences.length; ++ci) {
+                    let cv = n.confidences[ci].value;
+                    if (typeof cv === 'number' && isFinite(cv) && cv > properties.maxConfidence) {
+                        properties.maxConfidence = cv;
+                    }
+                }
             }
             if (n.properties && n.properties.length > 0) {
                 let l = n.properties.length;

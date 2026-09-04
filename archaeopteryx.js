@@ -136,7 +136,7 @@ if (!phyloXml) {
     const BACKGROUND_COLOR_FOR_PRINT_EXPORT_DEFAULT = '#ffffff';
     const BRANCH_COLOR_DEFAULT = '#909090';
     const BRANCH_WIDTH_DEFAULT = 1;
-        const FONT_SIZE_DEFAULT = 11; // one size for every label, as on the desktop
+        const FONT_SIZE_DEFAULT = 11; // the label font; support and branch-length values draw 2px smaller (floor 6)
     // Whatever sans-serif the reader's own system renders best: system-ui first,
     // then the named faces for platforms that do not honour it, then the generic.
     const FONT_DEFAULTS = ['system-ui', '-apple-system', 'Segoe UI', 'Roboto',
@@ -208,6 +208,9 @@ if (!phyloXml) {
     const FASTA_EXPORT_FORMAT = 'Fasta';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
+    // branch-data (support / branch-length) text sits 2px under the label
+    // font, but never below this readable floor
+    const BRANCH_DATA_FONT_MIN = 6;
     const LABEL_SIZE_CALC_ADDITION = 80;
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
@@ -216,6 +219,7 @@ if (!phyloXml) {
     const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
+    const SUPPORT_DOT_RADIUS = 3;
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     const PNG_EXPORT_FORMAT = 'PNG';
@@ -260,6 +264,7 @@ if (!phyloXml) {
     const LAYOUT_UNROOTED_BUTTON = 'layout_unrooted_b';
     const CLADOGRAM_BUTTON = 'cla_b';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
+    const SUPPORT_DOTS_CB = 'suppdots_cb';
     const DOWNLOAD_BUTTON = 'dl_b';
     const SUBMIT_SELECTED_NODES_BUTTON = 'submit_sel_nodes_b';
     const DYNAHIDE_CB = 'dynahide_cb';
@@ -2031,6 +2036,10 @@ if (!phyloXml) {
             .attr('text-anchor', 'middle')
             .style('font-family', _state.defaultFont);
 
+        nodeEnter.append('circle')
+            .attr('class', 'suppdot')
+            .style('pointer-events', 'none');
+
         nodeEnter.append('text')
             .attr('class', 'brancheventlabel')
             .attr('text-anchor', 'middle')
@@ -2185,6 +2194,24 @@ if (!phyloXml) {
                 } else {
                     return 0;
                 }
+            });
+
+        // the Support Dots alternative to numeric support: a filled dot at
+        // the branch midpoint marks support at or above the threshold; it
+        // wears the branch colour like the values above, and r=0 hides it
+        node.select('circle.suppdot')
+            .attr('r', function (d) {
+                return showSupportDot(d) ? SUPPORT_DOT_RADIUS : 0;
+            })
+            .style('fill', _state.branchColorDefault)
+            .attr('transform', function (d) {
+                return radialDisplay() ? branchLabelTransform(d) : null;
+            })
+            .attr('cx', function (d) {
+                if (radialDisplay()) {
+                    return 0;
+                }
+                return d.parent ? (0.5 * (d.parent.y - d.y)) : 0;
             });
 
         node.select('text.brancheventlabel')
@@ -2985,6 +3012,47 @@ if (!phyloXml) {
         }
     };
 
+    // How long node d's branch is DRAWN, in layout units -- not its
+    // branch_length: the gate for decorations that need room on the branch.
+    function drawnBranchSpan(d) {
+        if (!d.parent) {
+            return 0;
+        }
+        if (_state.unrootedDisplay) {
+            if (d.ux === undefined || d.parent.ux === undefined) {
+                return 0;
+            }
+            let dx = d.ux - d.parent.ux;
+            let dy = d.uy - d.parent.uy;
+            return Math.sqrt((dx * dx) + (dy * dy));
+        }
+        if (_state.circularDisplay) {
+            return Math.abs(radialRadius(d.parent.y) - radialRadius(d.y));
+        }
+        return Math.abs(d.parent.y - d.y);
+    }
+
+    // The Support Dots threshold on the tree's own scale: the setting is a
+    // percentage, and a tree whose confidences top out at 1 (posterior
+    // probabilities) is measured on the 0-1 scale.
+    function supportDotThreshold() {
+        let m = _settings.supportDotMinimum;
+        return (_basicTreeProperties && _basicTreeProperties.maxConfidence <= 1) ? (m / 100) : m;
+    }
+
+    function showSupportDot(d) {
+        if (!_state.showSupportDots || !d.parent
+            || !d.confidences || d.confidences.length === 0) {
+            return false;
+        }
+        let v = d.confidences[0].value;
+        if (typeof v !== 'number' || !isFinite(v) || v < supportDotThreshold()) {
+            return false;
+        }
+        // a dot wider than its branch is noise, not information
+        return drawnBranchSpan(d) >= (2 * SUPPORT_DOT_RADIUS);
+    }
+
     // ---- radial (circular) layout helpers ----
     // Either of the desktop's two "radial" layouts. Circular and unrooted
     // share rotation, the label-direction flip, single-axis zoom and all the
@@ -3110,7 +3178,7 @@ if (!phyloXml) {
         searchProperties: 'choose the property in the search box\'s field menu instead',
         externalNodeFontSize: 'all labels share one size now -- use "fontSize"',
         internalNodeFontSize: 'all labels share one size now -- use "fontSize"',
-        branchDataFontSize: 'all labels share one size now -- use "fontSize"',
+        branchDataFontSize: 'derived from "fontSize": 2px smaller, floor 6px',
         // download filenames follow the tree's name
         nameForNhDownload: 'download names follow "treeName"',
         nameForPhyloXmlDownload: 'download names follow "treeName"',
@@ -3249,6 +3317,7 @@ if (!phyloXml) {
         'showMsa',
         'showTimeAxis',
         'timeAxisGrid',
+        'showSupportDots',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -3269,6 +3338,7 @@ if (!phyloXml) {
         'nhExportWriteConfidences',
         'pngExportScale',
         'rootOffset',
+        'supportDotMinimum',
         'zoomToFitUponWindowResize'
     ];
 
@@ -3400,6 +3470,7 @@ if (!phyloXml) {
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
         _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
         _state.timeAxisGrid = _state.timeAxisGrid === true; // desktop default: off
+        _state.showSupportDots = _state.showSupportDots === true;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
@@ -3601,6 +3672,13 @@ if (!phyloXml) {
         }
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = true;
+        }
+        if (_settings.supportDotMinimum === undefined) {
+            _settings.supportDotMinimum = 95;
+        } else if (typeof _settings.supportDotMinimum !== 'number'
+            || !isFinite(_settings.supportDotMinimum)
+            || _settings.supportDotMinimum <= 0 || _settings.supportDotMinimum > 100) {
+            throw new Error('supportDotMinimum must be a percentage in (0, 100]');
         }
         if (_settings.enableSubtreeDeletion === undefined) {
             _settings.enableSubtreeDeletion = true;
@@ -5968,6 +6046,11 @@ if (!phyloXml) {
         update();
     }
 
+    function supportDotsCbClicked() {
+        _state.showSupportDots = getCheckboxValue(SUPPORT_DOTS_CB);
+        update();
+    }
+
     function branchLengthsCbClicked() {
         _state.showBranchLengthValues = getCheckboxValue(BRANCH_LENGTH_VALUES_CB);
         update();
@@ -6076,7 +6159,10 @@ if (!phyloXml) {
         size = clampFontSize(size);
         _state.externalNodeFontSize = size;
         _state.internalNodeFontSize = size;
-        _state.branchDataFontSize = size;
+        // support and branch-length values sit a step below the label font,
+        // as in the desktop's small font -- but never under the readable
+        // floor, and never over the label size itself
+        _state.branchDataFontSize = Math.max(Math.min(size, BRANCH_DATA_FONT_MIN), size - 2);
     }
 
     function searchOptionsCaseSenstiveCbClicked() {
@@ -7394,6 +7480,7 @@ if (!phyloXml) {
         on(SEQUENCE_CB, 'click', sequenceCbClicked);
 
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
+        on(SUPPORT_DOTS_CB, 'click', supportDotsCbClicked);
         on(SEARCH_B_TOGGLE, 'click', revealSearchB);
         on(SEARCH_NAV_PREV, 'click', function () {
             stepToFoundNode(-1);
@@ -7874,6 +7961,9 @@ if (!phyloXml) {
             // sees. The _state.dynahide field keeps its name internally.
             opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
+            if (_basicTreeProperties.confidences) {
+                opts.push(makeCheckboxItem('Support Dots', SUPPORT_DOTS_CB, 'to mark every branch with support of at least ' + _settings.supportDotMinimum + '% with a dot at its midpoint'));
+            }
             // Styles and visualizations sit here too, so the Nodes group only
             // appears at all on a tree carrying node/branch events
             if (_basicTreeProperties.branchColors || (_vis && _vis.hasStyles)) { // only when the tree carries either
@@ -8137,6 +8227,7 @@ if (!phyloXml) {
         setCheckboxValue(TAXONOMY_CB, _state.showTaxonomy);
         setCheckboxValue(SEQUENCE_CB, _state.showSequence)
         setCheckboxValue(CONFIDENCE_VALUES_CB, _state.showConfidenceValues);
+        setCheckboxValue(SUPPORT_DOTS_CB, _state.showSupportDots);
         setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _state.showBranchLengthValues);
         setCheckboxValue(NODE_EVENTS_CB, _state.showNodeEvents);
         setCheckboxValue(BRANCH_EVENTS_CB, _state.showBranchEvents);
