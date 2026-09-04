@@ -27,7 +27,15 @@
             padding: 42px 20px 34px;
             text-align: center;
         }
-        header h1 { margin: 0 0 6px; font-size: 30px; }
+        header h1 {
+            margin: 0 0 6px;
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        header h1 .logo { width: 36px; height: 36px; border-radius: 9px; }
         header p { margin: 0 auto; max-width: 620px; color: #cdd8e1; }
         header .links { margin-top: 16px; font-size: 14px; }
         header .links a { color: #7fc4ff; text-decoration: none; margin: 0 8px; }
@@ -62,7 +70,7 @@
 </head>
 <body>
 <header>
-    <h1>🐦 Archaeopteryx.js</h1>
+    <h1><img class="logo" src="images/archaeopteryx-logo.png" srcset="images/archaeopteryx-logo.png 1x, images/archaeopteryx-logo@2x.png 2x" width="36" height="36" alt="">Archaeopteryx.js</h1>
     <p>A browser tool for the visualization and analysis of highly annotated phylogenetic trees.</p>
     <div class="links">
         <a href="https://github.com/cmzmasek/archaeopteryx-js">GitHub</a> ·
