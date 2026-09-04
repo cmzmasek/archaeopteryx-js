@@ -8712,13 +8712,24 @@ if (!phyloXml) {
         let canvas = document.createElement('canvas');
         canvas.width = Math.round(w * scale);
         canvas.height = Math.round(h * scale);
-        let v = window.Canvg.fromString(canvas.getContext('2d'), svg);
-        // v4's render() is async (v1's canvg() call drew synchronously, so
-        // toBlob could follow immediately on the next line); the options
-        // themselves are unchanged -- v4 kept the same ignoreDimensions/
-        // scaleWidth/scaleHeight names for exactly this "fit an SVG with its
-        // own declared size onto a differently-sized canvas" case.
-        v.render({ignoreDimensions: true, scaleWidth: canvas.width, scaleHeight: canvas.height}).then(function () {
+        let ctx = canvas.getContext('2d');
+        // The up-scaling is done on the CONTEXT, not through canvg's own
+        // scaleWidth/scaleHeight: canvg 4's scaling pipeline mis-scales (a
+        // requested 4x came out at 2.5x, leaving unpainted margins -- and any
+        // unpainted pixel is transparent, which most viewers show dark). The
+        // white pre-fill closes that hole for good: every pixel is opaque
+        // background before canvg draws a thing. ignoreDimensions keeps canvg
+        // from resizing the canvas to the SVG's size (which would erase both
+        // the transform and the fill); ignoreClear keeps it from clearing the
+        // fill back to transparent. Content outside the on-screen viewport
+        // falls outside the canvas and is cropped, so the export shows
+        // exactly the visible view. v4's render() is async (v1's canvg()
+        // call drew synchronously, so toBlob could follow on the next line).
+        ctx.fillStyle = _state.backgroundColorForPrintExportDefault;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        let v = window.Canvg.fromString(ctx, svg);
+        v.render({ignoreDimensions: true, ignoreClear: true}).then(function () {
             canvas.toBlob(function (blob) {
                 saveAs(blob, _state.nameForPngDownload);
             });
