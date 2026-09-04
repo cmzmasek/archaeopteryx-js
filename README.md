@@ -386,6 +386,7 @@ keep working; it logs a deprecation warning.
 | `searchAinitialValue` | `null` | Prefill search box A. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
 | `enableVisualizations` | `true` | Offer the Color / Shape visualizations (which fields they cover is decided from the tree). |
+| `initialVisualization` | `null` | The visualization to open with, by its Color-menu name (e.g. `'Host'`; case-insensitive). A name the tree cannot honour logs a console warning and falls back to the automatic choice, so a site-wide value is safe on trees without that field. Default: Archaeopteryx.js picks the most informative field itself. |
 | `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `enableDownloads` | `true` | Offer the download buttons. |

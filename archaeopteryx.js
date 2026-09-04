@@ -1315,11 +1315,37 @@ if (!phyloXml) {
             return;
         }
         computeVisualizationCandidates(_treeData);
-        // Auto-apply the best candidate: the classifier returns them best
-        // first, so a tree opens already coloured by its most informative
-        // field instead of grey with a menu to discover. A wide field
-        // (21+ values, legend capped) is offered but never imposed.
-        if (_vis.candidates.length > 0 && !_vis.candidates[0].wide) {
+        // The embedder may name the visualization to open with (the
+        // initialVisualization setting, matched case-insensitively against
+        // the Color-menu label or the internal id). A name this tree cannot
+        // honour warns and falls through to the automatic choice, so a
+        // site-wide setting is safe on trees without that field.
+        let requested = null;
+        if (_settings.initialVisualization) {
+            let want = _settings.initialVisualization.trim().toLowerCase();
+            requested = _vis.candidates.find(function (c) {
+                return c.id.toLowerCase() === want
+                    || (c.label && String(c.label).toLowerCase() === want);
+            }) || null;
+            if (!requested) {
+                console.warn(WARNING + ': initialVisualization "'
+                    + _settings.initialVisualization
+                    + '" names no visualization of this tree; using the automatic choice');
+            }
+        }
+        if (requested) {
+            // an explicit request is honoured even for a wide field (21+
+            // values) the automatic path would only offer, never impose;
+            // autoColorId too, so it survives subtree views like the
+            // automatic pick does
+            _vis.autoColorId = requested.id;
+            _vis.colorId = requested.id;
+            _state.showVisualizations = true;
+        } else if (_vis.candidates.length > 0 && !_vis.candidates[0].wide) {
+            // Auto-apply the best candidate: the classifier returns them best
+            // first, so a tree opens already coloured by its most informative
+            // field instead of grey with a menu to discover. A wide field
+            // (21+ values, legend capped) is offered but never imposed.
             _vis.autoColorId = _vis.candidates[0].id;
             _vis.colorId = _vis.autoColorId;
             _state.showVisualizations = true;
@@ -3235,6 +3261,7 @@ if (!phyloXml) {
         'enableManualNodeSelection',
         'enableSubtreeDeletion',
         'enableVisualizations',
+        'initialVisualization',
         'ladderizeTree',
         'nhExportWriteConfidences',
         'pngExportScale',
@@ -3584,6 +3611,17 @@ if (!phyloXml) {
         }
         if (_settings.ladderizeTree === undefined) {
             _settings.ladderizeTree = true;
+        }
+        // The visualization to open with, by its Color-menu name (e.g.
+        // 'Host'); a name this tree cannot honour falls back to the automatic
+        // choice in initializeVisualizations. Deliberately NOT the old
+        // initialNodeFillColorVisualization: the matching rules are new.
+        if (_settings.initialVisualization === undefined) {
+            _settings.initialVisualization = null;
+        } else if (_settings.initialVisualization !== null
+            && typeof _settings.initialVisualization !== 'string') {
+            throw new Error('initialVisualization must be a string: the visualization\'s'
+                + ' name as the Color menu shows it');
         }
 
 
