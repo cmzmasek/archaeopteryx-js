@@ -2181,7 +2181,10 @@ if (!phyloXml) {
                 return isNodeFound(d) ? 'foundHalo aptx-found-halo' : 'foundHalo';
             })
             .attr('r', function (d) {
-                return isNodeFound(d) ? 4 : 0;
+                // the trough must clear the node dot, or a medium-sized node
+                // buries its own pulse (the halo is UNDER the node); the CSS
+                // 2.5x peak then keeps the desktop's 4->10px pulse ratio
+                return isNodeFound(d) ? Math.max(4, makeNodeSize(d) + 2) : 0;
             })
             .style('fill', function (d) {
                 return isNodeFound(d) ? getFoundColor(d) : 'none';
