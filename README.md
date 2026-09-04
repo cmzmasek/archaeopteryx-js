@@ -226,7 +226,10 @@ bound) draw uncertainty bars: translucent blue **HPD age bars** on internal
 nodes, sepia **fossil-range (FAD/LAD) bars with end caps** on tips. Node
 tooltips show the date. The **Time Axis** checkbox under Display Data toggles
 everything; the axis needs a phylogram (branch lengths carry the time) and
-the rectangular layout.
+the rectangular layout. **Time Grid** (off by default, like the desktop's
+"Time axis grid lines") adds faint vertical lines behind the tree at the
+fine geologic-interval boundaries or the calendar year ticks, so a node's
+position can be read against the axis.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.

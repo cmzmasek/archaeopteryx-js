@@ -262,6 +262,7 @@ if (!phyloXml) {
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
     const TIME_AXIS_CB = 'timeaxis_cb';
+    const TIME_GRID_CB = 'timegrid_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
     const EXPORT_FORMAT_SELECT = 'exp_f_sel';
     const FONT_SIZE_SLIDER = 'fs_sl';
@@ -3218,6 +3219,7 @@ if (!phyloXml) {
         'unrootedDisplay',
         'showMsa',
         'showTimeAxis',
+        'timeAxisGrid',
         'searchAinitialValue',
         'searchBinitialValue',
         'visualizationsLegendXpos',
@@ -3367,6 +3369,7 @@ if (!phyloXml) {
         // elements by forester.timeAxisInfo.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
         _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
+        _state.timeAxisGrid = _state.timeAxisGrid === true; // desktop default: off
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
@@ -5068,6 +5071,7 @@ if (!phyloXml) {
             return;
         }
         _svgGroup.selectAll('g.aptx-time').remove();
+        _svgGroup.selectAll('g.aptx-timegrid').remove();
         if (!timeAxisShown() || !_root || !_yScale) {
             return;
         }
@@ -5104,6 +5108,21 @@ if (!phyloXml) {
             .style('pointer-events', 'none');
         let ink = _state.branchColorDefault;
         let axisTop = _clusterH + 6;
+
+        // "Time axis grid lines", as on the desktop: faint vertical lines
+        // BEHIND the tree (inserted first in the group) at the fine geologic
+        // boundaries / calendar year ticks; each axis branch below fills it
+        let grid = null;
+        if (_state.timeAxisGrid) {
+            grid = _svgGroup.insert('g', 'g').attr('class', 'aptx-timegrid')
+                .style('pointer-events', 'none');
+        }
+        function gridLineAt(x) {
+            grid.append('line').attr('x1', x).attr('x2', x)
+                .attr('y1', 0).attr('y2', axisTop)
+                .attr('stroke', ink).attr('stroke-opacity', 0.18)
+                .attr('stroke-width', 1);
+        }
 
         let sc = info.type === 'calendar' ? -corr : corr;
 
@@ -5155,6 +5174,16 @@ if (!phyloXml) {
             };
             let youngBound = Math.max(0, anchorAge - ((maxTipX - anchorX) / corr));
             let ranks = forester.geoBandRanks(rootAge);
+            if (grid) {
+                // the FINE rank's old-side boundaries, root and tip edges
+                // excluded (they would just retrace the tree's outline)
+                forester.geoOverlapping(ranks[1], youngBound, rootAge).forEach(function (iv) {
+                    let b = Math.min(rootAge, iv.old);
+                    if (b > youngBound && b < rootAge) {
+                        gridLineAt(xOfAge(b));
+                    }
+                });
+            }
             for (let b = 0; b < 2; ++b) {
                 let rowY = axisTop + (b * TIME_BAND_ROW_H);
                 let ivs = forester.geoOverlapping(ranks[b], youngBound, rootAge);
@@ -5238,6 +5267,16 @@ if (!phyloXml) {
                 return anchorX - ((anchorYear - yv) * corr);
             };
             let rootYear = anchorYear - ((anchorX - _root.y) / corr);
+            if (grid) {
+                let gx0 = xOfYear(rootYear);
+                let gx1 = xOfYear(present);
+                forester.calendarTickYears(rootYear, present).forEach(function (yv) {
+                    let x = xOfYear(yv);
+                    if (x > gx0 + 0.5 && x < gx1 - 0.5) {
+                        gridLineAt(x);
+                    }
+                });
+            }
             let rulerY = axisTop + 4;
             g.append('line').attr('x1', xOfYear(rootYear)).attr('x2', xOfYear(present))
                 .attr('y1', rulerY).attr('y2', rulerY)
@@ -5263,6 +5302,11 @@ if (!phyloXml) {
 
     function timeAxisCbClicked() {
         _state.showTimeAxis = getCheckboxValue(TIME_AXIS_CB);
+        update(null, 0);
+    }
+
+    function timeGridCbClicked() {
+        _state.timeAxisGrid = getCheckboxValue(TIME_GRID_CB);
         update(null, 0);
     }
 
@@ -5747,6 +5791,11 @@ if (!phyloXml) {
         let timeCb = byId(TIME_AXIS_CB);
         if (timeCb) {
             timeCb.disabled = radialDisplay();
+        }
+        let timeGridCb = byId(TIME_GRID_CB);
+        if (timeGridCb) {
+            // grid lines hang off the time axis: no axis, nothing to grid
+            timeGridCb.disabled = radialDisplay() || _state.showTimeAxis !== true;
         }
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
@@ -7303,6 +7352,7 @@ if (!phyloXml) {
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
         on(TIME_AXIS_CB, 'click', timeAxisCbClicked);
+        on(TIME_GRID_CB, 'click', timeGridCbClicked);
 
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
 
@@ -7736,6 +7786,8 @@ if (!phyloXml) {
                 labels.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
                     + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
                     + ' and node-age bars (phylogram, rectangular layout only)'));
+                labels.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide vertical grid lines at the '
+                    + (_timeInfo.type === 'geologic' ? 'geologic interval boundaries' : 'calendar year ticks')));
             }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
@@ -8022,6 +8074,7 @@ if (!phyloXml) {
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(MSA_CB, _state.showMsa);
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
+        setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         populateVisualizationMenus();
         initializeSearchOptions();
