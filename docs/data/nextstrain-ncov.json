@@ -1,0 +1,316 @@
+{
+  "version": "v2",
+  "meta": {
+    "title": "Synthetic SARS-CoV-2 phylodynamics (Archaeopteryx demo)",
+    "updated": "2026-01-01"
+  },
+  "tree":
+  {
+    "name": "19A",
+    "node_attrs": {
+      "div": 0,
+      "num_date": { "value": 2019.9, "confidence": [2019.8, 2019.98] },
+      "region": { "value": "Asia", "confidence": { "Asia": 0.95, "Europe": 0.05 } }
+    },
+    "branch_attrs": { "labels": { "clade": "19A" } },
+    "children": [
+      {
+        "name": "19B",
+        "node_attrs": {
+          "div": 0.0002,
+          "num_date": { "value": 2019.93, "confidence": [2019.86, 2020] },
+          "region": { "value": "Asia", "confidence": { "Asia": 0.9, "Europe": 0.1 } }
+        },
+        "branch_attrs": { "labels": { "clade": "19B" } },
+        "children": [
+          {
+            "name": "China/Wuhan-Hu-1/2019",
+            "node_attrs": {
+              "div": 0.0003,
+              "num_date": { "value": 2019.96 },
+              "region": { "value": "Asia" },
+              "country": { "value": "China" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "19B" }
+            }
+          },
+          {
+            "name": "Japan/TY/2020",
+            "node_attrs": {
+              "div": 0.0004,
+              "num_date": { "value": 2020.05 },
+              "region": { "value": "Asia" },
+              "country": { "value": "Japan" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "19B" }
+            }
+          },
+          {
+            "name": "SouthKorea/KCDC/2020",
+            "node_attrs": {
+              "div": 0.0005,
+              "num_date": { "value": 2020.1 },
+              "region": { "value": "Asia" },
+              "country": { "value": "South Korea" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "19B" }
+            }
+          }
+        ]
+      },
+      {
+        "name": "20A",
+        "node_attrs": {
+          "div": 0.0006,
+          "num_date": { "value": 2020.05, "confidence": [2019.98, 2020.12] },
+          "region": { "value": "Europe", "confidence": { "Europe": 0.8, "Asia": 0.2 } }
+        },
+        "branch_attrs": { "labels": { "clade": "20A" } },
+        "children": [
+          {
+            "name": "Italy/LOM/2020",
+            "node_attrs": {
+              "div": 0.0008,
+              "num_date": { "value": 2020.18 },
+              "region": { "value": "Europe" },
+              "country": { "value": "Italy" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "20A" }
+            }
+          },
+          {
+            "name": "France/IDF/2020",
+            "node_attrs": {
+              "div": 0.0009,
+              "num_date": { "value": 2020.22 },
+              "region": { "value": "Europe" },
+              "country": { "value": "France" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "20A" }
+            }
+          },
+          {
+            "name": "Spain/CAT/2020",
+            "node_attrs": {
+              "div": 0.001,
+              "num_date": { "value": 2020.25 },
+              "region": { "value": "Europe" },
+              "country": { "value": "Spain" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "20A" }
+            }
+          },
+          {
+            "name": "Belgium/ANT/2020",
+            "node_attrs": {
+              "div": 0.001,
+              "num_date": { "value": 2020.28 },
+              "region": { "value": "Europe" },
+              "country": { "value": "Belgium" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "20A" }
+            }
+          },
+          {
+            "name": "20B",
+            "node_attrs": {
+              "div": 0.0011,
+              "num_date": { "value": 2020.3, "confidence": [2020.22, 2020.38] },
+              "region": { "value": "Europe", "confidence": { "Europe": 0.85, "North America": 0.15 } }
+            },
+            "branch_attrs": { "labels": { "clade": "20B" } },
+            "children": [
+              {
+                "name": "England/SANG/2020",
+                "node_attrs": {
+                  "div": 0.0013,
+                  "num_date": { "value": 2020.4 },
+                  "region": { "value": "Europe" },
+                  "country": { "value": "United Kingdom" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "20B" }
+                }
+              },
+              {
+                "name": "Germany/BAV/2020",
+                "node_attrs": {
+                  "div": 0.0014,
+                  "num_date": { "value": 2020.45 },
+                  "region": { "value": "Europe" },
+                  "country": { "value": "Germany" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "20B" }
+                }
+              },
+              {
+                "name": "Denmark/mink-cluster5/2020",
+                "node_attrs": {
+                  "div": 0.0016,
+                  "num_date": { "value": 2020.55 },
+                  "region": { "value": "Europe" },
+                  "country": { "value": "Denmark" },
+                  "host": { "value": "Neovison vison" },
+                  "clade_membership": { "value": "20B" }
+                }
+              }
+            ]
+          },
+          {
+            "name": "20C",
+            "node_attrs": {
+              "div": 0.0012,
+              "num_date": { "value": 2020.32, "confidence": [2020.24, 2020.4] },
+              "region": { "value": "North America", "confidence": { "North America": 0.9, "Europe": 0.1 } }
+            },
+            "branch_attrs": { "labels": { "clade": "20C" } },
+            "children": [
+              {
+                "name": "USA/CA-CDC/2020",
+                "node_attrs": {
+                  "div": 0.0015,
+                  "num_date": { "value": 2020.5 },
+                  "region": { "value": "North America" },
+                  "country": { "value": "USA" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "20C" }
+                }
+              },
+              {
+                "name": "USA/cat-NY/2020",
+                "node_attrs": {
+                  "div": 0.0015,
+                  "num_date": { "value": 2020.52 },
+                  "region": { "value": "North America" },
+                  "country": { "value": "USA" },
+                  "host": { "value": "Felis catus" },
+                  "clade_membership": { "value": "20C" }
+                }
+              },
+              {
+                "name": "Canada/ON-PHL/2020",
+                "node_attrs": {
+                  "div": 0.0017,
+                  "num_date": { "value": 2020.58 },
+                  "region": { "value": "North America" },
+                  "country": { "value": "Canada" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "20C" }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "20I",
+        "node_attrs": {
+          "div": 0.0018,
+          "num_date": { "value": 2020.55, "confidence": [2020.45, 2020.65] },
+          "region": { "value": "Europe", "confidence": { "Europe": 0.7, "Africa": 0.2, "Asia": 0.1 } }
+        },
+        "branch_attrs": { "labels": { "clade": "20I (Alpha)" } },
+        "children": [
+          {
+            "name": "England/alpha-B117/2020",
+            "node_attrs": {
+              "div": 0.002,
+              "num_date": { "value": 2020.9 },
+              "region": { "value": "Europe" },
+              "country": { "value": "United Kingdom" },
+              "host": { "value": "Homo sapiens" },
+              "clade_membership": { "value": "20I (Alpha)" }
+            }
+          },
+          {
+            "name": "21J",
+            "node_attrs": {
+              "div": 0.0022,
+              "num_date": { "value": 2021.2, "confidence": [2021.05, 2021.35] },
+              "region": { "value": "Asia", "confidence": { "Asia": 0.8, "North America": 0.2 } }
+            },
+            "branch_attrs": { "labels": { "clade": "21J (Delta)" } },
+            "children": [
+              {
+                "name": "India/MH-delta/2021",
+                "node_attrs": {
+                  "div": 0.0024,
+                  "num_date": { "value": 2021.35 },
+                  "region": { "value": "Asia" },
+                  "country": { "value": "India" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21J (Delta)" }
+                }
+              },
+              {
+                "name": "India/KA-delta/2021",
+                "node_attrs": {
+                  "div": 0.0025,
+                  "num_date": { "value": 2021.42 },
+                  "region": { "value": "Asia" },
+                  "country": { "value": "India" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21J (Delta)" }
+                }
+              }
+            ]
+          },
+          {
+            "name": "21K",
+            "node_attrs": {
+              "div": 0.0026,
+              "num_date": { "value": 2021.85, "confidence": [2021.7, 2021.95] },
+              "region": { "value": "Africa", "confidence": { "Africa": 0.6, "Europe": 0.2, "North America": 0.2 } }
+            },
+            "branch_attrs": { "labels": { "clade": "21K (Omicron)" } },
+            "children": [
+              {
+                "name": "SouthAfrica/omicron-BA1/2021",
+                "node_attrs": {
+                  "div": 0.0027,
+                  "num_date": { "value": 2021.9 },
+                  "region": { "value": "Africa" },
+                  "country": { "value": "South Africa" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21K (Omicron)" }
+                }
+              },
+              {
+                "name": "USA/omicron-CA/2022",
+                "node_attrs": {
+                  "div": 0.0029,
+                  "num_date": { "value": 2022.05 },
+                  "region": { "value": "North America" },
+                  "country": { "value": "USA" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21K (Omicron)" }
+                }
+              },
+              {
+                "name": "England/omicron/2022",
+                "node_attrs": {
+                  "div": 0.003,
+                  "num_date": { "value": 2022.1 },
+                  "region": { "value": "Europe" },
+                  "country": { "value": "United Kingdom" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21K (Omicron)" }
+                }
+              },
+              {
+                "name": "Australia/VIC-omicron/2022",
+                "node_attrs": {
+                  "div": 0.0032,
+                  "num_date": { "value": 2022.3 },
+                  "region": { "value": "Oceania" },
+                  "country": { "value": "Australia" },
+                  "host": { "value": "Homo sapiens" },
+                  "clade_membership": { "value": "21K (Omicron)" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

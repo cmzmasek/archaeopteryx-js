@@ -2101,6 +2101,267 @@
         return trees;
     };
 
+    // ---------------------------------------------------------------
+    // Auspice / Nextstrain
+    // ---------------------------------------------------------------
+
+    // Namespace for the node properties the Auspice parser writes, so
+    // Nextstrain traits are colour-able/searchable and clearly distinguished
+    // from BEAST's "beast:" namespace. Same prefix as the desktop.
+    const NEXTSTRAIN_PREFIX = 'nextstrain:';
+
+    // A compact string for a JSON number: a whole value drops the ".0" (a
+    // clean categorical/integer property), otherwise the plain decimal
+    // WITHOUT scientific notation (a small divergence like 1e-4 must read
+    // as "0.0001" in the node-data dialog / as a searchable value).
+    function plainNumberString(d) {
+        if (Number.isInteger(d) && Math.abs(d) < 1e15) {
+            return String(d);
+        }
+        let s = String(d);
+        if (s.indexOf('e') < 0 && s.indexOf('E') < 0) {
+            return s;
+        }
+        return d.toFixed(20).replace(/0+$/, '').replace(/\.$/, '');
+    }
+
+    function addNodeProperty(node, ref, value) {
+        if (value === undefined || value === null || String(value).length === 0) {
+            return;
+        }
+        if (!node.properties) {
+            node.properties = [];
+        }
+        let v = String(value);
+        node.properties.push({
+            ref: ref,
+            value: v,
+            datatype: isFinite(parseFloat(v)) && isFinite(Number(v)) ? 'xsd:decimal' : 'xsd:string',
+            applies_to: 'node'
+        });
+    }
+
+    // Parses an Auspice / Nextstrain v2 dataset.json (string or already-parsed
+    // object) into ONE tree object, mapping its per-node data onto the native
+    // phyloXML shape so the existing overlays light it up -- ported from the
+    // desktop's AuspiceJsonParser:
+    //  - node_attrs.num_date.value -> node.date value (decimal year) -> the
+    //    calendar time axis; its .confidence [lo,hi] -> date minimum/maximum
+    //    -> the node-age (HPD) bars;
+    //  - node_attrs.div -> a nextstrain:div property (the divergence measure,
+    //    kept for a future time<->divergence view);
+    //  - every discrete trait (country, clade_membership, host, ...) -> a
+    //    nextstrain:<key> node property (Color-by / search / node dialog);
+    //    its .confidence {state:prob} -> nextstrain:<key>_set + _set_prob
+    //    brace-list pair (the desktop's ancestral-state-pie encoding);
+    //  - branch_attrs.labels.clade -> a nextstrain:clade_label property.
+    // Branch lengths default to TIME (successive num_date differences); a
+    // divergence-only build falls back to div differences. Deliberately NOT
+    // ingested: the map, entropy and frequencies panels.
+    forester.parseAuspiceJson = function (data) {
+        let doc = forester.isString(data) ? JSON.parse(data) : data;
+        if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+            throw new Error('not an Auspice dataset (the JSON root is not an object)');
+        }
+        if (doc.version !== 'v2' || !doc.tree || typeof doc.tree !== 'object'
+            || Array.isArray(doc.tree)) {
+            throw new Error('not an Auspice v2 dataset (expected "version":"v2" and a "tree" object)');
+        }
+
+        function isScalar(v) {
+            return (typeof v === 'string') || (typeof v === 'number') || (typeof v === 'boolean');
+        }
+
+        function scalarToString(v) {
+            return (typeof v === 'number') ? plainNumberString(v) : String(v);
+        }
+
+        // a discrete trait's posterior distribution as the _set/_set_prob
+        // brace-list pair; state names quoted so a comma/space in one (e.g.
+        // "Korea, Republic of") cannot corrupt the list
+        function applyTraitConfidence(node, trait, conf) {
+            let states = [];
+            let probs = [];
+            Object.keys(conf).forEach(function (state) {
+                let p = conf[state];
+                if (typeof p !== 'number' || !isFinite(p) || state.length === 0) {
+                    return;
+                }
+                states.push('"' + state.replace(/"/g, '') + '"');
+                probs.push(plainNumberString(p));
+            });
+            if (states.length > 0) {
+                addNodeProperty(node, NEXTSTRAIN_PREFIX + trait + '_set', '{' + states.join(',') + '}');
+                addNodeProperty(node, NEXTSTRAIN_PREFIX + trait + '_set_prob', '{' + probs.join(',') + '}');
+            }
+        }
+
+        function applyNodeAttrs(node, attrs) {
+            Object.keys(attrs).forEach(function (key) {
+                let val = attrs[key];
+                if (key === 'num_date') {
+                    if (val && typeof val === 'object' && typeof val.value === 'number') {
+                        let date = {value: val.value, unit: 'year'};
+                        if (Array.isArray(val.confidence) && val.confidence.length === 2
+                            && typeof val.confidence[0] === 'number'
+                            && typeof val.confidence[1] === 'number') {
+                            date.minimum = val.confidence[0];
+                            date.maximum = val.confidence[1];
+                        }
+                        node.date = date;
+                        // the point date doubles as a numeric property, so the
+                        // sampling date can drive Color-by (the classic
+                        // Nextstrain colour-by-date view) and search
+                        addNodeProperty(node, NEXTSTRAIN_PREFIX + 'num_date', plainNumberString(val.value));
+                    }
+                } else if (key === 'div') {
+                    if (typeof val === 'number' && isFinite(val)) {
+                        addNodeProperty(node, NEXTSTRAIN_PREFIX + 'div', plainNumberString(val));
+                    }
+                } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                    // a discrete trait: {value, confidence{state:prob}, entropy}
+                    if (isScalar(val.value)) {
+                        addNodeProperty(node, NEXTSTRAIN_PREFIX + key, scalarToString(val.value));
+                    }
+                    if (val.confidence && typeof val.confidence === 'object'
+                        && !Array.isArray(val.confidence)) {
+                        applyTraitConfidence(node, key, val.confidence);
+                    }
+                } else if (isScalar(val)) {
+                    addNodeProperty(node, NEXTSTRAIN_PREFIX + key, scalarToString(val)); // bare attr (accession, url, ...)
+                }
+            });
+        }
+
+        function buildNode(jn) {
+            let node = {};
+            if (typeof jn.name === 'string' && jn.name.length > 0) {
+                node.name = jn.name;
+            }
+            if (jn.node_attrs && typeof jn.node_attrs === 'object') {
+                applyNodeAttrs(node, jn.node_attrs);
+            }
+            let labels = jn.branch_attrs && jn.branch_attrs.labels;
+            if (labels && typeof labels.clade === 'string' && labels.clade.length > 0) {
+                addNodeProperty(node, NEXTSTRAIN_PREFIX + 'clade_label', labels.clade);
+            }
+            if (Array.isArray(jn.children) && jn.children.length > 0) {
+                node.children = [];
+                jn.children.forEach(function (c) {
+                    if (c && typeof c === 'object') {
+                        node.children.push(buildNode(c));
+                    }
+                });
+                if (node.children.length === 0) {
+                    delete node.children;
+                }
+            }
+            return node;
+        }
+
+        let root = buildNode(doc.tree);
+        let phy = {rooted: true, children: [root]};
+        let title = doc.meta && doc.meta.title;
+        if (typeof title === 'string' && title.trim().length > 0) {
+            phy.name = title.trim();
+        }
+        if (auspiceHasAnyDate(root)) {
+            setDeltaBranchLengths(root, null, auspiceNodeDate); // default view = time
+        } else {
+            // a divergence-only build carries no num_date anywhere; div deltas
+            // keep the layout meaningful instead of a cladogram
+            setDeltaBranchLengths(root, null, auspiceNodeDiv);
+        }
+        // A TIP is a dated sample: keep its point date (the calendar axis)
+        // but drop the date INTERVAL -- the divergence-time uncertainty (the
+        // node-age bars) belongs to the INTERNAL nodes, and a tip interval
+        // would read as a fossil-style observed range on a viral tree.
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!n.children && n.date
+                && (n.date.minimum !== undefined || n.date.maximum !== undefined)) {
+                n.date = {value: n.date.value, unit: n.date.unit};
+            }
+        });
+        forester.addParents(phy);
+        return phy;
+    };
+
+    function auspiceNodeDate(node) {
+        return (node.date && typeof node.date.value === 'number' && isFinite(node.date.value))
+            ? node.date.value : null;
+    }
+
+    function auspiceNodeDiv(node) {
+        if (node.properties) {
+            for (let i = 0; i < node.properties.length; ++i) {
+                if (node.properties[i].ref === NEXTSTRAIN_PREFIX + 'div') {
+                    let d = parseFloat(node.properties[i].value);
+                    return isFinite(d) ? d : null;
+                }
+            }
+        }
+        return null;
+    }
+
+    function auspiceHasAnyDate(node) {
+        let found = false;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (auspiceNodeDate(n) !== null) {
+                found = true;
+            }
+        });
+        return found;
+    }
+
+    function auspiceHasAnyDiv(node) {
+        let found = false;
+        forester.preOrderTraversalAll(node, function (n) {
+            if (auspiceNodeDiv(n) !== null) {
+                found = true;
+            }
+        });
+        return found;
+    }
+
+    // Branch lengths = successive differences of a cumulative per-node metric
+    // (num_date -> the time view; nextstrain:div -> the divergence view).
+    // The root's length is 0, and a node missing the metric (or whose parent
+    // misses it) gets 0 -- so a time<->divergence toggle can never leave a
+    // stale cross-scale length behind. A (spurious) negative delta clamps to 0.
+    function setDeltaBranchLengths(node, parentValue, metricOf) {
+        let v = metricOf(node);
+        node.branch_length = (parentValue !== null && v !== null)
+            ? Math.max(0, v - parentValue) : 0;
+        let children = node.children || node._children;
+        if (children) {
+            for (let i = 0; i < children.length; ++i) {
+                setDeltaBranchLengths(children[i], v, metricOf);
+            }
+        }
+    }
+
+    // The time<->divergence plumbing: both metrics are RETAINED on a parsed
+    // Auspice tree (the date values + the nextstrain:div properties), so a
+    // future display toggle can rewrite the branch lengths from EITHER at any
+    // time -- lossless and reversible, and reusing the exact recompute the
+    // parser itself used, so the toggle can never drift from the loaded view.
+
+    forester.applyTimeBranchLengths = function (phy) {
+        setDeltaBranchLengths(forester.getTreeRoot(phy), null, auspiceNodeDate);
+    };
+
+    forester.applyDivergenceBranchLengths = function (phy) {
+        setDeltaBranchLengths(forester.getTreeRoot(phy), null, auspiceNodeDiv);
+    };
+
+    // True when the tree carries BOTH a time signal (a dated node) AND a
+    // divergence signal (a nextstrain:div property), so the toggle is
+    // meaningful at all.
+    forester.hasTimeAndDivergence = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        return auspiceHasAnyDate(root) && auspiceHasAnyDiv(root);
+    };
+
     forester.isNumber = function (v) {
         if (v === undefined || v === null) {
             return false;

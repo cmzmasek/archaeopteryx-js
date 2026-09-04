@@ -67,6 +67,7 @@ runTest("reRoot 3                   : ", testReRoot3);
 runTest("delete subtree             : ", testDeleteSubtree);
 runTest("Nexus parse                : ", testNexusParse);
 runTest("Nexus round trip           : ", testNexusRoundTrip);
+runTest("Auspice JSON               : ", testAuspiceJson);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1227,4 +1228,105 @@ function testNexusRoundTrip() {
         return false;
     }
     return true;
+}
+
+function testAuspiceJson() {
+    var doc = {
+        version: "v2",
+        meta: {title: "Test Build"},
+        tree: {
+            name: "root",
+            node_attrs: {
+                div: 0,
+                num_date: {value: 2020.0, confidence: [2019.8, 2020.1]},
+                country: {value: "China", confidence: {"China": 0.8, "Korea, Republic of": 0.2}}
+            },
+            branch_attrs: {labels: {clade: "20A"}},
+            children: [
+                {
+                    name: "tipA",
+                    node_attrs: {
+                        div: 0.001,
+                        num_date: {value: 2020.5, confidence: [2020.4, 2020.6]},
+                        country: {value: "China"},
+                        accession: "AB123"
+                    }
+                },
+                {
+                    name: "tipB",
+                    node_attrs: {div: 0.004, num_date: {value: 2021.0}, country: {value: "Japan"}}
+                }
+            ]
+        }
+    };
+    var phy = forester.parseAuspiceJson(JSON.stringify(doc));
+    if (phy.name !== "Test Build" || phy.rooted !== true) {
+        return false;
+    }
+    var root = forester.getTreeRoot(phy);
+    // internal node: date with the confidence interval; time branch lengths
+    if (!root.date || root.date.value !== 2020.0 || root.date.minimum !== 2019.8
+        || root.date.maximum !== 2020.1 || root.date.unit !== "year") {
+        return false;
+    }
+    var a = forester.findByNodeName(phy, "tipA")[0];
+    var b = forester.findByNodeName(phy, "tipB")[0];
+    // a TIP keeps its point date but the interval is dropped
+    if (!a.date || a.date.value !== 2020.5 || a.date.minimum !== undefined) {
+        return false;
+    }
+    if (Math.abs(a.branch_length - 0.5) > 1e-9 || Math.abs(b.branch_length - 1.0) > 1e-9) {
+        return false;
+    }
+    function prop(n, ref) {
+        var hits = (n.properties || []).filter(function (p) {
+            return p.ref === "nextstrain:" + ref;
+        });
+        return hits.length === 1 ? hits[0] : null;
+    }
+    if (!prop(a, "country") || prop(a, "country").value !== "China"
+        || !prop(a, "accession") || prop(a, "accession").value !== "AB123"
+        || prop(a, "div").value !== "0.001"
+        || prop(a, "div").datatype !== "xsd:decimal"
+        || prop(a, "country").datatype !== "xsd:string"
+        || prop(root, "clade_label").value !== "20A") {
+        return false;
+    }
+    // trait confidence -> quoted _set / _set_prob brace pair
+    if (prop(root, "country_set").value !== '{"China","Korea, Republic of"}'
+        || prop(root, "country_set_prob").value !== "{0.8,0.2}") {
+        return false;
+    }
+    // the time<->divergence toggle: different lengths, fully reversible
+    forester.applyDivergenceBranchLengths(phy);
+    if (Math.abs(a.branch_length - 0.001) > 1e-12 || Math.abs(b.branch_length - 0.004) > 1e-12) {
+        return false;
+    }
+    forester.applyTimeBranchLengths(phy);
+    if (Math.abs(a.branch_length - 0.5) > 1e-9) {
+        return false;
+    }
+    if (forester.hasTimeAndDivergence(phy) !== true) {
+        return false;
+    }
+    // a divergence-only build (no num_date anywhere) falls back to div deltas
+    var divOnly = forester.parseAuspiceJson(JSON.stringify({
+        version: "v2",
+        tree: {
+            name: "r", node_attrs: {div: 0},
+            children: [{name: "x", node_attrs: {div: 0.02}}, {name: "y", node_attrs: {div: 0.05}}]
+        }
+    }));
+    var x = forester.findByNodeName(divOnly, "x")[0];
+    if (Math.abs(x.branch_length - 0.02) > 1e-12 || forester.hasTimeAndDivergence(divOnly)) {
+        return false;
+    }
+    // not-Auspice input throws
+    var threw = false;
+    try {
+        forester.parseAuspiceJson('{"version":"v1"}');
+    } catch (e) {
+        threw = true;
+    }
+    return threw;
 }

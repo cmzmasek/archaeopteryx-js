@@ -3821,6 +3821,13 @@ if (!phyloXml) {
         return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
     };
 
+    // An Auspice / Nextstrain v2 dataset.json; the tree opens on the time
+    // view (num_date branch lengths), with every trait a nextstrain:* node
+    // property. See forester.parseAuspiceJson.
+    archaeopteryx.parseAuspiceJson = function (data) {
+        return forester.parseAuspiceJson(data);
+    };
+
     // A Nexus file can hold several trees; the FIRST one is displayed (any
     // alignment from the file's characters matrix rides along on its tips).
     archaeopteryx.parseNexus = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
@@ -8607,6 +8614,8 @@ if (!phyloXml) {
         if ((forester.isString(data) && /^\s*#nexus\b/i.test(data))
             || /\.(nex|nexus)$/.test(loc)) {
             tree = archaeopteryx.parseNexus(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
+        } else if ((forester.isString(data) && /^\s*\{/.test(data)) || /\.json$/.test(loc)) {
+            tree = archaeopteryx.parseAuspiceJson(data);
         } else if (loc.substr(-3, 3) === 'xml') {
             tree = archaeopteryx.parsePhyloXML(data);
         } else {

@@ -330,11 +330,23 @@ tree)` works. The `null` after it is the deprecated second config object, kept
 so older call sites still run; see **Configuration** below.
 
 The parser is picked from the data and the `location`: content starting with
-`#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, a name ending
-in `xml` as phyloXML, anything else as New Hampshire (Newick). A Nexus file
-shows its **first** tree; a protein/DNA/RNA characters matrix in the file
-(sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
-alignment track appears just as it does for phyloXML.
+`#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, JSON content
+(or a name ending in `.json`) as an **Auspice/Nextstrain v2** `dataset.json`,
+a name ending in `xml` as phyloXML, anything else as New Hampshire (Newick).
+A Nexus file shows its **first** tree; a protein/DNA/RNA characters matrix in
+the file (sequential or interleaved) lands on the tips as an aligned
+`mol_seq`, so the alignment track appears just as it does for phyloXML.
+
+An Auspice dataset opens on the **time view** (branch lengths from `num_date`
+differences; a divergence-only build falls back to `div` differences): the
+calendar time axis and node-age bars come from `num_date` and its confidence
+interval, and every trait (country, host, clade, ...) becomes a
+`nextstrain:<trait>` node property — so Color-by, search and the node dialog
+pick them up. Both metrics are retained, and
+`forester.applyTimeBranchLengths(phy)` /
+`forester.applyDivergenceBranchLengths(phy)` /
+`forester.hasTimeAndDivergence(phy)` are the plumbing for a future
+time↔divergence display toggle.
 
 Both entry points **throw** on bad input — an undefined or empty tree, an
 unparseable file, or a config key that no longer exists. Nothing is reported by
