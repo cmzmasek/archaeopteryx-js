@@ -8634,7 +8634,10 @@ if (!phyloXml) {
             // Worth catching only to say that it was the parse, not the launch,
             // that failed -- a malformed tree file rather than a bug in here.
             // The original is kept as the cause so the stack is not lost.
-            throw new Error(ERROR + 'could not parse tree: ' + e.message, {cause: e});
+            // (forester's Newick parser throws plain strings, so e.message
+            // alone would read as "undefined".)
+            let msg = (e && e.message) ? e.message : String(e);
+            throw new Error(ERROR + 'could not parse tree: ' + msg, {cause: e});
         }
         // launch() already reports its own failures well enough; wrapping them
         // added nothing but a prefix, and swallowing them left the caller with
