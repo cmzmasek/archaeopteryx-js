@@ -31,7 +31,9 @@
 //   https://github.com/cmzmasek/archaeopteryx-js
 //   https://www.npmjs.com/package/archaeopteryx
 //
-// Dependencies:
+// Dependencies (loadable as plain <script> tags, via AMD, or via
+// require("archaeopteryx") -- see the UMD header below and the README's
+// "Loading the library"):
 // * forester.js: https://www.npmjs.com/package/archaeopteryx
 // * phyloxml.js: https://www.npmjs.com/package/phyloxml
 // * d3.js (version 7): https://www.npmjs.com/package/d3
@@ -75,25 +77,29 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         define([], function () {
-            let a = factory(root.d3, root.forester, root.phyloXml);
+            let a = factory(root, root.d3, root.forester, root.phyloXml);
             root.archaeopteryx = a;
             return a;
         });
     } else if (typeof module === 'object' && module !== null && module.exports) {
+        // property reads off root, never bare `typeof name`: a consumer's own
+        // top-level `const d3 = ...` in the same evaluation context (node -e,
+        // the REPL) puts that name in its temporal dead zone during this
+        // require, where even typeof throws
         let reqOpt = function (name) {
             try { return require(name); } catch { return undefined; }
         };
-        let px = (typeof phyloXml !== 'undefined') ? phyloXml
+        let fo = (root.forester !== undefined) ? root.forester
+            : (function () { let m = reqOpt('./forester'); return m ? m.forester : undefined; })();
+        let px = (root.phyloXml !== undefined) ? root.phyloXml
             : (function () { let m = reqOpt('phyloxml'); return m ? m.phyloXml : undefined; })();
-        module.exports.archaeopteryx = factory(
-            (typeof d3 !== 'undefined') ? d3 : reqOpt('d3'),
-            (typeof forester !== 'undefined') ? forester : require('./forester').forester,
-            px);
+        module.exports.archaeopteryx = factory(root,
+            (root.d3 !== undefined) ? root.d3 : reqOpt('d3'), fo, px);
     } else {
-        root.archaeopteryx = factory(root.d3, root.forester, root.phyloXml);
+        root.archaeopteryx = factory(root, root.d3, root.forester, root.phyloXml);
     }
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this),
-function (d3, forester, phyloXml) {
+function (root, d3, forester, phyloXml) {
 
     "use strict";
 
@@ -282,6 +288,12 @@ function (d3, forester, phyloXml) {
     // Call-time dependency guards (the UMD header explains why they are not
     // load-time): each failure names exactly what is missing.
     function requireD3() {
+        // the dependency may have loaded after this file did (async scripts,
+        // AMD factories running early) -- and a usable root.d3 also beats an
+        // unusable captured one (e.g. Node resolving d3's ESM build)
+        if (root && root.d3 && (!d3 || typeof d3.zoom !== 'function')) {
+            d3 = root.d3;
+        }
         if (!d3) {
             throw new Error(ERROR + 'd3 (version 7) must be loaded before launching'
                 + ' -- https://www.npmjs.com/package/d3');
@@ -292,11 +304,17 @@ function (d3, forester, phyloXml) {
         }
     }
     function requireForester() {
+        if (!forester && root) {
+            forester = root.forester;
+        }
         if (!forester) {
             throw new Error(ERROR + 'forester.js must be loaded before this call');
         }
     }
     function requirePhyloXml() {
+        if (!phyloXml && root) {
+            phyloXml = root.phyloXml;
+        }
         if (!phyloXml) {
             throw new Error(ERROR + 'phyloxml.js must be loaded before this call');
         }
@@ -3783,6 +3801,20 @@ function (d3, forester, phyloXml) {
         } else if (_settings.nodeLabels !== null && typeof _settings.nodeLabels !== 'object') {
             throw new Error('nodeLabels must be an object (see the README) or null');
         }
+        if (_settings.nodeLabels) {
+            // a DEEP copy: the viewer writes runtime state into these specs
+            // (the checkbox element id, the live checked state), and the
+            // caller's config object must stay declarative -- an embedder
+            // reusing one nodeLabels constant across launches must not
+            // inherit the previous session's checkbox state
+            _settings.nodeLabels = JSON.parse(JSON.stringify(_settings.nodeLabels));
+        }
+        if (_settings.pngExportScale === undefined) {
+            _settings.pngExportScale = 4;
+        } else if (typeof _settings.pngExportScale !== 'number'
+            || !isFinite(_settings.pngExportScale) || _settings.pngExportScale <= 0) {
+            throw new Error('pngExportScale must be a positive number');
+        }
         if (_settings.supportDotMinimum === undefined) {
             _settings.supportDotMinimum = 95;
         } else if (typeof _settings.supportDotMinimum !== 'number'
@@ -3913,12 +3945,20 @@ function (d3, forester, phyloXml) {
             _msaScroller.remove();
             _msaScroller = null;
         }
+        if (_node_mouseover_div) {
+            _node_mouseover_div.remove(); // the body-level tooltip div (d3 selection)
+            _node_mouseover_div = null;
+        }
+        clearInterval(_intervalId); // a zoom button held down at destroy time
         d3.select(window).on('resize.archaeopteryx', null);
         _docListeners.forEach(function (l) {
             document.removeEventListener(l.type, l.fn, l.opts);
         });
         _docListeners = [];
         _docListenersBound = false;
+        _menuConsumedEsc = false;
+        _zoomListener = null;
+        _treeFn = null;
         _root = null;
         _root_const = null;
         _treeData = null;
@@ -3984,6 +4024,7 @@ function (d3, forester, phyloXml) {
         requireD3();
         let containerEl = resolveContainer(container);
 
+        let previousContainer = _container; // for the different-container teardown below
         _treeData = phylo;
         _container = containerEl;
         _zoomListener = d3.zoom()
@@ -4022,6 +4063,15 @@ function (d3, forester, phyloXml) {
         containerEl.querySelectorAll('.aptx-panel').forEach(function (p) {
             p.remove();
         });
+        // ...and a previous viewer in a DIFFERENT container: one viewer per
+        // page is the contract, and "replaced" must never mean "abandoned on
+        // screen with its controls cross-wired to the new tree"
+        if (previousContainer && previousContainer !== containerEl) {
+            d3.select(previousContainer).selectAll('svg').remove();
+            previousContainer.querySelectorAll('.aptx-panel').forEach(function (p) {
+                p.remove();
+            });
+        }
         _selectedNodes = new Set();
         // and null the old tree: the initialization sequence runs update()
         // once mid-way (applyTreeTheme), which on the first launch is a no-op
@@ -7796,28 +7846,28 @@ function (d3, forester, phyloXml) {
             zoomInY();
             _intervalId = setInterval(zoomInY, ZOOM_INTERVAL);
         }, function () {
-            clearTimeout(_intervalId);
+            clearInterval(_intervalId);
         });
 
         onHold(ZOOM_OUT_Y, function () {
             zoomOutY();
             _intervalId = setInterval(zoomOutY, ZOOM_INTERVAL);
         }, function () {
-            clearTimeout(_intervalId);
+            clearInterval(_intervalId);
         });
 
         onHold(ZOOM_IN_X, function () {
             zoomInX();
             _intervalId = setInterval(zoomInX, ZOOM_INTERVAL);
         }, function () {
-            clearTimeout(_intervalId);
+            clearInterval(_intervalId);
         });
 
         onHold(ZOOM_OUT_X, function () {
             zoomOutX();
             _intervalId = setInterval(zoomOutX, ZOOM_INTERVAL);
         }, function () {
-            clearTimeout(_intervalId);
+            clearInterval(_intervalId);
         });
 
         on(ZOOM_TO_FIT, 'click', zoomToFit);

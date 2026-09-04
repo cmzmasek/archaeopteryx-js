@@ -29,17 +29,27 @@ export interface Phylogeny extends PhylogenyNode {
 
 export type Layout = 'rectangular' | 'circular' | 'unrooted';
 
-/** One custom label-field checkbox (the config's nodeLabels entries). */
+/** One custom label-field entry (the config's nodeLabels values).
+ *
+ * Two modes:
+ *  - a PANEL CHECKBOX needs label, description AND propertyRef set, plus
+ *    showButton: true -- omit showButton (or any of the three) and no
+ *    checkbox appears;
+ *  - HEADLESS labelling: selected: true with propertyRef (no showButton)
+ *    labels the nodes with the property's value, with no checkbox offered.
+ *
+ * The config is deep-copied at launch: the viewer's runtime state never
+ *  writes back into the caller's object. */
 export interface NodeLabelSpec {
     /** The checkbox's caption in the control panel. */
-    label: string;
-    /** Its tooltip. */
+    label?: string;
+    /** Its tooltip. Required (with label and propertyRef) for the checkbox to appear. */
     description?: string;
     /** The node property ref whose value is shown as the label. */
     propertyRef?: string;
-    /** Show the checkbox in the panel (default behaviour if omitted follows the viewer). */
+    /** true to offer the checkbox at all. */
     showButton?: boolean;
-    /** Start checked. */
+    /** Start (or run) with the labelling on. */
     selected?: boolean;
 }
 

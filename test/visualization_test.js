@@ -1484,6 +1484,27 @@ function testLaunchApiValidation() {
     return !!phy && forester.getAllExternalNodes(phy).length === 2;
 }
 
+
+// Property VALUES named after Object.prototype members ("toString",
+// "__proto__", "constructor") crashed visualizationCandidates -- and with it
+// launch() -- through plain-object lookup maps returning inherited members.
+// They are ordinary category values now (and "__proto__" folds to "Proto"
+// via the underscore fold). Nothing may leak onto Object.prototype either.
+function testAuditPrototypeValueNames() {
+    var phy = starTree(['toString', 'toString', '__proto__', '__proto__', 'constructor', 'valueOf'], 'x:Host');
+    var cands = forester.visualizationCandidates(phy);
+    if (cands.length !== 1) {
+        console.log('    candidates: ' + cands.length);
+        return false;
+    }
+    var vals = cands[0].values.slice().sort().join(',');
+    if (vals !== 'Constructor,Proto,ToString,ValueOf') {
+        console.log('    values: ' + vals);
+        return false;
+    }
+    return ({}).nodes === undefined && ({}).count === undefined && ({}).spellings === undefined;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -1495,6 +1516,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

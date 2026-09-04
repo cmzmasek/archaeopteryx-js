@@ -75,6 +75,7 @@ runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
 runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
 runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("Ladderize (n-ary)          : ", testLadderize);
+runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1710,4 +1711,32 @@ function testLadderize() {
     // a leaf and a node with one child are no-ops, not errors
     var leaf = forester.parseNewHampshire("(a,b);");
     return forester.ladderize(forester.findByNodeName(leaf, "a")[0], true) === false;
+}
+
+// Quoted Nexus labels containing spaces (TaxLabels) and commas (Translate)
+// are what quoting EXISTS for -- both used to be sheared apart silently,
+// shifting every numeric tip onto the wrong name. A trailing comma before
+// the Translate ';' is tolerated; an empty tree refuses to serialize.
+function testNexusQuotedLabels() {
+    var t = forester.parseNexus("#NEXUS\nBegin Taxa;\n TaxLabels 'Homo sapiens' \"Mus musculus\" Chicken;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,(2:1,3:1):1);\nEnd;\n")[0];
+    var names = forester.getAllExternalNodes(t).map(function (n) { return n.name; }).sort();
+    if (names.join('|') !== 'Chicken|Homo sapiens|Mus musculus') {
+        console.log('    taxlabels: ' + names.join('|'));
+        return false;
+    }
+    var u = forester.parseNexus("#NEXUS\nBegin Trees;\n Translate\n  1 'Korea, Republic of',\n  2 beta;\n"
+        + " Tree t=(1:1,2:1);\nEnd;\n")[0];
+    var un = forester.getAllExternalNodes(u).map(function (n) { return n.name; }).sort();
+    if (un.join('|') !== 'Korea, Republic of|beta') {
+        console.log('    translate: ' + un.join('|'));
+        return false;
+    }
+    var v = forester.parseNexus("#NEXUS\nBegin Trees;\n Translate 1 alpha, 2 beta,;\n Tree t=(1:1,2:1);\nEnd;\n")[0];
+    if (forester.getAllExternalNodes(v).length !== 2) {
+        return false;
+    }
+    var threw = false;
+    try { forester.toNexus({children: []}); } catch { threw = true; }
+    return threw;
 }

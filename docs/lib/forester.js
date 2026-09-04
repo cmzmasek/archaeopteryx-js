@@ -699,7 +699,10 @@
         'Goat': ['caprine', 'capra hircus', 'c. hircus'],
         'Camel': ['dromedary', 'bactrian camel', 'camelus dromedarius', 'camelus bactrianus', 'c. dromedarius']
     };
-    const VIS_SYNONYM_LOOKUP = {};
+    // null prototype: the lookup is keyed by FILE values, and a value named
+    // "toString" / "__proto__" must miss, not return an inherited member
+    // (that crashed visualizationCandidates -- and so launch -- outright)
+    const VIS_SYNONYM_LOOKUP = Object.create(null);
     Object.keys(VIS_SYNONYMS).forEach(function (canon) {
         VIS_SYNONYM_LOOKUP[canon.toLowerCase()] = canon;
         VIS_SYNONYMS[canon].forEach(function (syn) {
@@ -795,7 +798,7 @@
 
     forester.visualizationCandidates = function (tree) {
         let total = 0;
-        let stats = {};   // id -> {kind, ref, label, nodes, values:Set, multi}
+        let stats = Object.create(null);   // id -> {kind, ref, label, nodes, values:Set, multi}; null-proto: ids embed file refs
 
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.children || n._children) {
@@ -804,7 +807,7 @@
             total++;
             // gather this node's values per candidate id first, so carrying
             // the same ref twice is visible as such
-            let perNode = {};
+            let perNode = Object.create(null);
             function add(id, kind, ref, label, value) {
                 if (value === undefined || value === null) {
                     return;
@@ -840,7 +843,7 @@
                 if (!stats[id]) {
                     stats[id] = {kind: g.kind, ref: g.ref, label: g.label,
                         cut: g.kind === 'property' ? visQualifierCut(g.ref) : null,
-                        nodes: 0, keys: {}, multi: false};
+                        nodes: 0, keys: Object.create(null), multi: false};
                 }
                 let s = stats[id];
                 s.nodes++;
@@ -856,7 +859,7 @@
                     }
                     let key = g.kind === 'property' ? display.toLowerCase() : display;
                     if (!s.keys[key]) {
-                        s.keys[key] = {count: 0, spellings: {}};
+                        s.keys[key] = {count: 0, spellings: Object.create(null)};
                     }
                     s.keys[key].count++;
                     s.keys[key].spellings[display] = (s.keys[key].spellings[display] || 0) + 1;
@@ -874,8 +877,8 @@
             // one legend row per group: the dictionary canonical where one
             // applied (it is then the only recorded spelling), otherwise the
             // most frequent raw spelling (ties alphabetically), capitalized
-            let canon = {};
-            let counts = {};
+            let canon = Object.create(null);
+            let counts = Object.create(null);
             Object.keys(s.keys).forEach(function (key) {
                 let group = s.keys[key];
                 let rep = null;
@@ -963,7 +966,7 @@
             });
         });
 
-        let labelCount = {};
+        let labelCount = Object.create(null);
         candidates.forEach(function (c) {
             labelCount[c.label] = (labelCount[c.label] || 0) + 1;
         });
@@ -2214,14 +2217,21 @@
             if (s.endsWith(';')) {
                 s = s.slice(0, -1).trim();
             }
-            s.split(',').forEach(function (pair) {
+            // splitTopLevelCommas, not a plain split: a quoted label may
+            // itself contain a comma ('Korea, Republic of' -- the very case
+            // the Auspice writer quotes against elsewhere in this file)
+            splitTopLevelCommas(s).forEach(function (pair) {
                 let ti = pair.toLowerCase().indexOf('translate');
                 if (ti > -1) {
                     pair = pair.substring(ti + 9);
                 }
+                if (pair.trim().length === 0) {
+                    return; // a trailing comma before the ';' is tolerated
+                }
                 let m = TRANSLATE_PAIR_RE.exec(pair);
                 if (!m) {
-                    throw new Error(NEXUS_FORMAT_ERR + 'ill-formatted translate values: ' + pair);
+                    throw new Error(NEXUS_FORMAT_ERR + 'ill-formatted translate table entry: "'
+                        + pair.trim() + '" -- is the Translate sub-command terminated with a ";"?');
                 }
                 let value = m[2].replace(/['"]+/g, '').trim();
                 if (value.endsWith(';')) {
@@ -2423,15 +2433,40 @@
                 if (lc.startsWith('end;') || lc.startsWith('endblock')) {
                     inTaxalabels = false;
                 } else {
-                    line.split(' ').forEach(function (label) {
-                        if (label.endsWith(';')) {
+                    // QUOTE-AWARE tokenization: 'Homo sapiens' is ONE label
+                    // (that is what the quotes are for) -- a plain space split
+                    // silently sheared such labels apart and shifted every
+                    // numeric tip onto the wrong name. ';' (unquoted) ends
+                    // the sub-command.
+                    let tok = '';
+                    let q = null;
+                    let push = function () {
+                        if (tok.length > 0 && tok.toLowerCase() !== 'taxlabels') {
+                            taxlabels.push(tok);
+                        }
+                        tok = '';
+                    };
+                    for (let ci = 0; ci < line.length; ++ci) {
+                        let ch = line.charAt(ci);
+                        if (q) {
+                            if (ch === q) {
+                                q = null;
+                            } else {
+                                tok += ch;
+                            }
+                        } else if (ch === "'" || ch === '"') {
+                            q = ch;
+                        } else if (ch === ' ') {
+                            push();
+                        } else if (ch === ';') {
                             inTaxalabels = false;
-                            label = label.slice(0, -1);
+                            push();
+                            break;
+                        } else {
+                            tok += ch;
                         }
-                        if (label.length > 0 && label.toLowerCase() !== 'taxlabels') {
-                            taxlabels.push(label);
-                        }
-                    });
+                    }
+                    push();
                 }
             }
             if (inTranslate) {
@@ -3038,11 +3073,17 @@
         let treeName = phy.name ? String(phy.name).replace(/['"]+/g, '').trim() : '';
         s += ' Tree ' + (treeName ? ("'" + treeName + "'") : 'tree1') + '=';
         s += (phy.rooted === false) ? '[&U]' : '[&R]';
-        s += forester.toNewHampshire(phy, decPointsMax, true, writeConfidences) + '\n';
-        s += 'End;\n';
+        let nh = forester.toNewHampshire(phy, decPointsMax, true, writeConfidences);
         renamed.forEach(function (node) {
             delete node.name;
         });
+        if (nh.length === 0) {
+            // an empty tree would otherwise write "Tree tree1=[&R]" with no
+            // tree and no terminating ';' -- a syntactically invalid file
+            throw new Error('toNexus: the tree is empty (nothing to write)');
+        }
+        s += nh + '\n';
+        s += 'End;\n';
         return s;
     };
 

@@ -389,7 +389,9 @@ One file, loadable every way an embedder might want it:
   (`archaeopteryx.d.ts` types the whole config object and the handle). In
   plain Node, with no d3 at all, every **parser** works
   (`archaeopteryx.parseNexus(...)` etc.); only `launch()` needs a browser
-  and d3, and says so by name.
+  and d3, and says so by name. `forester` is importable as the extensionless
+  subpath `require('archaeopteryx/forester')` (the package's exports map
+  defines exactly that path).
 
 Dependencies are checked when used, never at load time, and every failure
 names exactly what is missing (including "the loaded d3 is not usable as d3
@@ -442,7 +444,7 @@ a popup any more, and nothing fails silently.
 | **Auspice / Nextstrain** `dataset.json` (v2) | in | Phylodynamic builds: sampling dates and their confidence, cumulative divergence, and discrete traits (country, clade, host, ...) with their posterior distributions. | [5] |
 | **BEAST** / BEAST 2 / TreeAnnotator annotations | in (embedded in Newick/Nexus) | `[&posterior=...,height_95%_HPD={lo,hi},rate=...]`-style blobs: posterior clade support, node-age confidence intervals, per-branch rates and other traits. FigTree's `!color` is read the same way. | [6, 7] |
 | **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
-| **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. | [9] |
+| **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. Offered in the Download menu only when the tree actually carries molecular sequences (aligned or not). | [9] |
 | SVG · PNG · vector PDF | out | A snapshot of the drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
 
 The parser for a given input is auto-detected (see **The entry points**
@@ -667,7 +669,7 @@ All 118 of them, alphabetically:
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `nodeLabelGap` | The label gap is fixed. |
 | `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |
-| `nodeVisualizations` | The visualization-dictionary mechanism (with its per-visualization regex matching) was removed for good; visualizations are derived automatically from the tree itself. Throws as a config key AND as `launch()`'s old fifth argument. |
+| `nodeVisualizations` | The visualization-dictionary mechanism (with its per-visualization regex matching) was removed for good; visualizations are derived automatically from the tree itself. Throws as a config key — and any old positional argument after `config` is rejected by count. |
 | `nodeVisualizationsOpacity` | No longer configurable. |
 | `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
 | `phylogram` | The tree is drawn to scale when most of its branches have a length. |
@@ -716,7 +718,7 @@ All 118 of them, alphabetically:
 | `showTaxonomyScientificName` | Taxonomy labelling follows what the tree contains. |
 | `showTaxonomySynonyms` | Taxonomy labelling follows what the tree contains. |
 | `showVisualizations` | Off by default; use the Visualizations checkbox. |
-| `specialVisualizations` | Removed along with the enableSpecialVisualizations2/3/4 settings. Throws as a config key AND as `launch()`'s old seventh argument. |
+| `specialVisualizations` | Removed along with the enableSpecialVisualizations2/3/4 settings. Throws as a config key — and any old positional argument after `config` is rejected by count. |
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `treeName` | The name comes from the tree file. |
 | `unrootedDisplay` | Replaced by `layout`; use `layout: 'unrooted'`. |
