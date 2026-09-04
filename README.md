@@ -33,6 +33,9 @@ they run entirely in your browser:
 * [Confidence values](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=confidences)
 * [Branch events](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=branch_events)
 * [Influenza A H5Nx (354 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flu_h5)
+* [Start circular](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=circular)
+* [Woese tree of life (start unrooted)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=woese)
+* [Start with collapsed controls](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=collapsed)
 
 
 ### Detailed developer documentation

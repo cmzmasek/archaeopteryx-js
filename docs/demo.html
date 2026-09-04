@@ -119,7 +119,12 @@
         bcl2: {file: 'data/bcl2.xml', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations.'},
         confidences: {file: 'data/confidences.xml', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
         branch_events: {file: 'data/branch_events.xml', label: 'Branch events', desc: 'A tree with branch (duplication/speciation) events.'},
-        flu_h5: {file: 'data/flu_h5.xml', label: 'Influenza A H5Nx (354 strains)', desc: 'BV-BRC tree carrying subtype, strain, species and genome id.'}
+        flu_h5: {file: 'data/flu_h5.xml', label: 'Influenza A H5Nx (354 strains)', desc: 'BV-BRC tree carrying subtype, strain, species and genome id.'},
+        // The last three demos showcase launch settings rather than data: an
+        // optional per-tree `config` is merged over the shared default below.
+        circular: {file: 'data/herpes_dnapol.xml', label: 'Start circular', desc: 'The Herpesviridae demo opened in the circular layout, via the launch setting layout: \'circular\'.', config: {layout: 'circular'}},
+        woese: {file: 'data/woese-tree-of-life.xml', label: 'Woese tree of life (start unrooted)', desc: 'Carl Woese\'s famous three-domain rRNA tree (1990), opened in the unrooted equal-angle layout it was made famous in, coloured by Domain.', config: {layout: 'unrooted'}},
+        collapsed: {file: 'data/swH1-HA1.nexus', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar (press + to expand), leaving the whole canvas to the tree and its alignment.', config: {collapseControlPanel: true}}
     };
     var DEFAULT_TREE = 'influenza';
 
@@ -154,12 +159,13 @@
         // The tree's own name/description (when present) is shown in the viewer's
         // control panel now, so the toolbar no longer repeats a description here.
 
-        // Nothing to configure: the viewer works the display out from what
-        // each tree actually contains -- including which fields to offer as
-        // Color / Shape visualizations.
-        var config = {
+        // Almost nothing to configure: the viewer works the display out from
+        // what each tree actually contains -- including which fields to offer
+        // as Color / Shape visualizations. A few demos exist to showcase a
+        // launch setting, carried in their own `config` and merged here.
+        var config = Object.assign({
             enableDynamicSizing: true
-        };
+        }, tree.config || {});
 
         fetch(tree.file, {cache: 'no-cache'})
             .then(function (r) {

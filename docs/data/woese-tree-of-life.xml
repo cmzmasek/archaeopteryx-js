@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+ <phylogeny rooted="true" rerootable="true">
+  <name>Woese tree of life (1990)</name>
+  <description>A schematic redrawing of the famous universal rRNA tree of Woese, Kandler &amp; Wheelis (1990, PNAS 87:4576-4579, Fig. 1), which proposed the three-domain system of Bacteria, Archaea and Eucarya. Rooted on the bacterial branch as in the original; branch lengths approximate the figure, they are schematic rather than recomputed data.</description>
+  <clade>
+   <clade>
+    <name>Bacteria</name>
+    <branch_length>0.16</branch_length>
+    <clade>
+     <name>Thermotogales</name>
+     <branch_length>0.16</branch_length>
+     <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+    </clade>
+    <clade>
+     <branch_length>0.03</branch_length>
+     <clade>
+      <name>Green non-sulfur bacteria</name>
+      <branch_length>0.2</branch_length>
+      <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+     </clade>
+     <clade>
+      <branch_length>0.04</branch_length>
+      <clade>
+       <branch_length>0.04</branch_length>
+       <clade>
+        <name>Flavobacteria</name>
+        <branch_length>0.22</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+       </clade>
+       <clade>
+        <name>Cyanobacteria</name>
+        <branch_length>0.18</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+       </clade>
+      </clade>
+      <clade>
+       <branch_length>0.03</branch_length>
+       <clade>
+        <name>Purple bacteria</name>
+        <branch_length>0.2</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+       </clade>
+       <clade>
+        <name>Gram-positive bacteria</name>
+        <branch_length>0.19</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Bacteria</property>
+       </clade>
+      </clade>
+     </clade>
+    </clade>
+   </clade>
+   <clade>
+    <branch_length>0.08</branch_length>
+    <clade>
+     <name>Archaea</name>
+     <branch_length>0.1</branch_length>
+     <clade>
+      <name>Crenarchaeota</name>
+      <branch_length>0.05</branch_length>
+      <clade>
+       <name>Pyrodictium</name>
+       <branch_length>0.1</branch_length>
+       <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+      </clade>
+      <clade>
+       <name>Thermoproteus</name>
+       <branch_length>0.12</branch_length>
+       <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+      </clade>
+     </clade>
+     <clade>
+      <name>Euryarchaeota</name>
+      <branch_length>0.04</branch_length>
+      <clade>
+       <name>Thermococcales</name>
+       <branch_length>0.1</branch_length>
+       <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+      </clade>
+      <clade>
+       <branch_length>0.03</branch_length>
+       <clade>
+        <name>Methanococcales</name>
+        <branch_length>0.09</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+       </clade>
+       <clade>
+        <branch_length>0.03</branch_length>
+        <clade>
+         <name>Methanobacteriales</name>
+         <branch_length>0.09</branch_length>
+         <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+        </clade>
+        <clade>
+         <branch_length>0.04</branch_length>
+         <clade>
+          <name>Methanomicrobiales</name>
+          <branch_length>0.1</branch_length>
+          <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+         </clade>
+         <clade>
+          <name>Extreme halophiles</name>
+          <branch_length>0.16</branch_length>
+          <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Archaea</property>
+         </clade>
+        </clade>
+       </clade>
+      </clade>
+     </clade>
+    </clade>
+    <clade>
+     <name>Eucarya</name>
+     <branch_length>0.22</branch_length>
+     <clade>
+      <name>Diplomonads</name>
+      <branch_length>0.34</branch_length>
+      <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+     </clade>
+     <clade>
+      <branch_length>0.04</branch_length>
+      <clade>
+       <name>Microsporidia</name>
+       <branch_length>0.36</branch_length>
+       <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+      </clade>
+      <clade>
+       <branch_length>0.04</branch_length>
+       <clade>
+        <name>Trichomonads</name>
+        <branch_length>0.3</branch_length>
+        <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+       </clade>
+       <clade>
+        <branch_length>0.04</branch_length>
+        <clade>
+         <name>Flagellates</name>
+         <branch_length>0.26</branch_length>
+         <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+        </clade>
+        <clade>
+         <branch_length>0.04</branch_length>
+         <clade>
+          <name>Entamoebae</name>
+          <branch_length>0.22</branch_length>
+          <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+         </clade>
+         <clade>
+          <branch_length>0.04</branch_length>
+          <clade>
+           <name>Slime molds</name>
+           <branch_length>0.2</branch_length>
+           <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+          </clade>
+          <clade>
+           <branch_length>0.04</branch_length>
+           <clade>
+            <name>Ciliates</name>
+            <branch_length>0.18</branch_length>
+            <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+           </clade>
+           <clade>
+            <branch_length>0.03</branch_length>
+            <clade>
+             <name>Plants</name>
+             <branch_length>0.14</branch_length>
+             <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+            </clade>
+            <clade>
+             <branch_length>0.03</branch_length>
+             <clade>
+              <name>Fungi</name>
+              <branch_length>0.13</branch_length>
+              <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+             </clade>
+             <clade>
+              <name>Animals</name>
+              <branch_length>0.13</branch_length>
+              <property ref="tol:Domain" datatype="xsd:string" applies_to="node">Eucarya</property>
+             </clade>
+            </clade>
+           </clade>
+          </clade>
+         </clade>
+        </clade>
+       </clade>
+      </clade>
+     </clade>
+    </clade>
+   </clade>
+  </clade>
+ </phylogeny>
+</phyloxml>

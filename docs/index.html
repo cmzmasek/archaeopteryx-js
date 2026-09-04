@@ -107,7 +107,10 @@
         {key: 'bcl2', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations and sequences.'},
         {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
         {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'},
-        {key: 'flu_h5', label: 'Influenza A H5Nx (354 strains)', desc: 'A BV-BRC avian influenza tree, annotated with subtype, strain, species and genome id.'}
+        {key: 'flu_h5', label: 'Influenza A H5Nx (354 strains)', desc: 'A BV-BRC avian influenza tree, annotated with subtype, strain, species and genome id.'},
+        {key: 'circular', label: 'Start circular', desc: 'The Herpesviridae demo opened in the circular layout, via the launch setting layout: \'circular\'.'},
+        {key: 'woese', label: 'Woese tree of life (start unrooted)', desc: 'Carl Woese\'s famous three-domain rRNA tree (1990), opened in the unrooted equal-angle layout it was made famous in, coloured by Domain.'},
+        {key: 'collapsed', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar, leaving the whole canvas to the tree and its alignment.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {
