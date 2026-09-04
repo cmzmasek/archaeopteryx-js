@@ -8174,7 +8174,7 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
             if (hasColorVisualizations()) {
-                h = h.concat(makeSelectMenu('Color:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
+                h = h.concat(makeSelectMenu('Color by:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
                 h = h.concat('<br>');
                 h = h.concat('<br>');
             }
