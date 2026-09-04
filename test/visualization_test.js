@@ -1368,6 +1368,23 @@ function testAuditGeoWindows() {
     return rev === 'Cenozoic/Mesozoic' && pt === 'Cretaceous';
 }
 
+
+// A value that is ALL underscores (e.g. "_") must fold to EMPTY and be
+// dropped -- not to a lone space, which would (a) survive the caller's
+// empty-string check as its own spurious group and (b) keep a leading or
+// trailing underscore ("_alpha_") from folding all the way down to the same
+// display form as "alpha", so the two never merge. Cross-session bug report
+// (found while the desktop side was doing Color-by parity work against this
+// exact fold): the underscore->space replacement ran AFTER the leading
+// trim, so a leading/trailing underscore survived as a bare space.
+function testAuditUnderscoreFold() {
+    var phy = starTree(['alpha', '_alpha_', 'beta', 'beta', '_'], 'x:F');
+    var c = only(phy);
+    return !!c && c.values.length === 2
+        && c.values.indexOf('Alpha') > -1 && c.values.indexOf('Beta') > -1
+        && c.counts['Alpha'] === 2 && c.counts['Beta'] === 2;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -1376,6 +1393,7 @@ runTest("audit: msa guards + freeze : ", testAuditMsaGuards);
 runTest("audit: residue info parity : ", testAuditResidueInfoParity);
 runTest("audit: conservation detail : ", testAuditConservationDetails);
 runTest("audit: geo window queries  : ", testAuditGeoWindows);
+runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

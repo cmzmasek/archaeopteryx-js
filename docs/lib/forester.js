@@ -676,6 +676,10 @@
     // and stay verbatim. Node names, exports, search, and the node-data
     // dialog always show the raw values -- this is display grouping, nothing
     // more.
+    // CROSS-IMPLEMENTATION CONTRACT with desktop Archaeopteryx: this
+    // dictionary is carried verbatim on both sides (as agreed with the
+    // desktop's Color-by parity work), so a value groups the same way in
+    // both viewers. Extend BOTH implementations together, never just one.
     const VIS_SYNONYMS = {
         'Human': ['humans', 'homo sapiens', 'h. sapiens'],
         'Cow': ['bovine', 'calf', 'cattle', 'bull', 'heifer', 'bos taurus', 'b. taurus'],
@@ -741,7 +745,12 @@
                 }
             }
         }
-        s = s.trim().replace(/_/g, ' ').replace(/\s+/g, ' ');
+        // the trailing trim matters: without it, a value that is ALL
+        // underscores (e.g. "_") folds to a single space rather than empty,
+        // so it survives the caller's empty-string drop; "_cat_" folds to
+        // " cat " and never joins the "cat" group. (The leading trim alone
+        // only catches whitespace that was already there before folding.)
+        s = s.trim().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
         let hit = VIS_SYNONYM_LOOKUP[s.toLowerCase()];
         if (!hit) {
             let stripped = s.replace(/\s*\([^()]*\)\s*$/, '');
@@ -752,7 +761,12 @@
         return hit || s;
     }
 
-    // Fixed candidate slots for the phyloXML elements (properties use their ref).
+    // Fixed candidate slots for the phyloXML elements (properties use their
+    // ref). CROSS-IMPLEMENTATION CONTRACT with desktop Archaeopteryx: the
+    // ids here (tax:code, seq:name, ...) and the rule that taxonomy/sequence
+    // elements stay VERBATIM (never folded/grouped like property values,
+    // see visDisplayLabel above) are pinned on both sides. Extend BOTH
+    // implementations together, never just one.
     const VIS_ELEMENT_SLOTS = [
         {id: 'tax:code', kind: 'taxonomy', label: 'Taxonomy Code', get: function (t) { return t.code; }},
         {id: 'tax:scientific_name', kind: 'taxonomy', label: 'Scientific Name', get: function (t) { return t.scientific_name; }},

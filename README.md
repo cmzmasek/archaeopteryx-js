@@ -875,7 +875,9 @@ Each raw value maps to its **display form** by these steps, in order:
    first unmatched `(`. (`Saimiri boliviensis (squirrel monkey; voucher:
    SBB04)` → cut at `;` → repair → `Saimiri boliviensis`.)
 3. **Spelling fold** — trim; replace every `_` with a space; collapse each
-   whitespace run to a single space. A value that becomes empty is dropped.
+   whitespace run to a single space; trim again (a leading/trailing `_`
+   survives the underscore replacement as a bare space, so the fold is not
+   done until this second trim). A value that becomes empty is dropped.
 4. **Dictionary lookup** — lowercase the whole folded value and look it up
    in the synonym table below (each canonical name matches itself too). If
    there is no hit and the value ends in a parenthetical, retry once with
@@ -891,7 +893,10 @@ otherwise the group's most frequent display spelling (ties broken by
 code-point order, ascending) with its first character uppercased.
 
 The dictionary (`VIS_SYNONYMS` in forester.js — one constant, extend it
-there). Synonyms are matched lowercase:
+there). Synonyms are matched lowercase. **Cross-implementation contract:**
+this dictionary, the element-slot ids (`tax:code`, `seq:name`, ...), and the
+verbatim-for-elements rule above are carried identically on the desktop —
+extend either side and the other, never just one.
 
 | canonical | synonyms |
 | --- | --- |
