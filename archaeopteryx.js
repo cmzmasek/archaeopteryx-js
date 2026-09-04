@@ -7,7 +7,7 @@
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
+ *  version 3 of the License, or (at your option) any later version.
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,9 +15,8 @@
  *  Lesser General Public License for more details.
  *
  *  You should have received a copy of the GNU Lesser General Public
- *
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+ *  License along with this library; if not, see
+ *  <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -112,7 +111,7 @@ function (root, d3, forester, phyloXml) {
     const DESKTOP_WEBSITE = 'https://cmzmasek.github.io/archaeopteryx/';
     const SOURCE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js';
     const LICENSE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js/blob/master/LICENSE';
-    const LICENSE_NAME = 'LGPL-2.1-or-later';
+    const LICENSE_NAME = 'LGPL-3.0-or-later';
     const NAME = 'Archaeopteryx.js';
 
     // Categorical visualization palette: Observable10 (2023; clearer colour-
