@@ -8313,42 +8313,18 @@ if (!phyloXml) {
     }
 
 
-    // Ladderize: at every two-child node put the larger clade first when
-    // largestFirst, the smaller when not.
-    //
-    // alternateIfUnchanged is what makes repeated presses of the button
-    // alternate: a pass that changes nothing means the subtree was already
-    // ladderized that way, so it flips and runs again. That is right for a
-    // button and wrong for anything that wants a definite result -- with it on,
-    // ladderizing a tree that is already ladderized REVERSES it, so the outcome
-    // depends on the order the tree happened to arrive in.
+    // alternateIfUnchanged is what makes repeated presses of the ladderize
+    // button alternate: a pass that changes nothing means the subtree was
+    // already ladderized that way (forester.ladderize does the actual
+    // per-node sort -- any child count, not just 2), so it flips and runs
+    // again. That is right for a button and wrong for anything that wants a
+    // definite result -- with it on, ladderizing a tree that is already
+    // ladderized REVERSES it, so the outcome depends on the order the tree
+    // happened to arrive in.
     function ladderizeSubtree(n, largestFirst, alternateIfUnchanged) {
-        let changed = false;
-        ord(n);
+        let changed = forester.ladderize(n, largestFirst);
         if (alternateIfUnchanged && !changed) {
-            largestFirst = !largestFirst;
-            ord(n);
-        }
-
-        function ord(n) {
-            if (!n.children) {
-                return;
-            }
-            let c = n.children;
-            let l = c.length;
-            if (l === 2) {
-                let e0 = forester.calcSumOfAllExternalDescendants(c[0]);
-                let e1 = forester.calcSumOfAllExternalDescendants(c[1]);
-                if (e0 !== e1 && e0 < e1 === largestFirst) {
-                    changed = true;
-                    let c0 = c[0];
-                    c[0] = c[1];
-                    c[1] = c0;
-                }
-            }
-            for (let i = 0; i < l; ++i) {
-                ord(c[i]);
-            }
+            forester.ladderize(n, !largestFirst);
         }
     }
 

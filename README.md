@@ -424,7 +424,7 @@ keep working; it logs a deprecation warning.
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
 | `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
 | `circularDisplay` | `false` | Circular layout instead of rectangular. |
-| `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first. |
+| `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
 | `searchAinitialValue` | `null` | Prefill search box A. |

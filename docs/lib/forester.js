@@ -1406,6 +1406,54 @@
         return nodes;
     };
 
+    // Ladderize: at every node, order the VISIBLE children (n.children; a
+    // collapsed node's hidden _children are left untouched) by clade size --
+    // largest first when largestFirst, smallest first when not. Works at ANY
+    // child count, not just 2, so a polytomy (common on a phylodynamic tree,
+    // e.g. an Auspice build, where every internal node may carry 3+ children)
+    // is sorted exactly like a bifurcation. The sort is STABLE (ties keep
+    // their existing relative order), so a node that already reads correctly
+    // is never needlessly disturbed. Mutates the tree in place; returns
+    // whether anything actually changed.
+    forester.ladderize = function (node, largestFirst) {
+        let changed = false;
+        ord(node);
+        return changed;
+
+        function ord(n) {
+            if (!n.children) {
+                return;
+            }
+            let c = n.children;
+            let l = c.length;
+            if (l >= 2) {
+                let counts = c.map(function (child) {
+                    return forester.calcSumOfAllExternalDescendants(child);
+                });
+                let order = c.map(function (child, i) {
+                    return i;
+                });
+                order.sort(function (i, j) {
+                    if (counts[i] === counts[j]) {
+                        return i - j;
+                    }
+                    return largestFirst ? (counts[j] - counts[i]) : (counts[i] - counts[j]);
+                });
+                if (order.some(function (idx, i) {
+                    return idx !== i;
+                })) {
+                    changed = true;
+                    n.children = order.map(function (idx) {
+                        return c[idx];
+                    });
+                }
+            }
+            for (let i = 0; i < n.children.length; ++i) {
+                ord(n.children[i]);
+            }
+        }
+    };
+
     forester.getAllExternalNodes = function (node) {
         let nodes = [];
         forester.preOrderTraversalAll(node, function (n) {

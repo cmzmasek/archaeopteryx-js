@@ -74,6 +74,7 @@ runTest("Nexus BEAST MCC file       : ", testNexusBeastMcc);
 runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
 runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
 runTest("Auspice edge cases         : ", testAuspiceMore);
+runTest("Ladderize (n-ary)          : ", testLadderize);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1652,4 +1653,61 @@ function testAuspiceMore() {
     }
     // a tip older than its parent clamps to 0, not -0.5
     return early.branch_length === 0;
+}
+
+// forester.ladderize: sorts a node's children by clade size at ANY child
+// count, not just 2 -- a bifurcation and a polytomy (a phylodynamic tree's
+// internal node commonly carries 3+ children, e.g. an Auspice build) must
+// both come out correctly ordered. Ties keep their relative order (stable),
+// so a node needing no change is left untouched; the return value reports
+// whether anything actually changed, which is what the button's
+// alternate-on-no-change behavior relies on.
+function testLadderize() {
+    // a 2-child node (the historical case) still swaps
+    var pair = forester.parseNewHampshire("((a,b),(c,d,e));");
+    var changed = forester.ladderize(forester.getTreeRoot(pair), true);
+    if (!changed || forester.getTreeRoot(pair).children[0].children.length !== 3) {
+        return false;
+    }
+    // a polytomy (3+ children) sorts by clade size too, not just skipped
+    var poly = forester.parseNewHampshire("((a,b,c),(d,e),f,(g,h,i,j));");
+    forester.ladderize(forester.getTreeRoot(poly), true);
+    var sizes = forester.getTreeRoot(poly).children.map(function (c) {
+        return forester.calcSumOfAllExternalDescendants(c);
+    });
+    if (sizes.join(",") !== "4,3,2,1") {
+        return false;
+    }
+    // smallest-first is the mirror order
+    var polyAsc = forester.parseNewHampshire("((a,b,c),(d,e),f,(g,h,i,j));");
+    forester.ladderize(forester.getTreeRoot(polyAsc), false);
+    var sizesAsc = forester.getTreeRoot(polyAsc).children.map(function (c) {
+        return forester.calcSumOfAllExternalDescendants(c);
+    });
+    if (sizesAsc.join(",") !== "1,2,3,4") {
+        return false;
+    }
+    // ties are STABLE: three same-size children keep their original order.
+    // (Direct .children access, not getAllExternalNodes -- its underlying
+    // preOrderTraversalAll walks children in REVERSE index order, an
+    // unrelated forester.js quirk that would make this check read backwards.)
+    function label(c) {
+        return c.children ? c.children.map(label).join("") : c.name;
+    }
+    var tied = forester.parseNewHampshire("((x),(y),(z),(w,v));");
+    forester.ladderize(forester.getTreeRoot(tied), true);
+    var namesAfter = forester.getTreeRoot(tied).children.map(label);
+    // the 2-tip clade moves to the front; x/y/z (all size 1) keep their order
+    if (namesAfter.join(",") !== "wv,x,y,z") {
+        return false;
+    }
+    // a node already correctly ordered reports no change
+    var already = forester.parseNewHampshire("((a,b,c),(d,e));");
+    forester.ladderize(forester.getTreeRoot(already), true);
+    if (forester.ladderize(forester.getTreeRoot(already), true) !== false) {
+        return false;
+    }
+    // a leaf and a node with one child are no-ops, not errors
+    var leaf = forester.parseNewHampshire("(a,b);");
+    return forester.ladderize(forester.findByNodeName(leaf, "a")[0], true) === false;
 }
