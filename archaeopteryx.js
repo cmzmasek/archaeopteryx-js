@@ -37,9 +37,12 @@
 // * d3.js (version 7): https://www.npmjs.com/package/d3
 // * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
 //
-//   For graphics (PNG) export, the following two libraries are required as well:
-// * canvg: https://www.npmjs.com/package/canvg
-// * rgbcolor: https://www.npmjs.com/package/rgbcolor
+//   For raster (PNG) export (optional -- the PNG entry appears in the Download
+//   menu only when window.Canvg is present; canvg 4.x publishes ES modules
+//   only, no classic-script global, so the embedder bridges it themselves --
+//   see the docs pages -- the same "optional, embedder-supplied global"
+//   contract already used below for vector PDF export via jsPDF/svg2pdf.js):
+// * canvg (4.x): https://www.npmjs.com/package/canvg
 //
 //   File (Newick/New Hampshire, Nexus, phyloXML, FASTA) and SVG download, as well as
 //   saving the PNG, use native browser APIs (Blob, canvas.toBlob, and an
@@ -8069,7 +8072,9 @@ if (!phyloXml) {
             h = h.concat('<input type="button" value="Download" name="' + DOWNLOAD_BUTTON + '" title="download/export tree in a selected format" id="' + DOWNLOAD_BUTTON + '">');
             //h = h.concat('<br>');
             h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT + '">');
-            h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
+            if (pngExportAvailable()) {
+                h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
+            }
             if (pdfExportAvailable()) {
                 h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
             }
@@ -8663,7 +8668,20 @@ if (!phyloXml) {
         });
     }
 
+    // Raster PNG via the OPTIONAL page-level library canvg (v4+, window.Canvg
+    // -- canvg 4.x dropped the classic-script global build, so like
+    // jsPDF/svg2pdf.js the embedder loads and bridges it themselves; see the
+    // docs pages). The PNG entry only appears in the format menu when it is
+    // present.
+    function pngExportAvailable() {
+        return !!(window.Canvg && window.Canvg.fromString);
+    }
+
     function downloadAsPng() {
+        if (!pngExportAvailable()) {
+            console.error(ERROR + 'PNG export needs the optional canvg library on the page');
+            return;
+        }
         let svg = getTreeAsSvg();
         // Render onto an up-scaled canvas so the exported PNG is high-resolution
         // rather than 1:1 with the on-screen SVG. Scale is configurable via
@@ -8675,9 +8693,18 @@ if (!phyloXml) {
         let canvas = document.createElement('canvas');
         canvas.width = Math.round(w * scale);
         canvas.height = Math.round(h * scale);
-        canvg(canvas, svg, {ignoreDimensions: true, scaleWidth: canvas.width, scaleHeight: canvas.height});
-        canvas.toBlob(function (blob) {
-            saveAs(blob, _state.nameForPngDownload);
+        let v = window.Canvg.fromString(canvas.getContext('2d'), svg);
+        // v4's render() is async (v1's canvg() call drew synchronously, so
+        // toBlob could follow immediately on the next line); the options
+        // themselves are unchanged -- v4 kept the same ignoreDimensions/
+        // scaleWidth/scaleHeight names for exactly this "fit an SVG with its
+        // own declared size onto a differently-sized canvas" case.
+        v.render({ignoreDimensions: true, scaleWidth: canvas.width, scaleHeight: canvas.height}).then(function () {
+            canvas.toBlob(function (blob) {
+                saveAs(blob, _state.nameForPngDownload);
+            });
+        }, function (err) {
+            console.error(ERROR + 'PNG export failed: ' + err);
         });
     }
 

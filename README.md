@@ -45,9 +45,23 @@ Archaeopteryx.js has the following dependencies:
  * d3.js (version 7): https://www.npmjs.com/package/d3
  * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
  
-For graphics (PNG) export, the following two libraries are required as well:
- * canvg: https://www.npmjs.com/package/canvg
- * rgbcolor: https://www.npmjs.com/package/rgbcolor
+For **raster PNG export** (optional — the PNG entry appears in the Download
+menu only when `window.Canvg` is present):
+ * canvg (4.x): https://www.npmjs.com/package/canvg — publishes ES modules
+   only (no classic-script global build), so bridge it yourself:
+   ```html
+   <script type="module">
+       import {Canvg} from 'http://path/to/canvg.js'; // a self-contained build; see below
+       window.Canvg = Canvg;
+   </script>
+   ```
+   A module script is deferred regardless of where it sits in the page, and
+   PNG export only runs later from a Download click, so this can go anywhere
+   before the click — it does not need to precede archaeopteryx.js's own
+   `<script>` tag. `docs/lib/canvg.js` in this repository is one such
+   self-contained build (npm's `canvg@4.0.3` bundled into one file, e.g. via
+   `esm.sh/canvg@4?bundle`, with its one unnecessary Node-environment shim
+   import removed — see the file's own header comment).
 
 For **vector PDF export** (optional — the PDF entry appears in the Download
 menu only when both are loaded before archaeopteryx.js):

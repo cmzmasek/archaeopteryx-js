@@ -10,13 +10,23 @@
          phyloxml, and forester/phyloxml/d3 before archaeopteryx. -->
     <script src="lib/d3.v7.min.js"></script>
     <script src="lib/sax.js"></script>
-    <script src="lib/rgbcolor.js"></script>
-    <script src="lib/canvg.js"></script>
     <script src="lib/jspdf.umd.min.js"></script>
     <script src="lib/svg2pdf.umd.min.js"></script>
     <script src="lib/phyloxml.js"></script>
     <script src="lib/forester.js"></script>
     <script src="lib/archaeopteryx.js"></script>
+    <!-- canvg 4.x publishes only ES modules (no classic-script global), so
+         PNG export needs this small bridge -- archaeopteryx.js looks for
+         window.Canvg, exactly the same "optional, embedder-supplied global"
+         contract jsPDF/svg2pdf.js already use for PDF export above. A module
+         script is deferred regardless of where it sits in the document, and
+         PNG export only runs later from a user click, so the order here
+         relative to the classic scripts above does not matter. -->
+    <script type="module">
+        import {Canvg} from './lib/canvg.js';
+
+        window.Canvg = Canvg;
+    </script>
 
     <style>
         html, body {

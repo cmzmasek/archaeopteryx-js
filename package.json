@@ -23,9 +23,7 @@
   },
   "dependencies": {
     "phyloxml": ">=0.9.16",
-    "d3": "^7.9.0",
-    "canvg": "~1.5.3",
-    "rgbcolor": "~1.0.1"
+    "d3": "^7.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
@@ -47,10 +45,14 @@
   },
   "homepage": "https://github.com/cmzmasek/archaeopteryx-js#readme",
   "peerDependencies": {
+    "canvg": "^4.0.3",
     "jspdf": "^2.5.0",
     "svg2pdf.js": "^2.2.0"
   },
   "peerDependenciesMeta": {
+    "canvg": {
+      "optional": true
+    },
     "jspdf": {
       "optional": true
     },
