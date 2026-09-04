@@ -5093,7 +5093,10 @@ if (!phyloXml) {
                 }
             }
         });
-        let g = _svgGroup.append('g').attr('class', 'aptx-time');
+        // mouse-transparent: the HPD bar rect sits right on top of an internal
+        // node's circle and would otherwise swallow its hover and click
+        let g = _svgGroup.append('g').attr('class', 'aptx-time')
+            .style('pointer-events', 'none');
         let ink = _state.branchColorDefault;
         let axisTop = _clusterH + 6;
 
