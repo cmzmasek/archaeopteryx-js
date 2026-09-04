@@ -83,24 +83,23 @@
 <script>
     // Keep this list in sync with demo.html.
     var TREES = [
-        {key: 'caliciviridae_100', label: 'Caliciviridae (97 strains)', desc: 'A real ViPR whole-genome tree, annotated with Genus, Host, Species, Strain and Year.'},
-        {key: 'caliciviridae_500', label: 'Caliciviridae (186 strains)', desc: 'The same virus family at a larger sample size.'},
-        {key: 'adenoviridae', label: 'Adenoviridae (321 strains)', desc: 'A ViPR hexon-gene tree — the largest demo here, and the densest test of label handling.'},
-        {key: 'flu_h5', label: 'Influenza A H5Nx (354 strains)', desc: 'A BV-BRC avian influenza tree, annotated with subtype, strain, species and genome id.'},
+        {key: 'auspice', label: 'Auspice / Nextstrain JSON', desc: 'A Nextstrain v2 dataset.json, read directly: opens on the time view with node-age bars, and Region, Country, Host and Clade become Color-by properties.'},
+        {key: 'swh1', label: 'Swine H1 HA1 + alignment (Nexus)', desc: 'One Nexus file carrying both: 50 swine influenza H1 strains across all 12 HA clades, and their 331-column HA1 protein alignment.'},
+        {key: 'beast', label: 'BEAST annotations (Nexus)', desc: 'A TreeAnnotator-style tree: posterior support, node heights with 95% HPD intervals, and per-branch rates, read from the [&...] annotations.'},
+        {key: 'sarscov2', label: 'SARS-CoV-2 time tree (calendar)', desc: 'A tip-dated phylodynamic tree on a calendar-year axis, with HPD age bars on dated internal nodes.'},
         {key: 'herpes_dnapol', label: 'Herpesviridae DNA polymerase (201 tips)', desc: 'The most heavily annotated demo — 13 BV-BRC properties, including host group, geography and collection year.'},
+        {key: 'caliciviridae_500', label: 'Caliciviridae (186 strains)', desc: 'A real ViPR whole-genome tree, annotated with Genus, Host, Species, Strain and Year.'},
+        {key: 'adenoviridae', label: 'Adenoviridae (321 strains)', desc: 'A ViPR hexon-gene tree — the largest demo here, and the densest test of label handling.'},
+        {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'},
+        {key: 'alignment', label: 'Sequence alignment', desc: 'A six-tip tree with an embedded 34-column protein alignment, shown as a residue track beside the tree.'},
         {key: 'influenza', label: 'Influenza HA (annotated)', desc: 'Richly annotated strains — Year, Country, Host, Subtype. Shows off Archaeopteryx’s annotation features.'},
+        {key: 'dinosaur', label: 'Dinosaur time tree', desc: 'A time-calibrated archosaur tree with the coloured ICS geologic axis (Period over Epoch) beneath the phylogram.'},
+        {key: 'ammonite', label: 'Ammonite time tree (fossil ranges)', desc: 'Every genus extinct: the geologic axis stops at the K-Pg (66 Ma), and tips carry sepia fossil-range bars.'},
         {key: 'apaf', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny with confidence values.'},
         {key: 'bcl2', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations and sequences.'},
         {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
         {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'},
-        {key: 'alignment', label: 'Sequence alignment', desc: 'A six-tip tree with an embedded 34-column protein alignment, shown as a residue track beside the tree.'},
-        {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'},
-        {key: 'dinosaur', label: 'Dinosaur time tree', desc: 'A time-calibrated archosaur tree with the coloured ICS geologic axis (Period over Epoch) beneath the phylogram.'},
-        {key: 'ammonite', label: 'Ammonite time tree (fossil ranges)', desc: 'Every genus extinct: the geologic axis stops at the K-Pg (66 Ma), and tips carry sepia fossil-range bars.'},
-        {key: 'sarscov2', label: 'SARS-CoV-2 time tree (calendar)', desc: 'A tip-dated phylodynamic tree on a calendar-year axis, with HPD age bars on dated internal nodes.'},
-        {key: 'auspice', label: 'Auspice / Nextstrain JSON', desc: 'A Nextstrain v2 dataset.json, read directly: opens on the time view with node-age bars, and Region, Country, Host and Clade become Color-by properties.'},
-        {key: 'beast', label: 'BEAST annotations (Nexus)', desc: 'A TreeAnnotator-style tree: posterior support, node heights with 95% HPD intervals, and per-branch rates, read from the [&...] annotations.'},
-        {key: 'swh1', label: 'Swine H1 HA1 + alignment (Nexus)', desc: 'One Nexus file carrying both: 50 swine influenza H1 strains across all 12 HA clades, and their 331-column HA1 protein alignment.'}
+        {key: 'flu_h5', label: 'Influenza A H5Nx (354 strains)', desc: 'A BV-BRC avian influenza tree, annotated with subtype, strain, species and genome id.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {

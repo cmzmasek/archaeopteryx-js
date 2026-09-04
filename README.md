@@ -16,16 +16,23 @@ they run entirely in your browser:
 
 **https://cmzmasek.github.io/archaeopteryx-js/**
 
+* [Auspice / Nextstrain JSON](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
+* [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
+* [BEAST annotations (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=beast)
+* [SARS-CoV-2 time tree (calendar)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=sarscov2)
+* [Herpesviridae DNA polymerase (201 tips)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=herpes_dnapol)
+* [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
+* [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
+* [Nucleotide alignment (600 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment_nt)
+* [Sequence alignment](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment)
 * [Influenza HA (annotated)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=influenza)
+* [Dinosaur time tree](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=dinosaur)
+* [Ammonite time tree (fossil ranges)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=ammonite)
 * [Apaf-1 gene family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=apaf)
 * [Bcl-2 family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=bcl2)
 * [Confidence values](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=confidences)
 * [Branch events](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=branch_events)
-* [Caliciviridae (97 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_100)
-* [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
-* [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
 * [Influenza A H5Nx (354 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flu_h5)
-* [Herpesviridae DNA polymerase (201 tips)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=herpes_dnapol)
 
 
 ### Detailed developer documentation
