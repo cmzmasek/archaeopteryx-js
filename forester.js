@@ -1727,6 +1727,380 @@
         }
     };
 
+    // Parses a Nexus-formatted string and returns an ARRAY of tree objects,
+    // each in the same shape parseNewHampshire produces (a Nexus file can
+    // hold any number of trees). Ported from the desktop's
+    // NexusPhylogeniesParser: reads TAXLABELS, the TREES block (TRANSLATE
+    // tables, TREE/UTREE statements, [&R]/[&U] rootedness, tree names and
+    // titles) and CHARACTERS/DATA blocks -- a protein/dna/rna MATRIX
+    // (sequential or interleaved, MATCHCHAR resolved, quoted labels,
+    // comments stripped) becomes per-tip aligned molecular sequences in the
+    // phyloXML shape (sequences[i].mol_seq.{is_aligned,value}), so a tree
+    // read from Nexus shows its alignment track exactly like one read from
+    // phyloXML. The two confidence options are handed through to
+    // parseNewHampshire for each tree statement.
+    forester.parseNexus = function (nexStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        const NEXUS_FORMAT_ERR = 'Nexus format error: ';
+        const TITLE_RE = /^title.?\s+([^;]+)/i;
+        const TREE_NAME_RE = /^\s*.?tree\s+(.+?)\s*=/i;
+        const ROOTEDNESS_RE = /=\s*\[&([RU])\]/i;
+        const TRANSLATE_PAIR_RE = /([0-9A-Za-z]+)\s+(.+)/;
+        const RESIDUES_RE = /^[A-Za-z\-_*?.]+$/;
+        const DATATYPE_RE = /datatype\s*=\s*([a-z]+)/;
+        const MATCHCHAR_RE = /matchchar\s*=\s*['"]?(\S)/;
+
+        let trees = [];
+        let taxlabels = [];
+        // null-prototype maps: a taxon named "__proto__" must stay data
+        let translateMap = Object.create(null);
+        let seqs = Object.create(null);
+        let translateBuf = '';
+        let nh = '';
+        let name = '';
+        let title = '';
+        let inTreesBlock = false;
+        let inTaxalabels = false;
+        let inTranslate = false;
+        let inTree = false;
+        let inDataBlock = false;
+        let inMatrix = false;
+        let inDataComment = false;
+        let datatype = null;
+        let rootedInfoPresent = false;
+        let isRooted = false;
+        let matchchar = null;
+        let matrixReferenceId = null;
+
+        // Nexus treats '_' and ' ' as equivalent, labels may be quoted, and a
+        // matrix often capitalizes taxon names differently from the tree -- so
+        // a matrix row joins its tree tip through this canonical key.
+        function joinKey(s) {
+            return s.replace(/_/g, ' ').replace(/['"]+/g, '').trim().toLowerCase();
+        }
+
+        // Strip Nexus [ ... ] comments, tracking an OPEN comment across lines
+        // so a multi-line comment inside the matrix cannot leak prose as a
+        // spurious taxon row. Called only inside the data block -- the trees
+        // block keeps [&R]/[&...], which are semantic there.
+        function stripDataComments(s) {
+            if (!inDataComment && s.indexOf('[') < 0) {
+                return s;
+            }
+            let out = '';
+            for (let i = 0; i < s.length; ++i) {
+                let c = s.charAt(i);
+                if (inDataComment) {
+                    if (c === ']') {
+                        inDataComment = false;
+                    }
+                } else if (c === '[') {
+                    inDataComment = true;
+                } else {
+                    out += c;
+                }
+            }
+            return out.trim();
+        }
+
+        function setTranslatePairs(buf) {
+            let s = buf.trim();
+            if (s.endsWith(';')) {
+                s = s.slice(0, -1).trim();
+            }
+            s.split(',').forEach(function (pair) {
+                let ti = pair.toLowerCase().indexOf('translate');
+                if (ti > -1) {
+                    pair = pair.substring(ti + 9);
+                }
+                let m = TRANSLATE_PAIR_RE.exec(pair);
+                if (!m) {
+                    throw new Error(NEXUS_FORMAT_ERR + 'ill-formatted translate values: ' + pair);
+                }
+                let value = m[2].replace(/['"]+/g, '').trim();
+                if (value.endsWith(';')) {
+                    value = value.slice(0, -1);
+                }
+                translateMap[m[1]] = value;
+            });
+        }
+
+        // One MATRIX row ("taxon residues..."): the id is the first token (a
+        // quoted label may contain spaces), the residues are the rest with all
+        // internal whitespace removed. Only protein/dna/rna matrices become
+        // sequences. In an interleaved matrix each id reappears in a later
+        // block, so a repeated id is CONCATENATED onto its row. MATCHCHAR
+        // (e.g. '.') means "same as the first taxon at this position" and is
+        // resolved against that reference row at the same absolute positions.
+        function addMatrixRow(row) {
+            if (datatype !== 'protein' && datatype !== 'dna' && datatype !== 'rna') {
+                return;
+            }
+            let id;
+            let rest;
+            let c0 = row.charAt(0);
+            if (c0 === "'" || c0 === '"') {
+                let close = row.indexOf(c0, 1);
+                if (close < 1) {
+                    return;
+                }
+                id = row.substring(0, close + 1);
+                rest = row.substring(close + 1);
+            } else {
+                let sp = row.indexOf(' ');
+                if (sp < 1) {
+                    return;
+                }
+                id = row.substring(0, sp);
+                rest = row.substring(sp + 1);
+            }
+            let block = rest.replace(/\s+/g, '');
+            if (block.length === 0 || !RESIDUES_RE.test(block)) {
+                return;
+            }
+            if (matchchar && (matrixReferenceId !== null) && (id !== matrixReferenceId)
+                && seqs[matrixReferenceId]) {
+                let ref = seqs[matrixReferenceId].value;
+                let offset = seqs[id] ? seqs[id].value.length : 0;
+                let resolved = '';
+                for (let j = 0; j < block.length; ++j) {
+                    let c = block.charAt(j);
+                    resolved += (c === matchchar && (offset + j) < ref.length)
+                        ? ref.charAt(offset + j) : c;
+                }
+                block = resolved;
+            }
+            seqs[id] = {
+                value: seqs[id] ? (seqs[id].value + block) : block,
+                type: datatype
+            };
+            if (matrixReferenceId === null) {
+                matrixReferenceId = id;
+            }
+        }
+
+        // A complete tree statement has accumulated in nh: parse it and carry
+        // over the block's translate table / taxlabels / matrix sequences.
+        function finishTree() {
+            if (nh.length === 0) {
+                return;
+            }
+            let phy = forester.parseNewHampshire(nh, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+            let myname = '';
+            if (title && name) {
+                myname = title.replace(/_/g, ' ').trim() + ' (' + name.trim() + ')';
+            } else if (title) {
+                myname = title.replace(/_/g, ' ').trim();
+            } else if (name) {
+                myname = name.trim();
+            }
+            if (myname) {
+                phy.name = myname;
+            }
+            if (rootedInfoPresent) {
+                phy.rooted = isRooted;
+            }
+            let seqsByKey = Object.create(null);
+            for (let id in seqs) {
+                seqsByKey[joinKey(id)] = seqs[id];
+            }
+            forester.getAllExternalNodes(phy).forEach(function (node) {
+                if (node.name && translateMap[node.name] !== undefined) {
+                    node.name = translateMap[node.name];
+                } else if (taxlabels.length > 0 && node.name && /^\d+$/.test(node.name)) {
+                    let i = parseInt(node.name, 10);
+                    if (i > 0 && i <= taxlabels.length) {
+                        node.name = taxlabels[i - 1].replace(/['"]+/g, '');
+                    }
+                }
+                if (node.name) {
+                    let s = seqsByKey[joinKey(node.name)];
+                    if (s) {
+                        if (!node.sequences) {
+                            node.sequences = [];
+                        }
+                        node.sequences.push({
+                            type: s.type,
+                            mol_seq: {is_aligned: true, value: s.value}
+                        });
+                    }
+                }
+            });
+            trees.push(phy);
+            nh = '';
+            name = '';
+            rootedInfoPresent = false;
+            isRooted = false;
+        }
+
+        let lines = String(nexStr).split(/\r\n|\r|\n/);
+        for (let k = 0; k < lines.length; ++k) {
+            let line = lines[k].trim();
+            if (line.length === 0 || line.charAt(0) === '#' || line.charAt(0) === '>') {
+                continue;
+            }
+            line = line.replace(/\s+/g, ' ').replace(/\s+;/g, ';');
+            let lc = line.toLowerCase();
+            if (/^begin\s+trees\b/.test(lc)) {
+                inTreesBlock = true;
+                inTaxalabels = false;
+                inTranslate = false;
+                inDataBlock = false;
+                datatype = null;
+                title = '';
+            } else if (lc.startsWith('taxlabels')) {
+                inTreesBlock = false;
+                inTaxalabels = true;
+                inTranslate = false;
+                inDataBlock = false;
+                datatype = null;
+            } else if (lc.startsWith('translate')) {
+                translateBuf = '';
+                inTaxalabels = false;
+                inTranslate = true;
+                inDataBlock = false;
+                datatype = null;
+            } else if (/^begin\s+(characters|data)\b/.test(lc)) {
+                inTaxalabels = false;
+                inTreesBlock = false;
+                inTranslate = false;
+                inDataBlock = true;
+                inMatrix = false;
+                inDataComment = false;
+                datatype = null;
+                matchchar = null;
+                matrixReferenceId = null;
+                // scope the rows to THIS matrix block, so a later block
+                // cannot cross-contaminate an earlier one
+                seqs = Object.create(null);
+            } else if (inTreesBlock) {
+                if (lc.startsWith('title')) {
+                    let tm = TITLE_RE.exec(line);
+                    if (tm) {
+                        title = tm[1];
+                    }
+                } else if (lc.startsWith('link')) {
+                    // a LINK sub-command (e.g. "LINK TAXA=...") -- ignored
+                } else if (lc.startsWith('end;') || lc.startsWith('endblock')) {
+                    inTreesBlock = false;
+                    inTree = false;
+                    finishTree();
+                } else if (lc.startsWith('tree ') || lc.startsWith('utree ')) {
+                    finishTree(); // a previous statement still pending
+                    inTree = true;
+                    let nm = TREE_NAME_RE.exec(line);
+                    if (nm) {
+                        name = nm[1].replace(/['"]+/g, '');
+                    }
+                    let rm = ROOTEDNESS_RE.exec(line);
+                    if (rm) {
+                        rootedInfoPresent = true;
+                        isRooted = rm[1].toUpperCase() === 'R';
+                    }
+                    // parseNewHampshire strips the remaining [&...] hot
+                    // comments (BEAST-style annotations, [&R]/[&U]) itself
+                    nh = line.substring(line.indexOf('=') + 1).trim();
+                    if (lc.endsWith(';')) {
+                        inTree = false;
+                        finishTree();
+                    }
+                } else if (inTree) {
+                    nh += line;
+                    if (lc.endsWith(';')) {
+                        inTree = false;
+                        finishTree();
+                    }
+                }
+            }
+            if (inTaxalabels) {
+                if (lc.startsWith('end;') || lc.startsWith('endblock')) {
+                    inTaxalabels = false;
+                } else {
+                    line.split(' ').forEach(function (label) {
+                        if (label.endsWith(';')) {
+                            inTaxalabels = false;
+                            label = label.slice(0, -1);
+                        }
+                        if (label.length > 0 && label.toLowerCase() !== 'taxlabels') {
+                            taxlabels.push(label);
+                        }
+                    });
+                }
+            }
+            if (inTranslate) {
+                if (lc.startsWith('end;') || lc.startsWith('endblock')) {
+                    inTranslate = false;
+                } else {
+                    translateBuf += ' ' + line;
+                    if (line.endsWith(';')) {
+                        inTranslate = false;
+                        setTranslatePairs(translateBuf);
+                    }
+                }
+            }
+            if (inDataBlock) {
+                line = stripDataComments(line);
+                let dlc = line.toLowerCase();
+                if (line.length === 0) {
+                    // comment-only (or now-empty) line
+                } else if (dlc.startsWith('end;') || dlc.startsWith('endblock')) {
+                    inDataBlock = false;
+                    inMatrix = false;
+                    datatype = null;
+                } else if (dlc.startsWith('link ')) {
+                    // ignored; the trailing space keeps a taxon row whose
+                    // name starts with "link" out of this branch
+                } else if (!inMatrix) {
+                    // block header: DIMENSIONS / FORMAT / CHARLABELS / ... --
+                    // read DATATYPE and MATCHCHAR off FORMAT, enter the matrix
+                    // on the MATRIX keyword, ignore the rest (a sub-command
+                    // ending in ';' must NOT be mistaken for the block's end)
+                    let dm = DATATYPE_RE.exec(dlc);
+                    if (dm) {
+                        datatype = dm[1];
+                    }
+                    let mm = MATCHCHAR_RE.exec(dlc);
+                    if (mm) {
+                        matchchar = mm[1];
+                    }
+                    if (dlc === 'matrix' || dlc.startsWith('matrix ')) {
+                        inMatrix = true;
+                        let after = line.substring(6).trim();
+                        let matrixEnds = false;
+                        if (after.endsWith(';')) {
+                            matrixEnds = true;
+                            after = after.slice(0, -1).trim();
+                        }
+                        if (after.length > 0) {
+                            addMatrixRow(after);
+                        }
+                        if (matrixEnds) {
+                            inMatrix = false;
+                            inDataBlock = false;
+                            datatype = null;
+                        }
+                    }
+                } else {
+                    // inside the MATRIX: one taxon row per line until ';'
+                    let matrixEnds = false;
+                    if (line.endsWith(';')) {
+                        matrixEnds = true;
+                        line = line.slice(0, -1).trim();
+                    }
+                    if (line.length > 0) {
+                        addMatrixRow(line);
+                    }
+                    if (matrixEnds) {
+                        inMatrix = false;
+                        inDataBlock = false;
+                        datatype = null;
+                    }
+                }
+            }
+        }
+        finishTree(); // EOF with a tree still pending (no closing "End;")
+        return trees;
+    };
+
     forester.isNumber = function (v) {
         if (v === undefined || v === null) {
             return false;
@@ -1889,6 +2263,100 @@
         function replaceUnsafeChars(str) {
             return str.replace(/[\s,():;'"[\]]+/g, '_');
         }
+    };
+
+    // Writes a phylogeny as a Nexus-formatted string, ported from the
+    // desktop's PhylogenyWriter: a TAXA block (Dimensions, TaxLabels) and a
+    // TREES block (the tree under its name, [&R]/[&U] rootedness, the same
+    // safe-character Newick toNewHampshire writes). Beyond the desktop
+    // template, tips carrying ALIGNED molecular sequences also get a
+    // CHARACTERS block (Dimensions, Format with the datatype, Matrix) --
+    // carrying the tree and its alignment in one file is the point of Nexus,
+    // and parseNexus reads the alignment back onto the tips.
+    forester.toNexus = function (phy, decPointsMax, writeConfidences) {
+        // the same replacement toNewHampshire applies, so the TaxLabels and
+        // Matrix labels match the tree's tip tokens exactly
+        function safeLabel(s) {
+            return s.replace(/[\s,():;'"[\]]+/g, '_');
+        }
+
+        // label preference as on the desktop: name, then taxonomy
+        // (code/scientific/common), then sequence (name/symbol/gene)
+        function nexusLabel(node, i) {
+            let s = '';
+            if (node.name) {
+                s = node.name;
+            } else if (node.taxonomies && node.taxonomies.length > 0) {
+                let t = node.taxonomies[0];
+                s = t.code || t.scientific_name || t.common_name || '';
+            } else if (node.sequences && node.sequences.length > 0) {
+                let q = node.sequences[0];
+                s = q.name || q.symbol || q.gene_name || '';
+            }
+            if (!s) {
+                s = 'node' + (i + 1); // an empty TaxLabels token would not parse back
+            }
+            return safeLabel(s);
+        }
+
+        let ext = forester.getAllExternalNodes(phy).reverse();
+        let s = '#NEXUS\n';
+        s += 'Begin Taxa;\n';
+        s += ' Dimensions NTax=' + ext.length + ';\n';
+        s += ' TaxLabels';
+        ext.forEach(function (node, i) {
+            s += ' ' + nexusLabel(node, i);
+        });
+        s += ';\n';
+        s += 'End;\n';
+
+        let rows = [];
+        let nchar = 0;
+        let datatype = null;
+        ext.forEach(function (node, i) {
+            if (!node.sequences) {
+                return;
+            }
+            for (let j = 0; j < node.sequences.length; ++j) {
+                let q = node.sequences[j];
+                if (q.mol_seq && q.mol_seq.is_aligned && q.mol_seq.value) {
+                    rows.push({label: nexusLabel(node, i), value: q.mol_seq.value});
+                    nchar = Math.max(nchar, q.mol_seq.value.length);
+                    if (!datatype && (q.type === 'protein' || q.type === 'dna' || q.type === 'rna')) {
+                        datatype = q.type;
+                    }
+                    return;
+                }
+            }
+        });
+        if (rows.length > 0) {
+            if (!datatype) {
+                // no declared type (e.g. the tree came from Newick plus a
+                // fasta): judge on the residues themselves
+                datatype = forester.msaIsNucleotide(rows[0].value) ? 'dna' : 'protein';
+            }
+            let width = 0;
+            rows.forEach(function (r) {
+                width = Math.max(width, r.label.length);
+            });
+            s += 'Begin Characters;\n';
+            s += ' Dimensions NTax=' + rows.length + ' NChar=' + nchar + ';\n';
+            s += ' Format DataType=' + datatype + ' Missing=? Gap=-;\n';
+            s += ' Matrix\n';
+            rows.forEach(function (r) {
+                s += '  ' + r.label + ' '.repeat(width - r.label.length + 1) + r.value + '\n';
+            });
+            s += ' ;\n';
+            s += 'End;\n';
+        }
+
+        s += 'Begin Trees;\n';
+        let treeName = phy.name ? String(phy.name).replace(/['"]+/g, '').trim() : '';
+        s += ' Tree ' + (treeName ? ("'" + treeName + "'") : 'tree1') + '=';
+        s += (phy.rooted === false) ? '[&U]' : '[&R]';
+        s += forester.toNewHampshire(phy, decPointsMax, true, writeConfidences) + '\n';
+        s += 'End;\n';
+        return s;
     };
 
     forester.getMolecularSequencesAsFasta = function (node, sep) {

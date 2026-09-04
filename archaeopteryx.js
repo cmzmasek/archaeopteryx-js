@@ -41,7 +41,7 @@
 // * canvg: https://www.npmjs.com/package/canvg
 // * rgbcolor: https://www.npmjs.com/package/rgbcolor
 //
-//   File (Newick/New Hampshire, phyloXML, FASTA) and SVG download, as well as
+//   File (Newick/New Hampshire, Nexus, phyloXML, FASTA) and SVG download, as well as
 //   saving the PNG, use native browser APIs (Blob, canvas.toBlob, and an
 //   <a download> link), so Blob.js, canvas-toBlob.js and FileSaver.js are no
 //   longer required.
@@ -126,6 +126,7 @@ if (!phyloXml) {
     const SVG_SUFFIX = '.svg';
     const XML_SUFFIX = '.xml';
     const FASTA_SUFFIX = '.fasta';
+    const NEXUS_SUFFIX = '.nexus';
 
 
     // ---------------------------
@@ -157,6 +158,7 @@ if (!phyloXml) {
     const NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
     const NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + SVG_SUFFIX;
     const NAME_FOR_FASTA_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + FASTA_SUFFIX;
+    const NAME_FOR_NEXUS_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NEXUS_SUFFIX;
     const NODE_LABEL_GAP_DEFAULT = 10;
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
@@ -211,6 +213,7 @@ if (!phyloXml) {
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const NH_EXPORT_FORMAT = 'Newick';
+    const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
     const PDF_EXPORT_FORMAT = 'PDF';
@@ -3549,6 +3552,8 @@ if (!phyloXml) {
             ? (_state.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
         _state.nameForFastaDownload = _state.treeName
             ? (_state.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
+        _state.nameForNexusDownload = _state.treeName
+            ? (_state.treeName + NEXUS_SUFFIX) : NAME_FOR_NEXUS_DOWNLOAD_DEFAULT;
 
         if (!_state.visualizationsLegendXpos) {
             // The legend was hard-coded to 220 and so came up underneath the
@@ -3814,6 +3819,16 @@ if (!phyloXml) {
 
     archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
         return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+    };
+
+    // A Nexus file can hold several trees; the FIRST one is displayed (any
+    // alignment from the file's characters matrix rides along on its tips).
+    archaeopteryx.parseNexus = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        let trees = forester.parseNexus(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+        if (trees.length === 0) {
+            throw new Error('no tree found in the Nexus data');
+        }
+        return trees[0];
     };
 
     function calcMaxExtLabel() {
@@ -7926,6 +7941,7 @@ if (!phyloXml) {
             h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
+            h = h.concat('<option value="' + NEXUS_EXPORT_FORMAT + '">' + NEXUS_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
@@ -8413,6 +8429,8 @@ if (!phyloXml) {
             changeBaseBackgoundColor(_state.backgroundColorDefault);
         } else if (format === NH_EXPORT_FORMAT) {
             downloadAsNH();
+        } else if (format === NEXUS_EXPORT_FORMAT) {
+            downloadAsNexus();
         } else if (format === PHYLOXML_EXPORT_FORMAT) {
             downloadAsPhyloXml();
         } else if (format === PDF_EXPORT_FORMAT) {
@@ -8462,6 +8480,14 @@ if (!phyloXml) {
         // back in.
         let nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
         saveAs(new Blob([nh], {type: "application/txt"}), _state.nameForNhDownload);
+    }
+
+    function downloadAsNexus() {
+        // taxa and trees blocks as on the desktop, plus a characters block
+        // when the tips carry an alignment -- carrying tree and alignment
+        // in one file is what Nexus is for
+        let nex = forester.toNexus(_root, 9, _settings.nhExportWriteConfidences);
+        saveAs(new Blob([nex], {type: "application/txt"}), _state.nameForNexusDownload);
     }
 
     function downloadAsSVG() {
@@ -8575,7 +8601,13 @@ if (!phyloXml) {
             newHamphshireConfidenceValuesAsInternalNames = false;
         }
         let tree;
-        if (location.substr(-3, 3).toLowerCase() === 'xml') {
+        let loc = location ? String(location).toLowerCase() : '';
+        // Nexus announces itself with "#NEXUS" on the first line, so the
+        // content decides; the filename alone is enough too.
+        if ((forester.isString(data) && /^\s*#nexus\b/i.test(data))
+            || /\.(nex|nexus)$/.test(loc)) {
+            tree = archaeopteryx.parseNexus(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
+        } else if (loc.substr(-3, 3) === 'xml') {
             tree = archaeopteryx.parsePhyloXML(data);
         } else {
             tree = archaeopteryx.parseNewHampshire(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);

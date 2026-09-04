@@ -47,7 +47,7 @@ menu only when both are loaded before archaeopteryx.js):
  * jspdf (2.x): https://www.npmjs.com/package/jspdf
  * svg2pdf.js (2.x): https://www.npmjs.com/package/svg2pdf.js
 
-File (Newick/New Hampshire, phyloXML, FASTA) and SVG download, as well as saving
+File (Newick/New Hampshire, Nexus, phyloXML, FASTA) and SVG download, as well as saving
 the exported PNG, use native browser APIs (`Blob`, `canvas.toBlob()`, and an
 `<a download>` link), so Blob.js, canvas-toBlob.js and FileSaver.js are no longer
 required.
@@ -209,6 +209,11 @@ alignment column, its position within that sequence's own ungapped residues,
 its full name, class, and Kyte-Doolittle hydropathy. The **Alignment**
 checkbox under Display Data toggles the whole track.
 
+Alignments arrive with the tree: as phyloXML `<mol_seq is_aligned="true">`
+elements, or in a **Nexus** file whose characters matrix accompanies its tree.
+The **Nexus** entry in the Download menu writes the current tree *and* its
+alignment back into one Nexus file (Taxa, Characters and Trees blocks).
+
 ## Time trees
 
 A tree whose nodes carry phyloXML `<date>` elements is drawn against time.
@@ -324,8 +329,12 @@ archaeopteryx.launch(id, tree, config, null, null, nodeLabels);
 tree)` works. The `null` after it is the deprecated second config object, kept
 so older call sites still run; see **Configuration** below.
 
-`location` is only used to pick a parser: a name ending in `xml` is read as
-phyloXML, anything else as New Hampshire (Newick).
+The parser is picked from the data and the `location`: content starting with
+`#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, a name ending
+in `xml` as phyloXML, anything else as New Hampshire (Newick). A Nexus file
+shows its **first** tree; a protein/DNA/RNA characters matrix in the file
+(sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
+alignment track appears just as it does for phyloXML.
 
 Both entry points **throw** on bad input — an undefined or empty tree, an
 unparseable file, or a config key that no longer exists. Nothing is reported by

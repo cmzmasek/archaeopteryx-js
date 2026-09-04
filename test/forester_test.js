@@ -65,6 +65,8 @@ runTest("reRoot 1                   : ", testReRoot1);
 runTest("reRoot 2                   : ", testReRoot2);
 runTest("reRoot 3                   : ", testReRoot3);
 runTest("delete subtree             : ", testDeleteSubtree);
+runTest("Nexus parse                : ", testNexusParse);
+runTest("Nexus round trip           : ", testNexusRoundTrip);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1096,3 +1098,128 @@ function testDeleteSubtree() {
     return true;
 }
 
+
+// A Nexus file exercising the parser's whole surface: taxa block, an
+// INTERLEAVED protein matrix with a MATCHCHAR, a quoted label with a space,
+// a matrix id capitalized differently from its tree tip, a multi-line
+// comment inside the matrix, a translate table, [&R] rootedness, a quoted
+// tree name, and a second tree in the same block.
+function makeTestNexus() {
+    return [
+        "#NEXUS",
+        "Begin Taxa;",
+        " Dimensions NTax=4;",
+        " TaxLabels Homo_sapiens 'Mus musculus' Rattus Gallus;",
+        "End;",
+        "Begin Characters;",
+        " Dimensions NTax=4 NChar=20;",
+        " Format DataType=protein Missing=? Gap=- MatchChar=.;",
+        " Matrix",
+        "  [a comment",
+        "   spanning lines]",
+        "  Homo_sapiens    MKVL-AT-QW",
+        "  'Mus musculus'  .R........",
+        "  RATTUS          ..I.......",
+        "  Gallus          M.--......",
+        "  Homo_sapiens    ACDEFGHIKL",
+        "  'Mus musculus'  ..........",
+        "  RATTUS          .....W....",
+        "  Gallus          ....Y.....",
+        " ;",
+        "End;",
+        "Begin Trees;",
+        " Translate",
+        "  1 Homo_sapiens,",
+        "  2 'Mus musculus',",
+        "  3 Rattus,",
+        "  4 Gallus;",
+        " Tree 'my tree'=[&R]((1:0.1,2:0.2):0.3,(3:0.4,4:0.5):0.6);",
+        " Tree second=[&U](1:1,(2:2,3:3):1);",
+        "End;",
+        ""
+    ].join("\n");
+}
+
+function testNexusParse() {
+    var trees = forester.parseNexus(makeTestNexus());
+    if (trees.length !== 2) {
+        return false;
+    }
+    var phy = trees[0];
+    if (phy.name !== "my tree" || phy.rooted !== true) {
+        return false;
+    }
+    if (trees[1].name !== "second" || trees[1].rooted !== false) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy) !==
+        '((Homo_sapiens:0.1,"Mus musculus":0.2):0.3,(Rattus:0.4,Gallus:0.5):0.6);') {
+        console.log(forester.toNewHampshire(phy));
+        return false;
+    }
+    // the interleaved blocks concatenated, the '.' matchchars resolved
+    // against the first (reference) row, and each row joined to its tip
+    // through the canonical key ("RATTUS" -> "Rattus", quotes/underscores)
+    var expected = {
+        "Homo_sapiens": "MKVL-AT-QWACDEFGHIKL",
+        "Mus musculus": "MRVL-AT-QWACDEFGHIKL",
+        "Rattus": "MKIL-AT-QWACDEFWHIKL",
+        "Gallus": "MK---AT-QWACDEYGHIKL"
+    };
+    var ext = forester.getAllExternalNodes(phy);
+    if (ext.length !== 4) {
+        return false;
+    }
+    for (var i = 0; i < ext.length; ++i) {
+        var n = ext[i];
+        if (!n.sequences || n.sequences.length !== 1) {
+            return false;
+        }
+        var s = n.sequences[0];
+        if (s.type !== "protein" || !s.mol_seq || s.mol_seq.is_aligned !== true
+            || s.mol_seq.value !== expected[n.name]) {
+            console.log(n.name + ": " + (s.mol_seq ? s.mol_seq.value : "no mol_seq"));
+            return false;
+        }
+    }
+    return true;
+}
+
+function testNexusRoundTrip() {
+    var phy = forester.parseNexus(makeTestNexus())[0];
+    var nex = forester.toNexus(phy);
+    var back = forester.parseNexus(nex)[0];
+    if (back.name !== phy.name || back.rooted !== true) {
+        return false;
+    }
+    // toNexus writes safe-character labels ('Mus musculus' becomes
+    // Mus_musculus) -- in Nexus '_' and ' ' are the same character, so the
+    // round trip is compared through that same replacement
+    if (forester.toNewHampshire(back) !== forester.toNewHampshire(phy, 0, true)) {
+        console.log(forester.toNewHampshire(back));
+        return false;
+    }
+    var a = forester.getAllExternalNodes(phy);
+    var b = forester.getAllExternalNodes(back);
+    if (a.length !== b.length) {
+        return false;
+    }
+    for (var i = 0; i < a.length; ++i) {
+        if (b[i].name !== a[i].name.replace(/ /g, "_")
+            || !b[i].sequences || b[i].sequences.length !== 1
+            || b[i].sequences[0].type !== "protein"
+            || b[i].sequences[0].mol_seq.value !== a[i].sequences[0].mol_seq.value) {
+            return false;
+        }
+    }
+    // a tree without sequences must come back without a characters block
+    var bare = forester.parseNewHampshire("((a:1,b:2):3,c:4);");
+    var bareNex = forester.toNexus(bare);
+    if (bareNex.indexOf("Characters") > -1) {
+        return false;
+    }
+    if (forester.toNewHampshire(forester.parseNexus(bareNex)[0]) !== "((a:1,b:2):3,c:4);") {
+        return false;
+    }
+    return true;
+}
