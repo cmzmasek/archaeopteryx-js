@@ -2340,7 +2340,11 @@
                 width = Math.max(width, r.label.length);
             });
             s += 'Begin Characters;\n';
-            s += ' Dimensions NTax=' + rows.length + ' NChar=' + nchar + ';\n';
+            // NChar ONLY: the Nexus standard allows NTax in a CHARACTERS
+            // block's DIMENSIONS solely alongside NEWTAXA (the taxa are the
+            // TAXA block's), and strict readers -- jebl, and so AliView --
+            // reject the file over it
+            s += ' Dimensions NChar=' + nchar + ';\n';
             s += ' Format DataType=' + datatype + ' Missing=? Gap=-;\n';
             s += ' Matrix\n';
             rows.forEach(function (r) {

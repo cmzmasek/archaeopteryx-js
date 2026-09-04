@@ -1188,6 +1188,11 @@ function testNexusParse() {
 function testNexusRoundTrip() {
     var phy = forester.parseNexus(makeTestNexus())[0];
     var nex = forester.toNexus(phy);
+    // NChar only -- an NTax here makes strict readers (jebl, and so
+    // AliView) reject the whole file
+    if (nex.indexOf(" Dimensions NChar=20;") < 0 || /Characters;\n[^\n]*NTax/.test(nex)) {
+        return false;
+    }
     var back = forester.parseNexus(nex)[0];
     if (back.name !== phy.name || back.rooted !== true) {
         return false;
