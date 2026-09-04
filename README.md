@@ -364,6 +364,60 @@ Both entry points **throw** on bad input — an undefined or empty tree, an
 unparseable file, or a config key that no longer exists. Nothing is reported by
 a popup any more, and nothing fails silently.
 
+## Supported file formats
+
+| Format | I/O | What Archaeopteryx.js does with it | Ref. |
+|---|---|---|---|
+| **Newick** / New Hampshire (`.nwk`, `.nh`, `.tre`) | in / out | The base tree: topology, names, branch lengths, and bracketed confidence values. | [1] |
+| **NHX** — New Hampshire eXtended | in | `[&&NHX:...]` tags riding on Newick: taxonomy (`S=`, `T=`), sequence (`GN=`, `AC=`), support (`B=`), duplication/speciation events (`D=`). | [2] |
+| **Nexus** (`.nex`, `.nexus`) | in / out | One file for the tree(s) and, in a `CHARACTERS`/`DATA` block, an aligned protein/DNA/RNA matrix (sequential or interleaved) — the tree and its alignment together. | [3] |
+| **phyloXML** (`.xml`) | in / out | The richest native format: taxonomy, sequences and alignments, dates, confidences, branch colours and arbitrary custom properties. | [4] |
+| **Auspice / Nextstrain** `dataset.json` (v2) | in | Phylodynamic builds: sampling dates and their confidence, cumulative divergence, and discrete traits (country, clade, host, ...) with their posterior distributions. | [5] |
+| **BEAST** / BEAST 2 / TreeAnnotator annotations | in (embedded in Newick/Nexus) | `[&posterior=...,height_95%_HPD={lo,hi},rate=...]`-style blobs: posterior clade support, node-age confidence intervals, per-branch rates and other traits. FigTree's `!color` is read the same way. | [6, 7] |
+| **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
+| **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. | [9] |
+| SVG · PNG · vector PDF | out | A snapshot of the drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
+
+The parser for a given input is auto-detected (see **The entry points**
+above); the Download menu offers whichever output formats the current tree
+can carry.
+
+### References
+
+1. Felsenstein, J. *PHYLIP (Phylogeny Inference Package)*. Department of
+   Genome Sciences, University of Washington, Seattle. The Newick tree
+   format itself has no single peer-reviewed citation — it was agreed at a
+   1986 meeting of phylogenetics software authors at Newick's Lobster
+   House, Dover, New Hampshire, and has since been documented in the
+   PHYLIP distribution and in most subsequent tree-software manuals.
+2. Zmasek, C.M., Eddy, S.R. (2001). ATV: display and manipulation of
+   annotated phylogenetic trees. *Bioinformatics*, 17(4), 383–384.
+3. Maddison, D.R., Swofford, D.L., Maddison, W.P. (1997). NEXUS: an
+   extensible file format for systematic information. *Systematic
+   Biology*, 46(4), 590–621.
+4. Han, M.V., Zmasek, C.M. (2009). phyloXML: XML for evolutionary biology
+   and comparative genomics. *BMC Bioinformatics*, 10, 356.
+5. Hadfield, J., Megill, C., Bell, S.M., Huddleston, J., Potter, B.,
+   Callender, C., Sagulenko, P., Bedford, T., Neher, R.A. (2018).
+   Nextstrain: real-time tracking of pathogen evolution. *Bioinformatics*,
+   34(23), 4121–4123.
+6. Drummond, A.J., Rambaut, A. (2007). BEAST: Bayesian evolutionary
+   analysis by sampling trees. *BMC Evolutionary Biology*, 7, 214.
+7. Bouckaert, R., Vaughan, T.G., Barido-Sottani, J., Duchêne, S., Fourment,
+   M., Gavryushkina, A., Heled, J., Jones, G., Kühnert, D., De Maio, N.,
+   Matschiner, M., Mendes, F.K., Müller, N.F., Ogilvie, H.A., du Plessis,
+   L., Popinga, A., Rambaut, A., Rasmussen, D., Siveroni, I., Suchard,
+   M.A., Wu, C.-H., Xie, D., Zhang, C., Stadler, T., Drummond, A.J. (2019).
+   BEAST 2.5: an advanced software platform for Bayesian evolutionary
+   analysis. *PLoS Computational Biology*, 15(4), e1006650.
+8. Ronquist, F., Teslenko, M., van der Mark, P., Ayres, D.L., Darling, A.,
+   Höhna, S., Larget, B., Liu, L., Suchard, M.A., Huelsenbeck, J.P. (2012).
+   MrBayes 3.2: efficient Bayesian phylogenetic inference and model choice
+   across a large model space. *Systematic Biology*, 61(3), 539–542.
+9. Pearson, W.R., Lipman, D.J. (1988). Improved tools for biological
+   sequence comparison. *Proceedings of the National Academy of Sciences
+   USA*, 85(8), 2444–2448.
+
 ## Intelligent pre-sets
 
 Almost everything that used to be configured is now read off the tree: a tree
