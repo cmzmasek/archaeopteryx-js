@@ -1469,7 +1469,15 @@ function testNexusParserVariants() {
         "End;"
     ].join("\n"))[0];
     var x1 = forester.findByNodeName(t2, "x1")[0];
-    return x1.sequences[0].mol_seq.value === "ACGU" && x1.sequences[0].type === "rna";
+    if (x1.sequences[0].mol_seq.value !== "ACGU" || x1.sequences[0].type !== "rna") {
+        return false;
+    }
+    // input is LENIENT where output is strict: a HEADERLESS file still
+    // parses (the desktop and jebl tolerate the same; only the writer is
+    // required to emit #NEXUS)
+    var headerless = forester.parseNexus("Begin Trees;\n Tree h=(p:1,q:2);\nEnd;\n");
+    return headerless.length === 1
+        && forester.getAllExternalNodes(headerless[0]).length === 2;
 }
 
 // A TreeAnnotator-style MCC file -- Nexus container, translate table, a
