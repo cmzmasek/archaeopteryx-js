@@ -6342,14 +6342,22 @@ if (!phyloXml) {
         return s;
     }
 
-    // The unrooted layout, as the desktop draws it: a free-form three-spoke
-    // star with irregular angles and no hub, so it cannot be read as the
-    // circular icon.
+    // The unrooted layout, traced from the desktop's LayoutIcon.paintUnrooted:
+    // three inner edges at irregular angles and lengths (an unrooted tree has
+    // no centre and no symmetry), each FORKING into two tips at its end --
+    // the forks are what make it read as a tree rather than a star.
     function glyphUnrooted() {
         let s = '';
-        [-105, 20, 145].forEach(function (deg) {
-            let rad = deg * Math.PI / 180;
-            s += glyphLine(50, 50, 50 + Math.cos(rad) * 42, 50 + Math.sin(rad) * 42);
+        let lengths = [26, 21, 24];
+        [-105, 20, 145].forEach(function (deg, i) {
+            let a = deg * Math.PI / 180;
+            let ex = 50 + Math.cos(a) * lengths[i];
+            let ey = 50 + Math.sin(a) * lengths[i];
+            s += glyphLine(50, 50, ex, ey);
+            [-1, 1].forEach(function (sign) {
+                let fa = a + (sign * 38 * Math.PI / 180);
+                s += glyphLine(ex, ey, ex + (Math.cos(fa) * 20), ey + (Math.sin(fa) * 20));
+            });
         });
         return s;
     }
