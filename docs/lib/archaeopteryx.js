@@ -7782,13 +7782,6 @@ if (!phyloXml) {
             if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
                 labels.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
             }
-            if (_timeInfo && _timeInfo.type) {
-                labels.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
-                    + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
-                    + ' and node-age bars (phylogram, rectangular layout only)'));
-                labels.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide vertical grid lines at the '
-                    + (_timeInfo.type === 'geologic' ? 'geologic interval boundaries' : 'calendar year ticks')));
-            }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
@@ -7822,6 +7815,14 @@ if (!phyloXml) {
             // sees. The _state.dynahide field keeps its name internally.
             opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
+            // The time axis is a display overlay, not a label -- it lives here
+            if (_timeInfo && _timeInfo.type) {
+                opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
+                    + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
+                    + ' and node-age bars (phylogram, rectangular layout only)'));
+                opts.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide vertical grid lines at the '
+                    + (_timeInfo.type === 'geologic' ? 'geologic interval boundaries' : 'calendar year ticks')));
+            }
 
             let h = '<fieldset><legend>Display Data</legend>';
             h = h.concat(makeCheckboxGroup('Labels', labels));
