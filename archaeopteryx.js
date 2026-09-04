@@ -3192,9 +3192,12 @@ if (!phyloXml) {
         searchIsPartial: 'each search box picks its own match mode (contains / starts with / ends with / whole word / regex)',
         searchUsesRegex: 'choose the "regex" match mode in the search box instead',
         searchProperties: 'choose the property in the search box\'s field menu instead',
-        externalNodeFontSize: 'all labels share one size now -- use "fontSize"',
-        internalNodeFontSize: 'all labels share one size now -- use "fontSize"',
-        branchDataFontSize: 'derived from "fontSize": 2px smaller, floor 6px',
+        // NOT a redirect to "fontSize": that key is ALSO removed (see its own
+        // entry below) -- there is no launch-time font-size key at all any
+        // more, only the in-panel Font slider.
+        externalNodeFontSize: 'font size is fixed at launch (11px) and changed only via the in-panel Font slider -- not a launch config key',
+        internalNodeFontSize: 'font size is fixed at launch (11px) and changed only via the in-panel Font slider -- not a launch config key',
+        branchDataFontSize: 'derived from the fixed label size (2px smaller, floor 6px) and changed only via the in-panel Font slider -- not a launch config key',
         // download filenames follow the tree's name
         nameForNhDownload: 'download names follow "treeName"',
         nameForPhyloXmlDownload: 'download names follow "treeName"',
@@ -3653,13 +3656,16 @@ if (!phyloXml) {
         _state.nameForNexusDownload = _state.treeName
             ? (_state.treeName + NEXUS_SUFFIX) : NAME_FOR_NEXUS_DOWNLOAD_DEFAULT;
 
-        if (!_state.visualizationsLegendXpos) {
+        // === undefined, not a truthy check: 0 is a legitimate explicit
+        // position (the legend's top-left corner) and must survive, not be
+        // silently replaced by the computed default.
+        if (_state.visualizationsLegendXpos === undefined) {
             // The legend was hard-coded to 220 and so came up underneath the
             // control panel, exactly as the root did. It starts where the tree
             // starts instead.
             _state.visualizationsLegendXpos = leftPanelClearance();
         }
-        if (!_state.visualizationsLegendYpos) {
+        if (_state.visualizationsLegendYpos === undefined) {
             _state.visualizationsLegendYpos = VISUALIZATIONS_LEGEND_YPOS_DEFAULT;
         }
         _state.visualizationsLegendXposOrig = _state.visualizationsLegendXpos;
@@ -3688,7 +3694,12 @@ if (!phyloXml) {
         if ((!_settings.displayHeight) && (!_settings.enableDynamicSizing)) {
             _settings.displayHeight = DISPLY_HEIGHT_DEFAULT;
         }
-        if (!_settings.rootOffset) {
+        // === undefined: 0 is a legitimate explicit rootOffset (the caller's
+        // call, however the tree ends up looking) and must not be silently
+        // replaced by the computed default -- same reasoning as the legend
+        // position above. This function reruns on every window resize
+        // (zoomToFit), so the guard also has to be idempotent there.
+        if (_settings.rootOffset === undefined) {
             _settings.rootOffset = leftPanelClearance();
         }
         if (_settings.enableDownloads === undefined) {

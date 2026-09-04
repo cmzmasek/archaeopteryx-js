@@ -549,7 +549,7 @@ All 116 of them, alphabetically:
 | `backgroundColorForPrintExportDefault` | The export background is fixed. |
 | `border` | Style the tree's svg with CSS instead. |
 | `branchColorDefault` | The default branch colour is fixed. |
-| `branchDataFontSize` | All labels share one size now -- use `fontSize`. |
+| `branchDataFontSize` | Font size is fixed at launch (derived: 2px smaller than labels, floor 6px) and changed only via the in-panel Font slider — not a launch config key. |
 | `branchWidthDefault` | Branch width follows the size of the tree. |
 | `circular` | Renamed to `layout` (use `layout: 'circular'`). |
 | `circularDisplay` | Replaced by `layout`: `'rectangular'` \| `'circular'` \| `'unrooted'`. |
@@ -579,7 +579,7 @@ All 116 of them, alphabetically:
 | `enableSpecialVisualizations2` | The special visualizations were removed. |
 | `enableSpecialVisualizations3` | The special visualizations were removed. |
 | `enableSpecialVisualizations4` | The special visualizations were removed. |
-| `externalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `externalNodeFontSize` | Font size is fixed at launch (11px) and changed only via the in-panel Font slider — not a launch config key. |
 | `filterValues` | Reshape the tree's properties yourself before calling launch. |
 | `fontSize` | One default size for every label; the font-size slider changes it. |
 | `found0and1ColorDefault` | The search / selection colours are fixed so they stay distinguishable. |
@@ -591,7 +591,7 @@ All 116 of them, alphabetically:
 | `initialCollapseFeature` | The collapse feature was removed. |
 | `initialLabelColorVisualization` | Choose the visualization in the Visualizations panel. |
 | `initialNodeFillColorVisualization` | Choose the visualization in the Visualizations panel. |
-| `internalNodeFontSize` | All labels share one size now -- use `fontSize`. |
+| `internalNodeFontSize` | Font size is fixed at launch (11px) and changed only via the in-panel Font slider — not a launch config key. |
 | `labelColorDefault` | The default label colour is fixed. |
 | `minBranchLengthValueToShow` | No longer configurable. |
 | `minConfidenceValueToShow` | No longer configurable. |
