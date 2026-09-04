@@ -3481,14 +3481,21 @@ if (!phyloXml) {
         // is built) but starts unchecked: confidence values clutter the tree.
         _state.showConfidenceValues = false;
         // A tree carrying an aligned mol_seq per tip shows its alignment
-        // track from the start, as the desktop auto-enables it on load.
-        _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
-            && _basicTreeProperties.maxMolSeqLength > 0;
+        // track from the start, as the desktop auto-enables it on load --
+        // unless the caller already said so explicitly (an explicit value
+        // must survive, or "showMsa" in STATE_KEYS would be a dead promise).
+        if (_state.showMsa === undefined) {
+            _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
+                && _basicTreeProperties.maxMolSeqLength > 0;
+        }
         // Likewise a dated tree draws its time axis from the start --
         // geologic ICS bands or calendar years, decided from the <date>
-        // elements by forester.timeAxisInfo.
+        // elements by forester.timeAxisInfo -- again unless the caller set
+        // showTimeAxis explicitly.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
-        _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
+        if (_state.showTimeAxis === undefined) {
+            _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
+        }
         _state.timeAxisGrid = _state.timeAxisGrid === true; // desktop default: off
         _state.showSupportDots = _state.showSupportDots === true;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;

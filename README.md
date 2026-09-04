@@ -466,7 +466,7 @@ shorter than the dot itself stays clean.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-twenty-one keys below are the ones no tree can answer for you.
+twenty-four keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -486,6 +486,9 @@ keep working; it logs a deprecation warning.
 | `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
+| `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showTimeAxis` | tree-derived | Open with the time axis shown. Default: on when the tree carries `<date>` elements, off otherwise — an explicit `true`/`false` overrides that. |
+| `timeAxisGrid` | `false` | Open with the Time Grid vertical lines on (only meaningful — and only offered as a checkbox — while the time axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
