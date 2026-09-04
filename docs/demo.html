@@ -143,9 +143,17 @@
             sel.appendChild(opt);
         });
         sel.value = currentTreeKey();
-        // Reload with the chosen tree for a guaranteed-clean viewer state.
+        // Switch trees IN PLACE: the handle's destroy() unmounts the old
+        // viewer completely (DOM, dialogs, page-level listeners), so no page
+        // reload is needed. The URL still tracks the choice -- deep links and
+        // the back/forward buttons keep working.
         sel.addEventListener('change', function () {
-            window.location.search = '?tree=' + sel.value;
+            history.pushState(null, '', '?tree=' + sel.value);
+            loadTree();
+        });
+        window.addEventListener('popstate', function () {
+            sel.value = currentTreeKey();
+            loadTree();
         });
     }
 
@@ -153,9 +161,14 @@
         document.getElementById('errbox').textContent = msg;
     }
 
+    var viewer = null;  // the handle returned by launchArchaeopteryx
+    var loadSeq = 0;    // drops a slow fetch that finishes after a newer pick
+
     function loadTree() {
         var key = currentTreeKey();
         var tree = TREES[key];
+        var seq = ++loadSeq;
+        showError('');
         // The tree's own name/description (when present) is shown in the viewer's
         // control panel now, so the toolbar no longer repeats a description here.
 
@@ -175,9 +188,19 @@
                 return r.text();
             })
             .then(function (data) {
-                archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, config);
+                if (seq !== loadSeq) {
+                    return;
+                }
+                if (viewer) {
+                    viewer.destroy();
+                    viewer = null;
+                }
+                viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, config);
             })
             .catch(function (e) {
+                if (seq !== loadSeq) {
+                    return;
+                }
                 showError('Could not load tree "' + key + '": ' + (e && e.message ? e.message : e));
             });
     }
