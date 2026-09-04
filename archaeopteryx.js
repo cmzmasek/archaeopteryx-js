@@ -936,7 +936,50 @@ if (!phyloXml) {
     // Functions for node tooltips
     // ----------------------------
 
-    function mouseover() {
+    // ===================== Hover focus glow =====================
+    // The desktop's focus glow, ported disc for disc: three concentric
+    // translucent circles in the UI accent, largest and FAINTEST first, so
+    // the overlap builds toward the node -- it marks the node under the
+    // pointer without hiding it. Screen-only chrome (stripped from exports),
+    // and deliberately NOT a data colour: red belongs to search hits.
+    const HOVER_GLOW_RADII = [1.65, 1.15, 0.75];
+    const HOVER_GLOW_ALPHAS = [34 / 255, 44 / 255, 58 / 255];
+    const HOVER_GLOW_MIN_DIA = 18;
+    const HOVER_GLOW_ACCENT = 'rgb(38,117,191)';
+
+    function showHoverGlow(d) {
+        if (!_svgGroup || !d || d.x === undefined) {
+            return;
+        }
+        let g = _svgGroup.select('g.aptx-hoverglow');
+        if (g.empty()) {
+            g = _svgGroup.append('g').attr('class', 'aptx-hoverglow')
+                .style('pointer-events', 'none');
+            HOVER_GLOW_RADII.forEach(function (unused, i) {
+                g.append('circle')
+                    .attr('fill', HOVER_GLOW_ACCENT)
+                    .attr('fill-opacity', HOVER_GLOW_ALPHAS[i])
+                    .attr('stroke', 'none');
+            });
+        }
+        let dia = Math.max(HOVER_GLOW_MIN_DIA, (_state.nodeSizeDefault || 0) * 3);
+        let p = layoutPointXY(d);
+        g.attr('transform', 'translate(' + p[0] + ',' + p[1] + ')')
+            .style('display', null)
+            .raise();
+        g.selectAll('circle').attr('r', function (unused, i) {
+            return (dia * HOVER_GLOW_RADII[i]) / 2;
+        });
+    }
+
+    function hideHoverGlow() {
+        if (_svgGroup) {
+            _svgGroup.select('g.aptx-hoverglow').style('display', 'none');
+        }
+    }
+
+    function mouseover(event, d) {
+        showHoverGlow(d);
         // Start empty so the previous node's text cannot flash while this one
         // fades in; mousemove fills it in immediately after. Clearing here
         // rather than on the way out is what keeps the tooltip from collapsing
@@ -1203,6 +1246,7 @@ if (!phyloXml) {
     }
 
     function mouseout() {
+        hideHoverGlow();
         // Fade only. Emptying the tooltip here collapsed it to nothing but its
         // padding and border -- a small rounded pill -- and THAT is what sat
         // there fading out afterwards. The content is cleared on the next
@@ -2321,6 +2365,7 @@ if (!phyloXml) {
             d.y0 = d.y;
         }
 
+        hideHoverGlow(); // the hovered node may have moved; the next mouseover re-shows it
         drawMsaTrack();
         drawTimeOverlays();
         rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
@@ -8235,6 +8280,10 @@ if (!phyloXml) {
             copy.querySelectorAll('circle.foundHalo').forEach(function (h) {
                 h.remove();
             });
+            let glow = copy.querySelector('.aptx-hoverglow');
+            if (glow) {
+                glow.remove();
+            }
             svgTree = toLightExport((new XMLSerializer()).serializeToString(copy));
         } else if (typeof svg.xml !== 'undefined') {
             svgTree = svg.xml;
