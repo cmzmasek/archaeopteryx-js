@@ -7779,9 +7779,6 @@ if (!phyloXml) {
             if (_basicTreeProperties.confidences) {
                 labels.push(makeCheckboxItem('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
             }
-            if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
-                labels.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
-            }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
@@ -7815,7 +7812,11 @@ if (!phyloXml) {
             // sees. The _state.dynahide field keeps its name internally.
             opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
-            // The time axis is a display overlay, not a label -- it lives here
+            // The alignment track and time axis are display overlays, not
+            // labels -- they live here
+            if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
+                opts.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
+            }
             if (_timeInfo && _timeInfo.type) {
                 opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
                     + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
