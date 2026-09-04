@@ -3346,6 +3346,7 @@ if (!phyloXml) {
     ];
 
     const SETTING_KEYS = [
+        'collapseControlPanel',
         'displayHeight',
         'displayWidth',
         'enableAccessToDatabases',
@@ -3680,6 +3681,9 @@ if (!phyloXml) {
     function initializeSettings(settings) {
         _settings = settings;
 
+        if (_settings.collapseControlPanel === undefined) {
+            _settings.collapseControlPanel = false;
+        }
         if (_settings.enableDynamicSizing === undefined) {
             _settings.enableDynamicSizing = true;
         }
@@ -7464,6 +7468,21 @@ if (!phyloXml) {
             // final width, wire the tree name/description block's expand control.
             if (treeDescFieldset) {
                 enableTreeDescExpand(c0.querySelector('.' + TREE_DESC));
+            }
+
+            // Applied LAST, after the clamp check above: that check reads
+            // scrollHeight/clientHeight, which both read 0 on a display:none
+            // ancestor, so collapsing first would leave a genuinely-clamped
+            // tree name without its expand affordance. Same class and glyph
+            // flip the header's own hide/show button uses, so a later click on
+            // it re-expands the panel exactly as if the user had collapsed it
+            // themselves -- this is just that starting state.
+            if (_settings.collapseControlPanel) {
+                c0.classList.add('aptx-hidden');
+                let hideBtn = c0.querySelector('.aptx-hide-btn');
+                if (hideBtn) {
+                    hideBtn.textContent = '+';
+                }
             }
         }
 

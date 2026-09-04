@@ -480,7 +480,7 @@ shorter than the dot itself stays clean.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-twenty-four keys below are the ones no tree can answer for you.
+twenty-five keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -493,6 +493,7 @@ keep working; it logs a deprecation warning.
 
 | Key | Default | What it does |
 | --- | --- | --- |
+| `collapseControlPanel` | `false` | Open with the control panel collapsed to just its header bar — the same state its own hide/show button toggles. |
 | `enableDynamicSizing` | `true` | Size the tree to its container, and follow window resizes. |
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
