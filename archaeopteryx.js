@@ -59,21 +59,47 @@
 // User documentation:
 // https://cmzmasek.github.io/archaeopteryx-js/
 
-if (!d3) {
-    throw new Error("no d3.js");
-}
-
-if (!forester) {
-    throw new Error("no forester.js");
-}
-
-if (!phyloXml) {
-    throw new Error("no phyloxml.js");
-}
-
-(function archaeopteryx() {
+// UMD: one file that loads everywhere an embedder might put it --
+//  * plain <script> tags (browser globals; the classic path, unchanged),
+//  * AMD loaders such as Dojo (BV-BRC) -- the module reads its dependencies
+//    off the page's globals when first required, and ALSO keeps setting
+//    window.archaeopteryx so script-tag code on the same page still works,
+//  * CommonJS / bundlers / Node via require("archaeopteryx") -- pre-set
+//    globals win (so tests can stub), then the package's own dependencies;
+//    with no d3 at all the module still loads and every parser works, only
+//    launch() needs d3 and says so by name.
+// Dependencies are checked when they are USED, with a message naming what is
+// missing -- never at load time, where a bare identifier would explode as an
+// unhelpful ReferenceError before any message could be produced.
+/* global define */
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define([], function () {
+            let a = factory(root.d3, root.forester, root.phyloXml);
+            root.archaeopteryx = a;
+            return a;
+        });
+    } else if (typeof module === 'object' && module !== null && module.exports) {
+        let reqOpt = function (name) {
+            try { return require(name); } catch { return undefined; }
+        };
+        let px = (typeof phyloXml !== 'undefined') ? phyloXml
+            : (function () { let m = reqOpt('phyloxml'); return m ? m.phyloXml : undefined; })();
+        module.exports.archaeopteryx = factory(
+            (typeof d3 !== 'undefined') ? d3 : reqOpt('d3'),
+            (typeof forester !== 'undefined') ? forester : require('./forester').forester,
+            px);
+    } else {
+        root.archaeopteryx = factory(root.d3, root.forester, root.phyloXml);
+    }
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this),
+function (d3, forester, phyloXml) {
 
     "use strict";
+
+    // The public namespace. (The old code hung everything off the enclosing
+    // IIFE's own function name -- a plain object says what it is.)
+    let archaeopteryx = {};
 
     const VERSION = '2.3.2';
     const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
@@ -252,6 +278,29 @@ if (!phyloXml) {
     const WARNING = 'ArchaeopteryxJS: WARNING';
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
+
+    // Call-time dependency guards (the UMD header explains why they are not
+    // load-time): each failure names exactly what is missing.
+    function requireD3() {
+        if (!d3) {
+            throw new Error(ERROR + 'd3 (version 7) must be loaded before launching'
+                + ' -- https://www.npmjs.com/package/d3');
+        }
+        if (typeof d3.zoom !== 'function' || typeof d3.cluster !== 'function') {
+            throw new Error(ERROR + 'the loaded d3 is not usable as d3 version 7'
+                + ' (d3.zoom / d3.cluster missing) -- Archaeopteryx.js needs d3 v7');
+        }
+    }
+    function requireForester() {
+        if (!forester) {
+            throw new Error(ERROR + 'forester.js must be loaded before this call');
+        }
+    }
+    function requirePhyloXml() {
+        if (!phyloXml) {
+            throw new Error(ERROR + 'phyloxml.js must be loaded before this call');
+        }
+    }
     const ZOOM_INTERVAL = 200;
 
     // ---------------------------
@@ -391,7 +440,7 @@ if (!phyloXml) {
     let _searchHitIndex = -1;
     let _selectedNodes = new Set();
     let _i = 0;
-    let _id = null;
+    let _container = null;            // the resolved container ELEMENT (never a selector string)
     let _intervalId = 0;
     let _maxLabelLength = 0;
     let _nodeLabels = null;
@@ -433,6 +482,7 @@ if (!phyloXml) {
     let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
     let _clusterH = 0;                    // the cluster layout's vertical extent, set per render
     let _docListenersBound = false;       // page-level key/wheel handlers bind once, not per launch
+    let _docListeners = [];               // ...and destroy() can take every one of them down again
     let _menuConsumedEsc = false;         // the popup's Esc(keydown) must not also fire escPressed(keyup)
     let _radialRotation = 0;          // radians added to the radial layouts' angles (X+/X- rotate buttons)
     const UNROOTED_START_ANGLE = -Math.PI / 2;   // first wedge opens upward, as on the desktop
@@ -3362,7 +3412,10 @@ if (!phyloXml) {
         'enableVisualizations',
         'initialVisualization',
         'ladderizeTree',
+        'nhConfidenceValuesAsInternalNames',
+        'nhConfidenceValuesInBrackets',
         'nhExportWriteConfidences',
+        'nodeLabels',
         'pngExportScale',
         'rootOffset',
         'supportDotMinimum',
@@ -3375,20 +3428,13 @@ if (!phyloXml) {
     // an afternoon to find. The returned objects are ours, not the caller's --
     // the display state is written to constantly, and writing through to an
     // object the caller still holds is not our business.
-    function readConfig(config, legacySettings) {
-        if (legacySettings) {
-            console.warn(WARNING + ': launch() now takes ONE config object; passing a'
-                + ' separate settings object is deprecated -- merge it into the third argument');
-        }
-
+    function readConfig(config) {
         let given = {};
-        [config, legacySettings].forEach(function (bag) {
-            if (bag) {
-                Object.keys(bag).forEach(function (k) {
-                    given[k] = bag[k];
-                });
-            }
-        });
+        if (config) {
+            Object.keys(config).forEach(function (k) {
+                given[k] = config[k];
+            });
+        }
 
         let removed = Object.keys(given).filter(function (k) {
             return REMOVED_CONFIG[k] !== undefined;
@@ -3723,6 +3769,20 @@ if (!phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = true;
         }
+        // the two New Hampshire parse options (used by launchArchaeopteryx /
+        // parseTree; they were positional arguments before the one-config API)
+        if (_settings.nhConfidenceValuesInBrackets === undefined) {
+            _settings.nhConfidenceValuesInBrackets = true;
+        }
+        if (_settings.nhConfidenceValuesAsInternalNames === undefined) {
+            _settings.nhConfidenceValuesAsInternalNames = false;
+        }
+        // custom label-field checkboxes (was launch()'s sixth positional arg)
+        if (_settings.nodeLabels === undefined) {
+            _settings.nodeLabels = null;
+        } else if (_settings.nodeLabels !== null && typeof _settings.nodeLabels !== 'object') {
+            throw new Error('nodeLabels must be an object (see the README) or null');
+        }
         if (_settings.supportDotMinimum === undefined) {
             _settings.supportDotMinimum = 95;
         } else if (typeof _settings.supportDotMinimum !== 'number'
@@ -3770,7 +3830,7 @@ if (!phyloXml) {
     // page with a header, say -- the tree overflowed or underfilled it. The reset
     // path already measured the container, so the two disagreed with each other.
     function displaySizeFromContainer() {
-        let element = d3.select(_id).node();
+        let element = _container;
         if (!element) {
             return null;
         }
@@ -3816,11 +3876,86 @@ if (!phyloXml) {
         search1();
     }
 
-    // The third argument is the whole config. The fourth is the old settings
-    // bag, still accepted and merged so existing call sites keep working; new
-    // code puts everything in the third.
-    archaeopteryx.launch = function (id, phylo, config, legacySettings, nodeVisualizations, nodeLabels, specialVisualizations) {
+    function bindDoc(type, fn, opts) {
+        document.addEventListener(type, fn, opts);
+        _docListeners.push({type: type, fn: fn, opts: opts});
+    }
 
+    // What launch() returns: the small per-viewer surface an embedder needs
+    // after launching.
+    function makeViewerHandle() {
+        return {
+            getSelectedNodes: function () {
+                return archaeopteryx.getSelectedNodes();
+            },
+            destroy: destroyViewer
+        };
+    }
+
+    // Unmounts the viewer COMPLETELY: the DOM inside the container, any
+    // body-level pieces (node menu, dialogs, the alignment scroller), the
+    // window resize listener and every page-level key/wheel handler. An SPA
+    // host removes views all the time; before this, those listeners simply
+    // outlived the view. A later launch() into any container works normally
+    // (the page-level handlers rebind).
+    function destroyViewer() {
+        if (_container) {
+            d3.select(_container).selectAll('svg').remove();
+            _container.querySelectorAll('.aptx-panel').forEach(function (p) {
+                p.remove();
+            });
+        }
+        removeNodeMenu();
+        document.querySelectorAll('dialog.aptx-dialog').forEach(function (dlg) {
+            dlg.remove();
+        });
+        if (_msaScroller) {
+            _msaScroller.remove();
+            _msaScroller = null;
+        }
+        d3.select(window).on('resize.archaeopteryx', null);
+        _docListeners.forEach(function (l) {
+            document.removeEventListener(l.type, l.fn, l.opts);
+        });
+        _docListeners = [];
+        _docListenersBound = false;
+        _root = null;
+        _root_const = null;
+        _treeData = null;
+        _basicTreeProperties = null;
+        _baseSvg = null;
+        _svgGroup = null;
+        _overviewGroup = null;
+        _overviewContent = null;
+        _overviewViewport = null;
+        _overviewMap = null;
+        _selectedNodes = new Set();
+        _vis = null;
+        _in_subtree = false;
+        _container = null;
+    }
+
+    // The container may be a CSS selector or the element itself. A container
+    // that cannot be found THROWS: the old behaviour -- d3's empty selection
+    // silently absorbing every append -- rendered nothing and said nothing,
+    // the worst failure an embedder can get.
+    function resolveContainer(container) {
+        let el = null;
+        if (typeof container === 'string') {
+            el = (typeof document !== 'undefined') ? document.querySelector(container) : null;
+        } else if (container && container.nodeType === 1) {
+            el = container;
+        }
+        if (!el) {
+            throw new Error(ERROR + 'container not found -- launch() needs a CSS selector'
+                + ' matching an existing element, or that element itself (got: ' + container + ')');
+        }
+        return el;
+    }
+
+    // launch(container, tree, config) -> a viewer handle {getSelectedNodes,
+    // destroy}. Exactly three arguments; config is THE one config object.
+    archaeopteryx.launch = function (container, phylo, config) {
 
         // Bad input is the caller's bug, so it is thrown at the caller. It used
         // to pop a browser alert and return, which blocks the whole tab and
@@ -3829,26 +3964,28 @@ if (!phyloXml) {
         // ALL argument validation happens up here, before anything else: a
         // rejected launch must not leave half-mutated module state behind
         // (and the rejections stay testable in Node, where d3/the DOM do not
-        // exist -- test/visualization_test.js pins the two removed arguments
+        // exist -- test/visualization_test.js pins the removed arguments
         // below so they can never quietly come back).
+        if (arguments.length > 3) {
+            throw new Error(ERROR + 'launch() takes exactly (container, tree, config); the old'
+                + ' trailing arguments were removed. The separate settings bag merged into the one'
+                + ' config object; "nodeVisualizations" and "specialVisualizations" are gone for good'
+                + ' (visualizations are derived automatically from the tree itself); "nodeLabels"'
+                + ' moved into the config as its "nodeLabels" key.');
+        }
         if (phylo === undefined || phylo === null) {
             throw new Error(ERROR + 'input tree is undefined or null');
         }
         if ((!phylo.children) || (phylo.children.length < 1)) {
             throw new Error(ERROR + 'input tree is empty or illegally formatted');
         }
-        if (nodeVisualizations) {
-            throw new Error(ERROR + 'the "nodeVisualizations" argument was removed:'
-                + ' visualizations are determined automatically from the tree itself');
-        }
-        if (specialVisualizations) {
-            throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
-                + ' along with the enableSpecialVisualizations2/3/4 settings');
-        }
-        let cfg = readConfig(config, legacySettings);
+        let cfg = readConfig(config);
+        requireForester();
+        requireD3();
+        let containerEl = resolveContainer(container);
 
         _treeData = phylo;
-        _id = id;
+        _container = containerEl;
         _zoomListener = d3.zoom()
             .scaleExtent([0.1, 10])
             .filter(function (event) {
@@ -3864,7 +4001,6 @@ if (!phyloXml) {
         // Every launch starts from a clean slate: _vis is rebuilt below and
         // _nodeLabels reassigned, never inherited from a previous launch in
         // the same page.
-        _nodeLabels = nodeLabels ? nodeLabels : null;
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
@@ -3873,6 +4009,7 @@ if (!phyloXml) {
 
         initializeState(cfg.state);
         initializeSettings(cfg.settings);
+        _nodeLabels = _settings.nodeLabels || null;
 
 
         initializeVisualizations();
@@ -3881,8 +4018,8 @@ if (!phyloXml) {
         // exactly that): tear the previous viewer's DOM down first, or the
         // duplicated element ids leave the NEW panel's controls wired to the
         // OLD, invisible one.
-        d3.select(id).selectAll('svg').remove();
-        document.querySelectorAll(id + ' .aptx-panel').forEach(function (p) {
+        d3.select(containerEl).selectAll('svg').remove();
+        containerEl.querySelectorAll('.aptx-panel').forEach(function (p) {
             p.remove();
         });
         _selectedNodes = new Set();
@@ -3902,14 +4039,17 @@ if (!phyloXml) {
 
         createGui();
 
-        _baseSvg = d3.select(id).append('svg')
+        _baseSvg = d3.select(containerEl).append('svg')
             .attr('width', _displayWidth)
             .attr('height', _displayHeight)
             .call(_zoomListener);
 
         if (_settings.enableDynamicSizing) {
+            // namespaced: the HOST page may have its own d3 window-resize
+            // listener, which an un-namespaced .on('resize') would CLOBBER --
+            // and destroy() below must be able to take only ours down
             d3.select(window)
-                .on('resize', function () {
+                .on('resize.archaeopteryx', function () {
                     let size = displaySizeFromContainer();
                     if (!size) {
                         return;
@@ -3940,17 +4080,22 @@ if (!phyloXml) {
         _root.y0 = 0;
         initialize();
 
+        return makeViewerHandle();
+
         //////////////////////////////////////////////////////////////////////
 
     };
 
     archaeopteryx.parsePhyloXML = function (data) {
+        requirePhyloXml();
+        requireForester();
         let phy = phyloXml.parse(data, {trim: true, normalize: true})[0];
         forester.addParents(phy);
         return phy;
     };
 
     archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        requireForester();
         return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
     };
 
@@ -3958,12 +4103,14 @@ if (!phyloXml) {
     // view (num_date branch lengths), with every trait a nextstrain:* node
     // property. See forester.parseAuspiceJson.
     archaeopteryx.parseAuspiceJson = function (data) {
+        requireForester();
         return forester.parseAuspiceJson(data);
     };
 
     // A Nexus file can hold several trees; the FIRST one is displayed (any
     // alignment from the file's characters matrix rides along on its tips).
     archaeopteryx.parseNexus = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        requireForester();
         let trees = forester.parseNexus(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
         if (trees.length === 0) {
             throw new Error('no tree found in the Nexus data');
@@ -5694,7 +5841,7 @@ if (!phyloXml) {
         // reason to undo it.
         zoomToFit();
         if (_settings.enableVisualizations) {
-            let c0 = document.querySelector(_id + ' > .aptx-panel');
+            let c0 = _container.querySelector(':scope > .aptx-panel');
             if (c0) {
                 setStyles(c0, {
                     'left': CONTROLS_0_LEFT_DEFAULT, 'top': CONTROLS_0_TOP_DEFAULT
@@ -7382,7 +7529,7 @@ if (!phyloXml) {
     // was read through the d3 v3 selection API, so on d3 v7 it stayed 0 and the
     // panel landed at the top of the PAGE however far down the tree began.
     function makeControlPanelElement() {
-        let container = d3.select(_id).node();
+        let container = _container;
         if (!container) {
             return null;
         }
@@ -7399,7 +7546,7 @@ if (!phyloXml) {
     function createGui() {
 
 
-        setStylesAll(_id, {
+        setStyles(_container, {
             'font-style': 'normal',
             'font-weight': 'normal',
             'text-decoration': 'none',
@@ -7741,7 +7888,7 @@ if (!phyloXml) {
         if (!_docListenersBound) {
         _docListenersBound = true;
 
-        document.addEventListener('keyup', function (e) {
+        bindDoc('keyup', function (e) {
             // The DELIBERATELY minimal shortcut set (user decision,
             // 2026-09-03): Esc/Home reset, O cycles the overview corner,
             // PageUp/PageDown size the font, and the wheel zooms. Everything
@@ -7763,7 +7910,7 @@ if (!phyloXml) {
             }
         });
 
-        document.addEventListener('keydown', function (e) {
+        bindDoc('keydown', function (e) {
             if (isTypingTarget(e.target)) {
                 return;
             }
@@ -7775,7 +7922,7 @@ if (!phyloXml) {
         });
 
 
-        document.addEventListener('wheel', function (e) {
+        bindDoc('wheel', function (e) {
             if (e.shiftKey) {
                 // Browsers turn a shifted wheel into HORIZONTAL scrolling: the
                 // movement arrives in deltaX and deltaY is 0. Testing deltaY
@@ -8802,12 +8949,23 @@ if (!phyloXml) {
         return tree;
     };
 
-    // Parse-and-launch in one step. The trailing nodeVisualizations parameter
-    // is kept in the signature only so launch() can reject it by name.
-    archaeopteryx.launchArchaeopteryx = function (label, location, data, config, legacySettings, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames, nodeVisualizations) {
+    // Parse-and-launch in one step: fetch the file's content yourself (the
+    // library does no networking), hand the text here. fileName is used only
+    // to pick the parser (its extension; the content is sniffed too).
+    // Returns the same viewer handle launch() returns.
+    archaeopteryx.launchArchaeopteryx = function (container, fileName, data, config) {
+        if (arguments.length > 4) {
+            throw new Error(ERROR + 'launchArchaeopteryx() takes exactly (container, fileName,'
+                + ' data, config); the old trailing arguments were removed. The separate settings'
+                + ' bag and "nodeVisualizations" are gone (see launch()), and the two New Hampshire'
+                + ' parse options moved into the config as "nhConfidenceValuesInBrackets" /'
+                + ' "nhConfidenceValuesAsInternalNames".');
+        }
+        let c = config || {};
         let tree;
         try {
-            tree = archaeopteryx.parseTree(location, data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
+            tree = archaeopteryx.parseTree(fileName, data,
+                c.nhConfidenceValuesInBrackets, c.nhConfidenceValuesAsInternalNames);
         } catch (e) {
             // Worth catching only to say that it was the parse, not the launch,
             // that failed -- a malformed tree file rather than a bug in here.
@@ -8820,12 +8978,12 @@ if (!phyloXml) {
         // launch() already reports its own failures well enough; wrapping them
         // added nothing but a prefix, and swallowing them left the caller with
         // a blank page and no way to find out why.
-        archaeopteryx.launch(label, tree, config, legacySettings, nodeVisualizations);
+        return archaeopteryx.launch(container, tree, config);
     };
 
 
 // --------------------------------------------------------------
 // For exporting
 // --------------------------------------------------------------
-    if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser) module.exports.archaeopteryx = archaeopteryx; else if (typeof window !== "undefined") window.archaeopteryx = archaeopteryx; else this.archaeopteryx = archaeopteryx;
-})();
+    return archaeopteryx;
+});

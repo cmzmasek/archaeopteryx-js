@@ -1429,6 +1429,61 @@ function testNodeVisualizationsStayRemoved() {
     return true;
 }
 
+
+// The 3.0 launch surface: exactly (container, tree, config) -- any old
+// trailing argument is rejected by COUNT with a message mapping where each
+// one went; a missing/unusable dependency and an unresolvable container
+// throw by NAME; and the module require()s cleanly in Node with no browser,
+// where the parsers work with no d3 at all.
+function testLaunchApiValidation() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = {children: [{}]};
+    function thrown(fn) {
+        try { fn(); return null; } catch (e) { return e.message || String(e); }
+    }
+    var m = thrown(function () { aptx.launch('#x', tree, {}, null); });
+    if (!m || m.indexOf('takes exactly') < 0) {
+        console.log('    arity(launch): ' + m);
+        return false;
+    }
+    m = thrown(function () { aptx.launchArchaeopteryx('#x', 'a.nh', '(a,b);', {}, null); });
+    if (!m || m.indexOf('takes exactly') < 0) {
+        console.log('    arity(launchArchaeopteryx): ' + m);
+        return false;
+    }
+    // an unusable d3 is named, never exploded on
+    delete global.d3.zoom;
+    delete global.d3.cluster;
+    m = thrown(function () { aptx.launch('#x', tree, {}); });
+    if (!m || m.indexOf('version 7') < 0) {
+        console.log('    d3 guard: ' + m);
+        return false;
+    }
+    // with a usable d3, an unresolvable container throws by name
+    global.d3.zoom = function () {};
+    global.d3.cluster = function () {};
+    m = thrown(function () { aptx.launch('#x', tree, {}); });
+    if (!m || m.indexOf('container not found') < 0) {
+        console.log('    container: ' + m);
+        return false;
+    }
+    // the new config keys route through readConfig (reaching the container
+    // check means the keys were accepted)
+    m = thrown(function () {
+        aptx.launch('#x', tree, {nodeLabels: {}, nhConfidenceValuesInBrackets: false});
+    });
+    if (!m || m.indexOf('container not found') < 0) {
+        console.log('    new config keys: ' + m);
+        return false;
+    }
+    // no browser, no d3: the parsers still work
+    var phy = aptx.parseNexus('#NEXUS\nBegin Trees;\n Tree t=(a:1,b:2);\nEnd;\n');
+    return !!phy && forester.getAllExternalNodes(phy).length === 2;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -1439,6 +1494,7 @@ runTest("audit: conservation detail : ", testAuditConservationDetails);
 runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
+runTest("audit: launch API guards   : ", testLaunchApiValidation);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
