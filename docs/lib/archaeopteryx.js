@@ -8101,7 +8101,13 @@ if (!phyloXml) {
             h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
             h = h.concat('<option value="' + NEXUS_EXPORT_FORMAT + '">' + NEXUS_EXPORT_FORMAT + '</option>');
-            h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
+            // only when there is something to write: a tip carrying a
+            // molecular sequence, aligned or not (same gate as the node
+            // menu's Fasta entries) -- on any other tree the download would
+            // just be an empty file
+            if (_basicTreeProperties.maxMolSeqLength > 0) {
+                h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
+            }
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
