@@ -395,8 +395,10 @@ Support and branch-length values draw **2 px smaller than the label font**
 (never below 6 px), as on the desktop, so they annotate without competing.
 And besides the numeric display there are **Support Dots**: a filled dot at
 the midpoint of every branch whose support is at least 95% (`supportDotMinimum`;
-posterior- and bootstrap-scaled trees are told apart automatically). A branch
-drawn shorter than the dot itself stays clean.
+posterior- and bootstrap-scaled trees are told apart automatically). The dot
+is always a fixed amount wider than the branch itself, so it tracks the
+Branch Width slider instead of sitting at one fixed size. A branch drawn
+shorter than the dot itself stays clean.
 
 ## Configuration
 

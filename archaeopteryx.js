@@ -219,7 +219,10 @@ if (!phyloXml) {
     const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
     const NODE_SIZE_MIN = 1;
-    const SUPPORT_DOT_RADIUS = 3;
+    // a Support Dot is always this much WIDER (diameter) than the branch it
+    // sits on, so it scales with the Branch Width slider instead of a fixed
+    // size that looks lost on a thick branch or oversized on a thin one
+    const SUPPORT_DOT_EXTRA_DIAMETER = 4;
     const PDF_EXPORT_FORMAT = 'PDF';
     const PHYLOXML_EXPORT_FORMAT = 'phyloXML';
     const PNG_EXPORT_FORMAT = 'PNG';
@@ -2201,7 +2204,7 @@ if (!phyloXml) {
         // wears the branch colour like the values above, and r=0 hides it
         node.select('circle.suppdot')
             .attr('r', function (d) {
-                return showSupportDot(d) ? SUPPORT_DOT_RADIUS : 0;
+                return showSupportDot(d) ? supportDotRadius(d) : 0;
             })
             .style('fill', _state.branchColorDefault)
             .attr('transform', function (d) {
@@ -3040,6 +3043,17 @@ if (!phyloXml) {
         return (_basicTreeProperties && _basicTreeProperties.maxConfidence <= 1) ? (m / 100) : m;
     }
 
+    // A Support Dot scales with the branch it marks -- always
+    // SUPPORT_DOT_EXTRA_DIAMETER wider than the branch's own stroke width
+    // (the per-node override a phyloXML style may carry, same as
+    // makeBranchWidth reads, falling back to the Branch Width slider) --
+    // rather than a fixed size that reads as lost on a thick branch or
+    // oversized on a thin one.
+    function supportDotRadius(d) {
+        let branchWidth = d.width || _state.branchWidthDefault;
+        return (branchWidth + SUPPORT_DOT_EXTRA_DIAMETER) / 2;
+    }
+
     function showSupportDot(d) {
         if (!_state.showSupportDots || !d.parent
             || !d.confidences || d.confidences.length === 0) {
@@ -3050,7 +3064,7 @@ if (!phyloXml) {
             return false;
         }
         // a dot wider than its branch is noise, not information
-        return drawnBranchSpan(d) >= (2 * SUPPORT_DOT_RADIUS);
+        return drawnBranchSpan(d) >= (2 * supportDotRadius(d));
     }
 
     // ---- radial (circular) layout helpers ----
