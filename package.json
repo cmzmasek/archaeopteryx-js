@@ -1,6 +1,6 @@
 {
   "name": "archaeopteryx",
-  "version": "2.3.2",
+  "version": "3.0.0",
   "description": "Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.",
   "main": "archaeopteryx.js",
   "types": "archaeopteryx.d.ts",
