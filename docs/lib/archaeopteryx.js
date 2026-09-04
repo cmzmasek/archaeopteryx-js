@@ -3184,7 +3184,9 @@ if (!phyloXml) {
     // bags only against its own list meant the right name in the wrong bag was
     // silently ignored -- the very failure this list exists to prevent.
     const REMOVED_CONFIG = {
-        circular: 'renamed to "circularDisplay"',
+        circular: 'renamed to "layout": use layout: "circular"',
+        circularDisplay: 'replaced by "layout": use layout: "circular" (or "rectangular" / "unrooted")',
+        unrootedDisplay: 'replaced by "layout": use layout: "unrooted"',
         showExternalNodes: 'node shapes now appear wherever a node visualization applies',
         showInternalNodes: 'node shapes now appear wherever a node visualization applies',
         searchIsPartial: 'each search box picks its own match mode (contains / starts with / ends with / whole word / regex)',
@@ -3326,8 +3328,7 @@ if (!phyloXml) {
     // do the routing, and they double as the allow-list, so a misspelled key
     // throws instead of doing nothing.
     const STATE_KEYS = [
-        'circularDisplay',
-        'unrootedDisplay',
+        'layout',
         'showMsa',
         'showTimeAxis',
         'timeAxisGrid',
@@ -3438,15 +3439,20 @@ if (!phyloXml) {
         _state.phylogram = branchCount > 0
             && (_basicTreeProperties.branchesWithPositiveLength / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
         _state.alignPhylogram = false;
-        if (_state.circularDisplay === undefined) {
-            _state.circularDisplay = false;
+        // "layout" is launch-time only: a caller picks the starting layout by
+        // name, and from here on _state.circularDisplay/_state.unrootedDisplay
+        // (set from it below, once) are the only live representation -- the
+        // layout buttons write straight to those two, never back to a "layout"
+        // field, so keeping one around afterward would just go stale.
+        let layout = _state.layout;
+        if (layout === undefined) {
+            layout = 'rectangular';
+        } else if (layout !== 'rectangular' && layout !== 'circular' && layout !== 'unrooted') {
+            throw new Error(ERROR + '"layout" must be "rectangular", "circular", or "unrooted"');
         }
-        if (_state.unrootedDisplay === undefined) {
-            _state.unrootedDisplay = false;
-        }
-        if (_state.circularDisplay && _state.unrootedDisplay) {
-            throw new Error(ERROR + '"circularDisplay" and "unrootedDisplay" cannot both be true');
-        }
+        _state.circularDisplay = layout === 'circular';
+        _state.unrootedDisplay = layout === 'unrooted';
+        delete _state.layout;
         _state.dynahide = true;
 
         if (_state.searchAinitialValue && (typeof _state.searchAinitialValue === 'string' || _state.searchAinitialValue instanceof String) && _state.searchAinitialValue.trim().length > 0) {

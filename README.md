@@ -466,7 +466,7 @@ shorter than the dot itself stays clean.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-eighteen keys below are the ones no tree can answer for you.
+twenty-one keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -484,7 +484,7 @@ keep working; it logs a deprecation warning.
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
 | `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
-| `circularDisplay` | `false` | Circular layout instead of rectangular. |
+| `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
@@ -508,7 +508,7 @@ or simply mistyped:
 
 ```
 ArchaeopteryxJS: ERROR: removed config key(s) passed to launch:
-"circular" -- renamed to "circularDisplay"
+"circular" -- renamed to "layout": use layout: "circular"
 
 ArchaeopteryxJS: ERROR: unknown config key(s) passed to launch: "enableDownlods"
 ```
@@ -536,7 +536,7 @@ constants:
 
 ### Removed — passing these throws
 
-All 114 of them, alphabetically:
+All 116 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
@@ -548,7 +548,8 @@ All 114 of them, alphabetically:
 | `branchColorDefault` | The default branch colour is fixed. |
 | `branchDataFontSize` | All labels share one size now -- use `fontSize`. |
 | `branchWidthDefault` | Branch width follows the size of the tree. |
-| `circular` | Renamed to `circularDisplay`. |
+| `circular` | Renamed to `layout` (use `layout: 'circular'`). |
+| `circularDisplay` | Replaced by `layout`: `'rectangular'` \| `'circular'` \| `'unrooted'`. |
 | `collapsedLabelLength` | The collapse feature was removed. |
 | `collapseLabelWidth` | The collapse feature was removed. |
 | `controls0` | The control panel is created inside the tree's own container now. |
@@ -649,6 +650,7 @@ All 114 of them, alphabetically:
 | `showVisualizations` | Off by default; use the Visualizations checkbox. |
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `treeName` | The name comes from the tree file. |
+| `unrootedDisplay` | Replaced by `layout`; use `layout: 'unrooted'`. |
 | `useVisualStyles` | On by default; use the Visual Styles checkbox. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
 | `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
