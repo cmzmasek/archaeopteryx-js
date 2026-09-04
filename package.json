@@ -46,8 +46,8 @@
   "homepage": "https://github.com/cmzmasek/archaeopteryx-js#readme",
   "peerDependencies": {
     "canvg": "^4.0.3",
-    "jspdf": "^2.5.0",
-    "svg2pdf.js": "^2.2.0"
+    "jspdf": "^4.2.1",
+    "svg2pdf.js": "^2.8.1"
   },
   "peerDependenciesMeta": {
     "canvg": {

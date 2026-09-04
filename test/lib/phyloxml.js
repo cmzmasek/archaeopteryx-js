@@ -1,6 +1,6 @@
 /**
- *  Copyright (C) 2017 Christian M. Zmasek
- *  Copyright (C) 2017 J. Craig Venter Institute
+ *  Copyright (C) 2019 Christian M. Zmasek
+ *  Copyright (C) 2019 J. Craig Venter Institute
  *  All rights reserved
  *
  *  This library is free software; you can redistribute it and/or
@@ -20,39 +20,69 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-/**
- *
- * Version 0.912 20171013
- *
- * This requires sax-js from https://github.com/isaacs/sax-js
- *
- * Usage
- * -----
- *
- * Synchronous parsing of phyloXML-formatted string
- * ------------------------------------------------
- *
- * var px = require('./phyloxml').phyloXml;
- *
- * var phys = px.parse(phyloxmlText, {trim: true, normalize: true});
- *
- * console.log(px.toPhyloXML(phys[0], 6));
- *
- *
- *
- * Asynchronous parsing of phyloXML-formatted stream
- * -------------------------------------------------
- *
- * var fs = require('fs');
- * var px = require('./phyloxml').phyloXml;
- *
- * var stream = fs.createReadStream(xmlFile, {encoding: 'utf8'});
- *
- * px.parseAsync(stream, {trim: true, normalize: true});
- *
- *
- *
- */
+// v 1.0.0
+// 2019-05-16
+//
+// phyloxml.js is a JavaScript program for reading (SAX style parser)
+// and writing phylogenetic trees in phyloXML format.
+//
+// phyloXML website: http://www.phyloxml.org/
+//
+// Availability:
+//   https://github.com/cmzmasek/phyloxml-js
+//   https://www.npmjs.com/package/phyloxml
+//
+// Dependencies:
+//  sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
+//
+//
+// Example:
+// This basic example shows how to parse a phyloXML formatted String into to a
+// object representing a phylogenetic tree. Followed by printing some elements
+// and then converting the object back to a phyloXML formatted String.
+//
+// Change './phyloxml' to 'phyloxml' if you use this code outside of this package
+//
+// var phyloXml = require('./phyloxml').phyloXml;
+//
+// phlyoXmlFormattedString = '<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+//     'xmlns="http://www.phyloxml.org" ' +
+//     'xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">' +
+//     '<phylogeny rooted="true" rerootable="false">' +
+//     '<clade><branch_length>0.2</branch_length>' +
+//     '<clade><branch_length>0.4</branch_length><name>A</name></clade>' +
+//     '<clade><branch_length>0.6</branch_length><name>B</name></clade>' +
+//     '</clade>' +
+//     '</phylogeny>' +
+//     '</phyloxml>';
+//
+// var phylogeneticTree = phyloXml.parse(phlyoXmlFormattedString, {trim: true, normalize: true})[0];
+//
+// console.log('Root branch length  : ' + phylogeneticTree.children[0].branch_length);
+// console.log('Node A name         : ' + phylogeneticTree.children[0].children[0].name);
+// console.log('Node A branch length: ' + phylogeneticTree.children[0].children[0].branch_length);
+// console.log('Node B name         : ' + phylogeneticTree.children[0].children[1].name);
+// console.log('Node B branch length: ' + phylogeneticTree.children[0].children[1].branch_length);
+//
+// console.log('Entire tree in phyloXML format:');
+// console.log(phyloXml.toPhyloXML(phylogeneticTree, 4));
+//
+//
+// Synchronous parsing of phyloXML-formatted String:
+//
+// var px = require('./phyloxml').phyloXml;
+// var phys = px.parse(phyloxmlText, {trim: true, normalize: true});
+// console.log(px.toPhyloXML(phys[0], 6));
+//
+//
+// Asynchronous parsing of phyloXML-formatted Stream:
+//
+// var fs = require('fs');
+// var px = require('./phyloxml').phyloXml;
+// var stream = fs.createReadStream(xmlFile, {encoding: 'utf8'});
+// px.parseAsync(stream, {trim: true, normalize: true});
+
+
 (function phyloXml() {
 
     "use strict";

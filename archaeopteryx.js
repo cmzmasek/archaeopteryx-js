@@ -35,7 +35,7 @@
 // * forester.js: https://www.npmjs.com/package/archaeopteryx
 // * phyloxml.js: https://www.npmjs.com/package/phyloxml
 // * d3.js (version 7): https://www.npmjs.com/package/d3
-// * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
+// * sax.js (1.6.1): https://www.npmjs.com/package/sax/v/1.6.1
 //
 //   For raster (PNG) export (optional -- the PNG entry appears in the Download
 //   menu only when window.Canvg is present; canvg 4.x publishes ES modules

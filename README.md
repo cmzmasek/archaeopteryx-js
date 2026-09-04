@@ -43,7 +43,7 @@ Archaeopteryx.js has the following dependencies:
  * forester.js: https://www.npmjs.com/package/archaeopteryx
  * phyloxml.js: https://www.npmjs.com/package/phyloxml
  * d3.js (version 7): https://www.npmjs.com/package/d3
- * sax.js (1.2.4): https://www.npmjs.com/package/sax/v/1.2.4
+ * sax.js (1.6.1): https://www.npmjs.com/package/sax/v/1.6.1
  
 For **raster PNG export** (optional — the PNG entry appears in the Download
 menu only when `window.Canvg` is present):
@@ -65,8 +65,8 @@ menu only when `window.Canvg` is present):
 
 For **vector PDF export** (optional — the PDF entry appears in the Download
 menu only when both are loaded before archaeopteryx.js):
- * jspdf (2.x): https://www.npmjs.com/package/jspdf
- * svg2pdf.js (2.x): https://www.npmjs.com/package/svg2pdf.js
+ * jspdf (4.x): https://www.npmjs.com/package/jspdf
+ * svg2pdf.js (2.8.x): https://www.npmjs.com/package/svg2pdf.js
 
 File (Newick/New Hampshire, Nexus, phyloXML, FASTA) and SVG download, as well as saving
 the exported PNG, use native browser APIs (`Blob`, `canvas.toBlob()`, and an
