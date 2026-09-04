@@ -7804,12 +7804,6 @@ if (!phyloXml) {
             if (_basicTreeProperties.branchEvents) {
                 nodes.push(makeCheckboxItem('Branch Events', BRANCH_EVENTS_CB, 'to show/hide branch events (e.g. mutations)'));
             }
-            if (_basicTreeProperties.branchColors || (_vis && _vis.hasStyles)) { // only when the tree carries either
-                nodes.push(makeCheckboxItem('Visual Styles', VISUAL_STYLES_CB, 'to use visual styles (node and font colors, shapes) and branch colors, if present in the tree file'));
-            }
-            if (hasColorVisualizations()) {
-                nodes.push(makeCheckboxItem('Visualizations', VIS_CB, 'to show or hide the Color and Shape visualizations chosen above'));
-            }
 
             // --- Options ---
             // Both are always offered. They do nothing on a tree that needs
@@ -7820,6 +7814,14 @@ if (!phyloXml) {
             // sees. The _state.dynahide field keeps its name internally.
             opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
+            // Styles and visualizations sit here too, so the Nodes group only
+            // appears at all on a tree carrying node/branch events
+            if (_basicTreeProperties.branchColors || (_vis && _vis.hasStyles)) { // only when the tree carries either
+                opts.push(makeCheckboxItem('Visual Styles', VISUAL_STYLES_CB, 'to use visual styles (node and font colors, shapes) and branch colors, if present in the tree file'));
+            }
+            if (hasColorVisualizations()) {
+                opts.push(makeCheckboxItem('Visualizations', VIS_CB, 'to show or hide the Color and Shape visualizations chosen above'));
+            }
             // The alignment track and time axis are display overlays, not
             // labels -- they live here
             if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
