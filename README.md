@@ -91,51 +91,59 @@ Example of HTML page to launch a basic Archaeopteryx.js instance:
    <meta charset="utf-8">
    <title>Archaeopteryx.js Basic Demo</title>
 
-   <!-- D3.js (version 7):-->
+   <!-- D3.js (version 7): -->
    <script src="https://d3js.org/d3.v7.min.js"></script>
 
-   <!-- SAX XML parser (needed by phyloxml.js):-->
-   <script src="http://path/to/sax.js"></script>
+   <!-- SAX XML parser (needed by phyloxml.js): -->
+   <script src="https://path/to/sax.js"></script>
 
-   <!-- Archaeopteryx.js requires forester.js and phyloxml.js:-->
-   <script src="http://path/to/phyloxml.js"></script>
-   <script src="http://path/to/forester.js"></script>
-   <script src="http://path/to/archaeopteryx.js"></script>
-
-   <script>
-       function load() {
-           var config = {};
-           var loc = 'http://path/to/apaf.xml';
-
-           fetch(loc)
-               .then(function (response) {
-                   if (!response.ok) {
-                       throw new Error('HTTP ' + response.status + ' loading ' + loc);
-                   }
-                   return response.text();
-               })
-               .then(function (data) {
-                   archaeopteryx.launchArchaeopteryx('#phylogram1', loc, data, config);
-               })
-               .catch(function (e) {
-                   document.getElementById('phylogram1').textContent = 'Error: ' + e.message;
-               });
-       }
-   </script>
+   <!-- Archaeopteryx.js requires forester.js and phyloxml.js: -->
+   <script src="https://path/to/phyloxml.js"></script>
+   <script src="https://path/to/forester.js"></script>
+   <script src="https://path/to/archaeopteryx.js"></script>
 </head>
 
-<body onload="load()">
+<body>
 <div>
    <h2>Archaeopteryx.js Basic Demo</h2>
-   <div id='phylogram1'></div>
+   <div id="phylogram1"></div>
 </div>
+
+<script>
+    window.addEventListener('load', async () => {
+        const loc = 'https://path/to/apaf.xml';
+        const config = {};  // see "For Developers" below for what can go here
+
+        try {
+            const response = await fetch(loc);
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status + ' loading ' + loc);
+            }
+            const data = await response.text();
+
+            // launchArchaeopteryx returns a viewer handle:
+            //   viewer.getSelectedNodes()  -- the user's node selection
+            //   viewer.destroy()           -- unmount the viewer completely
+            //                                 (call it when your view goes away;
+            //                                  a later launch works normally)
+            const viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', loc, data, config);
+        } catch (e) {
+            document.getElementById('phylogram1').textContent = 'Error: ' + e.message;
+        }
+    });
+</script>
 </body>
 </html>
 ```
 
-Archaeopteryx.js reports problems by **throwing**, so wrap the call (or use the
-promise's `.catch`, as above) if you want to show the message yourself. See
-[For Developers](#for-developers) below for what goes into `config`.
+Archaeopteryx.js reports problems by **throwing** — a failed download, an
+unparsable tree, a container that does not resolve, and an unknown or removed
+config key all land in the `catch` above with a message naming the problem.
+See [For Developers](#for-developers) below for what goes into `config`.
+Working copies of every file referenced above are vendored in this
+repository's `docs/lib/` (they are what the [live demos](#live-demos) load),
+and `docs/demo.html` is a real, running version of this page — including
+using `viewer.destroy()` to switch trees in place.
 
 
 
