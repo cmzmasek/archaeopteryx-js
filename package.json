@@ -3,8 +3,18 @@
   "version": "2.3.2",
   "description": "Archaeopteryx.js is a software tool for the visualization and analysis of highly annotated phylogenetic trees.",
   "main": "archaeopteryx.js",
+  "types": "archaeopteryx.d.ts",
+  "exports": {
+    ".": {
+      "types": "./archaeopteryx.d.ts",
+      "default": "./archaeopteryx.js"
+    },
+    "./forester": "./forester.js",
+    "./package.json": "./package.json"
+  },
   "files": [
     "archaeopteryx.js",
+    "archaeopteryx.d.ts",
     "forester.js",
     "README.md",
     "LICENSE"

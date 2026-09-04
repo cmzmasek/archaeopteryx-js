@@ -337,21 +337,64 @@ the code, the code is right and this is a bug.
 ## The entry points
 
 ```js
-// parse and launch in one step (what most callers want)
-archaeopteryx.launchArchaeopteryx(id, location, data, config, null,
-                                  nhConfidenceValuesInBrackets,
-                                  nhConfidenceValuesAsInternalNames);
+// parse and launch in one step (what most callers want); fetch the file
+// content yourself -- the library does no networking
+const viewer = archaeopteryx.launchArchaeopteryx(container, fileName, data, config);
 
 // or parse yourself, then launch
-var tree = archaeopteryx.parseTree(location, data,
-                                   nhConfidenceValuesInBrackets,
-                                   nhConfidenceValuesAsInternalNames);
-archaeopteryx.launch(id, tree, config, null, null, nodeLabels);
+const tree = archaeopteryx.parseTree(fileName, data);
+const viewer = archaeopteryx.launch(container, tree, config);
+
+// later, e.g. when an SPA removes the view:
+viewer.destroy();
 ```
 
-`config` is one object and is optional — `archaeopteryx.launch('#phylogram1',
-tree)` works. The `null` after it is the deprecated second config object, kept
-so older call sites still run; see **Configuration** below.
+Both entry points take **exactly** the arguments shown — a call with the old
+trailing arguments (the separate settings bag, `nodeVisualizations`,
+`nodeLabels`, `specialVisualizations`, or the positional Newick parse
+options) **throws** with a message saying where each one went: everything now
+lives in the **one config object** (`nodeLabels`,
+`nhConfidenceValuesInBrackets`, `nhConfidenceValuesAsInternalNames` are
+config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
+tree)` works.
+
+`container` is a **CSS selector or the DOM element itself** (frameworks hand
+you elements). A container that cannot be resolved **throws** — it used to
+render nothing and say nothing. Both entry points return a **viewer handle**:
+
+```js
+viewer.getSelectedNodes(); // the node-menu selections (enableManualNodeSelection)
+viewer.destroy();          // unmount COMPLETELY: the container DOM, the node
+                           // menu / dialogs / alignment scroller, the window
+                           // resize listener and every page-level key/wheel
+                           // handler; a later launch() works normally
+```
+
+One viewer per page: the library keeps its display state in one place, so a
+second launch — into any container — replaces the first. Launching into the
+same container is the supported way to switch trees (the demo pages do
+exactly that).
+
+### Loading the library
+
+One file, loadable every way an embedder might want it:
+
+* **`<script>` tags** (the classic path): load `d3` (v7), `sax`, `phyloxml`,
+  `forester`, then `archaeopteryx`; use `window.archaeopteryx`.
+* **AMD** (Dojo, RequireJS): `require(['archaeopteryx'], ...)` — the module
+  reads its dependencies off the page's globals when first required (so load
+  the dependency scripts first), and also still sets `window.archaeopteryx`.
+* **CommonJS / bundlers / Node**: `const {archaeopteryx} =
+  require('archaeopteryx')` — with **TypeScript definitions** included
+  (`archaeopteryx.d.ts` types the whole config object and the handle). In
+  plain Node, with no d3 at all, every **parser** works
+  (`archaeopteryx.parseNexus(...)` etc.); only `launch()` needs a browser
+  and d3, and says so by name.
+
+Dependencies are checked when used, never at load time, and every failure
+names exactly what is missing (including "the loaded d3 is not usable as d3
+version 7"). The optional export libraries stay page-level globals in every
+loading style: `window.Canvg` (PNG), `window.jspdf` + svg2pdf.js (PDF).
 
 The parser is picked from the data and the `location`: content starting with
 `#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, JSON content
@@ -483,7 +526,7 @@ shorter than the dot itself stays clean.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-twenty-five keys below are the ones no tree can answer for you.
+twenty-eight keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -518,6 +561,9 @@ keep working; it logs a deprecation warning.
 | `enableDownloads` | `true` | Offer the download buttons. |
 | `pngExportScale` | `4` | PNG export resolution multiplier. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
+| `nhConfidenceValuesInBrackets` | `true` | Newick parsing: read `[90]`-style bracketed values as confidences. |
+| `nhConfidenceValuesAsInternalNames` | `false` | Newick parsing: read internal node names as confidence values. |
+| `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |
 | `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
