@@ -68,6 +68,7 @@ runTest("delete subtree             : ", testDeleteSubtree);
 runTest("Nexus parse                : ", testNexusParse);
 runTest("Nexus round trip           : ", testNexusRoundTrip);
 runTest("Auspice JSON               : ", testAuspiceJson);
+runTest("BEAST/NHX annotations      : ", testExtendedNewickAnnotations);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1329,4 +1330,65 @@ function testAuspiceJson() {
         threw = true;
     }
     return threw;
+}
+
+// BEAST-style [&key=value] and NHX [&&NHX:...] annotations, always parsed:
+// posterior/prob/bootstrap -> confidences, heights + HPD -> node dates,
+// FigTree !color -> branch color, everything else -> beast:* properties;
+// quoted values keep their commas, and a BEAST2 rate between the ':' and
+// the branch length must not break length parsing.
+function testExtendedNewickAnnotations() {
+    var phy = forester.parseNewHampshire(
+        '((a[&location="Hong Kong, China",rate=1.2E-3]:0.1,' +
+        'b[&&NHX:S=Homo sapiens:B=95:D=Y]:[&rate=0.002]0.2)' +
+        '[&posterior=0.99,height=1.2,height_95%_HPD={0.95,1.5}]:0.9,' +
+        'c[&prob=0.97,prob_stddev=0.01]:0.3,' +
+        'd[&!color=#ff8000]:0.4);');
+    var a = forester.findByNodeName(phy, "a")[0];
+    var b = forester.findByNodeName(phy, "b")[0];
+    var c = forester.findByNodeName(phy, "c")[0];
+    var d = forester.findByNodeName(phy, "d")[0];
+    var anc = a.parent;
+    function prop(n, ref) {
+        var hits = (n.properties || []).filter(function (p) {
+            return p.ref === ref;
+        });
+        return hits.length === 1 ? hits[0].value : null;
+    }
+    if (prop(a, "beast:location") !== "Hong Kong, China"
+        || prop(a, "beast:rate") !== "1.2E-3" || a.branch_length !== 0.1) {
+        return false;
+    }
+    if (!b.taxonomies || b.taxonomies[0].scientific_name !== "Homo sapiens"
+        || !b.confidences || b.confidences[0].type !== "bootstrap"
+        || b.confidences[0].value !== 95
+        || !b.events || b.events.duplications !== 1
+        || prop(b, "beast:rate") !== "0.002" || b.branch_length !== 0.2) {
+        return false;
+    }
+    if (!anc.confidences || anc.confidences[0].type !== "posterior"
+        || anc.confidences[0].value !== 0.99
+        || !anc.date || anc.date.value !== 1.2
+        || anc.date.minimum !== 0.95 || anc.date.maximum !== 1.5
+        || anc.branch_length !== 0.9) {
+        return false;
+    }
+    if (!c.confidences || c.confidences[0].type !== "posterior probability"
+        || c.confidences[0].value !== 0.97 || c.confidences[0].stddev !== 0.01) {
+        return false;
+    }
+    if (!d.color || d.color.red !== 255 || d.color.green !== 128 || d.color.blue !== 0) {
+        return false;
+    }
+    // an annotation-free tree with [95] bracket confidences is untouched
+    var plain = forester.parseNewHampshire("((a:1,b:2)[95]:3,c:4);");
+    var pa = forester.findByNodeName(plain, "a")[0];
+    if (pa.parent.confidences[0].value !== 95) {
+        return false;
+    }
+    // height_median beats height; height_range is the HPD fallback
+    var m = forester.parseNewHampshire(
+        "(x[&height=9,height_median=2.5,height_range={2,3}]:1,y:1);");
+    var xd = forester.findByNodeName(m, "x")[0].date;
+    return xd.value === 2.5 && xd.minimum === 2 && xd.maximum === 3;
 }

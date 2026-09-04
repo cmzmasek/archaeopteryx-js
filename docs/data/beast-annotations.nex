@@ -1,0 +1,4 @@
+#NEXUS
+BEGIN TREES;
+	TREE beast_demo = [&R] ((isolate_A[&height=0.0,rate=0.0031]:1.2,isolate_B[&height=0.0,rate=0.0028]:1.2)[&posterior=0.99,height=1.2,height_95%_HPD={0.95,1.5},rate=0.0030]:0.9,(isolate_C[&height=0.0,rate=0.0026]:0.8,(isolate_D[&height=0.0,rate=0.0035]:0.5,isolate_E[&height=0.0,rate=0.0033]:0.5)[&posterior=0.92,height=0.5,height_95%_HPD={0.35,0.7},rate=0.0034]:0.3)[&posterior=0.81,height=0.8,height_95%_HPD={0.6,1.1},rate=0.0029]:1.3)[&posterior=1.0,height=2.1,height_95%_HPD={1.8,2.5},rate=0.0030];
+END;

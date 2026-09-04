@@ -348,6 +348,18 @@ pick them up. Both metrics are retained, and
 `forester.hasTimeAndDivergence(phy)` are the plumbing for a future
 time↔divergence display toggle.
 
+**BEAST-style and NHX annotations** in Newick/Nexus input are always parsed
+(they used to be discarded): in a `[&key=value,...]` blob — as written by
+BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
+(+`prob_stddev`) and `bootstrap` become confidences, node `height`
+(median/mean) with its `95%_HPD` (or range) becomes the node date the age
+bars draw, FigTree's `!color` becomes the branch colour, and every other
+field (`rate`, traits, ...) becomes a `beast:<key>` node property for
+Color-by and search. Classic `[&&NHX:...]` tags map to their phyloXML
+equivalents (`S=` taxonomy, `T=` taxonomy id, `B=` support, `D=`
+duplication/speciation event, `GN=`/`AC=` sequence name/accession). Plain
+`[number]` brackets keep their old meaning (confidence values).
+
 Both entry points **throw** on bad input — an undefined or empty tree, an
 unparseable file, or a config key that no longer exists. Nothing is reported by
 a popup any more, and nothing fails silently.

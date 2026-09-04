@@ -1512,6 +1512,325 @@
      * @param confidenceValuesAsInternalNames - Set to true if confidence values are represented by internal names (default: false).
      * @returns {{}} - A phylogenetic tree object.
      */
+    // ---------------------------------------------------------------
+    // Extended Newick annotations: BEAST-style [&key=value,...] and
+    // NHX [&&NHX:tag=value:...]
+    // ---------------------------------------------------------------
+    //
+    // ALWAYS parsed (the desktop keeps this behind a
+    // setParseBeastStyleExtendedTags option; here the blobs were simply
+    // discarded before, so ingesting them can regress nothing). Ported from
+    // the desktop's BeastAnnotationParser + the NHXParser tag loop.
+
+    // Pre-tokenization pass: pull every [&...] annotation out of the Newick
+    // string and leave a [@N] marker in its place -- the blob's commas,
+    // colons and quotes must never reach the Newick tokenizer. A bracket NOT
+    // starting with '&' (a [95] confidence) is left untouched, as is any
+    // bracket inside a quoted label. Quotes and nested brackets inside an
+    // annotation are honoured when finding its end.
+    function extractBracketAnnotations(str) {
+        if (str.indexOf('[') < 0) {
+            return {text: str, blobs: []};
+        }
+        let out = '';
+        let blobs = [];
+        let inSq = false;
+        let inDq = false;
+        for (let i = 0; i < str.length; ++i) {
+            let c = str.charAt(i);
+            if (inSq || inDq) {
+                out += c;
+                if ((inSq && c === "'") || (inDq && c === '"')) {
+                    inSq = false;
+                    inDq = false;
+                }
+            } else if (c === "'") {
+                inSq = true;
+                out += c;
+            } else if (c === '"') {
+                inDq = true;
+                out += c;
+            } else if (c === '[') {
+                let j = i + 1;
+                let depth = 1;
+                let q = null;
+                while (j < str.length && depth > 0) {
+                    let cj = str.charAt(j);
+                    if (q) {
+                        if (cj === q) {
+                            q = null;
+                        }
+                    } else if (cj === "'" || cj === '"') {
+                        q = cj;
+                    } else if (cj === '[') {
+                        ++depth;
+                    } else if (cj === ']') {
+                        --depth;
+                    }
+                    if (depth > 0) {
+                        ++j;
+                    }
+                }
+                let content = str.substring(i + 1, j);
+                if (/^\s*&/.test(content)) {
+                    out += '[@' + blobs.length + ']';
+                    blobs.push(content.trim());
+                } else {
+                    out += str.substring(i, Math.min(j + 1, str.length));
+                }
+                i = j;
+            } else {
+                out += c;
+            }
+        }
+        return {text: out, blobs: blobs};
+    }
+
+    function pushConfidence(node, value, type, stddev) {
+        if (!node.confidences) {
+            node.confidences = [];
+        }
+        let c = {type: type, value: value};
+        if (stddev !== undefined && stddev !== null) {
+            c.stddev = stddev;
+        }
+        node.confidences.push(c);
+    }
+
+    function nodeTaxonomy0(node) {
+        if (!node.taxonomies) {
+            node.taxonomies = [{}];
+        }
+        return node.taxonomies[0];
+    }
+
+    function nodeSequence0(node) {
+        if (!node.sequences) {
+            node.sequences = [{}];
+        }
+        return node.sequences[0];
+    }
+
+    // Split on TOP-LEVEL commas only: a comma inside {...}/[...] sets or
+    // inside quotes is data, not a separator (height_95%_HPD={1.4,1.5} must
+    // stay one token).
+    function splitTopLevelCommas(s) {
+        let out = [];
+        let depth = 0;
+        let q = null;
+        let cur = '';
+        for (let i = 0; i < s.length; ++i) {
+            let c = s.charAt(i);
+            if (q) {
+                if (c === q) {
+                    q = null;
+                }
+                cur += c;
+            } else if (c === "'" || c === '"') {
+                q = c;
+                cur += c;
+            } else if (c === '{' || c === '[') {
+                ++depth;
+                cur += c;
+            } else if (c === '}' || c === ']') {
+                if (depth > 0) {
+                    --depth;
+                }
+                cur += c;
+            } else if (c === ',' && depth === 0) {
+                out.push(cur);
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        if (cur.length > 0) {
+            out.push(cur);
+        }
+        return out;
+    }
+
+    function parseBeastNumber(v) {
+        let d = parseFloat(v);
+        return (isFinite(d) && isFinite(Number(v))) ? d : null;
+    }
+
+    // A two-value BEAST set {lo,hi} (or [lo,hi]) as [lo,hi] numbers, or null.
+    function parseBeastInterval(v) {
+        let s = v.trim();
+        if (s.length < 3 || (s.charAt(0) !== '{' && s.charAt(0) !== '[')) {
+            return null;
+        }
+        let parts = splitTopLevelCommas(s.substring(1, s.length - 1));
+        if (parts.length !== 2) {
+            return null;
+        }
+        let lo = parseBeastNumber(parts[0].trim());
+        let hi = parseBeastNumber(parts[1].trim());
+        return (lo !== null && hi !== null) ? [lo, hi] : null;
+    }
+
+    function stripValueQuotes(v) {
+        if (v.length >= 2
+            && ((v.charAt(0) === '"' && v.charAt(v.length - 1) === '"')
+                || (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'"))) {
+            return v.substring(1, v.length - 1);
+        }
+        return v;
+    }
+
+    // A property-ref-safe rendering of a BEAST key: keep letters/digits,
+    // collapse every other run to one underscore, drop a trailing one
+    // (rate_95%_HPD -> a clean beast:rate_95_HPD ref).
+    function beastRefKey(key) {
+        return key.replace(/[^A-Za-z0-9]+/g, '_').replace(/_$/, '');
+    }
+
+    // A BEAST / BEAST X / TreeAnnotator / FigTree / MrBayes [&...] blob onto
+    // one node, each field mapped to the phyloXML structure the existing
+    // display features consume:
+    //  - posterior -> a confidence of type "posterior"; MrBayes prob (+
+    //    prob_stddev) -> "posterior probability"; bootstrap -> "bootstrap";
+    //  - node age height/height_mean/height_median + height_95%_HPD (or
+    //    height_range) + date -> node.date value/min/max/desc (the node-age
+    //    HPD bars draw the interval);
+    //  - FigTree !color=#rrggbb -> the branch color;
+    //  - every other field (rate, length_*, traits, location, ...) -> a
+    //    beast:<key> node property (numeric -> xsd:decimal, so Color-by
+    //    picks it up).
+    // The branch length lives on the Newick ":length" and is left untouched.
+    // A malformed field is skipped, never aborting the parse.
+    function applyBeastAnnotations(node, blob) {
+        let heightMedian = null;
+        let heightMean = null;
+        let height = null;
+        let hpd = null;
+        let range = null;
+        let dateDesc = null;
+        let prob = null;
+        let probSd = null;
+        splitTopLevelCommas(blob).forEach(function (token) {
+            let eq = token.indexOf('=');
+            if (eq <= 0) {
+                return;
+            }
+            let key = token.substring(0, eq).trim();
+            let value = stripValueQuotes(token.substring(eq + 1).trim());
+            if (key.length === 0 || value.length === 0) {
+                return;
+            }
+            let kl = key.toLowerCase();
+            if (kl === 'posterior') {
+                let d = parseBeastNumber(value);
+                if (d !== null) {
+                    pushConfidence(node, d, 'posterior');
+                }
+            } else if (kl === 'prob') {
+                prob = parseBeastNumber(value);
+            } else if (kl === 'prob_stddev') {
+                probSd = parseBeastNumber(value);
+            } else if (kl === 'bootstrap') {
+                let b = parseBeastNumber(value);
+                if (b !== null) {
+                    pushConfidence(node, b, 'bootstrap');
+                }
+            } else if ((kl === '!color' || kl === '!colour')
+                && /^#[0-9a-f]{6}$/i.test(value)) {
+                node.color = {
+                    red: parseInt(value.substring(1, 3), 16),
+                    green: parseInt(value.substring(3, 5), 16),
+                    blue: parseInt(value.substring(5, 7), 16)
+                };
+            } else if (kl === 'height_median') {
+                heightMedian = value;
+            } else if (kl === 'height_mean') {
+                heightMean = value;
+            } else if (kl === 'height') {
+                height = value;
+            } else if (kl === 'height_95%_hpd') {
+                hpd = parseBeastInterval(value);
+            } else if (kl === 'height_range') {
+                range = parseBeastInterval(value);
+            } else if (kl === 'date') {
+                dateDesc = value;
+            } else {
+                addNodeProperty(node, 'beast:' + beastRefKey(key), value);
+            }
+        });
+        if (prob !== null) {
+            pushConfidence(node, prob, 'posterior probability', probSd);
+        }
+        // age preference: median, then mean, then height -- and each piece
+        // parsed independently, so an unparseable point value never discards
+        // a valid {lo,hi} interval
+        let v = heightMedian !== null ? heightMedian
+            : (heightMean !== null ? heightMean : height);
+        let dv = (v !== null) ? parseBeastNumber(v) : null;
+        let interval = hpd || range;
+        if (dv === null && !interval && dateDesc === null) {
+            return;
+        }
+        let date = {};
+        if (dv !== null) {
+            date.value = dv;
+        }
+        if (interval) {
+            date.minimum = interval[0];
+            date.maximum = interval[1];
+        }
+        if (dateDesc !== null) {
+            date.desc = dateDesc;
+        }
+        node.date = date;
+    }
+
+    // The classic NHX tag set, as the desktop maps it: S= taxonomy
+    // scientific name, T= taxonomy id, B= support confidence, D= a
+    // duplication (Y/T) / speciation (N/F) / undecided (?) event, GN=
+    // sequence name, AC= sequence accession, C= an nh:comment property.
+    // Unknown tags (and DS= domain structures) are ignored.
+    function applyNhxTags(node, content) {
+        content.split(':').forEach(function (tag) {
+            let t = tag.trim();
+            if (t.length < 3) {
+                return;
+            }
+            if (t.startsWith('S=')) {
+                nodeTaxonomy0(node).scientific_name = t.substring(2);
+            } else if (t.startsWith('T=')) {
+                nodeTaxonomy0(node).id = {value: t.substring(2)};
+            } else if (t.startsWith('B=')) {
+                let b = parseBeastNumber(t.substring(2));
+                if (b !== null) {
+                    pushConfidence(node, b, 'bootstrap');
+                }
+            } else if (t.startsWith('D=')) {
+                let c = t.charAt(2);
+                if (c === 'Y' || c === 'T') {
+                    node.events = {duplications: 1};
+                } else if (c === 'N' || c === 'F') {
+                    node.events = {speciations: 1};
+                } else if (c === '?') {
+                    node.events = {type: 'speciation_or_duplication'};
+                }
+            } else if (t.startsWith('GN=')) {
+                nodeSequence0(node).name = t.substring(3);
+            } else if (t.startsWith('AC=')) {
+                nodeSequence0(node).accession = {value: t.substring(3), source: '?'};
+            } else if (t.startsWith('C=')) {
+                addNodeProperty(node, 'nh:comment', t.substring(2));
+            }
+        });
+    }
+
+    function applyExtendedAnnotations(node, blob) {
+        if (/^&&NHX:/i.test(blob)) {
+            applyNhxTags(node, blob.substring(6));
+        } else {
+            applyBeastAnnotations(node, blob.replace(/^&/, ''));
+        }
+    }
+
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
 
         let NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
@@ -1530,7 +1849,12 @@
         let ancs = [];
         let x = {};
 
-        let sss = nhStr.replace(/\[\s*&.+?\]/g, '');
+        // [&...] annotation blobs (BEAST-style key=value, NHX) are pulled
+        // out BEFORE tokenizing -- their commas/colons/quotes are data --
+        // and re-attached to their node via the [@N] markers below
+        let extracted = extractBracketAnnotations(nhStr);
+        let sss = extracted.text;
+        let annotations = extracted.blobs;
 
         let ss = sss.split(/(;|\(|\)|,|:|"|')/);
         let ssl = ss.length;
@@ -1592,6 +1916,18 @@
                         let e = ss[i - 1];
                         if (e) {
                             e = e.trim();
+                            // re-attach any annotation blobs riding on this
+                            // element (name, branch length, or standalone) to
+                            // the current node, and drop the markers
+                            if (annotations.length > 0 && element.indexOf('[@') > -1) {
+                                element = element.replace(/\[@(\d+)\]/g, function (m, k) {
+                                    let blob = annotations[+k];
+                                    if (blob !== undefined) {
+                                        applyExtendedAnnotations(x, blob);
+                                    }
+                                    return '';
+                                });
+                            }
                             if ((e === ')') || (e === '(') || (e === ',')) {
                                 if (element && element.length > 0) {
                                     if (element.charAt(element.length - 1) === "]") {
@@ -1996,8 +2332,9 @@
                         rootedInfoPresent = true;
                         isRooted = rm[1].toUpperCase() === 'R';
                     }
-                    // parseNewHampshire strips the remaining [&...] hot
-                    // comments (BEAST-style annotations, [&R]/[&U]) itself
+                    // parseNewHampshire handles the remaining [&...] hot
+                    // comments itself: BEAST-style annotations are parsed
+                    // onto the nodes, a leading [&R]/[&U] is dropped
                     nh = line.substring(line.indexOf('=') + 1).trim();
                     if (lc.endsWith(';')) {
                         inTree = false;
