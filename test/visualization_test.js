@@ -1332,7 +1332,7 @@ function testAuditMsaGuards() {
     var neg = forester.msaUngappedPosition('MK-TA', -1) === null;
     var frozen = true;
     var rgb = forester.msaResidueRgb('L', false);
-    try { rgb[0] = 0; } catch (e) { /* frozen throws in strict mode */ }
+    try { rgb[0] = 0; } catch { /* frozen throws in strict mode */ }
     frozen = forester.msaResidueRgb('V', false)[0] === 240;
     return ink && neg && frozen;
 }
