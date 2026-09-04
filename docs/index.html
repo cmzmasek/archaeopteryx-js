@@ -97,7 +97,10 @@
         {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'},
         {key: 'dinosaur', label: 'Dinosaur time tree', desc: 'A time-calibrated archosaur tree with the coloured ICS geologic axis (Period over Epoch) beneath the phylogram.'},
         {key: 'ammonite', label: 'Ammonite time tree (fossil ranges)', desc: 'Every genus extinct: the geologic axis stops at the K-Pg (66 Ma), and tips carry sepia fossil-range bars.'},
-        {key: 'sarscov2', label: 'SARS-CoV-2 time tree (calendar)', desc: 'A tip-dated phylodynamic tree on a calendar-year axis, with HPD age bars on dated internal nodes.'}
+        {key: 'sarscov2', label: 'SARS-CoV-2 time tree (calendar)', desc: 'A tip-dated phylodynamic tree on a calendar-year axis, with HPD age bars on dated internal nodes.'},
+        {key: 'auspice', label: 'Auspice / Nextstrain JSON', desc: 'A Nextstrain v2 dataset.json, read directly: opens on the time view with node-age bars, and Region, Country, Host and Clade become Color-by properties.'},
+        {key: 'beast', label: 'BEAST annotations (Nexus)', desc: 'A TreeAnnotator-style tree: posterior support, node heights with 95% HPD intervals, and per-branch rates, read from the [&...] annotations.'},
+        {key: 'swh1', label: 'Swine H1 HA1 + alignment (Nexus)', desc: 'One Nexus file carrying both: 50 swine influenza H1 strains across all 12 HA clades, and their 331-column HA1 protein alignment.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {
