@@ -294,6 +294,8 @@ if (!phyloXml) {
     const RETURN_TO_SUPERTREE_BUTTON_BY_ONE = 'ret1_b';
     const SEARCH_FIELD_0 = 'sf0';
     const SEARCH_FIELD_1 = 'sf1';
+    const SEARCH_B_WRAP = 'search_b_wrap';
+    const SEARCH_B_TOGGLE = 'search_b_tgl';
     const SEARCH_NAV_ROW = 'searchnavrow';
     const SEARCH_NAV_PREV = 'searchnavprev';
     const SEARCH_NAV_NEXT = 'searchnavnext';
@@ -4958,6 +4960,23 @@ if (!phyloXml) {
         update(null, 0);
     }
 
+    // Search B starts hidden to keep the panel compact; one click (or a
+    // configured initial value) reveals it, and it stays revealed.
+    function revealSearchB() {
+        let wrap = byId(SEARCH_B_WRAP);
+        if (wrap) {
+            wrap.style.display = '';
+        }
+        let tgl = byId(SEARCH_B_TOGGLE);
+        if (tgl) {
+            tgl.style.display = 'none';
+        }
+        let f = byId(SEARCH_FIELD_1);
+        if (f) {
+            f.focus();
+        }
+    }
+
     // ===================== Time axis =====================
     // The desktop's time overlays, drawn beneath a rectangular PHYLOGRAM of
     // a dated tree: the two-band ICS geologic axis with a "Ma before
@@ -5399,6 +5418,7 @@ if (!phyloXml) {
         }
         if (_state.searchBinitialValue) {
             setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
+            revealSearchB();
 
         } else {
             setValue(SEARCH_FIELD_1, '');
@@ -6538,22 +6558,22 @@ if (!phyloXml) {
             + '.aptx-panel .' + TREE_DESC + ' { min-width:0; }'
             + '.aptx-panel .' + TREE_DESC + '.aptx-clampable { cursor:pointer; }'
             + '.aptx-panel .' + TREE_DESC + '.aptx-clampable:focus-visible { outline:2px solid var(--p-accent); outline-offset:2px; border-radius:3px; }'
-            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-name { font-weight:600; font-size:11.5px; line-height:1.35; color:var(--p-ink); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }'
-            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-descr { margin-top:3px; font-size:10px; line-height:1.45; color:var(--p-muted); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }'
+            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-name { font-weight:600; font-size:11.5px; line-height:1.35; color:var(--p-ink); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; }'
+            + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-descr { margin-top:3px; font-size:10px; line-height:1.45; color:var(--p-muted); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }'
             + '.aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-name, .aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-descr { display:block; -webkit-line-clamp:unset; overflow:visible; }'
             + '.aptx-panel .aptx-panel-title { font-size:12px; }'
-            + '.aptx-panel fieldset { border:0; border-top:1px solid var(--p-line); margin:0; padding:9px 12px; min-width:0; }'
-            + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 7px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
+            + '.aptx-panel fieldset { border:0; border-top:1px solid var(--p-line); margin:0; padding:6px 12px; min-width:0; }'
+            + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 5px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel label { cursor:pointer; }'
             + '.aptx-panel input[type=checkbox],.aptx-panel input[type=radio] { accent-color:var(--p-accent); width:13px; height:13px; vertical-align:-2px; margin:0 4px 0 0; }'
             // checkbox/radio + label as one item (used by the Display Data grid and the inline P/A/C and search-option rows)
             + '.aptx-panel .aptx-check { display:flex; align-items:center; gap:6px; cursor:pointer; min-width:0; }'
             + '.aptx-panel .aptx-check > input { margin:0; flex:none; }'
             + '.aptx-panel .aptx-check > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
-            + '.aptx-panel .aptx-checkgrid { display:grid; grid-template-columns:1fr 1fr; gap:5px 10px; }'
+            + '.aptx-panel .aptx-checkgrid { display:grid; grid-template-columns:1fr 1fr; gap:3px 10px; }'
             + '.aptx-panel .aptx-checkgrid .aptx-check { font-size:9px; }'
             + '.aptx-panel .aptx-checkgrid .aptx-check-wide { grid-column:1 / -1; }'
-            + '.aptx-panel .aptx-subhead { margin:9px 0 4px; font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--p-faint); }'
+            + '.aptx-panel .aptx-subhead { margin:6px 0 3px; font-size:9px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel .aptx-fieldset-body > .aptx-subhead:first-child { margin-top:0; }'
             + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }'
             + '.aptx-panel .' + SEARCH_OPTIONS_GROUP + ' { margin-top:9px; }'
@@ -6561,8 +6581,8 @@ if (!phyloXml) {
             + '.aptx-panel .aptx-search-row { display:flex; align-items:center; gap:6px; margin-bottom:2px; }'
             + '.aptx-panel .aptx-search-row input[type=text] { flex:1 1 auto; min-width:0; height:26px; }'
             + '.aptx-panel .aptx-search-row input[type=button] { flex:none; height:26px; width:26px; padding:0; margin:0; }'
-            + '.aptx-panel .aptx-search-menus { display:flex; flex-direction:column; gap:4px; margin:2px 0 3px; }'
-            + '.aptx-panel .aptx-search-menus select { width:100%; min-width:0; height:26px; font:inherit; }'
+            + '.aptx-panel .aptx-search-menus { display:flex; gap:4px; margin:2px 0 3px; }'
+            + '.aptx-panel .aptx-search-menus select { flex:1 1 0; width:auto; min-width:0; height:24px; font:inherit; }'
             // red cue for an unmatchable query (bad regex / non-number); box-shadow, since the value boxes carry an inline outline:none
             + '.aptx-panel .aptx-search-invalid { box-shadow:0 0 0 2px #e5484d; border-color:#e5484d; }'
             + '.aptx-panel .aptx-combine { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }'
@@ -6596,6 +6616,12 @@ if (!phyloXml) {
             + '.aptx-msa-scroll { position:fixed; bottom:10px; left:55%; transform:translateX(-50%); width:260px; display:none; z-index:20; }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { opacity:0.4; }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { cursor:default; }'
+            + '.aptx-panel .aptx-slider-row { display:flex; align-items:center; gap:7px; margin:3px 0; }'
+            + '.aptx-panel .aptx-slider-row label { flex:0 0 42px; font-size:10px; color:var(--p-muted); }'
+            + '.aptx-panel .aptx-slider-row input[type=range] { flex:1 1 auto; min-width:0; margin:0; }'
+            + '.aptx-panel .aptx-linkbtn { background:none; border:0; padding:1px 0 2px; margin:0; font:inherit; font-size:10px; color:var(--p-accent); cursor:pointer; display:block; }'
+            + '.aptx-panel .aptx-linkbtn:hover { text-decoration:underline; }'
+            + '.aptx-panel .aptx-toolrow { margin-top:5px; }'
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
             + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
             + '.aptx-panel .aptx-searchnav .aptx-gbtn:last-child { margin-right:0; }'
@@ -7122,7 +7148,6 @@ if (!phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
 
-            c0.insertAdjacentHTML('beforeend',makeControlButtons());
 
             c0.insertAdjacentHTML('beforeend',makeSliders());
 
@@ -7199,6 +7224,7 @@ if (!phyloXml) {
         on(SEQUENCE_CB, 'click', sequenceCbClicked);
 
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
+        on(SEARCH_B_TOGGLE, 'click', revealSearchB);
         on(SEARCH_NAV_PREV, 'click', function () {
             stepToFoundNode(-1);
         });
@@ -7719,15 +7745,9 @@ if (!phyloXml) {
             h = h.concat('</div>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (or Shift+mousewheel)'));
             h = h.concat('</div>');
-            h = h.concat('</fieldset>');
-            return h;
-        }
-
-        function makeControlButtons() {
-            let h = "";
-            h = h.concat('<fieldset>');
-            h = h.concat('<legend>Tools</legend>');
-            h = h.concat('<div>');
+            // the tool buttons share the Zoom section rather than paying for
+            // a fieldset of their own
+            h = h.concat('<div class="aptx-toolrow">');
             h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all'));
             h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree)'));
             h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree)'));
@@ -7772,9 +7792,9 @@ if (!phyloXml) {
             let h = "";
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Sizes</legend>');
-            h = h.concat(makeSlider('Font size:', FONT_SIZE_SLIDER));
-            h = h.concat(makeSlider('Node size:', NODE_SIZE_SLIDER));
-            h = h.concat(makeSlider('Branch width:', BRANCH_WIDTH_SLIDER));
+            h = h.concat(makeSlider('Font', FONT_SIZE_SLIDER, 'font size, for all labels'));
+            h = h.concat(makeSlider('Node', NODE_SIZE_SLIDER, 'node shape size'));
+            h = h.concat(makeSlider('Branch', BRANCH_WIDTH_SLIDER, 'branch line width'));
             h = h.concat('</fieldset>');
             return h;
         }
@@ -7787,7 +7807,14 @@ if (!phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
             h = h.concat(makeSearchBox('Search A', 0));
+            // Search B starts hidden, one click away: the second box (and the
+            // Combine control it brings) is rarely needed, and the panel is
+            // long enough without it
+            h = h.concat('<button type="button" class="aptx-linkbtn" id="' + SEARCH_B_TOGGLE
+                + '" title="add a second search box, combinable with the first">+ Search B</button>');
+            h = h.concat('<div id="' + SEARCH_B_WRAP + '" style="display:none">');
             h = h.concat(makeSearchBox('Search B', 1));
+            h = h.concat('</div>');
             h = h.concat('<div class="aptx-searchnav" id="' + SEARCH_NAV_ROW + '" style="display:none">');
             h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_PREV
                 + '" title="center the previous search hit">&#9664;</button>');
@@ -7912,10 +7939,11 @@ if (!phyloXml) {
             return '<label for="' + id + '" title="' + tooltip + '">' + label + '</label>' + sep + '<select name="' + id + '" id="' + id + '"></select>';
         }
 
-        function makeSlider(label, id) {
+        function makeSlider(label, id, tooltip) {
             let input = '<input type="range" class="' + SLIDER_CLASS + '" name="' + id + '" id="' + id + '">';
             if (label) {
-                return label + input;
+                return '<div class="aptx-slider-row"><label for="' + id + '"'
+                    + (tooltip ? ' title="' + tooltip + '"' : '') + '>' + label + '</label>' + input + '</div>';
             }
             return input;
         }
@@ -7996,6 +8024,7 @@ if (!phyloXml) {
         }
         if (_state.searchBinitialValue) {
             setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
+            revealSearchB();
         }
     }
 
