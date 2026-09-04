@@ -1385,6 +1385,50 @@ function testAuditUnderscoreFold() {
         && c.counts['Alpha'] === 2 && c.counts['Beta'] === 2;
 }
 
+
+// The old caller-supplied nodeVisualizations dictionaries -- with their
+// per-visualization regex matching -- are gone FOR GOOD: the tree itself is
+// the only source of visualizations. This test pins every route a caller
+// could try to hand one back in (the launch argument, the config key, the
+// related removed keys), so the mechanism cannot be resurrected by accident
+// without a test failing. launch() validates its arguments before touching
+// d3 or the DOM, which is what makes these rejections testable here in Node
+// (with stub globals standing in for the browser).
+function testNodeVisualizationsStayRemoved() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = {children: [{}]};
+    var oldStyleDict = {
+        Country: {label: 'Country', regex: /vipr:Country=(.+)$/, shapes: ['square'], colors: 'category50'}
+    };
+    function thrown(fn) {
+        try { fn(); return null; } catch (e) { return e.message || String(e); }
+    }
+    var m1 = thrown(function () { aptx.launch('#x', tree, {}, null, oldStyleDict); });
+    if (!m1 || m1.indexOf('nodeVisualizations') < 0 || m1.indexOf('removed') < 0) {
+        console.log('    launch-arg rejection missing: ' + m1);
+        return false;
+    }
+    var m2 = thrown(function () { aptx.launch('#x', tree, {nodeVisualizations: oldStyleDict}); });
+    if (!m2 || m2.indexOf('nodeVisualizations') < 0 || m2.indexOf('removed') < 0) {
+        console.log('    config-key rejection missing: ' + m2);
+        return false;
+    }
+    var m3 = thrown(function () { aptx.launch('#x', tree, {}, null, null, null, {x: 1}); });
+    if (!m3 || m3.indexOf('specialVisualizations') < 0 || m3.indexOf('removed') < 0) {
+        console.log('    specialVisualizations rejection missing: ' + m3);
+        return false;
+    }
+    var m4 = thrown(function () { aptx.launch('#x', tree, {dynamicallyAddNodeVisualizations: true}); });
+    if (!m4 || m4.indexOf('dynamicallyAddNodeVisualizations') < 0) {
+        console.log('    dynamicallyAddNodeVisualizations rejection missing: ' + m4);
+        return false;
+    }
+    return true;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -1394,6 +1438,7 @@ runTest("audit: residue info parity : ", testAuditResidueInfoParity);
 runTest("audit: conservation detail : ", testAuditConservationDetails);
 runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
+runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

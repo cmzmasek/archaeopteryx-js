@@ -557,7 +557,7 @@ constants:
 
 ### Removed — passing these throws
 
-All 116 of them, alphabetically:
+All 118 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
@@ -621,6 +621,7 @@ All 116 of them, alphabetically:
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `nodeLabelGap` | The label gap is fixed. |
 | `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |
+| `nodeVisualizations` | The visualization-dictionary mechanism (with its per-visualization regex matching) was removed for good; visualizations are derived automatically from the tree itself. Throws as a config key AND as `launch()`'s old fifth argument. |
 | `nodeVisualizationsOpacity` | No longer configurable. |
 | `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
 | `phylogram` | The tree is drawn to scale when most of its branches have a length. |
@@ -669,6 +670,7 @@ All 116 of them, alphabetically:
 | `showTaxonomyScientificName` | Taxonomy labelling follows what the tree contains. |
 | `showTaxonomySynonyms` | Taxonomy labelling follows what the tree contains. |
 | `showVisualizations` | Off by default; use the Visualizations checkbox. |
+| `specialVisualizations` | Removed along with the enableSpecialVisualizations2/3/4 settings. Throws as a config key AND as `launch()`'s old seventh argument. |
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `treeName` | The name comes from the tree file. |
 | `unrootedDisplay` | Replaced by `layout`; use `layout: 'unrooted'`. |

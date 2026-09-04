@@ -3320,6 +3320,11 @@ if (!phyloXml) {
         controlsBackgroundColor: 'the control panel follows the light / dark palette',
         filterValues: 'reshape the tree\'s properties yourself before calling launch',
         dynamicallyAddNodeVisualizations: 'visualizations are always derived automatically from the tree now',
+        // the whole caller-supplied visualization-dictionary mechanism (with
+        // its per-visualization regex matching) is gone -- deliberately, and
+        // it stays gone: the tree itself is the only source of visualizations
+        nodeVisualizations: 'the visualization-dictionary mechanism was removed; visualizations are derived automatically from the tree itself',
+        specialVisualizations: 'removed along with the enableSpecialVisualizations2/3/4 settings',
         useVisualStyles: 'on by default; use the Visual Styles checkbox'
     };
 
@@ -3820,12 +3825,27 @@ if (!phyloXml) {
         // Bad input is the caller's bug, so it is thrown at the caller. It used
         // to pop a browser alert and return, which blocks the whole tab and
         // leaves an empty div behind with nothing to catch.
+        //
+        // ALL argument validation happens up here, before anything else: a
+        // rejected launch must not leave half-mutated module state behind
+        // (and the rejections stay testable in Node, where d3/the DOM do not
+        // exist -- test/visualization_test.js pins the two removed arguments
+        // below so they can never quietly come back).
         if (phylo === undefined || phylo === null) {
             throw new Error(ERROR + 'input tree is undefined or null');
         }
         if ((!phylo.children) || (phylo.children.length < 1)) {
             throw new Error(ERROR + 'input tree is empty or illegally formatted');
         }
+        if (nodeVisualizations) {
+            throw new Error(ERROR + 'the "nodeVisualizations" argument was removed:'
+                + ' visualizations are determined automatically from the tree itself');
+        }
+        if (specialVisualizations) {
+            throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
+                + ' along with the enableSpecialVisualizations2/3/4 settings');
+        }
+        let cfg = readConfig(config, legacySettings);
 
         _treeData = phylo;
         _id = id;
@@ -3841,23 +3861,13 @@ if (!phyloXml) {
             .on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
-        let cfg = readConfig(config, legacySettings);
-
         // Every launch starts from a clean slate: _vis is rebuilt below and
         // _nodeLabels reassigned, never inherited from a previous launch in
         // the same page.
-        if (nodeVisualizations) {
-            throw new Error(ERROR + 'the "nodeVisualizations" argument was removed:'
-                + ' visualizations are determined automatically from the tree itself');
-        }
         _nodeLabels = nodeLabels ? nodeLabels : null;
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
-        if (specialVisualizations) {
-            throw new Error(ERROR + 'the "specialVisualizations" argument was removed'
-                + ' along with the enableSpecialVisualizations2/3/4 settings');
-        }
         _vis = null;
 
 
