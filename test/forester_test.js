@@ -1190,6 +1190,12 @@ function testNexusParse() {
 function testNexusRoundTrip() {
     var phy = forester.parseNexus(makeTestNexus())[0];
     var nex = forester.toNexus(phy);
+    // the #NEXUS header must be the FIRST line: jebl happens to tolerate
+    // its absence, but the standard mandates it and PAUP/MrBayes refuse
+    // a file without it
+    if (nex.indexOf("#NEXUS\n") !== 0) {
+        return false;
+    }
     // NChar only -- an NTax here makes strict readers (jebl, and so
     // AliView) reject the whole file
     if (nex.indexOf(" Dimensions NChar=20;") < 0 || /Characters;\n[^\n]*NTax/.test(nex)) {
