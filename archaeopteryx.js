@@ -54,10 +54,7 @@
 //   DOM elements, so jQuery UI (and its CSS) is no longer required.
 //
 //
-// Developer documentation:
-// https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A
-//
-// User documentation:
+// Documentation and live demos:
 // https://cmzmasek.github.io/archaeopteryx-js/
 
 // UMD: one file that loads everywhere an embedder might put it --

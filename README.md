@@ -39,7 +39,8 @@ they run entirely in your browser:
 
 
 ### Detailed developer documentation
-https://docs.google.com/document/d/1COVe0iYbKtcBQxGTP4_zuimpk2FH9iusOVOgd5xCJ3A/edit
+To be written. For now, the [For Developers](#for-developers) section below
+covers the entry points, configuration, and the visualization system.
 
 ### Dependencies
 Archaeopteryx.js has the following dependencies:
