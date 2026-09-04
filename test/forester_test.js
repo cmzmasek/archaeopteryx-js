@@ -69,6 +69,11 @@ runTest("Nexus parse                : ", testNexusParse);
 runTest("Nexus round trip           : ", testNexusRoundTrip);
 runTest("Auspice JSON               : ", testAuspiceJson);
 runTest("BEAST/NHX annotations      : ", testExtendedNewickAnnotations);
+runTest("Nexus dialect variants     : ", testNexusParserVariants);
+runTest("Nexus BEAST MCC file       : ", testNexusBeastMcc);
+runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
+runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
+runTest("Auspice edge cases         : ", testAuspiceMore);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1332,7 +1337,7 @@ function testAuspiceJson() {
     var threw = false;
     try {
         forester.parseAuspiceJson('{"version":"v1"}');
-    } catch (e) {
+    } catch {
         threw = true;
     }
     return threw;
@@ -1397,4 +1402,242 @@ function testExtendedNewickAnnotations() {
         "(x[&height=9,height_median=2.5,height_range={2,3}]:1,y:1);");
     var xd = forester.findByNodeName(m, "x")[0].date;
     return xd.value === 2.5 && xd.minimum === 2 && xd.maximum === 3;
+}
+
+// Nexus dialect variants the parser must keep accepting: a DATA block (not
+// CHARACTERS) with a sequential dna matrix, a CHARLABELS sub-command whose
+// ';' must NOT end the block, numeric tips mapped through TAXLABELS (no
+// translate table), a tree statement spanning lines, UTREE, ENDBLOCK, a
+// block TITLE combined with the tree name, an rna matrix, and a second
+// data block replacing (not contaminating) the first.
+function testNexusParserVariants() {
+    var trees = forester.parseNexus([
+        "#NEXUS",
+        "Begin Taxa;",
+        " TaxLabels Alpha Beta Gamma;",
+        "Endblock;",
+        "Begin Data;",
+        " Dimensions NTax=3 NChar=6;",
+        " CharLabels one two three four five six;",
+        " Format DataType=dna Gap=- Missing=?;",
+        " Matrix",
+        "  Alpha ACG-TA",
+        "  Beta  ACGCTA",
+        "  Gamma A?GCTA",
+        " ;",
+        "End;",
+        "Begin Trees;",
+        " Title My_Trees;",
+        " Tree t1=(1:1,(2:1,",
+        " 3:1):1);",
+        " UTree t2=(Alpha:1,Beta:2);",
+        "End;"
+    ].join("\n"));
+    if (trees.length !== 2) {
+        return false;
+    }
+    var phy = trees[0];
+    // numeric tips 1/2/3 resolved through TAXLABELS; block title + tree name
+    if (phy.name !== "My Trees (t1)") {
+        return false;
+    }
+    var alpha = forester.findByNodeName(phy, "Alpha")[0];
+    var gamma = forester.findByNodeName(phy, "Gamma")[0];
+    if (!alpha || !gamma
+        || alpha.sequences[0].mol_seq.value !== "ACG-TA"
+        || alpha.sequences[0].type !== "dna"
+        || gamma.sequences[0].mol_seq.value !== "A?GCTA") {
+        return false;
+    }
+    if (trees[1].name !== "My Trees (t2)") {
+        return false;
+    }
+    // an rna DATA block; and with TWO data blocks, the second replaces the
+    // first instead of cross-contaminating it
+    var t2 = forester.parseNexus([
+        "#NEXUS",
+        "Begin Data;",
+        " Format DataType=rna;",
+        " Matrix x1 AAAA;",
+        "End;",
+        "Begin Data;",
+        " Format DataType=rna;",
+        " Matrix x1 ACGU;",
+        "End;",
+        "Begin Trees;",
+        " Tree t=(x1:1,x2:1);",
+        "End;"
+    ].join("\n"))[0];
+    var x1 = forester.findByNodeName(t2, "x1")[0];
+    return x1.sequences[0].mol_seq.value === "ACGU" && x1.sequences[0].type === "rna";
+}
+
+// A TreeAnnotator-style MCC file -- Nexus container, translate table, a
+// BEAST blob on every node -- is THE phylodynamics input format and must
+// never regress: tips renamed, rates as beast: properties, posteriors as
+// confidences, heights + HPD as node dates, [&R] as rootedness.
+function testNexusBeastMcc() {
+    var phy = forester.parseNexus([
+        "#NEXUS",
+        "Begin Taxa;",
+        " Dimensions NTax=3;",
+        " TaxLabels virusA virusB virusC;",
+        "End;",
+        "Begin Trees;",
+        " Translate",
+        "  1 virusA,",
+        "  2 virusB,",
+        "  3 virusC;",
+        " Tree TREE1 = [&R] ((1[&rate=0.001]:0.1,2[&rate=0.002]:0.15)" +
+        "[&posterior=0.98,height=0.2,height_95%_HPD={0.15,0.3}]:0.05," +
+        "3[&rate=0.0015]:0.25);",
+        "End;"
+    ].join("\n"))[0];
+    if (phy.rooted !== true || phy.name !== "TREE1") {
+        return false;
+    }
+    var a = forester.findByNodeName(phy, "virusA")[0];
+    var c = forester.findByNodeName(phy, "virusC")[0];
+    if (!a || !c
+        || a.properties[0].ref !== "beast:rate" || a.properties[0].value !== "0.001"
+        || c.properties[0].value !== "0.0015"
+        || a.branch_length !== 0.1) {
+        return false;
+    }
+    var anc = a.parent;
+    return anc.confidences[0].type === "posterior" && anc.confidences[0].value === 0.98
+        && anc.date.value === 0.2 && anc.date.minimum === 0.15 && anc.date.maximum === 0.3
+        && anc.branch_length === 0.05;
+}
+
+// The writer's fallbacks: a nameless tip labelled from its taxonomy, from
+// its sequence, or as nodeN; the datatype judged from the residues when the
+// sequences carry no declared type (dna vs protein); [&U] for an unrooted
+// tree and "tree1" for a nameless one.
+function testNexusWriterFallbacks() {
+    var phy = forester.parseNewHampshire("(a:1,b:1,c:1);");
+    var tips = forester.getAllExternalNodes(phy);
+    tips.forEach(function (n) {
+        var keep = n.name;
+        delete n.name;
+        if (keep === "a") {
+            n.taxonomies = [{code: "HUMAN9"}];
+        } else if (keep === "b") {
+            n.sequences = [{name: "seqX9", mol_seq: {is_aligned: true, value: "ACGT-ACG"}}];
+        }
+    });
+    phy.rooted = false;
+    var nex = forester.toNexus(phy);
+    if (nex.indexOf("HUMAN9") < 0 || nex.indexOf("seqX9") < 0 || !/node\d/.test(nex)
+        || nex.indexOf("[&U]") < 0 || nex.indexOf(" Tree tree1=") < 0
+        || nex.indexOf("DataType=dna") < 0) {  // ACGT-ACG, no declared type
+        return false;
+    }
+    var back = forester.parseNexus(nex)[0];
+    if (back.rooted !== false) {
+        return false;
+    }
+    var bx = forester.findByNodeName(back, "seqX9")[0];
+    if (!bx || bx.sequences[0].mol_seq.value !== "ACGT-ACG") {
+        return false;
+    }
+    // protein residues without a declared type judge as protein
+    var p2 = forester.parseNewHampshire("(x:1,y:1);");
+    forester.getAllExternalNodes(p2).forEach(function (n) {
+        n.sequences = [{mol_seq: {is_aligned: true, value: "MKVLEQW-"}}];
+    });
+    return forester.toNexus(p2).indexOf("DataType=protein") > -1;
+}
+
+// The rest of the annotation surface: bootstrap= and date= and height_range,
+// a {}-set value kept whole with its key sanitized (rate_95%_HPD ->
+// beast:rate_95_HPD), the remaining NHX tags (T=/GN=/AC=/C=/D=N/D=?), a
+// root-node blob, and a blob inside a quoted label staying label text.
+function testBeastAnnotationsMore() {
+    var phy = forester.parseNewHampshire(
+        '((a[&bootstrap=87]:1,b[&date=2021-03-04,height_range={1,2}]:1)' +
+        '[&location.set={"HongKong","Beijing"},rate_95%_HPD={0.001,0.003}]:1,' +
+        'c[&&NHX:T=9606:GN=HBB:AC=P68871:C=a note:D=N]:1,' +
+        'd[&&NHX:D=?]:1)r[&posterior=0.5];');
+    var a = forester.findByNodeName(phy, "a")[0];
+    var b = forester.findByNodeName(phy, "b")[0];
+    var c = forester.findByNodeName(phy, "c")[0];
+    var d = forester.findByNodeName(phy, "d")[0];
+    var r = forester.findByNodeName(phy, "r")[0];
+    function prop(n, ref) {
+        var hits = (n.properties || []).filter(function (p) {
+            return p.ref === ref;
+        });
+        return hits.length === 1 ? hits[0].value : null;
+    }
+    if (!a.confidences || a.confidences[0].type !== "bootstrap" || a.confidences[0].value !== 87) {
+        return false;
+    }
+    if (!b.date || b.date.desc !== "2021-03-04" || b.date.minimum !== 1 || b.date.maximum !== 2) {
+        return false;
+    }
+    var anc = a.parent;
+    if (prop(anc, "beast:location_set") !== '{"HongKong","Beijing"}'
+        || prop(anc, "beast:rate_95_HPD") !== "{0.001,0.003}") {
+        return false;
+    }
+    if (!c.taxonomies || !c.taxonomies[0].id || c.taxonomies[0].id.value !== "9606"
+        || c.sequences[0].name !== "HBB"
+        || c.sequences[0].accession.value !== "P68871"
+        || prop(c, "nh:comment") !== "a note"
+        || !c.events || c.events.speciations !== 1) {
+        return false;
+    }
+    if (!d.events || d.events.type !== "speciation_or_duplication") {
+        return false;
+    }
+    if (r.name !== "r" || !r.confidences || r.confidences[0].value !== 0.5) {
+        return false;
+    }
+    // a bracket inside a QUOTED label is label text, never an annotation
+    var q = forester.parseNewHampshire('("ab[&x=1]cd":1,e:2);');
+    var qa = forester.getAllExternalNodes(q)[0];
+    var qn = forester.findByNodeName(q, "ab[&x=1]cd")[0];
+    return !!qn && !qn.properties && qa.branch_length !== undefined;
+}
+
+// Auspice edge cases: an already-parsed object as input, a tiny divergence
+// rendered without scientific notation, a node missing num_date breaking
+// the delta chain to 0 (never a stale length), and a negative delta
+// clamping to 0.
+function testAuspiceMore() {
+    var phy = forester.parseAuspiceJson({
+        version: "v2",
+        tree: {
+            name: "root",
+            node_attrs: {num_date: {value: 2020.0}, div: 0},
+            children: [
+                {
+                    name: "undated",
+                    node_attrs: {div: 1e-7},
+                    children: [
+                        {name: "late", node_attrs: {num_date: {value: 2021.0}}}
+                    ]
+                },
+                {name: "early", node_attrs: {num_date: {value: 2019.5}}}
+            ]
+        }
+    });
+    var undated = forester.findByNodeName(phy, "undated")[0];
+    var late = forester.findByNodeName(phy, "late")[0];
+    var early = forester.findByNodeName(phy, "early")[0];
+    // no sci-notation in the property value
+    var divProp = undated.properties.filter(function (p) {
+        return p.ref === "nextstrain:div";
+    })[0];
+    if (divProp.value !== "0.0000001") {
+        return false;
+    }
+    // undated node: its own length AND its child's fall back to 0 (the
+    // parent metric is unknown), never to a stale or negative value
+    if (undated.branch_length !== 0 || late.branch_length !== 0) {
+        return false;
+    }
+    // a tip older than its parent clamps to 0, not -0.5
+    return early.branch_length === 0;
 }

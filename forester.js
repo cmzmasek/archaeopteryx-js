@@ -2898,6 +2898,17 @@
         }
 
         let ext = forester.getAllExternalNodes(phy).reverse();
+        // a nameless tip gets its taxa-block label in the TREE as well --
+        // TaxLabels, the Matrix and the Newick must agree on every taxon or
+        // nothing can join them back up (restored before returning, so the
+        // caller's tree is never mutated)
+        let renamed = [];
+        ext.forEach(function (node, i) {
+            if (!node.name) {
+                node.name = nexusLabel(node, i);
+                renamed.push(node);
+            }
+        });
         let s = '#NEXUS\n';
         s += 'Begin Taxa;\n';
         s += ' Dimensions NTax=' + ext.length + ';\n';
@@ -2958,6 +2969,9 @@
         s += (phy.rooted === false) ? '[&U]' : '[&R]';
         s += forester.toNewHampshire(phy, decPointsMax, true, writeConfidences) + '\n';
         s += 'End;\n';
+        renamed.forEach(function (node) {
+            delete node.name;
+        });
         return s;
     };
 
