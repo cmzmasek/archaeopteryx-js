@@ -221,6 +221,138 @@
             white-space: normal;
         }
 
+        /* Expert options: every launch config key, for web developers.
+           Same dark-card language as the toolbar; sits under it, scrolls. */
+        #expertPanel {
+            position: fixed;
+            top: 118px;
+            right: 12px;
+            z-index: 1000;
+            width: 302px;
+            max-height: calc(100vh - 132px);
+            overflow-y: auto;
+            padding: 10px 12px 12px;
+            background: rgba(34, 48, 60, 0.97);
+            color: #dfe7ee;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            font-size: 12.5px;
+        }
+        #expertPanel .xp-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-weight: 600;
+            font-size: 13px;
+            color: #fff;
+        }
+        #expertPanel .xp-head a {
+            color: #7fc4ff;
+            text-decoration: none;
+            font-size: 16px;
+            line-height: 1;
+        }
+        #expertPanel .xp-blurb {
+            color: #9fb0bf;
+            font-size: 11px;
+            line-height: 1.45;
+            margin: 5px 0 4px;
+        }
+        #expertPanel .xp-group {
+            margin: 10px 0 3px;
+            color: #8fb8d8;
+            font-weight: 600;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #expertPanel .xp-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 3px 0;
+        }
+        #expertPanel .xp-row label {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            overflow-wrap: anywhere;
+        }
+        #expertPanel .xp-row select,
+        #expertPanel .xp-row input {
+            font-size: 11px;
+            width: 106px;
+            flex: none;
+            box-sizing: border-box;
+        }
+        #expertPanel .xp-hint {
+            color: #92a4b3;
+            font-size: 10.5px;
+            margin: -1px 0 3px;
+        }
+        #expertPanel #xpErr {
+            display: none;
+            background: #5a2626;
+            color: #ffd9d9;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin: 6px 0;
+            font-size: 11.5px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #expertPanel .xp-json-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            font-weight: 600;
+            color: #fff;
+        }
+        #expertPanel .xp-json-head button,
+        #expertPanel #xpApply {
+            font-size: 11.5px;
+            padding: 3px 10px;
+            border-radius: 5px;
+            border: 1px solid #7fc4ff;
+            background: transparent;
+            color: #7fc4ff;
+            cursor: pointer;
+        }
+        #expertPanel #cfgJson {
+            background: #1a252e;
+            color: #bfe3ff;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 5px 0 0;
+            font-size: 11px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        #expertPanel .xp-rawlabel {
+            display: block;
+            margin: 12px 0 4px;
+            color: #9fb0bf;
+            font-size: 11px;
+            line-height: 1.45;
+        }
+        #expertPanel #xpRaw {
+            width: 100%;
+            box-sizing: border-box;
+            height: 64px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            border-radius: 6px;
+            border: 1px solid #46586a;
+            background: #1a252e;
+            color: #dfe7ee;
+            padding: 6px;
+            resize: vertical;
+            margin-bottom: 6px;
+        }
+
         /* Full-page highlight while a file is being dragged over. */
         #dropOverlay {
             position: fixed;
@@ -244,6 +376,7 @@
     &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
     <span class="viewing" id="viewingLine"></span>
     <span class="viewing"><a href="#" id="openAnother">Open another tree…</a> <span style="color:#7f93a3">(or drop a file)</span></span>
+    <span class="viewing"><a href="#" id="expertToggle">Expert options</a> <span style="color:#7f93a3">(launch config)</span></span>
 </div>
 
 <div id="landing">
@@ -269,17 +402,37 @@
 
         <p class="privacy">&#128274;&nbsp;Your tree is read locally, in this browser tab.
             Nothing is uploaded — this page has no server.</p>
-        <p class="alldemos"><a href="index.html">← all demos</a></p>
+        <p class="alldemos"><a href="index.html">← all demos</a> &nbsp;·&nbsp;
+            <a href="#" id="expertToggleL">Expert options</a> <span style="color:#8a99a6">(for web developers)</span></p>
     </div>
 </div>
 
 <div id="dropOverlay"><span>Drop the tree file to view it</span></div>
 
+<div id="expertPanel" hidden>
+    <div class="xp-head"><span>Expert options</span><a href="#" id="expertClose" title="close">×</a></div>
+    <p class="xp-blurb">Every launch config key. A change relaunches the current tree;
+        the JSON below is exactly what gets passed — copy it into your own
+        <code>launch()</code> call. Unset means the library default.</p>
+    <pre id="xpErr"></pre>
+    <div id="xpControls"></div>
+    <div class="xp-json-head"><span>config</span><button id="xpCopy" type="button">Copy</button></div>
+    <pre id="cfgJson">{}</pre>
+    <label class="xp-rawlabel" for="xpRaw">Raw JSON — replaces everything above. Keys without a control
+        (<code>nodeLabels</code>) go here; so do wrong ones, if you want to see the
+        library's validation errors.</label>
+    <textarea id="xpRaw" spellcheck="false"></textarea>
+    <button id="xpApply" type="button">Apply raw JSON</button>
+</div>
+
 <div id="phylogram1"></div>
 
 <script>
-    var viewer = null;   // the handle returned by launchArchaeopteryx
+    var viewer = null;   // the handle returned by launch
     var loadSeq = 0;     // drops a slow file read finishing after a newer pick
+    var lastFileName = null;   // what is on screen, for config relaunches
+    var lastText = null;
+    var lastGoodConfig = null; // restores the view when a new config throws
 
     var landing = document.getElementById('landing');
     var toolbar = document.getElementById('toolbar');
@@ -287,9 +440,20 @@
     var viewingLine = document.getElementById('viewingLine');
 
     function showError(msg) {
+        var xpBox = document.getElementById('xpErr');
         if (!msg) {
             errbox.style.display = 'none';
             errbox.textContent = '';
+            xpBox.style.display = 'none';
+            xpBox.textContent = '';
+            return;
+        }
+        // with the expert panel open the error belongs there -- config
+        // errors are its business, and reshowing the landing card would
+        // cover the tree being configured
+        if (!document.getElementById('expertPanel').hidden) {
+            xpBox.textContent = msg;
+            xpBox.style.display = 'block';
             return;
         }
         errbox.textContent = msg;
@@ -317,9 +481,13 @@
                 : 'The paste box is empty. Paste a tree — or click "try an example".');
             return;
         }
+        var config = currentConfig();
         var tree;
         try {
-            tree = archaeopteryx.parseTree(fileName, text);
+            // the two nh* keys act at parse time, so they are handed to the
+            // parser here, exactly as launchArchaeopteryx would
+            tree = archaeopteryx.parseTree(fileName, text,
+                config.nhConfidenceValuesInBrackets, config.nhConfidenceValuesAsInternalNames);
         } catch (e) {
             showError('Could not parse tree: ' + (e && e.message ? e.message : String(e)));
             return;
@@ -334,11 +502,24 @@
                 viewer.destroy();
                 viewer = null;
             }
-            viewer = archaeopteryx.launch('#phylogram1', tree, {enableDynamicSizing: true});
+            viewer = archaeopteryx.launch('#phylogram1', tree, config);
         } catch (e) {
             showError(e && e.message ? e.message : String(e));
+            // a config launch() rejects must not leave a blank page: put the
+            // last accepted config back so the tree stays on screen under
+            // the error message
+            if (lastGoodConfig) {
+                try {
+                    viewer = archaeopteryx.launch('#phylogram1', tree, lastGoodConfig);
+                } catch (e2) {
+                    // the original message is the one that matters
+                }
+            }
             return;
         }
+        lastFileName = fileName;
+        lastText = text;
+        lastGoodConfig = config;
         landing.hidden = true;
         toolbar.hidden = false;
         viewingLine.textContent = 'Viewing: ' + (fileName || 'pasted tree');
@@ -382,6 +563,244 @@
         showError('');
         landing.hidden = false;
     });
+
+    // ---- Expert options: every launch config key, live ----------------
+    // Keep this table in sync with STATE_KEYS + SETTING_KEYS in
+    // archaeopteryx.js (documented in the README's "Still used" table).
+    // nodeLabels, the one object-valued key, has no control -- it goes
+    // through the raw JSON box.
+    var CONFIG_SPEC = [
+        {group: 'Layout & display'},
+        {key: 'layout', type: 'enum', values: ['rectangular', 'circular', 'unrooted']},
+        {key: 'enableDynamicSizing', type: 'bool', hint: 'size to the container, follow resizes'},
+        {key: 'displayWidth', type: 'number', hint: 'only when dynamic sizing is off'},
+        {key: 'displayHeight', type: 'number', hint: 'only when dynamic sizing is off'},
+        {key: 'zoomToFitUponWindowResize', type: 'bool'},
+        {key: 'rootOffset', type: 'number', hint: 'left edge to root, px'},
+        {key: 'ladderizeTree', type: 'bool'},
+        {key: 'collapseControlPanel', type: 'bool'},
+        {group: 'Tracks & marks'},
+        {key: 'showMsa', type: 'bool', hint: 'default: on when the tree has an alignment'},
+        {key: 'showTimeAxis', type: 'bool', hint: 'default: on when the tree has dates'},
+        {key: 'timeAxisGrid', type: 'bool'},
+        {key: 'showSupportDots', type: 'bool'},
+        {key: 'supportDotMinimum', type: 'number', hint: 'percent (0–1 scale on posterior trees)'},
+        {group: 'Visualizations'},
+        {key: 'enableVisualizations', type: 'bool'},
+        {key: 'initialVisualization', type: 'string', hint: 'a Color-menu name, e.g. Host'},
+        {key: 'visualizationsLegendXpos', type: 'number'},
+        {key: 'visualizationsLegendYpos', type: 'number'},
+        {group: 'Search'},
+        {key: 'searchAinitialValue', type: 'string'},
+        {key: 'searchBinitialValue', type: 'string'},
+        {group: 'Node menu & panel'},
+        {key: 'enableManualNodeSelection', type: 'bool'},
+        {key: 'enableSubtreeDeletion', type: 'bool'},
+        {key: 'enableAccessToDatabases', type: 'bool'},
+        {key: 'enableDownloads', type: 'bool'},
+        {group: 'Export & New Hampshire parsing'},
+        {key: 'pngExportScale', type: 'number'},
+        {key: 'nhExportWriteConfidences', type: 'bool'},
+        {key: 'nhConfidenceValuesInBrackets', type: 'bool', hint: 'parse-time: the tree is reparsed'},
+        {key: 'nhConfidenceValuesAsInternalNames', type: 'bool', hint: 'parse-time: the tree is reparsed'}
+    ];
+    var SPEC_BY_KEY = {};
+    CONFIG_SPEC.forEach(function (sp) {
+        if (sp.key) {
+            SPEC_BY_KEY[sp.key] = sp;
+        }
+    });
+
+    // Explicitly-set values only: what is NOT here is left to the library's
+    // defaults, and the config JSON shows exactly what will be passed. The
+    // page's one opinion is dynamic sizing, so the tree fills the viewport.
+    var xpValues = {enableDynamicSizing: true};
+    var xpExtra = {};   // raw-JSON keys without a control (nodeLabels, typos)
+
+    function currentConfig() {
+        var cfg = {};
+        CONFIG_SPEC.forEach(function (sp) {
+            if (sp.key && Object.prototype.hasOwnProperty.call(xpValues, sp.key)) {
+                cfg[sp.key] = xpValues[sp.key];
+            }
+        });
+        Object.keys(xpExtra).forEach(function (k) {
+            cfg[k] = xpExtra[k];
+        });
+        return cfg;
+    }
+
+    function updateJsonAndRelaunch() {
+        document.getElementById('cfgJson').textContent =
+            JSON.stringify(currentConfig(), null, 2);
+        if (lastText !== null) {
+            ++loadSeq;
+            openTree(lastFileName, lastText);
+        }
+    }
+
+    function onXpControlChange(spec, el) {
+        showError('');
+        if (spec.type === 'bool') {
+            if (el.value === '') {
+                delete xpValues[spec.key];
+            } else {
+                xpValues[spec.key] = (el.value === 'true');
+            }
+        } else if (spec.type === 'enum') {
+            if (el.value === '') {
+                delete xpValues[spec.key];
+            } else {
+                xpValues[spec.key] = el.value;
+            }
+        } else if (spec.type === 'number') {
+            var v = el.value.trim();
+            if (v === '') {
+                delete xpValues[spec.key];
+            } else if (isFinite(Number(v))) {
+                xpValues[spec.key] = Number(v);
+            } else {
+                showError('"' + spec.key + '": "' + v + '" is not a number.');
+                return;
+            }
+        } else {
+            if (el.value === '') {
+                delete xpValues[spec.key];
+            } else {
+                xpValues[spec.key] = el.value;
+            }
+        }
+        updateJsonAndRelaunch();
+    }
+
+    function buildExpertControls() {
+        var host = document.getElementById('xpControls');
+        CONFIG_SPEC.forEach(function (spec) {
+            if (spec.group) {
+                var g = document.createElement('div');
+                g.className = 'xp-group';
+                g.textContent = spec.group;
+                host.appendChild(g);
+                return;
+            }
+            var row = document.createElement('div');
+            row.className = 'xp-row';
+            var label = document.createElement('label');
+            label.textContent = spec.key;
+            label.htmlFor = 'xp_' + spec.key;
+            row.appendChild(label);
+            var el;
+            if (spec.type === 'bool' || spec.type === 'enum') {
+                el = document.createElement('select');
+                var opts = [''].concat(spec.type === 'bool' ? ['true', 'false'] : spec.values);
+                opts.forEach(function (o) {
+                    var opt = document.createElement('option');
+                    opt.value = o;
+                    opt.textContent = o === '' ? '(default)' : o;
+                    el.appendChild(opt);
+                });
+            } else {
+                el = document.createElement('input');
+                el.type = 'text';
+            }
+            el.id = 'xp_' + spec.key;
+            el.addEventListener('change', function () {
+                onXpControlChange(spec, el);
+            });
+            row.appendChild(el);
+            host.appendChild(row);
+            if (spec.hint) {
+                var h = document.createElement('div');
+                h.className = 'xp-hint';
+                h.textContent = spec.hint;
+                host.appendChild(h);
+            }
+        });
+        syncControlsFromValues();
+        document.getElementById('cfgJson').textContent =
+            JSON.stringify(currentConfig(), null, 2);
+    }
+
+    function syncControlsFromValues() {
+        CONFIG_SPEC.forEach(function (spec) {
+            if (!spec.key) {
+                return;
+            }
+            var el = document.getElementById('xp_' + spec.key);
+            var has = Object.prototype.hasOwnProperty.call(xpValues, spec.key);
+            var v = xpValues[spec.key];
+            if (spec.type === 'bool') {
+                el.value = (has && typeof v === 'boolean') ? String(v) : '';
+            } else if (spec.type === 'enum') {
+                el.value = (has && spec.values.indexOf(v) >= 0) ? v : '';
+            } else {
+                el.value = has ? String(v) : '';
+            }
+        });
+    }
+
+    var expertPanel = document.getElementById('expertPanel');
+
+    function toggleExpert(e) {
+        e.preventDefault();
+        expertPanel.hidden = !expertPanel.hidden;
+    }
+
+    document.getElementById('expertToggle').addEventListener('click', toggleExpert);
+    document.getElementById('expertToggleL').addEventListener('click', toggleExpert);
+    document.getElementById('expertClose').addEventListener('click', function (e) {
+        e.preventDefault();
+        expertPanel.hidden = true;
+    });
+
+    document.getElementById('xpApply').addEventListener('click', function () {
+        showError('');
+        var raw = document.getElementById('xpRaw').value.trim();
+        if (!raw) {
+            showError('The raw JSON box is empty — enter an object like {"layout": "circular"}.');
+            return;
+        }
+        var obj;
+        try {
+            obj = JSON.parse(raw);
+        } catch (e) {
+            showError('Not valid JSON: ' + e.message);
+            return;
+        }
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+            showError('The raw JSON must be an object, like {"layout": "circular"}.');
+            return;
+        }
+        xpValues = {};
+        xpExtra = {};
+        Object.keys(obj).forEach(function (k) {
+            if (SPEC_BY_KEY[k]) {
+                xpValues[k] = obj[k];
+            } else {
+                xpExtra[k] = obj[k];
+            }
+        });
+        syncControlsFromValues();
+        updateJsonAndRelaunch();
+    });
+
+    document.getElementById('xpCopy').addEventListener('click', function () {
+        var btn = this;
+        function done(ok) {
+            btn.textContent = ok ? 'Copied!' : 'Copy failed';
+            setTimeout(function () {
+                btn.textContent = 'Copy';
+            }, 1500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(document.getElementById('cfgJson').textContent)
+                .then(function () { done(true); }, function () { done(false); });
+        } else {
+            done(false);
+        }
+    });
+
+    buildExpertControls();
 
     // Drag-and-drop works everywhere on the page, landing card or tree view.
     var overlay = document.getElementById('dropOverlay');

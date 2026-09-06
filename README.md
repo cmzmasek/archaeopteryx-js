@@ -20,7 +20,9 @@ they run entirely in your browser:
 [**cmzmasek.github.io/archaeopteryx-js/open.html**](https://cmzmasek.github.io/archaeopteryx-js/open.html)
 — paste or open a Newick / NHX / Nexus / phyloXML / Auspice JSON file and
 Archaeopteryx.js will visualize it. The tree is read locally in your browser;
-nothing is uploaded.
+nothing is uploaded. Its **Expert options** panel exercises every launch
+config key live and shows the exact config JSON to copy into your own
+`launch()` call.
 
 * [Auspice / Nextstrain JSON](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
 * [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
@@ -553,6 +555,11 @@ object. A fourth argument is still accepted and merged, so existing call sites
 keep working; it logs a deprecation warning.
 
 ### Still used
+
+Every key below can be tried live in the
+[open-your-own-tree page](https://cmzmasek.github.io/archaeopteryx-js/open.html)'s
+**Expert options** panel, which also emits the resulting config as
+copy-pastable JSON.
 
 | Key | Default | What it does |
 | --- | --- | --- |
