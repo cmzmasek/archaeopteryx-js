@@ -16,6 +16,7 @@
     <script src="lib/phyloxml.js"></script>
     <script src="lib/forester.js"></script>
     <script src="lib/archaeopteryx.js"></script>
+    <script src="draggable-toolbar.js"></script>
     <!-- canvg 4.x publishes only ES modules (no classic-script global), so
          PNG export needs this small bridge -- archaeopteryx.js looks for
          window.Canvg, exactly the same "optional, embedder-supplied global"
@@ -36,7 +37,9 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         /* Floating card in the top-right corner, clear of the tree's own
-           control panel (which sits in the top-left). */
+           control panel (which sits in the top-left) -- and draggable
+           (draggable-toolbar.js), so it can be pulled off anything the tree
+           puts in this corner, like the overview box. */
         #toolbar {
             position: fixed;
             top: 10px;
@@ -49,6 +52,12 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
             font-size: 13px;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+        }
+        #toolbar.dragging {
+            cursor: grabbing;
         }
         #toolbar .title {
             font-weight: 600;
@@ -210,6 +219,7 @@
     window.addEventListener('load', function () {
         buildPicker();
         loadTree();
+        makeToolbarDraggable(document.getElementById('toolbar'), 'aptx-demo-toolbar-pos');
     });
 </script>
 </body>

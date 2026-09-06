@@ -30,6 +30,7 @@ export default [
             'node_modules/**',
             'test/data/**',
             'test/lib/**',
+            'docs/lib/**', // synced copies + vendored third-party libs
         ],
     },
 
@@ -54,6 +55,23 @@ export default [
         rules: {
             ...js.configs.recommended.rules,
             ...legacyRelaxations,
+        },
+    },
+
+    // Demo-site page scripts (docs/*.js, not the synced docs/lib copies):
+    // plain browser scripts, held to the full recommended rule set -- no
+    // legacy relaxations, this is new code.
+    {
+        files: ['docs/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'script',
+            globals: {
+                ...globals.browser,
+            },
+        },
+        rules: {
+            ...js.configs.recommended.rules,
         },
     },
 
