@@ -1485,6 +1485,48 @@ function testLaunchApiValidation() {
 }
 
 
+// parseTree picks the parser from the filename's extension OR the content.
+// The content alone must be enough for every format, because pasted trees
+// have no filename: #NEXUS -> Nexus, { -> Auspice JSON, < -> phyloXML (this
+// last one used to be extension-only, so pasted phyloXML fell through to the
+// Newick parser), anything else -> New Hampshire.
+function testParseTreeContentSniffing() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var xml = '\n  <phyloxml xmlns="http://www.phyloxml.org">'
+        + '<phylogeny rooted="true"><clade>'
+        + '<clade><name>a</name></clade><clade><name>b</name></clade>'
+        + '</clade></phylogeny></phyloxml>';
+    var phy = aptx.parseTree('', xml);
+    var ext = forester.getAllExternalNodes(phy);
+    if (ext.length !== 2) {
+        console.log('    pasted phyloXML: ' + ext.length + ' external nodes');
+        return false;
+    }
+    var names = ext.map(function (n) { return n.name; }).sort().join(',');
+    if (names !== 'a,b') {
+        console.log('    pasted phyloXML names: ' + names);
+        return false;
+    }
+    phy = aptx.parseTree('', '#NEXUS\nBegin Trees;\n Tree t=(a:1,b:2);\nEnd;\n');
+    if (forester.getAllExternalNodes(phy).length !== 2) {
+        console.log('    pasted Nexus misrouted');
+        return false;
+    }
+    // routing proof for JSON: an invalid doc must fail in the AUSPICE parser
+    var m;
+    try { aptx.parseTree('', '{"x": 1}'); m = null; } catch (e) { m = e.message || String(e); }
+    if (!m || m.indexOf('Auspice') < 0) {
+        console.log('    pasted JSON routing: ' + m);
+        return false;
+    }
+    phy = aptx.parseTree('', '(a,b);');
+    return forester.getAllExternalNodes(phy).length === 2;
+}
+
+
 // Property VALUES named after Object.prototype members ("toString",
 // "__proto__", "constructor") crashed visualizationCandidates -- and with it
 // launch() -- through plain-object lookup maps returning inherited members.
@@ -1516,6 +1558,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 
 if (_testFailures > 0) {

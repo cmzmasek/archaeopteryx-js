@@ -8955,7 +8955,10 @@ function (root, d3, forester, phyloXml) {
             tree = archaeopteryx.parseNexus(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
         } else if ((forester.isString(data) && /^\s*\{/.test(data)) || /\.json$/.test(loc)) {
             tree = archaeopteryx.parseAuspiceJson(data);
-        } else if (loc.substr(-3, 3) === 'xml') {
+        } else if ((forester.isString(data) && /^\s*</.test(data))
+            || loc.substr(-3, 3) === 'xml') {
+            // No other supported format can start with '<', so content alone
+            // is enough -- pasted phyloXML has no filename to go by.
             tree = archaeopteryx.parsePhyloXML(data);
         } else {
             tree = archaeopteryx.parseNewHampshire(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
