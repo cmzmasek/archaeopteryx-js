@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="images/archaeopteryx-logo.png">
+    <title>Archaeopteryx.js — Open Your Tree</title>
+
+    <!-- Same stack as demo.html; load order matters: sax before phyloxml,
+         and forester/phyloxml/d3 before archaeopteryx. -->
+    <script src="lib/d3.v7.min.js"></script>
+    <script src="lib/sax.js"></script>
+    <script src="lib/jspdf.umd.min.js"></script>
+    <script src="lib/svg2pdf.umd.min.js"></script>
+    <script src="lib/phyloxml.js"></script>
+    <script src="lib/forester.js"></script>
+    <script src="lib/archaeopteryx.js"></script>
+    <!-- canvg 4.x publishes only ES modules, so PNG export needs this small
+         bridge (archaeopteryx.js looks for window.Canvg). -->
+    <script type="module">
+        import {Canvg} from './lib/canvg.js';
+
+        window.Canvg = Canvg;
+    </script>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        /* Floating card in the top-right corner, clear of the tree's own
+           control panel (which sits in the top-left) -- same placement as
+           demo.html, so the two pages feel like one site. */
+        #toolbar {
+            position: fixed;
+            top: 10px;
+            right: 12px;
+            z-index: 1000;
+            width: 250px;
+            padding: 9px 12px;
+            background: rgba(34, 48, 60, 0.95);
+            color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            font-size: 13px;
+        }
+        #toolbar .title {
+            font-weight: 600;
+        }
+        #toolbar .logo {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            vertical-align: -3px;
+            margin-right: 2px;
+        }
+        #toolbar a {
+            color: #7fc4ff;
+            text-decoration: none;
+        }
+        #toolbar .viewing {
+            display: block;
+            color: #b9c6d1;
+            margin-top: 6px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+        #phylogram1 {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* The landing card: shown until the first tree opens, and again on
+           demand from the toolbar. */
+        #landing {
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f6f8;
+            padding: 20px;
+        }
+        #landing[hidden] {
+            /* the explicit display:flex above would beat the UA's [hidden]
+               rule, so re-assert it at higher specificity */
+            display: none;
+        }
+        #landing .panel {
+            width: 100%;
+            max-width: 560px;
+            background: #fff;
+            border: 1px solid #e2e8ee;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(31, 42, 51, 0.10);
+            padding: 26px 30px 22px;
+            color: #1f2a33;
+        }
+        #landing h1 {
+            margin: 0 0 4px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+        #landing h1 .logo {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+        }
+        #landing .formats {
+            color: #5b6b78;
+            font-size: 13.5px;
+            margin: 0 0 18px;
+            line-height: 1.5;
+        }
+        .choose-btn {
+            display: inline-block;
+            background: #2590fd;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .choose-btn:hover {
+            background: #157ae6;
+        }
+        #landing .drophint {
+            color: #5b6b78;
+            font-size: 13.5px;
+            margin: 10px 0 18px;
+        }
+        #landing .pastewrap {
+            border-top: 1px solid #e2e8ee;
+            padding-top: 14px;
+        }
+        #landing .pastewrap label {
+            display: block;
+            color: #5b6b78;
+            font-size: 13.5px;
+            margin-bottom: 6px;
+        }
+        #pasteBox {
+            width: 100%;
+            height: 90px;
+            box-sizing: border-box;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            border: 1px solid #e2e8ee;
+            border-radius: 6px;
+            padding: 8px;
+            resize: vertical;
+        }
+        #pasteBtn {
+            margin-top: 8px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #2590fd;
+            background: #fff;
+            border: 1px solid #2590fd;
+            border-radius: 6px;
+            padding: 6px 16px;
+            cursor: pointer;
+        }
+        #pasteBtn:hover {
+            background: #eaf4ff;
+        }
+        #landing .privacy {
+            margin: 18px 0 0;
+            padding-top: 14px;
+            border-top: 1px solid #e2e8ee;
+            color: #1f6b3a;
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+        #landing .alldemos {
+            margin: 10px 0 0;
+            font-size: 13px;
+        }
+        #landing .alldemos a {
+            color: #2590fd;
+            text-decoration: none;
+        }
+
+        /* Error box: below the landing title, or floating when a tree is
+           already on screen. */
+        #errbox {
+            display: none;
+            background: #fdecec;
+            border: 1px solid #e5b4b4;
+            border-radius: 8px;
+            color: #8a1f1f;
+            font-size: 13px;
+            padding: 10px 12px;
+            margin: 0 0 16px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        #errbox .hint {
+            display: block;
+            margin-top: 8px;
+            color: #5b6b78;
+            white-space: normal;
+        }
+
+        /* Full-page highlight while a file is being dragged over. */
+        #dropOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(37, 144, 253, 0.12);
+            border: 4px dashed #2590fd;
+            pointer-events: none;
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a6ec0;
+        }
+    </style>
+</head>
+<body>
+<div id="toolbar" hidden>
+    <span class="title"><img class="logo" src="images/archaeopteryx-logo.png" srcset="images/archaeopteryx-logo.png 1x, images/archaeopteryx-logo@2x.png 2x" width="16" height="16" alt="">Archaeopteryx.js</span>
+    &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
+    <span class="viewing" id="viewingLine"></span>
+    <span class="viewing"><a href="#" id="openAnother">Open another tree…</a> <span style="color:#7f93a3">(or drop a file)</span></span>
+</div>
+
+<div id="landing">
+    <div class="panel">
+        <h1><img class="logo" src="images/archaeopteryx-logo.png" srcset="images/archaeopteryx-logo.png 1x, images/archaeopteryx-logo@2x.png 2x" width="26" height="26" alt="">Open your own tree</h1>
+        <p class="formats">Newick&#8202;/&#8202;New Hampshire · NHX · Nexus · phyloXML · Auspice&#8202;/&#8202;Nextstrain JSON
+            — the format is detected automatically.</p>
+
+        <pre id="errbox"></pre>
+
+        <label class="choose-btn" for="fileInput">Choose a file</label>
+        <input type="file" id="fileInput" hidden
+               accept=".xml,.phyloxml,.nex,.nexus,.nx,.nh,.nwk,.newick,.nhx,.tre,.tree,.treefile,.json,.txt">
+        <p class="drophint">…or drop a tree file anywhere on this page.</p>
+
+        <div class="pastewrap">
+            <label for="pasteBox">…or paste a tree here (best for small trees):</label>
+            <textarea id="pasteBox" spellcheck="false" placeholder="((A:0.1,B:0.2):0.05,C:0.3);"></textarea>
+            <br>
+            <button id="pasteBtn" type="button">View tree</button>
+        </div>
+
+        <p class="privacy">&#128274;&nbsp;Your tree is read locally, in this browser tab.
+            Nothing is uploaded — this page has no server.</p>
+        <p class="alldemos"><a href="index.html">← all demos</a></p>
+    </div>
+</div>
+
+<div id="dropOverlay"><span>Drop the tree file to view it</span></div>
+
+<div id="phylogram1"></div>
+
+<script>
+    var viewer = null;   // the handle returned by launchArchaeopteryx
+    var loadSeq = 0;     // drops a slow file read finishing after a newer pick
+
+    var landing = document.getElementById('landing');
+    var toolbar = document.getElementById('toolbar');
+    var errbox = document.querySelector('#landing #errbox');
+    var viewingLine = document.getElementById('viewingLine');
+
+    function showError(msg) {
+        if (!msg) {
+            errbox.style.display = 'none';
+            errbox.textContent = '';
+            return;
+        }
+        errbox.textContent = msg;
+        var hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = 'The tree could not be read as Newick/NH, NHX, Nexus, phyloXML or '
+            + 'Auspice JSON. If you think this is a bug in Archaeopteryx.js, please report it '
+            + 'together with the message above and (if possible) the file itself.';
+        errbox.appendChild(hint);
+        errbox.style.display = 'block';
+        // an error means the landing card is the place to be
+        landing.hidden = false;
+    }
+
+    // The one funnel every input path leads to. Parsing happens BEFORE the
+    // old viewer is destroyed, so a bad paste shows its error while whatever
+    // was on screen stays there. The library throws real Errors with named
+    // messages, worth showing verbatim -- but the Newick parser, being the
+    // fallback for unrecognized content, accepts a lot of plain text as a
+    // one-tip "tree", so anything with fewer than two tips is rejected too.
+    function openTree(fileName, text) {
+        showError('');
+        if (!text || !text.trim()) {
+            showError('The ' + (fileName ? 'file' : 'pasted text') + ' is empty.');
+            return;
+        }
+        var tree;
+        try {
+            tree = archaeopteryx.parseTree(fileName, text);
+        } catch (e) {
+            showError('Could not parse tree: ' + (e && e.message ? e.message : String(e)));
+            return;
+        }
+        if (!tree || forester.getAllExternalNodes(tree).length < 2) {
+            showError('The input parsed, but fewer than two tips were found '
+                + '— it does not look like a phylogenetic tree.');
+            return;
+        }
+        try {
+            if (viewer) {
+                viewer.destroy();
+                viewer = null;
+            }
+            viewer = archaeopteryx.launch('#phylogram1', tree, {enableDynamicSizing: true});
+        } catch (e) {
+            showError(e && e.message ? e.message : String(e));
+            return;
+        }
+        landing.hidden = true;
+        toolbar.hidden = false;
+        viewingLine.textContent = 'Viewing: ' + (fileName || 'pasted tree');
+    }
+
+    function readFile(f) {
+        var seq = ++loadSeq;
+        f.text().then(function (text) {
+            if (seq === loadSeq) {
+                openTree(f.name, text);
+            }
+        }, function () {
+            if (seq === loadSeq) {
+                showError('Could not read the file "' + f.name + '".');
+            }
+        });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function () {
+        if (this.files && this.files[0]) {
+            readFile(this.files[0]);
+            this.value = '';   // so picking the same file again re-fires change
+        }
+    });
+
+    document.getElementById('pasteBtn').addEventListener('click', function () {
+        ++loadSeq;   // a click beats any file read still in flight
+        openTree('', document.getElementById('pasteBox').value);
+    });
+
+    document.getElementById('openAnother').addEventListener('click', function (e) {
+        e.preventDefault();
+        showError('');
+        landing.hidden = false;
+    });
+
+    // Drag-and-drop works everywhere on the page, landing card or tree view.
+    var overlay = document.getElementById('dropOverlay');
+    window.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        overlay.style.display = 'flex';
+    });
+    window.addEventListener('dragleave', function (e) {
+        if (!e.relatedTarget) {
+            overlay.style.display = 'none';
+        }
+    });
+    window.addEventListener('drop', function (e) {
+        e.preventDefault();
+        overlay.style.display = 'none';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            readFile(e.dataTransfer.files[0]);
+        }
+    });
+</script>
+</body>
+</html>

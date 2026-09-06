@@ -16,6 +16,12 @@ they run entirely in your browser:
 
 **https://cmzmasek.github.io/archaeopteryx-js/**
 
+**Try your own tree:**
+[**cmzmasek.github.io/archaeopteryx-js/open.html**](https://cmzmasek.github.io/archaeopteryx-js/open.html)
+— paste or open a Newick / NHX / Nexus / phyloXML / Auspice JSON file and
+Archaeopteryx.js will visualize it. The tree is read locally in your browser;
+nothing is uploaded.
+
 * [Auspice / Nextstrain JSON](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
 * [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
 * [BEAST annotations (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=beast)

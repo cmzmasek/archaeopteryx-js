@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="images/archaeopteryx-logo.png">
     <title>Archaeopteryx.js — phylogenetic tree viewer</title>
     <style>
         :root {
@@ -64,6 +65,23 @@
         .card h3 { margin: 0 0 6px; font-size: 16px; }
         .card p { margin: 0; color: var(--muted); font-size: 14px; }
         .card .open { margin-top: 12px; color: var(--accent); font-size: 13px; font-weight: 600; }
+        .own-tree {
+            display: block;
+            background: linear-gradient(135deg, #eaf4ff, #f6fbff);
+            border: 1.5px solid var(--accent);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin: 0 0 26px;
+            text-decoration: none;
+            color: inherit;
+            transition: box-shadow .15s, transform .15s;
+        }
+        .own-tree:hover {
+            box-shadow: 0 6px 18px rgba(37, 144, 253, .22);
+            transform: translateY(-2px);
+        }
+        .own-tree h3 { margin: 0 0 6px; font-size: 17px; color: #1a6ec0; }
+        .own-tree p { margin: 0; color: var(--muted); font-size: 14px; }
         footer { text-align: center; color: var(--muted); font-size: 13px; padding: 0 20px 40px; }
         footer a { color: var(--accent); text-decoration: none; }
     </style>
@@ -79,6 +97,13 @@
 </header>
 
 <main>
+    <a class="own-tree" href="open.html">
+        <h3>Open your own tree &rarr;</h3>
+        <p>Paste or open a Newick, NHX, Nexus, phyloXML or Auspice&#8202;/&#8202;Nextstrain JSON
+           file and see it visualized right here. The tree is read locally in your
+           browser &mdash; nothing is uploaded.</p>
+    </a>
+
     <h2>Live demos</h2>
     <div class="grid" id="grid"></div>
 </main>
