@@ -172,6 +172,15 @@
         #pasteBtn:hover {
             background: #eaf4ff;
         }
+        .orexample {
+            margin-left: 10px;
+            font-size: 13px;
+            color: #5b6b78;
+        }
+        .orexample a {
+            color: #2590fd;
+            text-decoration: none;
+        }
         #landing .privacy {
             margin: 18px 0 0;
             padding-top: 14px;
@@ -252,9 +261,10 @@
 
         <div class="pastewrap">
             <label for="pasteBox">…or paste a tree here (best for small trees):</label>
-            <textarea id="pasteBox" spellcheck="false" placeholder="((A:0.1,B:0.2):0.05,C:0.3);"></textarea>
+            <textarea id="pasteBox" spellcheck="false" placeholder="Paste your tree text here…"></textarea>
             <br>
             <button id="pasteBtn" type="button">View tree</button>
+            <span class="orexample">or <a href="#" id="exampleLink">try an example</a></span>
         </div>
 
         <p class="privacy">&#128274;&nbsp;Your tree is read locally, in this browser tab.
@@ -303,7 +313,8 @@
     function openTree(fileName, text) {
         showError('');
         if (!text || !text.trim()) {
-            showError('The ' + (fileName ? 'file' : 'pasted text') + ' is empty.');
+            showError(fileName ? 'The file is empty.'
+                : 'The paste box is empty. Paste a tree — or click "try an example".');
             return;
         }
         var tree;
@@ -356,6 +367,14 @@
     document.getElementById('pasteBtn').addEventListener('click', function () {
         ++loadSeq;   // a click beats any file read still in flight
         openTree('', document.getElementById('pasteBox').value);
+    });
+
+    document.getElementById('exampleLink').addEventListener('click', function (e) {
+        e.preventDefault();
+        var example = '((Human:0.06,Chimp:0.05):0.02,(Mouse:0.30,Rat:0.28):0.09,Dog:0.25);';
+        document.getElementById('pasteBox').value = example;
+        ++loadSeq;   // beats any file read still in flight
+        openTree('', example);
     });
 
     document.getElementById('openAnother').addEventListener('click', function (e) {
