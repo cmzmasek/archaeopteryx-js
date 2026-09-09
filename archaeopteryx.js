@@ -1355,7 +1355,7 @@ function (root, d3, forester, phyloXml) {
         _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null,
             labelRef: null, labelPrefix: null,
             legendSortById: {}, colorModeById: {}, legendExpandedById: {},
-            colorMemory: {}, colorNext: {}, shapeMemory: {}, shapeNext: {},
+            colorMemory: {}, colorNext: {}, colorOverrides: {}, shapeMemory: {}, shapeNext: {},
             hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
@@ -1436,6 +1436,126 @@ function (root, d3, forester, phyloXml) {
     // values first met in a smaller view extend the memory with the next free
     // palette slots. (On the launch view this assigns the sorted domain
     // 0,1,2,... -- exactly the old fixed-palette behaviour.)
+    // Clicking a legend colour opens the browser's own colour picker and
+    // repaints that value everywhere -- the legend swatch and every node
+    // carrying it -- because both read the same categoryScale.
+    //
+    // A native <input type="color"> rather than a hand-built palette: it costs
+    // no dependency, gives the OS picker people already know, and does not cap
+    // the user to the twenty palette entries. It has to be IN the document and
+    // not display:none for .click() to open it, so it is parked off-screen.
+    let _colorPickerInput = null;
+
+    function openColorPicker(current, onPicked) {
+        if (!_colorPickerInput) {
+            _colorPickerInput = document.createElement('input');
+            _colorPickerInput.type = 'color';
+            setStyles(_colorPickerInput, {
+                'position': 'fixed', 'left': '-100px', 'top': '-100px',
+                'width': '1px', 'height': '1px', 'opacity': '0', 'border': 'none',
+                'padding': '0', 'margin': '0'
+            });
+            document.body.appendChild(_colorPickerInput);
+        }
+        let input = _colorPickerInput;
+        input.value = toHexColor(current);
+        // A fresh handler per open: the previous swatch's closure must not
+        // survive to repaint the wrong value.
+        input.onchange = function () {
+            onPicked(input.value);
+        };
+        if (typeof input.showPicker === 'function') {
+            try {
+                input.showPicker();
+                return;
+            } catch {
+                // showPicker() throws without a user gesture in some browsers;
+                // the click() path below works there.
+            }
+        }
+        input.click();
+    }
+
+    // <input type="color"> accepts only "#rrggbb". Palette entries already are,
+    // but a tree-supplied colour can be "rgb(...)" or a named colour, so it is
+    // normalized through d3 rather than parsed by hand.
+    function toHexColor(c) {
+        let parsed = null;
+        try {
+            parsed = d3.color(c);
+        } catch {
+            parsed = null;
+        }
+        return parsed ? parsed.formatHex() : '#000000';
+    }
+
+    // The key a value is remembered under. Property values fold to lower case
+    // (the same fold the value grouping uses), so a legend override applies to
+    // every case variant of that value -- which is what the legend shows as
+    // one row anyway. ONE definition: the candidate builder and the legend's
+    // colour picker must agree, or an override would be written under a key
+    // the scale never reads.
+    function visMemoryKey(vis, v) {
+        return vis.kind === 'property' ? String(v).toLowerCase() : v;
+    }
+
+    // Colours live in a per-candidate MEMORY map rather than being computed
+    // from the value's position, so they survive a re-render, a Color-by
+    // switch away and back, and a legend re-sort. That is also what makes a
+    // user override possible at all: writing one entry and rebuilding is
+    // enough, and every consumer (the legend swatch AND the node colour) reads
+    // through the same scale.
+    function buildCategoryScale(vis) {
+        let mem = _vis.colorMemory[vis.id] || (_vis.colorMemory[vis.id] = {});
+        let next = _vis.colorNext[vis.id] || 0;
+        vis.values.forEach(function (v) {
+            let k = visMemoryKey(vis, v);
+            if (!(k in mem)) {
+                mem[k] = extendedPaletteColor(next++);
+            }
+        });
+        _vis.colorNext[vis.id] = next;
+        vis.categoryScale = d3.scaleOrdinal()
+            .domain(vis.values)
+            .range(vis.values.map(function (v) {
+                return mem[visMemoryKey(vis, v)];
+            }));
+    }
+
+    // What the PALETTE had assigned before the user overrode it, keyed the
+    // same way as colorMemory. Storing the displaced colour rather than the
+    // chosen one is what makes reset exact: deleting the memory entry instead
+    // and re-running buildCategoryScale would hand the value the next UNUSED
+    // palette colour, since colorNext has moved on -- so "reset" would restore
+    // a palette colour, just not the one that was there.
+    function hasColorOverrides(vis) {
+        let o = _vis && _vis.colorOverrides && _vis.colorOverrides[vis.id];
+        return !!(o && Object.keys(o).length > 0);
+    }
+
+    function setColorOverride(vis, value, color) {
+        let o = _vis.colorOverrides[vis.id] || (_vis.colorOverrides[vis.id] = {});
+        let k = visMemoryKey(vis, value);
+        if (!(k in o)) {
+            // first override of this value: remember what it displaced
+            o[k] = _vis.colorMemory[vis.id][k];
+        }
+        _vis.colorMemory[vis.id][k] = color;
+        buildCategoryScale(vis);
+    }
+
+    function clearColorOverrides(vis) {
+        let o = _vis.colorOverrides[vis.id];
+        if (!o) {
+            return;
+        }
+        Object.keys(o).forEach(function (k) {
+            _vis.colorMemory[vis.id][k] = o[k];
+        });
+        delete _vis.colorOverrides[vis.id];
+        buildCategoryScale(vis);
+    }
+
     function computeVisualizationCandidates(viewRoot) {
         _vis.candidates = [];
         _vis.byId = {};
@@ -1452,24 +1572,11 @@ function (root, d3, forester, phyloXml) {
                     .domain([nums[0], mean, nums[nums.length - 1]]);
             }
             function memoryKey(v) {
-                return c.kind === 'property' ? v.toLowerCase() : v;
+                return visMemoryKey(c, v);
             }
             // a switchable candidate needs both scales standing by
             if (c.colorMode === 'category' || c.switchable) {
-                let mem = _vis.colorMemory[c.id] || (_vis.colorMemory[c.id] = {});
-                let next = _vis.colorNext[c.id] || 0;
-                c.values.forEach(function (v) {
-                    let k = memoryKey(v);
-                    if (!(k in mem)) {
-                        mem[k] = extendedPaletteColor(next++);
-                    }
-                });
-                _vis.colorNext[c.id] = next;
-                c.categoryScale = d3.scaleOrdinal()
-                    .domain(c.values)
-                    .range(c.values.map(function (v) {
-                        return mem[memoryKey(v)];
-                    }));
+                buildCategoryScale(c);
             }
             if (c.shape) {
                 let mem = _vis.shapeMemory[c.id] || (_vis.shapeMemory[c.id] = {});
@@ -1665,6 +1772,16 @@ function (root, d3, forester, phyloXml) {
                 }
             });
         }
+        if (kind === 'color' && !isRange && hasColorOverrides(vis)) {
+            chips.push({
+                text: '[reset colors]',
+                tip: 'put the palette colors back',
+                act: function () {
+                    clearColorOverrides(vis);
+                    update(null, 0);
+                }
+            });
+        }
         if (!isRange && (hidden > 0 || (_vis.legendExpandedById[vis.id] && vis.values.length > LEGEND_MAX_ROWS))) {
             chips.push({
                 text: hidden > 0 ? '[+' + hidden + ' more]' : '[fewer]',
@@ -1793,11 +1910,36 @@ function (root, d3, forester, phyloXml) {
                     .style('fill', 'none')
                     .style('stroke', frame);
             } else {
-                g.append('rect')
+                let sw = g.append('rect')
                     .attr('x', x + PAD).attr('y', swY)
                     .attr('width', SWATCH).attr('height', SWATCH)
                     .attr('rx', 2)
                     .style('fill', vis.categoryScale(r.value));
+                if (kind === 'color') {
+                    // A 9px square is a poor target, so the hit area is the
+                    // swatch plus its label -- and it is a separate transparent
+                    // rect so the visible swatch keeps its exact geometry.
+                    let value = r.value;
+                    g.append('rect')
+                        .attr('x', x + PAD - 2).attr('y', swY - 2)
+                        .attr('width', SWATCH + GAP + legendTextWidth(r.text, rowFont) + 4)
+                        .attr('height', SWATCH + 4)
+                        .style('fill', 'transparent')
+                        .style('cursor', 'pointer')
+                        .on('mousedown', function (event) {
+                            event.stopPropagation();   // picking a colour is not a drag
+                        })
+                        .on('click', function (event) {
+                            event.stopPropagation();
+                            openColorPicker(vis.categoryScale(value), function (picked) {
+                                setColorOverride(vis, value, picked);
+                                update(null, 0);
+                            });
+                        })
+                        .append('title')
+                        .text('click to change the color for "' + r.text + '"');
+                    sw.style('cursor', 'pointer');
+                }
             }
             g.append('text')
                 .attr('x', x + PAD + SWATCH + GAP).attr('y', baseline)

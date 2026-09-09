@@ -8,6 +8,18 @@ consumers only see a change when a version is cut.
 
 ## Unreleased
 
+### Added
+
+- **Click a legend colour to change it.** In a categorical colour legend, each
+  swatch (and its label) is now a click target that opens the browser's colour
+  picker, preset to the current colour. Picking one repaints that value
+  everywhere at once — the swatch and every node carrying it — because both
+  read the same scale. A `[reset colors]` chip appears once anything has been
+  overridden and restores exactly the palette colours that were displaced,
+  leaving values you never touched alone. Overrides survive switching Color-by
+  away and back. Categorical legends only: a continuous/gradient legend has no
+  discrete swatches to pick.
+
 ### Changed
 
 - **Support values in Newick and Nexus files are now recognised
