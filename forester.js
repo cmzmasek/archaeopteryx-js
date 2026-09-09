@@ -649,6 +649,21 @@
     const VIS_MAX_NUMERIC_UNIQUE_NUM = 9;    // distinct/covered <= 0.9,
     const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
+    // Refs that are never a visualization, however their values distribute.
+    // A taxon identifier repeats like a category and passes every statistical
+    // test above, yet says nothing a colour could carry that the species name
+    // beside it does not -- and reads as "11320" in a legend. Matched on the
+    // ref's local name with case and separators ignored, so vipr:NCBI_Taxon_Id,
+    // ncbi_taxid, taxon_id and taxonomy_id all count.
+    const VIS_EXCLUDED_LOCAL_NAME_RE = /(taxonomy|taxon|tax)id$/;
+
+    function visExcludedRef(ref) {
+        if (ref.indexOf(VIS_EXCLUDED_REF_PREFIX) === 0) {
+            return true;
+        }
+        let local = ref.substring(ref.indexOf(':') + 1).toLowerCase().replace(/[^a-z0-9]/g, '');
+        return VIS_EXCLUDED_LOCAL_NAME_RE.test(local);
+    }
 
     // ---- display normalization --------------------------------------------
     //
@@ -832,8 +847,7 @@
             if (n.properties) {
                 for (let i = 0; i < n.properties.length; ++i) {
                     let p = n.properties[i];
-                    if (p.ref && p.applies_to === 'node'
-                        && p.ref.indexOf(VIS_EXCLUDED_REF_PREFIX) !== 0) {
+                    if (p.ref && p.applies_to === 'node' && !visExcludedRef(p.ref)) {
                         add('prop:' + p.ref, 'property', p.ref, null, p.value);
                     }
                 }

@@ -116,6 +116,14 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
+- **A taxon identifier is never offered as a visualization.** On the H5N1
+  tree "NCBI Taxon Id" ranked fourth in Color-by: 13,042 tips at 11320 plus
+  55 one-off strain ids, which passed every statistical rule because the
+  values repeat — yet a colour can carry nothing the species name beside it
+  does not, and a legend of numeric ids tells the reader nothing. Refs whose
+  local name ends in taxon id / tax id / taxonomy id, in any spelling, are
+  excluded; the property still shows in the tooltip and node data.
+
 - **Trees with branch lengths no longer open as cladograms.** The
   phylogram-vs-cladogram default counted every branch uniformly, so an
   exporter that omits `branch_length` on tips where it would be zero could

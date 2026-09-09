@@ -1503,6 +1503,38 @@ function testLaunchApiValidation() {
 // Bare numeric internal labels read as confidence values. The rule is SHARED
 // with the desktop Java Archaeopteryx (agreed 2026-09-08) -- if one of these
 // expectations changes, it changes on both sides or not at all.
+// A taxon identifier is never a visualization, whatever its distribution.
+// It repeats like a category and passes every statistical rule, but a colour
+// can carry nothing the species name beside it does not, and "11320" in a
+// legend tells the reader nothing. Learned on the 13,246-tip H5N1 tree.
+function testTaxonIdNeverOffered() {
+    var phy = forester.parseNewHampshire('((a,b,c,d),(e,f,g,h));', true, false);
+    var tips = forester.getAllExternalNodes(phy);
+    tips.forEach(function (n, i) {
+        var first = i < 4;
+        n.properties = [
+            {ref: 'vipr:NCBI_Taxon_Id', datatype: 'xsd:string', applies_to: 'node', value: first ? '11320' : '11520'},
+            {ref: 'bvbrc:taxon_id',     datatype: 'xsd:string', applies_to: 'node', value: first ? '1' : '2'},
+            {ref: 'x:taxonomy_id',      datatype: 'xsd:string', applies_to: 'node', value: first ? '1' : '2'},
+            {ref: 'x:TaxId',            datatype: 'xsd:string', applies_to: 'node', value: first ? '1' : '2'},
+            // controls: same distribution, must still be offered
+            {ref: 'vipr:Species',       datatype: 'xsd:string', applies_to: 'node', value: first ? 'Influenza A' : 'Influenza B'},
+            {ref: 'x:Host',             datatype: 'xsd:string', applies_to: 'node', value: (i % 2) ? 'Human' : 'Avian'}
+        ];
+    });
+    var refs = forester.visualizationCandidates(phy).map(function (c) { return c.ref || c.id; });
+    var leaked = refs.filter(function (r) { return /tax/i.test(r); });
+    if (leaked.length) {
+        console.log('    taxon id offered as a visualization: ' + leaked.join(', '));
+        return false;
+    }
+    if (refs.indexOf('vipr:Species') < 0 || refs.indexOf('x:Host') < 0) {
+        console.log('    controls lost: ' + refs.join(', '));
+        return false;
+    }
+    return true;
+}
+
 function testInternalLabelsAsConfidence() {
     function promoted(nh, mode) {
         var phy = forester.parseNewHampshire(nh, true, false);
@@ -1731,6 +1763,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
