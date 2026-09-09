@@ -189,6 +189,11 @@ consumers only see a change when a version is cut.
 
 ### Demos
 
+- **A genome-scale alignment: 150 sequences × 30,000 columns.** Synthetic,
+  and says so — evolved along a random tree with clade-wide deletions, so
+  related genomes are alike and gap blocks follow clades. It is the demo for
+  the alignment track at length and for the navigation bar under it.
+
 - **A Late Cretaceous time tree.** Thirteen well-known dinosaurs, Cenomanian
   to Maastrichtian, all inside one geologic Series — so it is the demo that
   shows the axis banding Series over Stage, which the wider Dinosaur and

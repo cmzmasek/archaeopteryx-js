@@ -32,6 +32,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
 * [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
 * [Nucleotide alignment (600 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment_nt)
+* [Genome alignment (150 × 30,000 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=genome_alignment)
 * [Sequence alignment](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment)
 * [Influenza HA (annotated)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=influenza)
 * [Dinosaur time tree](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=dinosaur)

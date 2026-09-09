@@ -487,6 +487,7 @@ function (root, d3, forester, phyloXml) {
     const MSA_CONS_BAR_H = 22;            // conservation bar band height
     const MSA_CONS_TOP_GAP = 4;
     const MSA_BOTTOM_RESERVE = 56;        // vertical room under the rows (conservation + ruler)
+    const MSA_NAV_RESERVE = 46;           // ... plus the navigation bar floating at the viewport bottom
     const MSA_MIN_TREE_PX = 220;          // the tree itself never shrinks below this
     let _msaColOffset = 0;                // first shown alignment column (0-based)
     let _msaReserve = 0;                  // horizontal px reserved for the track, set with _w
@@ -6054,7 +6055,10 @@ function (root, d3, forester, phyloXml) {
     // under the tree (left) -- horizontally disjoint, so the two reserves
     // share the same strip rather than stacking.
     function bottomOverlayReserve() {
-        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE : 0, timeAxisBottomReserve());
+        // The navigation bar is fixed at the viewport bottom, so the track's
+        // own bottom rows (conservation, consensus, ruler) must end above it
+        // or the bar covers them -- the old bare slider did exactly that.
+        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE + MSA_NAV_RESERVE : 0, timeAxisBottomReserve());
     }
 
     function hexToRgbTriple(hex) {
