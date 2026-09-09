@@ -522,6 +522,18 @@ function (root, d3, forester, phyloXml) {
     // scheduleUpdate() call made since, merged, so that one update() serves
     // them all.
     let _pendingUpdate = null;
+    // Work to run once the pending redraw has happened (big trees only):
+    // the viewport re-centring a zoom needs the new layout for.
+    let _afterUpdate = [];
+    // The viewport centre captured by the FIRST zoom step of a burst; the
+    // re-centring after the coalesced redraw maps that one point forward.
+    let _pendingCentre = null;
+    // True while initialize() runs. A redraw scheduled from inside it -- the
+    // searches it runs end in one -- is dropped: the draw in progress renders
+    // that same state, so the extra pass was always redundant, and on a big
+    // tree it would run after the card had gone and merge later interactions
+    // into an invisible redraw.
+    let _initializing = false;
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
@@ -2260,8 +2272,13 @@ function (root, d3, forester, phyloXml) {
     // recalculated gets it, the shortest transition wins, and a named source
     // survives a null one.
     function scheduleUpdate(source, transitionDuration, doNotRecalculateWidth) {
+        if (_initializing) {
+            runAfterUpdate();   // nothing pending; anything queued can run now
+            return;
+        }
         if (!_basicTreeProperties || _basicTreeProperties.nodeCount < BIG_TREE_NODES) {
             update(source, transitionDuration, doNotRecalculateWidth);
+            runAfterUpdate();
             return;
         }
         let dur = (transitionDuration === undefined) ? TRANSITION_DURATION_DEFAULT : transitionDuration;
@@ -2282,9 +2299,28 @@ function (root, d3, forester, phyloXml) {
             }
             try {
                 update(p.source, p.duration, p.noWidth);
+                runAfterUpdate();
             } finally {
                 hideBusy();
             }
+        });
+    }
+
+    // Run fn once the redraw has happened: now, if none is pending (a small
+    // tree, or nothing scheduled), else after the deferred update() runs.
+    function afterUpdate(fn) {
+        if (_pendingUpdate) {
+            _afterUpdate.push(fn);
+        } else {
+            fn();
+        }
+    }
+
+    function runAfterUpdate() {
+        let fns = _afterUpdate;
+        _afterUpdate = [];
+        fns.forEach(function (fn) {
+            fn();
         });
     }
 
@@ -4742,7 +4778,12 @@ function (root, d3, forester, phyloXml) {
             calcMaxExtLabel();
             _root.x0 = _displayHeight / 2;
             _root.y0 = 0;
-            initialize();
+            _initializing = true;
+            try {
+                initialize();
+            } finally {
+                _initializing = false;
+            }
         }
 
         // Everything that can THROW has already happened above -- bad
@@ -5506,39 +5547,44 @@ function (root, d3, forester, phyloXml) {
             applyZoom();
             return;
         }
-        let t = d3.zoomTransform(_baseSvg.node());
-        let before = layoutSpans();
-        // the layout point currently under the middle of the viewport
-        let cx = ((size.w / 2) - t.x) / t.k;
-        let cy = ((size.h / 2) - t.y) / t.k;
+        // The point under the viewport centre, captured ONCE per burst: with
+        // a big tree the zoom steps of a wheel flick coalesce into one
+        // deferred redraw, and the re-centring after it maps this one point
+        // forward to the final layout. Capturing again on each step would
+        // measure a transform that has not been applied yet.
+        if (!_pendingCentre) {
+            let t = d3.zoomTransform(_baseSvg.node());
+            _pendingCentre = {
+                size: size,
+                t: t,
+                before: layoutSpans(),
+                cx: ((size.w / 2) - t.x) / t.k,
+                cy: ((size.h / 2) - t.y) / t.k
+            };
+        }
 
         applyZoom();
 
+        afterUpdate(recentreViewport);
+    }
+
+    function recentreViewport() {
+        let p = _pendingCentre;
+        _pendingCentre = null;
+        if (!p || !_baseSvg) {
+            return;
+        }
         let after = layoutSpans();
-        // Taken from the layout spans, NOT from a measured bounding box: nodes
-        // and labels are moved by a transition, so straight after update() the
-        // rendered geometry is still a mix of old and new and measuring it puts
-        // the anchor in the wrong place (which showed up as the tree wandering
-        // up the screen while zooming out). The spans are exact and immediate.
-        //
-        // Horizontally the layout has two zones. Points inside the branch span
-        // SCALE with it, but a viewport centre can also sit over the label
-        // zone beyond it (with long labels, most of the picture) -- label text
-        // keeps its length and only TRANSLATES with its anchor node, so that
-        // part of the distance is carried over unscaled. Splitting the anchor
-        // this way is exact for labels anchored at the far edge and a close
-        // approximation for the rest; scaling the whole distance made the
-        // display race off horizontally on long-labelled trees.
-        // ... and the same at the OTHER end: a centre panned before the root
-        // (negative) or past the span is empty margin too, and scaling it
-        // flings the tree the way the label overshoot once did.
-        let bx = Math.max(0, Math.min(cx, before.horizontal));
-        let nx = (bx * (after.horizontal / before.horizontal)) + (cx - bx);
-        let by = Math.max(0, Math.min(cy, before.vertical));
-        let ny = (by * (after.vertical / before.vertical)) + (cy - by);
+        // Map the captured point through the change in layout extent: a
+        // point inside the tree scales with it, a point in the margin keeps
+        // its offset from the tree's edge.
+        let bx = Math.max(0, Math.min(p.cx, p.before.horizontal));
+        let nx = (bx * (after.horizontal / p.before.horizontal)) + (p.cx - bx);
+        let by = Math.max(0, Math.min(p.cy, p.before.vertical));
+        let ny = (by * (after.vertical / p.before.vertical)) + (p.cy - by);
         _baseSvg.call(_zoomListener.transform, d3.zoomIdentity
-            .translate((size.w / 2) - (nx * t.k), (size.h / 2) - (ny * t.k))
-            .scale(t.k));
+            .translate((p.size.w / 2) - (nx * p.t.k), (p.size.h / 2) - (ny * p.t.k))
+            .scale(p.t.k));
     }
 
     // The desktop's radial rotation: each press turns the circular layout by
@@ -5586,7 +5632,7 @@ function (root, d3, forester, phyloXml) {
             } else {
                 _displayWidth = _displayWidth * BUTTON_ZOOM_IN_FACTOR;
             }
-            update(null, 0);
+            scheduleUpdate(null, 0);
         });
     }
 
@@ -5607,7 +5653,7 @@ function (root, d3, forester, phyloXml) {
             } else {
                 _displayHeight = _displayHeight * f;
             }
-            update(null, 0);
+            scheduleUpdate(null, 0);
         });
     }
 
@@ -5626,7 +5672,7 @@ function (root, d3, forester, phyloXml) {
             }
             if ((newDisplayWidth - calcMaxTreeLengthForDisplay()) >= 1) {
                 _displayWidth = newDisplayWidth;
-                update(null, 0);
+                scheduleUpdate(null, 0);
             }
         });
     }
@@ -5647,7 +5693,7 @@ function (root, d3, forester, phyloXml) {
                     _displayHeight = min;
                 }
             }
-            update(null, 0);
+            scheduleUpdate(null, 0);
         });
     }
 

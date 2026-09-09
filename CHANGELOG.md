@@ -50,6 +50,21 @@ consumers only see a change when a version is cut.
 
 ### Performance
 
+- **Zooming a big tree is no longer a slide show.** Zoom in Archaeopteryx is
+  a re-layout rather than a transform — the tree grows while the labels keep
+  their size — so every wheel notch was a full redraw, and a plain wheel
+  notch was two (one per axis). A flick sending ten notches was twenty
+  synchronous redraws. Zoom now goes through the same coalescing as every
+  other redraw: a burst of notches returns in milliseconds, shows the
+  "Redrawing" card once, redraws once, and re-centres the viewport on the
+  point that was under it — mapping the first notch's "before" to the last
+  notch's "after", which is what a single re-centring needs. The zoom
+  buttons use the same path. Small trees are unchanged.
+- **Launching no longer redraws four times.** `initialize()` ended by
+  running both searches, each of which ends in a redraw — two extra full
+  passes on every launch that drew nothing new. A redraw scheduled while the
+  initial draw is in progress is now dropped, since that draw renders the
+  same state; an initial search value still shows its hits.
 - **Redraws on a big tree are coalesced and no longer freeze the page.** A
   checkbox, slider or search now shows a "Redrawing" card and redraws on the
   next frame, and every redraw requested in the same tick collapses into one.
