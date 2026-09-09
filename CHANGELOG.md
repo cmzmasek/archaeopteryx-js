@@ -50,6 +50,19 @@ consumers only see a change when a version is cut.
 
 ### Performance
 
+- **A big tree no longer looks frozen while it loads.** Above 2,000 nodes,
+  `launch()` validates, builds the control panel, shows a "Drawing N nodes"
+  card over the tree area and returns; the draw runs one frame later so the
+  card actually paints. Every error still throws synchronously — only the
+  draw is deferred — and the new `viewer.ready` promise resolves when it has
+  run (at once for a small tree, which stays fully synchronous). On the
+  18,512-node BV-BRC tree, `launch()` now returns in under two seconds
+  instead of ~16, with the card on screen for the rest. The one thing the
+  library cannot defer is your own parse of a big file: `archaeopteryx.busy()`
+  shows the same card for that, yields a frame, runs your work, and removes
+  it — open.html uses it, so a 38 MB file now shows "Reading … 37.9 MB" the
+  instant you click, then "Drawing 18,512 nodes", then the tree.
+
 - **Big trees draw about twice as fast.** Every node used to get nine SVG
   elements whether or not they would ever show anything. On a 18,512-node
   BV-BRC influenza tree that was 222,197 elements, **half of them inert** —

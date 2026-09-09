@@ -277,6 +277,11 @@ function (root, d3, forester, phyloXml) {
     const SVG_EXPORT_FORMAT = 'SVG';
     const TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     const TRANSITION_DURATION_DEFAULT = 750;
+    // Above this many nodes the first draw is deferred by one frame behind a
+    // "working" card, so the page shows it is busy instead of appearing frozen.
+    // Below it everything stays synchronous exactly as before -- the deferral
+    // buys nothing on a tree that draws in a few hundred milliseconds.
+    const BIG_TREE_NODES = 2000;
     const WARNING = 'ArchaeopteryxJS: WARNING';
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
@@ -506,6 +511,13 @@ function (root, d3, forester, phyloXml) {
     const RADIAL_MAX_EXTENT = 24000;
     let _radialLabelsHorizontal = false;   // circular layout: external labels upright at the ring instead of riding their spokes
     let _panelTheme = null;   // null = follow OS; 'light' / 'dark' = header switch choice
+    // Resolves once the current launch has drawn. Immediately for a small
+    // tree; after the deferred first draw for a big one. Exposed as
+    // viewer.ready so an embedder can wait for the DOM to exist.
+    let _readyPromise = Promise.resolve();
+    // Bumped by every launch() and destroy(), so a first draw deferred by a
+    // launch that was since torn down or replaced knows not to run.
+    let _launchSeq = 0;
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
@@ -4456,6 +4468,9 @@ function (root, d3, forester, phyloXml) {
             getSelectedNodes: function () {
                 return archaeopteryx.getSelectedNodes();
             },
+            // resolves once the tree is drawn: at once for a small tree,
+            // after the deferred first draw for a big one
+            ready: _readyPromise,
             destroy: destroyViewer
         };
     }
@@ -4467,6 +4482,8 @@ function (root, d3, forester, phyloXml) {
     // outlived the view. A later launch() into any container works normally
     // (the page-level handlers rebind).
     function destroyViewer() {
+        ++_launchSeq;   // a first draw still waiting for its frame must not run
+        hideBusy();
         if (_container) {
             d3.select(_container).selectAll('svg').remove();
             _container.querySelectorAll('.aptx-panel').forEach(function (p) {
@@ -4660,11 +4677,42 @@ function (root, d3, forester, phyloXml) {
         _root = phylo;
         _root_const = _root;
 
-        calcMaxExtLabel();
+        let seq = ++_launchSeq;
+        function firstDraw() {
+            calcMaxExtLabel();
+            _root.x0 = _displayHeight / 2;
+            _root.y0 = 0;
+            initialize();
+        }
 
-        _root.x0 = _displayHeight / 2;
-        _root.y0 = 0;
-        initialize();
+        // Everything that can THROW has already happened above -- bad
+        // arguments, unknown config keys, an unresolvable container -- so
+        // deferring only the draw keeps launch()'s synchronous-error contract
+        // intact. The handle closes over module state, so it is valid before
+        // the draw has run; viewer.ready says when it has.
+        let nodeCount = _basicTreeProperties ? _basicTreeProperties.nodeCount : 0;
+        if (nodeCount >= BIG_TREE_NODES) {
+            showBusy(containerEl, 'Drawing ' + nodeCount.toLocaleString() + ' nodes',
+                'this can take a moment on a tree this size');
+            _readyPromise = new Promise(function (resolve) {
+                afterPaint(function () {
+                    // torn down or replaced while we waited: nothing to draw
+                    if (seq !== _launchSeq) {
+                        resolve();
+                        return;
+                    }
+                    try {
+                        firstDraw();
+                    } finally {
+                        hideBusy();
+                        resolve();
+                    }
+                });
+            });
+        } else {
+            firstDraw();
+            _readyPromise = Promise.resolve();
+        }
 
         return makeViewerHandle();
 
@@ -7549,13 +7597,30 @@ function (root, d3, forester, phyloXml) {
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
             // The node-data dialog, on the same palette as the panel and the menu.
-            + '.aptx-dialog {'
+            + '.aptx-dialog, .aptx-busy {'
             + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '}'
-            + '@media (prefers-color-scheme:dark){ .aptx-dialog:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
-            + '.aptx-dialog.aptx-dark {' + dark + '}'
+            + '@media (prefers-color-scheme:dark){ .aptx-dialog:not(.aptx-light):not(.aptx-dark),'
+            + '  .aptx-busy:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-dialog.aptx-dark, .aptx-busy.aptx-dark {' + dark + '}'
+            // The "working" card shown over the tree area while a big tree is
+            // drawn. It covers the whole container so nothing underneath --
+            // panel included -- can be clicked into a half-built view.
+            + '.aptx-busy { position:absolute; inset:0; z-index:1000; display:grid; place-items:center;'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:12px; color:var(--p-ink); cursor:progress; }'
+            + '.aptx-busy-card { display:flex; align-items:center; gap:10px; padding:10px 16px 10px 13px;'
+            + '  border:1px solid var(--p-line-strong); border-radius:12px; background:var(--p-bg);'
+            + '  box-shadow:0 24px 48px -16px rgba(23,34,46,0.45),0 4px 12px -4px rgba(23,34,46,0.22); }'
+            + '.aptx-busy-dot { width:10px; height:10px; border-radius:50%; flex:none;'
+            + '  border:2px solid var(--p-accent-weak); border-top-color:var(--p-accent);'
+            + '  animation:aptx-busy-spin 0.8s linear infinite; }'
+            + '@keyframes aptx-busy-spin { to { transform:rotate(360deg); } }'
+            + '@media (prefers-reduced-motion:reduce){ .aptx-busy-dot { animation:none;'
+            + '  border-color:var(--p-accent); } }'
+            + '.aptx-busy-sub { color:var(--p-muted); }'
             + '.aptx-dialog { padding:0; border:1px solid var(--p-line-strong); border-radius:12px;'
             + '  background:var(--p-bg); color:var(--p-ink); max-width:92vw;'
             + '  box-shadow:0 24px 48px -16px rgba(23,34,46,0.45),0 4px 12px -4px rgba(23,34,46,0.22);'
@@ -7972,6 +8037,68 @@ function (root, d3, forester, phyloXml) {
     // The shell every modal shares: title bar with a close button, a body, the
     // panel's light/dark choice, and removal on close. Returns the body for the
     // caller to fill. Only one dialog of a given id exists at a time.
+    // A "working" card over the tree area. Shown while a big tree's first draw
+    // is deferred, so the user sees the program is busy rather than a page that
+    // has stopped responding -- which is what a 10-second synchronous draw
+    // looks like from the outside.
+    function showBusy(container, text, sub) {
+        container.querySelectorAll(':scope > .aptx-busy').forEach(function (b) {
+            b.remove();
+        });
+        let busy = document.createElement('div');
+        busy.className = 'aptx-busy';
+        if (_panelTheme) {
+            busy.classList.add('aptx-' + _panelTheme);
+        }
+        busy.setAttribute('role', 'status');
+        busy.setAttribute('aria-live', 'polite');
+        let card = document.createElement('div');
+        card.className = 'aptx-busy-card';
+        let dot = document.createElement('span');
+        dot.className = 'aptx-busy-dot';
+        let label = document.createElement('span');
+        label.textContent = text;
+        card.appendChild(dot);
+        card.appendChild(label);
+        if (sub) {
+            let s = document.createElement('span');
+            s.className = 'aptx-busy-sub';
+            s.textContent = sub;
+            card.appendChild(s);
+        }
+        busy.appendChild(card);
+        container.appendChild(busy);
+        return busy;
+    }
+
+    function hideBusy() {
+        if (_container) {
+            _container.querySelectorAll('.aptx-busy').forEach(function (b) {
+                b.remove();
+            });
+        }
+    }
+
+    // Run fn after the browser has had a chance to PAINT. A plain setTimeout
+    // does not promise that; rAF fires just before a paint, so a timeout queued
+    // from inside it lands just after one. A hidden tab may never fire rAF at
+    // all, so a fallback timer guarantees the work still happens.
+    function afterPaint(fn) {
+        let done = false;
+        function go() {
+            if (!done) {
+                done = true;
+                fn();
+            }
+        }
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(function () {
+                setTimeout(go, 0);
+            });
+        }
+        setTimeout(go, 150);
+    }
+
     function makeDialogShell(id, title, width) {
         let existing = document.getElementById(id);
         if (existing) {
@@ -9565,6 +9692,48 @@ function (root, d3, forester, phyloXml) {
             tree = archaeopteryx.parseNewHampshire(data, nhConfidenceValuesInBrackets, internalLabelsAsConfidence);
         }
         return tree;
+    };
+
+    // Show the viewer's own "working" card in a container. For the part of a
+    // load the library cannot defer for you -- your own parse of a big file
+    // before launch(), or a fetch -- so the page shows the same card the
+    // viewer shows while it draws, rather than something foreign or nothing.
+    //
+    // With `work`: the card is painted, work() runs on the next frame, and
+    // the card is removed when it returns -- the browser gets a frame in
+    // between, which is the whole point, and a hidden tab still runs the
+    // work on a fallback timer. Without `work`: the card stays until the
+    // returned function is called; then it is on you to yield.
+    archaeopteryx.busy = function (container, text, sub, work) {
+        let el = (typeof container === 'string') ? document.querySelector(container) : container;
+        if (!el) {
+            throw new Error(ERROR + 'busy(): container not found');
+        }
+        injectPanelStyles();
+        let busy;
+        if (el === document.body) {
+            // whole-page: fixed, and never touch the body's own positioning
+            busy = showBusy(el, text, sub);
+            busy.style.position = 'fixed';
+        } else {
+            if (getComputedStyle(el).position === 'static') {
+                el.style.position = 'relative';
+            }
+            busy = showBusy(el, text, sub);
+        }
+        let remove = function () {
+            busy.remove();
+        };
+        if (typeof work === 'function') {
+            afterPaint(function () {
+                try {
+                    work();
+                } finally {
+                    remove();
+                }
+            });
+        }
+        return remove;
     };
 
     // Parse-and-launch in one step: fetch the file's content yourself (the

@@ -381,11 +381,40 @@ render nothing and say nothing. Both entry points return a **viewer handle**:
 
 ```js
 viewer.getSelectedNodes(); // the node-menu selections (enableManualNodeSelection)
+viewer.ready;              // a Promise: resolved once the tree is drawn
 viewer.destroy();          // unmount COMPLETELY: the container DOM, the node
                            // menu / dialogs / alignment scroller, the window
                            // resize listener and every page-level key/wheel
                            // handler; a later launch() works normally
 ```
+
+**Big trees draw on the next frame.** Above 2,000 nodes, `launch()` does all
+its validation, builds the control panel, shows a "Drawing N nodes" card over
+the tree area, and returns — the draw itself runs one frame later, so the
+browser can paint the card instead of appearing frozen for the seconds a
+large tree takes. Every error still throws synchronously from `launch()`
+exactly as before; only the draw is deferred. `viewer.ready` resolves when it
+has run (immediately for a small tree, which stays fully synchronous). Wait
+on it before reading the tree's DOM:
+
+```js
+const viewer = archaeopteryx.launch(container, tree, config);
+await viewer.ready;   // the SVG exists now
+```
+
+The one part the library cannot defer for you is your own parse of a big
+file before `launch()`. `archaeopteryx.busy()` shows the same card for that,
+yields a frame so it paints, runs your work, and removes it:
+
+```js
+archaeopteryx.busy(container, 'Reading ' + name, sizeMb + ' MB', function () {
+    const tree = archaeopteryx.parseTree(name, text);
+    viewer = archaeopteryx.launch(container, tree, config);
+});
+```
+
+Pass `document.body` as the container for a whole-page card; without the
+work function it returns a remover and the yielding is up to you.
 
 One viewer per page: the library keeps its display state in one place, so a
 second launch — into any container — replaces the first. Launching into the

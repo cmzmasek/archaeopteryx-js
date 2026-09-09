@@ -484,6 +484,12 @@
     // messages, worth showing verbatim -- but the Newick parser, being the
     // fallback for unrecognized content, accepts a lot of plain text as a
     // one-tip "tree", so anything with fewer than two tips is rejected too.
+    // A big file is parsed synchronously and can take seconds; without a
+    // yield the browser cannot paint anything in between, so the page looks
+    // frozen. Show the viewer's own "working" card first and parse on the
+    // next frame. Small inputs skip all of this and stay synchronous.
+    var BIG_INPUT_CHARS = 1000000;
+
     function openTree(fileName, text) {
         showError('');
         if (!text || !text.trim()) {
@@ -491,6 +497,21 @@
                 : 'The paste box is empty. Paste a tree — or click "try an example".');
             return;
         }
+        if (text.length >= BIG_INPUT_CHARS) {
+            var mb = (text.length / 1048576).toFixed(1);
+            // on the body, not the tree area: the landing card covers that
+            // area until the first tree opens, and errors are shown on it
+            archaeopteryx.busy(document.body,
+                'Reading ' + (fileName || 'pasted tree'), mb + ' MB',
+                function () {
+                    openTreeNow(fileName, text);
+                });
+            return;
+        }
+        openTreeNow(fileName, text);
+    }
+
+    function openTreeNow(fileName, text) {
         var config = currentConfig();
         var tree;
         try {
