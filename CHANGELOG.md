@@ -116,6 +116,15 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
+- **Properties in "Display Node Data" and in the hover tooltip are a proper
+  section now.** They used to appear as upper-case, faint lines — the
+  dialog's row detector took each `BVBRC:host_group: Cow` for a heading,
+  because the ref's own namespace colon is exactly what a heading looks
+  like. Both now show a PROPERTIES heading like TAXONOMY and SEQUENCE, with
+  name/value rows named the way the Color-by menu and legends name them:
+  "Host Group", not `BVBRC:host_group` or `Host_Group`. Units follow the
+  value. "Sum of Subtree Tips" is now "Tips below" in both places.
+
 - **A taxon identifier is never offered as a visualization.** On the H5N1
   tree "NCBI Taxon Id" ranked fourth in Color-by: 13,042 tips at 11320 plus
   55 one-off strain ids, which passed every statistical rule because the

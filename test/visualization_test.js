@@ -1507,6 +1507,25 @@ function testLaunchApiValidation() {
 // It repeats like a category and passes every statistical rule, but a colour
 // can carry nothing the species name beside it does not, and "11320" in a
 // legend tells the reader nothing. Learned on the 13,246-tip H5N1 tree.
+// The node-data dialog names a property the way the Color-by menu does.
+function testPropertyDisplayName() {
+    var cases = [
+        ['BVBRC:host_group', 'Host Group'],
+        ['vipr:NCBI_Taxon_Id', 'NCBI Taxon Id'],
+        ['x:FluSeason', 'Flu Season'],
+        ['PANGO_Lineage_L0', 'PANGO Lineage L0'],
+        ['plain', 'Plain']
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var got = forester.propertyDisplayName(cases[i][0]);
+        if (got !== cases[i][1]) {
+            console.log('    ' + cases[i][0] + ' -> ' + JSON.stringify(got) + ' expected ' + JSON.stringify(cases[i][1]));
+            return false;
+        }
+    }
+    return true;
+}
+
 function testTaxonIdNeverOffered() {
     var phy = forester.parseNewHampshire('((a,b,c,d),(e,f,g,h));', true, false);
     var tips = forester.getAllExternalNodes(phy);
@@ -1763,6 +1782,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);

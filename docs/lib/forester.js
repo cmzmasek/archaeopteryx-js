@@ -811,6 +811,14 @@
             .join(' ');
     }
 
+    // The display name for a property ref, as the Color-by menu and legends
+    // show it: namespace dropped, then prettified. Exported so the node-data
+    // dialog names a property the same way the rest of the viewer does.
+    forester.propertyDisplayName = function (ref) {
+        let local = ref.indexOf(':') >= 0 ? ref.substring(ref.indexOf(':') + 1) : ref;
+        return prettifyVisLabel(local);
+    };
+
     forester.visualizationCandidates = function (tree) {
         let total = 0;
         let stats = Object.create(null);   // id -> {kind, ref, label, nodes, values:Set, multi}; null-proto: ids embed file refs

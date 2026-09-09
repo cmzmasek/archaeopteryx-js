@@ -1221,24 +1221,23 @@ function (root, d3, forester, phyloXml) {
             }
         }
         if (d.properties && d.properties.length > 0) {
-            let propertiesLength = d.properties.length;
-            for (i = 0; i < propertiesLength; ++i) {
+            // Under a PROPERTIES heading like the sections above it, named as
+            // the Color-by menu names them ("Host Group", not "Host_Group") --
+            // the same rows the node-data dialog shows.
+            let propertyRows = '';
+            for (i = 0; i < d.properties.length; ++i) {
                 let property = d.properties[i];
                 if (property.ref && property.value) {
-                    let prop_ref = property.ref
-                    if (prop_ref.indexOf(':') > 0) {
-                        prop_ref = prop_ref.substring(prop_ref.indexOf(':') + 1)
-                    }
-                    if (property.unit) {
-                        mo_text += prop_ref + ': ' + property.value + property.unit + '<br>';
-                    } else {
-                        mo_text += prop_ref + ': ' + property.value + '<br>';
-                    }
+                    propertyRows += '- ' + forester.propertyDisplayName(property.ref) + ': '
+                        + property.value + (property.unit ? ' ' + property.unit : '') + '<br>';
                 }
+            }
+            if (propertyRows) {
+                mo_text += 'Properties<br>' + propertyRows;
             }
         }
         if (d.children) {
-            mo_text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
+            mo_text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
         }
 
         // Same label/value layout as the node-data dialog, so the two read alike.
@@ -5071,20 +5070,26 @@ function (root, d3, forester, phyloXml) {
                     }
                 }
                 if (n.properties && n.properties.length > 0) {
-                    let propertiesLength = n.properties.length;
-                    for (i = 0; i < propertiesLength; ++i) {
+                    // Under their own heading, like Taxonomy and Sequence, and
+                    // named as the Color-by menu names them ("Host Group", not
+                    // "BVBRC:host_group"). The raw ref used to be written as
+                    // the key, and its namespace colon defeated the dialog's
+                    // key/value detection, so every property was rendered as
+                    // a section heading -- upper case, faint.
+                    let propertyRows = '';
+                    for (i = 0; i < n.properties.length; ++i) {
                         let property = n.properties[i];
                         if (property.ref && property.value) {
-                            if (property.unit) {
-                                text += property.ref + ': ' + property.value + property.unit + '<br>';
-                            } else {
-                                text += property.ref + ': ' + property.value + '<br>';
-                            }
+                            propertyRows += '- ' + forester.propertyDisplayName(property.ref) + ': '
+                                + property.value + (property.unit ? ' ' + property.unit : '') + '<br>';
                         }
+                    }
+                    if (propertyRows) {
+                        text += 'Properties<br>' + propertyRows;
                     }
                 }
                 if (n.children) {
-                    text += 'Sum of Subtree Tips: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
+                    text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
                 }
 
                 showNodeDataDialog(title, text, false, 260, 300);
