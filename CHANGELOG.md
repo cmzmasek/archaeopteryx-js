@@ -179,6 +179,11 @@ consumers only see a change when a version is cut.
 
 ### Demos
 
+- **A Late Cretaceous time tree.** Thirteen well-known dinosaurs, Cenomanian
+  to Maastrichtian, all inside one geologic Series — so it is the demo that
+  shows the axis banding Series over Stage, which the wider Dinosaur and
+  Ammonite trees never reach. Schematic, like its siblings.
+
 - **A 13,246-tip demo tree.** Influenza A H5N1 segment 3 (PA) from BV-BRC,
   18,512 nodes with 16 properties, most of it the 2024–2025 North American
   outbreak in dairy cattle and birds. It is the tree the performance work was

@@ -36,6 +36,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Influenza HA (annotated)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=influenza)
 * [Dinosaur time tree](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=dinosaur)
 * [Ammonite time tree (fossil ranges)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=ammonite)
+* [Late Cretaceous time tree (stages)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=late_cretaceous)
 * [Apaf-1 gene family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=apaf)
 * [Bcl-2 family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=bcl2)
 * [Confidence values](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=confidences)

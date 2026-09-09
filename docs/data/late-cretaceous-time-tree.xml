@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" branch_length_unit="My" rerootable="true">
+  <name>Late Cretaceous time tree (demo)</name>
+  <description>A schematic, time-calibrated tree of well-known Late Cretaceous dinosaurs (ages in Ma), from the Cenomanian (Spinosaurus, Carcharodontosaurus) to the Maastrichtian (Tyrannosaurus, Triceratops). Because the whole tree falls inside ONE geologic Series, the axis bands the Series over its STAGES — Cenomanian through Maastrichtian, each in its ICS colour — instead of Period over Epoch, and a stage too narrow for its name keeps its colour and drops the label. Compare the Dinosaur time tree, which spans the Mesozoic and bands Period over Epoch. Schematic, not a rigorous phylogeny.</description>
+  <clade>
+    <name>Dinosauria (Late Cretaceous)</name>
+    <branch_length>0</branch_length>
+    <date unit="mya">
+      <value>100</value>
+    </date>
+    <clade>
+      <name>Ornithischia</name>
+      <branch_length>2</branch_length>
+      <date unit="mya">
+        <value>98</value>
+      </date>
+      <clade>
+        <name>Ankylosaurus</name>
+        <branch_length>31</branch_length>
+        <date unit="mya">
+          <value>67</value>
+        </date>
+      </clade>
+      <clade>
+        <name>Cerapoda</name>
+        <branch_length>2</branch_length>
+        <date unit="mya">
+          <value>96</value>
+        </date>
+        <clade>
+          <name>Ceratopsia</name>
+          <branch_length>1</branch_length>
+          <date unit="mya">
+            <value>95</value>
+          </date>
+          <clade>
+            <name>Zuniceratops</name>
+            <branch_length>5</branch_length>
+            <date unit="mya">
+              <value>90</value>
+            </date>
+          </clade>
+          <clade>
+            <name>Ceratopsidae</name>
+            <branch_length>15</branch_length>
+            <date unit="mya">
+              <value>80</value>
+            </date>
+            <clade>
+              <name>Styracosaurus</name>
+              <branch_length>5</branch_length>
+              <date unit="mya">
+                <value>75</value>
+              </date>
+            </clade>
+            <clade>
+              <name>Triceratops</name>
+              <branch_length>14</branch_length>
+              <date unit="mya">
+                <value>66</value>
+              </date>
+            </clade>
+          </clade>
+        </clade>
+        <clade>
+          <name>Hadrosauridae</name>
+          <branch_length>11</branch_length>
+          <date unit="mya">
+            <value>85</value>
+          </date>
+          <clade>
+            <name>Parasaurolophus</name>
+            <branch_length>10</branch_length>
+            <date unit="mya">
+              <value>75</value>
+            </date>
+          </clade>
+          <clade>
+            <name>Edmontosaurus</name>
+            <branch_length>18</branch_length>
+            <date unit="mya">
+              <value>67</value>
+            </date>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <name>Saurischia</name>
+      <branch_length>1</branch_length>
+      <date unit="mya">
+        <value>99</value>
+      </date>
+      <clade>
+        <name>Alamosaurus</name>
+        <branch_length>31</branch_length>
+        <date unit="mya">
+          <value>68</value>
+        </date>
+      </clade>
+      <clade>
+        <name>Theropoda</name>
+        <branch_length>1</branch_length>
+        <date unit="mya">
+          <value>98</value>
+        </date>
+        <clade>
+          <name>Spinosauridae + Carcharodontosauridae</name>
+          <branch_length>0.5</branch_length>
+          <date unit="mya">
+            <value>97.5</value>
+          </date>
+          <clade>
+            <name>Spinosaurus</name>
+            <branch_length>0.5</branch_length>
+            <date unit="mya">
+              <value>97</value>
+            </date>
+          </clade>
+          <clade>
+            <name>Carcharodontosaurus</name>
+            <branch_length>2.5</branch_length>
+            <date unit="mya">
+              <value>95</value>
+            </date>
+          </clade>
+        </clade>
+        <clade>
+          <name>Coelurosauria</name>
+          <branch_length>2</branch_length>
+          <date unit="mya">
+            <value>96</value>
+          </date>
+          <clade>
+            <name>Tyrannosauridae</name>
+            <branch_length>16</branch_length>
+            <date unit="mya">
+              <value>80</value>
+            </date>
+            <clade>
+              <name>Gorgosaurus</name>
+              <branch_length>4</branch_length>
+              <date unit="mya">
+                <value>76</value>
+              </date>
+            </clade>
+            <clade>
+              <name>Tyrannosaurus</name>
+              <branch_length>14</branch_length>
+              <date unit="mya">
+                <value>66</value>
+              </date>
+            </clade>
+          </clade>
+          <clade>
+            <name>Maniraptora</name>
+            <branch_length>6</branch_length>
+            <date unit="mya">
+              <value>90</value>
+            </date>
+            <clade>
+              <name>Velociraptor</name>
+              <branch_length>17</branch_length>
+              <date unit="mya">
+                <value>73</value>
+              </date>
+            </clade>
+            <clade>
+              <name>Citipati</name>
+              <branch_length>18</branch_length>
+              <date unit="mya">
+                <value>72</value>
+              </date>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>
