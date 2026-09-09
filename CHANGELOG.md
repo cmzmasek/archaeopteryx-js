@@ -50,6 +50,17 @@ consumers only see a change when a version is cut.
 
 ### Performance
 
+- **Redraws on a big tree are coalesced and no longer freeze the page.** A
+  checkbox, slider or search now shows a "Redrawing" card and redraws on the
+  next frame, and every redraw requested in the same tick collapses into one.
+  That matters more than it sounds: several controls redrew two, three or four
+  times per click — the Visualizations toggle twice back to back, Auto-hide
+  four times, nine others three times via the search hooks — and a slider
+  drag redrew once per input event. On the 18,512-node tree a burst of twelve
+  slider events plus a checkbox now returns in 3 ms and runs one redraw where
+  it ran thirteen. Controls that read the fresh layout straight after
+  redrawing (zoom-to-fit, the layout switches) are unchanged and synchronous.
+  Small trees are untouched.
 - **A big tree no longer looks frozen while it loads.** Above 2,000 nodes,
   `launch()` validates, builds the control panel, shows a "Drawing N nodes"
   card over the tree area and returns; the draw runs one frame later so the

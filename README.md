@@ -394,8 +394,11 @@ the tree area, and returns — the draw itself runs one frame later, so the
 browser can paint the card instead of appearing frozen for the seconds a
 large tree takes. Every error still throws synchronously from `launch()`
 exactly as before; only the draw is deferred. `viewer.ready` resolves when it
-has run (immediately for a small tree, which stays fully synchronous). Wait
-on it before reading the tree's DOM:
+has run (immediately for a small tree, which stays fully synchronous). Later
+redraws on a big tree — a checkbox, a slider, a search — work the same way:
+they show a "Redrawing" card and run on the next frame, and every redraw
+requested in the same tick collapses into one. Wait on `ready` before reading
+the tree's DOM after `launch()`:
 
 ```js
 const viewer = archaeopteryx.launch(container, tree, config);

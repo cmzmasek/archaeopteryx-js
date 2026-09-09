@@ -518,6 +518,10 @@ function (root, d3, forester, phyloXml) {
     // Bumped by every launch() and destroy(), so a first draw deferred by a
     // launch that was since torn down or replaced knows not to run.
     let _launchSeq = 0;
+    // A redraw waiting for its frame (big trees only): the arguments of every
+    // scheduleUpdate() call made since, merged, so that one update() serves
+    // them all.
+    let _pendingUpdate = null;
     let _searchFields = [];   // available search-field descriptors, rebuilt per tree
     let _zoomListener = null;
     let _zoomed_x_or_y = false;
@@ -2231,6 +2235,58 @@ function (root, d3, forester, phyloXml) {
 
 
     // --------------------------------------------------------------
+
+    // Redraw -- at once on a small tree, coalesced and deferred on a big one.
+    //
+    // Two things this buys on a big tree, both measured on the 18,512-node
+    // BV-BRC tree where one update() costs over a second:
+    //
+    //   - Coalescing. Several handlers redraw more than once per click:
+    //     nine of them run search0(), search1() and update() -- three full
+    //     redraws, since runSearches() ends in its own update() -- and the
+    //     Visualizations and Auto-hide toggles call update() twice back to
+    //     back. A slider drag fires an update per input event. Every call
+    //     made in the same tick now collapses into ONE update().
+    //   - The yield. The redraw runs behind the "working" card on the next
+    //     frame, so a click is answered by a visible card instead of a page
+    //     that has stopped responding.
+    //
+    // Only for callers that read nothing back afterwards. zoomToFit() and
+    // the layout switches update() and then read the fresh layout in the
+    // same tick, so they keep calling update() directly -- deferring those
+    // would have them measure a tree that has not been drawn yet.
+    //
+    // Arguments merge conservatively: any caller that wants the width
+    // recalculated gets it, the shortest transition wins, and a named source
+    // survives a null one.
+    function scheduleUpdate(source, transitionDuration, doNotRecalculateWidth) {
+        if (!_basicTreeProperties || _basicTreeProperties.nodeCount < BIG_TREE_NODES) {
+            update(source, transitionDuration, doNotRecalculateWidth);
+            return;
+        }
+        let dur = (transitionDuration === undefined) ? TRANSITION_DURATION_DEFAULT : transitionDuration;
+        if (_pendingUpdate) {
+            _pendingUpdate.source = _pendingUpdate.source || source;
+            _pendingUpdate.duration = Math.min(_pendingUpdate.duration, dur);
+            _pendingUpdate.noWidth = _pendingUpdate.noWidth && (doNotRecalculateWidth === true);
+            return;
+        }
+        _pendingUpdate = {source: source, duration: dur, noWidth: doNotRecalculateWidth === true};
+        let seq = _launchSeq;
+        showBusy(_container, 'Redrawing ' + _basicTreeProperties.nodeCount.toLocaleString() + ' nodes');
+        afterPaint(function () {
+            let p = _pendingUpdate;
+            _pendingUpdate = null;
+            if (seq !== _launchSeq || !p) {
+                return;   // the view was torn down or replaced meanwhile
+            }
+            try {
+                update(p.source, p.duration, p.noWidth);
+            } finally {
+                hideBusy();
+            }
+        });
+    }
 
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
@@ -5487,7 +5543,7 @@ function (root, d3, forester, phyloXml) {
     // so horizontal zoom would be redundant there.
     function rotateRadial(clockwise) {
         _radialRotation = (_radialRotation + (clockwise ? 1 : -1) * Math.PI / 32) % (2 * Math.PI);
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
     // The desktop's fit-width button: fit the tree to the window width,
@@ -6013,7 +6069,7 @@ function (root, d3, forester, phyloXml) {
 
     function msaCbClicked() {
         _state.showMsa = getCheckboxValue(MSA_CB);
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     // Search B starts hidden to keep the panel compact; one click (or a
@@ -6305,12 +6361,12 @@ function (root, d3, forester, phyloXml) {
 
     function timeAxisCbClicked() {
         _state.showTimeAxis = getCheckboxValue(TIME_AXIS_CB);
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function timeGridCbClicked() {
         _state.timeAxisGrid = getCheckboxValue(TIME_GRID_CB);
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     // Fit the circular tree into the viewport, centred. The root is at the
@@ -6524,7 +6580,9 @@ function (root, d3, forester, phyloXml) {
             setValue(SEARCH_FIELD_1, '');
         }
 
-        update(null, 0);
+        // the searches each end in a redraw of their own; on a big tree all
+        // three collapse into one
+        scheduleUpdate(null, 0);
         search0();
         search1();
 
@@ -6571,7 +6629,7 @@ function (root, d3, forester, phyloXml) {
             if (aActive) _foundNodes0 = forester.searchWithSpec(_root, specA);
             if (bActive) _foundNodes1 = forester.searchWithSpec(_root, specB);
         }
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
     // The Combine control only makes sense when both boxes hold a query.
@@ -6741,21 +6799,21 @@ function (root, d3, forester, phyloXml) {
         _state.phylogram = true;
         _state.alignPhylogram = false;
         setDisplayTypeButtons();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function toAlignedPhylogram() {
         _state.phylogram = true;
         _state.alignPhylogram = true;
         setDisplayTypeButtons();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function toCladegram() {
         _state.phylogram = false;
         _state.alignPhylogram = false;
         setDisplayTypeButtons();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function layoutButtonClicked() {
@@ -6862,7 +6920,7 @@ function (root, d3, forester, phyloXml) {
         }
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
 
@@ -6890,7 +6948,7 @@ function (root, d3, forester, phyloXml) {
         }
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function sequenceCbClicked() {
@@ -6901,65 +6959,64 @@ function (root, d3, forester, phyloXml) {
         }
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function confidenceValuesCbClicked() {
         _state.showConfidenceValues = getCheckboxValue(CONFIDENCE_VALUES_CB);
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function supportDotsCbClicked() {
         _state.showSupportDots = getCheckboxValue(SUPPORT_DOTS_CB);
-        update();
+        scheduleUpdate();
     }
 
     function branchLengthsCbClicked() {
         _state.showBranchLengthValues = getCheckboxValue(BRANCH_LENGTH_VALUES_CB);
-        update();
+        scheduleUpdate();
     }
 
     function nodeEventsCbClicked() {
         _state.showNodeEvents = getCheckboxValue(NODE_EVENTS_CB);
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function branchEventsCbClicked() {
         _state.showBranchEvents = getCheckboxValue(BRANCH_EVENTS_CB);
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function internalLabelsCbClicked() {
         _state.showInternalLabels = getCheckboxValue(INTERNAL_LABEL_CB);
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function externalLabelsCbClicked() {
         _state.showExternalLabels = getCheckboxValue(EXTERNAL_LABEL_CB);
         search0();
         search1();
-        update();
+        scheduleUpdate();
     }
 
     function visCbClicked() {
         _state.showVisualizations = getCheckboxValue(VIS_CB);
         resetVis();
-        update(null, 0);
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function visualStylesCbClicked() {
         _state.useVisualStyles = getCheckboxValue(VISUAL_STYLES_CB);
         resetVis();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function dynaHideCbClicked() {
@@ -6967,8 +7024,7 @@ function (root, d3, forester, phyloXml) {
         resetVis();
         search0();
         search1();
-        update(null, 0);
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function shortenCbClicked() {
@@ -6976,7 +7032,7 @@ function (root, d3, forester, phyloXml) {
         resetVis();
         search0();
         search1();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     function downloadButtonPressed() {
@@ -6995,12 +7051,12 @@ function (root, d3, forester, phyloXml) {
 
     function changeBranchWidth(e) {
         _state.branchWidthDefault = getSliderValue(e);
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
     function changeNodeSize(e) {
         _state.nodeSizeDefault = getSliderValue(e);
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
 
@@ -7008,7 +7064,7 @@ function (root, d3, forester, phyloXml) {
     // data alike, as the desktop does it.
     function changeFontSize(e) {
         setFontSizes(getSliderValue(e));
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
     function clampFontSize(v) {
@@ -7186,7 +7242,7 @@ function (root, d3, forester, phyloXml) {
         }
         changeBaseBackgoundColor(_state.backgroundColorDefault);
         applyOverviewTheme();
-        update(null, 0);
+        scheduleUpdate(null, 0);
     }
 
     // Apply the current theme choice to every panel and refresh the switch icons.
@@ -8278,7 +8334,7 @@ function (root, d3, forester, phyloXml) {
         }
         setFontSizes(base);
         setSliderValue(FONT_SIZE_SLIDER, _state.externalNodeFontSize);
-        update(null, 0, true);
+        scheduleUpdate(null, 0, true);
     }
 
 
