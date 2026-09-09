@@ -3249,6 +3249,36 @@ function (root, d3, forester, phyloXml) {
     // One list, because there is one config object. Checking each of the two old
     // bags only against its own list meant the right name in the wrong bag was
     // silently ignored -- the very failure this list exists to prevent.
+    // THE one source for the parse-time defaults. initializeSettings runs from
+    // launch(), which is AFTER launchArchaeopteryx has already parsed, and
+    // parseTree is a public entry point that docs/open.html calls directly --
+    // so a second copy of these literals in either place is a default that
+    // cannot take effect. (The desktop's command-line launch drifted from its
+    // File>Open exactly this way, on a constant that had been hardcoded false
+    // since its config parser was removed.) Two equal literals is the bug;
+    // one object read by both is the fix.
+    const PARSE_DEFAULTS = {
+        nhConfidenceValuesInBrackets: true,
+        internalLabelsAsConfidence: 'auto'
+    };
+
+    // Keys that still WORK but have moved. Unlike REMOVED_CONFIG these do not
+    // throw: they are translated, with a warning naming the replacement, so an
+    // upgrade does not break a working embed over a rename.
+    const DEPRECATED_CONFIG = {
+        nhConfidenceValuesAsInternalNames: {
+            to: 'internalLabelsAsConfidence',
+            // true meant "read every numeric internal label as a confidence",
+            // which is exactly 'always'. It is NOT 'auto': auto is
+            // all-or-nothing and promotes nothing in a mixed tree, so a caller
+            // silently moved to auto would lose promotions they had.
+            map: function (v) {
+                return v === true ? 'always' : PARSE_DEFAULTS.internalLabelsAsConfidence;
+            },
+            note: 'use \'always\' for what this flag did (\'auto\' is the new default, and does not promote mixed trees)'
+        }
+    };
+
     const REMOVED_CONFIG = {
         circular: 'renamed to "layout": use layout: "circular"',
         circularDisplay: 'replaced by "layout": use layout: "circular" (or "rectangular" / "unrooted")',
@@ -3424,8 +3454,8 @@ function (root, d3, forester, phyloXml) {
         'enableSubtreeDeletion',
         'enableVisualizations',
         'initialVisualization',
+        'internalLabelsAsConfidence',
         'ladderizeTree',
-        'nhConfidenceValuesAsInternalNames',
         'nhConfidenceValuesInBrackets',
         'nhExportWriteConfidences',
         'nodeLabels',
@@ -3448,6 +3478,20 @@ function (root, d3, forester, phyloXml) {
                 given[k] = config[k];
             });
         }
+
+        Object.keys(given).forEach(function (k) {
+            let dep = DEPRECATED_CONFIG[k];
+            if (dep === undefined) {
+                return;
+            }
+            console.warn(WARNING + ': "' + k + '" was replaced by "' + dep.to
+                + '": ' + dep.note);
+            // An explicit new key always wins over the old alias.
+            if (given[dep.to] === undefined) {
+                given[dep.to] = dep.map(given[k]);
+            }
+            delete given[k];
+        });
 
         let removed = Object.keys(given).filter(function (k) {
             return REMOVED_CONFIG[k] !== undefined;
@@ -3576,7 +3620,22 @@ function (root, d3, forester, phyloXml) {
         // The Confidence checkbox APPEARS whenever the tree has support values
         // (that is driven by _basicTreeProperties.confidences where the panel
         // is built) but starts unchecked: confidence values clutter the tree.
-        _state.showConfidenceValues = false;
+        //
+        // The ONE exception is a tree whose confidences were just promoted from
+        // bare internal labels: those numbers were ON SCREEN a moment ago, as
+        // node names. Promotion MOVES the label, so leaving the display off
+        // would delete them from the view -- turning "my support values show as
+        // names" into "my support values are gone", which is worse than the bug
+        // being fixed. Promotion must be visually neutral: the same numbers
+        // stay, they merely become confidences.
+        //
+        // Deliberately NOT "any tree that has confidences" (which is what the
+        // desktop does): a phyloXML tree carrying real confidences never had
+        // them drawn, so there is nothing to preserve and today's uncluttered
+        // default is right. Only promotion destroys visible information. That
+        // difference between the two programs is a NAMED divergence, agreed
+        // 2026-09-08 -- do not "fix" it into either shape.
+        _state.showConfidenceValues = !!(_treeData && _treeData.confidencesFromInternalLabels > 0);
         // A tree carrying an aligned mol_seq per tip shows its alignment
         // track from the start, as the desktop auto-enables it on load --
         // unless the caller already said so explicitly (an explicit value
@@ -3808,13 +3867,17 @@ function (root, d3, forester, phyloXml) {
         if (_settings.nhExportWriteConfidences === undefined) {
             _settings.nhExportWriteConfidences = true;
         }
-        // the two New Hampshire parse options (used by launchArchaeopteryx /
-        // parseTree; they were positional arguments before the one-config API)
+        // the New Hampshire parse options (used by launchArchaeopteryx /
+        // parseTree; they were positional arguments before the one-config API).
+        // Both read PARSE_DEFAULTS -- see the comment there for why a second
+        // copy of these literals would be a default that cannot take effect.
         if (_settings.nhConfidenceValuesInBrackets === undefined) {
-            _settings.nhConfidenceValuesInBrackets = true;
+            _settings.nhConfidenceValuesInBrackets = PARSE_DEFAULTS.nhConfidenceValuesInBrackets;
         }
-        if (_settings.nhConfidenceValuesAsInternalNames === undefined) {
-            _settings.nhConfidenceValuesAsInternalNames = false;
+        if (_settings.internalLabelsAsConfidence === undefined) {
+            _settings.internalLabelsAsConfidence = PARSE_DEFAULTS.internalLabelsAsConfidence;
+        } else if (['auto', 'always', 'never'].indexOf(_settings.internalLabelsAsConfidence) < 0) {
+            throw new Error(ERROR + 'internalLabelsAsConfidence must be "auto", "always" or "never"');
         }
         // custom label-field checkboxes (was launch()'s sixth positional arg)
         if (_settings.nodeLabels === undefined) {
@@ -4165,9 +4228,38 @@ function (root, d3, forester, phyloXml) {
         return phy;
     };
 
-    archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+    // Bare numeric internal labels become confidence values here, in the two
+    // thin wrappers rather than in launchArchaeopteryx -- because parseTree
+    // dispatches by calling THESE two by name, so every JS path picks it up at
+    // once: parseTree, launchArchaeopteryx (which calls parseTree), and
+    // docs/open.html, which calls parseTree DIRECTLY. Hooking the launch path
+    // instead would have shipped the fix while missing the page the bug was
+    // reported from. (Calling forester.parseNewHampshire directly still
+    // bypasses it -- deliberately: forester is a library that also serves
+    // callers who want the file exactly as written.)
+    //
+    // Nexus needs this as much as Newick: a Nexus tree statement IS Newick, so
+    // ")100:" has always had the same problem there. phyloXML and Auspice do
+    // not -- both carry real confidences, and promoting would corrupt them.
+    //
+    // The count rides on the phylogeny so the VIEWER can react without the
+    // promotion knowing anything about display state: initialize() switches
+    // the confidence display on when anything was promoted, so support values
+    // APPEAR rather than names silently vanishing.
+    function promoteInternalLabels(phy, mode) {
+        let promoted = forester.promoteInternalLabelsToConfidence(phy,
+            mode === undefined ? PARSE_DEFAULTS.internalLabelsAsConfidence : mode);
+        if (promoted > 0) {
+            phy.confidencesFromInternalLabels = promoted;
+        }
+        return phy;
+    }
+
+    archaeopteryx.parseNewHampshire = function (data, confidenceValuesInBrackets, internalLabelsAsConfidence) {
         requireForester();
-        return forester.parseNewHampshire(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+        return promoteInternalLabels(
+            forester.parseNewHampshire(data, confidenceValuesInBrackets, false),
+            internalLabelsAsConfidence);
     };
 
     // An Auspice / Nextstrain v2 dataset.json; the tree opens on the time
@@ -4180,13 +4272,13 @@ function (root, d3, forester, phyloXml) {
 
     // A Nexus file can hold several trees; the FIRST one is displayed (any
     // alignment from the file's characters matrix rides along on its tips).
-    archaeopteryx.parseNexus = function (data, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+    archaeopteryx.parseNexus = function (data, confidenceValuesInBrackets, internalLabelsAsConfidence) {
         requireForester();
-        let trees = forester.parseNexus(data, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+        let trees = forester.parseNexus(data, confidenceValuesInBrackets, false);
         if (trees.length === 0) {
             throw new Error('no tree found in the Nexus data');
         }
-        return trees[0];
+        return promoteInternalLabels(trees[0], internalLabelsAsConfidence);
     };
 
     function calcMaxExtLabel() {
@@ -8959,18 +9051,27 @@ function (root, d3, forester, phyloXml) {
     /**
      * Convenience method for loading tree on HTML page
      *
-     * @param location
-     * @param data
-     * @param newHamphshireConfidenceValuesInBrackets
-     * @param newHamphshireConfidenceValuesAsInternalNames
+     * @param location - file name (only its extension is used; the content is
+     *                    sniffed too, so a pasted tree with no name works)
+     * @param data - the file's content
+     * @param nhConfidenceValuesInBrackets - read "[95]" as a confidence
+     * @param internalLabelsAsConfidence - 'auto' (default) | 'always' | 'never';
+     *                    a boolean is accepted as the retired positional flag
      * @returns {*}
      */
-    archaeopteryx.parseTree = function (location, data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames) {
-        if (newHamphshireConfidenceValuesInBrackets === undefined) {
-            newHamphshireConfidenceValuesInBrackets = true;
+    archaeopteryx.parseTree = function (location, data, nhConfidenceValuesInBrackets, internalLabelsAsConfidence) {
+        // PARSE_DEFAULTS, not literals -- initializeSettings applies the same
+        // object, and it runs at launch(), AFTER this has already parsed.
+        if (nhConfidenceValuesInBrackets === undefined) {
+            nhConfidenceValuesInBrackets = PARSE_DEFAULTS.nhConfidenceValuesInBrackets;
         }
-        if (newHamphshireConfidenceValuesAsInternalNames === undefined) {
-            newHamphshireConfidenceValuesAsInternalNames = false;
+        if (typeof internalLabelsAsConfidence === 'boolean') {
+            // the retired positional flag: true meant "every numeric internal
+            // label is a confidence", which is 'always'.
+            internalLabelsAsConfidence = internalLabelsAsConfidence
+                ? 'always' : PARSE_DEFAULTS.internalLabelsAsConfidence;
+        } else if (internalLabelsAsConfidence === undefined) {
+            internalLabelsAsConfidence = PARSE_DEFAULTS.internalLabelsAsConfidence;
         }
         let tree;
         let loc = location ? String(location).toLowerCase() : '';
@@ -8978,7 +9079,7 @@ function (root, d3, forester, phyloXml) {
         // content decides; the filename alone is enough too.
         if ((forester.isString(data) && /^\s*#nexus\b/i.test(data))
             || /\.(nex|nexus)$/.test(loc)) {
-            tree = archaeopteryx.parseNexus(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
+            tree = archaeopteryx.parseNexus(data, nhConfidenceValuesInBrackets, internalLabelsAsConfidence);
         } else if ((forester.isString(data) && /^\s*\{/.test(data)) || /\.json$/.test(loc)) {
             tree = archaeopteryx.parseAuspiceJson(data);
         } else if ((forester.isString(data) && /^\s*</.test(data))
@@ -8987,7 +9088,7 @@ function (root, d3, forester, phyloXml) {
             // is enough -- pasted phyloXML has no filename to go by.
             tree = archaeopteryx.parsePhyloXML(data);
         } else {
-            tree = archaeopteryx.parseNewHampshire(data, newHamphshireConfidenceValuesInBrackets, newHamphshireConfidenceValuesAsInternalNames);
+            tree = archaeopteryx.parseNewHampshire(data, nhConfidenceValuesInBrackets, internalLabelsAsConfidence);
         }
         return tree;
     };
@@ -8996,19 +9097,34 @@ function (root, d3, forester, phyloXml) {
     // library does no networking), hand the text here. fileName is used only
     // to pick the parser (its extension; the content is sniffed too).
     // Returns the same viewer handle launch() returns.
+    // launchArchaeopteryx parses BEFORE launch() runs readConfig, so the
+    // deprecated alias has to be resolved HERE as well -- translating it later
+    // would be translating it after the tree was already built. readConfig
+    // emits the warning; this only resolves the value, so it is not doubled.
+    function effectiveInternalLabelsMode(c) {
+        if (c.internalLabelsAsConfidence !== undefined) {
+            return c.internalLabelsAsConfidence;
+        }
+        if (c.nhConfidenceValuesAsInternalNames !== undefined) {
+            return DEPRECATED_CONFIG.nhConfidenceValuesAsInternalNames
+                .map(c.nhConfidenceValuesAsInternalNames);
+        }
+        return undefined;
+    }
+
     archaeopteryx.launchArchaeopteryx = function (container, fileName, data, config) {
         if (arguments.length > 4) {
             throw new Error(ERROR + 'launchArchaeopteryx() takes exactly (container, fileName,'
                 + ' data, config); the old trailing arguments were removed. The separate settings'
                 + ' bag and "nodeVisualizations" are gone (see launch()), and the two New Hampshire'
                 + ' parse options moved into the config as "nhConfidenceValuesInBrackets" /'
-                + ' "nhConfidenceValuesAsInternalNames".');
+                + ' "internalLabelsAsConfidence".');
         }
         let c = config || {};
         let tree;
         try {
             tree = archaeopteryx.parseTree(fileName, data,
-                c.nhConfidenceValuesInBrackets, c.nhConfidenceValuesAsInternalNames);
+                c.nhConfidenceValuesInBrackets, effectiveInternalLabelsMode(c));
         } catch (e) {
             // Worth catching only to say that it was the parse, not the launch,
             // that failed -- a malformed tree file rather than a bug in here.

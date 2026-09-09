@@ -8,6 +8,27 @@ consumers only see a change when a version is cut.
 
 ## Unreleased
 
+### Changed
+
+- **Support values in Newick and Nexus files are now recognised
+  automatically.** When every internal node label in a tree looks like a
+  support value — bootstrap percentages, posterior probabilities, or a 0–1000
+  scale — Archaeopteryx.js reads them as confidence values instead of node
+  names, and shows them. A tree whose internal labels are real clade names is
+  left untouched. The `nhConfidenceValuesAsInternalNames` config option is
+  replaced by `internalLabelsAsConfidence`: `'auto'` (the new default),
+  `'always'` (promote every numeric label, whatever its value) or `'never'`
+  (keep them as names). **If you were passing
+  `nhConfidenceValuesAsInternalNames: true`, the equivalent is `'always'` —
+  not `'auto'`.** The old key still works, with a console warning naming its
+  replacement. One deliberate difference: a numeric label on the ROOT is now
+  kept as a name rather than converted, since on a rooted Newick that trailing
+  label is usually the tree name. `nhConfidenceValuesInBrackets` is unchanged,
+  and it is no longer an error to combine the two.
+
+  This rule is shared with the desktop Java Archaeopteryx and was designed
+  jointly with it; change it on both sides or neither.
+
 ### Fixed
 
 - **Trees with branch lengths no longer open as cladograms.** The

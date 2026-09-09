@@ -1942,9 +1942,12 @@
         if (confidenceValuesAsInternalNames === undefined) {
             confidenceValuesAsInternalNames = false;
         }
-        if ((confidenceValuesInBrackets === true) && (confidenceValuesAsInternalNames === true)) {
-            throw ("confidence values cannot be both in brackets and as internal node names");
-        }
+        // The two options used to be mutually exclusive and throwing. They are
+        // not: brackets are consumed by the tokenizer, bare labels are handled
+        // afterwards, so a file mixing the two dialects is read correctly with
+        // both on. forester-Java never had this guard, so it was never part of
+        // the shared contract -- and throwing on a combination a user
+        // plausibly wants is what forced callers into workarounds.
 
         let ancs = [];
         let x = {};
@@ -4101,6 +4104,113 @@
     // extractors: {name, taxonomy, sequence}, each a function(externalNode)
     // returning the text that field would contribute to the node's label, or
     // null / '' when it contributes nothing.
+    /**
+     * Reads bare numeric internal node labels as confidence values -- the
+     * dialect nearly every tree writer emits (RAxML, IQ-TREE, FastTree, MEGA,
+     * BV-BRC) writes branch support as `)100:0.05`, which the New Hampshire
+     * grammar makes an internal node NAME.
+     *
+     * The rule is shared with the desktop Java Archaeopteryx; change it only
+     * together with that implementation.
+     *
+     * mode 'auto' (the default) is ALL-OR-NOTHING: every candidate label must
+     * look like support, so a tree of real clade names is never touched.
+     * mode 'always' is PER-NODE and unbounded: every numeric label is promoted
+     * whatever its value, which is how a user forces a mixed tree (some clade
+     * names, some support) or an out-of-range scale. mode 'never' does nothing.
+     *
+     * The ROOT is never promoted in any mode: a confidence belongs to the
+     * branch ABOVE a node and the root has none, so a numeric label there is
+     * almost always the tree's name -- `)99;` would otherwise lose it while
+     * `)MyTree;` kept it.
+     *
+     * Promotion MOVES: the label is cleared as the confidence is added, or the
+     * value would be drawn twice.
+     *
+     * Pure apart from the mutation it is asked to make, and returns the number
+     * of labels promoted so the CALLER can react (the viewer switches its
+     * confidence display on, so support values appear rather than names
+     * silently vanishing). Deliberately does not touch display state itself.
+     *
+     * @param phy - the phylogeny
+     * @param mode - 'auto' | 'always' | 'never'
+     * @returns {number} how many internal labels became confidences
+     */
+    forester.promoteInternalLabelsToConfidence = function (phy, mode) {
+        if (mode === 'never') {
+            return 0;
+        }
+        if (mode !== 'always') {
+            mode = 'auto';
+        }
+        let root = forester.getTreeRoot(phy);
+        let candidates = [];
+        let anyConfidence = false;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (n === root || !(n.children || n._children)) {
+                return;
+            }
+            if (n.confidences && n.confidences.length > 0) {
+                anyConfidence = true;
+            }
+            if (typeof n.name === 'string' && n.name.length > 0) {
+                candidates.push(n);
+            }
+        });
+        if (candidates.length < 1) {
+            return 0;
+        }
+        let numeric = candidates.map(function (n) {
+            let v = Number(n.name);
+            return (n.name.trim().length > 0 && isFinite(v)) ? v : null;
+        });
+        let chosen;
+        if (mode === 'always') {
+            // Per node: promote what parses, leave the rest alone.
+            chosen = candidates.filter(function (n, i) {
+                return numeric[i] !== null;
+            });
+        } else {
+            // A file mixing `)[100]:` and `)95:` leaves the bracketed nodes
+            // with no label at all, so one bare numeric label beside real
+            // confidences is corroborated rather than lonely. Without this a
+            // mixed-dialect tree ships some confidences and one stray name.
+            let need = anyConfidence ? 1 : 2;
+            if (candidates.length < need) {
+                return 0;
+            }
+            if (numeric.some(function (v) {
+                // All-or-nothing: one real clade name and the tree is names.
+                // The range covers every scale in use -- 0-1 posteriors,
+                // 0-100 bootstrap, 0-1000 MrBayes -- and excludes identifiers
+                // such as NCBI taxids that would read as "support 9606".
+                return v === null || v < 0 || v > 1000;
+            })) {
+                return 0;
+            }
+            // Clade numbering is overwhelmingly 1..N, each exactly once. A
+            // real support tree containing every integer 1..N once and nothing
+            // else is essentially impossible at n >= 3, and without this guard
+            // a clade-numbered tree silently becomes "1%, 2%, 3% support".
+            let distinct = new Set(numeric);
+            let min = Math.min.apply(null, numeric);
+            let max = Math.max.apply(null, numeric);
+            if (distinct.size === numeric.length && min === 1 && max === numeric.length) {
+                return 0;
+            }
+            chosen = candidates;
+        }
+        chosen.forEach(function (n) {
+            let v = Number(n.name);
+            // Type deliberately left unset: the value cannot distinguish
+            // bootstrap from posterior from aLRT from TBE, and a wrong type
+            // printed beside a number in a published figure is worse than none.
+            pushConfidence(n, v, '');
+            n.name = '';
+        });
+        return chosen.length;
+    };
+
     forester.suggestLabelFields = function (root, extractors) {
         const FIELDS = ['name', 'taxonomy', 'sequence'];
         const CONTAINMENT_MIN = 0.9;

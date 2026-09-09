@@ -1499,6 +1499,123 @@ function testLaunchApiValidation() {
 // counters exclude the ROOT (a branch length belongs to the branch above a
 // node, and the root has none), and "measured" includes an explicit ZERO,
 // which is a real measurement rather than a missing one.
+
+// Bare numeric internal labels read as confidence values. The rule is SHARED
+// with the desktop Java Archaeopteryx (agreed 2026-09-08) -- if one of these
+// expectations changes, it changes on both sides or not at all.
+function testInternalLabelsAsConfidence() {
+    function promoted(nh, mode) {
+        var phy = forester.parseNewHampshire(nh, true, false);
+        var n = forester.promoteInternalLabelsToConfidence(phy, mode);
+        return {n: n, phy: phy};
+    }
+    var cases = [
+        // nh, mode, promoted
+        ['((A,B)100,(C,D)56);',        'auto',   2],  // ordinary bootstrap
+        ['((A,B)0.98,(C,D)0.72);',     'auto',   2],  // posteriors
+        ['((A,B)1000,(C,D)870);',      'auto',   2],  // 0-1000 scale (MrBayes)
+        ['((A,B)Clade_I,(C,D)100);',   'auto',   0],  // MIXED: all-or-nothing refuses
+        ['((A,B)Clade_I,(C,D)100);',   'always', 1],  // ... but Always is per-node
+        ['((A,B)Mammalia,(C,D)Aves);', 'auto',   0],  // real clade names
+        ['((A,B)Mammalia,(C,D)Aves);', 'always', 0],  // Always is numeric-only: still safe
+        ['((A,B)9606,(C,D)10090);',    'auto',   0],  // taxids: outside [0,1000]
+        ['((A,B)9606,(C,D)10090);',    'always', 2],  // ... Always is unbounded, by design
+        ['((A,B)1,((C,D)2,(E,F)3));',  'auto',   0],  // clade NUMBERING 1..N, not support
+        ['((A,B)100,C);',              'auto',   0],  // a lone label is not enough
+        ['((A,B)[100],(C,D)95);',      'auto',   1],  // ... unless corroborated by a real confidence
+        ['((A,B)100,(C,D)56);',        'never',  0]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var c = cases[i];
+        var r = promoted(c[0], c[1]);
+        if (r.n !== c[2]) {
+            console.log('    ' + c[0] + ' [' + c[1] + '] promoted ' + r.n + ' expected ' + c[2]);
+            return false;
+        }
+    }
+    // The ROOT is never promoted: a confidence belongs to the branch above a
+    // node and the root has none, so ")99;" is the tree's name, not support.
+    var rooted = promoted('((A,B)100,(C,D)56)99;', 'auto');
+    var root = forester.getTreeRoot(rooted.phy);
+    if (rooted.n !== 2 || root.name !== '99' || (root.confidences && root.confidences.length)) {
+        console.log('    root promoted: n=' + rooted.n + ' name=' + root.name);
+        return false;
+    }
+    // Promotion MOVES -- the label is cleared, or the value draws twice.
+    var inner = forester.getAllNodes(rooted.phy).filter(function (n) {
+        return (n.children || n._children) && n !== root;
+    });
+    for (var j = 0; j < inner.length; ++j) {
+        if (inner[j].name !== '' || !inner[j].confidences || inner[j].confidences.length !== 1) {
+            console.log('    promotion did not move the label: ' + JSON.stringify(inner[j].name));
+            return false;
+        }
+        if (inner[j].confidences[0].type !== '') {
+            // unset on purpose: the value cannot tell bootstrap from posterior
+            // from aLRT, and a wrong type in a published figure is worse.
+            console.log('    confidence type should be unset, got ' + inner[j].confidences[0].type);
+            return false;
+        }
+    }
+    return true;
+}
+
+// The promotion has to sit where EVERY entry point passes through it --
+// parseTree dispatches by calling parseNewHampshire / parseNexus by name, and
+// docs/open.html calls parseTree directly rather than launchArchaeopteryx.
+function testInternalLabelsWiring() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+
+    function internalNames(phy) {
+        var root = forester.getTreeRoot(phy);
+        return forester.getAllNodes(phy).filter(function (n) {
+            return (n.children || n._children) && n !== root;
+        }).map(function (n) { return n.name; }).sort().join(',');
+    }
+    // Newick, through the wrapper: promoted by default.
+    var phy = aptx.parseNewHampshire('((A,B)100,(C,D)56);');
+    if (internalNames(phy) !== ',' || phy.confidencesFromInternalLabels !== 2) {
+        console.log('    newick wrapper: names="' + internalNames(phy)
+            + '" marker=' + phy.confidencesFromInternalLabels);
+        return false;
+    }
+    // Nexus: its tree statement IS Newick, so it has always had the same bug.
+    phy = aptx.parseTree('', '#NEXUS\nBegin Trees;\n Tree t=((A,B)100,(C,D)56);\nEnd;\n');
+    if (phy.confidencesFromInternalLabels !== 2) {
+        console.log('    nexus not promoted: ' + phy.confidencesFromInternalLabels);
+        return false;
+    }
+    // 'never' turns it off through the same door.
+    phy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'never');
+    if (internalNames(phy) !== '100,56' || phy.confidencesFromInternalLabels !== undefined) {
+        console.log('    never still promoted: ' + internalNames(phy));
+        return false;
+    }
+    // The retired positional boolean maps to 'always', NOT to 'auto' -- a
+    // caller who had true and silently landed on auto would lose promotions
+    // on a mixed tree.
+    phy = aptx.parseTree('t.nwk', '((A,B)Clade_I,(C,D)100);', true, true);
+    if (phy.confidencesFromInternalLabels !== 1) {
+        console.log('    legacy true did not map to always: ' + phy.confidencesFromInternalLabels);
+        return false;
+    }
+    // phyloXML carries real confidences: promoting there would corrupt, not fix.
+    phy = aptx.parseTree('', '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+        + '<clade><clade><name>7</name><clade><name>a</name></clade>'
+        + '<clade><name>b</name></clade></clade></clade></phylogeny></phyloxml>');
+    if (phy.confidencesFromInternalLabels !== undefined) {
+        console.log('    phyloXML should not be promoted');
+        return false;
+    }
+    // The two mutually-exclusive parse flags no longer throw (forester-Java
+    // never had that guard, so it was never part of the shared contract).
+    forester.parseNewHampshire('((A,B)100,(C,D)56);', true, true);
+    return true;
+}
+
 function testPhylogramBranchCounts() {
     // Mirrors the decision in archaeopteryx.js (search PHYLOGRAM_MIN_BRANCH_FRACTION).
     // If that expression changes, change this with it -- deliberately.
@@ -1614,6 +1731,8 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
+runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
 runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);

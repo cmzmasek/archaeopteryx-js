@@ -497,7 +497,7 @@
             // the two nh* keys act at parse time, so they are handed to the
             // parser here, exactly as launchArchaeopteryx would
             tree = archaeopteryx.parseTree(fileName, text,
-                config.nhConfidenceValuesInBrackets, config.nhConfidenceValuesAsInternalNames);
+                config.nhConfidenceValuesInBrackets, config.internalLabelsAsConfidence);
         } catch (e) {
             showError('Could not parse tree: ' + (e && e.message ? e.message : String(e)));
             return;
@@ -612,7 +612,8 @@
         {key: 'pngExportScale', type: 'number'},
         {key: 'nhExportWriteConfidences', type: 'bool'},
         {key: 'nhConfidenceValuesInBrackets', type: 'bool', hint: 'parse-time: the tree is reparsed'},
-        {key: 'nhConfidenceValuesAsInternalNames', type: 'bool', hint: 'parse-time: the tree is reparsed'}
+        {key: 'internalLabelsAsConfidence', type: 'enum', values: ['auto', 'always', 'never'],
+            hint: 'parse-time: bare numeric internal labels, e.g. )100: — auto = only if they all look like support'}
     ];
     var SPEC_BY_KEY = {};
     CONFIG_SPEC.forEach(function (sp) {
