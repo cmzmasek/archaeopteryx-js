@@ -113,6 +113,15 @@ consumers only see a change when a version is cut.
   is what destroys the scale. Trees with no internal branches (star trees) are
   judged on their tips. All 18 demo trees are unaffected.
 
+### Demos
+
+- **A 13,246-tip demo tree.** Influenza A H5N1 segment 3 (PA) from BV-BRC,
+  18,512 nodes with 16 properties, most of it the 2024–2025 North American
+  outbreak in dairy cattle and birds. It is the tree the performance work was
+  measured on, and it shows the working card, the deferred draw and the
+  coalesced redraws in action. The demo page now parses a big file behind the
+  card too, as open.html does.
+
 ### Unreleased since 3.0.0 (already on master)
 
 - `open.html`: visualize your own tree entirely in the browser, plus an Expert

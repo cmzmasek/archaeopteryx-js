@@ -135,7 +135,8 @@
         {key: 'flu_h5', label: 'Influenza A H5Nx (354 strains)', desc: 'A BV-BRC avian influenza tree, annotated with subtype, strain, species and genome id.'},
         {key: 'circular', label: 'Start circular', desc: 'The Herpesviridae demo opened in the circular layout, via the launch setting layout: \'circular\'.'},
         {key: 'woese', label: 'Woese tree of life (start unrooted)', desc: 'Carl Woese\'s famous three-domain rRNA tree (1990), opened in the unrooted equal-angle layout it was made famous in, coloured by Domain.'},
-        {key: 'collapsed', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar, leaving the whole canvas to the tree and its alignment.'}
+        {key: 'collapsed', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar, leaving the whole canvas to the tree and its alignment.'},
+        {key: 'flu_h5n1_seg3', label: 'H5N1 segment 3 (13,246 tips)', desc: 'The largest demo by far — 18,512 nodes: influenza A H5N1 segment 3 (PA) sequences from BV-BRC, most of them from the 2024–2025 North American outbreak in dairy cattle and birds, with 16 properties (host group, region, year, subclade, …). It opens behind a "Drawing 18,512 nodes" card and every redraw is coalesced — this is the tree the performance work was measured on.'}
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {

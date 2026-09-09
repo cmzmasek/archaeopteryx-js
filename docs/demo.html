@@ -135,7 +135,8 @@
         // optional per-tree `config` is merged over the shared default below.
         circular: {file: 'data/herpes_dnapol.xml', label: 'Start circular', desc: 'The Herpesviridae demo opened in the circular layout, via the launch setting layout: \'circular\'.', config: {layout: 'circular'}},
         woese: {file: 'data/woese-tree-of-life.xml', label: 'Woese tree of life (start unrooted)', desc: 'Carl Woese\'s famous three-domain rRNA tree (1990), opened in the unrooted equal-angle layout it was made famous in, coloured by Domain.', config: {layout: 'unrooted'}},
-        collapsed: {file: 'data/swH1-HA1.nexus', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar (press + to expand), leaving the whole canvas to the tree and its alignment.', config: {collapseControlPanel: true}}
+        collapsed: {file: 'data/swH1-HA1.nexus', label: 'Start with collapsed controls', desc: 'The swine H1 demo opened with collapseControlPanel: true — the panel folds to its header bar (press + to expand), leaving the whole canvas to the tree and its alignment.', config: {collapseControlPanel: true}},
+        flu_h5n1_seg3: {file: 'data/flu_h5n1_segment3.xml', label: 'H5N1 segment 3 (13,246 tips)', desc: 'The largest demo by far — 18,512 nodes: influenza A H5N1 segment 3 (PA) sequences from BV-BRC, most of them from the 2024–2025 North American outbreak in dairy cattle and birds, with 16 properties (host group, region, year, subclade, …). It opens behind a "Drawing 18,512 nodes" card and every redraw is coalesced — this is the tree the performance work was measured on.', config: {}}
     };
     var DEFAULT_TREE = 'influenza';
 
@@ -174,6 +175,7 @@
 
     var viewer = null;  // the handle returned by launchArchaeopteryx
     var loadSeq = 0;    // drops a slow fetch that finishes after a newer pick
+    var BIG_INPUT_CHARS = 1000000;   // above this, parse behind the working card
 
     function loadTree() {
         var key = currentTreeKey();
@@ -206,7 +208,23 @@
                     viewer.destroy();
                     viewer = null;
                 }
-                viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, config);
+                function launch() {
+                    if (seq !== loadSeq) {
+                        return;   // a newer pick arrived during the deferral
+                    }
+                    viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', tree.file, data, config);
+                }
+                // launchArchaeopteryx parses synchronously, and a big file
+                // takes seconds to parse -- long enough to look frozen. The
+                // viewer's own "working" card covers that: it is painted
+                // first, the parse runs on the next frame, and the viewer
+                // then swaps in its "Drawing" card for the draw itself.
+                if (data.length >= BIG_INPUT_CHARS) {
+                    archaeopteryx.busy('#phylogram1',
+                        'Reading ' + tree.label, (data.length / 1048576).toFixed(1) + ' MB', launch);
+                } else {
+                    launch();
+                }
             })
             .catch(function (e) {
                 if (seq !== loadSeq) {

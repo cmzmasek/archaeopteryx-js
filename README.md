@@ -44,6 +44,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Start circular](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=circular)
 * [Woese tree of life (start unrooted)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=woese)
 * [Start with collapsed controls](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=collapsed)
+* [H5N1 segment 3 (13,246 tips)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flu_h5n1_seg3)
 
 
 ### Detailed developer documentation
