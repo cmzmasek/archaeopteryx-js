@@ -2626,6 +2626,7 @@ function (root, d3, forester, phyloXml) {
                 }
             });
 
+        if (anySearchHits()) {
         node.select('circle.foundHalo')
             .attr('class', function (d) {
                 // the animated class ONLY on hits: hundreds of idle infinite
@@ -2642,6 +2643,7 @@ function (root, d3, forester, phyloXml) {
             .style('fill', function (d) {
                 return isNodeFound(d) ? getFoundColor(d) : 'none';
             });
+        }
 
         node.select('circle.nodeCircle')
             .attr('r', function (d) {
@@ -2681,14 +2683,18 @@ function (root, d3, forester, phyloXml) {
                 return d._extLabelText;   // computed in syncOptionalNodeChildren
             });
 
-        nodeUpdate.select('text.bllabel')
-            .text(_state.showBranchLengthValues ? makeBranchLengthLabel : null);
-
-        nodeUpdate.select('text.conflabel')
-            .text(_state.showConfidenceValues ? makeConfidenceValuesLabel : null);
-
-        nodeUpdate.select('text.brancheventlabel')
-            .text(_state.showBranchEvents ? makeBranchEventsLabel : null);
+        // Guarded, not just passed a null accessor: syncOptionalNodeChildren
+        // has already removed these elements when the switch is off, and a
+        // .select() that finds nothing still walks every node to find out.
+        if (_state.showBranchLengthValues) {
+            nodeUpdate.select('text.bllabel').text(makeBranchLengthLabel);
+        }
+        if (_state.showConfidenceValues) {
+            nodeUpdate.select('text.conflabel').text(makeConfidenceValuesLabel);
+        }
+        if (_state.showBranchEvents) {
+            nodeUpdate.select('text.brancheventlabel').text(makeBranchEventsLabel);
+        }
 
         let drawShapes = _state.showVisualizations || stylesActive();
         nodeUpdate.select('path')
@@ -2697,16 +2703,17 @@ function (root, d3, forester, phyloXml) {
             .style('fill', drawShapes ? makeNodeFillColor : null)
             .attr('d', drawShapes ? makeNodeVisShape : null);
 
-        node.each(function (d) {
-            if (d.children) {
-                if (!drawShapes && makeNodeVisShape(d) === null) {
-                    d3.select(this).select('path').transition().duration(transitionDuration)
-                        .attr('d', function () {
-                            return 'M0,0';
-                        });
-                }
-            }
-        });
+        // Collapse the vis shape on internal nodes that no longer have one.
+        // This used to be a node.each() that built a fresh d3 selection AND a
+        // fresh transition per internal node -- 5,265 of them on a big tree,
+        // and a full 18k-node walk even when drawShapes made it a no-op. One
+        // filtered selection with one transition does the same thing.
+        if (!drawShapes) {
+            node.filter(function (d) {
+                return d.children && makeNodeVisShape(d) === null;
+            }).select('path').transition().duration(transitionDuration)
+                .attr('d', 'M0,0');
+        }
 
         // Departing nodes are removed OUTRIGHT rather than on the end of a
         // transition. Going to a subtree (or deleting one) fires several updates
@@ -2718,9 +2725,12 @@ function (root, d3, forester, phyloXml) {
         // way; nodes now match.
         nodeExitSelection.remove();
 
+        // No .attr('d', elbow) before the join: it ran elbow() for all 18k+
+        // links against the PRE-JOIN data and the transition below overwrote
+        // the result, so every redraw computed the same geometry twice.
+        // stroke-width used to ride along here and is applied on the merged
+        // selection instead -- it is the only place existing links get it.
         let link = _svgGroup.selectAll('path.link')
-            .attr('d', elbow)
-            .attr('stroke-width', makeBranchWidth)
             .data(links, function (d) {
                 return d.target.id;
             });
@@ -2743,6 +2753,8 @@ function (root, d3, forester, phyloXml) {
         let linkExitSelection = link.exit(); // before the merge -- see nodeExitSelection
 
         link = linkEnter.merge(link);
+
+        link.attr('stroke-width', makeBranchWidth);
 
         link.transition()
             .duration(transitionDuration)
@@ -3207,6 +3219,11 @@ function (root, d3, forester, phyloXml) {
     // The external label's text is computed HERE and stashed, because it is the
     // one predicate that costs something and the update below would otherwise
     // compute it a second time.
+    function anySearchHits() {
+        return (_foundNodes0 && _foundNodes0.size > 0)
+            || (_foundNodes1 && _foundNodes1.size > 0);
+    }
+
     function syncOptionalNodeChildren(node) {
         let wantBl = _state.showBranchLengthValues === true;
         let wantConf = _state.showConfidenceValues === true;
@@ -3229,8 +3246,7 @@ function (root, d3, forester, phyloXml) {
 
         // No search running means no halo anywhere -- one pass instead of
         // 18,512 set lookups plus 18,512 DOM queries.
-        let anyFound = (_foundNodes0 && _foundNodes0.size > 0)
-            || (_foundNodes1 && _foundNodes1.size > 0);
+        let anyFound = anySearchHits();
         if (!anyFound) {
             node.selectAll('circle.foundHalo').remove();
         }

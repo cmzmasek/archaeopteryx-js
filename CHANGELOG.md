@@ -59,12 +59,19 @@ consumers only see a change when a version is cut.
   show something, and removed when they will not.
 
       SVG elements   222,197  ->  92,608   (-58%)
-      first draw      29.6 s  ->   16.0 s
-      a later redraw   ~4.8 s  ->   ~2.2 s
+      first draw      29.6 s  ->  ~10-14 s
+      a later redraw   ~4.8 s  ->   ~2.5 s
 
   Turning a branch-data label on now costs a little more, since those elements
   are built at that moment rather than up front — which is the trade: you pay
   for what you ask for instead of paying for everything on every tree.
+
+  Three further redundancies went with it: branch geometry was computed twice
+  per link on every redraw (once against pre-join data, then overwritten);
+  collapsing the shape on internal nodes built a separate d3 selection and
+  transition for each one, thousands per redraw, instead of one filtered
+  selection; and the branch-length, confidence and branch-event label passes
+  walked every node even when their checkbox was off.
 
 ### Fixed
 
