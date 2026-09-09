@@ -6017,7 +6017,9 @@ function (root, d3, forester, phyloXml) {
                 return anchorX + ((anchorAge - age) * corr);
             };
             let youngBound = Math.max(0, anchorAge - ((maxTipX - anchorX) / corr));
-            let ranks = forester.geoBandRanks(rootAge);
+            // both bounds: a fossil-only clade spans [youngest tip, root],
+            // and a narrow window bands Series over Stage
+            let ranks = forester.geoBandRanks(youngBound, rootAge);
             if (grid) {
                 // the FINE rank's old-side boundaries, root and tip edges
                 // excluded (they would just retrace the tree's outline)

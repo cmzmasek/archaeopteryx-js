@@ -3611,6 +3611,117 @@
             {name: 'Miaolingian', young: 497, old: 506.5, color: '#A6CF86'},
             {name: 'Series 2', young: 506.5, old: 521, color: '#99C078'},
             {name: 'Terreneuvian', young: 521, old: 538.8, color: '#8CB06C'}
+        ],
+        // The 101 ratified Phanerozoic stages, plus the Pridoli: a Series with
+        // no stages of its own, standing in the stage row for its own span
+        // (419.62-422.7 Ma) as on the printed ICS chart -- without it the row
+        // would have a hole there. Same source as every rank above
+        // (Macrostrat international timescale, id 11), which the ranks above
+        // match byte for byte; the desktop generated its table from the same
+        // query, so the two programs band from identical data.
+        age: [
+            {name: 'Meghalayan', young: 0, old: 0.0042, color: '#FEF2E0'},
+            {name: 'Northgrippian', young: 0.0042, old: 0.0082, color: '#FEF2E0'},
+            {name: 'Greenlandian', young: 0.0082, old: 0.0117, color: '#FEF2E0'},
+            {name: 'Late Pleistocene', young: 0.0117, old: 0.129, color: '#FFF2C7'},
+            {name: 'Chibanian', young: 0.129, old: 0.774, color: '#FFF2C7'},
+            {name: 'Calabrian', young: 0.774, old: 1.8, color: '#FFF2C7'},
+            {name: 'Gelasian', young: 1.8, old: 2.58, color: '#FFEDB3'},
+            {name: 'Piacenzian', young: 2.58, old: 3.6, color: '#FFFFBF'},
+            {name: 'Zanclean', young: 3.6, old: 5.333, color: '#FFFFB3'},
+            {name: 'Messinian', young: 5.333, old: 7.246, color: '#FFFF73'},
+            {name: 'Tortonian', young: 7.246, old: 11.63, color: '#FFFF66'},
+            {name: 'Serravallian', young: 11.63, old: 13.82, color: '#FFFF59'},
+            {name: 'Langhian', young: 13.82, old: 15.98, color: '#FFFF4D'},
+            {name: 'Burdigalian', young: 15.98, old: 20.45, color: '#FFFF41'},
+            {name: 'Aquitanian', young: 20.45, old: 23.04, color: '#FFFF33'},
+            {name: 'Chattian', young: 23.04, old: 27.3, color: '#FEE6AA'},
+            {name: 'Rupelian', young: 27.3, old: 33.9, color: '#FED99A'},
+            {name: 'Priabonian', young: 33.9, old: 37.71, color: '#FDCDA1'},
+            {name: 'Bartonian', young: 37.71, old: 41.03, color: '#FDC091'},
+            {name: 'Lutetian', young: 41.03, old: 48.07, color: '#FCB482'},
+            {name: 'Ypresian', young: 48.07, old: 56, color: '#FCA773'},
+            {name: 'Thanetian', young: 56, old: 59.24, color: '#FDBF6F'},
+            {name: 'Selandian', young: 59.24, old: 61.66, color: '#FEBF65'},
+            {name: 'Danian', young: 61.66, old: 66, color: '#FDB462'},
+            {name: 'Maastrichtian', young: 66, old: 72.2, color: '#F2FA8C'},
+            {name: 'Campanian', young: 72.2, old: 83.6, color: '#E6F47F'},
+            {name: 'Santonian', young: 83.6, old: 85.7, color: '#D9EF74'},
+            {name: 'Coniacian', young: 85.7, old: 89.8, color: '#CCE968'},
+            {name: 'Turonian', young: 89.8, old: 93.9, color: '#BFE35D'},
+            {name: 'Cenomanian', young: 93.9, old: 100.5, color: '#B3DE53'},
+            {name: 'Albian', young: 100.5, old: 113.2, color: '#CCEA97'},
+            {name: 'Aptian', young: 113.2, old: 121.4, color: '#BFE48A'},
+            {name: 'Barremian', young: 121.4, old: 125.77, color: '#B3DF7F'},
+            {name: 'Hauterivian', young: 125.77, old: 132.6, color: '#A6D975'},
+            {name: 'Valanginian', young: 132.6, old: 137.05, color: '#99D36A'},
+            {name: 'Berriasian', young: 137.05, old: 143.1, color: '#8CCD60'},
+            {name: 'Tithonian', young: 143.1, old: 149.2, color: '#D9F1F7'},
+            {name: 'Kimmeridgian', young: 149.2, old: 154.8, color: '#CCECF4'},
+            {name: 'Oxfordian', young: 154.8, old: 161.5, color: '#BFE7F1'},
+            {name: 'Callovian', young: 161.5, old: 165.3, color: '#BFE7E5'},
+            {name: 'Bathonian', young: 165.3, old: 168.2, color: '#B3E2E3'},
+            {name: 'Bajocian', young: 168.2, old: 170.9, color: '#A6DDE0'},
+            {name: 'Aalenian', young: 170.9, old: 174.7, color: '#9AD9DD'},
+            {name: 'Toarcian', young: 174.7, old: 184.2, color: '#99CEE3'},
+            {name: 'Pliensbachian', young: 184.2, old: 192.9, color: '#80C5DD'},
+            {name: 'Sinemurian', young: 192.9, old: 199.5, color: '#67BCD8'},
+            {name: 'Hettangian', young: 199.5, old: 201.4, color: '#4EB3D3'},
+            {name: 'Rhaetian', young: 201.4, old: 205.7, color: '#E3B9DB'},
+            {name: 'Norian', young: 205.7, old: 227.3, color: '#D6AAD3'},
+            {name: 'Carnian', young: 227.3, old: 237, color: '#C99BCB'},
+            {name: 'Ladinian', young: 237, old: 241.464, color: '#C983BF'},
+            {name: 'Anisian', young: 241.464, old: 246.7, color: '#BC75B7'},
+            {name: 'Olenekian', young: 246.7, old: 249.9, color: '#B051A5'},
+            {name: 'Induan', young: 249.9, old: 251.902, color: '#A4469F'},
+            {name: 'Changhsingian', young: 251.902, old: 254.14, color: '#FCC0B2'},
+            {name: 'Wuchiapingian', young: 254.14, old: 259.51, color: '#FCB4A2'},
+            {name: 'Capitanian', young: 259.51, old: 264.28, color: '#FB9A85'},
+            {name: 'Wordian', young: 264.28, old: 266.9, color: '#FB8D76'},
+            {name: 'Roadian', young: 266.9, old: 274.4, color: '#FB8069'},
+            {name: 'Kungurian', young: 274.4, old: 283.3, color: '#E38776'},
+            {name: 'Artinskian', young: 283.3, old: 290.1, color: '#E37B68'},
+            {name: 'Sakmarian', young: 290.1, old: 293.52, color: '#E36F5C'},
+            {name: 'Asselian', young: 293.52, old: 298.9, color: '#E36350'},
+            {name: 'Gzhelian', young: 298.9, old: 303.7, color: '#CCD4C7'},
+            {name: 'Kasimovian', young: 303.7, old: 307, color: '#BFD0C5'},
+            {name: 'Moscovian', young: 307, old: 315.2, color: '#C7CBB9'},
+            {name: 'Bashkirian', young: 315.2, old: 323.4, color: '#99C2B5'},
+            {name: 'Serpukhovian', young: 323.4, old: 330.3, color: '#BFC26B'},
+            {name: 'Visean', young: 330.3, old: 346.7, color: '#A6B96C'},
+            {name: 'Tournaisian', young: 346.7, old: 358.86, color: '#8CB06C'},
+            {name: 'Famennian', young: 358.86, old: 372.15, color: '#F2EDC5'},
+            {name: 'Frasnian', young: 372.15, old: 382.31, color: '#F2EDAD'},
+            {name: 'Givetian', young: 382.31, old: 387.95, color: '#F1E185'},
+            {name: 'Eifelian', young: 387.95, old: 393.47, color: '#F1D576'},
+            {name: 'Emsian', young: 393.47, old: 410.62, color: '#E5D075'},
+            {name: 'Pragian', young: 410.62, old: 413.02, color: '#E5C468'},
+            {name: 'Lochkovian', young: 413.02, old: 419.62, color: '#E5B75A'},
+            {name: 'Pridoli', young: 419.62, old: 422.7, color: '#E6F5E1'},
+            {name: 'Ludfordian', young: 422.7, old: 425, color: '#D9F0DF'},
+            {name: 'Gorstian', young: 425, old: 426.7, color: '#CCECDD'},
+            {name: 'Homerian', young: 426.7, old: 430.6, color: '#CCEBD1'},
+            {name: 'Sheinwoodian', young: 430.6, old: 432.9, color: '#BFE6C3'},
+            {name: 'Telychian', young: 432.9, old: 438.6, color: '#BFE6CF'},
+            {name: 'Aeronian', young: 438.6, old: 440.5, color: '#B3E1C2'},
+            {name: 'Rhuddanian', young: 440.5, old: 443.1, color: '#A6DCB5'},
+            {name: 'Hirnantian', young: 443.1, old: 445.2, color: '#A6DBAB'},
+            {name: 'Katian', young: 445.2, old: 452.8, color: '#99D69F'},
+            {name: 'Sandbian', young: 452.8, old: 458.2, color: '#8CD094'},
+            {name: 'Darriwilian', young: 458.2, old: 469.4, color: '#74C69C'},
+            {name: 'Dapingian', young: 469.4, old: 471.3, color: '#66C092'},
+            {name: 'Floian', young: 471.3, old: 477.1, color: '#41B087'},
+            {name: 'Tremadocian', young: 477.1, old: 486.85, color: '#33A97E'},
+            {name: 'Stage 10', young: 486.85, old: 491, color: '#E6F5C9'},
+            {name: 'Jiangshanian', young: 491, old: 494.2, color: '#D9F0BB'},
+            {name: 'Paibian', young: 494.2, old: 497, color: '#CCEBAE'},
+            {name: 'Guzhangian', young: 497, old: 500.5, color: '#CCDFAA'},
+            {name: 'Drumian', young: 500.5, old: 504.5, color: '#BFD99D'},
+            {name: 'Wuliuan', young: 504.5, old: 506.5, color: '#B3D492'},
+            {name: 'Stage 4', young: 506.5, old: 514.5, color: '#B3CA8E'},
+            {name: 'Stage 3', young: 514.5, old: 521, color: '#A6C583'},
+            {name: 'Stage 2', young: 521, old: 529, color: '#A6BA80'},
+            {name: 'Fortunian', young: 529, old: 538.8, color: '#99B575'}
         ]
     };
 
@@ -3624,10 +3735,26 @@
         return ivs.length > 0 ? ivs[ivs.length - 1].old : 0;
     };
 
-    // The [coarse, fine] rank pair for a tree reaching back oldMa: always the
-    // finest pair that still fully covers the range, so a deep tree never
-    // shows blank band segments.
-    forester.geoBandRanks = function (oldMa) {
+    // The [coarse, fine] rank pair for the span [youngMa, oldMa] a tree
+    // actually occupies -- the youngest tip to the root, not 0 to the root,
+    // so a fossil-only clade bands on its own window rather than on the
+    // whole stretch back from the present.
+    //
+    // It adapts FINER as well as coarser. A narrow Phanerozoic window --
+    // one or two Series -- bands Series over STAGE (the ICS ages), which is
+    // what a 66-100 Ma dinosaur tree needs to say anything at all: over
+    // Period/Epoch it would read "Cretaceous / Late Cretaceous" and nothing
+    // more. Wider than two Series the stages would be slivers, so the
+    // existing ladder takes over: the finest pair that still fully covers the
+    // range, so a deep tree never shows blank band segments. Shared rule with
+    // the desktop's GeologicTimeScale.bandRanks -- change both or neither.
+    forester.geoBandRanks = function (youngMa, oldMa) {
+        if (oldMa <= forester.geoCoverage('age')) {   // stages are Phanerozoic-only
+            let series = forester.geoOverlapping('epoch', youngMa, oldMa).length;
+            if (series > 0 && series <= 2) {
+                return ['epoch', 'age'];
+            }
+        }
         if (oldMa <= forester.geoCoverage('epoch')) {
             return ['period', 'epoch'];
         }

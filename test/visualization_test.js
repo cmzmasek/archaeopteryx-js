@@ -1235,11 +1235,47 @@ runTest("msa: residue info          : ", testMsaResidueInfo);
 // --------------------------------------------------------------
 
 function testGeoBandRanks() {
-    var a = forester.geoBandRanks(66).join('/') === 'period/epoch';
-    var b = forester.geoBandRanks(538.8).join('/') === 'period/epoch';   // epochs cover to 538.8
-    var c = forester.geoBandRanks(1000).join('/') === 'era/period';
-    var d = forester.geoBandRanks(3000).join('/') === 'eon/era';
-    return a && b && c && d;
+    function ranks(y, o) { return forester.geoBandRanks(y, o).join('/'); }
+    var cases = [
+        // [young, old, expected]  -- the coarse ladder, unchanged for wide windows
+        [0, 66, 'period/epoch'],        // seven Cenozoic series: too many for stages
+        [0, 538.8, 'period/epoch'],     // epochs cover to 538.8
+        [0, 1000, 'era/period'],
+        [0, 3000, 'eon/era'],
+        // the finer rung: one or two Series band Series over STAGE
+        [66, 100, 'epoch/age'],         // Late Cretaceous only -> its six stages
+        [66, 143.1, 'epoch/age'],       // Late + Early Cretaceous: two series
+        [66, 145, 'period/epoch'],      // ... plus a sliver of Late Jurassic: three
+        [0, 2.58, 'epoch/age'],         // Holocene + Pleistocene
+        [419.62, 422.7, 'epoch/age'],   // exactly the Pridoli window
+        [540, 600, 'era/period'],       // older than any epoch: the ladder, not stages
+        [66, 66, 'epoch/age']           // a point query still finds its one series
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var got = ranks(cases[i][0], cases[i][1]);
+        if (got !== cases[i][2]) {
+            console.log('    [' + cases[i][0] + ', ' + cases[i][1] + '] -> ' + got + ' expected ' + cases[i][2]);
+            return false;
+        }
+    }
+    // the stage row itself: gapless, Phanerozoic, Pridoli standing in
+    var ages = forester.geoIntervals('age');
+    if (ages.length !== 102) {
+        console.log('    ' + ages.length + ' stage rows, expected 102 (101 stages + Pridoli)');
+        return false;
+    }
+    for (i = 1; i < ages.length; ++i) {
+        if (ages[i].young !== ages[i - 1].old) {
+            console.log('    gap in the stage row after ' + ages[i - 1].name);
+            return false;
+        }
+    }
+    var stages = forester.geoOverlapping('age', 66, 100.5).map(function (a) { return a.name; });
+    if (stages.join(',') !== 'Maastrichtian,Campanian,Santonian,Coniacian,Turonian,Cenomanian') {
+        console.log('    Late Cretaceous stages: ' + stages.join(','));
+        return false;
+    }
+    return true;
 }
 
 function testGeoQueries() {

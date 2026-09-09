@@ -10,6 +10,18 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **The geologic time axis bands Series over Stage for narrow windows.** A
+  tree spanning one or two Series — a 66–100 Ma dinosaur clade, say — used
+  to read only "Cretaceous / Late Cretaceous"; it now shows the Series over
+  its ICS stages (Cenomanian … Maastrichtian), each in its chart colour, with
+  a label only where it fits. The axis also bands on the span the tree
+  actually occupies, youngest tip to root, rather than from the present, so a
+  fossil-only clade gets the right resolution. Wider windows keep the
+  Period/Epoch → Era/Period → Eon/Era ladder. The 101 ratified Phanerozoic
+  stages (plus the Pridoli standing in for its own span) come from the same
+  Macrostrat ICS table as every other rank; the rule and the data are shared
+  with the desktop Archaeopteryx, byte for byte.
+
 - **Click a legend colour to change it.** In a categorical colour legend, each
   swatch (and its label) is now a click target that opens the browser's colour
   picker, preset to the current colour. Picking one repaints that value
