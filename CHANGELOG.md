@@ -10,6 +10,16 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **A navigation bar for long alignments.** The alignment track scrolled
+  with a bare slider and a three-column wheel step — on a 30,000-column
+  alignment that is ~115 columns per pixel of slider and ten thousand notches
+  end to end: nothing could be found, only scrolled past. The slider now sits
+  in a bar with first / page back / page forward / last buttons (a page is
+  one screenful of columns), a **jump-to-column** box — type a column, press
+  Enter — and a live readout of the columns on screen ("column 15000 –
+  15,123 of 30,000"). The wheel moves a tenth of a screen per notch. Themed
+  like the rest of the viewer.
+
 - **The hover glow takes the node's own colour.** The three translucent
   discs that mark the node under the pointer were always the UI's blue; they
   now take the hue of the node they mark — its Color-by value, else its

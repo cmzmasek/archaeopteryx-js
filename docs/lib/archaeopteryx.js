@@ -491,6 +491,7 @@ function (root, d3, forester, phyloXml) {
     let _msaColOffset = 0;                // first shown alignment column (0-based)
     let _msaReserve = 0;                  // horizontal px reserved for the track, set with _w
     let _msaScroller = null;              // the fixed HTML range input, created lazily
+    let _msaNav = null;                   // the bar around it: paging, jump-to-column, readout
     let _msaGeom = null;                  // window geometry of the last draw, for the hover readout
     // ------ time axis (the desktop's geologic / calendar overlays) ------
     const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
@@ -4505,8 +4506,9 @@ function (root, d3, forester, phyloXml) {
         document.querySelectorAll('dialog.aptx-dialog').forEach(function (dlg) {
             dlg.remove();
         });
-        if (_msaScroller) {
-            _msaScroller.remove();
+        if (_msaNav) {
+            _msaNav.remove();
+            _msaNav = null;
             _msaScroller = null;
         }
         if (_node_mouseover_div) {
@@ -5789,11 +5791,11 @@ function (root, d3, forester, phyloXml) {
                 if (delta === 0) {
                     return;
                 }
-                let next = Math.max(0, Math.min(maxOffset, _msaColOffset + (delta > 0 ? 3 : -3)));
-                if (next !== _msaColOffset) {
-                    _msaColOffset = next;
-                    drawMsaTrack();
-                }
+                // a tenth of a screen per notch (never under three columns):
+                // fine enough to place a column, and a long alignment is not
+                // ten thousand notches end to end
+                let step = Math.max(3, Math.round(visible / 10));
+                msaScrollTo(_msaColOffset + (delta > 0 ? step : -step));
             });
         _msaGeom = {
             originX: originX, cw: cw, offset: offset, visible: visible, total: total,
@@ -5805,33 +5807,135 @@ function (root, d3, forester, phyloXml) {
     // The dedicated column scroller: a fixed HTML range input at the window
     // bottom, shown only while the alignment is wider than its window. Lives
     // outside the svg, so exports never include it.
+    // Scroll the alignment window to start at column `offset` (0-based),
+    // clamped, and redraw. Every way of moving -- slider, wheel, paging
+    // buttons, the jump box -- lands here.
+    function msaScrollTo(offset) {
+        if (!_msaGeom) {
+            return;
+        }
+        let max = Math.max(0, _msaGeom.total - _msaGeom.visible);
+        let next = Math.max(0, Math.min(max, Math.round(offset)));
+        if (next !== _msaColOffset) {
+            _msaColOffset = next;
+            drawMsaTrack();
+        }
+    }
+
+    // The navigation bar under a scrollable alignment. A bare range slider
+    // used to be all there was, and on a 30,000-column alignment 260 px of
+    // slider is ~115 columns per pixel and the wheel moved three columns a
+    // notch -- nothing could be FOUND, only scrolled past. Now: first / page
+    // back / slider / page forward / last, a jump-to-column box, and a
+    // readout of the columns on screen. A page is one screenful of columns.
     function updateMsaScrollbar(offset, visible, total) {
         let scrollable = msaShown() && total > visible;
-        if (!_msaScroller && !scrollable) {
-            return; // never park a page-level slider under a tree that has no use for it
+        if (!_msaNav && !scrollable) {
+            return; // never park page-level controls under a tree that has no use for them
         }
-        if (!_msaScroller) {
+        if (!_msaNav) {
+            let nav = document.createElement('div');
+            nav.className = 'aptx-msa-nav';
+            if (_panelTheme) {
+                nav.classList.add('aptx-' + _panelTheme);
+            }
+            function button(text, title, act) {
+                let b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'aptx-msa-nav-btn';
+                b.textContent = text;
+                b.title = title;
+                b.addEventListener('click', act);
+                nav.appendChild(b);
+                return b;
+            }
+            button('\u23EE', 'first column', function () {
+                msaScrollTo(0);
+            });
+            button('\u25C0', 'back one screen of columns', function () {
+                msaScrollTo(_msaColOffset - (_msaGeom ? _msaGeom.visible : 0));
+            });
             let el = document.createElement('input');
             el.type = 'range';
             el.id = MSA_SCROLL_ID;
             el.className = 'aptx-msa-scroll';
             el.min = '0';
             el.step = '1';
-            el.title = 'scroll the alignment columns (the mouse wheel over the alignment works too)';
+            el.title = 'scroll the alignment (the wheel over the alignment works too; PageUp/PageDown jump)';
             el.addEventListener('input', function () {
                 let v = parseInt(el.value, 10);
-                if (!isNaN(v) && v !== _msaColOffset) {
-                    _msaColOffset = v;
-                    drawMsaTrack();
+                if (!isNaN(v)) {
+                    msaScrollTo(v);
                 }
             });
-            document.body.appendChild(el);
+            nav.appendChild(el);
+            button('\u25B6', 'forward one screen of columns', function () {
+                msaScrollTo(_msaColOffset + (_msaGeom ? _msaGeom.visible : 0));
+            });
+            button('\u23ED', 'last column', function () {
+                msaScrollTo(Infinity);
+            });
+
+            // "column [ 1234 ] - 1357 of 30,000": the box is the left edge of
+            // the window and takes a column to jump to; the rest reads back
+            let read = document.createElement('span');
+            read.className = 'aptx-msa-nav-read';
+            let lbl = document.createElement('span');
+            lbl.textContent = 'column';
+            let jump = document.createElement('input');
+            jump.type = 'number';
+            jump.min = '1';
+            jump.step = '1';
+            jump.className = 'aptx-msa-nav-jump';
+            jump.title = 'type a column number and press Enter to scroll there';
+            jump.setAttribute('aria-label', 'first visible column; type a column to jump to');
+            function jumpNow() {
+                let v = parseInt(jump.value, 10);
+                if (!isNaN(v)) {
+                    msaScrollTo(v - 1);
+                }
+                jump.blur();
+            }
+            jump.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    jumpNow();
+                } else if (event.key === 'Escape') {
+                    jump.value = String(_msaColOffset + 1);
+                    jump.blur();
+                }
+            });
+            jump.addEventListener('change', jumpNow);
+            let tail = document.createElement('span');
+            tail.className = 'aptx-msa-nav-tail';
+            read.appendChild(lbl);
+            read.appendChild(jump);
+            read.appendChild(tail);
+            nav.appendChild(read);
+
+            document.body.appendChild(nav);
+            _msaNav = nav;
             _msaScroller = el;
+            _msaNav._jump = jump;
+            _msaNav._tail = tail;
         }
-        _msaScroller.style.display = scrollable ? 'block' : 'none';
+        _msaNav.style.display = scrollable ? 'flex' : 'none';
         if (scrollable) {
             _msaScroller.max = String(total - visible);
             _msaScroller.value = String(offset);
+            if (document.activeElement !== _msaNav._jump) {
+                _msaNav._jump.value = String(offset + 1);
+            }
+            _msaNav._jump.max = String(total);
+            _msaNav._tail.textContent = '\u2013 ' + (offset + visible).toLocaleString()
+                + ' of ' + total.toLocaleString();
+            let atStart = offset <= 0;
+            let atEnd = offset >= total - visible;
+            let btns = _msaNav.querySelectorAll('.aptx-msa-nav-btn');
+            btns[0].disabled = atStart;
+            btns[1].disabled = atStart;
+            btns[2].disabled = atEnd;
+            btns[3].disabled = atEnd;
         }
     }
 
@@ -7489,14 +7593,14 @@ function (root, d3, forester, phyloXml) {
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
             // The node-data dialog, on the same palette as the panel and the menu.
-            + '.aptx-dialog, .aptx-busy {'
+            + '.aptx-dialog, .aptx-busy, .aptx-msa-nav {'
             + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '}'
             + '@media (prefers-color-scheme:dark){ .aptx-dialog:not(.aptx-light):not(.aptx-dark),'
-            + '  .aptx-busy:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
-            + '.aptx-dialog.aptx-dark, .aptx-busy.aptx-dark {' + dark + '}'
+            + '  .aptx-busy:not(.aptx-light):not(.aptx-dark), .aptx-msa-nav:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-dialog.aptx-dark, .aptx-busy.aptx-dark, .aptx-msa-nav.aptx-dark {' + dark + '}'
             // The "working" card shown over the tree area while a big tree is
             // drawn. It covers the whole container so nothing underneath --
             // panel included -- can be clicked into a half-built view.
@@ -7660,7 +7764,21 @@ function (root, d3, forester, phyloXml) {
             // drawn glyph. The glyph inherits the button's colour (currentColor)
             // and a disabled button fades the whole svg with the button chrome.
             + '.aptx-panel .aptx-gbtn { display:inline-flex; align-items:center; justify-content:center; min-width:32px; padding:0 7px; vertical-align:middle; }'
-            + '.aptx-msa-scroll { position:fixed; bottom:10px; left:55%; transform:translateX(-50%); width:260px; display:none; z-index:20; }'
+            + '.aptx-msa-nav { position:fixed; bottom:10px; left:55%; transform:translateX(-50%); z-index:20;'
+            + '  display:none; align-items:center; gap:6px; padding:6px 10px; border-radius:10px;'
+            + '  border:1px solid var(--p-line-strong); background:var(--p-bg); color:var(--p-ink);'
+            + '  box-shadow:0 8px 24px -10px rgba(23,34,46,0.35); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11.5px; line-height:1; }'
+            + '.aptx-msa-scroll { width:260px; margin:0 2px; }'
+            + '.aptx-msa-nav-btn { width:24px; height:22px; padding:0; border-radius:6px; border:1px solid var(--p-line-strong);'
+            + '  background:var(--p-surface2); color:var(--p-ink); font-size:10px; line-height:1; cursor:pointer; }'
+            + '.aptx-msa-nav-btn:hover:not(:disabled) { border-color:var(--p-accent); color:var(--p-accent-ink); }'
+            + '.aptx-msa-nav-btn:disabled { opacity:0.35; cursor:default; }'
+            + '.aptx-msa-nav-read { display:inline-flex; align-items:center; gap:5px; margin-left:6px; color:var(--p-muted);'
+            + '  font-variant-numeric:tabular-nums; white-space:nowrap; }'
+            + '.aptx-msa-nav-jump { width:64px; padding:2px 5px; border-radius:5px; border:1px solid var(--p-line-strong);'
+            + '  background:var(--p-surface2); color:var(--p-ink); font:inherit; font-variant-numeric:tabular-nums; text-align:right; }'
+            + '.aptx-msa-nav-jump:focus { outline:none; border-color:var(--p-accent); }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { opacity:0.4; }'
             + '.aptx-panel .aptx-seg:has(input:disabled) { cursor:default; }'
             + '.aptx-panel .aptx-slider-row { display:flex; align-items:center; gap:7px; margin:3px 0; }'
