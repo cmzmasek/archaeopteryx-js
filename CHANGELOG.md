@@ -123,7 +123,18 @@ consumers only see a change when a version is cut.
   like. Both now show a PROPERTIES heading like TAXONOMY and SEQUENCE, with
   name/value rows named the way the Color-by menu and legends name them:
   "Host Group", not `BVBRC:host_group` or `Host_Group`. Units follow the
-  value. "Sum of Subtree Tips" is now "Tips below" in both places.
+  value. "Sum of Subtree Tips" is now "Tips below" in both places. The
+  desktop's `style:` properties — how a node is drawn, not what it is — are
+  no longer listed.
+- **Node data reads in one order, with no stray lines.** The tooltip and the
+  dialog now share one builder. The node's own facts come first — Name,
+  Distance to parent, Date, Distribution, Depth, Tips below — then its
+  confidences, then the TAXONOMY / SEQUENCE / EVENTS / PROPERTIES sections,
+  so nothing reads as a tail of the section above it. A date is one line
+  with its range, unit and description folded in ("6.5 [5 - 8] mya
+  (split)"); a dated node without a description used to get a second, empty
+  "Date:" line, and a distribution without a description an empty
+  "Distribution:" line. Both are gone.
 
 - **A taxon identifier is never offered as a visualization.** On the H5N1
   tree "NCBI Taxon Id" ranked fourth in Color-by: 13,042 tips at 11320 plus

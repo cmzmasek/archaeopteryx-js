@@ -1099,146 +1099,7 @@ function (root, d3, forester, phyloXml) {
 
     function mousemove(event, d) {
 
-        let mo_text = '';
-        if (d.name) {
-            mo_text += 'Name: ' + d.name + '<br>';
-        }
-        if (d.branch_length) {
-            mo_text += 'Distance to Parent: ' + d.branch_length + '<br>';
-        }
-        if (d.date && (typeof d.date.value === 'number'
-            || (typeof d.date.minimum === 'number' && typeof d.date.maximum === 'number'))) {
-            let dv = typeof d.date.value === 'number' ? String(d.date.value) : '';
-            if (typeof d.date.minimum === 'number' && typeof d.date.maximum === 'number') {
-                dv += ' [' + d.date.minimum + ' - ' + d.date.maximum + ']';
-            }
-            if (d.date.unit) {
-                dv += ' ' + d.date.unit;
-            }
-            mo_text += 'Date: ' + dv.trim() + '<br>';
-        }
-        mo_text += 'Depth: ' + forester.calcDepth(d) + '<br>';
-        let i = 0;
-        if (d.confidences) {
-            for (i = 0; i < d.confidences.length; ++i) {
-                let c = d.confidences[i];
-                if (c.type) {
-                    mo_text += 'Confidence [' + c.type + ']: ' + c.value + '<br>';
-                } else {
-                    mo_text += 'Confidence: ' + c.value + '<br>';
-                }
-                if (c.stddev) {
-                    mo_text += '- stdev: ' + c.stddev + '<br>';
-                }
-            }
-        }
-        if (d.taxonomies) {
-            for (i = 0; i < d.taxonomies.length; ++i) {
-                mo_text += 'Taxonomy<br>';
-                let t = d.taxonomies[i];
-                if (t.id) {
-                    if (t.id.provider) {
-                        mo_text += '- Id [' + t.id.provider + ']: ' + t.id.value + '<br>';
-                    } else {
-                        mo_text += '- Id: ' + t.id.value + '<br>';
-                    }
-                }
-                if (t.code) {
-                    mo_text += '- Code: ' + t.code + '<br>';
-                }
-                if (t.scientific_name) {
-                    mo_text += '- Scientific name: ' + t.scientific_name + '<br>';
-                }
-                if (t.common_name) {
-                    mo_text += '- Common name: ' + t.common_name + '<br>';
-                }
-                if (t.rank) {
-                    mo_text += '- Rank: ' + t.rank + '<br>';
-                }
-            }
-        }
-        if (d.sequences) {
-            for (i = 0; i < d.sequences.length; ++i) {
-                mo_text += 'Sequence<br>';
-                let s = d.sequences[i];
-                if (s.accession) {
-                    if (s.accession.source) {
-                        mo_text += '- Accession [' + s.accession.source + ']: ' + s.accession.value + '<br>';
-                    } else {
-                        mo_text += '- Accession: ' + s.accession.value + '<br>';
-                    }
-                    if (s.accession.comment) {
-                        mo_text += '-- comment: ' + s.accession.comment + '<br>';
-                    }
-                }
-                if (s.symbol) {
-                    mo_text += '- Symbol: ' + s.symbol + '<br>';
-                }
-                if (s.name) {
-                    mo_text += '- Name: ' + s.name + '<br>';
-                }
-                if (s.gene_name) {
-                    mo_text += '- Gene name: ' + s.gene_name + '<br>';
-                }
-                if (s.location) {
-                    mo_text += '- Location: ' + s.location + '<br>';
-                }
-                if (s.type) {
-                    mo_text += '- Type: ' + s.type + '<br>';
-                }
-            }
-        }
-        if (d.distributions) {
-            let distributions = d.distributions;
-            for (i = 0; i < distributions.length; ++i) {
-                mo_text += 'Distribution: ';
-                if (distributions[i].desc) {
-                    mo_text += distributions[i].desc + '<br>';
-                }
-            }
-        }
-        if (d.date) {
-            mo_text += 'Date: ';
-            let date = d.date;
-            if (date.desc) {
-                mo_text += date.desc + '<br>';
-            }
-        }
-        if (d.events) {
-            mo_text += 'Events<br>';
-            let ev = d.events;
-            if (ev.type && ev.type.length > 0) {
-                mo_text += '- Type: ' + ev.type + '<br>';
-            }
-            if (ev.duplications && ev.duplications > 0) {
-                mo_text += '- Duplications: ' + ev.duplications + '<br>';
-            }
-            if (ev.speciations && ev.speciations > 0) {
-                mo_text += '- Speciations: ' + ev.speciations + '<br>';
-            }
-            if (ev.losses && ev.losses > 0) {
-                mo_text += '- Losses: ' + ev.losses + '<br>';
-            }
-        }
-        if (d.properties && d.properties.length > 0) {
-            // Under a PROPERTIES heading like the sections above it, named as
-            // the Color-by menu names them ("Host Group", not "Host_Group") --
-            // the same rows the node-data dialog shows.
-            let propertyRows = '';
-            for (i = 0; i < d.properties.length; ++i) {
-                let property = d.properties[i];
-                if (property.ref && property.value) {
-                    propertyRows += '- ' + forester.propertyDisplayName(property.ref) + ': '
-                        + property.value + (property.unit ? ' ' + property.unit : '') + '<br>';
-                }
-            }
-            if (propertyRows) {
-                mo_text += 'Properties<br>' + propertyRows;
-            }
-        }
-        if (d.children) {
-            mo_text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
-        }
+        let mo_text = nodeDataText(d);
 
         // Same label/value layout as the node-data dialog, so the two read alike.
         let tip = _node_mouseover_div.node();
@@ -4959,138 +4820,7 @@ function (root, d3, forester, phyloXml) {
 
             function displayNodeData(n) {
                 let title = 'Node Data';
-                let text = '';
-                if (n.name) {
-                    text += 'Name: ' + n.name + '<br>';
-                }
-                if (n.branch_length) {
-                    text += 'Distance to Parent: ' + n.branch_length + '<br>';
-                }
-                text += 'Depth: ' + forester.calcDepth(n) + '<br>';
-                let i = 0;
-                if (n.confidences) {
-                    for (i = 0; i < n.confidences.length; ++i) {
-                        let c = n.confidences[i];
-                        if (c.type) {
-                            text += 'Confidence [' + c.type + ']: ' + c.value + '<br>';
-                        } else {
-                            text += 'Confidence: ' + c.value + '<br>';
-                        }
-                        if (c.stddev) {
-                            text += '- stdev: ' + c.stddev + '<br>';
-                        }
-                    }
-                }
-                if (n.taxonomies) {
-                    for (i = 0; i < n.taxonomies.length; ++i) {
-                        text += 'Taxonomy<br>';
-                        let t = n.taxonomies[i];
-                        if (t.id) {
-                            if (t.id.provider) {
-                                text += '- Id [' + t.id.provider + ']: ' + t.id.value + '<br>';
-                            } else {
-                                text += '- Id: ' + t.id.value + '<br>';
-                            }
-                        }
-                        if (t.code) {
-                            text += '- Code: ' + t.code + '<br>';
-                        }
-                        if (t.scientific_name) {
-                            text += '- Scientific name: ' + t.scientific_name + '<br>';
-                        }
-                        if (t.common_name) {
-                            text += '- Common name: ' + t.common_name + '<br>';
-                        }
-                        if (t.rank) {
-                            text += '- Rank: ' + t.rank + '<br>';
-                        }
-                    }
-                }
-                if (n.sequences) {
-                    for (i = 0; i < n.sequences.length; ++i) {
-                        text += 'Sequence<br>';
-                        let s = n.sequences[i];
-                        if (s.accession) {
-                            if (s.accession.source) {
-                                text += '- Accession [' + s.accession.source + ']: ' + s.accession.value + '<br>';
-                            } else {
-                                text += '- Accession: ' + s.accession.value + '<br>';
-                            }
-                            if (s.accession.comment) {
-                                text += '-- comment: ' + s.accession.comment + '<br>';
-                            }
-                        }
-                        if (s.symbol) {
-                            text += '- Symbol: ' + s.symbol + '<br>';
-                        }
-                        if (s.name) {
-                            text += '- Name: ' + s.name + '<br>';
-                        }
-                        if (s.gene_name) {
-                            text += '- Gene name: ' + s.gene_name + '<br>';
-                        }
-                        if (s.location) {
-                            text += '- Location: ' + s.location + '<br>';
-                        }
-                        if (s.type) {
-                            text += '- Type: ' + s.type + '<br>';
-                        }
-                    }
-                }
-                if (n.distributions) {
-                    let distributions = n.distributions;
-                    for (i = 0; i < distributions.length; ++i) {
-                        text += 'Distribution: ';
-                        if (distributions[i].desc) {
-                            text += distributions[i].desc + '<br>';
-                        }
-                    }
-                }
-                if (n.date) {
-                    text += 'Date: ';
-                    let date = n.date;
-                    if (date.desc) {
-                        text += date.desc + '<br>';
-                    }
-                }
-                if (n.events) {
-                    text += 'Events<br>';
-                    let ev = n.events;
-                    if (ev.type && ev.type.length > 0) {
-                        text += '- Type: ' + ev.type + '<br>';
-                    }
-                    if (ev.duplications && ev.duplications > 0) {
-                        text += '- Duplications: ' + ev.duplications + '<br>';
-                    }
-                    if (ev.speciations && ev.speciations > 0) {
-                        text += '- Speciations: ' + ev.speciations + '<br>';
-                    }
-                    if (ev.losses && ev.losses > 0) {
-                        text += '- Losses: ' + ev.losses + '<br>';
-                    }
-                }
-                if (n.properties && n.properties.length > 0) {
-                    // Under their own heading, like Taxonomy and Sequence, and
-                    // named as the Color-by menu names them ("Host Group", not
-                    // "BVBRC:host_group"). The raw ref used to be written as
-                    // the key, and its namespace colon defeated the dialog's
-                    // key/value detection, so every property was rendered as
-                    // a section heading -- upper case, faint.
-                    let propertyRows = '';
-                    for (i = 0; i < n.properties.length; ++i) {
-                        let property = n.properties[i];
-                        if (property.ref && property.value) {
-                            propertyRows += '- ' + forester.propertyDisplayName(property.ref) + ': '
-                                + property.value + (property.unit ? ' ' + property.unit : '') + '<br>';
-                        }
-                    }
-                    if (propertyRows) {
-                        text += 'Properties<br>' + propertyRows;
-                    }
-                }
-                if (n.children) {
-                    text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(n) + '<br>';
-                }
+                let text = nodeDataText(n);
 
                 showNodeDataDialog(title, text, false, 260, 300);
 
@@ -8127,6 +7857,161 @@ function (root, d3, forester, phyloXml) {
     // Content arrives as "Label: value" lines separated by <br>. Setting the
     // label part apart makes a wall of such lines scannable. Lines without a
     // label (a heading like "Taxonomy", or a FASTA sequence) are left alone.
+    // The node's data as the hover tooltip and the "Display Node Data" dialog
+    // both show it -- ONE builder, because they used to be two near-copies
+    // and carried the same two bugs twice (a bare "Date: " line whenever a
+    // date had no description, and "Distribution: " printed before its
+    // description was checked).
+    //
+    // Order, as the desktop lays it out: first the node itself -- Name,
+    // Distance to parent, Date, Distribution, Depth, Tips below -- then its
+    // confidences, then the headed sections. Every row is either in that
+    // leading block or under a heading, so nothing reads as a stray tail of
+    // the section above it. markUpDataLabels() renders the result: a line
+    // shaped "Key: value" is a row, anything else a heading, and a leading
+    // "- " marks a row as a section's sub-entry.
+    function nodeDataText(d) {
+        let text = '';
+        if (d.name) {
+            text += 'Name: ' + d.name + '<br>';
+        }
+        if (d.branch_length) {
+            text += 'Distance to parent: ' + d.branch_length + '<br>';
+        }
+        let date = dateText(d.date);
+        if (date) {
+            text += 'Date: ' + date + '<br>';
+        }
+        if (d.distributions) {
+            for (let i = 0; i < d.distributions.length; ++i) {
+                // only a distribution that has something to say gets a row
+                if (d.distributions[i].desc) {
+                    text += 'Distribution: ' + d.distributions[i].desc + '<br>';
+                }
+            }
+        }
+        text += 'Depth: ' + forester.calcDepth(d) + '<br>';
+        if (d.children) {
+            text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
+        }
+        if (d.confidences) {
+            for (let i = 0; i < d.confidences.length; ++i) {
+                let c = d.confidences[i];
+                text += (c.type ? 'Confidence [' + c.type + ']: ' : 'Confidence: ') + c.value + '<br>';
+                if (c.stddev) {
+                    text += '- stdev: ' + c.stddev + '<br>';
+                }
+            }
+        }
+        if (d.taxonomies) {
+            for (let i = 0; i < d.taxonomies.length; ++i) {
+                let tx = d.taxonomies[i];
+                text += 'Taxonomy<br>';
+                if (tx.id) {
+                    text += (tx.id.provider ? '- Id [' + tx.id.provider + ']: ' : '- Id: ') + tx.id.value + '<br>';
+                }
+                if (tx.code) {
+                    text += '- Code: ' + tx.code + '<br>';
+                }
+                if (tx.scientific_name) {
+                    text += '- Scientific name: ' + tx.scientific_name + '<br>';
+                }
+                if (tx.common_name) {
+                    text += '- Common name: ' + tx.common_name + '<br>';
+                }
+                if (tx.rank) {
+                    text += '- Rank: ' + tx.rank + '<br>';
+                }
+            }
+        }
+        if (d.sequences) {
+            for (let i = 0; i < d.sequences.length; ++i) {
+                let s = d.sequences[i];
+                text += 'Sequence<br>';
+                if (s.accession) {
+                    text += (s.accession.source ? '- Accession [' + s.accession.source + ']: ' : '- Accession: ')
+                        + s.accession.value + '<br>';
+                    if (s.accession.comment) {
+                        text += '-- comment: ' + s.accession.comment + '<br>';
+                    }
+                }
+                if (s.symbol) {
+                    text += '- Symbol: ' + s.symbol + '<br>';
+                }
+                if (s.name) {
+                    text += '- Name: ' + s.name + '<br>';
+                }
+                if (s.gene_name) {
+                    text += '- Gene name: ' + s.gene_name + '<br>';
+                }
+                if (s.location) {
+                    text += '- Location: ' + s.location + '<br>';
+                }
+                if (s.type) {
+                    text += '- Type: ' + s.type + '<br>';
+                }
+            }
+        }
+        if (d.events) {
+            let ev = d.events;
+            text += 'Events<br>';
+            if (ev.type && ev.type.length > 0) {
+                text += '- Type: ' + ev.type + '<br>';
+            }
+            if (ev.duplications && ev.duplications > 0) {
+                text += '- Duplications: ' + ev.duplications + '<br>';
+            }
+            if (ev.speciations && ev.speciations > 0) {
+                text += '- Speciations: ' + ev.speciations + '<br>';
+            }
+            if (ev.losses && ev.losses > 0) {
+                text += '- Losses: ' + ev.losses + '<br>';
+            }
+        }
+        if (d.properties && d.properties.length > 0) {
+            // Named as the Color-by menu names them ("Host Group", not
+            // "BVBRC:host_group"). style:* refs are the desktop's visual-style
+            // namespace -- how a node is drawn, not what it is -- and are
+            // skipped, as the Color-by menu skips them.
+            let rows = '';
+            for (let i = 0; i < d.properties.length; ++i) {
+                let pr = d.properties[i];
+                if (pr.ref && pr.value && pr.ref.indexOf('style:') !== 0) {
+                    rows += '- ' + forester.propertyDisplayName(pr.ref) + ': '
+                        + pr.value + (pr.unit ? ' ' + pr.unit : '') + '<br>';
+                }
+            }
+            if (rows) {
+                text += 'Properties<br>' + rows;
+            }
+        }
+        return text;
+    }
+
+    // One line for a node's date, as the desktop writes it: the value, its
+    // range, its unit and its description folded together -- "6.5 [5 - 8]
+    // mya (split)" -- or just the description when that is all there is.
+    // Null when there is nothing to say, so no bare "Date: " ever appears.
+    function dateText(date) {
+        if (!date) {
+            return null;
+        }
+        let hasValue = typeof date.value === 'number';
+        let hasRange = typeof date.minimum === 'number' && typeof date.maximum === 'number';
+        let s = hasValue ? String(date.value) : '';
+        if (hasRange) {
+            s += ' [' + date.minimum + ' - ' + date.maximum + ']';
+        }
+        if ((hasValue || hasRange) && date.unit) {
+            s += ' ' + date.unit;
+        }
+        s = s.trim();
+        if (date.desc) {
+            s = s ? s + ' (' + date.desc + ')' : date.desc;
+        }
+        return s || null;
+    }
+
     function markUpDataLabels(escaped) {
         return escaped.split('<br>').map(function (line) {
             if (!line.trim()) {
