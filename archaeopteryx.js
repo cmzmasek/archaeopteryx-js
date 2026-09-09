@@ -174,6 +174,11 @@ function (root, d3, forester, phyloXml) {
         'Helvetica Neue', 'Arial', 'sans-serif'];
     // Okabe-Ito color-blind-safe palette for search / selection highlights.
     const FOUND0_COLOR_DEFAULT = '#0072B2';      // Search A  — blue
+    // Search A in the dark theme: the same Okabe-Ito palette's sky blue. The
+    // light theme's blue is right on white and sinks into a dark ground; sky
+    // blue keeps the hue and stays distinct from B's vermillion and A&B's
+    // yellow. The other two already read on dark.
+    const FOUND0_COLOR_DARK = '#56B4E9';
     const FOUND1_COLOR_DEFAULT = '#D55E00';      // Search B  — vermillion
     const FOUND0AND1_COLOR_DEFAULT = '#F0E442';  // A and B   — yellow
     const SELECTED_COLOR_DEFAULT = '#009E73';    // Selected  — bluish green
@@ -7177,6 +7182,7 @@ function (root, d3, forester, phyloXml) {
         _state.backgroundColorDefault = dark ? BACKGROUND_COLOR_DARK : BACKGROUND_COLOR_DEFAULT;
         _state.branchColorDefault = dark ? BRANCH_COLOR_DARK : BRANCH_COLOR_DEFAULT;
         _state.labelColorDefault = dark ? LABEL_COLOR_DARK : LABEL_COLOR_DEFAULT;
+        _state.found0ColorDefault = dark ? FOUND0_COLOR_DARK : FOUND0_COLOR_DEFAULT;
         // Always white, in both themes: getTreeAsSvg() rewrites the dark label
         // and branch colours to their light counterparts on the way out, so an
         // export can no longer end up as white text on a white ground.
@@ -9480,7 +9486,9 @@ function (root, d3, forester, phyloXml) {
                     b.style.color = '';
                 } else {
                     b.style.background = _state.found0ColorDefault;
-                    b.style.color = WHITE;
+                    // black or white by luminance: the dark theme's sky blue
+                    // is too light for white text
+                    b.style.color = forester.msaLetterInk(hexToRgbTriple(_state.found0ColorDefault));
                 }
                 let nd0 = _foundNodes0.size === 1 ? 'node' : 'nodes';
                 b.title = 'found ' + _foundNodes0.size + ' ' + nd0 + ' [click to ' + RESET_SEARCH_A_BTN_TOOLTIP + ']';

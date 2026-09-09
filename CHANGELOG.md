@@ -147,6 +147,12 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
+- **Search A hits are easier to see in the dark theme.** Their blue was
+  right on white and sank into a dark background; in the dark theme Search
+  A now uses the same palette's sky blue, which keeps the hue and stays
+  distinct from Search B's vermillion and the A-and-B yellow. The panel's
+  reset button follows, with black or white text by luminance.
+
 - **Properties in "Display Node Data" and in the hover tooltip are a proper
   section now.** They used to appear as upper-case, faint lines — the
   dialog's row detector took each `BVBRC:host_group: Cow` for a heading,
