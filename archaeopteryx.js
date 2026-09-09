@@ -352,6 +352,7 @@ function (root, d3, forester, phyloXml) {
     // embedding page's own defs.
     const ARCHAEOPTERYX_LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Archaeopteryx"> <defs> <linearGradient id="aptxlogo-wg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#4f46e5"/><stop offset="0.55" stop-color="#38bdf8"/><stop offset="1" stop-color="#a7f3d0"/> </linearGradient> <linearGradient id="aptxlogo-wg2" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#3730a3"/><stop offset="1" stop-color="#4f79e0"/> </linearGradient> <linearGradient id="aptxlogo-tg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#f43f5e"/><stop offset="0.5" stop-color="#fb923c"/><stop offset="1" stop-color="#fde047"/> </linearGradient> <linearGradient id="aptxlogo-bg" x1="0" y1="0" x2="0" y2="1"> <stop offset="0" stop-color="#fff7e0"/><stop offset="1" stop-color="#fcd34d"/> </linearGradient> </defs> <g transform="translate(28.9,18.0) scale(0.9091)"> <g stroke="#25304f" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"> <path d="M 78.0,152.0 C 49.3,150.6 12.5,173.3 -4.4,194.3 C 25.1,192.0 66.1,175.5 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 48.1,143.8 3.5,158.8 -19.7,176.6 C 12.1,181.2 59.5,173.7 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 51.8,138.2 6.9,142.5 -18.7,154.0 C 10.0,164.8 56.0,167.9 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 58.9,135.3 20.6,130.3 -2.8,135.1 C 18.9,149.7 56.6,161.2 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 118.0,126.0 C 110.4,106.2 84.4,93.0 65.5,92.1 C 75.9,110.5 99.0,129.6 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 115.6,103.3 92.6,79.7 73.5,71.3 C 79.1,93.8 97.5,122.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 123.0,106.1 110.4,79.8 96.5,67.4 C 94.4,87.9 101.6,117.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 106,172 L 101,202 M 132,172 L 129,202" fill="none" stroke-width="9"/> <path d="M 101,202 L 88,209 M 101,202 L 112,210 M 101,202 L 99,213 M 129,202 L 116,209 M 129,202 L 140,210 M 129,202 L 128,213" fill="none" stroke-width="6"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="url(#aptxlogo-bg)"/> <path d="M 100,174 C 86,166 82,150 90,138 C 96,146 108,152 122,152 C 136,152 148,148 156,140 C 160,156 150,172 128,177 C 118,179 108,178 100,174 Z" fill="#fff6dd" stroke="none"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="none"/> <path d="M 150.0,60.0 C 159.5,51.2 158.7,35.2 152.9,25.9 C 145.3,35.7 141.5,51.8 150.0,60.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 164.0,56.0 C 174.4,51.0 177.8,37.3 175.2,28.0 C 166.2,34.2 158.9,46.9 164.0,56.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 136.0,66.0 C 141.8,56.5 137.0,44.2 129.6,38.5 C 125.7,48.3 126.7,61.9 136.0,66.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 158,58 C 186,54 208,72 208,96 C 208,120 188,136 164,134 C 140,132 126,114 128,92 C 130,72 142,60 158,58 Z" fill="url(#aptxlogo-bg)"/> <path d="M 203,82 C 216,84 230,92 238,100 C 230,108 216,113 202,112 C 206,104 206,90 203,82 Z" fill="#fb923c"/> <path d="M 204,101 C 214,102 224,103 234,101" fill="none" stroke-width="4"/> <path d="M 128.0,116.0 C 113.1,91.9 75.3,80.3 50.0,83.2 C 68.3,104.8 103.7,124.6 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 118.0,85.8 79.7,60.2 51.1,54.1 C 65.4,83.1 98.9,116.3 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 127.0,83.7 97.3,47.3 71.5,32.7 C 76.9,65.0 99.8,107.4 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 136.1,88.7 121.1,50.1 103.3,30.9 C 99.0,59.5 106.6,101.2 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> </g> <g> <ellipse cx="172" cy="94" rx="15" ry="17" fill="#25304f"/> <ellipse cx="172" cy="97" rx="10" ry="11" fill="#38bdf8"/> <circle cx="167" cy="88" r="6" fill="#ffffff"/> <circle cx="178" cy="103" r="3" fill="#ffffff" opacity="0.9"/> <ellipse cx="146" cy="112" rx="9" ry="5" fill="#fb7185" opacity="0.75"/> <path d="M 52,53 C 53.62,59.75 54.25,60.38 61,62 C 54.25,63.62 53.62,64.25 52,71 C 50.38,64.25 49.75,63.62 43,62 C 49.75,60.38 50.38,59.75 52,53 Z" fill="#fde68a"/> <path d="M 222,161 C 223.26,166.25 223.75,166.74 229,168 C 223.75,169.26 223.26,169.75 222,175 C 220.74,169.75 220.25,169.26 215,168 C 220.25,166.74 220.74,166.25 222,161 Z" fill="#fde68a"/> <path d="M 86,208 C 87.08,212.5 87.5,212.92 92,214 C 87.5,215.08 87.08,215.5 86,220 C 84.92,215.5 84.5,215.08 80,214 C 84.5,212.92 84.92,212.5 86,208 Z" fill="#fde68a"/> </g> </g> </svg>';
     const NODE_DATA = 'node_data_dialog';
+    const COLOR_PICKER = 'color_picker_dialog';
     const NODE_EVENTS_CB = 'nevts_cb';
     const NODE_NAME_CB = 'nn_cb';
     const NODE_SHAPE_SELECT_MENU = 'nshapes_menu';
@@ -1436,57 +1437,256 @@ function (root, d3, forester, phyloXml) {
     // values first met in a smaller view extend the memory with the next free
     // palette slots. (On the launch view this assigns the sorted domain
     // 0,1,2,... -- exactly the old fixed-palette behaviour.)
-    // Clicking a legend colour opens the browser's own colour picker and
-    // repaints that value everywhere -- the legend swatch and every node
-    // carrying it -- because both read the same categoryScale.
+    // Clicking a legend colour opens a colour picker and repaints that value
+    // everywhere -- the legend swatch and every node carrying it -- because
+    // both read the same categoryScale.
     //
-    // A native <input type="color"> rather than a hand-built palette: it costs
-    // no dependency, gives the OS picker people already know, and does not cap
-    // the user to the twenty palette entries. It has to be IN the document and
-    // not display:none for .click() to open it, so it is parked off-screen.
-    let _colorPickerInput = null;
+    // Built in-page rather than using <input type="color">, which was the first
+    // version and was wrong on three counts a user noticed immediately: an OS
+    // widget cannot follow the panel's light/dark choice, cannot carry a close
+    // button of its own, and only reports its value on dismissal, so the tree
+    // did not move while you were choosing. This one is a non-modal dialog --
+    // NOT showModal(), whose backdrop would dim the very tree being previewed.
+    function openColorPicker(current, valueLabel, anchor, onChange) {
+        let anchorClass = anchor && anchor.getAttribute ? anchor.getAttribute('class') : null;
+        let hsv = rgbToHsv(current);
+        let shell = makeDialogShell(COLOR_PICKER, valueLabel, 212);
+        let dialog = shell.dialog;
 
-    function openColorPicker(current, onPicked) {
-        if (!_colorPickerInput) {
-            _colorPickerInput = document.createElement('input');
-            _colorPickerInput.type = 'color';
-            setStyles(_colorPickerInput, {
-                'position': 'fixed', 'left': '-100px', 'top': '-100px',
-                'width': '1px', 'height': '1px', 'opacity': '0', 'border': 'none',
-                'padding': '0', 'margin': '0'
+        let sv = document.createElement('div');
+        sv.className = 'aptx-cp-sv';
+        let svKnob = document.createElement('div');
+        svKnob.className = 'aptx-cp-knob';
+        sv.appendChild(svKnob);
+
+        let hue = document.createElement('div');
+        hue.className = 'aptx-cp-hue';
+        let hueKnob = document.createElement('div');
+        hueKnob.className = 'aptx-cp-knob';
+        hueKnob.style.top = '6px';
+        hue.appendChild(hueKnob);
+
+        let row = document.createElement('div');
+        row.className = 'aptx-cp-row';
+        let preview = document.createElement('div');
+        preview.className = 'aptx-cp-prev';
+        let hex = document.createElement('input');
+        hex.className = 'aptx-cp-hex';
+        hex.type = 'text';
+        hex.spellcheck = false;
+        hex.setAttribute('aria-label', 'hex colour');
+        row.appendChild(preview);
+        row.appendChild(hex);
+
+        // The palette the tree hands out, so "put it back to something that
+        // belongs" is one click rather than a hunt in the gradient.
+        let grid = document.createElement('div');
+        grid.className = 'aptx-cp-grid';
+        VIS_COLOR_PALETTE.forEach(function (c) {
+            let b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'aptx-cp-sw';
+            b.style.background = c;
+            b.title = c;
+            b.addEventListener('click', function () {
+                hsv = rgbToHsv(c);
+                render(true);
             });
-            document.body.appendChild(_colorPickerInput);
-        }
-        let input = _colorPickerInput;
-        input.value = toHexColor(current);
-        // A fresh handler per open: the previous swatch's closure must not
-        // survive to repaint the wrong value.
-        input.onchange = function () {
-            onPicked(input.value);
-        };
-        if (typeof input.showPicker === 'function') {
-            try {
-                input.showPicker();
-                return;
-            } catch {
-                // showPicker() throws without a user gesture in some browsers;
-                // the click() path below works there.
+            grid.appendChild(b);
+        });
+
+        let note = document.createElement('div');
+        note.className = 'aptx-cp-note';
+        note.textContent = 'The tree updates as you pick.';
+
+        shell.body.appendChild(sv);
+        shell.body.appendChild(hue);
+        shell.body.appendChild(row);
+        shell.body.appendChild(grid);
+        shell.body.appendChild(note);
+
+        // Repainting a big tree on every pointer move would fall behind the
+        // pointer, so the tree redraw is coalesced to one per frame while the
+        // picker's own chrome updates immediately.
+        let pendingColor = null;
+        let frame = 0;
+
+        function render(applyNow) {
+            let color = hsvToHex(hsv);
+            sv.style.background = 'linear-gradient(to top,#000,rgba(0,0,0,0)),'
+                + 'linear-gradient(to right,#fff,rgba(255,255,255,0)),'
+                + 'hsl(' + hsv.h + ',100%,50%)';
+            svKnob.style.left = (hsv.s * 100) + '%';
+            svKnob.style.top = ((1 - hsv.v) * 100) + '%';
+            svKnob.style.background = color;
+            hueKnob.style.left = ((hsv.h / 360) * 100) + '%';
+            hueKnob.style.background = 'hsl(' + hsv.h + ',100%,50%)';
+            preview.style.background = color;
+            if (document.activeElement !== hex) {
+                hex.value = color;
+            }
+            if (applyNow) {
+                pendingColor = color;
+                if (!frame) {
+                    frame = requestAnimationFrame(function () {
+                        frame = 0;
+                        onChange(pendingColor);
+                        place();   // the legend may have just changed width
+                    });
+                }
             }
         }
-        input.click();
+
+        function track(el, move) {
+            el.addEventListener('pointerdown', function (event) {
+                el.setPointerCapture(event.pointerId);
+                move(event);
+                event.preventDefault();
+            });
+            el.addEventListener('pointermove', function (event) {
+                if (el.hasPointerCapture(event.pointerId)) {
+                    move(event);
+                }
+            });
+        }
+        track(sv, function (event) {
+            let r = sv.getBoundingClientRect();
+            hsv.s = Math.max(0, Math.min(1, (event.clientX - r.left) / r.width));
+            hsv.v = 1 - Math.max(0, Math.min(1, (event.clientY - r.top) / r.height));
+            render(true);
+        });
+        track(hue, function (event) {
+            let r = hue.getBoundingClientRect();
+            hsv.h = Math.max(0, Math.min(1, (event.clientX - r.left) / r.width)) * 360;
+            render(true);
+        });
+        hex.addEventListener('input', function () {
+            if (/^#[0-9a-f]{6}$/i.test(hex.value.trim())) {
+                hsv = rgbToHsv(hex.value.trim());
+                render(true);
+            }
+        });
+
+        let closed = false;
+        function close() {
+            document.removeEventListener('pointerdown', onOutside, true);
+            document.removeEventListener('keydown', onKey, true);
+            if (frame) {
+                cancelAnimationFrame(frame);
+                frame = 0;
+            }
+            if (closed) {
+                return;
+            }
+            closed = true;
+            if (dialog.open) {
+                dialog.close();
+            }
+        }
+        // A non-modal dialog gets neither Escape nor a light-dismiss for free.
+        function onKey(event) {
+            if (event.key === 'Escape') {
+                close();
+            }
+        }
+        function onOutside(event) {
+            if (!dialog.contains(event.target)) {
+                close();
+            }
+        }
+
+        // The shell's own close button calls dialog.close() directly, which
+        // would leave these page-level listeners behind on every dismissal
+        // that is not Escape or an outside click. Both routes now run the same
+        // teardown, and close() is idempotent.
+        let shellClose = dialog.querySelector('.aptx-dialog-close');
+        if (shellClose) {
+            shellClose.addEventListener('click', close);
+        }
+        dialog.addEventListener('close', close);
+
+        render(false);
+        dialog.show();
+        place();
+
+        // Beside the legend it edits, never on top of it -- a picker that hides
+        // the swatch it is changing defeats the live preview.
+        //
+        // Re-measured rather than remembered, for two reasons: every redraw
+        // DESTROYS and rebuilds the legend group, so a held reference goes
+        // stale and measures zero; and the card grows when the [reset colors]
+        // chip appears on the first pick, which would leave a
+        // positioned-once picker sitting over the counts. It only MOVES when
+        // it would otherwise overlap, so the dialog does not chase the legend
+        // around while the user drags.
+        function place() {
+            let el = anchorClass ? document.querySelector('g.' + anchorClass) : null;
+            let box = el ? el.getBoundingClientRect() : null;
+            if (!box || !box.width) {
+                return;
+            }
+            let now = dialog.getBoundingClientRect();
+            let overlaps = now.width > 0
+                && !(now.left >= box.right || now.right <= box.left
+                    || now.top >= box.bottom || now.bottom <= box.top);
+            if (now.width > 0 && !overlaps) {
+                return;
+            }
+            let w = dialog.offsetWidth;
+            let h = dialog.offsetHeight;
+            // to the right of the card, or to its left when that would leave
+            // the viewport
+            let left = box.right + 10;
+            if (left + w > window.innerWidth - 6) {
+                left = box.left - w - 10;
+            }
+            setStyles(dialog, {
+                'position': 'fixed',
+                'margin': '0',
+                'left': Math.max(6, Math.min(window.innerWidth - w - 6, left)) + 'px',
+                'top': Math.max(6, Math.min(window.innerHeight - h - 6, box.top)) + 'px'
+            });
+        }
+        setTimeout(function () {
+            document.addEventListener('pointerdown', onOutside, true);
+            document.addEventListener('keydown', onKey, true);
+        }, 0);
     }
 
-    // <input type="color"> accepts only "#rrggbb". Palette entries already are,
-    // but a tree-supplied colour can be "rgb(...)" or a named colour, so it is
-    // normalized through d3 rather than parsed by hand.
-    function toHexColor(c) {
-        let parsed = null;
+    // HSV, not d3's HSL: a saturation/value square is what a colour picker
+    // shows, and round-tripping through HSL would drift the knob.
+    function rgbToHsv(c) {
+        let col = null;
         try {
-            parsed = d3.color(c);
+            col = d3.color(c);
         } catch {
-            parsed = null;
+            col = null;
         }
-        return parsed ? parsed.formatHex() : '#000000';
+        col = col ? col.rgb() : {r: 0, g: 0, b: 0};
+        let r = col.r / 255, g = col.g / 255, b = col.b / 255;
+        let max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        let h = 0;
+        if (d > 0) {
+            if (max === r) {
+                h = 60 * (((g - b) / d) % 6);
+            } else if (max === g) {
+                h = 60 * (((b - r) / d) + 2);
+            } else {
+                h = 60 * (((r - g) / d) + 4);
+            }
+        }
+        return {h: (h + 360) % 360, s: max === 0 ? 0 : d / max, v: max};
+    }
+
+    function hsvToHex(hsv) {
+        let c = hsv.v * hsv.s;
+        let x = c * (1 - Math.abs(((hsv.h / 60) % 2) - 1));
+        let m = hsv.v - c;
+        let i = Math.floor(hsv.h / 60) % 6;
+        let rgb = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][i];
+        return '#' + rgb.map(function (v) {
+            return Math.round((v + m) * 255).toString(16).padStart(2, '0');
+        }).join('');
     }
 
     // The key a value is remembered under. Property values fold to lower case
@@ -1931,7 +2131,9 @@ function (root, d3, forester, phyloXml) {
                         })
                         .on('click', function (event) {
                             event.stopPropagation();
-                            openColorPicker(vis.categoryScale(value), function (picked) {
+                            // the legend CARD, not the swatch: a picker that
+                            // covers the legend hides the very swatch it changes
+                            openColorPicker(vis.categoryScale(value), r.text, this.parentNode, function (picked) {
                                 setColorOverride(vis, value, picked);
                                 update(null, 0);
                             });
@@ -7261,6 +7463,28 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-close:hover { background:var(--p-accent-weak); color:var(--p-accent-ink);'
             + '  border-color:var(--p-accent); }'
             + '.aptx-dialog-body { padding:10px 13px 12px; overflow:auto; }'
+            + '.aptx-cp-sv { position:relative; width:100%; box-sizing:border-box; height:104px; border-radius:7px;'
+            + '  border:1px solid var(--p-line-strong); cursor:crosshair; touch-action:none; }'
+            + '.aptx-cp-hue { position:relative; width:100%; box-sizing:border-box; height:13px; margin-top:9px;'
+            + '  border-radius:7px; border:1px solid var(--p-line-strong); cursor:ew-resize;'
+            + '  touch-action:none; background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,'
+            + '  #0ff 50%,#00f 67%,#f0f 83%,#f00 100%); }'
+            + '.aptx-cp-knob { position:absolute; width:12px; height:12px; margin:-7px 0 0 -7px;'
+            + '  border-radius:50%; border:2px solid #fff; pointer-events:none;'
+            + '  box-shadow:0 0 0 1px rgba(0,0,0,0.45),0 1px 3px rgba(0,0,0,0.4); }'
+            + '.aptx-cp-row { display:flex; align-items:center; gap:7px; margin-top:9px; }'
+            + '.aptx-cp-prev { flex:none; width:26px; height:20px; border-radius:5px;'
+            + '  border:1px solid var(--p-line-strong); }'
+            + '.aptx-cp-hex { flex:1; min-width:0; padding:3px 6px; border-radius:5px;'
+            + '  border:1px solid var(--p-line-strong); background:var(--p-surface2);'
+            + '  color:var(--p-ink); font:inherit; font-variant-numeric:tabular-nums; }'
+            + '.aptx-cp-hex:focus { outline:none; border-color:var(--p-accent); }'
+            + '.aptx-cp-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:3px; margin-top:9px; }'
+            + '.aptx-cp-sw { width:100%; aspect-ratio:1; padding:0; border-radius:4px; cursor:pointer;'
+            + '  border:1px solid rgba(128,128,128,0.45); }'
+            + '.aptx-cp-sw:hover { outline:2px solid var(--p-accent); outline-offset:1px; }'
+            + '.aptx-cp-note { margin-top:8px; color:var(--p-faint); }'
+            + '#color_picker_dialog .aptx-dialog-body { overflow:visible; }'
             + '.aptx-dialog-head { margin:10px 0 3px; font-size:9px; font-weight:700; letter-spacing:0.07em;'
             + '  text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-dialog-body > .aptx-dialog-head:first-child { margin-top:0; }'

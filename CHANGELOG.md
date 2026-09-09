@@ -20,6 +20,13 @@ consumers only see a change when a version is cut.
   away and back. Categorical legends only: a continuous/gradient legend has no
   discrete swatches to pick.
 
+  The picker is an in-page panel, not the browser's native colour input: it
+  follows the control panel's light/dark choice, carries its own close button
+  (Escape and a click outside also dismiss it), and **the tree repaints as you
+  pick** rather than only when you dismiss it. It offers a
+  saturation/brightness field, a hue strip, a hex box, and the tree's own
+  twenty-colour palette for one-click choices.
+
 ### Changed
 
 - **Support values in Newick and Nexus files are now recognised
