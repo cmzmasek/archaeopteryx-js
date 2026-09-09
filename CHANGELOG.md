@@ -48,6 +48,24 @@ consumers only see a change when a version is cut.
   This rule is shared with the desktop Java Archaeopteryx and was designed
   jointly with it; change it on both sides or neither.
 
+### Performance
+
+- **Big trees draw about twice as fast.** Every node used to get nine SVG
+  elements whether or not they would ever show anything. On a 18,512-node
+  BV-BRC influenza tree that was 222,197 elements, **half of them inert** —
+  74,052 of 74,064 `<text>` elements empty, 43,413 circles at radius zero — and
+  every redraw walked them all. The optional per-node parts (the four text
+  labels, the search halo, the support dot) are now created only when they will
+  show something, and removed when they will not.
+
+      SVG elements   222,197  ->  92,608   (-58%)
+      first draw      29.6 s  ->   16.0 s
+      a later redraw   ~4.8 s  ->   ~2.2 s
+
+  Turning a branch-data label on now costs a little more, since those elements
+  are built at that moment rather than up front — which is the trade: you pay
+  for what you ask for instead of paying for everything on every tree.
+
 ### Fixed
 
 - **Trees with branch lengths no longer open as cladograms.** The
