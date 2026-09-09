@@ -67,8 +67,10 @@ consumers only see a change when a version is cut.
   card actually paints. Every error still throws synchronously — only the
   draw is deferred — and the new `viewer.ready` promise resolves when it has
   run (at once for a small tree, which stays fully synchronous). On the
-  18,512-node BV-BRC tree, `launch()` now returns in under two seconds
-  instead of ~16, with the card on screen for the rest. The one thing the
+  18,512-node BV-BRC tree, `launch()` now returns in about 30 milliseconds
+  instead of ~16 seconds — the label analysis, visualization candidates and
+  control panel moved behind the card too — with the card on screen for the
+  rest. The one thing the
   library cannot defer is your own parse of a big file: `archaeopteryx.busy()`
   shows the same card for that, yields a frame, runs your work, and removes
   it — open.html uses it, so a 38 MB file now shows "Reading … 37.9 MB" the

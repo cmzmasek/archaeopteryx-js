@@ -4053,6 +4053,16 @@ function (root, d3, forester, phyloXml) {
         return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
     }
 
+    // The only validation initializeState() performs. Hoisted so launch() can
+    // run it synchronously and defer the rest of initializeState behind the
+    // working card on a big tree; the check inside initializeState stays as
+    // a backstop and can no longer fire from launch().
+    function checkLayoutValue(layout) {
+        if (layout !== undefined && layout !== 'rectangular' && layout !== 'circular' && layout !== 'unrooted') {
+            throw new Error(ERROR + '"layout" must be "rectangular", "circular", or "unrooted"');
+        }
+    }
+
     function initializeState(state) {
         _state = state;
 
@@ -4654,27 +4664,25 @@ function (root, d3, forester, phyloXml) {
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
-        _vis = null;
-
-
-        initializeState(cfg.state);
+        // ---- synchronous: everything that can throw, and the cheap setup --
+        //
+        // initializeSettings validates values and throws on a bad one, so it
+        // stays here. It reads nothing initializeState produces, so it can
+        // run first -- which lets initializeState, the visualization
+        // candidates and the panel move BEHIND the working card on a big tree:
+        // together they were ~2.7 s of synchronous label intelligence and
+        // candidate ranking over 13k tips before the card could even paint.
+        checkLayoutValue(cfg.state ? cfg.state.layout : undefined);
         initializeSettings(cfg.settings);
         _nodeLabels = _settings.nodeLabels || null;
 
-
-        initializeVisualizations();
-
-        // launch() may run again on the same container (tree switchers do
-        // exactly that): tear the previous viewer's DOM down first, or the
-        // duplicated element ids leave the NEW panel's controls wired to the
-        // OLD, invisible one.
+        // whatever a previous launch left in this container (or in the
+        // container before it) goes now, so the old tree does not sit under
+        // the card while the new one is prepared
         d3.select(containerEl).selectAll('svg').remove();
         containerEl.querySelectorAll('.aptx-panel').forEach(function (p) {
             p.remove();
         });
-        // ...and a previous viewer in a DIFFERENT container: one viewer per
-        // page is the contract, and "replaced" must never mean "abandoned on
-        // screen with its controls cross-wired to the new tree"
         if (previousContainer && previousContainer !== containerEl) {
             d3.select(previousContainer).selectAll('svg').remove();
             previousContainer.querySelectorAll('.aptx-panel').forEach(function (p) {
@@ -4682,10 +4690,6 @@ function (root, d3, forester, phyloXml) {
             });
         }
         _selectedNodes = new Set();
-        // and null the old tree: the initialization sequence runs update()
-        // once mid-way (applyTreeTheme), which on the first launch is a no-op
-        // because _root is null -- a relaunch must start from the same state,
-        // not render the OLD tree against half-reset globals
         _root = null;
         _root_const = null;
         _in_subtree = false;
@@ -4695,46 +4699,46 @@ function (root, d3, forester, phyloXml) {
         _overviewContent = null;
         _overviewViewport = null;
         _overviewMap = null;
+        _vis = null;
 
-        createGui();
-
-        _baseSvg = d3.select(containerEl).append('svg')
-            .attr('width', _displayWidth)
-            .attr('height', _displayHeight)
-            .call(_zoomListener);
-
-        if (_settings.enableDynamicSizing) {
-            // namespaced: the HOST page may have its own d3 window-resize
-            // listener, which an un-namespaced .on('resize') would CLOBBER --
-            // and destroy() below must be able to take only ours down
-            d3.select(window)
-                .on('resize.archaeopteryx', function () {
-                    let size = displaySizeFromContainer();
-                    if (!size) {
-                        return;
-                    }
-                    _displayWidth = size.w;
-                    _displayHeight = size.h;
-
-                    _baseSvg.attr('width', size.w);
-                    _baseSvg.attr('height', size.h);
-                    rebuildOverview();
-                    if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
-                        zoomToFit();
-                    }
-                });
-        }
-
-        _treeFn = d3.cluster()
-            .size([_displayHeight, _displayWidth]);
-
-        _treeFn.clickEvent = getClickEventListenerNode(phylo);
-
-        _root = phylo;
-        _root_const = _root;
-
+        // ---- the rest: deferred one frame on a big tree, immediate otherwise
         let seq = ++_launchSeq;
-        function firstDraw() {
+        function setupAndDraw() {
+            initializeState(cfg.state);
+            initializeVisualizations();
+            createGui();
+
+            _baseSvg = d3.select(containerEl).append('svg')
+                .attr('width', _displayWidth)
+                .attr('height', _displayHeight)
+                .call(_zoomListener);
+
+            if (_settings.enableDynamicSizing) {
+                d3.select(window)
+                    .on('resize.archaeopteryx', function () {
+                        let size = displaySizeFromContainer();
+                        if (!size) {
+                            return;
+                        }
+                        _displayWidth = size.w;
+                        _displayHeight = size.h;
+                        _baseSvg.attr('width', size.w);
+                        _baseSvg.attr('height', size.h);
+                        rebuildOverview();
+                        if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
+                            zoomToFit();
+                        }
+                    });
+            }
+
+            _treeFn = d3.cluster()
+                .size([_displayHeight, _displayWidth]);
+
+            _treeFn.clickEvent = getClickEventListenerNode(phylo);
+
+            _root = phylo;
+            _root_const = _root;
+
             calcMaxExtLabel();
             _root.x0 = _displayHeight / 2;
             _root.y0 = 0;
@@ -4742,10 +4746,10 @@ function (root, d3, forester, phyloXml) {
         }
 
         // Everything that can THROW has already happened above -- bad
-        // arguments, unknown config keys, an unresolvable container -- so
-        // deferring only the draw keeps launch()'s synchronous-error contract
-        // intact. The handle closes over module state, so it is valid before
-        // the draw has run; viewer.ready says when it has.
+        // arguments, unknown config keys, invalid setting values, an
+        // unresolvable container -- so deferring the rest keeps launch()'s
+        // synchronous-error contract intact. The handle closes over module
+        // state, so it is valid before the draw; viewer.ready says when.
         let nodeCount = _basicTreeProperties ? _basicTreeProperties.nodeCount : 0;
         if (nodeCount >= BIG_TREE_NODES) {
             showBusy(containerEl, 'Drawing ' + nodeCount.toLocaleString() + ' nodes',
@@ -4758,7 +4762,7 @@ function (root, d3, forester, phyloXml) {
                         return;
                     }
                     try {
-                        firstDraw();
+                        setupAndDraw();
                     } finally {
                         hideBusy();
                         resolve();
@@ -4766,7 +4770,7 @@ function (root, d3, forester, phyloXml) {
                 });
             });
         } else {
-            firstDraw();
+            setupAndDraw();
             _readyPromise = Promise.resolve();
         }
 

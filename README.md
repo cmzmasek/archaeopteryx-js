@@ -389,10 +389,11 @@ viewer.destroy();          // unmount COMPLETELY: the container DOM, the node
 ```
 
 **Big trees draw on the next frame.** Above 2,000 nodes, `launch()` does all
-its validation, builds the control panel, shows a "Drawing N nodes" card over
-the tree area, and returns — the draw itself runs one frame later, so the
-browser can paint the card instead of appearing frozen for the seconds a
-large tree takes. Every error still throws synchronously from `launch()`
+its validation, shows a "Drawing N nodes" card over the tree area, and
+returns within milliseconds — the label analysis, visualization candidates,
+control panel and the draw itself all run one frame later, so the browser
+can paint the card instead of appearing frozen for the seconds a large tree
+takes. Every error still throws synchronously from `launch()`
 exactly as before; only the draw is deferred. `viewer.ready` resolves when it
 has run (immediately for a small tree, which stays fully synchronous). Later
 redraws on a big tree — a checkbox, a slider, a search — work the same way:
