@@ -1302,6 +1302,17 @@
         // Whether a tree is worth drawing to scale is a question about the
         // majority of its branches, not about whether any branch has a length.
         properties.branchesWithPositiveLength = 0;
+        // Branches that carry a length AT ALL -- an explicit zero is a real
+        // measurement, not a missing one, so these are counted separately from
+        // the "positive" tally above. Split internal-vs-all because a missing
+        // length means different things in the two places: an unmeasured TIP
+        // still draws correctly (at its parent), while an unmeasured INTERNAL
+        // branch destroys the scale. All four counts exclude the root, which
+        // has no branch above it.
+        properties.branchCount = 0;
+        properties.branchesWithLength = 0;
+        properties.internalBranchCount = 0;
+        properties.internalBranchesWithLength = 0;
         properties.averageBranchLength = 0;
         let bl_counter = 0;
         let bl_sum = 0;
@@ -1309,8 +1320,23 @@
         // exist -- skewing the branch-length fraction the viewer uses to choose
         // between a phylogram and a cladogram -- and from phyloXML would take
         // the tree's own name for the longest node name.
-        forester.preOrderTraversalAll(realRootOf(tree), function (n) {
+        let rootNode = realRootOf(tree);
+        forester.preOrderTraversalAll(rootNode, function (n) {
             properties.nodeCount += 1;
+            if (n !== rootNode) {
+                let internal = !!(n.children || n._children);
+                let measured = typeof n.branch_length === 'number' && isFinite(n.branch_length);
+                properties.branchCount += 1;
+                if (measured) {
+                    properties.branchesWithLength += 1;
+                }
+                if (internal) {
+                    properties.internalBranchCount += 1;
+                    if (measured) {
+                        properties.internalBranchesWithLength += 1;
+                    }
+                }
+            }
             if (n.name && n.name.length > 0) {
                 properties.nodeNames = true;
                 if (n.name.length > properties.longestNodeName) {

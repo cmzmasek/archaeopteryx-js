@@ -3503,12 +3503,38 @@ function (root, d3, forester, phyloXml) {
             });
         }
 
-        // Branch lengths are worth drawing to scale only when MOST branches
-        // carry one. A tree where a handful of branches have a length and the
-        // rest do not is not a phylogram with gaps -- it is a cladogram.
-        let branchCount = _basicTreeProperties.nodeCount - 1;
-        _state.phylogram = branchCount > 0
-            && (_basicTreeProperties.branchesWithPositiveLength / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
+        // Branch lengths are worth drawing to scale only when MOST of the
+        // branches that CARRY THE SCALE have one. Two corrections to the
+        // obvious "count every branch" version, both from real BV-BRC trees:
+        //
+        // 1. Judge INTERNAL branches, not all of them. Exporters routinely
+        //    omit branch_length on tips where it would be zero, so a tree can
+        //    be fully measured internally and still have most of its branches
+        //    bare -- segment_3_2025_12_09.xml is 100% measured across its 5265
+        //    internal branches and only 16% across its 13246 tips, and used to
+        //    open as a cladogram on 0.40 of all branches. A missing TIP length
+        //    still draws correctly (the tip sits at its parent); a missing
+        //    INTERNAL length is what destroys the scale. A star tree has no
+        //    internal branches at all, so there the tips are all there is.
+        // 2. Ask whether a branch HAS a length, not whether it is positive.
+        //    An explicit zero is a real measurement -- a tree writing its
+        //    polytomies as zero-length internal branches is a phylogram.
+        //
+        // The root is excluded from every count: a branch length is a property
+        // of the branch ABOVE a node, and the root has none.
+        let scaleBearing = _basicTreeProperties.internalBranchCount > 0;
+        let measured = scaleBearing
+            ? _basicTreeProperties.internalBranchesWithLength
+            : _basicTreeProperties.branchesWithLength;
+        let branchCount = scaleBearing
+            ? _basicTreeProperties.internalBranchCount
+            : _basicTreeProperties.branchCount;
+        // branchLengths gates the phylogram BUTTON too (a tree whose every
+        // length is zero cannot be drawn to scale), so the default must agree
+        // with it or the view would contradict its own control.
+        _state.phylogram = _basicTreeProperties.branchLengths === true
+            && branchCount > 0
+            && (measured / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
         _state.alignPhylogram = false;
         // "layout" is launch-time only: a caller picks the starting layout by
         // name, and from here on _state.circularDisplay/_state.unrootedDisplay

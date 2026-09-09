@@ -1490,6 +1490,62 @@ function testLaunchApiValidation() {
 // have no filename: #NEXUS -> Nexus, { -> Auspice JSON, < -> phyloXML (this
 // last one used to be extension-only, so pasted phyloXML fell through to the
 // Newick parser), anything else -> New Hampshire.
+
+// The phylogram-vs-cladogram default. Reported 2026-09-09: a BV-BRC influenza
+// phyloXML with every internal branch measured opened as a CLADOGRAM, because
+// the old rule counted every branch uniformly and the exporter had omitted
+// branch_length on the tips where it would have been zero (0.40 of all
+// branches, under the 0.5 threshold). Two things are asserted here: the
+// counters exclude the ROOT (a branch length belongs to the branch above a
+// node, and the root has none), and "measured" includes an explicit ZERO,
+// which is a real measurement rather than a missing one.
+function testPhylogramBranchCounts() {
+    // Mirrors the decision in archaeopteryx.js (search PHYLOGRAM_MIN_BRANCH_FRACTION).
+    // If that expression changes, change this with it -- deliberately.
+    function decide(b) {
+        var scaleBearing = b.internalBranchCount > 0;
+        var measured = scaleBearing ? b.internalBranchesWithLength : b.branchesWithLength;
+        var denom = scaleBearing ? b.internalBranchCount : b.branchCount;
+        return b.branchLengths === true && denom > 0 && (measured / denom) > 0.5;
+    }
+    function props(nh) {
+        return forester.collectBasicTreeProperties(forester.parseNewHampshire(nh, true, false));
+    }
+    var cases = [
+        // nh, branchCount, withLength, internalCount, internalWithLength, phylogram
+        ['((A:1,B:1)x:1,(C:1,D:1)y:1);', 6, 6, 2, 2, true],   // fully measured
+        ['((A,B)x:1,(C,D)y:1);',         6, 2, 2, 2, true],   // THE REPORTED SHAPE: bare tips, measured internals
+        ['((A:1,B:1)x,(C:1,D:1)y);',     6, 4, 2, 0, false],  // measured tips, bare internals -> no scale
+        ['((A:1,B:1)x:0,(C:1,D:1)y:0);', 6, 6, 2, 2, true],   // explicit ZERO internals are measured
+        ['((A,B)x,(C,D)y);',             6, 0, 2, 0, false],  // true cladogram
+        ['(A:1,B:1,C:1);',               3, 3, 0, 0, true],   // star tree: no internals, judge the tips
+        ['((A:1,B:1)x:1,(C:1,D:1)y:1):5;', 6, 6, 2, 2, true]  // a length ON THE ROOT is not counted
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var c = cases[i];
+        var b = props(c[0]);
+        var got = [b.branchCount, b.branchesWithLength, b.internalBranchCount, b.internalBranchesWithLength];
+        var want = [c[1], c[2], c[3], c[4]];
+        if (got.join(',') !== want.join(',')) {
+            console.log('    ' + c[0] + ' counts ' + got.join(',') + ' expected ' + want.join(','));
+            return false;
+        }
+        if (decide(b) !== c[5]) {
+            console.log('    ' + c[0] + ' phylogram=' + decide(b) + ' expected ' + c[5]);
+            return false;
+        }
+    }
+    // An explicit zero counts as measured but NOT as positive -- the exact
+    // distinction the old numerator missed.
+    var z = props('((A:1,B:1)x:0,(C:1,D:1)y:0);');
+    if (z.internalBranchesWithLength !== 2 || z.branchesWithPositiveLength !== 4) {
+        console.log('    zero-length internals: measured=' + z.internalBranchesWithLength
+            + ' positive=' + z.branchesWithPositiveLength + ' (expected 2 / 4)');
+        return false;
+    }
+    return true;
+}
+
 function testParseTreeContentSniffing() {
     global.d3 = global.d3 || {};
     global.forester = global.forester || forester;
@@ -1558,6 +1614,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("phylogram branch counts : ", testPhylogramBranchCounts);
 runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 
