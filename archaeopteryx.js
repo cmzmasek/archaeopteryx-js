@@ -1053,6 +1053,53 @@ function (root, d3, forester, phyloXml) {
     const HOVER_GLOW_ALPHAS = [34 / 255, 44 / 255, 58 / 255];
     const HOVER_GLOW_MIN_DIA = 18;
     const HOVER_GLOW_ACCENT = 'rgb(38,117,191)';
+    // Normalisation floors for a node-hued glow (see hoverGlowColor).
+    const HOVER_GLOW_MIN_SAT = 0.15;    // below this the colour has no hue to take
+    const HOVER_GLOW_SAT_FLOOR = 0.55;
+    const HOVER_GLOW_VAL_FLOOR = 0.80;
+
+    // The glow takes the hue of the node it marks, when the node has one --
+    // a node coloured by Host Group glows in its host colour -- and the UI
+    // accent otherwise. As on the desktop (TreePanel.hoverGlowColor). The
+    // precedence is the one the node itself is painted by: the Color-by
+    // value, then a per-node visual style, then an event colour, then a
+    // colourised clade's branch colour. NEVER the found/search colour: a
+    // focus ring must not read as a selection state.
+    //
+    // The glow is a 13-23% alpha wash, so a dark or a pale colour would
+    // vanish in it. The hue is kept and saturation and value are floored:
+    // Tableau-style oranges and reds pass unchanged, a muted blue gets a
+    // modest lift, and a grey (no hue to speak of) falls back to the accent.
+    function hoverGlowColor(d) {
+        let c = null;
+        let vis = makeVisNodeFillColor(d);
+        if (vis && vis !== _state.backgroundColorDefault) {
+            c = vis;
+        }
+        if (!c) {
+            let style = nodeStyle(d);
+            if (style && (style.nodeColor || style.fontColor)) {
+                c = style.nodeColor || style.fontColor;
+            }
+        }
+        if (!c && _state.showNodeEvents && d.events && d.children) {
+            c = makeNodeEventsDependentColor(d.events);
+        }
+        if (!c && _state.useVisualStyles && d.color) {
+            let bc = 'rgb(' + d.color.red + ',' + d.color.green + ',' + d.color.blue + ')';
+            if (bc !== _state.branchColorDefault) {
+                c = bc;
+            }
+        }
+        if (!c) {
+            return HOVER_GLOW_ACCENT;
+        }
+        let hsv = rgbToHsv(c);
+        if (hsv.s < HOVER_GLOW_MIN_SAT) {
+            return HOVER_GLOW_ACCENT;
+        }
+        return hsvToHex({h: hsv.h, s: Math.max(hsv.s, HOVER_GLOW_SAT_FLOOR), v: Math.max(hsv.v, HOVER_GLOW_VAL_FLOOR)});
+    }
 
     function showHoverGlow(d) {
         if (!_svgGroup || !d || d.x === undefined) {
@@ -1064,19 +1111,21 @@ function (root, d3, forester, phyloXml) {
                 .style('pointer-events', 'none');
             HOVER_GLOW_RADII.forEach(function (unused, i) {
                 g.append('circle')
-                    .attr('fill', HOVER_GLOW_ACCENT)
                     .attr('fill-opacity', HOVER_GLOW_ALPHAS[i])
                     .attr('stroke', 'none');
             });
         }
         let dia = Math.max(HOVER_GLOW_MIN_DIA, (_state.nodeSizeDefault || 0) * 3);
         let p = layoutPointXY(d);
+        let fill = hoverGlowColor(d);
         g.attr('transform', 'translate(' + p[0] + ',' + p[1] + ')')
             .style('display', null)
             .raise();
-        g.selectAll('circle').attr('r', function (unused, i) {
-            return (dia * HOVER_GLOW_RADII[i]) / 2;
-        });
+        g.selectAll('circle')
+            .attr('fill', fill)
+            .attr('r', function (unused, i) {
+                return (dia * HOVER_GLOW_RADII[i]) / 2;
+            });
     }
 
     function hideHoverGlow() {

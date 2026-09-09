@@ -10,6 +10,15 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **The hover glow takes the node's own colour.** The three translucent
+  discs that mark the node under the pointer were always the UI's blue; they
+  now take the hue of the node they mark — its Color-by value, else its
+  visual style, else its event colour, else a colourised clade's branch
+  colour — and fall back to the blue for a node with no colour of its own.
+  Never the search colour: a focus ring must not look like a selection. The
+  hue is kept and its saturation and brightness floored, so a dark or pale
+  colour still shows through the wash. As on the desktop.
+
 - **The geologic time axis bands Series over Stage for narrow windows.** A
   tree spanning one or two Series — a 66–100 Ma dinosaur clade, say — used
   to read only "Cretaceous / Late Cretaceous"; it now shows the Series over
