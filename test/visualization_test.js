@@ -1544,6 +1544,72 @@ function testLaunchApiValidation() {
 // can carry nothing the species name beside it does not, and "11320" in a
 // legend tells the reader nothing. Learned on the 13,246-tip H5N1 tree.
 // The node-data dialog names a property the way the Color-by menu does.
+// nhConfidenceValuesInBrackets is retired: accepted, warned about, ignored.
+// Bracketed values are always read as confidences, in every call shape.
+function testBracketsFlagRetired() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var nh = '((A:1,B:1)[95]:0.5,(C:1,D:1)[80]:0.5);';
+
+    function confs(phy) {
+        var root = forester.getTreeRoot(phy);
+        return forester.getAllNodes(phy).filter(function (n) {
+            return (n.children || n._children) && n !== root && n.confidences && n.confidences.length;
+        }).map(function (n) { return n.confidences[0].value; }).sort(function (a, b) { return a - b; }).join(',');
+    }
+    // the new three-argument shape, and the retired four-argument one
+    var cases = [
+        aptx.parseTree('t.nwk', nh),
+        aptx.parseTree('t.nwk', nh, 'auto'),
+        aptx.parseTree('t.nwk', nh, true, 'auto'),    // retired flag in place
+        aptx.parseTree('t.nwk', nh, false, 'auto'),   // ... even set false
+        aptx.parseNewHampshire(nh),
+        aptx.parseNewHampshire(nh, 'auto'),
+        aptx.parseNewHampshire(nh, false, 'auto')
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        if (confs(cases[i]) !== '80,95') {
+            console.log('    call shape ' + i + ' gave confidences "' + confs(cases[i]) + '", expected "80,95"');
+            return false;
+        }
+    }
+    // the mode still arrives in both shapes
+    var never = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', 'never');
+    var neverLegacy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'never');
+    if (confs(never) !== '' || confs(neverLegacy) !== '') {
+        console.log('    "never" not honoured in one of the call shapes');
+        return false;
+    }
+    // as a config key it is accepted, warned about, and does not throw
+    var warned = [];
+    var realWarn = console.warn;
+    console.warn = function (m) { warned.push(String(m)); };
+    try {
+        aptx.parseTree('t.nwk', nh);   // parse is unaffected either way
+        var cfg = {nhConfidenceValuesInBrackets: false};
+        var threw = false;
+        try {
+            aptx.launch('#no-such-container', forester.parseNewHampshire(nh, true, false), cfg);
+        } catch (e) {
+            // the container is what fails, not the retired key
+            threw = /container/.test(e.message);
+        }
+        if (!threw) {
+            console.log('    expected the container error, not a config error');
+            return false;
+        }
+    } finally {
+        console.warn = realWarn;
+    }
+    if (!warned.some(function (m) { return /nhConfidenceValuesInBrackets/.test(m) && /retired/.test(m); })) {
+        console.log('    no retirement warning: ' + JSON.stringify(warned));
+        return false;
+    }
+    return true;
+}
+
 function testPropertyDisplayName() {
     var cases = [
         ['BVBRC:host_group', 'Host Group'],
@@ -1818,6 +1884,7 @@ runTest("audit: geo window queries  : ", testAuditGeoWindows);
 runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
+runTest("brackets flag retired   : ", testBracketsFlagRetired);
 runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);

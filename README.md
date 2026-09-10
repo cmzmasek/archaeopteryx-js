@@ -373,9 +373,8 @@ Both entry points take **exactly** the arguments shown — a call with the old
 trailing arguments (the separate settings bag, `nodeVisualizations`,
 `nodeLabels`, `specialVisualizations`, or the positional Newick parse
 options) **throws** with a message saying where each one went: everything now
-lives in the **one config object** (`nodeLabels`,
-`nhConfidenceValuesInBrackets`, `internalLabelsAsConfidence` are
-config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
+lives in the **one config object** (`nodeLabels` and
+`internalLabelsAsConfidence` are config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
 tree)` works.
 
 `container` is a **CSS selector or the DOM element itself** (frameworks hand
@@ -508,7 +507,9 @@ Newick and Nexus files usually carry branch support as a bare internal label
 (`)100:0.05`). Archaeopteryx.js recognises those automatically and treats them
 as confidence values, so support-based features work without any setup. If your
 internal labels are clade names rather than support, set
-`internalLabelsAsConfidence: 'never'`.
+`internalLabelsAsConfidence: 'never'`. Bracketed values (`)[95]:0.05`) are
+always read as confidences; a bracket that is not a number is a comment and is
+ignored.
 
 ### References
 
@@ -627,7 +628,6 @@ copy-pastable JSON.
 | `enableDownloads` | `true` | Offer the download buttons. |
 | `pngExportScale` | `4` | PNG export resolution multiplier. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
-| `nhConfidenceValuesInBrackets` | `true` | Newick parsing: read `[90]`-style bracketed values as confidences. |
 | `internalLabelsAsConfidence` | `'auto'` | Newick / Nexus parsing: read bare numeric internal labels (`)100:0.05`) as confidence values. `'auto'` promotes only when every internal label looks like support; `'always'` promotes every numeric label whatever its value; `'never'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'always'`). |
 | `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |

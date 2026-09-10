@@ -78,6 +78,17 @@ consumers only see a change when a version is cut.
 
 ### Changed
 
+- **`nhConfidenceValuesInBrackets` is retired.** It gated whether `[95]`
+  after a node is read as a confidence — but setting it `false` never
+  reinterpreted the bracket, it *discarded* it, so the option's only power
+  was to throw support values away. A bracket that is not a number is a
+  Newick comment and was ignored either way, and NHX / BEAST annotation
+  blobs go through a different path entirely. Its one real purpose was
+  historical: it used to be mutually exclusive with the internal-labels
+  option, and that restriction is gone. Bracketed values are now always read
+  as confidences. The key is still accepted, with a console warning saying
+  it has no effect, so no embed breaks.
+
 - **Support values in Newick and Nexus files are now recognised
   automatically.** When every internal node label in a tree looks like a
   support value — bootstrap percentages, posterior probabilities, or a 0–1000
