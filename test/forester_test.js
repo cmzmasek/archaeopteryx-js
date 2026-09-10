@@ -76,6 +76,7 @@ runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
 runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
+runTest("Nexus numeric tips         : ", testNexusNumericTips);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1760,4 +1761,63 @@ function testNexusQuotedLabels() {
     var threw = false;
     try { forester.toNexus({children: []}); } catch { threw = true; }
     return threw;
+}
+
+// A bare integer tip is a TAXLABELS index only when the WHOLE tree reads as
+// index references. Deciding it per tip is silent and plausible-looking: a
+// mixed tree came back with every tip DUPLICATED, and one out-of-range index
+// left a half-renamed tree behind. Both are reachable through our own writer
+// (save as Nexus, reopen), so this guards a data-integrity path, not a wart.
+function testNexusNumericTips() {
+    function tips(nexus) {
+        return forester.getAllExternalNodes(forester.parseNexus(nexus)[0])
+            .map(function (n) { return n.name; }).sort().join('|');
+    }
+    // The capability itself must survive: an all-in-range index tree resolves.
+    var ok = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,2:1,3:1);\nEnd;\n");
+    if (ok !== 'a|b|c') {
+        console.log('    index tree: ' + ok);
+        return false;
+    }
+    // ONE out-of-range index disables the whole tree rather than renaming the
+    // tips that happen to be in range.
+    var oor = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,2:1,99:1);\nEnd;\n");
+    if (oor !== '1|2|99') {
+        console.log('    out of range: ' + oor);
+        return false;
+    }
+    // Nexus indices are 1-based, so 0 is not a valid one: it disables the
+    // tree like any other out-of-range value rather than reaching behind the
+    // start of the list.
+    var zero = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(0:1,1:1,2:1);\nEnd;\n");
+    if (zero !== '0|1|2') {
+        console.log('    zero index: ' + zero);
+        return false;
+    }
+    // A tree that mixes real names with integers is not an index tree. This
+    // used to return a|a|b|b|c|c -- three tips silently becoming copies of
+    // three others.
+    var mixed = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c d e f;\nEnd;\n"
+        + "Begin Trees;\n Tree t=((a:1,b:1,c:1):1,(1:1,2:1,3:1):1);\nEnd;\n");
+    if (mixed !== '1|2|3|a|b|c') {
+        console.log('    mixed tree: ' + mixed);
+        return false;
+    }
+    // The path a user actually reaches: save as Nexus, reopen. The tip names
+    // must survive unchanged, with no duplicates introduced.
+    var src = forester.parseNewHampshire("((a:1,b:1,c:1):1,(1:1,2:1,3:1):1);");
+    var before = forester.getAllExternalNodes(src)
+        .map(function (n) { return n.name; }).sort().join('|');
+    var after = tips(forester.toNexus(src));
+    if (before !== after) {
+        console.log('    round trip: ' + before + ' -> ' + after);
+        return false;
+    }
+    // A TRANSLATE entry is the explicit mechanism and still wins.
+    var tr = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c;\nEnd;\n"
+        + "Begin Trees;\n Translate 1 Alpha, 2 Beta, 3 Gamma;\n Tree t=(1:1,2:1,3:1);\nEnd;\n");
+    return tr === 'Alpha|Beta|Gamma';
 }

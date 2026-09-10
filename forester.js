@@ -2371,14 +2371,34 @@
             for (let id in seqs) {
                 seqsByKey[joinKey(id)] = seqs[id];
             }
-            forester.getAllExternalNodes(phy).forEach(function (node) {
+            let externals = forester.getAllExternalNodes(phy);
+            // A bare integer tip name counts as a TAXLABELS index only when
+            // the WHOLE tree reads as index references: every tip a bare
+            // integer AND every one of them in range. All-or-nothing, because
+            // deciding it per tip fails silently and plausibly -- against six
+            // labels, ((a,b,c),(1,2,3)) renamed just the three integers and
+            // handed back a tree whose every tip was DUPLICATED, which still
+            // parses and still renders; and a single out-of-range index left a
+            // half-renamed tree behind for the same reason. Both are reachable
+            // through our own writer: save as Nexus, reopen. So if any tip is
+            // not an index, none of them are. Matches the desktop (0.11.140+).
+            // A TRANSLATE entry still wins wherever it applies -- it is the
+            // explicit mechanism, this is only the heuristic.
+            let indexed = taxlabels.length > 0 && externals.every(function (node) {
+                if (node.name && translateMap[node.name] !== undefined) {
+                    return true;
+                }
+                if (!node.name || !/^\d+$/.test(node.name)) {
+                    return false;
+                }
+                let i = parseInt(node.name, 10);
+                return i > 0 && i <= taxlabels.length;
+            });
+            externals.forEach(function (node) {
                 if (node.name && translateMap[node.name] !== undefined) {
                     node.name = translateMap[node.name];
-                } else if (taxlabels.length > 0 && node.name && /^\d+$/.test(node.name)) {
-                    let i = parseInt(node.name, 10);
-                    if (i > 0 && i <= taxlabels.length) {
-                        node.name = taxlabels[i - 1].replace(/['"]+/g, '');
-                    }
+                } else if (indexed) {
+                    node.name = taxlabels[parseInt(node.name, 10) - 1].replace(/['"]+/g, '');
                 }
                 if (node.name) {
                     let s = seqsByKey[joinKey(node.name)];
