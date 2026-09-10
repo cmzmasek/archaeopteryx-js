@@ -1159,18 +1159,33 @@
         return style;
     };
 
-    // The boring part of every tip name. When the displayed names all share
-    // a long prefix ("Influenza A virus ..."), a shortener that keeps the
-    // first characters keeps exactly the characters that carry no
-    // information. This returns the longest common prefix of the displayed
-    // external names -- the label property's value where one is in effect,
-    // the node name otherwise -- cut back to the last separator so no word
-    // is split, and only when it is long enough to matter (>= 6 characters).
-    // The Short Names rendering strips it before truncating, so what
-    // survives is the part that tells the tips apart. The comparison is
-    // case-insensitive -- "Influenza A virus" and "Influenza A Virus" are
-    // the same boring prefix -- so callers must strip by LENGTH, comparing
-    // case-insensitively, not by exact match.
+    // The share of tips that must carry a prefix for it to count as boilerplate.
+    // A strict longest-common-prefix (1.0) lets a handful of oddly-named tips
+    // veto the strip for everyone else: on the BV-BRC influenza tree 13,096 of
+    // 13,246 tips share a 51-character prefix, but the other 0.8% drag the LCP
+    // down to "A" and nothing is stripped at all. 0.95 fixes that with real
+    // margin, and still refuses splits that would leave two groups of tips
+    // incomparable -- at 0.67 the same corpus strips the country code from 78%
+    // of tips while 22% keep their full names. DESIGNED JOINTLY WITH THE
+    // DESKTOP, which uses the identical value: this rule and its output are
+    // byte-identical across both programs, so the threshold is not ours alone
+    // to change.
+    const COMMON_PREFIX_QUANTILE = 0.95;
+
+    // The boring part of every tip name. When most displayed names share a
+    // long prefix ("Influenza A virus ..."), a shortener that keeps the first
+    // characters keeps exactly the characters that carry no information. This
+    // returns the longest prefix shared by at least COMMON_PREFIX_QUANTILE of
+    // the displayed external names -- the label property's value where one is
+    // in effect, the node name otherwise -- cut back to the last separator so
+    // no word is split, and only when it is long enough to matter
+    // (>= 6 characters). The Short Names rendering strips it before
+    // truncating, so what survives is the part that tells the tips apart. The
+    // comparison is case-insensitive -- "Influenza A virus" and "Influenza A
+    // Virus" are the same boring prefix -- so callers must strip by LENGTH,
+    // comparing case-insensitively, not by exact match. Tips that do NOT
+    // carry the prefix keep their full names; the caller's startsWith test
+    // handles that without needing to know about the quantile.
     forester.commonNamePrefix = function (tree, labelProperty) {
         let names = [];
         let slot = labelProperty ? {kind: 'property', ref: labelProperty} : null;
@@ -1192,29 +1207,72 @@
         if (names.length < 2) {
             return '';
         }
-        let prefix = names[0];
-        for (let k = 1; k < names.length && prefix.length > 0; ++k) {
-            let a = prefix.toLowerCase();
-            let b = names[k].toLowerCase();
+        // Any k names sharing a prefix are CONTIGUOUS once sorted, so
+        // comparing each sorted name with the one k-1 places later finds the
+        // longest prefix shared by k of them exactly -- no approximation, and
+        // O(n log n + n*L) rather than the quadratic scan the obvious reading
+        // suggests. At q = 1.0, k = n and this reduces to the strict LCP.
+        let lower = names.map(function (s) {
+            return s.toLowerCase();
+        }).sort();
+        let n = lower.length;
+        let k = Math.ceil(COMMON_PREFIX_QUANTILE * n);
+        if (k < 2) {
+            k = 2;
+        }
+        if (k > n) {
+            k = n;
+        }
+        let bestLen = 0;
+        let bestIdx = -1;
+        for (let i = 0; i + k - 1 < n; ++i) {
+            let a = lower[i];
+            let b = lower[i + k - 1];
             let max = Math.min(a.length, b.length);
-            let i = 0;
-            while (i < max && a.charCodeAt(i) === b.charCodeAt(i)) {
-                ++i;
+            let j = 0;
+            while (j < max && a.charCodeAt(j) === b.charCodeAt(j)) {
+                ++j;
             }
-            if (i < prefix.length) {
-                prefix = prefix.substring(0, i);
+            if (j > bestLen) {
+                bestLen = j;
+                bestIdx = i;
             }
         }
-        if (prefix.length === 0) {
+        if (bestLen === 0) {
+            return '';
+        }
+        let lowerPrefix = lower[bestIdx].substring(0, bestLen);
+        // Casing comes from the first name in TRAVERSAL order that carries the
+        // prefix. At q = 1.0 that is names[0], which is exactly what the
+        // strict-LCP version returned, so the two agree character for
+        // character -- and the desktop mirrors this traversal order
+        // deliberately, so the two programs do too.
+        let prefix = null;
+        let carriers = [];
+        for (let ci = 0; ci < names.length; ++ci) {
+            let name = names[ci];
+            if (name.length >= bestLen
+                && name.substring(0, bestLen).toLowerCase() === lowerPrefix) {
+                if (prefix === null) {
+                    prefix = name.substring(0, bestLen);
+                }
+                carriers.push(name);
+            }
+        }
+        if (prefix === null) {
             return '';
         }
         // Trim back to the last separator ONLY when the prefix actually
         // splits a word -- "ABC_ho" against "ABC_house"/"ABC_horse" does,
         // "Influenza A virus" against "...virus A/x" and "...virus(A/y)"
-        // does not, whatever character each name continues with.
+        // does not, whatever character each name continues with. Only the
+        // names that CARRY the prefix get a say: one that does not share it
+        // says nothing about whether the prefix splits a word, and letting it
+        // vote throws the prefix away -- 19 tips of "ABCDEFG_..."/"ABCDEFG-..."
+        // plus one unrelated longer tip yields "" instead of "ABCDEFG".
         let alnum = /[A-Za-z0-9]/;
         let splitsWord = alnum.test(prefix.charAt(prefix.length - 1))
-            && names.some(function (name) {
+            && carriers.some(function (name) {
                 return name.length > prefix.length && alnum.test(name.charAt(prefix.length));
             });
         if (splitsWord) {

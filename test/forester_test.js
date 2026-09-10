@@ -77,6 +77,7 @@ runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 runTest("Nexus numeric tips         : ", testNexusNumericTips);
+runTest("Common name prefix         : ", testCommonNamePrefix);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1820,4 +1821,64 @@ function testNexusNumericTips() {
     var tr = tips("#NEXUS\nBegin Taxa;\n TaxLabels a b c;\nEnd;\n"
         + "Begin Trees;\n Translate 1 Alpha, 2 Beta, 3 Gamma;\n Tree t=(1:1,2:1,3:1);\nEnd;\n");
     return tr === 'Alpha|Beta|Gamma';
+}
+
+// The boilerplate prefix that Short Names strips. A strict longest-common
+// prefix let a handful of oddly-named tips veto the strip for everyone, so
+// the rule is now "shared by at least COMMON_PREFIX_QUANTILE of the tips".
+// The two threshold cases below sit either side of that constant on purpose:
+// 19 of 20 must fire and 18 of 20 must not, so changing the constant breaks
+// one of them. It is byte-identical to the desktop's rule -- joint, not ours
+// alone to retune.
+function testCommonNamePrefix() {
+    function prefixOf(names) {
+        var nh = '(' + names.map(function (n) { return n + ':1'; }).join(',') + ');';
+        return forester.commonNamePrefix(forester.parseNewHampshire(nh), null);
+    }
+    var i;
+    // Every tip shares it: unchanged from the strict-LCP behaviour, and the
+    // word-split trim still pulls back to the separator rather than cutting
+    // "isolate" in half.
+    var all = [];
+    for (i = 0; i < 10; ++i) { all.push('Influenza_A_virus_isolate' + i); }
+    if (prefixOf(all) !== 'Influenza_A_virus_') {
+        console.log('    all share: ' + prefixOf(all));
+        return false;
+    }
+    // 19 of 20 carry it -- exactly at the threshold, so it fires. This is the
+    // reported BV-BRC shape: a large majority sharing long boilerplate that a
+    // tiny minority used to veto outright.
+    var majority = [];
+    for (i = 0; i < 19; ++i) { majority.push('Alphainfluenzavirus|influenzae|A/x' + i); }
+    majority.push('A/other');
+    if (prefixOf(majority) !== 'Alphainfluenzavirus|influenzae|A/') {
+        console.log('    majority: ' + prefixOf(majority));
+        return false;
+    }
+    // 18 of 20 is below the threshold and must REFUSE. Stripping here would
+    // leave two groups of tips that cannot be read against each other: 18
+    // shortened, 2 at full length.
+    var below = [];
+    for (i = 0; i < 18; ++i) { below.push('SARS_CoV_2/human/USA/S' + i + '/2021'); }
+    below.push('2019_nCoV/Japan/TY/WK1/2020');
+    below.push('2019_nCoV/Japan/TY/WK2/2020');
+    if (prefixOf(below) !== '') {
+        console.log('    below threshold: ' + prefixOf(below));
+        return false;
+    }
+    // The word-split trim consults only the tips that CARRY the prefix. One
+    // unrelated longer tip must not get a vote on whether the prefix splits a
+    // word -- letting it vote throws "ABCDEFG" away entirely.
+    var carriers = [];
+    for (i = 0; i < 10; ++i) { carriers.push('ABCDEFG_sample' + i); }
+    for (i = 0; i < 9; ++i) { carriers.push('ABCDEFG-sample' + i); }
+    carriers.push('ZZZZZZZZ_unrelated_and_longer');
+    if (prefixOf(carriers) !== 'ABCDEFG') {
+        console.log('    carriers only: ' + prefixOf(carriers));
+        return false;
+    }
+    // Still only worth doing when the prefix is long enough to matter.
+    var short = [];
+    for (i = 0; i < 10; ++i) { short.push('ab_x' + i); }
+    return prefixOf(short) === '';
 }
