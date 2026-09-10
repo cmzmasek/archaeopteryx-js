@@ -637,7 +637,8 @@ copy-pastable JSON.
 ### Anything else throws
 
 An unrecognised key is an error, whether it was removed in this modernization
-or simply mistyped:
+or simply mistyped (the two deprecated keys below are the exception — they
+warn rather than throw):
 
 ```
 ArchaeopteryxJS: ERROR: removed config key(s) passed to launch:
@@ -648,6 +649,17 @@ ArchaeopteryxJS: ERROR: unknown config key(s) passed to launch: "enableDownlods"
 
 An ignored key looks like it worked. If you are upgrading, run once and fix
 whatever it names.
+
+### Accepted, with a warning
+
+Two keys are neither current nor removed: they are accepted so an existing
+embed keeps working, and warn on the console. Both concern Newick support
+values.
+
+| Key | What happens |
+|---|---|
+| `nhConfidenceValuesAsInternalNames` | Translated to `internalNumericLabels`. **`true` becomes `'confidence'`, not `'auto'`** — `'auto'` is all-or-nothing and promotes nothing in a tree that mixes clade names with support, so a caller moved to it silently would lose promotions they had. An explicit `internalNumericLabels` always wins. |
+| `nhConfidenceValuesInBrackets` | Retired: ignored. It gated whether `[95]` is read as a confidence, but setting it `false` never reinterpreted the bracket — it *discarded* it, so the option's only effect was to throw support values away. A bracket that is not a number is a Newick comment and was ignored either way, and NHX / BEAST blobs go through a different path. Bracketed values are now always read as confidences. |
 
 ### What replaced the rest
 
