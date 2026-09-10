@@ -291,6 +291,9 @@
                                     <id provider="uniprot">9347</id>
                                     <scientific_name>Eutheria</scientific_name>
                                 </taxonomy>
+                                <events>
+                                    <duplications>1</duplications>
+                                </events>
                                 <property ref="ird:Year" datatype="xsd:string" applies_to="node">2009</property>
                                 <property ref="ird:Country" datatype="xsd:string" applies_to="node">Mexico</property>
                                 <property ref="ird:Subtype" datatype="xsd:string" applies_to="node">H1N6</property>
@@ -299,9 +302,6 @@
                                 <property ref="ird:Region" datatype="xsd:string" applies_to="node">America</property>
                                 <property ref="ird:NA" datatype="xsd:string" applies_to="node">1</property>
                                 <property ref="ird:FluSeason" datatype="xsd:string" applies_to="node">2009</property>
-                                <events>
-                                    <duplications>1</duplications>
-                                </events>
                                 <clade>
                                     <name>12_HUMAN</name>
                                     <branch_length>0.07369</branch_length>
