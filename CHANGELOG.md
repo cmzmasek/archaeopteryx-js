@@ -10,6 +10,12 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **A guide line from each tip to its alignment row.** With the alignment
+  track on, a faint dashed line now runs from the end of each tip's label —
+  or from the node, when labels are hidden — across to that tip's row, so a
+  row reads back to its sequence without counting. Dashed, so it cannot be
+  taken for a branch; it follows the theme like the branches do.
+
 - **A navigation bar for long alignments.** The alignment track scrolled
   with a bare slider and a three-column wheel step — on a 30,000-column
   alignment that is ~115 columns per pixel of slider and ten thousand notches

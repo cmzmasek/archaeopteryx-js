@@ -5714,6 +5714,40 @@ function (root, d3, forester, phyloXml) {
         let cons = forester.msaConservation(tips.map(function (t) {
             return msaRowSeq(t).slice(offset, offset + visible);
         }), visible, 'identity', isNuc);
+        // A faint dashed guide from each tip -- from the end of its label, or
+        // from the node itself when the label is hidden -- across to its row
+        // in the track, so a row can be read back to its sequence without
+        // counting. Same idea as the aligned-phylogram extension; dashed so it
+        // cannot be mistaken for a branch. Skipped where a label already
+        // reaches the track.
+        let guideFont = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
+        let guideGap = _state.nodeLabelGap;
+        let guideEnd = originX - 3;
+        for (let r = 0; r < n; ++r) {
+            let d = tips[r];
+            let label = d._extLabelText || '';
+            let from;
+            if (label) {
+                let labelX = (_state.phylogram && _state.alignPhylogram && _yScale)
+                    ? d.y - _yScale(d.distToRoot) + _w + guideGap
+                    : d.y + guideGap;
+                from = labelX + legendTextWidth(label, guideFont) + 5;
+            } else {
+                from = d.y + makeNodeSize(d) + 4;
+            }
+            if (guideEnd - from < 6) {
+                continue;
+            }
+            g.append('line')
+                .attr('x1', from).attr('x2', guideEnd)
+                .attr('y1', d.x).attr('y2', d.x)
+                .attr('stroke', ink)
+                .attr('stroke-width', 1)
+                .attr('stroke-dasharray', '2,3')
+                .style('stroke-opacity', 0.35)
+                .style('pointer-events', 'none');
+        }
+
         let consTop = _clusterH + MSA_CONS_TOP_GAP;
         g.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
             .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
