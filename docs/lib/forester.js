@@ -2489,24 +2489,48 @@
                     // silently sheared such labels apart and shifted every
                     // numeric tip onto the wrong name. ';' (unquoted) ends
                     // the sub-command.
+                    //
+                    // A quote OPENS a run only at a TOKEN BOUNDARY. Inside a
+                    // word it is just a character -- an unquoted O'Neil must
+                    // not open a run and swallow the rest of the line, the
+                    // terminating ';' included, which is what the first
+                    // version of this tokenizer did: it merged every remaining
+                    // label into one and left the other tips as bare numbers.
                     let tok = '';
                     let q = null;
+                    let closed = false; // this token already held a quoted run
                     let push = function () {
                         if (tok.length > 0 && tok.toLowerCase() !== 'taxlabels') {
                             taxlabels.push(tok);
                         }
                         tok = '';
+                        closed = false;
                     };
                     for (let ci = 0; ci < line.length; ++ci) {
                         let ch = line.charAt(ci);
                         if (q) {
                             if (ch === q) {
                                 q = null;
+                                closed = true;
                             } else {
                                 tok += ch;
                             }
                         } else if (ch === "'" || ch === '"') {
-                            q = ch;
+                            if (tok.length === 0 && !closed) {
+                                q = ch;
+                            } else if (closed) {
+                                // A quote directly after a closing one is the
+                                // doubled Nexus escape ('' -> '): the run
+                                // CONTINUES, which is what keeps 'Seba''s bat'
+                                // a single label instead of splitting it at the
+                                // space. Emitting the literal apostrophe is the
+                                // un-doubling half -- JOINT with the desktop
+                                // and deliberately deferred, so the character
+                                // is still dropped here, exactly as before.
+                                q = ch;
+                            } else {
+                                tok += ch;
+                            }
                         } else if (ch === ' ') {
                             push();
                         } else if (ch === ';') {

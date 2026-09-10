@@ -1736,6 +1736,27 @@ function testNexusQuotedLabels() {
     if (forester.getAllExternalNodes(v).length !== 2) {
         return false;
     }
+    // A bare apostrophe inside an UNQUOTED label is just a character: it must
+    // not open a quoted run and swallow the rest of the line, terminating ';'
+    // included. That regression merged every remaining label into one and left
+    // the other tips as bare numbers.
+    var w = forester.parseNexus("#NEXUS\nBegin Taxa;\n TaxLabels O'Neil Homo Pan;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,(2:1,3:1):1);\nEnd;\n")[0];
+    var wn = forester.getAllExternalNodes(w).map(function (n) { return n.name; }).sort();
+    if (wn.join('|') !== 'Homo|ONeil|Pan') {
+        console.log('    bare apostrophe: ' + wn.join('|'));
+        return false;
+    }
+    // A DOUBLED quote does not end the run, so a quoted label keeps its space
+    // and stays ONE label. (Recovering the apostrophe itself is the un-doubling
+    // half, joint with the desktop and deferred.)
+    var x = forester.parseNexus("#NEXUS\nBegin Taxa;\n TaxLabels 'Seba''s bat' Homo;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,2:1);\nEnd;\n")[0];
+    var xn = forester.getAllExternalNodes(x).map(function (n) { return n.name; }).sort();
+    if (xn.join('|') !== 'Homo|Sebas bat') {
+        console.log('    doubled quote: ' + xn.join('|'));
+        return false;
+    }
     var threw = false;
     try { forester.toNexus({children: []}); } catch { threw = true; }
     return threw;
