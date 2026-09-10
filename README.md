@@ -1220,9 +1220,18 @@ denominator); information = `(log₂K − H)/log₂K × nonGapFraction`, K = 4 o
 20; consensus = most common non-gap residue, ties alphabetical. The hover
 readout (`forester.msaResidueInfo`, `msaUngappedPosition`) names the residue
 (desktop vocabulary, selenocysteine and pyrrolysine included), its class
-(purine/pyrimidine for bases) and Kyte-Doolittle hydropathy. Scrolling: a
-lazily-created fixed HTML range input plus wheel-over-track, both moving
-`_msaColOffset`; the tree never moves.
+(purine/pyrimidine for bases) and Kyte-Doolittle hydropathy.
+
+Navigation: a lazily-created bar fixed at the viewport bottom — first / page
+back / slider / page forward / last, a jump-to-column box (1-based, matching
+the hover readout) and a live "column N – M of total" — plus wheel-over-track
+at a tenth of a screen per notch. Every route lands in one `msaScrollTo()`,
+which clamps and redraws; the tree never moves. A faint dashed guide runs
+from each tip's label (or its node, when labels are hidden) across to that
+tip's row, so a row reads back to its sequence without counting.
+
+The conservation bar, consensus row and column ruler are a **floating strip**
+(see the time axes below); the residue rows stay with their tips.
 
 ### The time axes
 
@@ -1258,6 +1267,31 @@ strip side by side (track right, axis left), so their reserves take
 etc., 69 intervals, frozen) is byte-identical to the desktop's; reference:
 Cohen, K.M., Harper, D.A.T., Gibbard, P.L. & Car, N. (2025, updated),
 Episodes 48: 105-115; www.stratigraphy.org.
+
+Banding ranks (`forester.geoBandRanks(youngMa, oldMa)`, shared with the
+desktop — change both or neither) take the span the tree actually occupies,
+youngest tip to root, not zero to root, so a fossil-only clade bands on its
+own window. A window overlapping one or two Series bands Series over **Stage**
+(the 101 ratified Phanerozoic stages plus the Pridoli, standing in for its own
+span as the printed ICS chart does); wider windows fall through the
+Period/Epoch → Era/Period → Eon/Era ladder, the finest pair that still fully
+covers the range. The overlap test is strict at both ends, so a window that
+merely touches a Series does not count it. A band label is drawn only where it
+fits its cell; a narrow stage keeps its colour and loses its name.
+
+**Floating strips.** The axes and the alignment's conservation/consensus/ruler
+strip live on `_floatGroup`, a sibling of the zoomed tree group that is not
+itself transformed. Each is drawn in tree coordinates as usual and registered
+with `floatStripGroup(cls, top, height)`; `placeFloatingOverlays()` then gives
+it the tree's x and scale but a **sticky** y — `min(tree y, viewport bottom −
+strip)` — so it rides at the tree's bottom edge until that edge would leave
+the viewport and holds there instead. Each carries an opaque backdrop with a
+top rule, so tips panned underneath do not show through. Grid lines, per-node
+age bars and the alignment rows stay in the tree group, being bound to tips or
+spanning the tree's height. Exports re-anchor every strip to the tree, so a
+figure never carries an artefact of where the view happened to be scrolled.
+(The desktop pins its axes to the viewport bottom always; sticky is a
+deliberate difference.)
 
 ## Node selection
 

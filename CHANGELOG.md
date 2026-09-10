@@ -6,7 +6,7 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.1.0 — 2026-09-09
 
 ### Added
 
@@ -246,7 +246,7 @@ consumers only see a change when a version is cut.
   coalesced redraws in action. The demo page now parses a big file behind the
   card too, as open.html does.
 
-### Unreleased since 3.0.0 (already on master)
+### Also since 3.0.0
 
 - `open.html`: visualize your own tree entirely in the browser, plus an Expert
   options panel exercising every launch config key.
