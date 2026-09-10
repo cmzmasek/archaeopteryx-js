@@ -1850,6 +1850,35 @@
         return (lo !== null && hi !== null) ? [lo, hi] : null;
     }
 
+    // Nexus/Newick quoting: a quoted token is wrapped in a matching pair, and a
+    // literal quote INSIDE it is written twice. Reading one back therefore
+    // means removing one matching outer pair and un-doubling what is inside --
+    // 'Seba''s bat' is the single label "Seba's bat", not "Sebas bat", which is
+    // what stripping every quote gave. The doubling is per quote, so a token
+    // holding two escapes in a row un-doubles to two literal quotes; a pass
+    // that removes quotes wholesale loses both.
+    //
+    // A token that is NOT well-formed -- an odd number of quotes, no closing
+    // quote, a quote in the middle of a bare word -- is not a quoted token at
+    // all. Those keep the old lenient behaviour of dropping stray quotes rather
+    // than throwing: a viewer that refuses to open a file teaches the user
+    // nothing, and Nexus in the wild is written by many programs. Strict on
+    // output, lenient on input. Matches the desktop (0.11.141+).
+    function unquoteLabel(s) {
+        if (s === null || s === undefined) {
+            return s;
+        }
+        let t = String(s).trim();
+        let len = t.length;
+        if (len > 1) {
+            let q = t.charAt(0);
+            if ((q === "'" || q === '"') && t.charAt(len - 1) === q) {
+                return t.substring(1, len - 1).split(q + q).join(q);
+            }
+        }
+        return t.replace(/['"]+/g, '');
+    }
+
     function stripValueQuotes(v) {
         if (v.length >= 2
             && ((v.charAt(0) === '"' && v.charAt(v.length - 1) === '"')
@@ -2044,6 +2073,19 @@
         let in_double_q = false;
         let in_single_q = false;
         let buffer = '';
+        // In a quoted label a literal quote is DOUBLED. The tokenizer splits
+        // on quotes, so a doubled one arrives as two quote elements with only
+        // empty strings between them -- that is the signature. Seeing it means
+        // 'emit one quote and stay inside the run', not 'close the run': the
+        // run continuing is what keeps the label in one piece, and emitting
+        // the character is what stops the apostrophe being swallowed.
+        let doubledQuoteEnd = function (at, qch) {
+            let j = at + 1;
+            while (j < ssl && ss[j] === '') {
+                ++j;
+            }
+            return (j < ssl && ss[j] === qch) ? j : -1;
+        };
         for (let i = 0; i < ssl; ++i) {
             let element = ss[i].replace(/\s+/g, '');
 
@@ -2051,25 +2093,37 @@
                 if (!in_double_q) {
                     in_double_q = true;
                 } else {
-                    in_double_q = false;
-                    if (x.name && x.name.length > 0) {
-                        x.name = x.name + buffer;
+                    let dq = doubledQuoteEnd(i, '"');
+                    if (dq > -1) {
+                        buffer += '"';
+                        i = dq;
                     } else {
-                        x.name = buffer;
+                        in_double_q = false;
+                        if (x.name && x.name.length > 0) {
+                            x.name = x.name + buffer;
+                        } else {
+                            x.name = buffer;
+                        }
+                        buffer = '';
                     }
-                    buffer = '';
                 }
             } else if (element === "'" && !in_double_q) {
                 if (!in_single_q) {
                     in_single_q = true;
                 } else {
-                    in_single_q = false;
-                    if (x.name && x.name.length > 0) {
-                        x.name = x.name + buffer;
+                    let dq = doubledQuoteEnd(i, "'");
+                    if (dq > -1) {
+                        buffer += "'";
+                        i = dq;
                     } else {
-                        x.name = buffer;
+                        in_single_q = false;
+                        if (x.name && x.name.length > 0) {
+                            x.name = x.name + buffer;
+                        } else {
+                            x.name = buffer;
+                        }
+                        buffer = '';
                     }
-                    buffer = '';
                 }
             } else {
                 if (in_double_q || in_single_q) {
@@ -2342,10 +2396,14 @@
                     throw new Error(NEXUS_FORMAT_ERR + 'ill-formatted translate table entry: "'
                         + pair.trim() + '" -- is the Translate sub-command terminated with a ";"?');
                 }
-                let value = m[2].replace(/['"]+/g, '').trim();
+                // The sub-command terminator comes off BEFORE unquoting, or a
+                // well-formed quoted value followed by ';' would not look
+                // well-formed and would fall to the lenient path.
+                let value = m[2].trim();
                 if (value.endsWith(';')) {
-                    value = value.slice(0, -1);
+                    value = value.slice(0, -1).trim();
                 }
+                value = unquoteLabel(value);
                 translateMap[m[1]] = value;
             });
         }
@@ -2456,7 +2514,11 @@
                 if (node.name && translateMap[node.name] !== undefined) {
                     node.name = translateMap[node.name];
                 } else if (indexed) {
-                    node.name = taxlabels[parseInt(node.name, 10) - 1].replace(/['"]+/g, '');
+                    // The TAXLABELS tokenizer has already removed the outer
+                    // quotes and un-doubled what was inside, so the label is
+                    // used as-is: stripping quotes again here would undo the
+                    // un-doubling and drop the apostrophe a second time.
+                    node.name = taxlabels[parseInt(node.name, 10) - 1];
                 }
                 if (node.name) {
                     let s = seqsByKey[joinKey(node.name)];
@@ -2535,7 +2597,7 @@
                     inTree = true;
                     let nm = TREE_NAME_RE.exec(line);
                     if (nm) {
-                        name = nm[1].replace(/['"]+/g, '');
+                        name = unquoteLabel(nm[1]);
                     }
                     let rm = ROOTEDNESS_RE.exec(line);
                     if (rm) {
@@ -2598,16 +2660,24 @@
                                 q = ch;
                             } else if (closed) {
                                 // A quote directly after a closing one is the
-                                // doubled Nexus escape ('' -> '): the run
-                                // CONTINUES, which is what keeps 'Seba''s bat'
-                                // a single label instead of splitting it at the
-                                // space. Emitting the literal apostrophe is the
-                                // un-doubling half -- JOINT with the desktop
-                                // and deliberately deferred, so the character
-                                // is still dropped here, exactly as before.
+                                // doubled Nexus escape: emit ONE literal quote
+                                // and let the run CONTINUE. The continuing is
+                                // what keeps a quoted label holding an
+                                // apostrophe in one piece instead of splitting
+                                // it at the space (that was N1); emitting the
+                                // character is the un-doubling half, deferred
+                                // until both programs could land it together.
+                                tok += ch;
                                 q = ch;
                             } else {
-                                tok += ch;
+                                // A quote in the middle of a BARE word is not
+                                // an escape and not a delimiter -- an unquoted
+                                // token may not legally hold one at all. It is
+                                // dropped rather than kept, which is the older
+                                // lenient behaviour and is SHARED with the
+                                // desktop; keeping it here would be a new
+                                // divergence, not a fix.
+                                void ch;
                             }
                         } else if (ch === ' ') {
                             push();

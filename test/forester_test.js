@@ -78,6 +78,7 @@ runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 runTest("Nexus numeric tips         : ", testNexusNumericTips);
 runTest("Common name prefix         : ", testCommonNamePrefix);
+runTest("Nexus un-doubling          : ", testNexusUnquoting);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1750,12 +1751,14 @@ function testNexusQuotedLabels() {
         return false;
     }
     // A DOUBLED quote does not end the run, so a quoted label keeps its space
-    // and stays ONE label. (Recovering the apostrophe itself is the un-doubling
-    // half, joint with the desktop and deferred.)
+    // and stays ONE label -- AND the escape un-doubles to one literal quote,
+    // so the apostrophe survives. Keeping the label whole was N1; recovering
+    // the character was J0, landed once the desktop and JS could do it
+    // together (desktop 0.11.141).
     var x = forester.parseNexus("#NEXUS\nBegin Taxa;\n TaxLabels 'Seba''s bat' Homo;\nEnd;\n"
         + "Begin Trees;\n Tree t=(1:1,2:1);\nEnd;\n")[0];
     var xn = forester.getAllExternalNodes(x).map(function (n) { return n.name; }).sort();
-    if (xn.join('|') !== 'Homo|Sebas bat') {
+    if (xn.join('|') !== "Homo|Seba's bat") {
         console.log('    doubled quote: ' + xn.join('|'));
         return false;
     }
@@ -1881,4 +1884,79 @@ function testCommonNamePrefix() {
     var short = [];
     for (i = 0; i < 10; ++i) { short.push('ab_x' + i); }
     return prefixOf(short) === '';
+}
+
+// Nexus/Newick quoting escapes a literal quote by DOUBLING it, so reading a
+// label back means removing one matching outer pair and un-doubling what is
+// inside. Every one of these used to lose the apostrophe outright. Keeping the
+// label in one piece was N1; recovering the character is J0, landed with the
+// desktop (0.11.141) so the two readers agree.
+function testNexusUnquoting() {
+    function tips(nexus) {
+        return forester.getAllExternalNodes(forester.parseNexus(nexus)[0])
+            .map(function (n) { return n.name; }).sort().join('|');
+    }
+    var TAX = "#NEXUS\nBegin Taxa;\n TaxLabels 'Seba''s bat' Homo;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,2:1);\nEnd;\n";
+    if (tips(TAX) !== "Homo|Seba's bat") {
+        console.log('    taxlabels: ' + tips(TAX));
+        return false;
+    }
+    var TRANS = "#NEXUS\nBegin Trees;\n Translate 1 'Seba''s bat', 2 Homo;\n"
+        + " Tree t=(1:1,2:1);\nEnd;\n";
+    if (tips(TRANS) !== "Homo|Seba's bat") {
+        console.log('    translate: ' + tips(TRANS));
+        return false;
+    }
+    var named = forester.parseNexus("#NEXUS\nBegin Trees;\n Tree 'O''Neil tree'=(a:1,b:1);\nEnd;\n")[0];
+    if (named.name !== "O'Neil tree") {
+        console.log('    tree name: ' + named.name);
+        return false;
+    }
+    var nh = forester.getAllExternalNodes(forester.parseNewHampshire("('Seba''s bat':1,Homo:1);"))
+        .map(function (n) { return n.name; }).sort().join('|');
+    if (nh !== "Homo|Seba's bat") {
+        console.log('    nh scanner: ' + nh);
+        return false;
+    }
+    // Two escapes in a row un-double to TWO literal quotes. A pass that strips
+    // quotes wholesale, or one that un-doubles only once, loses them.
+    var TWO = "#NEXUS\nBegin Taxa;\n TaxLabels 'a''''b c' Homo;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,2:1);\nEnd;\n";
+    if (tips(TWO) !== "Homo|a''b c") {
+        console.log('    two escapes: ' + tips(TWO));
+        return false;
+    }
+    // Double quotes escape the same way.
+    var dq = forester.getAllExternalNodes(forester.parseNewHampshire('("Seba""s bat":1,Homo:1);'))
+        .map(function (n) { return n.name; }).sort().join('|');
+    if (dq !== 'Homo|Seba"s bat') {
+        console.log('    double quotes: ' + dq);
+        return false;
+    }
+    // A quote in the middle of an UNQUOTED token is not an escape -- an
+    // unquoted token may not legally hold one -- and is still dropped. This is
+    // SHARED with the desktop, so keeping it would be a new divergence.
+    var BARE = "#NEXUS\nBegin Taxa;\n TaxLabels O'Neil Homo Pan;\nEnd;\n"
+        + "Begin Trees;\n Tree t=(1:1,(2:1,3:1):1);\nEnd;\n";
+    if (tips(BARE) !== 'Homo|ONeil|Pan') {
+        console.log('    bare apostrophe: ' + tips(BARE));
+        return false;
+    }
+    // Not well-formed -> stay lenient, drop stray quotes, never throw: a
+    // viewer that refuses to open a file teaches the user nothing, and Nexus
+    // in the wild is written by many programs. (An unterminated quote in
+    // NEWICK is a different matter and still throws -- it swallows the
+    // closing paren, so the failure is structural rather than a quoting
+    // decision. That predates this change and is not altered by it.)
+    var threw = false;
+    try {
+        tips("#NEXUS\nBegin Taxa;\n TaxLabels 'Seba Homo;\nEnd;\n"
+            + "Begin Trees;\n Tree t=(1:1,2:1);\nEnd;\n");
+        tips("#NEXUS\nBegin Trees;\n Translate 1 'Seba''s, 2 Homo;\n"
+            + " Tree t=(1:1,2:1);\nEnd;\n");
+    } catch {
+        threw = true;
+    }
+    return threw === false;
 }
