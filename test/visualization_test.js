@@ -739,7 +739,12 @@ function testNodeStyleParsing() {
 function testPrefixFixtures() {
     var flu = loadTree('flu_h5');
     var herpes = loadTree('herpes_dnapol');
-    return forester.commonNamePrefix(flu, 'BVBRC:genome_name') === 'Influenza A virus'
+    // The trailing space arrived with the majority-prefix rule (64ac6f3): at a
+    // strict LCP one tip diverges immediately after "virus" and holds the
+    // prefix back, and at 0.95 that tip no longer gets a veto. Nothing changes
+    // on screen -- the shortener strips leading separators after cutting the
+    // prefix -- but the returned string is one character longer.
+    return forester.commonNamePrefix(flu, 'BVBRC:genome_name') === 'Influenza A virus '
         && forester.commonNamePrefix(herpes, 'BVBRC:genome_name') === ''
         && forester.commonNamePrefix(loadTree('bcl2'), null) === '';
 }
