@@ -103,7 +103,7 @@ function (root, d3, forester, phyloXml) {
     // IIFE's own function name -- a plain object says what it is.)
     let archaeopteryx = {};
 
-    const VERSION = '3.1.0';
+    const VERSION = '3.2.0';
     const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
     const DESKTOP_WEBSITE = 'https://cmzmasek.github.io/archaeopteryx/';
     const SOURCE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js';

@@ -1897,10 +1897,48 @@ runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
 runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
+runTest("versions agree           : ", testVersionsAgree);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);
 } else {
     console.log("\nAll tests passed");
+}
+
+// The version appears in FOUR places and they must agree: package.json, the
+// VERSION constant the About box and the control-panel button display, and
+// the header comment of each library file. 3.2.0 shipped to npm with VERSION
+// still reading '3.1.0' because the release bumped the headers and missed the
+// constant, and nothing failed. This is that check.
+function testVersionsAgree() {
+    var fs = require('fs');
+    var pth = require('path');
+    var root = pth.join(__dirname, '..');
+    var expected = JSON.parse(fs.readFileSync(pth.join(root, 'package.json'), 'utf8')).version;
+
+    var apx = fs.readFileSync(pth.join(root, 'archaeopteryx.js'), 'utf8');
+    var m = apx.match(/const VERSION = '([^']+)'/);
+    if (!m) {
+        console.log('    no VERSION constant found in archaeopteryx.js');
+        return false;
+    }
+    if (m[1] !== expected) {
+        console.log('    archaeopteryx.js VERSION is ' + m[1] + ', package.json says ' + expected);
+        return false;
+    }
+    var files = ['archaeopteryx.js', 'forester.js'];
+    for (var i = 0; i < files.length; ++i) {
+        var txt = fs.readFileSync(pth.join(root, files[i]), 'utf8');
+        var h = txt.match(/^\/\/ v ([0-9][^\s]*)$/m);
+        if (!h) {
+            console.log('    no "// v X.Y.Z" header in ' + files[i]);
+            return false;
+        }
+        if (h[1] !== expected) {
+            console.log('    ' + files[i] + ' header is ' + h[1] + ', package.json says ' + expected);
+            return false;
+        }
+    }
+    return true;
 }
