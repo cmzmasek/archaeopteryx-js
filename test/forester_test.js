@@ -79,6 +79,7 @@ runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 runTest("Nexus numeric tips         : ", testNexusNumericTips);
 runTest("Common name prefix         : ", testCommonNamePrefix);
 runTest("Nexus un-doubling          : ", testNexusUnquoting);
+runTest("phyloXML foreign namespace : ", testPhyloXmlForeignNamespace);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -1959,4 +1960,68 @@ function testNexusUnquoting() {
         threw = true;
     }
     return threw === false;
+}
+
+// phyloXML lets a file carry elements from other namespaces (the schema's
+// ##other wildcard) and puts them LAST, after the clade. This reader models
+// none of them and must simply ignore them.
+//
+// It used to fail two different ways there. <flu_type> had a HARDCODED
+// handler (removed 2026-09-10) that assumed the element appeared before the
+// clade, where the schema does not allow it; at the position the schema does
+// require, it fired with an empty object stack and killed the parse of a
+// perfectly valid file. Separately, the text dispatcher itself reached into
+// that empty stack, which is now guarded.
+function testPhyloXmlForeignNamespace() {
+    var px = require('./lib/phyloxml').phyloXml;
+    var HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        + '<phyloxml xmlns="http://www.phyloxml.org">\n <phylogeny rooted="true">\n'
+        + '  <clade><clade><name>A</name></clade><clade><name>B</name></clade></clade>\n';
+    var TAIL = ' </phylogeny>\n</phyloxml>\n';
+    function parse(extra) {
+        return px.parse(HEAD + extra + TAIL, {trim: true, normalize: true})[0];
+    }
+    function parseBefore(extra) {
+        // BEFORE the clade -- the position those IRD files used to use, and
+        // the only one where the old hardcoded handler could actually fire,
+        // since after the clade the object stack is empty and the guard
+        // short-circuits first.
+        return px.parse(HEAD.replace('  <clade>', extra + '  <clade>') + TAIL,
+            {trim: true, normalize: true})[0];
+    }
+    function tips(t) {
+        return forester.getAllExternalNodes(t).map(function (n) { return n.name; }).sort().join('|');
+    }
+    // an extension subtree after the tree, in its own namespace: schema-valid,
+    // and this reader has no use for it
+    if (tips(parse('  <Stuff xmlns="urn:x-ext"><Thing>t</Thing></Stuff>\n')) !== 'A|B') {
+        return false;
+    }
+    // the same written with a prefix rather than a default namespace
+    if (tips(parse('  <e:Stuff xmlns:e="urn:x-ext"><e:Thing>t</e:Thing></e:Stuff>\n')) !== 'A|B') {
+        return false;
+    }
+    // flu_type is now an element like any other this reader does not model:
+    // ignored, and no longer resurrecting phylogeny.desc
+    var f = parse('  <flu_type xmlns="urn:x-ext">A</flu_type>\n');
+    if (f.desc !== undefined || tips(f) !== 'A|B') {
+        return false;
+    }
+    // and bare, in the phyloXML namespace, where those files used to carry it
+    var bare = parse('  <flu_type>A</flu_type>\n');
+    if (bare.desc !== undefined || tips(bare) !== 'A|B') {
+        return false;
+    }
+    // The position where the removed handler DID fire: before the clade, with
+    // the phylogeny still on the stack. It must now be ignored there too,
+    // rather than quietly setting phylogeny.desc.
+    var early = parseBefore('  <flu_type>A</flu_type>\n');
+    if (early.desc !== undefined || tips(early) !== 'A|B') {
+        return false;
+    }
+    // A MALFORMED file must not crash the reader either. A stray <name> after
+    // the clade is not schema-valid, but it is the case that reaches the text
+    // dispatcher with nothing on the object stack -- without the guard this
+    // throws rather than returning a tree.
+    return tips(parse('  <name>stray</name>\n')) === 'A|B';
 }

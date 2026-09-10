@@ -4,16 +4,11 @@
      They are carried in the "urn:local:ird-extensions" namespace, which is
      what the schema's ##other wildcard is for, and they sit at the END of
      their parent because that wildcard comes last in the element sequence.
+     Both are required for the file to validate: an extension element in the
+     phyloXML namespace, or before the clade, is not schema-valid.
 
-     The ird: PREFIX is deliberate rather than a default xmlns, and the reason
-     is OUR reader rather than interop: the desktop reads either form.
-     phyloxml.js has a hardcoded handler for the IRD element <flu_type>
-     (APPTYPE), which assumes it appears BEFORE the clade, where these files
-     used to put it and where the schema does not allow it. At the
-     schema-required position there is no current object and the parse THROWS.
-     The prefix makes the name stop matching that handler. If phyloxml.js ever
-     becomes namespace-aware, or that handler is dropped, the prefix stops
-     being necessary. -->
+     Readers ignore them. That is the point: extension data belongs either in
+     its own namespace, as here, or in phyloXML's own <property> element. -->
 <phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.phyloxml.org" xmlns:ird="urn:local:ird-extensions"
           xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
     <phylogeny rooted="false">
