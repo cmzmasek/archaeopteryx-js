@@ -515,9 +515,9 @@
         var config = currentConfig();
         var tree;
         try {
-            // internalLabelsAsConfidence acts at parse time, so it is handed
+            // internalNumericLabels acts at parse time, so it is handed
             // to the parser here, exactly as launchArchaeopteryx would
-            tree = archaeopteryx.parseTree(fileName, text, config.internalLabelsAsConfidence);
+            tree = archaeopteryx.parseTree(fileName, text, config.internalNumericLabels);
         } catch (e) {
             showError('Could not parse tree: ' + (e && e.message ? e.message : String(e)));
             return;
@@ -631,8 +631,8 @@
         {group: 'Export & New Hampshire parsing'},
         {key: 'pngExportScale', type: 'number'},
         {key: 'nhExportWriteConfidences', type: 'bool'},
-        {key: 'internalLabelsAsConfidence', type: 'enum', values: ['auto', 'always', 'never'],
-            hint: 'parse-time: bare numeric internal labels, e.g. )100: — auto = only if they all look like support'}
+        {key: 'internalNumericLabels', type: 'enum', values: ['auto', 'confidence', 'label'],
+            hint: 'parse-time: bare numeric internal labels like )100: — auto = only when they all look like support, confidence = every numeric label, label = keep them as names'}
     ];
     var SPEC_BY_KEY = {};
     CONFIG_SPEC.forEach(function (sp) {

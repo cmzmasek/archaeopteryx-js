@@ -374,7 +374,7 @@ trailing arguments (the separate settings bag, `nodeVisualizations`,
 `nodeLabels`, `specialVisualizations`, or the positional Newick parse
 options) **throws** with a message saying where each one went: everything now
 lives in the **one config object** (`nodeLabels` and
-`internalLabelsAsConfidence` are config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
+`internalNumericLabels` are config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
 tree)` works.
 
 `container` is a **CSS selector or the DOM element itself** (frameworks hand
@@ -507,7 +507,7 @@ Newick and Nexus files usually carry branch support as a bare internal label
 (`)100:0.05`). Archaeopteryx.js recognises those automatically and treats them
 as confidence values, so support-based features work without any setup. If your
 internal labels are clade names rather than support, set
-`internalLabelsAsConfidence: 'never'`. Bracketed values (`)[95]:0.05`) are
+`internalNumericLabels: 'label'`. Bracketed values (`)[95]:0.05`) are
 always read as confidences; a bracket that is not a number is a comment and is
 ignored.
 
@@ -628,7 +628,7 @@ copy-pastable JSON.
 | `enableDownloads` | `true` | Offer the download buttons. |
 | `pngExportScale` | `4` | PNG export resolution multiplier. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
-| `internalLabelsAsConfidence` | `'auto'` | Newick / Nexus parsing: read bare numeric internal labels (`)100:0.05`) as confidence values. `'auto'` promotes only when every internal label looks like support; `'always'` promotes every numeric label whatever its value; `'never'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'always'`). |
+| `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
 | `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |

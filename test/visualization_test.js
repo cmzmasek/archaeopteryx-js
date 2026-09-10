@@ -1576,8 +1576,8 @@ function testBracketsFlagRetired() {
         }
     }
     // the mode still arrives in both shapes
-    var never = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', 'never');
-    var neverLegacy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'never');
+    var never = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', 'label');
+    var neverLegacy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'label');
     if (confs(never) !== '' || confs(neverLegacy) !== '') {
         console.log('    "never" not honoured in one of the call shapes');
         return false;
@@ -1668,15 +1668,15 @@ function testInternalLabelsAsConfidence() {
         ['((A,B)0.98,(C,D)0.72);',     'auto',   2],  // posteriors
         ['((A,B)1000,(C,D)870);',      'auto',   2],  // 0-1000 scale (MrBayes)
         ['((A,B)Clade_I,(C,D)100);',   'auto',   0],  // MIXED: all-or-nothing refuses
-        ['((A,B)Clade_I,(C,D)100);',   'always', 1],  // ... but Always is per-node
+        ['((A,B)Clade_I,(C,D)100);',   'confidence', 1],  // ... but Always is per-node
         ['((A,B)Mammalia,(C,D)Aves);', 'auto',   0],  // real clade names
-        ['((A,B)Mammalia,(C,D)Aves);', 'always', 0],  // Always is numeric-only: still safe
+        ['((A,B)Mammalia,(C,D)Aves);', 'confidence', 0],  // Always is numeric-only: still safe
         ['((A,B)9606,(C,D)10090);',    'auto',   0],  // taxids: outside [0,1000]
-        ['((A,B)9606,(C,D)10090);',    'always', 2],  // ... Always is unbounded, by design
+        ['((A,B)9606,(C,D)10090);',    'confidence', 2],  // ... Always is unbounded, by design
         ['((A,B)1,((C,D)2,(E,F)3));',  'auto',   0],  // clade NUMBERING 1..N, not support
         ['((A,B)100,C);',              'auto',   0],  // a lone label is not enough
         ['((A,B)[100],(C,D)95);',      'auto',   1],  // ... unless corroborated by a real confidence
-        ['((A,B)100,(C,D)56);',        'never',  0]
+        ['((A,B)100,(C,D)56);',        'label',  0]
     ];
     for (var i = 0; i < cases.length; ++i) {
         var c = cases[i];
@@ -1741,13 +1741,13 @@ function testInternalLabelsWiring() {
         console.log('    nexus not promoted: ' + phy.confidencesFromInternalLabels);
         return false;
     }
-    // 'never' turns it off through the same door.
-    phy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'never');
+    // 'label' turns it off through the same door.
+    phy = aptx.parseTree('t.nwk', '((A,B)100,(C,D)56);', true, 'label');
     if (internalNames(phy) !== '100,56' || phy.confidencesFromInternalLabels !== undefined) {
         console.log('    never still promoted: ' + internalNames(phy));
         return false;
     }
-    // The retired positional boolean maps to 'always', NOT to 'auto' -- a
+    // The retired positional boolean maps to 'confidence', NOT to 'auto' -- a
     // caller who had true and silently landed on auto would lose promotions
     // on a mixed tree.
     phy = aptx.parseTree('t.nwk', '((A,B)Clade_I,(C,D)100);', true, true);

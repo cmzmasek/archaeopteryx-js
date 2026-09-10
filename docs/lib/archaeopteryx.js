@@ -3773,7 +3773,7 @@ function (root, d3, forester, phyloXml) {
     // since its config parser was removed.) Two equal literals is the bug;
     // one object read by both is the fix.
     const PARSE_DEFAULTS = {
-        internalLabelsAsConfidence: 'auto'
+        internalNumericLabels: 'auto'
     };
 
     // Keys that still WORK but have moved, or have been retired outright.
@@ -3795,15 +3795,15 @@ function (root, d3, forester, phyloXml) {
             note: 'bracketed values such as "[95]" are always read as confidences now; the option had no other effect'
         },
         nhConfidenceValuesAsInternalNames: {
-            to: 'internalLabelsAsConfidence',
+            to: 'internalNumericLabels',
             // true meant "read every numeric internal label as a confidence",
-            // which is exactly 'always'. It is NOT 'auto': auto is
+            // which is exactly 'confidence'. It is NOT 'auto': auto is
             // all-or-nothing and promotes nothing in a mixed tree, so a caller
             // silently moved to auto would lose promotions they had.
             map: function (v) {
-                return v === true ? 'always' : PARSE_DEFAULTS.internalLabelsAsConfidence;
+                return v === true ? 'confidence' : PARSE_DEFAULTS.internalNumericLabels;
             },
-            note: 'use \'always\' for what this flag did (\'auto\' is the new default, and does not promote mixed trees)'
+            note: 'use \'confidence\' for what this flag did (\'auto\' is the new default, and does not promote mixed trees)'
         }
     };
 
@@ -3982,7 +3982,7 @@ function (root, d3, forester, phyloXml) {
         'enableSubtreeDeletion',
         'enableVisualizations',
         'initialVisualization',
-        'internalLabelsAsConfidence',
+        'internalNumericLabels',
         'ladderizeTree',
         'nhExportWriteConfidences',
         'nodeLabels',
@@ -4412,10 +4412,10 @@ function (root, d3, forester, phyloXml) {
         // parseTree; they were positional arguments before the one-config API).
         // Both read PARSE_DEFAULTS -- see the comment there for why a second
         // copy of these literals would be a default that cannot take effect.
-        if (_settings.internalLabelsAsConfidence === undefined) {
-            _settings.internalLabelsAsConfidence = PARSE_DEFAULTS.internalLabelsAsConfidence;
-        } else if (['auto', 'always', 'never'].indexOf(_settings.internalLabelsAsConfidence) < 0) {
-            throw new Error(ERROR + 'internalLabelsAsConfidence must be "auto", "always" or "never"');
+        if (_settings.internalNumericLabels === undefined) {
+            _settings.internalNumericLabels = PARSE_DEFAULTS.internalNumericLabels;
+        } else if (['auto', 'confidence', 'label'].indexOf(_settings.internalNumericLabels) < 0) {
+            throw new Error(ERROR + 'internalNumericLabels must be "auto", "confidence" or "label"');
         }
         // custom label-field checkboxes (was launch()'s sixth positional arg)
         if (_settings.nodeLabels === undefined) {
@@ -4826,7 +4826,7 @@ function (root, d3, forester, phyloXml) {
     // APPEAR rather than names silently vanishing.
     function promoteInternalLabels(phy, mode) {
         let promoted = forester.promoteInternalLabelsToConfidence(phy,
-            mode === undefined ? PARSE_DEFAULTS.internalLabelsAsConfidence : mode);
+            mode === undefined ? PARSE_DEFAULTS.internalNumericLabels : mode);
         if (promoted > 0) {
             phy.confidencesFromInternalLabels = promoted;
         }
@@ -9971,8 +9971,8 @@ function (root, d3, forester, phyloXml) {
      * @param location - file name (only its extension is used; the content is
      *                    sniffed too, so a pasted tree with no name works)
      * @param data - the file's content
-     * @param mode - 'auto' (default) | 'always' | 'never', how bare numeric
-     *                    internal labels are read. The retired
+     * @param mode - 'auto' (default) | 'confidence' | 'label', how bare
+     *                    numeric internal labels are read. The retired
      *                    nhConfidenceValuesInBrackets flag used to sit in this
      *                    position and is still accepted (and ignored) there,
      *                    with the mode following it.
@@ -9983,16 +9983,16 @@ function (root, d3, forester, phyloXml) {
         // The retired brackets flag used to be the third argument, so a
         // boolean there means the old four-argument shape and the mode is the
         // fourth. A string is the mode itself.
-        let internalLabelsAsConfidence = (typeof mode === 'boolean' || mode === undefined) ? legacyMode : mode;
+        let internalNumericLabels = (typeof mode === 'boolean' || mode === undefined) ? legacyMode : mode;
         // PARSE_DEFAULTS, not literals -- initializeSettings applies the same
         // object, and it runs at launch(), AFTER this has already parsed.
-        if (typeof internalLabelsAsConfidence === 'boolean') {
+        if (typeof internalNumericLabels === 'boolean') {
             // the retired positional flag: true meant "every numeric internal
-            // label is a confidence", which is 'always'.
-            internalLabelsAsConfidence = internalLabelsAsConfidence
-                ? 'always' : PARSE_DEFAULTS.internalLabelsAsConfidence;
-        } else if (internalLabelsAsConfidence === undefined) {
-            internalLabelsAsConfidence = PARSE_DEFAULTS.internalLabelsAsConfidence;
+            // label is a confidence", which is 'confidence'.
+            internalNumericLabels = internalNumericLabels
+                ? 'confidence' : PARSE_DEFAULTS.internalNumericLabels;
+        } else if (internalNumericLabels === undefined) {
+            internalNumericLabels = PARSE_DEFAULTS.internalNumericLabels;
         }
         let tree;
         let loc = location ? String(location).toLowerCase() : '';
@@ -10000,7 +10000,7 @@ function (root, d3, forester, phyloXml) {
         // content decides; the filename alone is enough too.
         if ((forester.isString(data) && /^\s*#nexus\b/i.test(data))
             || /\.(nex|nexus)$/.test(loc)) {
-            tree = archaeopteryx.parseNexus(data, internalLabelsAsConfidence);
+            tree = archaeopteryx.parseNexus(data, internalNumericLabels);
         } else if ((forester.isString(data) && /^\s*\{/.test(data)) || /\.json$/.test(loc)) {
             tree = archaeopteryx.parseAuspiceJson(data);
         } else if ((forester.isString(data) && /^\s*</.test(data))
@@ -10009,7 +10009,7 @@ function (root, d3, forester, phyloXml) {
             // is enough -- pasted phyloXML has no filename to go by.
             tree = archaeopteryx.parsePhyloXML(data);
         } else {
-            tree = archaeopteryx.parseNewHampshire(data, internalLabelsAsConfidence);
+            tree = archaeopteryx.parseNewHampshire(data, internalNumericLabels);
         }
         return tree;
     };
@@ -10065,8 +10065,8 @@ function (root, d3, forester, phyloXml) {
     // would be translating it after the tree was already built. readConfig
     // emits the warning; this only resolves the value, so it is not doubled.
     function effectiveInternalLabelsMode(c) {
-        if (c.internalLabelsAsConfidence !== undefined) {
-            return c.internalLabelsAsConfidence;
+        if (c.internalNumericLabels !== undefined) {
+            return c.internalNumericLabels;
         }
         if (c.nhConfidenceValuesAsInternalNames !== undefined) {
             return DEPRECATED_CONFIG.nhConfidenceValuesAsInternalNames
@@ -10081,7 +10081,7 @@ function (root, d3, forester, phyloXml) {
                 + ' data, config); the old trailing arguments were removed. The separate settings'
                 + ' bag and "nodeVisualizations" are gone (see launch()), and the two New Hampshire'
                 + ' parse option moved into the config as'
-                + ' "internalLabelsAsConfidence".');
+                + ' "internalNumericLabels".');
         }
         let c = config || {};
         let tree;

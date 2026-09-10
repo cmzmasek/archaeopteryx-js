@@ -4264,9 +4264,10 @@
      *
      * mode 'auto' (the default) is ALL-OR-NOTHING: every candidate label must
      * look like support, so a tree of real clade names is never touched.
-     * mode 'always' is PER-NODE and unbounded: every numeric label is promoted
-     * whatever its value, which is how a user forces a mixed tree (some clade
-     * names, some support) or an out-of-range scale. mode 'never' does nothing.
+     * mode 'confidence' is PER-NODE and unbounded: every numeric label is
+     * promoted whatever its value, which is how a user forces a mixed tree
+     * (some clade names, some support) or an out-of-range scale. mode 'label'
+     * does nothing -- the labels stay names.
      *
      * The ROOT is never promoted in any mode: a confidence belongs to the
      * branch ABOVE a node and the root has none, so a numeric label there is
@@ -4282,14 +4283,14 @@
      * silently vanishing). Deliberately does not touch display state itself.
      *
      * @param phy - the phylogeny
-     * @param mode - 'auto' | 'always' | 'never'
+     * @param mode - 'auto' | 'confidence' | 'label'
      * @returns {number} how many internal labels became confidences
      */
     forester.promoteInternalLabelsToConfidence = function (phy, mode) {
-        if (mode === 'never') {
+        if (mode === 'label') {
             return 0;
         }
-        if (mode !== 'always') {
+        if (mode !== 'confidence') {
             mode = 'auto';
         }
         let root = forester.getTreeRoot(phy);
@@ -4314,7 +4315,7 @@
             return (n.name.trim().length > 0 && isFinite(v)) ? v : null;
         });
         let chosen;
-        if (mode === 'always') {
+        if (mode === 'confidence') {
             // Per node: promote what parses, leave the rest alone.
             chosen = candidates.filter(function (n, i) {
                 return numeric[i] !== null;

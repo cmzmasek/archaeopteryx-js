@@ -95,18 +95,19 @@ consumers only see a change when a version is cut.
   scale — Archaeopteryx.js reads them as confidence values instead of node
   names, and shows them. A tree whose internal labels are real clade names is
   left untouched. The `nhConfidenceValuesAsInternalNames` config option is
-  replaced by `internalLabelsAsConfidence`: `'auto'` (the new default),
-  `'always'` (promote every numeric label, whatever its value) or `'never'`
-  (keep them as names). **If you were passing
-  `nhConfidenceValuesAsInternalNames: true`, the equivalent is `'always'` —
-  not `'auto'`.** The old key still works, with a console warning naming its
-  replacement. One deliberate difference: a numeric label on the ROOT is now
-  kept as a name rather than converted, since on a rooted Newick that trailing
-  label is usually the tree name. `nhConfidenceValuesInBrackets` is unchanged,
-  and it is no longer an error to combine the two.
+  replaced by `internalNumericLabels`: `'auto'` (the new default),
+  `'confidence'` (read every numeric label as one, whatever its value) or
+  `'label'` (keep them as names). **If you were passing
+  `nhConfidenceValuesAsInternalNames: true`, the equivalent is
+  `'confidence'` — not `'auto'`.** The old key still works, with a console
+  warning naming its replacement. One deliberate difference: a numeric label
+  on the ROOT is now kept as a name rather than converted, since on a rooted
+  Newick that trailing label is usually the tree name.
 
-  This rule is shared with the desktop Java Archaeopteryx and was designed
-  jointly with it; change it on both sides or neither.
+  The rule itself is shared with the desktop Java Archaeopteryx and was
+  designed jointly with it; change it on both sides or neither. Only the
+  naming differs: the desktop calls the three states Auto / Always / Never
+  in its Settings, where the row already supplies the verb.
 
 ### Performance
 
