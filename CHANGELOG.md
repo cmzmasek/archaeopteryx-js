@@ -10,6 +10,18 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **The horizontal axes float.** The geologic and calendar time axes and
+  the alignment's conservation / consensus / column-ruler strip used to be
+  part of the tree drawing: zoom in, pan up, and they left with it. They now
+  live on a layer of their own and are *sticky* — they sit at the tree's
+  bottom edge as before, and when that edge would leave the viewport they
+  hold at the bottom of the view instead, still x-aligned with the tree as
+  it pans. Each strip has an opaque backdrop with a top rule, so tips panned
+  under it do not show through. Exports re-anchor the strips to the tree, so
+  a figure never carries an artefact of where you were scrolled. (The
+  desktop pins its axes to the viewport bottom always; sticky is a chosen
+  difference.) Groundwork for the transform-based zoom to come.
+
 - **A guide line from each tip to its alignment row.** With the alignment
   track on, a faint dashed line now runs from the end of each tip's label —
   or from the node, when labels are hidden — across to that tip's row, so a

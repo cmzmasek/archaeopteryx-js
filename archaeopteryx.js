@@ -476,6 +476,14 @@ function (root, d3, forester, phyloXml) {
     let _searchBox1Empty = true;
     let _settings = null;   // fixed for the life of the launch; never written after init
     let _svgGroup = null;
+    // The floating layer: a sibling of _svgGroup that is NOT zoomed or
+    // panned. The bottom strips -- the time axis, the alignment's
+    // conservation/consensus/ruler -- are drawn into it in tree coordinates
+    // and placed by placeFloatingOverlays() from the current zoom transform,
+    // so they ride with the tree until their bottom would leave the viewport
+    // and then stick there. See floatStripGroup().
+    let _floatGroup = null;
+    let _floatStrips = {};                // class -> {top, height} in tree coordinates
     let _treeData = null;
     let _treeFn = null;
     let _vis = null;        // the automatic visualizations: candidates, scales, choices
@@ -1023,7 +1031,42 @@ function (root, d3, forester, phyloXml) {
 
     function zoom(event) {
         _svgGroup.attr('transform', event.transform);
+        placeFloatingOverlays();
         updateOverviewViewport();
+    }
+
+    // A strip in the floating layer. Drawn in TREE coordinates like everything
+    // else (its content is x-aligned with the tree), it is then placed by a
+    // transform of its own rather than the tree's -- the same x and scale, but
+    // a y that is STICKY: the strip rides at the tree's bottom edge until that
+    // edge would leave the viewport, and holds at the viewport bottom from
+    // there. Nothing changes while the whole tree fits; nothing disappears
+    // when it does not. `top` and `height` are the strip's extent in tree
+    // coordinates, which is all the placement needs.
+    function floatStripGroup(cls, top, height) {
+        _floatGroup.selectAll('g.' + cls).remove();
+        _floatStrips[cls] = {top: top, height: height};
+        return _floatGroup.append('g').attr('class', cls);
+    }
+
+    const FLOAT_STRIP_MARGIN = 6;   // px between a stuck strip and the viewport edge
+
+    function placeFloatingOverlays() {
+        if (!_floatGroup || !_baseSvg) {
+            return;
+        }
+        let t = d3.zoomTransform(_baseSvg.node());
+        let size = svgSize();
+        if (!size) {
+            return;
+        }
+        Object.keys(_floatStrips).forEach(function (cls) {
+            let s = _floatStrips[cls];
+            let stuckY = size.h - FLOAT_STRIP_MARGIN - (t.k * (s.top + s.height));
+            let ty = Math.min(t.y, stuckY);
+            _floatGroup.select('g.' + cls)
+                .attr('transform', 'translate(' + t.x + ',' + ty + ') scale(' + t.k + ')');
+        });
     }
 
     function centerNode(source, x, y) {
@@ -4454,6 +4497,10 @@ function (root, d3, forester, phyloXml) {
         populateSearchMenus();
 
         _svgGroup = _baseSvg.append('g');
+        // the floating strips paint over the tree and under the overview
+        _floatGroup = _baseSvg.append('g').attr('class', 'aptx-float')
+            .style('pointer-events', 'none');
+        _floatStrips = {};
         makeOverview(); // appended after the tree group, so it paints on top of it
 
         if (_settings.ladderizeTree) {
@@ -5551,6 +5598,10 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         _svgGroup.selectAll('g.aptx-msa').remove();
+        if (_floatGroup) {
+            _floatGroup.selectAll('g.aptx-msa-strip').remove();
+            delete _floatStrips['aptx-msa-strip'];
+        }
         if (!msaShown() || !_root) {
             _msaGeom = null;
             updateMsaScrollbar(0, 1, 0);
@@ -5748,8 +5799,13 @@ function (root, d3, forester, phyloXml) {
                 .style('pointer-events', 'none');
         }
 
+        // ---- conservation, consensus, ruler: a FLOATING strip ----
+        let strip = floatStripGroup('aptx-msa-strip', _clusterH, MSA_BOTTOM_RESERVE);
+        strip.append('rect').attr('x', Math.round(originX) - 2).attr('y', _clusterH)
+            .attr('width', trackW + 4).attr('height', MSA_BOTTOM_RESERVE)
+            .attr('fill', _state.backgroundColorDefault);
         let consTop = _clusterH + MSA_CONS_TOP_GAP;
-        g.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
+        strip.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
             .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
             .attr('fill', ink).attr('fill-opacity', 0.08);
         for (let i = 0; i < visible; ++i) {
@@ -5760,12 +5816,12 @@ function (root, d3, forester, phyloXml) {
             let bh = Math.max(1, Math.round(score * MSA_CONS_BAR_H));
             let x0 = Math.round(originX + (i * cw));
             let x1 = Math.round(originX + ((i + 1) * cw));
-            g.append('rect').attr('x', x0).attr('y', (consTop + MSA_CONS_BAR_H) - bh)
+            strip.append('rect').attr('x', x0).attr('y', (consTop + MSA_CONS_BAR_H) - bh)
                 .attr('width', Math.max(1, x1 - x0)).attr('height', bh)
                 .attr('fill', ink).attr('fill-opacity', 0.7);
         }
         if (trackW > 170) {
-            g.append('text').attr('x', Math.round(originX) + trackW - 3).attr('y', consTop + 9)
+            strip.append('text').attr('x', Math.round(originX) + trackW - 3).attr('y', consTop + 9)
                 .attr('text-anchor', 'end')
                 .style('font-size', '8px').style('fill', ink).style('fill-opacity', 0.9)
                 .text('Consensus identity (n = ' + n + ')');
@@ -5777,7 +5833,7 @@ function (root, d3, forester, phyloXml) {
                 if (!cc) {
                     continue;
                 }
-                g.append('text').attr('x', Math.round(originX + (i * cw)) + (cw / 2))
+                strip.append('text').attr('x', Math.round(originX + (i * cw)) + (cw / 2))
                     .attr('y', consTop + MSA_CONS_BAR_H + 10)
                     .attr('text-anchor', 'middle')
                     .style('font-family', 'monospace').style('font-size', '8px')
@@ -5789,7 +5845,7 @@ function (root, d3, forester, phyloXml) {
         // the 1-based column ruler: absolute column numbers at nice steps,
         // and always the first and last column when their edge is in view
         let rulerY = consTop + MSA_CONS_BAR_H + (consensusRow ? 13 : 3);
-        g.append('line').attr('x1', Math.round(originX)).attr('x2', Math.round(originX) + trackW)
+        strip.append('line').attr('x1', Math.round(originX)).attr('x2', Math.round(originX) + trackW)
             .attr('y1', rulerY).attr('y2', rulerY)
             .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
         let lastRight = -Infinity;
@@ -5799,12 +5855,12 @@ function (root, d3, forester, phyloXml) {
                 return;
             }
             let x = Math.round(originX + (i * cw)) + (cw / 2);
-            g.append('line').attr('x1', x).attr('x2', x).attr('y1', rulerY).attr('y2', rulerY + 4)
+            strip.append('line').attr('x1', x).attr('x2', x).attr('y1', rulerY).attr('y2', rulerY + 4)
                 .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
             let label = String(c);
             let half = label.length * 2.8;
             if (force || (x - half) >= (lastRight + 4)) {
-                g.append('text').attr('x', x).attr('y', rulerY + 14).attr('text-anchor', 'middle')
+                strip.append('text').attr('x', x).attr('y', rulerY + 14).attr('text-anchor', 'middle')
                     .style('font-size', '9px').style('fill', ink)
                     .text(label);
                 lastRight = x + half;
@@ -5842,6 +5898,7 @@ function (root, d3, forester, phyloXml) {
             bounds: bounds, tips: tips, isNuc: isNuc
         };
         updateMsaScrollbar(offset, visible, total);
+        placeFloatingOverlays();
     }
 
     // The dedicated column scroller: a fixed HTML range input at the window
@@ -6111,6 +6168,10 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         _svgGroup.selectAll('g.aptx-time').remove();
+        if (_floatGroup) {
+            _floatGroup.selectAll('g.aptx-time-axis').remove();
+            delete _floatStrips['aptx-time-axis'];
+        }
         _svgGroup.selectAll('g.aptx-timegrid').remove();
         if (!timeAxisShown() || !_root || !_yScale) {
             return;
@@ -6202,6 +6263,19 @@ function (root, d3, forester, phyloXml) {
             }
         });
 
+        // ---- the axis itself: a FLOATING strip (see floatStripGroup) ----
+        let ax = floatStripGroup('aptx-time-axis', axisTop - 4, timeAxisBottomReserve() + 4);
+        function axisBackdrop(x0, x1) {
+            // opaque, in the background colour, so tips panned under the
+            // strip do not show through between the bands and the ruler
+            let left = Math.min(x0, x1);
+            ax.append('rect').attr('x', left - 2).attr('y', axisTop - 4)
+                .attr('width', Math.abs(x1 - x0) + 4).attr('height', timeAxisBottomReserve() + 4)
+                .attr('fill', _state.backgroundColorDefault);
+            ax.append('line').attr('x1', left - 2).attr('x2', left - 2 + Math.abs(x1 - x0) + 4)
+                .attr('y1', axisTop - 4).attr('y2', axisTop - 4)
+                .attr('stroke', ink).attr('stroke-opacity', 0.25).attr('stroke-width', 1);
+        }
         if (info.type === 'geologic') {
             let rootAge = info.rootAge;
             if (!(rootAge > 0)) {
@@ -6215,6 +6289,7 @@ function (root, d3, forester, phyloXml) {
             let youngBound = Math.max(0, anchorAge - ((maxTipX - anchorX) / corr));
             // both bounds: a fossil-only clade spans [youngest tip, root],
             // and a narrow window bands Series over Stage
+            axisBackdrop(xOfAge(rootAge), xOfAge(youngBound));
             let ranks = forester.geoBandRanks(youngBound, rootAge);
             if (grid) {
                 // the FINE rank's old-side boundaries, root and tip edges
@@ -6238,12 +6313,12 @@ function (root, d3, forester, phyloXml) {
                     if (w <= 0) {
                         continue;
                     }
-                    g.append('rect').attr('x', left).attr('y', rowY)
+                    ax.append('rect').attr('x', left).attr('y', rowY)
                         .attr('width', w).attr('height', TIME_BAND_ROW_H)
                         .attr('fill', iv.color)
                         .attr('stroke', ink).attr('stroke-opacity', 0.5).attr('stroke-width', 0.5);
                     if ((iv.name.length * 5.5) + 4 <= w) {
-                        g.append('text').attr('x', left + (w / 2)).attr('y', rowY + TIME_BAND_ROW_H - 3.5)
+                        ax.append('text').attr('x', left + (w / 2)).attr('y', rowY + TIME_BAND_ROW_H - 3.5)
                             .attr('text-anchor', 'middle')
                             .style('font-size', '9px')
                             .style('fill', forester.msaLetterInk(hexToRgbTriple(iv.color)))
@@ -6253,7 +6328,7 @@ function (root, d3, forester, phyloXml) {
             }
             // the "Ma before present" ruler
             let rulerY = axisTop + (2 * TIME_BAND_ROW_H) + 4;
-            g.append('line').attr('x1', xOfAge(rootAge)).attr('x2', xOfAge(youngBound))
+            ax.append('line').attr('x1', xOfAge(rootAge)).attr('x2', xOfAge(youngBound))
                 .attr('y1', rulerY).attr('y2', rulerY)
                 .attr('stroke', ink).attr('stroke-width', 1);
             let labels = [];
@@ -6273,7 +6348,7 @@ function (root, d3, forester, phyloXml) {
             let placed = [];
             labels.forEach(function (l) {
                 let x = xOfAge(l.age);
-                g.append('line').attr('x1', x).attr('x2', x)
+                ax.append('line').attr('x1', x).attr('x2', x)
                     .attr('y1', rulerY).attr('y2', rulerY + 4)
                     .attr('stroke', ink).attr('stroke-width', 1);
                 let text = String(l.age);
@@ -6286,14 +6361,14 @@ function (root, d3, forester, phyloXml) {
                     }
                 }
                 if (ok || l.priority > 0) {
-                    g.append('text').attr('x', x).attr('y', rulerY + 14)
+                    ax.append('text').attr('x', x).attr('y', rulerY + 14)
                         .attr('text-anchor', 'middle')
                         .style('font-size', '9px').style('fill', ink)
                         .text(text);
                     placed.push(x);
                 }
             });
-            g.append('text').attr('x', xOfAge(youngBound) + 8).attr('y', rulerY + 14)
+            ax.append('text').attr('x', xOfAge(youngBound) + 8).attr('y', rulerY + 14)
                 .attr('text-anchor', 'start')
                 .style('font-size', '9px').style('fill', ink)
                 .text('Ma');
@@ -6319,20 +6394,21 @@ function (root, d3, forester, phyloXml) {
                     }
                 });
             }
+            axisBackdrop(xOfYear(rootYear), xOfYear(present));
             let rulerY = axisTop + 4;
-            g.append('line').attr('x1', xOfYear(rootYear)).attr('x2', xOfYear(present))
+            ax.append('line').attr('x1', xOfYear(rootYear)).attr('x2', xOfYear(present))
                 .attr('y1', rulerY).attr('y2', rulerY)
                 .attr('stroke', ink).attr('stroke-width', 1);
             let lastRight = -Infinity;
             forester.calendarTickYears(rootYear, present).forEach(function (yv) {
                 let x = xOfYear(yv);
-                g.append('line').attr('x1', x).attr('x2', x)
+                ax.append('line').attr('x1', x).attr('x2', x)
                     .attr('y1', rulerY).attr('y2', rulerY + 4)
                     .attr('stroke', ink).attr('stroke-width', 1);
                 let text = String(Math.round(yv));
                 let half = text.length * 2.8;
                 if ((x - half) >= lastRight + 4) {
-                    g.append('text').attr('x', x).attr('y', rulerY + 14)
+                    ax.append('text').attr('x', x).attr('y', rulerY + 14)
                         .attr('text-anchor', 'middle')
                         .style('font-size', '9px').style('fill', ink)
                         .text(text);
@@ -6340,6 +6416,7 @@ function (root, d3, forester, phyloXml) {
                 }
             });
         }
+        placeFloatingOverlays();
     }
 
     function timeAxisCbClicked() {
@@ -9654,6 +9731,15 @@ function (root, d3, forester, phyloXml) {
             if (glow) {
                 glow.remove();
             }
+            // The floating strips re-anchor to the TREE for export: on screen
+            // a strip may be stuck at the viewport bottom, but a figure must
+            // not carry an artefact of where the user happened to be scrolled
+            // -- the axis belongs at the bottom of the tree. (As the desktop
+            // does for PDF and graphics export.)
+            let t = d3.zoomTransform(svg);
+            copy.querySelectorAll('.aptx-float > g').forEach(function (strip) {
+                strip.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + t.k + ')');
+            });
             svgTree = toLightExport((new XMLSerializer()).serializeToString(copy));
         } else if (typeof svg.xml !== 'undefined') {
             svgTree = svg.xml;
