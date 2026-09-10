@@ -595,7 +595,6 @@
         }
     }
 
-
     function inBranchColor(text) {
         if (getCurrentTag() === COLOR_RED) {
             getCurrentObject().red = parseIntNumber(text);
@@ -947,7 +946,6 @@
         if (currentTag === ACCESSION) {
             inAccession(text);
         }
-
         else if (currentTag === CONFIDENCE) {
             inConfidence(text);
         }
@@ -1375,7 +1373,24 @@
         function openPhyloXml() {
             ind = '';
             x += '<?xml version="1.0" encoding="UTF-8"?>\n';
-            x += '<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">\n';
+            // No xsi:schemaLocation hint. It used to point at
+            // http://www.phyloxml.org/1.20/phyloxml.xsd, and phyloxml.org
+            // lapsed: the domain is held by an unrelated party now, so a tool
+            // that honours the hint and fetches it reaches whatever they
+            // serve. The hint was never needed to read a file -- it is advice
+            // to a validator about where a schema MIGHT live, not part of the
+            // format -- so writing it is a pointer to somewhere we no longer
+            // control for no benefit.
+            //
+            // The NAMESPACE below is deliberately unchanged. It happens to
+            // look like a URL but it is an opaque identifier, it is in every
+            // phyloXML file in existence, and nothing dereferences it.
+            // Changing it would break the format rather than protect anyone.
+            //
+            // Files that still CARRY the hint must keep parsing -- every
+            // phyloXML file written before 2026-09-10 has one. The parser
+            // ignores it either way; see the round-trip test.
+            x += '<phyloxml xmlns="http://www.phyloxml.org">\n';
         }
 
         function closePhyloXml() {
