@@ -78,6 +78,10 @@ consumers only see a change when a version is cut.
 
 ### Changed
 
+- **The overview pane is about 20% larger** — 142 × 111 rather than 118 × 92,
+  keeping its proportions. The miniature is what it is useful for, and it was
+  small for a big tree.
+
 - **`nhConfidenceValuesInBrackets` is retired.** It gated whether `[95]`
   after a node is read as a confidence — but setting it `false` never
   reinterpreted the bracket, it *discarded* it, so the option's only power

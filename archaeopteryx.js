@@ -609,8 +609,8 @@ function (root, d3, forester, phyloXml) {
     // at. It appears and disappears on its own -- there is nothing to switch on.
     // Clicking or dragging inside it moves the main view there.
 
-    const OVERVIEW_WIDTH = 118;
-    const OVERVIEW_HEIGHT = 92;
+    const OVERVIEW_WIDTH = 142;
+    const OVERVIEW_HEIGHT = 111;
     const OVERVIEW_MARGIN = 12;
     const OVERVIEW_PAD = 5;
 
