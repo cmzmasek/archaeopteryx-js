@@ -6,6 +6,90 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.2.0 — 2026-09-10
+
+A tree I/O release. Saving a tree and opening it again used to lose tip
+names, sometimes silently and sometimes destructively; it no longer does.
+Every change here was designed and verified jointly with the desktop Java
+Archaeopteryx (0.11.141 / 0.11.142), so the two programs now read and write
+the same tokens for the same names.
+
+### Fixed
+
+- **Saving a tree no longer damages its tip names.** Both writers mapped
+  every space, comma, parenthesis, bracket, colon, semicolon and quote in a
+  label to `_`, and no reader can undo that: a tip named `Cooper's Hawk` was
+  written `Cooper_s_Hawk` and came back that way. Labels are quoted now
+  instead. Round-tripping every tree in the project's own corpus through
+  Nexus and back, **28 of 49 trees lost at least one tip name before this
+  release; none do now.** Real cases fixed include `Cote d'Ivoire`,
+  `Anas_platyrhynchos_(mallard)` and `Aves (modern birds)`.
+
+- **A Nexus tree could come back with duplicated tips.** A bare integer tip
+  name was treated as an index into `TAXLABELS` whenever that one number
+  happened to be in range, decided tip by tip. Against six labels,
+  `((a,b,c),(1,2,3))` returned a tree whose every tip was a duplicate of
+  another — and it still parsed and still rendered, so nothing announced it.
+  A numeric tip is now an index only when the WHOLE tree reads as index
+  references: every tip a bare integer and every one of them in range. One
+  out-of-range index leaves the tree alone instead of half-renaming it.
+
+- **Apostrophes survive a quoted label.** Nexus and Newick escape a literal
+  quote inside a quoted token by doubling it. Every reader stripped the
+  quotes instead of un-doubling them, so `'Seba''s bat'` came back as
+  `Sebas bat` rather than `Seba's bat`. Fixed in all four places a label is
+  read: `TAXLABELS`, `TRANSLATE`, the tree name, and the Newick scanner.
+
+- **An unquoted apostrophe no longer swallows the rest of the line.** In a
+  `TAXLABELS` block, a bare `O'Neil` opened a quoted run that ran past the
+  terminating `;`, merging every remaining label into one and leaving the
+  other tips as bare numbers. A quote now opens a run only at a token
+  boundary.
+
+- **A phyloXML file carrying extension elements from another namespace no
+  longer fails to open.** phyloXML permits them and puts them last; the
+  reader had a hardcoded handler for one such element that assumed a
+  position the schema does not allow, and threw at the position it requires.
+
+### Changed
+
+- **Label shortening now strips a prefix shared by most tips, not all of
+  them.** The old rule took the longest prefix common to every tip, so a
+  handful of oddly-named tips vetoed shortening for the rest: on a 13,246-tip
+  influenza tree, 13,096 tips share a 51-character prefix, but 0.8% of them
+  held it back and nothing was stripped at all. The threshold is 95%, chosen
+  jointly with the desktop and identical in both programs. On the project's
+  corpus the prefix step now fires on 20 of 48 trees where it fired on 5.
+  Tips that do not carry the prefix keep their full names, as before.
+
+- **Written labels are quoted rather than transliterated.** A name holding an
+  apostrophe is written in double quotes; one holding a double quote, or any
+  of `( ) , ; : [ ]` or whitespace, in single quotes; anything else bare.
+  This is the desktop's rule, shared by the Nexus and Newick writers here as
+  it is there, so the two formats cannot drift apart. A name carrying BOTH
+  quote styles is still lossy — its apostrophes become backticks, because no
+  quote character is left to wrap it in — and the desktop does the same.
+
+- **`forester.toNewHampshire`'s `replaceChars` argument is retired** and now
+  ignored. Its only effect was the lossy `_` substitution described above.
+  It remains in the signature so positional callers keep working.
+
+### Maintenance
+
+- **All Dependabot alerts resolved: 32 to 0.** Every one was a ghost of the
+  pre-3.0.0 dependency set — `package.json` had been correct since the
+  modernization but `package-lock.json` was never regenerated, and still
+  described version 2.3.2 with canvg 1.5.3 (which pulled jsdom, request,
+  form-data, tough-cookie, qs, uuid and xmldom), jQuery, jQuery UI, and d3
+  pinned at v3. npm consumers were never exposed: the package ships five
+  files with no bundled dependencies, and the published tarball is unchanged.
+
+- **The project's phyloXML test fixtures are now schema-valid.** Four of the
+  26 were rejected outright by a validating parser, so they could not be used
+  as shared evidence with the desktop. Four kinds of defect across 127
+  places; the non-phyloXML extension elements they carry were kept, moved
+  into their own namespace rather than deleted.
+
 ## 3.1.0 — 2026-09-09
 
 ### Added
