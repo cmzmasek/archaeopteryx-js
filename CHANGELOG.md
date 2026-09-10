@@ -6,6 +6,19 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.2.1 — 2026-09-10
+
+### Fixed
+
+- **The program reports its own version correctly again.** 3.2.0 shipped with
+  the `VERSION` constant still reading `3.1.0`: the release bumped
+  `package.json` and both file headers and missed the constant, which is the
+  one a user actually sees — in the About dialog and on the control-panel
+  button. No behaviour was affected, but 3.2.0 installed from npm names itself
+  3.1.0, and npm versions cannot be corrected in place. This release exists to
+  fix that. `npm test` now asserts that `package.json`, the `VERSION` constant
+  and both `// v X.Y.Z` headers agree, so it cannot happen again.
+
 ## 3.2.0 — 2026-09-10
 
 A tree I/O release. Saving a tree and opening it again used to lose tip
