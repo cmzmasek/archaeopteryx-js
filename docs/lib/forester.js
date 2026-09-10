@@ -3115,16 +3115,55 @@
     };
 
 
+    // How a label is written into Newick or Nexus, ported from the desktop's
+    // ForesterUtil.santitizeStringForNH so both programs emit the same token
+    // for the same name. Quoting rather than transliterating is what makes a
+    // save-and-reopen lossless: the previous rule mapped every quote, comma,
+    // paren and space to '_', which no reader can undo, so a tip named
+    // "Cooper's Hawk" came back "Cooper_s_Hawk".
+    //
+    // The one case that still loses information is a name carrying BOTH quote
+    // styles: there is no quote character left to wrap it in, so the
+    // apostrophes become backticks. The desktop does the same, deliberately;
+    // that case is a JOINT open item and is NOT to be fixed on one side.
+    //
+    // Note the asymmetry with the READER: a doubled '' is how a quote is
+    // escaped INSIDE a quoted token, and our reader un-doubles it, but neither
+    // writer produces that form -- both sidestep it by switching quote style.
+    // Reading a form you do not write is intentional here.
+    function sanitizeLabelForNH(s) {
+        let t = String(s).replace(/\s+/g, ' ').trim();
+        let hasSingle = t.indexOf("'") > -1;
+        let hasDouble = t.indexOf('"') > -1;
+        if (hasSingle && hasDouble) {
+            return "'" + t.replace(/'/g, '`') + "'";
+        }
+        if (hasSingle) {
+            return '"' + t + '"';
+        }
+        if (hasDouble || /[\s,():;[\]]/.test(t)) {
+            return "'" + t + "'";
+        }
+        return t;
+    }
+
     /**
      * To convert a phylogentic tree object to a New Hampshire (Newick) formatted string.
      *
      * @param phy - A phylogentic tree object.
      * @param decPointsMax - Maximal number of decimal points for branch lengths (optional)
-     * @param replaceChars - To replace illegal characters (),:;"' instead of surrounding with quotation marks
+     * @param replaceChars - RETIRED 2026-09-10 and ignored. It used to map
+     *        every space, comma, paren, colon, semicolon, bracket and quote to
+     *        '_', which no reader can undo: a tip named "Cooper's Hawk" was
+     *        written Cooper_s_Hawk and came back that way. Labels are now
+     *        always quoted instead, by the same rule the desktop uses, so a
+     *        save-and-reopen keeps the name. The parameter is still accepted
+     *        so positional callers keep working.
      * @param writeConfidences - to write confidence values in brackets
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
     forester.toNewHampshire = function (phy, decPointsMax, replaceChars, writeConfidences) {
+        void replaceChars; // retired: see the note above; labels are always quoted now
         let nh = "";
         if (phy.children && phy.children.length === 1) {
             toNewHampshireHelper(phy.children[0], true);
@@ -3151,22 +3190,7 @@
                 nh += ")";
             }
             if (node.name && node.name.length > 0) {
-                if (replaceChars === true) {
-                    nh += replaceUnsafeChars(node.name);
-                } else {
-                    let myName = node.name.replace(/\s+/g, ' ');
-                    if (/[\s,():;'"[\]]/.test(myName)) {
-                        if ((myName.indexOf('"') > -1) && (myName.indexOf("'") > -1)) {
-                            nh += '"' + myName.replace(/"/g, "'") + '"';
-                        } else if (myName.indexOf('"') > -1) {
-                            nh += "'" + myName + "'";
-                        } else {
-                            nh += '"' + myName + '"';
-                        }
-                    } else {
-                        nh += myName;
-                    }
-                }
+                nh += sanitizeLabelForNH(node.name);
             }
             if (node.branch_length !== undefined && node.branch_length !== null) {
                 if (decPointsMax && decPointsMax > 0) {
@@ -3187,9 +3211,6 @@
             }
         }
 
-        function replaceUnsafeChars(str) {
-            return str.replace(/[\s,():;'"[\]]+/g, '_');
-        }
     };
 
     // Writes a phylogeny as a Nexus-formatted string, ported from the
@@ -3201,11 +3222,16 @@
     // carrying the tree and its alignment in one file is the point of Nexus,
     // and parseNexus reads the alignment back onto the tips.
     forester.toNexus = function (phy, decPointsMax, writeConfidences) {
-        // the same replacement toNewHampshire applies, so the TaxLabels and
-        // Matrix labels match the tree's tip tokens exactly
-        function safeLabel(s) {
-            return s.replace(/[\s,():;'"[\]]+/g, '_');
-        }
+        // The TaxLabels tokens, the Matrix row labels and the tree's tip
+        // tokens must be byte-identical or nothing can join them back up, so
+        // all three go through sanitizeLabelForNH -- the same helper
+        // toNewHampshire writes the tree with.
+        //
+        // nexusLabel returns the label UNQUOTED, because it is also assigned
+        // to node.name for a nameless tip and toNewHampshire quotes it again
+        // on the way out. The old '_' substitution was idempotent so applying
+        // it twice was harmless; quoting is not, and would emit "'a b'"
+        // wrapped in quotes a second time.
 
         // label preference as on the desktop: name, then taxonomy
         // (code/scientific/common), then sequence (name/symbol/gene)
@@ -3223,7 +3249,7 @@
             if (!s) {
                 s = 'node' + (i + 1); // an empty TaxLabels token would not parse back
             }
-            return safeLabel(s);
+            return s;
         }
 
         let ext = forester.getAllExternalNodes(phy).reverse();
@@ -3243,7 +3269,7 @@
         s += ' Dimensions NTax=' + ext.length + ';\n';
         s += ' TaxLabels';
         ext.forEach(function (node, i) {
-            s += ' ' + nexusLabel(node, i);
+            s += ' ' + sanitizeLabelForNH(nexusLabel(node, i));
         });
         s += ';\n';
         s += 'End;\n';
@@ -3258,7 +3284,7 @@
             for (let j = 0; j < node.sequences.length; ++j) {
                 let q = node.sequences[j];
                 if (q.mol_seq && q.mol_seq.is_aligned && q.mol_seq.value) {
-                    rows.push({label: nexusLabel(node, i), value: q.mol_seq.value});
+                    rows.push({label: sanitizeLabelForNH(nexusLabel(node, i)), value: q.mol_seq.value});
                     nchar = Math.max(nchar, q.mol_seq.value.length);
                     if (!datatype && (q.type === 'protein' || q.type === 'dna' || q.type === 'rna')) {
                         datatype = q.type;
@@ -3293,8 +3319,10 @@
         }
 
         s += 'Begin Trees;\n';
-        let treeName = phy.name ? String(phy.name).replace(/['"]+/g, '').trim() : '';
-        s += ' Tree ' + (treeName ? ("'" + treeName + "'") : 'tree1') + '=';
+        // the tree name was stripped of its quotes for the same reason the tip
+        // names were transliterated, and loses an apostrophe the same way
+        let treeName = phy.name ? String(phy.name).trim() : '';
+        s += ' Tree ' + (treeName ? sanitizeLabelForNH(treeName) : 'tree1') + '=';
         s += (phy.rooted === false) ? '[&U]' : '[&R]';
         let nh = forester.toNewHampshire(phy, decPointsMax, true, writeConfidences);
         renamed.forEach(function (node) {

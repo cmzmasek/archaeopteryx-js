@@ -80,6 +80,7 @@ runTest("Nexus numeric tips         : ", testNexusNumericTips);
 runTest("Common name prefix         : ", testCommonNamePrefix);
 runTest("Nexus un-doubling          : ", testNexusUnquoting);
 runTest("phyloXML foreign namespace : ", testPhyloXmlForeignNamespace);
+runTest("label quoting on write    : ", testLabelQuotingOnWrite);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -727,7 +728,9 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy11) !== nh11) {
         return false;
     }
-    if (forester.toNewHampshire(phy12) !== nh12) {
+    // read with double-quoted labels, written with single-quoted ones: the
+    // shared rule reserves double quotes for a name holding an apostrophe
+    if (forester.toNewHampshire(phy12) !== nh12.replace(/"/g, "'")) {
         return false;
     }
     if (forester.toNewHampshire(phy13) !== nh13) {
@@ -736,13 +739,18 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy14) !== nh14) {
         return false;
     }
-    if (forester.toNewHampshire(phy15) !== nh15) {
+    // double-quoted on the way in, single-quoted on the way out: nh15 and
+    // nh16 are the same three labels written the two ways, and the shared
+    // rule always emits the nh16 form for a name with no apostrophe in it
+    if (forester.toNewHampshire(phy15) !== nh16) {
         return false;
     }
-    if (forester.toNewHampshire(phy16, 8, true, true) !== '(a_a,b_b,c_c);') {
+    // the retired replaceChars argument no longer transliterates: both calls
+    // go through the one shared rule and quote the space instead
+    if (forester.toNewHampshire(phy16, 8, true, true) !== nh16) {
         return false;
     }
-    if (forester.toNewHampshire(phy16) !== '("a a","b b","c c");') {
+    if (forester.toNewHampshire(phy16) !== nh16) {
         return false;
     }
     if (forester.toNewHampshire(phy17, 8, true, true) !== nh17) {
@@ -817,7 +825,8 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy21, 8, true, true) !== t21) {
         return false;
     }
-    var t22 = '((((((a,b)ab:3[2],c_z_):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];';
+    // c[z] is quoted now rather than transliterated to c_z_
+    var t22 = "((((((a,b)ab:3[2],'c[z]'):12[100],(d,e)de)abcde:13[2],f):14[0]):0[0]):0[0];";
     if (forester.toNewHampshire(phy22, 8, true, true) !== t22) {
         return false;
     }
@@ -884,7 +893,10 @@ function testNewHampshire2() {
     }
 
     var nh00 = "(b    '' \"\" ][x);";
-    var nh00r = "(b_x);";
+    // replaceChars (the 4th argument) is retired: labels are quoted now
+    // rather than transliterated to '_', which is what makes a
+    // save-and-reopen keep the name. Both writers use the one rule.
+    var nh00r = "('b][x');";
     var phy00 = forester.parseNewHampshire(nh00);
     if (forester.toNewHampshire(phy00, 4, true, true) !== nh00r) {
         console.log(forester.toNewHampshire(phy00, 4, true, true));
@@ -900,7 +912,9 @@ function testNewHampshire2() {
     }
 
     var nh2 = "(a,\"b:,;()q\");";
-    var nh2r = "(a,\"b:,;()q\");";
+    // single quotes, not double: the desktop reserves double quotes for a
+    // name that itself contains an apostrophe
+    var nh2r = "(a,'b:,;()q');";
     var phy2 = forester.parseNewHampshire(nh2);
     if (forester.toNewHampshire(phy2) !== nh2r) {
         console.log(forester.toNewHampshire(phy2));
@@ -908,7 +922,7 @@ function testNewHampshire2() {
     }
 
     var nh3 = '(A,x"y)z",e);';
-    var nh3r = '(A,"xy)z",e);';
+    var nh3r = "(A,'xy)z',e);";
     var phy3 = forester.parseNewHampshire(nh3);
     if (forester.toNewHampshire(phy3) !== nh3r) {
         console.log(forester.toNewHampshire(phy3));
@@ -916,7 +930,7 @@ function testNewHampshire2() {
     }
 
     var nh4 = '(a,"x)y"z,e);';
-    var nh4r = '(a,"x)yz",e);';
+    var nh4r = "(a,'x)yz',e);";
     var phy4 = forester.parseNewHampshire(nh4);
     if (forester.toNewHampshire(phy4) !== nh4r) {
         console.log(forester.toNewHampshire(phy4));
@@ -941,7 +955,10 @@ function testNewHampshire2() {
     }
 
     var nh102 = " ( a     a     , '  b  :  , ; (   )           q          ');";
-    var nh102r = "(aa,\" b : , ; ( ) q \");";
+    // whitespace runs collapse to one space AND the name is trimmed, per
+    // the shared rule; the surrounding quotes are single for the same
+    // reason as above
+    var nh102r = "(aa,'b : , ; ( ) q');";
     var phy102 = forester.parseNewHampshire(nh102);
     if (forester.toNewHampshire(phy102) !== nh102r) {
         console.log(forester.toNewHampshire(phy102));
@@ -949,7 +966,7 @@ function testNewHampshire2() {
     }
 
     var nh103 = '(A,x \'  y)z \', e) ;';
-    var nh103r = '(A,"x y)z ",e);';
+    var nh103r = "(A,'x y)z',e);";
     var phy103 = forester.parseNewHampshire(nh103);
     if (forester.toNewHampshire(phy103) !== nh103r) {
         console.log(forester.toNewHampshire(phy103));
@@ -957,7 +974,7 @@ function testNewHampshire2() {
     }
 
     var nh104 = ' ( a , \'  x)y  \' z , e ) ; ';
-    var nh104r = '(a," x)y z",e);';
+    var nh104r = "(a,'x)y z',e);";
     var phy104 = forester.parseNewHampshire(nh104);
     if (forester.toNewHampshire(phy104) !== nh104r) {
         console.log(forester.toNewHampshire(phy104));
@@ -1014,7 +1031,7 @@ function testNewHampshire2() {
 
 
     var nh502 = '(a,b)" a : b " [ 78. 01 0 ];';
-    var nh502r = '(a,b)" a : b "[78.01];';
+    var nh502r = "(a,b)'a : b'[78.01];";
     var phy502 = forester.parseNewHampshire(nh502);
     if (forester.toNewHampshire(phy502, 8, false, true) !== nh502r) {
         console.log(forester.toNewHampshire(phy502, 8, false, true));
@@ -1022,7 +1039,9 @@ function testNewHampshire2() {
     }
 
     var nh501 = '((((("a" : 1,"b,\'":2)A\'a, :)b\'B:3[99.0] , (\'c[C C]\',"d")c":"d[12.0])"abc:d"[78.0] ,((e:2,f,g,"I would (be), illegal;")e\'\'fg[23.0],h)[12.0])"A:x":12[99.0],i),j\'(\')"r\'";';
-    var nh501r = '(((((a:1,"b,\'":2)"Aa, :)bB":3[99],("c[C C]",d)"c:d"[12])"abc:d"[78],((e:2,f,g,"I would (be), illegal;")efg[23],h)[12])"A:x":12[99],i),"j(")"r\'";';
+    // double quotes ONLY where the name itself holds an apostrophe ("b,'"
+    // and "r'"), single quotes everywhere else: the shared rule in one line
+    var nh501r = '(((((a:1,"b,\'":2)\'Aa, :)bB\':3[99],(\'c[C C]\',d)\'c:d\'[12])\'abc:d\'[78],((e:2,f,g,\'I would (be), illegal;\')efg[23],h)[12])\'A:x\':12[99],i),\'j(\')"r\'";';
     var phy501 = forester.parseNewHampshire(nh501);
     var phy501nh = forester.toNewHampshire(phy501, 8, false, true);
     if (phy501nh !== nh501r) {
@@ -1166,7 +1185,7 @@ function testNexusParse() {
         return false;
     }
     if (forester.toNewHampshire(phy) !==
-        '((Homo_sapiens:0.1,"Mus musculus":0.2):0.3,(Rattus:0.4,Gallus:0.5):0.6);') {
+        "((Homo_sapiens:0.1,'Mus musculus':0.2):0.3,(Rattus:0.4,Gallus:0.5):0.6);") {
         console.log(forester.toNewHampshire(phy));
         return false;
     }
@@ -1216,9 +1235,9 @@ function testNexusRoundTrip() {
     if (back.name !== phy.name || back.rooted !== true) {
         return false;
     }
-    // toNexus writes safe-character labels ('Mus musculus' becomes
-    // Mus_musculus) -- in Nexus '_' and ' ' are the same character, so the
-    // round trip is compared through that same replacement
+    // toNexus quotes labels rather than transliterating them, so the round
+    // trip is LOSSLESS: 'Mus musculus' comes back with its space, not as
+    // Mus_musculus. Both writers share one rule, so the two agree exactly.
     if (forester.toNewHampshire(back) !== forester.toNewHampshire(phy, 0, true)) {
         console.log(forester.toNewHampshire(back));
         return false;
@@ -1229,7 +1248,7 @@ function testNexusRoundTrip() {
         return false;
     }
     for (var i = 0; i < a.length; ++i) {
-        if (b[i].name !== a[i].name.replace(/ /g, "_")
+        if (b[i].name !== a[i].name
             || !b[i].sequences || b[i].sequences.length !== 1
             || b[i].sequences[0].type !== "protein"
             || b[i].sequences[0].mol_seq.value !== a[i].sequences[0].mol_seq.value) {
@@ -2024,4 +2043,72 @@ function testPhyloXmlForeignNamespace() {
     // dispatcher with nothing on the object stack -- without the guard this
     // throws rather than returning a tree.
     return tips(parse('  <name>stray</name>\n')) === 'A|B';
+}
+
+// How a label is WRITTEN. Both writers share one rule, ported from the
+// desktop, and it quotes rather than transliterating: the old rule mapped
+// every space, comma, paren and quote to '_', which no reader can undo, so a
+// tip named "Cooper's Hawk" was saved as Cooper_s_Hawk and came back that way.
+// 28 of the 49 real trees in this repo lost a tip name to that; none do now.
+function testLabelQuotingOnWrite() {
+    var SQ = String.fromCharCode(39);
+    var DQ = String.fromCharCode(34);
+    function withTip(name) {
+        var t = forester.parseNewHampshire('(X:1,Homo:1);');
+        forester.getAllExternalNodes(t).forEach(function (n) {
+            if (n.name === 'X') { n.name = name; }
+        });
+        return t;
+    }
+    function roundTrip(name) {
+        var back = forester.getAllExternalNodes(forester.parseNexus(forester.toNexus(withTip(name)))[0])
+            .map(function (n) { return n.name; });
+        return back.indexOf(name) > -1;
+    }
+    function written(name) {
+        return forester.toNewHampshire(withTip(name));
+    }
+    // an apostrophe means DOUBLE quotes, and survives the round trip
+    if (written('Seba' + SQ + 's bat') !== '("Seba' + SQ + 's bat":1,Homo:1);') {
+        return false;
+    }
+    if (!roundTrip('Cooper' + SQ + 's Hawk')) {
+        return false;
+    }
+    // a double quote means SINGLE quotes
+    if (written('Seba' + DQ + 's bat') !== "('Seba" + DQ + "s bat':1,Homo:1);") {
+        return false;
+    }
+    if (!roundTrip('Seba' + DQ + 's bat')) {
+        return false;
+    }
+    // anything else needing quotes takes single ones; a plain name stays bare
+    if (written('a b, c') !== "('a b, c':1,Homo:1);" || written('plain') !== '(plain:1,Homo:1);') {
+        return false;
+    }
+    if (!roundTrip('Anas_platyrhynchos_(mallard)') || !roundTrip('Cote d' + SQ + 'Ivoire')) {
+        return false;
+    }
+    // BOTH quote styles is the one case that still loses: there is no quote
+    // character left to wrap it in, so apostrophes become backticks. The
+    // desktop does the same, deliberately -- this is a JOINT open item and the
+    // assertion pins our behaviour to theirs rather than blessing it.
+    var both = 'Seba' + SQ + 's ' + DQ + 'big' + DQ + ' bat';
+    if (written(both) !== "('Seba`s " + DQ + 'big' + DQ + " bat':1,Homo:1);") {
+        return false;
+    }
+    if (roundTrip(both)) {
+        return false; // if this ever starts round-tripping, the joint item moved
+    }
+    // whitespace runs collapse and the name is trimmed, per the same rule
+    if (written('  a   b  ') !== "('a b':1,Homo:1);") {
+        return false;
+    }
+    // the TaxLabels token and the tree's tip token must be byte-identical or
+    // nothing can join the taxa block back to the tree
+    var nex = forester.toNexus(withTip('Cooper' + SQ + 's Hawk'));
+    var tax = nex.split('\n').filter(function (l) { return /TaxLabels/i.test(l); })[0];
+    var tree = nex.split('\n').filter(function (l) { return /^\s*Tree /i.test(l); })[0];
+    return tax.indexOf('"Cooper' + SQ + 's Hawk"') > -1
+        && tree.indexOf('"Cooper' + SQ + 's Hawk"') > -1;
 }
