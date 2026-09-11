@@ -3532,25 +3532,38 @@ function (root, d3, forester, phyloXml) {
         let wantEvent = _state.showBranchEvents === true;
         let wantDot = _state.showSupportDots === true;
 
-        // whole-class removals first: one pass, no per-node callback
+        // Whole-class removals first: ONE query over the tree group, not one
+        // per node. `node.selectAll(...)` runs querySelectorAll on every one of
+        // the 18,512 node groups, and five of those is 92,560 queries made
+        // largely to discover there is nothing to remove -- measured at 82-92 ms
+        // per redraw on the big tree, against 40-50 ms for the whole per-node
+        // loop below it. Each of these classes is created only in this function,
+        // on a g.node inside _svgGroup, so one query over the group finds
+        // exactly the same elements. (The overview's miniature is out of reach
+        // either way: it hangs off _baseSvg, not _svgGroup.)
+        let dropAll = function (selector) {
+            if (_svgGroup) {
+                _svgGroup.selectAll(selector).remove();
+            }
+        };
         if (!wantBl) {
-            node.selectAll('text.bllabel').remove();
+            dropAll('text.bllabel');
         }
         if (!wantConf) {
-            node.selectAll('text.conflabel').remove();
+            dropAll('text.conflabel');
         }
         if (!wantEvent) {
-            node.selectAll('text.brancheventlabel').remove();
+            dropAll('text.brancheventlabel');
         }
         if (!wantDot) {
-            node.selectAll('circle.suppdot').remove();
+            dropAll('circle.suppdot');
         }
 
         // No search running means no halo anywhere -- one pass instead of
         // 18,512 set lookups plus 18,512 DOM queries.
         let anyFound = anySearchHits();
         if (!anyFound) {
-            node.selectAll('circle.foundHalo').remove();
+            dropAll('circle.foundHalo');
         }
 
         // Raw DOM inside the loop, not d3 selections: this runs once per node
