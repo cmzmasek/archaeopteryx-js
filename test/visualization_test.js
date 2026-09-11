@@ -2085,6 +2085,7 @@ runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);
 runTest("in-group offered, never first : ", testInGroupOfferedButNotFirst);
 runTest("sparse ranked, not refused  : ", testSparseFieldsRankedNotRefused);
+runTest("joint contract fixture    : ", testJointContractFixture);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
@@ -2224,6 +2225,54 @@ function testSparseFieldsRankedNotRefused() {
     if (sparseAt(20) !== false || sparseAt(19) !== true) {
         console.log('    the 2/3 boundary moved: 20/30 sparse=' + sparseAt(20)
             + ', 19/30 sparse=' + sparseAt(19));
+        return false;
+    }
+    return true;
+}
+
+// The shared contract with desktop Archaeopteryx, as a flat file both
+// implementations can be run over and diffed. Reading each other's prose is
+// not enough: the desktop's first port of the prettifier split camelCase as
+// ([a-z0-9])([A-Z]), which turns H5N1 into "H5 N1" -- every flu subtype in the
+// data mangled, caught only because the spec carried worked examples.
+//
+// This test keeps the file honest on OUR side, so a diff against theirs means
+// something. Regenerate it deliberately, never to make this pass.
+function testJointContractFixture() {
+    var fs2 = require('fs');
+    var file = pth.join(__dirname, 'fixtures', 'vis-contract.tsv');
+    var lines = fs2.readFileSync(file, 'utf8').split('\n')
+        .filter(function (l) { return l.length > 0 && l.charAt(0) !== '#'; });
+    if (lines.length < 100) {
+        console.log('    fixture looks truncated: ' + lines.length + ' rows');
+        return false;
+    }
+    var bad = [];
+    lines.forEach(function (line) {
+        var f2 = line.split('\t');
+        var ref = f2[0], wantVerdict = f2[1], wantLabel = f2[2];
+
+        var tips = [];
+        for (var i = 0; i < 30; ++i) { tips.push('t' + i); }
+        var phy = forester.parseNewHampshire('(' + tips.join(',') + ');', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = [{ref: ref, datatype: 'xsd:string', applies_to: 'node',
+                             value: (i % 2) ? 'A' : 'B'}];
+        });
+        var c = forester.visualizationCandidates(phy)[0];
+        var gotVerdict = !c ? 'EXCLUDED' : (c.deprioritized ? 'DEPRIORITIZED' : 'offered');
+        var gotLabel = forester.propertyDisplayName(ref);
+
+        if (gotVerdict !== wantVerdict) {
+            bad.push(ref + ': verdict ' + gotVerdict + ', fixture says ' + wantVerdict);
+        }
+        if (gotLabel !== wantLabel) {
+            bad.push(ref + ': label "' + gotLabel + '", fixture says "' + wantLabel + '"');
+        }
+    });
+    if (bad.length) {
+        bad.slice(0, 6).forEach(function (b) { console.log('    ' + b); });
+        if (bad.length > 6) { console.log('    ... and ' + (bad.length - 6) + ' more'); }
         return false;
     }
     return true;

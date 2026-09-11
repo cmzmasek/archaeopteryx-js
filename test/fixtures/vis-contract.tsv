@@ -1,0 +1,146 @@
+# archaeopteryx-js visualization contract fixture
+# generated from forester.js at cee2efe by RUNNING the implementation
+# columns: ref <TAB> verdict <TAB> displayed label
+# verdict: EXCLUDED (never offered) | DEPRIORITIZED (offered, bottom tier) | offered
+# each ref tested on a 30-tip tree with an even 2-value split, so any refusal is by NAME alone
+BVBRC:accession	EXCLUDED	Accession
+BVBRC:collection_year	offered	Collection Year
+BVBRC:genbank_accessions	EXCLUDED	Genbank Accessions
+BVBRC:genome_id	offered	Genome Id
+BVBRC:genome_name	offered	Genome Name
+BVBRC:geographic_group	offered	Geographic Group
+BVBRC:host_common_name	offered	Host Common Name
+BVBRC:host_group	offered	Host Group
+BVBRC:isolation_country	offered	Isolation Country
+BVBRC:patric_id	offered	Patric Id
+BVBRC:product	offered	Product
+BVBRC:species	offered	Species
+BVBRC:state_province	offered	State Province
+BVBRC:strain	offered	Strain
+BVBRC:subtype	offered	Subtype
+aptx:branch_event	offered	Branch Event
+ird:Country	offered	Country
+ird:FluSeason	offered	Flu Season
+ird:GlobalH1Clade	offered	Global H1 Clade
+ird:H1Clade	offered	H1 Clade
+ird:H5Clade	offered	H5 Clade
+ird:HA	offered	HA
+ird:Host	offered	Host
+ird:NA	offered	NA
+ird:Region	offered	Region
+ird:Subtype	offered	Subtype
+ird:Year	offered	Year
+style:anything	EXCLUDED	Anything
+style:font_color	EXCLUDED	Font Color
+tol:Domain	offered	Domain
+vipr:BVBRC_Accession	EXCLUDED	BVBRC Accession
+vipr:Collection_Date	offered	Collection Date
+vipr:Country	offered	Country
+vipr:GB_Accession	EXCLUDED	GB Accession
+vipr:Genome_Name	offered	Genome Name
+vipr:Genus	offered	Genus
+vipr:Host	offered	Host
+vipr:Host_Group	offered	Host Group
+vipr:Isolation_Source	offered	Isolation Source
+vipr:Mutation	offered	Mutation
+vipr:NCBI_Taxon_Id	EXCLUDED	NCBI Taxon Id
+vipr:PANGO_Lineage	offered	PANGO Lineage
+vipr:PANGO_Lineage_L0	offered	PANGO Lineage L0
+vipr:PANGO_Lineage_L1	offered	PANGO Lineage L1
+vipr:Region	offered	Region
+vipr:Species	offered	Species
+vipr:Strain	offered	Strain
+vipr:Subclade	offered	Subclade
+vipr:Subtype	offered	Subtype
+vipr:Year	offered	Year
+vipr:Year_Month	offered	Year Month
+x:A1B2	offered	A1B2
+x:AUTHOR	EXCLUDED	AUTHOR
+x:Abbr Authors	EXCLUDED	Abbr Authors
+x:AbbrAuthors	EXCLUDED	Abbr Authors
+x:Accession	EXCLUDED	Accession
+x:Accession Number	offered	Accession Number
+x:Accessions	EXCLUDED	Accessions
+x:Author	EXCLUDED	Author
+x:Author(s)	EXCLUDED	Author(s)
+x:Authority	offered	Authority
+x:Authors	EXCLUDED	Authors
+x:DATA USE	EXCLUDED	DATA USE
+x:Data usage	offered	Data Usage
+x:Data use	EXCLUDED	Data Use
+x:Data-Use Terms	EXCLUDED	Data-Use Terms
+x:DataSet	EXCLUDED	Data Set
+x:DataUse	EXCLUDED	Data Use
+x:DataUseTerms	EXCLUDED	Data Use Terms
+x:Dataset	offered	Dataset
+x:FluSeason	offered	Flu Season
+x:GBAccession	EXCLUDED	GBAccession
+x:Genbank Accession	EXCLUDED	Genbank Accession
+x:GlobalH1Clade	offered	Global H1 Clade
+x:Group	offered	Group
+x:Grouping	offered	Grouping
+x:H5Clade	offered	H5 Clade
+x:H5N1	offered	H5N1
+x:HA	offered	HA
+x:Host	offered	Host
+x:IN-GROUP	DEPRIORITIZED	IN-GROUP
+x:Identifier	EXCLUDED	Identifier
+x:Identifiers	EXCLUDED	Identifiers
+x:In	offered	In
+x:In Group	DEPRIORITIZED	In Group
+x:In-Group	DEPRIORITIZED	In-Group
+x:In-Groups	DEPRIORITIZED	In-Groups
+x:InGroup	DEPRIORITIZED	In Group
+x:Ingredient	offered	Ingredient
+x:Ingroup	DEPRIORITIZED	Ingroup
+x:Metadata	offered	Metadata
+x:NCBI_Taxon_Id	EXCLUDED	NCBI Taxon Id
+x:OUT-GROUP	DEPRIORITIZED	OUT-GROUP
+x:Out	offered	Out
+x:Out Group	DEPRIORITIZED	Out Group
+x:Out-Group	DEPRIORITIZED	Out-Group
+x:OutGroup	DEPRIORITIZED	Out Group
+x:Outcome	offered	Outcome
+x:Outgroups	DEPRIORITIZED	Outgroups
+x:Output	offered	Output
+x:PANGO	offered	PANGO
+x:Region Set	EXCLUDED	Region Set
+x:Region-Set	EXCLUDED	Region-Set
+x:RegionSet	EXCLUDED	Region Set
+x:Set	EXCLUDED	Set
+x:Settings	offered	Settings
+x:Strain Identifier	EXCLUDED	Strain Identifier
+x:Submitting-Author	EXCLUDED	Submitting-Author
+x:Subset	offered	Subset
+x:TaxId	EXCLUDED	Tax Id
+x:Taxon	offered	Taxon
+x:Taxonomy	offered	Taxonomy
+x:Within Group	offered	Within Group
+x:Within-Group	offered	Within-Group
+x:Year_Month	offered	Year Month
+x:abbrAuthors	EXCLUDED	Abbr Authors
+x:abbr_authors	EXCLUDED	Abbr Authors
+x:already Spaced	offered	Already Spaced
+x:authorship	offered	Authorship
+x:collection_date	offered	Collection Date
+x:dataUseTerms	EXCLUDED	Data Use Terms
+x:data_use_terms	EXCLUDED	Data Use Terms
+x:gbAccession	EXCLUDED	Gb Accession
+x:genbank_accession	EXCLUDED	Genbank Accession
+x:geographic_group	offered	Geographic Group
+x:host	offered	Host
+x:in_group	DEPRIORITIZED	In Group
+x:ingroup	DEPRIORITIZED	Ingroup
+x:lowerUPPER	offered	Lower UPPER
+x:ncbi_taxid	EXCLUDED	Ncbi Taxid
+x:out_group	DEPRIORITIZED	Out Group
+x:outgroup	DEPRIORITIZED	Outgroup
+x:regionSet	EXCLUDED	Region Set
+x:region_set	EXCLUDED	Region Set
+x:state_province	offered	State Province
+x:strain-identifier	EXCLUDED	Strain-identifier
+x:strainIdentifier	EXCLUDED	Strain Identifier
+x:submittingAuthor	EXCLUDED	Submitting Author
+x:taxon_id	EXCLUDED	Taxon Id
+x:taxonomy_id	EXCLUDED	Taxonomy Id
+x:x_2_y	offered	X 2 Y
