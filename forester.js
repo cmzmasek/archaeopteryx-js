@@ -161,17 +161,12 @@
      * @param node - The root of the subtree to traverse.
      * @param fn - The function to apply.
      */
+    // Kept as a distinct name because callers use both, but it IS
+    // preOrderTraversal now: the two differed only in that this one also
+    // descended into a collapsed node's hidden _children, and nothing can
+    // collapse a node any more. See the removed-API note at the top.
     forester.preOrderTraversalAll = function (node, fn) {
-        fn(node);
-        if (node.children) {
-            for (let i = node.children.length - 1; i >= 0; --i) {
-                forester.preOrderTraversalAll(node.children[i], fn);
-            }
-        } else if (node._children) {
-            for (let ii = node._children.length - 1; ii >= 0; --ii) {
-                forester.preOrderTraversalAll(node._children[ii], fn);
-            }
-        }
+        forester.preOrderTraversal(node, fn);
     };
 
     forester.postOrderTraversalAll = function (node, fn) {
@@ -179,11 +174,6 @@
             let l = node.children.length;
             for (let i = 0; i < l; ++i) {
                 forester.postOrderTraversalAll(node.children[i], fn);
-            }
-        } else if (node._children) {
-            let ll = node._children.length;
-            for (let ii = 0; ii < ll; ++ii) {
-                forester.postOrderTraversalAll(node._children[ii], fn);
             }
         }
         fn(node);
@@ -228,13 +218,6 @@
                 p.children.splice(i, 1);
             }
         }
-        if ((p._children) && (p._children.length > 1)) {
-            let ii = p._children.indexOf(nodeToDelete);
-            if (ii !== -1) {
-                p._children.splice(ii, 1);
-            }
-        }
-
         if (p.children.length === 1) {
             let pp = p.parent;
             let cni = forester.getChildNodeIndex(pp, p);
@@ -880,7 +863,7 @@
         let stats = Object.create(null);   // id -> {kind, ref, label, nodes, values:Set, multi}; null-proto: ids embed file refs
 
         forester.preOrderTraversalAll(tree, function (n) {
-            if (n.children || n._children) {
+            if (n.children) {
                 return;
             }
             total++;
@@ -1109,7 +1092,7 @@
         let idLike = 0;
         let refs = {};   // ref -> {covered, values:Set, wordy}
         forester.preOrderTraversalAll(tree, function (n) {
-            if (n.children || n._children) {
+            if (n.children) {
                 return;
             }
             total++;
@@ -1252,7 +1235,7 @@
         let names = [];
         let slot = labelProperty ? {kind: 'property', ref: labelProperty} : null;
         forester.preOrderTraversalAll(tree, function (n) {
-            if (n.children || n._children) {
+            if (n.children) {
                 return;
             }
             let name = slot ? forester.visualizationNodeValue(n, slot) : null;
@@ -1447,7 +1430,7 @@
         forester.preOrderTraversalAll(rootNode, function (n) {
             properties.nodeCount += 1;
             if (n !== rootNode) {
-                let internal = !!(n.children || n._children);
+                let internal = !!(n.children);
                 let measured = typeof n.branch_length === 'number' && isFinite(n.branch_length);
                 properties.branchCount += 1;
                 if (measured) {
@@ -1465,11 +1448,11 @@
                 if (n.name.length > properties.longestNodeName) {
                     properties.longestNodeName = n.name.length;
                 }
-                if ((n.children || n._children) && (n.parent)) {
+                if ((n.children) && (n.parent)) {
                     properties.internalNodeData = true;
                 }
             }
-            if (!(n.children || n._children)) {
+            if (!(n.children)) {
                 properties.externalNodesCount += 1;
             }
             if (n.branch_length && n.branch_length > 0) {
@@ -1486,7 +1469,7 @@
             if (n.sequences && n.sequences.length > 0) {
                 properties.sequences = true;
 
-                if (n.children || n._children) {
+                if (n.children) {
                     properties.internalNodeData = true;
                 } else {
                     let s = n.sequences[0];
@@ -1502,7 +1485,7 @@
             }
             if (n.taxonomies && n.taxonomies.length > 0) {
                 properties.taxonomies = true;
-                if (n.children || n._children) {
+                if (n.children) {
                     properties.internalNodeData = true;
                 }
             }
@@ -1565,15 +1548,14 @@
     forester.calcSumOfAllExternalDescendants = function (node) {
         let nodes = 0;
         forester.preOrderTraversalAll(node, function (n) {
-            if (!(n.children || n._children)) {
+            if (!(n.children)) {
                 ++nodes;
             }
         });
         return nodes;
     };
 
-    // Ladderize: at every node, order the VISIBLE children (n.children; a
-    // collapsed node's hidden _children are left untouched) by clade size --
+    // Ladderize: at every node, order the children by clade size --
     // largest first when largestFirst, smallest first when not. Works at ANY
     // child count, not just 2, so a polytomy (common on a phylodynamic tree,
     // e.g. an Auspice build, where every internal node may carry 3+ children)
@@ -1623,7 +1605,7 @@
     forester.getAllExternalNodes = function (node) {
         let nodes = [];
         forester.preOrderTraversalAll(node, function (n) {
-            if (!n.children && !n._children) {
+            if (!n.children) {
                 nodes.push(n);
             }
         });
@@ -2258,7 +2240,7 @@
 
         function moveInternalNodeNamesToConfidenceValues(node) {
             forester.preOrderTraversalAll(node, function (n) {
-                if (n.children || n._children) {
+                if (n.children) {
                     if (n.name) {
                         let s = n.name;
                         if (NUMBERS_ONLY_PATTERN.test(s)) {
@@ -2976,7 +2958,7 @@
         let v = metricOf(node);
         node.branch_length = (parentValue !== null && v !== null)
             ? Math.max(0, v - parentValue) : 0;
-        let children = node.children || node._children;
+        let children = node.children;
         if (children) {
             for (let i = 0; i < children.length; ++i) {
                 setDeltaBranchLengths(children[i], v, metricOf);
@@ -3081,13 +3063,6 @@
                 nh += "(";
                 for (let i = 0; i < l; ++i) {
                     toNewHampshireHelper(node.children[i], i === l - 1);
-                }
-                nh += ")";
-            } else if (node._children) {
-                let ll = node._children.length;
-                nh += "(";
-                for (let ii = 0; ii < ll; ++ii) {
-                    toNewHampshireHelper(node._children[ii], ii === ll - 1);
                 }
                 nh += ")";
             }
@@ -3452,11 +3427,11 @@
             n._srchDepth = depth;
             let d = dist + (typeof n.branch_length === 'number' && n.branch_length > 0 ? n.branch_length : 0);
             n._srchDist = d;
-            let kids = n.children || n._children;
+            let kids = n.children;
             if (kids) for (let i = 0; i < kids.length; ++i) pre(kids[i], depth + 1, d);
         })(root, 0, 0);
         forester.postOrderTraversalAll(root, function (n) {
-            let kids = n.children || n._children;
+            let kids = n.children;
             if (!kids || kids.length === 0) { n._srchClade = 1; return; }
             let s = 0;
             for (let i = 0; i < kids.length; ++i) s += kids[i]._srchClade;
@@ -3483,7 +3458,7 @@
             return out;
         }
         if (key === 'NT') {
-            let kids = node.children || node._children;
+            let kids = node.children;
             let isLeaf = !kids || kids.length === 0;
             return [isLeaf ? 'leaf' : (node === root ? 'root' : 'internal')];
         }
@@ -3502,7 +3477,7 @@
             case 'BL': return (typeof node.branch_length === 'number') ? [node.branch_length] : [];
             case 'CO': return node.confidences ? node.confidences.map(c => c.value).filter(v => typeof v === 'number') : [];
             case 'CS': return [node._srchClade];
-            case 'NC': { let kids = node.children || node._children; return [kids ? kids.length : 0]; }
+            case 'NC': { let kids = node.children; return [kids ? kids.length : 0]; }
             case 'DE': return [node._srchDepth];
             case 'DR': return [node._srchDist];
             default: return [];
@@ -3923,7 +3898,7 @@
         let hasInternalIntervals = false;
         let hasExternalIntervals = false;
         forester.preOrderTraversalAll(root, function (n) {
-            let isExt = !n.children && !n._children;
+            let isExt = !n.children;
             if (isExt) {
                 ++external;
             } else {
@@ -4399,7 +4374,7 @@
         let candidates = [];
         let anyConfidence = false;
         forester.preOrderTraversalAll(root, function (n) {
-            if (n === root || !(n.children || n._children)) {
+            if (n === root || !(n.children)) {
                 return;
             }
             if (n.confidences && n.confidences.length > 0) {

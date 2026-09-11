@@ -55,6 +55,7 @@ function runTest(label, fn) {
     console.log(label + (ok ? "pass" : "FAIL"));
 }
 
+runTest("basic tree properties     : ", testBasicTreeProperties);
 runTest("getTreeRoot                : ", testGetTreeRoot);
 runTest("preOrderTraversal          : ", testPreOrderTraversal);
 runTest("preOrderTraversalAll       : ", testPreOrderTraversalAll);
@@ -2111,4 +2112,52 @@ function testLabelQuotingOnWrite() {
     var tree = nex.split('\n').filter(function (l) { return /^\s*Tree /i.test(l); })[0];
     return tax.indexOf('"Cooper' + SQ + 's Hawk"') > -1
         && tree.indexOf('"Cooper' + SQ + 's Hawk"') > -1;
+}
+
+// collectBasicTreeProperties feeds decisions all over the viewer -- branch
+// width, the small-tree defaults, whether the tree draws to scale -- and the
+// suite asserted exactly one of its twenty fields. Inverting the guard that
+// counts external nodes left every test passing, which is how this gap was
+// found: by sabotage, during the removal of the collapse data model.
+//
+// The fixture has an explicit zero branch (c:0) because that is the case the
+// counting comments care about: a zero is a real measurement, not a missing
+// one, so branchesWithLength must include it.
+function testBasicTreeProperties() {
+    var phy = forester.parseNewHampshire('((a:1,b:2)I1:3,(c:0,d:4,e:5)I2:6)R:7;', true, false);
+    var p = forester.collectBasicTreeProperties(phy);
+
+    function eq(field, got, want) {
+        if (got !== want) {
+            console.log('    ' + field + ' = ' + got + ', expected ' + want);
+            return false;
+        }
+        return true;
+    }
+
+    // five tips; nodeCount counts the eight real nodes, not the wrapper the
+    // parser puts above the root
+    if (!eq('externalNodesCount', p.externalNodesCount, 5)) { return false; }
+    if (!eq('nodeCount', p.nodeCount, 8)) { return false; }
+
+    // the root is excluded from the branch tallies -- a branch length belongs
+    // to the branch ABOVE a node, and the root has none
+    if (!eq('branchCount', p.branchCount, 7)) { return false; }
+    if (!eq('branchesWithLength', p.branchesWithLength, 7)) { return false; }   // c:0 counted
+    if (!eq('internalBranchCount', p.internalBranchCount, 2)) { return false; }
+    if (!eq('internalBranchesWithLength', p.internalBranchesWithLength, 2)) { return false; }
+
+    // averageBranchLength is the one tally taken over POSITIVE lengths and
+    // INCLUDING the root: 1+2+3+4+5+6+7 = 28 over 7, with c:0 left out
+    if (!eq('averageBranchLength', p.averageBranchLength, 4)) { return false; }
+
+    if (!eq('branchLengths', p.branchLengths, true)) { return false; }
+    if (!eq('nodeNames', p.nodeNames, true)) { return false; }
+    if (!eq('internalNodeData', p.internalNodeData, true)) { return false; }
+    if (!eq('longestNodeName', p.longestNodeName, 2)) { return false; }
+
+    // the descendant sum had no assertion at all
+    if (!eq('calcSumOfAllExternalDescendants',
+            forester.calcSumOfAllExternalDescendants(phy), 5)) { return false; }
+    return true;
 }
