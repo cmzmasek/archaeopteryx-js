@@ -445,8 +445,12 @@ function testSuperRootNotCountedAsNode() {
     var nh = forester.parseNewHampshire('((a:1,b:1)AB:1,c:1)R;');
     var p = forester.collectBasicTreeProperties(nh);
     if (p.nodeCount !== 5) return false;                       // R, AB, a, b, c
-    if (p.branchesWithPositiveLength !== 4) return false;       // every branch but R's
-    if (p.nodeCount - 1 !== p.branchesWithPositiveLength) return false; // so the fraction is 1
+    // branchCount excludes the root by design -- a branch length belongs to the
+    // branch ABOVE a node, and the root has none -- so this is the assertion
+    // that the super-root contributed neither a node nor a branch
+    if (p.branchCount !== 4) return false;                     // every branch but R's
+    if (p.branchesWithLength !== 4) return false;              // all of them measured
+    if (p.nodeCount - 1 !== p.branchCount) return false;        // so the fraction is 1
 
     // phyloXML-shaped: the super-root also carries the tree's own name
     var inner = forester.parseNewHampshire('((a:1,b:1)AB:1,c:1)R;');

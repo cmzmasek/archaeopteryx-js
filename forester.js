@@ -1404,10 +1404,6 @@
         properties.maxMolSeqLength = 0;
         properties.externalNodesCount = 0;
         properties.nodeCount = 0;
-        // How many of the tree's branches actually carry a positive length.
-        // Whether a tree is worth drawing to scale is a question about the
-        // majority of its branches, not about whether any branch has a length.
-        properties.branchesWithPositiveLength = 0;
         // Branches that carry a length AT ALL -- an explicit zero is a real
         // measurement, not a missing one, so these are counted separately from
         // the "positive" tally above. Split internal-vs-all because a missing
@@ -1420,6 +1416,14 @@
         properties.internalBranchCount = 0;
         properties.internalBranchesWithLength = 0;
         properties.averageBranchLength = 0;
+        // Positive lengths only, and the root included: these feed
+        // averageBranchLength and nothing else. They are deliberately NOT the
+        // same population as branchCount / branchesWithLength below, which
+        // exclude the root and count an explicit zero as the measurement it is.
+        // A `branchesWithPositiveLength` property built from this counter was
+        // removed on 2026-09-11 -- nothing read it, and having two tallies over
+        // two different node sets invited exactly the comparison that would be
+        // wrong.
         let bl_counter = 0;
         let bl_sum = 0;
         // Counting the super-root would add a node and a branch that do not
@@ -1509,7 +1513,6 @@
 
         });
 
-        properties.branchesWithPositiveLength = bl_counter;
 
         if (bl_counter > 0) {
             properties.averageBranchLength = bl_sum / bl_counter;

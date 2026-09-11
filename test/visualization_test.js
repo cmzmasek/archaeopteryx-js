@@ -1959,12 +1959,19 @@ function testPhylogramBranchCounts() {
             return false;
         }
     }
-    // An explicit zero counts as measured but NOT as positive -- the exact
-    // distinction the old numerator missed.
+    // An explicit zero is a MEASUREMENT, which is the distinction the old
+    // numerator missed: it counted only positive lengths, so a tree writing its
+    // polytomies as zero-length internal branches opened as a cladogram. The
+    // table above covers the shape; this pins the decision itself, since that
+    // is the behaviour anyone changing the counting would break.
     var z = props('((A:1,B:1)x:0,(C:1,D:1)y:0);');
-    if (z.internalBranchesWithLength !== 2 || z.branchesWithPositiveLength !== 4) {
-        console.log('    zero-length internals: measured=' + z.internalBranchesWithLength
-            + ' positive=' + z.branchesWithPositiveLength + ' (expected 2 / 4)');
+    if (z.internalBranchesWithLength !== 2 || z.branchesWithLength !== 6) {
+        console.log('    zero-length internals: internal measured=' + z.internalBranchesWithLength
+            + ' all measured=' + z.branchesWithLength + ' (expected 2 / 6)');
+        return false;
+    }
+    if (decide(z) !== true) {
+        console.log('    a tree of zero-length internal branches is still a phylogram');
         return false;
     }
     return true;
