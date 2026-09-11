@@ -4839,6 +4839,13 @@ function (root, d3, forester, phyloXml) {
             _node_mouseover_div.remove(); // the body-level tooltip div (d3 selection)
             _node_mouseover_div = null;
         }
+        // A redraw still waiting for its frame belongs to the viewer being torn
+        // down. Left set, its callback would read the NEXT viewer's pending
+        // update, null it, then find its own sequence number stale and return
+        // -- having already discarded work that was not its own. I could not
+        // construct that ordering from the UI, and one line means nobody has to
+        // reason about it again.
+        _pendingUpdate = null;
         clearInterval(_intervalId); // a zoom button held down at destroy time
         d3.select(window).on('resize.archaeopteryx', null);
         _docListeners.forEach(function (l) {

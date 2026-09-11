@@ -2997,15 +2997,17 @@
         return auspiceHasAnyDate(root) && auspiceHasAnyDiv(root);
     };
 
+    // A number that is not NaN. It used to test only for null, undefined and
+    // NaN, and so answered TRUE for "hello", "", {}, [] and true -- which no
+    // caller was hurt by, since all of them pass the result of parseFloat, but
+    // the name promised a check it did not make.
+    //
+    // Infinity is deliberately still accepted, so that this stays a rename in
+    // behaviour as well as in intent: parseFloat('1e999') is Infinity, and
+    // whether a branch length of Infinity should be refused is a separate
+    // question from whether a string is a number.
     forester.isNumber = function (v) {
-        if (v === undefined || v === null) {
-            return false;
-        }
-        if (v != v) {
-            // This can only be true if the v is NaN
-            return false;
-        }
-        return true;
+        return typeof v === 'number' && v === v;
     };
 
     // How a label is written into Newick or Nexus, ported from the desktop's
