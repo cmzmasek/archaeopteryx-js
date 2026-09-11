@@ -687,6 +687,34 @@
         /identifiers?$/         // ...Identifier, ...Identifiers
     ];
 
+    // Offered, but never the tree's OPENING visualization unless it is the
+    // only thing on offer. "In-Group" says which tips were the study set and
+    // which the outgroup -- a fact about the analysis, and one the person who
+    // rooted the tree already knows. It is also typically an even two-value
+    // split with full coverage, which is exactly the shape that wins the
+    // automatic pick, so without this it opens trees coloured by the least
+    // surprising thing in them.
+    const VIS_DEPRIORITIZED_WORD_RES = [
+        /(^| )in group( |$)/,   // In-Group, InGroup, In Group, in_group
+        /(^| )ingroup( |$)/     // and the one-word spelling
+    ];
+
+    // The name as the MENU shows it, split into words -- see the note on
+    // VIS_EXCLUDED_WORD_RES for why the displayed name is the right input.
+    function visNameWords(ref) {
+        let local = ref.indexOf(':') >= 0 ? ref.substring(ref.indexOf(':') + 1) : ref;
+        return prettifyVisLabel(local).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+
+    function matchesAny(res, words) {
+        for (let i = 0, l = res.length; i !== l; ++i) {
+            if (res[i].test(words)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function visExcludedRef(ref) {
         if (ref.indexOf(VIS_EXCLUDED_REF_PREFIX) === 0) {
             return true;
@@ -695,13 +723,11 @@
         if (VIS_EXCLUDED_LOCAL_NAME_RE.test(local.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
             return true;
         }
-        let words = prettifyVisLabel(local).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-        for (let i = 0, l = VIS_EXCLUDED_WORD_RES.length; i !== l; ++i) {
-            if (VIS_EXCLUDED_WORD_RES[i].test(words)) {
-                return true;
-            }
-        }
-        return false;
+        return matchesAny(VIS_EXCLUDED_WORD_RES, visNameWords(ref));
+    }
+
+    function visDeprioritizedRef(ref) {
+        return matchesAny(VIS_DEPRIORITIZED_WORD_RES, visNameWords(ref));
     }
 
     // ---- display normalization --------------------------------------------
@@ -1023,6 +1049,7 @@
                 colorMode: colorMode,
                 switchable: switchable,
                 wide: wide,
+                deprioritized: visDeprioritizedRef(s.ref || id),
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
         });
@@ -1038,10 +1065,15 @@
         });
 
         // Best first: clean categorical fields, then numeric ranges, then the
-        // wide categoricals (offered, never leading) -- within each tier by
-        // score, ties alphabetically. The first entry is what the viewer
-        // applies on load.
+        // wide categoricals (offered, never leading), and last the
+        // deprioritized ones -- within each tier by score, ties
+        // alphabetically. The first entry is what the viewer applies on load,
+        // so the bottom tier can only be applied automatically when it is the
+        // ONLY candidate, which is the whole point of it.
         function tierOf(c) {
+            if (c.deprioritized) {
+                return 3;
+            }
             if (c.colorMode === 'category') {
                 return c.wide ? 2 : 0;
             }

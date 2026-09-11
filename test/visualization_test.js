@@ -1733,6 +1733,71 @@ function testRecordKeepingNeverOffered() {
     return true;
 }
 
+// "In-Group" is offered but never leads. The viewer applies candidates[0] on
+// load (archaeopteryx.js: _vis.autoColorId = _vis.candidates[0].id, guarded
+// only against a WIDE field), so "never first" and "never auto-applied" are
+// the same statement about ordering -- which is why this tests the order.
+function testInGroupOfferedButNotFirst() {
+    function candidatesFor(refs) {
+        var phy = forester.parseNewHampshire('((a,b,c,d),(e,f,g,h));', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = refs.map(function (r) {
+                return {ref: r, datatype: 'xsd:string', applies_to: 'node',
+                        value: (i < 4) ? 'Alpha' : 'Beta'};
+            });
+        });
+        return forester.visualizationCandidates(phy);
+    }
+
+    var spellings = ['x:In-Group', 'x:InGroup', 'x:In Group', 'x:in_group',
+                     'x:ingroup', 'x:Ingroup', 'x:IN-GROUP'];
+
+    for (var i = 0; i < spellings.length; ++i) {
+        var ig = spellings[i];
+        // Alongside an ordinary field of the SAME distribution: still offered,
+        // but must not lead. The companion is "Zone" on purpose -- scores tie,
+        // so the comparator falls through to the label, and "in group" sorts
+        // BEFORE "zone". Only the tier can put Zone first, so this fails if the
+        // tier is removed. (A first version paired it with "Host", which wins
+        // the alphabetical tie-break on its own and passed with the tier gone.)
+        var cands = candidatesFor([ig, 'x:Zone']);
+        var refs = cands.map(function (c) { return c.ref; });
+        if (refs.indexOf(ig) < 0) {
+            console.log('    ' + ig + ' not offered at all');
+            return false;
+        }
+        if (cands[0].ref !== 'x:Zone') {
+            console.log('    ' + ig + ' led the list: ' + refs.join(', '));
+            return false;
+        }
+
+        // alone, it is all there is -- so it leads, and must be applicable
+        // (the viewer declines only a wide field)
+        var only = candidatesFor([ig]);
+        if (only.length !== 1 || only[0].ref !== ig) {
+            console.log('    ' + ig + ' alone did not produce itself: ' + only.length);
+            return false;
+        }
+        if (only[0].wide) {
+            console.log('    ' + ig + ' alone reads as wide, so it would not be applied');
+            return false;
+        }
+    }
+
+    // controls: neither word alone is enough
+    var ctl = candidatesFor(['x:Group', 'x:Host']);
+    if (ctl[0].ref !== 'x:Group') {
+        console.log('    plain "Group" was deprioritized: ' + ctl.map(function (c) { return c.ref; }).join(', '));
+        return false;
+    }
+    var ctl2 = candidatesFor(['x:In', 'x:Host']);
+    if (ctl2.map(function (c) { return c.ref; }).indexOf('x:In') < 0) {
+        console.log('    plain "In" lost');
+        return false;
+    }
+    return true;
+}
+
 function testInternalLabelsAsConfidence() {
     function promoted(nh, mode) {
         var phy = forester.parseNewHampshire(nh, true, false);
@@ -1965,6 +2030,7 @@ runTest("brackets flag retired   : ", testBracketsFlagRetired);
 runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);
+runTest("in-group offered, never first : ", testInGroupOfferedButNotFirst);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
