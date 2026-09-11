@@ -4978,7 +4978,13 @@ function (root, d3, forester, phyloXml) {
             _baseSvg = d3.select(containerEl).append('svg')
                 .attr('width', _displayWidth)
                 .attr('height', _displayHeight)
-                .call(_zoomListener);
+                .call(_zoomListener)
+                // d3.zoom binds its own double-click-to-zoom, which scales the
+                // picture -- fonts and all -- and so behaves like the wheel
+                // zoom this program deliberately replaced with a re-layout.
+                // It is also easy to hit by accident: a double click that
+                // misses a node is a miss, not a request to magnify the tree.
+                .on('dblclick.zoom', null);
 
             if (_settings.enableDynamicSizing) {
                 d3.select(window)
