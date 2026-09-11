@@ -913,17 +913,90 @@ function (root, d3, forester, phyloXml) {
     // Rebuild the miniature. Called when the tree itself changes: the branch
     // paths are copied straight from what was just rendered, so the overview
     // matches the real display in either layout without redoing any geometry.
+    // The links of the CURRENT layout. The overview is built from these --
+    // from the MODEL -- never by reading back what was drawn.
+    //
+    // Reading the drawn tree is what broke it: update() animates the links
+    // with a transition, and the overview was rebuilt from inside update(),
+    // so every attribute it read was the frame BEFORE the one being drawn.
+    // Logging from inside the function showed all 215 links degenerate on
+    // EVERY rebuild, in every display mode -- the tree had not been drawn
+    // yet. The desktop has never had this bug because its miniature is
+    // likewise computed from the model.
+    let _overviewLinks = null;
+
+    // The tree's extent for the overview, in un-zoomed tree coordinates:
+    // branches as the layout placed them, plus the space the layout reserved
+    // for external labels.
+    //
+    // ONE extent, used for BOTH the miniature's placement and the "is the
+    // overview needed at all" test. That is the property that matters, and
+    // getting it wrong is what made the first attempt at this worse than the
+    // bug: the miniature was fitted to the branches while the visibility test
+    // measured branches PLUS labels, so the "you are here" rectangle was
+    // drawn against a different extent than the picture under it. The two may
+    // live in different spaces -- the desktop deliberately keeps the
+    // rectangle in frame space -- but they must derive from one extent.
+    //
+    // Labels count, by Christian's decision and as the desktop does it: the
+    // question is whether what the user can SEE fits, and a cut-off label is
+    // not visible.
+    function overviewExtent() {
+        if (_state.circularDisplay || _state.unrootedDisplay) {
+            // maxRad already reaches the outer label ring -- fitCircular()
+            // fits the display to exactly this.
+            let r = _state.circularDisplay
+                ? (_radial ? _radial.maxRad : null)
+                : (_unroot ? _unroot.maxRad : null);
+            if (!r || r <= 0) {
+                return null;
+            }
+            return {x: -r, y: -r, width: 2 * r, height: 2 * r};
+        }
+        if (!_overviewLinks || _overviewLinks.length === 0) {
+            return null;
+        }
+        // elbow() writes 'M source.y,source.x V target.x H target.y', so the
+        // horizontal axis is .y and the vertical axis is .x.
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (let i = 0, len = _overviewLinks.length; i !== len; ++i) {
+            let l = _overviewLinks[i];
+            let sx = l.source.y, tx = l.target.y;
+            let sy = l.source.x, ty = l.target.x;
+            if (sx < minX) { minX = sx; }
+            if (tx < minX) { minX = tx; }
+            if (sx > maxX) { maxX = sx; }
+            if (tx > maxX) { maxX = tx; }
+            if (sy < minY) { minY = sy; }
+            if (ty < minY) { minY = ty; }
+            if (sy > maxY) { maxY = sy; }
+            if (ty > maxY) { maxY = ty; }
+        }
+        if (!isFinite(minX) || !isFinite(minY) || maxX <= minX) {
+            return null;
+        }
+        // The label reservation the layout was sized against, MINUS the root
+        // offset. calcMaxTreeLengthForDisplay() bundles both: the space kept
+        // to the LEFT of the root and the space kept to the RIGHT for
+        // external labels. Only the label half belongs on this edge.
+        //
+        // Including the root offset made the box exactly rootOffset too wide,
+        // and since centerNode() shifts the view left by that same amount to
+        // seat the root, the right edge of the box always fell just outside
+        // the viewport: measured box=[0,13 1497x755] against
+        // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
+        // no by precisely 254px and the overview appeared after every Fit.
+        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset;
+        let h = maxY - minY;
+        return {x: minX, y: minY, width: maxX - minX, height: h > 0 ? h : 1};
+    }
+
     function rebuildOverview() {
         if (!_overviewGroup) {
             return;
         }
         let size = svgSize();
-        let box = null;
-        try {
-            box = _svgGroup.node().getBBox(); // in un-zoomed tree coordinates
-        } catch {
-            box = null;
-        }
+        let box = overviewExtent();   // from the MODEL: see overviewExtent()
         if (!size || !box || box.width <= 0 || box.height <= 0) {
             _overviewGroup.style('display', 'none');
             _overviewMap = null;
@@ -942,12 +1015,14 @@ function (root, d3, forester, phyloXml) {
         _overviewContent.attr('transform', 'translate(' + _overviewMap.tx + ',' + _overviewMap.ty + ') scale(' + scale + ')');
 
         let paths = [];
-        _svgGroup.selectAll('path.link').each(function () {
-            let d = this.getAttribute('d');
-            if (d) {
-                paths.push(d);
+        if (_overviewLinks) {
+            for (let i = 0, len = _overviewLinks.length; i !== len; ++i) {
+                let d = elbow(_overviewLinks[i]);   // the SAME routine the tree is drawn with
+                if (d) {
+                    paths.push(d);
+                }
             }
-        });
+        }
         let sel = _overviewContent.selectAll('path').data(paths);
         sel.exit().remove();
         sel.enter().append('path')
@@ -2365,6 +2440,7 @@ function (root, d3, forester, phyloXml) {
         let links = hierarchy.links().map(function (link) {
             return {source: link.source.data, target: link.target.data};
         });
+        _overviewLinks = links;   // the overview is built from these, not from the DOM
         let gap = _state.nodeLabelGap;
 
         if (_state.phylogram === true) {
@@ -4617,6 +4693,7 @@ function (root, d3, forester, phyloXml) {
         _baseSvg = null;
         _svgGroup = null;
         _overviewGroup = null;
+        _overviewLinks = null;
         _overviewContent = null;
         _overviewViewport = null;
         _overviewMap = null;
