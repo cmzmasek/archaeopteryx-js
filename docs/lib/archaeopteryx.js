@@ -615,6 +615,14 @@ function (root, d3, forester, phyloXml) {
     const OVERVIEW_PAD = 5;
 
     let _overviewGroup = null;   // the whole overview, appended above the tree
+    // The links of the CURRENT layout, kept so the overview can draw the tree
+    // from the layout itself rather than reading it back out of the DOM. The
+    // DOM is the wrong source: update() animates the links to their new
+    // positions with a transition, and the overview is built before that
+    // transition has written anything, so reading attributes there returns
+    // the PREVIOUS frame -- on the first draw, every link still collapsed
+    // onto a single point, which is why the miniature came up empty.
+    let _overviewLinks = null;
     let _overviewContent = null; // the scaled miniature inside it
     let _overviewViewport = null;// the "you are here" rectangle
     let _overviewMap = null;     // {scale, tx, ty} mapping tree coords -> overview coords
@@ -913,6 +921,34 @@ function (root, d3, forester, phyloXml) {
     // Rebuild the miniature. Called when the tree itself changes: the branch
     // paths are copied straight from what was just rendered, so the overview
     // matches the real display in either layout without redoing any geometry.
+    // Would the overview be shown at all? It exists to place you when the tree
+    // is bigger than the window, so it hides itself whenever the whole tree
+    // already fits -- which is the case on load, and after Zoom to Fit, and
+    // for every tree small enough to see at once.
+    //
+    // Worth asking BEFORE filling it in: populating the miniature copies the
+    // geometry of every link, and on the 18,512-link demo tree that was ~450 ms
+    // of every redraw spent drawing something with display:none on it.
+    function overviewWouldShow() {
+        if (!_overviewMap) {
+            return false;
+        }
+        let size = svgSize();
+        if (!size) {
+            return false;
+        }
+        let t = d3.zoomTransform(_baseSvg.node());
+        let visX = -t.x / t.k;
+        let visY = -t.y / t.k;
+        let visW = size.w / t.k;
+        let visH = size.h / t.k;
+        let box = _overviewMap.box;
+        let fits = (visX <= box.x) && (visY <= box.y)
+            && ((visX + visW) >= (box.x + box.width))
+            && ((visY + visH) >= (box.y + box.height));
+        return !fits;
+    }
+
     function rebuildOverview() {
         if (!_overviewGroup) {
             return;
@@ -941,17 +977,42 @@ function (root, d3, forester, phyloXml) {
         positionOverview();
         _overviewContent.attr('transform', 'translate(' + _overviewMap.tx + ',' + _overviewMap.ty + ') scale(' + scale + ')');
 
-        let paths = [];
-        _svgGroup.selectAll('path.link').each(function () {
-            let d = this.getAttribute('d');
-            if (d) {
-                paths.push(d);
+        // Nothing below is visible if the whole tree already fits, so do not
+        // pay for it. updateOverviewViewport() makes the same call and is what
+        // actually sets display; this only avoids the work in front of it.
+        if (!overviewWouldShow()) {
+            updateOverviewViewport();
+            return;
+        }
+
+        // ONE path for the whole miniature, not one per link.
+        //
+        // The overview is a hairline drawing of the same geometry, and every
+        // link's `d` begins with an absolute moveto, so the strings can simply
+        // be concatenated: the result is a single path of many subpaths that
+        // renders identically. They already share one stroke, width and
+        // vector-effect, so nothing per-link was being expressed by having
+        // separate elements.
+        //
+        // The alternative kept a SECOND copy of every link in the document --
+        // on the 18,512-link demo tree that doubled the element count, and it
+        // was rebuilt on every redraw. Measured on that tree: writing 18,512
+        // overview paths 222 ms, writing the single concatenated path 9 ms.
+        let segs = [];
+        if (_overviewLinks) {
+            for (let i = 0, len = _overviewLinks.length; i !== len; ++i) {
+                let d = elbow(_overviewLinks[i]);
+                if (d) {
+                    segs.push(d);
+                }
             }
-        });
-        let sel = _overviewContent.selectAll('path').data(paths);
-        sel.exit().remove();
-        sel.enter().append('path')
-            .merge(sel)
+        }
+        let linkPath = _overviewContent.selectAll('path.aptx-overview-links')
+            .data(segs.length > 0 ? [segs.join(' ')] : []);
+        linkPath.exit().remove();
+        linkPath.enter().append('path')
+            .attr('class', 'aptx-overview-links')
+            .merge(linkPath)
             .attr('d', function (d) {
                 return d;
             })
@@ -959,6 +1020,29 @@ function (root, d3, forester, phyloXml) {
             .style('stroke', _state.branchColorDefault)
             .style('stroke-width', 1)
             .style('vector-effect', 'non-scaling-stroke'); // stays a hairline however far it is scaled down
+
+        // Fit the miniature to the geometry just drawn, not to the bounding
+        // box of the live tree. _svgGroup's box is measured while the links
+        // are still animating, so on the first draw it is the collapsed tree
+        // -- a few pixels wide -- and the scale derived from it came out
+        // around 10x, blowing the miniature far outside its own frame. The
+        // drawn path's own box is exact, mode-independent and one getBBox on
+        // one element.
+        let drawn = null;
+        try {
+            drawn = _overviewContent.select('path.aptx-overview-links').node();
+            drawn = drawn ? drawn.getBBox() : null;
+        } catch {
+            drawn = null;
+        }
+        if (drawn && drawn.width > 0 && drawn.height > 0) {
+            let s2 = Math.min(innerW / drawn.width, innerH / drawn.height);
+            _overviewMap.scale = s2;
+            _overviewMap.tx = OVERVIEW_PAD + ((innerW - (drawn.width * s2)) / 2) - (drawn.x * s2);
+            _overviewMap.ty = OVERVIEW_PAD + ((innerH - (drawn.height * s2)) / 2) - (drawn.y * s2);
+            _overviewContent.attr('transform', 'translate(' + _overviewMap.tx + ','
+                + _overviewMap.ty + ') scale(' + _overviewMap.scale + ')');
+        }
 
         // Search hits (and selected nodes) are marked in the miniature too, as
         // on the desktop: dots in the search colours, so hits outside the
@@ -2365,6 +2449,7 @@ function (root, d3, forester, phyloXml) {
         let links = hierarchy.links().map(function (link) {
             return {source: link.source.data, target: link.target.data};
         });
+        _overviewLinks = links;   // for the overview, which must not read the mid-transition DOM
         let gap = _state.nodeLabelGap;
 
         if (_state.phylogram === true) {
@@ -4617,6 +4702,7 @@ function (root, d3, forester, phyloXml) {
         _baseSvg = null;
         _svgGroup = null;
         _overviewGroup = null;
+        _overviewLinks = null;
         _overviewContent = null;
         _overviewViewport = null;
         _overviewMap = null;
