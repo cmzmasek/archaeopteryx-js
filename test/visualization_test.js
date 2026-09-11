@@ -1750,7 +1750,10 @@ function testInGroupOfferedButNotFirst() {
     }
 
     var spellings = ['x:In-Group', 'x:InGroup', 'x:In Group', 'x:in_group',
-                     'x:ingroup', 'x:Ingroup', 'x:IN-GROUP'];
+                     'x:ingroup', 'x:Ingroup', 'x:IN-GROUP',
+                     'x:Out-Group', 'x:OutGroup', 'x:Out Group', 'x:out_group',
+                     'x:outgroup', 'x:Outgroup', 'x:OUT-GROUP',
+                     'x:In-Groups', 'x:Outgroups'];
 
     for (var i = 0; i < spellings.length; ++i) {
         var ig = spellings[i];
@@ -1790,10 +1793,19 @@ function testInGroupOfferedButNotFirst() {
         console.log('    plain "Group" was deprioritized: ' + ctl.map(function (c) { return c.ref; }).join(', '));
         return false;
     }
-    var ctl2 = candidatesFor(['x:In', 'x:Host']);
-    if (ctl2.map(function (c) { return c.ref; }).indexOf('x:In') < 0) {
-        console.log('    plain "In" lost');
-        return false;
+    // and neither half is enough on its own, nor a word that merely starts
+    // with one of them
+    // "Within Group" is the one that matters: it CONTAINS the substring
+    // "in group", so it passes an unanchored rule and fails a word-anchored
+    // one. Without it, dropping the anchors left this test green.
+    var singles = ['x:In', 'x:Out', 'x:Outcome', 'x:Grouping', 'x:Output',
+                   'x:Ingredient', 'x:Within Group', 'x:Within-Group'];
+    for (var j = 0; j < singles.length; ++j) {
+        var lead = candidatesFor([singles[j], 'x:Zone'])[0].ref;
+        if (lead !== singles[j]) {
+            console.log('    ' + singles[j] + ' was wrongly demoted');
+            return false;
+        }
     }
     return true;
 }

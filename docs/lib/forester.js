@@ -688,15 +688,22 @@
     ];
 
     // Offered, but never the tree's OPENING visualization unless it is the
-    // only thing on offer. "In-Group" says which tips were the study set and
-    // which the outgroup -- a fact about the analysis, and one the person who
-    // rooted the tree already knows. It is also typically an even two-value
-    // split with full coverage, which is exactly the shape that wins the
-    // automatic pick, so without this it opens trees coloured by the least
-    // surprising thing in them.
+    // only thing on offer. "In-Group" and "Out-Group" say which tips were the
+    // study set and which were there to root it -- a fact about the ANALYSIS,
+    // and one the person who rooted the tree already knows. They are also
+    // typically an even two-value split with full coverage, which is exactly
+    // the shape that wins the automatic pick, so without this they open trees
+    // coloured by the least surprising thing in them.
+    //
+    // Both hyphenations and both one-word spellings, since the rule is about a
+    // name rather than a punctuation style: In-Group, InGroup, In Group,
+    // in_group, ingroup, and the same six for out. Plural too.
+    //
+    // Anchored as WORDS, which is not decoration: "Within Group" contains the
+    // substring "in group" and must keep leading.
     const VIS_DEPRIORITIZED_WORD_RES = [
-        /(^| )in group( |$)/,   // In-Group, InGroup, In Group, in_group
-        /(^| )ingroup( |$)/     // and the one-word spelling
+        /(^| )(in|out) groups?( |$)/,
+        /(^| )(in|out)groups?( |$)/
     ];
 
     // The name as the MENU shows it, split into words -- see the note on
