@@ -55,6 +55,7 @@ function runTest(label, fn) {
     console.log(label + (ok ? "pass" : "FAIL"));
 }
 
+runTest("single-node tree          : ", testSingleNodeTree);
 runTest("basic tree properties     : ", testBasicTreeProperties);
 runTest("getTreeRoot                : ", testGetTreeRoot);
 runTest("preOrderTraversal          : ", testPreOrderTraversal);
@@ -2159,5 +2160,56 @@ function testBasicTreeProperties() {
     // the descendant sum had no assertion at all
     if (!eq('calcSumOfAllExternalDescendants',
             forester.calcSumOfAllExternalDescendants(phy), 5)) { return false; }
+    return true;
+}
+
+// A one-node tree is valid Newick and was read as a nameless node: the parser
+// takes a label from the token BEFORE it -- '(', ',' or ')' -- and at the very
+// start of the string there is no previous token, so the name fell through.
+// Silent, and destructive on the way out: "a;" wrote back as "" and "a:0.5;"
+// as ":0.5;", which is not even well formed.
+function testSingleNodeTree() {
+    function tipsOf(nh) {
+        var t = forester.parseNewHampshire(nh, true, false);
+        return forester.getAllExternalNodes(t).map(function (n) {
+            return n.name === undefined ? '<unnamed>' : n.name;
+        });
+    }
+    function roundTrip(nh) {
+        return forester.toNewHampshire(forester.parseNewHampshire(nh, true, false));
+    }
+
+    var bare = [['a;', 'a'], ['abc;', 'abc'], ['myTip;', 'myTip'], ['x', 'x']];
+    for (var i = 0; i < bare.length; ++i) {
+        var got = tipsOf(bare[i][0]);
+        if (got.length !== 1 || got[0] !== bare[i][1]) {
+            console.log('    ' + bare[i][0] + ' -> [' + got.join(',') + '], expected [' + bare[i][1] + ']');
+            return false;
+        }
+    }
+
+    // the branch length has to survive with it
+    if (tipsOf('a:0.5;')[0] !== 'a') {
+        console.log('    a:0.5; lost its name');
+        return false;
+    }
+    if (roundTrip('a:0.5;') !== 'a:0.5;') {
+        console.log('    a:0.5; round-tripped as ' + JSON.stringify(roundTrip('a:0.5;')));
+        return false;
+    }
+    if (roundTrip('a;') !== 'a;') {
+        console.log('    a; round-tripped as ' + JSON.stringify(roundTrip('a;')));
+        return false;
+    }
+
+    // and the parenthesised forms, which always worked, still do
+    if (tipsOf('(a);')[0] !== 'a' || tipsOf('((a));')[0] !== 'a') {
+        console.log('    a parenthesised single tip regressed');
+        return false;
+    }
+    if (tipsOf('(a,b);').sort().join(',') !== 'a,b') {
+        console.log('    a two-tip tree regressed');
+        return false;
+    }
     return true;
 }

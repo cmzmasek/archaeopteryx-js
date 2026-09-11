@@ -2110,7 +2110,16 @@
                         // the separator before a branch length: the length itself
                         // is read by the branch below, so there is nothing to do here
                     } else {
-                        let e = ss[i - 1];
+                        // What came before decides what this element is: a name
+                        // follows an opening bracket, a comma or a close, and a
+                        // branch length follows a colon.
+                        //
+                        // At i === 0 there IS no previous token, and the string
+                        // beginning with a label is the one-node tree "a;" --
+                        // valid Newick, and for want of this line its name was
+                        // read as nothing at all and written back as "". The
+                        // start of input opens the tree, so it counts as '('.
+                        let e = (i === 0) ? '(' : ss[i - 1];
                         if (e) {
                             e = e.trim();
                             // re-attach any annotation blobs riding on this
