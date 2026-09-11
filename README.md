@@ -390,7 +390,7 @@ viewer.destroy();          // unmount COMPLETELY: the container DOM, the node
                            // handler; a later launch() works normally
 ```
 
-**Big trees draw on the next frame.** Above 2,000 nodes, `launch()` does all
+**Big trees draw on the next frame.** Above 3,000 nodes, `launch()` does all
 its validation, shows a "Drawing N nodes" card over the tree area, and
 returns within milliseconds — the label analysis, visualization candidates,
 control panel and the draw itself all run one frame later, so the browser

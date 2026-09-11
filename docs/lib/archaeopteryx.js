@@ -283,10 +283,15 @@ function (root, d3, forester, phyloXml) {
     const TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     const TRANSITION_DURATION_DEFAULT = 750;
     // Above this many nodes the first draw is deferred by one frame behind a
-    // "working" card, so the page shows it is busy instead of appearing frozen.
-    // Below it everything stays synchronous exactly as before -- the deferral
-    // buys nothing on a tree that draws in a few hundred milliseconds.
-    const BIG_TREE_NODES = 2000;
+    // "working" card, so the page shows it is busy instead of appearing frozen,
+    // and later redraws coalesce instead of running synchronously. Below it
+    // everything stays synchronous exactly as before -- the deferral buys
+    // nothing on a tree that draws in a few hundred milliseconds.
+    //
+    // Raised from 2000 to 3000 on 2026-09-11: a redraw of the 18,512-node tree
+    // went from ~4.2 s to ~1.9 s that day, so the size at which a draw is slow
+    // enough to need announcing moved up with it.
+    const BIG_TREE_NODES = 3000;
     const WARNING = 'ArchaeopteryxJS: WARNING';
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
