@@ -995,6 +995,16 @@
                     return Number(a) - Number(b);
                 });
             } else {
+                // KNOWN EDGE, deliberately left alone (2026-09-11): this
+                // counts against TOTAL, so a field unique across its annotated
+                // subset -- 15 distinct over the 15 tips of 30 that carry it --
+                // is offered rather than refused as the identifier it looks
+                // like. Counting against COVERED instead closes that, but also
+                // refuses a field carried by two tips with two values, where
+                // all-unique is a sample of two rather than evidence. Both the
+                // hole and the overreach are bounded: such a field is sparse,
+                // so it ranks last and never opens a tree. Being designed with
+                // the desktop rather than patched here.
                 if (distinct >= total) {
                     return;
                 }
