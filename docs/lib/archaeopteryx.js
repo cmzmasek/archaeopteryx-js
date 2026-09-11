@@ -613,6 +613,14 @@ function (root, d3, forester, phyloXml) {
     const OVERVIEW_HEIGHT = 111;
     const OVERVIEW_MARGIN = 12;
     const OVERVIEW_PAD = 5;
+    // Smallest the "you are here" rectangle is allowed to get, in overview
+    // pixels. Zoom vertically into a 13,000-tip tree and the visible slice is
+    // a fraction of one percent of it: the rectangle is then accurate,
+    // sub-pixel and useless. Below this it stops being a measurement and
+    // becomes a marker -- it still says WHERE you are, it just stops claiming
+    // to say exactly how much you can see. The inner frame is 132 x 101, so
+    // this is small enough never to mislead about position.
+    const OVERVIEW_VIEWPORT_MIN = 7;
 
     let _overviewGroup = null;   // the whole overview, appended above the tree
     let _overviewContent = null; // the scaled miniature inside it
@@ -1098,10 +1106,32 @@ function (root, d3, forester, phyloXml) {
         let y0 = Math.max(OVERVIEW_PAD, _overviewMap.ty + (visY * _overviewMap.scale));
         let x1 = Math.min(OVERVIEW_WIDTH - OVERVIEW_PAD, _overviewMap.tx + ((visX + visW) * _overviewMap.scale));
         let y1 = Math.min(OVERVIEW_HEIGHT - OVERVIEW_PAD, _overviewMap.ty + ((visY + visH) * _overviewMap.scale));
+        // Keep the rectangle visible when the visible slice is tiny. Grown
+        // about its own centre, so the marker stays over the part of the tree
+        // you are actually looking at, then pushed back inside the frame if
+        // that growth would take it out.
+        let floorSpan = function (a, b, lo, hi) {
+            if ((b - a) >= OVERVIEW_VIEWPORT_MIN || (hi - lo) <= OVERVIEW_VIEWPORT_MIN) {
+                return [a, b];
+            }
+            let mid = (a + b) / 2;
+            let start = mid - (OVERVIEW_VIEWPORT_MIN / 2);
+            let end = start + OVERVIEW_VIEWPORT_MIN;
+            if (start < lo) {
+                start = lo;
+                end = lo + OVERVIEW_VIEWPORT_MIN;
+            } else if (end > hi) {
+                end = hi;
+                start = hi - OVERVIEW_VIEWPORT_MIN;
+            }
+            return [start, end];
+        };
+        let xs = floorSpan(x0, x1, OVERVIEW_PAD, OVERVIEW_WIDTH - OVERVIEW_PAD);
+        let ys = floorSpan(y0, y1, OVERVIEW_PAD, OVERVIEW_HEIGHT - OVERVIEW_PAD);
         _overviewViewport
-            .attr('x', x0).attr('y', y0)
-            .attr('width', Math.max(0, x1 - x0))
-            .attr('height', Math.max(0, y1 - y0));
+            .attr('x', xs[0]).attr('y', ys[0])
+            .attr('width', Math.max(0, xs[1] - xs[0]))
+            .attr('height', Math.max(0, ys[1] - ys[0]));
     }
 
     function zoom(event) {
