@@ -2476,6 +2476,28 @@ function (root, d3, forester, phyloXml) {
         });
     }
 
+    // Animate when there is something to animate; otherwise set the values
+    // straight onto the selection.
+    //
+    // d3 builds a schedule for every element a transition touches, whether or
+    // not that transition will animate anything -- and a duration of 0 animates
+    // nothing. Nearly every redraw here asks for 0: all 39 call sites that pass
+    // a duration pass 0, and only the 15 that omit the argument animate. So the
+    // common path was paying for machinery it never used. On the 18,512-node
+    // tree, ONE `transition.select('path')` measured ~190-235 ms against ~15 ms
+    // for the same select on a plain selection -- and the node update does six
+    // such selects, plus the node and link roots.
+    //
+    // interrupt() first: a transition still running from an earlier redraw would
+    // otherwise finish afterwards and overwrite what we just set. The transition
+    // this replaces cancelled that animation implicitly, by taking over the same
+    // schedule; a plain selection has to say so.
+    function animateOrSet(selection, duration) {
+        return duration > 0
+            ? selection.transition().duration(duration)
+            : selection.interrupt();
+    }
+
     function update(source, transitionDuration, doNotRecalculateWidth) {
 
         if (!source) {
@@ -2923,16 +2945,24 @@ function (root, d3, forester, phyloXml) {
             return (_dimNonMatches && !getFoundColor(d)) ? DIM_NON_MATCH_OPACITY : null;
         });
 
-        let nodeUpdate = node.transition()
-            .duration(transitionDuration)
+        let nodeUpdate = animateOrSet(node, transitionDuration)
             .attr('transform', function (d) {
                 return nodeTransform(d);
             });
 
-        nodeUpdate.select('text')
+        // The same rule for a node's CHILD elements: derive from the transition
+        // when animating, else select straight off the node and interrupt any
+        // animation still on that child.
+        function nodeChild(selector) {
+            return transitionDuration > 0
+                ? nodeUpdate.select(selector)
+                : node.select(selector).interrupt();
+        }
+
+        nodeChild('text')
             .style('fill-opacity', 1);
 
-        nodeUpdate.select('text.extlabel')
+        nodeChild('text.extlabel')
             .text(function (d) {
                 return d._extLabelText;   // computed in syncOptionalNodeChildren
             });
@@ -2941,17 +2971,17 @@ function (root, d3, forester, phyloXml) {
         // has already removed these elements when the switch is off, and a
         // .select() that finds nothing still walks every node to find out.
         if (_state.showBranchLengthValues) {
-            nodeUpdate.select('text.bllabel').text(makeBranchLengthLabel);
+            nodeChild('text.bllabel').text(makeBranchLengthLabel);
         }
         if (_state.showConfidenceValues) {
-            nodeUpdate.select('text.conflabel').text(makeConfidenceValuesLabel);
+            nodeChild('text.conflabel').text(makeConfidenceValuesLabel);
         }
         if (_state.showBranchEvents) {
-            nodeUpdate.select('text.brancheventlabel').text(makeBranchEventsLabel);
+            nodeChild('text.brancheventlabel').text(makeBranchEventsLabel);
         }
 
         let drawShapes = _state.showVisualizations || stylesActive();
-        nodeUpdate.select('path')
+        nodeChild('path')
             .style('stroke', drawShapes ? makeNodeStrokeColor : null)
             .style('stroke-width', _state.branchWidthDefault)
             .style('fill', drawShapes ? makeNodeFillColor : null)
@@ -2963,9 +2993,9 @@ function (root, d3, forester, phyloXml) {
         // and a full 18k-node walk even when drawShapes made it a no-op. One
         // filtered selection with one transition does the same thing.
         if (!drawShapes) {
-            node.filter(function (d) {
+            animateOrSet(node.filter(function (d) {
                 return d.children && makeNodeVisShape(d) === null;
-            }).select('path').transition().duration(transitionDuration)
+            }).select('path'), transitionDuration)
                 .attr('d', 'M0,0');
         }
 
@@ -3029,8 +3059,7 @@ function (root, d3, forester, phyloXml) {
 
         link.attr('stroke-width', makeBranchWidth);
 
-        link.transition()
-            .duration(transitionDuration)
+        animateOrSet(link, transitionDuration)
             .attr('stroke', makeBranchColor)
             .attr('d', elbow);
 
