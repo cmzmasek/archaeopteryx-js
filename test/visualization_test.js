@@ -234,11 +234,15 @@ function testHerpesDnapol() {
         'prop:BVBRC:isolation_country category',
         'prop:BVBRC:host_common_name category',
         'prop:BVBRC:host_group category+shape',
-        'prop:BVBRC:collection_year range'
+        'prop:BVBRC:collection_year range',
+        // 9% coverage: offered since 2026-09-11, ranked last as sparse rather
+        // than refused outright
+        'prop:BVBRC:state_province category'
     ]);
 }
 
-// Six tips. FluSeason is on 2 of 6 (below 2/3). Year has 5 distinct values
+// Six tips. FluSeason is on 2 of 6 (below 2/3), so it is SPARSE -- offered,
+// ranked last, and never the tree's opening colour. Year has 5 distinct values
 // over 6 covered nodes: 5/6 = 0.83, inside the 0.9 identifier guard, so it
 // stays a ramp -- on a tree this small, near-unique is not proof of an id.
 function testInfluenza() {
@@ -253,7 +257,9 @@ function testInfluenza() {
         'prop:ird:NA category+shape [switch]',
         'prop:ird:Region category+shape',
         'prop:ird:H5Clade category+shape',
-        'prop:ird:HA category+shape [switch]'
+        'prop:ird:HA category+shape [switch]',
+        // 2 of 6 tips: sparse, so it sorts below everything above it
+        'prop:ird:FluSeason category+shape'
     ]);
 }
 
@@ -264,7 +270,6 @@ function testRefusals() {
     var flu = summarize(forester.visualizationCandidates(loadTree('flu_h5'))).join('\n');
     var refused = [
         [herpes, 'prop:BVBRC:product'],          // one value on every node
-        [herpes, 'prop:BVBRC:state_province'],   // 9% coverage
         [herpes, 'prop:BVBRC:genome_id'],        // numeric identifier
         [herpes, 'prop:BVBRC:patric_id'],        // identifier
         [herpes, 'prop:BVBRC:accession'],        // identifier
@@ -274,6 +279,21 @@ function testRefusals() {
         [herpes, 'prop:BVBRC:strain'],           // wide guard: 183/199 barely repeat
         [flu, 'prop:BVBRC:strain']               // wide guard: 346/354
     ];
+    // state_province used to be in that list at 9% coverage. It is now OFFERED
+    // and flagged sparse -- so it is asserted here rather than dropped, which
+    // keeps the case under test instead of quietly losing it.
+    var hp = forester.visualizationCandidates(loadTree('herpes_dnapol'));
+    var sp = hp.filter(function (c) { return c.ref === 'BVBRC:state_province'; })[0];
+    if (!sp || !sp.sparse) {
+        console.log('    state_province should be offered AND sparse, got '
+            + (sp ? 'sparse=' + sp.sparse : 'not offered'));
+        return false;
+    }
+    if (hp[hp.length - 1].ref !== 'BVBRC:state_province') {
+        console.log('    state_province should sort last');
+        return false;
+    }
+
     return refused.every(function (r) {
         if (r[0].indexOf(r[1]) >= 0) {
             console.log('    should have been refused: ' + r[1]);
@@ -337,11 +357,25 @@ function testAllUniqueExcluded() {
 }
 
 // Coverage: 4 of 6 is exactly 2/3 and passes; 3 of 6 does not.
+// 2/3 coverage is no longer a REFUSAL -- it is the line between an ordinary
+// candidate and a sparse one, which is offered but sorts last and so never
+// opens a tree that has anything better. Changed 2026-09-11 to match the
+// desktop, which has ranked rather than refused since 0.11.133; the hard
+// refusal had been dropping Country and Region from the flagship BV-BRC tree,
+// both at 61%.
 function testCoverageBoundary() {
     var atTwoThirds = starTree(['a', 'a', 'b', 'b', null, null]);
     var below = starTree(['a', 'a', 'b', null, null, null]);
-    return only(atTwoThirds) !== null
-        && forester.visualizationCandidates(below).length === 0;
+
+    var at = only(atTwoThirds);
+    if (at === null || at.sparse) {
+        return false;   // 4/6 is exactly the bar: a candidate, and NOT sparse
+    }
+    var under = forester.visualizationCandidates(below);
+    if (under.length !== 1) {
+        return false;   // 3/6 is still offered ...
+    }
+    return under[0].sparse === true;   // ... but flagged sparse
 }
 
 // 20 categories colour, 21 do not. (22 tips, one duplicated value keeps
@@ -2050,6 +2084,7 @@ runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);
 runTest("in-group offered, never first : ", testInGroupOfferedButNotFirst);
+runTest("sparse ranked, not refused  : ", testSparseFieldsRankedNotRefused);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
@@ -2097,6 +2132,99 @@ function testVersionsAgree() {
             console.log('    ' + files[i] + ' header is ' + h[1] + ', package.json says ' + expected);
             return false;
         }
+    }
+    return true;
+}
+
+// A field covering less than 2/3 of the tips used to be REFUSED outright. It
+// is ranked last instead, matching the desktop, which has done it that way
+// since 0.11.133 for the reason that turns out to be measurable: someone
+// hand-annotates a subset precisely because it is worth marking.
+//
+// The refusal cost real data. On the 13,246-tip BV-BRC flu tree, Country
+// (8,031 covered, 28 values) and Region (8,030, 13 values) both sit at 61%
+// and were missing from the menu entirely -- the two fields a phylogeography
+// user reaches for first, gone from our own flagship demo, invisibly.
+function testSparseFieldsRankedNotRefused() {
+    // 30 tips. "Dense" covers all of them but is 28/30 one value, so it scores
+    // badly (~0.2); "Sparse" covers 18 (60%, under the bar) but splits evenly,
+    // so it scores ~0.6. The sparse field therefore OUTSCORES the dense one,
+    // and only the tier can put it last -- which is the point. A first version
+    // of this fixture had the sparse field scoring lower, so it sorted last
+    // whether or not the tier existed, and removing the tier left the test
+    // green.
+    function build() {
+        var tips = [];
+        for (var i = 0; i < 30; ++i) { tips.push('t' + i); }
+        var phy = forester.parseNewHampshire('(' + tips.join(',') + ');', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = [{ref: 'x:Dense', datatype: 'xsd:string', applies_to: 'node',
+                             value: (i < 28) ? 'A' : 'B'}];
+            if (i < 18) {
+                n.properties.push({ref: 'x:Sparse', datatype: 'xsd:string', applies_to: 'node',
+                                   value: (i % 2) ? 'P' : 'Q'});
+            }
+        });
+        return phy;
+    }
+
+    var cands = forester.visualizationCandidates(build());
+    var refs = cands.map(function (c) { return c.ref; });
+
+    if (refs.indexOf('x:Sparse') < 0) {
+        console.log('    a 60%-covered field was refused: ' + refs.join(', '));
+        return false;
+    }
+    if (cands[0].ref !== 'x:Dense') {
+        console.log('    the sparse field led the list: ' + refs.join(', '));
+        return false;
+    }
+    if (refs[refs.length - 1] !== 'x:Sparse') {
+        console.log('    the sparse field did not sort last: ' + refs.join(', '));
+        return false;
+    }
+    if (!cands[cands.length - 1].sparse) {
+        console.log('    the sparse field is not flagged sparse');
+        return false;
+    }
+
+    // alone, it is all there is -- offered AND applicable, since the legend
+    // carries a "no value" row for the tips it does not cover
+    var tips2 = [];
+    for (var j = 0; j < 30; ++j) { tips2.push('u' + j); }
+    var only = forester.parseNewHampshire('(' + tips2.join(',') + ');', true, false);
+    forester.getAllExternalNodes(only).forEach(function (n, i) {
+        n.properties = (i < 18)
+            ? [{ref: 'x:Sparse', datatype: 'xsd:string', applies_to: 'node', value: (i % 2) ? 'P' : 'Q'}]
+            : [];
+    });
+    var alone = forester.visualizationCandidates(only);
+    if (alone.length !== 1 || alone[0].ref !== 'x:Sparse') {
+        console.log('    alone, the sparse field produced ' + alone.length + ' candidates');
+        return false;
+    }
+    if (alone[0].wide) {
+        console.log('    alone, it reads as wide, so the viewer would decline to apply it');
+        return false;
+    }
+
+    // and the bar itself is unchanged: 20/30 is not sparse, 19/30 is
+    function sparseAt(k) {
+        var t = [];
+        for (var m = 0; m < 30; ++m) { t.push('v' + m); }
+        var phy = forester.parseNewHampshire('(' + t.join(',') + ');', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = (i < k)
+                ? [{ref: 'x:F', datatype: 'xsd:string', applies_to: 'node', value: (i % 2) ? 'A' : 'B'}]
+                : [];
+        });
+        var c = forester.visualizationCandidates(phy)[0];
+        return c ? !!c.sparse : null;
+    }
+    if (sparseAt(20) !== false || sparseAt(19) !== true) {
+        console.log('    the 2/3 boundary moved: 20/30 sparse=' + sparseAt(20)
+            + ', 19/30 sparse=' + sparseAt(19));
+        return false;
     }
     return true;
 }

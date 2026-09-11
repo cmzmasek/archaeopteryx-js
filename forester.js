@@ -958,9 +958,23 @@
                 counts[rep] = group.count;
             });
             let distinct = Object.keys(canon).length;
-            if (covered * VIS_MIN_COVERAGE_DEN < total * VIS_MIN_COVERAGE_NUM) {
-                return;
-            }
+            // Sparse fields are RANKED LAST, not refused. A half-annotated
+            // field is often the most interesting thing in the tree -- someone
+            // hand-annotates a subset precisely because it is worth marking --
+            // it just should not be what opens the tree.
+            //
+            // This was a hard refusal, and it cost real data: on the 13,246-tip
+            // BV-BRC flu tree, Country (8,031 covered, 28 values) and Region
+            // (8,030, 13 values) both sit at 61% and were dropped from the menu
+            // outright, while Isolation_Source cleared the bar by twelve tips.
+            // The two fields a phylogeography user reaches for first were
+            // missing from our own flagship demo, invisibly, because a refused
+            // field leaves no trace in the UI. The desktop ranked instead of
+            // refusing from 0.11.133 and was right; this matches it.
+            //
+            // The legend already carries the honest part: a "no value" row
+            // with the uncovered count, at reduced opacity.
+            let sparse = covered * VIS_MIN_COVERAGE_DEN < total * VIS_MIN_COVERAGE_NUM;
             if (distinct < 2) {
                 return;
             }
@@ -1023,6 +1037,7 @@
                 colorMode: colorMode,
                 switchable: switchable,
                 wide: wide,
+                sparse: sparse,
                 deprioritized: visDeprioritizedRef(s.ref || id),
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
@@ -1039,12 +1054,15 @@
         });
 
         // Best first: clean categorical fields, then numeric ranges, then the
-        // wide categoricals (offered, never leading), and last the
-        // deprioritized ones -- within each tier by score, ties
+        // wide categoricals (offered, never leading), then the
+        // deprioritized ones, and last the sparse -- within each tier by score, ties
         // alphabetically. The first entry is what the viewer applies on load,
         // so the bottom tier can only be applied automatically when it is the
         // ONLY candidate, which is the whole point of it.
         function tierOf(c) {
+            if (c.sparse) {
+                return 4;
+            }
             if (c.deprioritized) {
                 return 3;
             }
