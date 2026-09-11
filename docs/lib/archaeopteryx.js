@@ -2829,20 +2829,29 @@ function (root, d3, forester, phyloXml) {
             });
         }
 
-        node.select('circle.nodeCircle')
-            .attr('r', function (d) {
-                if (((_state.showVisualizations && !_state.showNodeEvents) && (makeNodeFillColor(d) === _state.backgroundColorDefault))) {
-                    return 0;
-                }
-                return makeNodeSize(d);
-            })
-            .style('stroke', function (d) {
-                return makeNodeStrokeColor(d);
-            })
-            .style('stroke-width', _state.branchWidthDefault)
-            .style('fill', function (d) {
-                return (_state.showVisualizations || _state.showNodeEvents || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : _state.backgroundColorDefault;
-            });
+        // One pass, and the fill colour computed once.
+        //
+        // This was four chained .attr/.style calls, so d3 walked all 18.5k
+        // circles four times; and makeNodeFillColor() was called TWICE per
+        // node -- once to decide whether the dot collapses to r=0, once for
+        // the fill itself -- which is not a cheap accessor: it checks the
+        // search hits, the node events, the visualization colour and the
+        // node's own style.
+        //
+        // The union of the two conditions that need the colour is just the
+        // fill condition, since (showVisualizations && !showNodeEvents)
+        // implies showVisualizations. So it is computed once when needed and
+        // reused, and left null when neither branch wants it.
+        node.select('circle.nodeCircle').each(function (d) {
+            let fill = (_state.showVisualizations || _state.showNodeEvents
+                || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : null;
+            let r = ((_state.showVisualizations && !_state.showNodeEvents)
+                && (fill === _state.backgroundColorDefault)) ? 0 : makeNodeSize(d);
+            this.setAttribute('r', r);
+            this.style.stroke = makeNodeStrokeColor(d);
+            this.style.strokeWidth = _state.branchWidthDefault;
+            this.style.fill = (fill === null) ? _state.backgroundColorDefault : fill;
+        });
 
 
         // Dim Non-Matches: one opacity on the node GROUP dims its labels, dot,
