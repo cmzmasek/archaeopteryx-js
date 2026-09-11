@@ -1661,6 +1661,60 @@ function testTaxonIdNeverOffered() {
     return true;
 }
 
+// Record-keeping properties are never offered as a visualization: who
+// deposited the record, which collection it belongs to, what may be done with
+// it, and what a database calls it. They repeat like categories and so pass
+// every statistical test, but a colour spent on one says nothing about the
+// tree. The controls matter as much as the exclusions here -- the rule is
+// separator-aware precisely so that "Authority" and "Dataset" survive it.
+function testRecordKeepingNeverOffered() {
+    var excluded = [
+        'x:Author', 'x:Authors', 'x:Author(s)', 'x:Abbr Authors', 'x:abbr_authors',
+        'x:Submitting-Author', 'x:AUTHOR',
+        'x:Set', 'x:Region Set', 'x:region_set', 'x:Region-Set',
+        'x:Data use', 'x:Data-Use Terms', 'x:data_use_terms', 'x:DATA USE',
+        'x:Accession', 'x:Genbank Accession', 'x:genbank_accession', 'x:Accessions',
+        'x:Identifier', 'x:Strain Identifier', 'x:strain-identifier', 'x:Identifiers'
+    ];
+    var kept = [
+        'x:Authority',      // contains "author", not as a word
+        'x:Dataset',        // contains "set", not as a word
+        'x:Subset',
+        'x:Settings',
+        'x:Data usage',     // not the phrase "data use"
+        'x:Metadata',
+        'x:Host', 'x:Country', 'x:Species'
+    ];
+
+    // Two values, evenly split: a distribution that is a perfectly good
+    // candidate, so anything dropped is dropped by NAME and nothing else.
+    function candidatesFor(refs) {
+        var phy = forester.parseNewHampshire('((a,b,c,d),(e,f,g,h));', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = refs.map(function (r) {
+                return {ref: r, datatype: 'xsd:string', applies_to: 'node',
+                        value: (i < 4) ? 'Alpha' : 'Beta'};
+            });
+        });
+        return forester.visualizationCandidates(phy).map(function (c) {
+            return c.ref || c.id;
+        });
+    }
+
+    var leaked = candidatesFor(excluded);
+    if (leaked.length) {
+        console.log('    offered but should not be: ' + leaked.join(', '));
+        return false;
+    }
+    var offered = candidatesFor(kept);
+    var lost = kept.filter(function (r) { return offered.indexOf(r) < 0; });
+    if (lost.length) {
+        console.log('    wrongly excluded: ' + lost.join(', '));
+        return false;
+    }
+    return true;
+}
+
 function testInternalLabelsAsConfidence() {
     function promoted(nh, mode) {
         var phy = forester.parseNewHampshire(nh, true, false);
@@ -1892,6 +1946,7 @@ runTest("audit: launch API guards   : ", testLaunchApiValidation);
 runTest("brackets flag retired   : ", testBracketsFlagRetired);
 runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
+runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
