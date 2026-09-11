@@ -35,6 +35,34 @@
 //
 // Dependencies: none
 //
+// REMOVED FROM THE PUBLIC API (2026-09-11). Each was exported, called by
+// nothing -- not this library, not Archaeopteryx.js, not the test suite --
+// and is recorded here so that a later "forester used to have X" can be
+// matched to a decision instead of investigated from scratch:
+//
+//   collapse, unCollapse          the subtree-collapse feature they served was
+//                                 removed from the viewer; they were the only
+//                                 writers of node._children, whose handling
+//                                 went with them
+//   getChildren                   returned _children in preference to children,
+//                                 so it only ever meant anything while collapse
+//                                 existed
+//   findByTaxonomyCode            superseded by the search machinery
+//   findByTaxonomyScientificName  (searchWithSpec and friends)
+//   calcAverageTreeHeight         never used by any caller
+//   calcMaxDepth
+//   calcBranchLengthSimpleStatistics
+//   collectPropertyRefs           superseded by visualizationCandidates
+//   isHasNodeData
+//   removeMaxBranchLength
+//   getOneDistinctTaxonomy
+//
+// forester.js ships inside the archaeopteryx npm package, so an outside caller
+// could in principle have used any of these. That is the cost that was weighed
+// and accepted: 12 of 80 exports earned nothing here, and dead code is not free
+// -- it has to keep working, keep linting clean, and be considered in every
+// refactor.
+//
 //
 // In the following is a basic example shows how to parse a New Hampshire formatted String
 // into to a object representing a phylogenetic tree.
@@ -73,7 +101,6 @@
     const NH_FORMAT_ERR = 'New Hampshire (Newick) format error: ';
 
     const NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
-
 
 
     /**
@@ -172,27 +199,6 @@
         });
         return found;
     };
-
-    forester.findByTaxonomyCode = function (node, code) {
-        let found = [];
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].code === code) {
-                found.push(n);
-            }
-        });
-        return found;
-    };
-
-    forester.findByTaxonomyScientificName = function (node, scientificName) {
-        let found = [];
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n.taxonomies && n.taxonomies.length > 0 && n.taxonomies[0].scientific_name === scientificName) {
-                found.push(n);
-            }
-        });
-        return found;
-    };
-
 
     /**
      * To delete a sub-tree or external node.
@@ -560,28 +566,6 @@
             }
         }
         throw ("unexpected exception: Could not determine the child index for a node");
-    };
-
-
-    forester.getChildren = function (node) {
-        return node._children ? node._children : (node.children ? node.children : []);
-    };
-
-
-    forester.calcAverageTreeHeight = function (node, externalDescendants) {
-        let c = externalDescendants ? externalDescendants : forester.getAllExternalNodes(node);
-        let l = c.length;
-        let s = 0;
-        for (let i = 0; i < l; ++i) {
-            let cc = c[i];
-            while (cc !== node) {
-                if (cc.branch_length > 0) {
-                    s += cc.branch_length;
-                }
-                cc = cc.parent;
-            }
-        }
-        return s / l;
     };
 
 
@@ -1419,25 +1403,6 @@
         return null;
     };
 
-    forester.collectPropertyRefs = function (phy, appliesTo, externalOnly) {
-        let propertyRefs = new Set();
-        forester.preOrderTraversalAll(phy, function (n) {
-
-            if (!externalOnly || externalOnly !== true || (!n.children && !n._children)) {
-                if (n.properties && n.properties.length > 0) {
-                    let propertiesLength = n.properties.length;
-                    for (let i = 0; i < propertiesLength; ++i) {
-                        let property = n.properties[i];
-                        if (property.ref && property.value && property.datatype && property.applies_to && property.applies_to === appliesTo) {
-                            propertyRefs.add(property.ref);
-                        }
-                    }
-                }
-            }
-        });
-        return propertyRefs;
-    };
-
     forester.collectBasicTreeProperties = function (tree) {
         let properties = {};
         properties.internalNodeData = false;
@@ -1673,19 +1638,6 @@
         return nodes;
     };
 
-    forester.calcMaxDepth = function (node) {
-        let max = 0;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (!n.children && !n._children) {
-                let steps = forester.calcDepth(n);
-                if (steps > max) {
-                    max = steps;
-                }
-            }
-        });
-        return max;
-    };
-
     forester.calcDepth = function (node) {
 
         let steps = 0;
@@ -1697,31 +1649,6 @@
     };
 
 
-    forester.calcBranchLengthSimpleStatistics = function (node) {
-        let stats = {};
-        stats.mean = 0;
-        stats.min = Number.MAX_VALUE;
-        stats.max = 0;
-        stats.n = 0;
-        let sum = 0;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n !== node && n.branch_length && n.branch_length >= 0) {
-                ++stats.n;
-                sum += n.branch_length;
-                if (n.branch_length < stats.min) {
-                    stats.min = n.branch_length;
-                }
-                if (n.branch_length > stats.max) {
-                    stats.max = n.branch_length;
-                }
-            }
-        });
-        if (stats.n > 0) {
-            stats.mean = sum / stats.n;
-        }
-        return stats;
-    };
-
     forester.calcMaxBranchLength = function (node) {
         let max = 0;
         forester.preOrderTraversalAll(node, function (n) {
@@ -1732,33 +1659,6 @@
         return max;
     };
 
-
-    forester.isHasNodeData = function (node) {
-        return ((node.name && node.name.length > 0) || (node.taxonomies && node.taxonomies.length > 0) || (node.sequences && node.sequences.length > 0) || (node.properties && node.properties.length > 0));
-    };
-
-
-    forester.removeMaxBranchLength = function (node) {
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n.max) {
-                n.max = undefined;
-            }
-        });
-    };
-
-    forester.collapse = function (node) {
-        if (node.children) {
-            node._children = node.children;
-            node.children = null;
-        }
-    };
-
-    forester.unCollapse = function (node) {
-        if (node._children) {
-            node.children = node._children;
-            node._children = null;
-        }
-    };
 
     /**
      * To parse a New Hampshire (Newick) formatted tree.
@@ -3116,82 +3016,6 @@
         }
         return true;
     };
-
-    forester.getOneDistinctTaxonomy = function (node) {
-        let id = null;
-        let code = null;
-        let sn = null;
-        let cn = null;
-        let result = true;
-        let sawTax = false;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (n.taxonomies && n.taxonomies.length === 1) {
-                let tax = n.taxonomies[0];
-                if (tax.code && tax.code.length > 0) {
-                    sawTax = true;
-                    if (code === null) {
-                        code = tax.code;
-                    } else if (code !== tax.code) {
-                        result = false;
-                        return;
-                    }
-                }
-                if (tax.scientific_name && tax.scientific_name.length > 0) {
-                    sawTax = true;
-                    if (sn === null) {
-                        sn = tax.scientific_name;
-                    } else if (sn !== tax.scientific_name) {
-                        result = false;
-                        return;
-                    }
-                }
-                if (tax.common_name && tax.common_name.length > 0) {
-                    sawTax = true;
-                    if (cn === null) {
-                        cn = tax.common_name;
-                    } else if (cn !== tax.common_name) {
-                        result = false;
-                        return;
-                    }
-                }
-                if (tax.id && tax.id.value && tax.id.value.length > 0) {
-                    sawTax = true;
-                    let myid;
-                    if (tax.id.provider && tax.id.provider.length > 0) {
-                        myid = tax.id.provider + ':' + tax.id.value;
-                    } else {
-                        myid = tax.id.value;
-                    }
-                    if (id === null) {
-                        id = myid;
-                    } else if (id !== myid) {
-                        result = false;
-
-                    }
-                }
-            } else if (!n.children && !n._children) {
-                // If an external node lacks taxonomy, return false.
-                result = false;
-            }
-        });
-        if (!sawTax) {
-            return null;
-        }
-        if (result === true) {
-
-            if (sn) {
-                return sn;
-            } else if (code) {
-                return code;
-            } else if (cn) {
-                return cn;
-            } else if (id) {
-                return id;
-            }
-        }
-        return null;
-    };
-
 
     // How a label is written into Newick or Nexus, ported from the desktop's
     // ForesterUtil.santitizeStringForNH so both programs emit the same token
