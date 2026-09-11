@@ -1431,6 +1431,79 @@ function (root, d3, forester, phyloXml) {
         document.addEventListener('keydown', onKey);
     }
 
+    // One set of listeners on the tree group instead of five on every node.
+    //
+    // These used to be attached in the node enter: click and contextmenu on
+    // each g.node, and mouseover/mousemove/mouseout on each
+    // circle.nodeCircleOptions. On an 18,512-node tree that is 92,560
+    // registrations on the first draw, and it measured 300-450 ms of one.
+    // Mouse events bubble, so one listener per type on the group does the same
+    // work -- find which node the event came from, and hand the handler its
+    // datum. The handlers never used `this`, which is what makes this a
+    // straight substitution rather than a rewrite.
+    //
+    // Note it is mouseover/mouseout, NOT mouseenter/mouseleave: only the
+    // former pair bubbles, so only the former pair can be delegated.
+    function attachNodeEventDelegation(group) {
+
+        // d3 stores a node's datum on the element as __data__, which is all
+        // selection.datum() reads. Going straight to it avoids allocating a
+        // selection on every mousemove.
+        function datumOf(el) {
+            return el ? el.__data__ : null;
+        }
+
+        // The hover target stays the invisible 5px circle rather than the whole
+        // node, or the tooltip would follow the labels too.
+        function hoverDatum(event) {
+            let t = event.target;
+            if (!t || !t.classList || !t.classList.contains('nodeCircleOptions')) {
+                return null;
+            }
+            return datumOf(t.parentNode);
+        }
+
+        // Click and the context menu take the whole node group, so the node's
+        // LABEL works as a target too -- a much easier thing to aim at than a
+        // 5px circle.
+        function nodeDatum(event) {
+            let t = event.target;
+            return datumOf(t && t.closest ? t.closest('g.node') : null);
+        }
+
+        group
+            .on('click', function (event) {
+                let d = nodeDatum(event);
+                if (d && _treeFn.clickEvent) {
+                    _treeFn.clickEvent(event, d);
+                }
+            })
+            .on('contextmenu', function (event) {
+                let d = nodeDatum(event);
+                if (d && _treeFn.clickEvent) {
+                    event.preventDefault(); // ours instead of the browser's menu
+                    _treeFn.clickEvent(event, d);
+                }
+            })
+            .on('mouseover', function (event) {
+                let d = hoverDatum(event);
+                if (d) {
+                    mouseover(event, d);
+                }
+            })
+            .on('mousemove', function (event) {
+                let d = hoverDatum(event);
+                if (d) {
+                    mousemove(event, d);
+                }
+            })
+            .on('mouseout', function (event) {
+                if (hoverDatum(event)) {
+                    mouseout();
+                }
+            });
+    }
+
     function mouseout() {
         hideHoverGlow();
         // Fade only. Emptying the tooltip here collapsed it to nothing but its
@@ -2567,21 +2640,14 @@ function (root, d3, forester, phyloXml) {
                 return d.id || (d.id = ++_i);
             });
 
+        // No listeners here: click, contextmenu and the hover trio are
+        // delegated once to the tree group -- see attachNodeEventDelegation().
         let nodeEnter = node.enter().append('g')
             .attr('class', 'node')
             .attr('transform', function () {
                 return 'translate(' + source.y0 + ',' + source.x0 + ')';
             })
-            .style('cursor', 'default')
-            .on('click', _treeFn.clickEvent)
-            // Right-click opens the same menu. The left-click target is an
-            // invisible 5px circle on the node itself, which is hard to hit; this
-            // handler sits on the whole node group, so the node's LABEL works as
-            // the target too -- a much easier thing to aim at.
-            .on('contextmenu', function (event, d) {
-                event.preventDefault(); // ours instead of the browser's menu
-                _treeFn.clickEvent.call(this, event, d);
-            });
+            .style('cursor', 'default');
 
 
         // Only the three elements EVERY node needs are created here. The other
@@ -2604,11 +2670,6 @@ function (root, d3, forester, phyloXml) {
             .attr('r', 0);
 
         nodeEnter.append('circle')
-            .on("mouseover", mouseover)
-            .on("mousemove", function (event, d) {
-                mousemove(event, d);
-            })
-            .on("mouseout", mouseout)
             .style('cursor', 'pointer')
             .style('opacity', '0')
             .attr('class', 'nodeCircleOptions')
@@ -4659,6 +4720,7 @@ function (root, d3, forester, phyloXml) {
         populateSearchMenus();
 
         _svgGroup = _baseSvg.append('g');
+        attachNodeEventDelegation(_svgGroup);
         // the floating strips paint over the tree and under the overview
         _floatGroup = _baseSvg.append('g').attr('class', 'aptx-float')
             .style('pointer-events', 'none');
