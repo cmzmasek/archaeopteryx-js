@@ -7998,9 +7998,13 @@ function (root, d3, forester, phyloXml) {
             // The "working" card shown over the tree area while a big tree is
             // drawn. It covers the whole container so nothing underneath --
             // panel included -- can be clicked into a half-built view.
+            // cursor stays default on purpose: `progress` draws the macOS
+            // beach ball next to the pointer, which reads as "the program has
+            // hung" when the card is already saying exactly what is happening
+            // and for how many nodes. One clear signal, not two.
             + '.aptx-busy { position:absolute; inset:0; z-index:1000; display:grid; place-items:center;'
             + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
-            + '  font-size:12px; color:var(--p-ink); cursor:progress; }'
+            + '  font-size:12px; color:var(--p-ink); cursor:default; }'
             + '.aptx-busy-card { display:flex; align-items:center; gap:10px; padding:10px 16px 10px 13px;'
             + '  border:1px solid var(--p-line-strong); border-radius:12px; background:var(--p-bg);'
             + '  box-shadow:0 24px 48px -16px rgba(23,34,46,0.45),0 4px 12px -4px rgba(23,34,46,0.22); }'
