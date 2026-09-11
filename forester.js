@@ -657,13 +657,22 @@
     // ncbi_taxid, taxon_id and taxonomy_id all count.
     const VIS_EXCLUDED_LOCAL_NAME_RE = /(taxonomy|taxon|tax)id$/;
 
-    // The rest are matched on the local name read as WORDS, with every run of
-    // non-alphanumerics -- whitespace, '-', '_', punctuation -- read as one
-    // word break. Separator-aware on purpose, and that is the whole difference
-    // from the rule above: "Authority" and "Dataset" are ordinary properties
-    // and must survive, while "Abbr Authors" and "Region Set" must not.
-    // Reading punctuation as a break also makes the literal column name
-    // "Author(s)" come out as the words "author s".
+    // The rest are matched on THE NAME THE MENU SHOWS, split into words.
+    //
+    // Matching the displayed name rather than the raw ref is the point, not a
+    // convenience: `prettifyVisLabel` splits camelCase, so the ref
+    // `dataUseTerms` reaches the user as "Data Use Terms". A first version of
+    // this rule matched the raw ref, and so read that as one word and offered
+    // it -- the menu said "Data Use Terms" while the rule saw "datauseterms".
+    // Going through the same function means the rule and the label cannot
+    // drift apart again.
+    //
+    // On top of that, every run of non-alphanumerics -- whitespace, '-', '_',
+    // punctuation -- is one word break. Separator-aware on purpose, and that
+    // is the whole difference from the rule above: "Authority" and "Dataset"
+    // are ordinary properties and must survive, while "Abbr Authors" and
+    // "Region Set" must not. Reading punctuation as a break also makes the
+    // literal column name "Author(s)" come out as the words "author s".
     //
     // What these have in common is that they describe the RECORD rather than
     // the organism: who deposited it, which collection it belongs to, what may
@@ -682,11 +691,11 @@
         if (ref.indexOf(VIS_EXCLUDED_REF_PREFIX) === 0) {
             return true;
         }
-        let name = ref.substring(ref.indexOf(':') + 1).toLowerCase();
-        if (VIS_EXCLUDED_LOCAL_NAME_RE.test(name.replace(/[^a-z0-9]/g, ''))) {
+        let local = ref.substring(ref.indexOf(':') + 1);
+        if (VIS_EXCLUDED_LOCAL_NAME_RE.test(local.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
             return true;
         }
-        let words = name.replace(/[^a-z0-9]+/g, ' ').trim();
+        let words = prettifyVisLabel(local).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         for (let i = 0, l = VIS_EXCLUDED_WORD_RES.length; i !== l; ++i) {
             if (VIS_EXCLUDED_WORD_RES[i].test(words)) {
                 return true;

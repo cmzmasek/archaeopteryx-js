@@ -1674,7 +1674,15 @@ function testRecordKeepingNeverOffered() {
         'x:Set', 'x:Region Set', 'x:region_set', 'x:Region-Set',
         'x:Data use', 'x:Data-Use Terms', 'x:data_use_terms', 'x:DATA USE',
         'x:Accession', 'x:Genbank Accession', 'x:genbank_accession', 'x:Accessions',
-        'x:Identifier', 'x:Strain Identifier', 'x:strain-identifier', 'x:Identifiers'
+        'x:Identifier', 'x:Strain Identifier', 'x:strain-identifier', 'x:Identifiers',
+        // camelCase reaches the user already split -- the ref dataUseTerms is
+        // shown as "Data Use Terms" -- so the rule has to see it split too.
+        // Matching the raw ref instead is exactly how "Data Use Terms" got
+        // offered after the first version of this rule shipped.
+        'x:dataUseTerms', 'x:DataUseTerms', 'x:DataUse',
+        'x:AbbrAuthors', 'x:abbrAuthors', 'x:submittingAuthor',
+        'x:RegionSet', 'x:regionSet',
+        'x:GBAccession', 'x:gbAccession', 'x:strainIdentifier'
     ];
     var kept = [
         'x:Authority',      // contains "author", not as a word
@@ -1710,6 +1718,16 @@ function testRecordKeepingNeverOffered() {
     var lost = kept.filter(function (r) { return offered.indexOf(r) < 0; });
     if (lost.length) {
         console.log('    wrongly excluded: ' + lost.join(', '));
+        return false;
+    }
+
+    // The rule reads the name the MENU shows, so these must agree. If
+    // prettifyVisLabel ever stops splitting camelCase, the exclusions above
+    // go quiet rather than wrong, and this line is what says so.
+    if (forester.propertyDisplayName('x:dataUseTerms') !== 'Data Use Terms'
+        || forester.propertyDisplayName('x:AbbrAuthors') !== 'Abbr Authors') {
+        console.log('    display name no longer splits camelCase: '
+            + forester.propertyDisplayName('x:dataUseTerms'));
         return false;
     }
     return true;
