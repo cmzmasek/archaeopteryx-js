@@ -613,8 +613,6 @@
     const VIS_NUMERIC_CATEGORY_MAX = 10;   // <= this many distinct numbers -> colours by default
     const VIS_WIDE_REPEAT_NUM = 3;         // wide categorical: distinct/covered <= 0.6,
     const VIS_WIDE_REPEAT_DEN = 5;         // held integer-exact
-    const VIS_MAX_NUMERIC_UNIQUE_NUM = 9;    // distinct/covered <= 0.9,
-    const VIS_MAX_NUMERIC_UNIQUE_DEN = 10;   // integer-exact as well
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
     // Refs that are never a visualization, however their values distribute.
     // A taxon identifier repeats like a category and passes every statistical
@@ -996,9 +994,19 @@
             let switchable = false;
             let wide = false;
             if (numeric) {
-                if (distinct * VIS_MAX_NUMERIC_UNIQUE_DEN > covered * VIS_MAX_NUMERIC_UNIQUE_NUM) {
-                    return;
-                }
+                // No uniqueness refusal for numbers. There used to be one
+                // (distinct/covered > 9/10 -> refused) meant to catch numeric
+                // identifiers, and it could not tell an identifier from a
+                // MEASUREMENT: a read count, a viral load, an expression level
+                // or a year is naturally one value per sample, which is what a
+                // measurement is. Run over the desktop's gallery it refused
+                // exactly those -- read_count, viral_load, expression_tpm, a
+                // 1930-2010 year field -- on nine trees and left one opening
+                // uncoloured. Run over ours it refused three things, every one
+                // an identifier the NAME rules catch anyway (genome_id twice,
+                // BVBRC_Accession). Identifiers are a fact about a name, not a
+                // distribution, and the name rules are the right instrument.
+                // Removed 2026-09-12, jointly with the desktop.
                 colorMode = distinct <= VIS_NUMERIC_CATEGORY_MAX ? 'category' : 'range';
                 switchable = distinct <= VIS_MAX_COLOR_CATEGORIES;
                 values.sort(function (a, b) {
@@ -1073,8 +1081,8 @@
             }
         });
 
-        // Best first: clean categorical fields, then numeric ranges, then the
-        // wide categoricals (offered, never leading), then the
+        // Best first: clean categorical fields, then EVERY numeric field, then
+        // the wide categoricals (offered, never leading), then the
         // deprioritized ones, and last the sparse -- within each tier by score, ties
         // alphabetically. The first entry is what the viewer applies on load,
         // so the bottom tier can only be applied automatically when it is the
@@ -1086,10 +1094,17 @@
             if (c.deprioritized) {
                 return 3;
             }
-            if (c.colorMode === 'category') {
-                return c.wide ? 2 : 0;
+            // Every numeric field is tier 1, including one with few enough
+            // values to draw as discrete colours. Tiering on colour MODE put
+            // a small measurement in tier 0 beside the real categories, where
+            // an evenly spread one outscores them on entropy -- so with the
+            // uniqueness refusal gone, Viral Load would open a tree instead of
+            // Segment, and Year instead of Clade. A measurement is always
+            // offered; a category, when there is one, still opens the tree.
+            if (c.numeric) {
+                return 1;
             }
-            return 1;
+            return c.wide ? 2 : 0;
         }
         candidates.sort(function (a, b) {
             let ta = tierOf(a);

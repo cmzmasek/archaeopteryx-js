@@ -191,10 +191,11 @@ function testBranchEvents() {
         'prop:vipr:Region category+shape',
         'prop:vipr:PANGO_Lineage_L1 category',
         'prop:vipr:Country category',
-        'prop:vipr:Year category+shape [switch]',
         'prop:vipr:Year_Month category',
         'prop:vipr:Host category+shape',
-        'prop:vipr:PANGO_Lineage_L0 category+shape'
+        'prop:vipr:PANGO_Lineage_L0 category+shape',
+        // numeric: tier 1, so after every clean categorical however it scores
+        'prop:vipr:Year category+shape [switch]'
     ]);
 }
 
@@ -205,8 +206,8 @@ function testBranchEvents() {
 function testConfidences() {
     return expectExactly('confidences', [
         'prop:ird:FluSeason category+shape',
-        'prop:ird:Year category+shape [switch]',
-        'prop:ird:GlobalH1Clade category+shape'
+        'prop:ird:GlobalH1Clade category+shape',
+        'prop:ird:Year category+shape [switch]'   // numeric: tier 1, last of the three
     ]);
 }
 
@@ -243,20 +244,21 @@ function testHerpesDnapol() {
 
 // Six tips. FluSeason is on 2 of 6 (below 2/3), so it is SPARSE -- offered,
 // ranked last, and never the tree's opening colour. Year has 5 distinct values
-// over 6 covered nodes: 5/6 = 0.83, inside the 0.9 identifier guard, so it
-// stays a ramp -- on a tree this small, near-unique is not proof of an id.
+// over 6 covered nodes; there is no uniqueness refusal for numbers any more,
+// so it is simply a numeric candidate in tier 1.
 function testInfluenza() {
     // HA and NA are subtype CODES that happen to be digits: two distinct
     // numbers get two colours, not a two-point gradient. Country still edges
     // Year for the auto-choice on the alphabetical tiebreak at equal score.
     return expectExactly('influenza', [
         'prop:ird:Country category+shape',
-        'prop:ird:Year category+shape [switch]',
         'prop:ird:Host category+shape',
         'prop:ird:Subtype category+shape',
-        'prop:ird:NA category+shape [switch]',
         'prop:ird:Region category+shape',
         'prop:ird:H5Clade category+shape',
+        // the three numerics are tier 1: after every categorical, in score order
+        'prop:ird:Year category+shape [switch]',
+        'prop:ird:NA category+shape [switch]',
         'prop:ird:HA category+shape [switch]',
         // 2 of 6 tips: sparse, so it sorts below everything above it
         'prop:ird:FluSeason category+shape'
@@ -469,11 +471,49 @@ function testWideBand() {
 
 // The identifier guard: 9 distinct numbers on 10 nodes (ratio 0.9) is still
 // a measurement; 10 on 10 is an id column.
-function testNumericIdentifierGuard() {
-    var nine = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '9'];
+// Numbers are never refused for being unique. The 0.9 guard this replaces
+// could not tell a numeric identifier from a MEASUREMENT -- a read count, a
+// viral load, a year is one value per sample by nature -- and on the desktop
+// gallery it refused exactly those on nine trees. Identifiers are caught by
+// NAME now (genome_id, patric_id, accession). Two things to pin: the
+// all-distinct numeric is OFFERED, and being tier 1 it never opens a tree
+// over a real category, however well it scores.
+function testNumericNeverRefusedForUniqueness() {
     var ten = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-    return only(starTree(nine)) !== null
-        && forester.visualizationCandidates(starTree(ten)).length === 0;
+    var c = only(starTree(ten));
+    if (c === null) {
+        console.log('    10 distinct numbers over 10 tips were refused');
+        return false;
+    }
+    if (!c.numeric) {
+        console.log('    offered, but not as numeric');
+        return false;
+    }
+
+    // a two-value category beside a perfectly spread measurement: the
+    // measurement scores 1.0, the category less, and the category must still
+    // lead -- tiering by colour MODE put small numerics in tier 0 and let
+    // Viral Load open a tree instead of Segment
+    var phy = starTree(ten);
+    var i = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.properties) {
+            n.properties.push({ref: 'x:Cat', datatype: 'xsd:string', applies_to: 'node',
+                               value: (i++ < 7) ? 'A' : 'B'});   // 7/3 split: scores ~0.88
+        }
+    });
+    var cands = forester.visualizationCandidates(phy);
+    if (cands.length !== 2) {
+        console.log('    expected 2 candidates, got ' + cands.length);
+        return false;
+    }
+    if (cands[0].ref !== 'x:Cat') {
+        console.log('    the measurement led the category: ' + cands.map(function (x) {
+            return x.ref + '(' + x.score.toFixed(2) + ')';
+        }).join(', '));
+        return false;
+    }
+    return cands[1].numeric === true;
 }
 
 // applies_to other than 'node' is not node data.
@@ -883,7 +923,7 @@ runTest("shape limit 7              : ", testShapeLimit);
 runTest("numeric bands              : ", testNumericBands);
 runTest("wide band + tier           : ", testWideBand);
 runTest("numeric values sort as nums: ", testNumericValuesSortNumerically);
-runTest("numeric identifier guard   : ", testNumericIdentifierGuard);
+runTest("numeric never refused     : ", testNumericNeverRefusedForUniqueness);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
 runTest("label collision            : ", testLabelCollision);
