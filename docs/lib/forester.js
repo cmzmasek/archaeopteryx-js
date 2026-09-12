@@ -1028,16 +1028,23 @@
                     return Number(a) - Number(b);
                 });
             } else {
-                // KNOWN EDGE, deliberately left alone (2026-09-11): this
-                // counts against TOTAL, so a field unique across its annotated
-                // subset -- 15 distinct over the 15 tips of 30 that carry it --
-                // is offered rather than refused as the identifier it looks
-                // like. Counting against COVERED instead closes that, but also
-                // refuses a field carried by two tips with two values, where
-                // all-unique is a sample of two rather than evidence. Both the
-                // hole and the overreach are bounded: such a field is sparse,
-                // so it ranks last and never opens a tree. Being designed with
-                // the desktop rather than patched here.
+                // KNOWN EDGE, left alone BY DECISION (Christian, 2026-09-12):
+                // this counts against TOTAL, so a field unique across its
+                // annotated subset -- strain on a 1,170-tip flu tree, 1,168
+                // distinct over the 1,168 tips that carry it -- is offered
+                // rather than refused as the identifier it is. It lands as
+                // near-unique, tier 5, the bottom of the menu, and never
+                // opens a tree. Counting against COVERED instead closes that
+                // (five corpus fields, four of them strain/collection date)
+                // but also refuses a field carried by two tips with two
+                // values, where all-unique is a sample of two, not evidence.
+                // Both were put to him with the numbers; he chose to keep
+                // this until a user complains. Also decided then: strain and
+                // genome name are NOT excluded by name -- both are grouping
+                // fields wherever an isolate contributes several sequences
+                // (eight segment records per strain in bvbrc+flu_seg4), and
+                // the data rules already sort the identifier case to the
+                // bottom. Do not "fix" either without asking him.
                 if (distinct >= total) {
                     return;
                 }
