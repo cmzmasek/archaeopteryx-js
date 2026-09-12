@@ -177,3 +177,13 @@ BVBRC:restricted_until	EXCLUDED	Restricted Until
 x:Restricted	offered	Restricted
 x:Unrestricted	offered	Unrestricted
 x:Restriction	offered	Restriction
+# prettifier edges (2026-09-12): camelCase splits only at a-z followed by A-Z, a word is capitalised only when it starts a-z,
+# split(" ") keeps empty words (a double underscore is a double space), the namespace ends at the FIRST colon
+x:h5N1	offered	H5N1
+x:iPhone	offered	I Phone
+x:mixedCASE	offered	Mixed CASE
+x:ABCdef	offered	ABCdef
+x:a__b	offered	A  B
+x:y:z	offered	Y:z
+x:y:Z_w	offered	Y:Z W
+BVBRC:H5N1_Clade	offered	H5N1 Clade

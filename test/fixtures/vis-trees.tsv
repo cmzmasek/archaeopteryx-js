@@ -40,6 +40,6 @@ numeric_grammar	x:Inf	offered	0	1	0	0	0	0	0	category	1	x:Hex	4
 numeric_grammar	x:Forms	offered	1	2	1	0	0	0	0	category	1	x:Hex	4
 name_rules	x:Host	offered	0	0	0	0	0	0	0	category	1	x:Host	2
 name_rules	x:genome_id	refused	-	-	-	-	-	-	-	-	-	x:Host	-
-name_rules	x:Abbr Authors	refused	-	-	-	-	-	-	-	-	-	x:Host	-
+name_rules	x:Abbr_Authors	refused	-	-	-	-	-	-	-	-	-	x:Host	-
 name_rules	x:Out-Group	offered	3	2	0	0	0	0	1	category	1	x:Host	2
 name_rules	x:Plasmid	offered	0	1	0	0	0	0	0	category	1	x:Host	2

@@ -113,7 +113,7 @@ const TREES = {
     }},
     // --- names, as a cross-check that the two halves agree ---------------
     name_rules: {n: 30, f: {
-        'x:Host': AB, 'x:genome_id': AB, 'x:Abbr Authors': AB, 'x:Out-Group': AB, 'x:Plasmid': AB
+        'x:Host': AB, 'x:genome_id': AB, 'x:Abbr_Authors': AB, 'x:Out-Group': AB, 'x:Plasmid': AB
     }}
 };
 
