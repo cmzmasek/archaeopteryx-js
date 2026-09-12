@@ -60,6 +60,7 @@ x:Abbr Authors	EXCLUDED	Abbr Authors
 x:AbbrAuthors	EXCLUDED	Abbr Authors
 x:Accession	EXCLUDED	Accession
 x:Accession Number	offered	Accession Number
+x:AccessionX	offered	Accession X
 x:Accessions	EXCLUDED	Accessions
 x:Author	EXCLUDED	Author
 x:Author(s)	EXCLUDED	Author(s)
@@ -117,9 +118,12 @@ x:Taxon	offered	Taxon
 x:Taxonomy	offered	Taxonomy
 x:Within Group	offered	Within Group
 x:Within-Group	offered	Within-Group
+x:XYZaccession	EXCLUDED	XYZaccession
+x:XYZidentifier	EXCLUDED	XYZidentifier
 x:Year_Month	offered	Year Month
 x:abbrAuthors	EXCLUDED	Abbr Authors
 x:abbr_authors	EXCLUDED	Abbr Authors
+x:accession_number	offered	Accession Number
 x:already Spaced	offered	Already Spaced
 x:authorship	offered	Authorship
 x:collection_date	offered	Collection Date
@@ -129,6 +133,7 @@ x:gbAccession	EXCLUDED	Gb Accession
 x:genbank_accession	EXCLUDED	Genbank Accession
 x:geographic_group	offered	Geographic Group
 x:host	offered	Host
+x:identifierX	offered	Identifier X
 x:in_group	DEPRIORITIZED	In Group
 x:ingroup	DEPRIORITIZED	Ingroup
 x:lowerUPPER	offered	Lower UPPER
