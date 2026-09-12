@@ -111,6 +111,13 @@ const TREES = {
         'x:Inf':   i => (i % 4) ? String(i % 4) : 'Infinity',         // nor is Infinity
         'x:Forms': i => ['+5', '.5', '5.', '1e3', '7'][i % 5]         // every decimal spelling is; +5 and 5. fold
     }},
+    // --- a value that folds to nothing is no value (decided 2026-09-12) ---
+    fold_to_empty: {n: 30, f: {
+        'x:Clean':  AB,                                                // opens the tree
+        'x:Blanks': i => (i % 5 < 2) ? ['_', '___'][i % 2] : AB(i),    // 12 of 30 are only underscores: covered 18/30 -> sparse
+        'x:Host':   i => (i % 5 < 2) ? '; cell culture' : AB(i),       // host cuts at ";": nothing before it -> no value -> sparse
+        'x:Void':   () => '_'                                          // every value folds to nothing: not a candidate
+    }},
     // --- names, as a cross-check that the two halves agree ---------------
     name_rules: {n: 30, f: {
         'x:Host': AB, 'x:genome_id': AB, 'x:Abbr_Authors': AB, 'x:Out-Group': AB, 'x:Plasmid': AB

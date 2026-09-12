@@ -759,6 +759,12 @@
     // "Saimiri boliviensis (squirrel monkey; voucher: X)" reads as
     // "Saimiri boliviensis" rather than dangling.
     //
+    // A value that normalizes to NOTHING -- "_", "___", a host that is only
+    // its ";" qualifier -- is no value at all, everywhere: the tip is not
+    // covered, no group is made, the legend shows no row for it, and it does
+    // not count as the ref being carried twice. (Decided 2026-09-12; the
+    // desktop already read it that way.)
+    //
     // Matching is WHOLE-VALUE only (after a trailing parenthetical is tried
     // stripped: "Bos taurus (cattle)" looks up "bos taurus") -- never by
     // substring, so "ferret badger" (a Melogale, not a ferret) and
@@ -965,30 +971,43 @@
             }
             Object.keys(perNode).forEach(function (id) {
                 let g = perNode[id];
+                let cut = g.kind === 'property' ? visQualifierCut(g.ref) : null;
+                // properties group under their normalized display form;
+                // taxonomy / sequence elements are curated text, verbatim.
+                // A value that folds to NOTHING ("_", a host that is only its
+                // ";" qualifier) is NO VALUE, exactly like the empty string
+                // dropped above: it does not cover the tip, makes no group,
+                // and does not count as "carried twice". Until 2026-09-12 the
+                // tip was counted covered here and the legend then showed a
+                // row with an empty label (Christian: fix; the desktop had it
+                // right).
+                let displays = [];
+                for (let i = 0; i < g.values.length; ++i) {
+                    let display = g.kind === 'property' ? visDisplayLabel(g.values[i], cut) : g.values[i];
+                    if (display.length > 0) {
+                        displays.push(display);
+                    }
+                }
+                if (displays.length === 0) {
+                    return;
+                }
                 if (!stats[id]) {
-                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label,
-                        cut: g.kind === 'property' ? visQualifierCut(g.ref) : null,
+                    stats[id] = {kind: g.kind, ref: g.ref, label: g.label, cut: cut,
                         nodes: 0, keys: Object.create(null), multi: false};
                 }
                 let s = stats[id];
                 s.nodes++;
-                if (g.values.length > 1) {
+                if (displays.length > 1) {
                     s.multi = true;
                 }
-                for (let i = 0; i < g.values.length; ++i) {
-                    // properties group under their normalized display form;
-                    // taxonomy / sequence elements are curated text, verbatim
-                    let display = g.kind === 'property' ? visDisplayLabel(g.values[i], s.cut) : g.values[i];
-                    if (display.length === 0) {
-                        continue;
-                    }
+                displays.forEach(function (display) {
                     let key = g.kind === 'property' ? display.toLowerCase() : display;
                     if (!s.keys[key]) {
                         s.keys[key] = {count: 0, spellings: Object.create(null)};
                     }
                     s.keys[key].count++;
                     s.keys[key].spellings[display] = (s.keys[key].spellings[display] || 0) + 1;
-                }
+                });
             });
         });
 
@@ -1524,6 +1543,11 @@
                             // {kind, ref} probe (labels, prefixes) reads raw
                             if (candidate.canon) {
                                 let display = visDisplayLabel(v, candidate.cut || null);
+                                if (display.length === 0) {
+                                    // folds to nothing: no value, as the
+                                    // classifier counted it -- keep looking
+                                    continue;
+                                }
                                 return candidate.canon[display.toLowerCase()] || display;
                             }
                             return v;

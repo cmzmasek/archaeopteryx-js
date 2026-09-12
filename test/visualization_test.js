@@ -1101,6 +1101,66 @@ function testEditKeepsValuedChoice() {
     return byRef(forester.visualizationCandidatesKeeping(phy, [f]), 'x:F') === null;
 }
 
+// A value that normalizes to nothing ("_", a host that is only its ";"
+// qualifier) is NO VALUE everywhere -- decided 2026-09-12 after the desktop
+// port found the divergence: the classifier counted such a tip as covered
+// while making no group for it, so the legend carried a row with an empty
+// label. Now: not covered, no group, no legend row, not "carried twice", and
+// a field with nothing but such values is not a candidate at all.
+function testFoldToEmptyIsNoValue() {
+    function tree(rows) {
+        var tips = [];
+        for (var i = 0; i < rows.length; ++i) { tips.push('t' + i); }
+        var phy = forester.parseNewHampshire('(' + tips.join(',') + ');', true, false);
+        var nodes = forester.getAllExternalNodes(phy);
+        nodes.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+        nodes.forEach(function (n, i) {
+            n.properties = rows[i].map(function (v) {
+                return {ref: 'x:F', datatype: 'xsd:string', applies_to: 'node', value: v};
+            });
+        });
+        return phy;
+    }
+    // red, red, blue, "_", nothing: 3 of 5 covered, two values, no "" anywhere
+    var phy = tree([['red'], ['red'], ['blue'], ['_'], []]);
+    var f = byRef(forester.visualizationCandidates(phy), 'x:F');
+    if (!f || f.coverage !== 3 || f.total !== 5 || f.values.join() !== 'Blue,Red') {
+        console.log('    classifier: ' + JSON.stringify(f && {coverage: f.coverage, total: f.total, values: f.values}));
+        return false;
+    }
+    var nodes = forester.getAllExternalNodes(phy);
+    nodes.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+    if (forester.visualizationNodeValue(nodes[3], f) !== null || forester.visualizationNodeValue(nodes[4], f) !== null
+        || forester.visualizationNodeValue(nodes[0], f) !== 'Red') {
+        console.log('    node value: ' + JSON.stringify([nodes[0], nodes[3], nodes[4]].map(function (n) { return forester.visualizationNodeValue(n, f); })));
+        return false;
+    }
+    var s = forester.visualizationSummary(f, phy);
+    if (s.values.join() !== 'Blue,Red' || s.coverage !== 3 || s.total !== 5 || s.distinct !== 2 || ('' in s.counts)) {
+        console.log('    summary: ' + JSON.stringify(s));
+        return false;
+    }
+    // "_" beside a real value on one tip is not "carried twice"; the real value reads
+    var twice = byRef(forester.visualizationCandidates(tree([['_', 'red'], ['red'], ['blue'], ['blue']])), 'x:F');
+    if (!twice || twice.coverage !== 4 || twice.counts.Red !== 2) {
+        console.log('    beside a value: ' + JSON.stringify(twice && {coverage: twice.coverage, counts: twice.counts}));
+        return false;
+    }
+    // a host that is only its qualifier
+    var host = forester.parseNewHampshire('(a,b,c,d);', true, false);
+    forester.getAllExternalNodes(host).forEach(function (n, i) {
+        n.properties = [{ref: 'x:Host', datatype: 'xsd:string', applies_to: 'node',
+                         value: i === 0 ? '; cell culture' : ((i % 2) ? 'Human' : 'Avian')}];
+    });
+    var h = byRef(forester.visualizationCandidates(host), 'x:Host');
+    if (!h || h.coverage !== 3 || h.values.join() !== 'Avian,Human') {
+        console.log('    host qualifier only: ' + JSON.stringify(h && {coverage: h.coverage, values: h.values}));
+        return false;
+    }
+    // every value folds to nothing: not a candidate
+    return byRef(forester.visualizationCandidates(tree([['_'], ['___'], ['_ _']])), 'x:F') === null;
+}
+
 // --------------------------------------------------------------
 
 console.log("\nvisualization candidate classifier\n");
@@ -1156,6 +1216,7 @@ runTest("numeric key folding        : ", testNumericKeyFolding);
 runTest("opening rule               : ", testOpeningRule);
 runTest("view: summarize, not reclassify: ", testViewSummaryNotReclassified);
 runTest("edit: keep a valued choice : ", testEditKeepsValuedChoice);
+runTest("fold-to-empty is no value  : ", testFoldToEmptyIsNoValue);
 
 // --------------------------------------------------------------
 // forester.suggestLabelFields: which of the three label checkboxes

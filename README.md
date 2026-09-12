@@ -177,7 +177,8 @@ and decides by itself what is worth showing. There is nothing to configure.
   two where both make sense.
 * The **legend** is a card you can **drag anywhere**. It shows a colour and
   a **count** per value, `[by count]` / `[A-Z]` toggles the order, a dashed
-  **no value** row counts the nodes the field does not cover, and very long
+  **no value** row counts the nodes the field does not cover (a value that is
+  nothing but underscores or a `;`/`:` qualifier counts as no value), and very long
   legends show the top 20 with a `[+N more]` chip. Legends are part of PNG,
   PDF
   and SVG exports (exports always come out light).
