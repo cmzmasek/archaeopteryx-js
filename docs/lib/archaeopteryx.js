@@ -8535,6 +8535,32 @@ function (root, d3, forester, phyloXml) {
                 if (s.type) {
                     text += '- Type: ' + s.type + '<br>';
                 }
+                // The domain architecture, which phyloXML has always carried
+                // and this dialog has never shown: a reader could find a node
+                // by searching for one of its domains -- forester indexes them
+                // as the "Domain" search field -- and then see nothing about it
+                // here. Listed in POSITION order rather than file order, since
+                // an architecture is a line along the protein and reading it
+                // out of order tells you nothing.
+                let da = s.domain_architecture;
+                if (da && da.domains && da.domains.length > 0) {
+                    text += '- Domain architecture: '
+                        + (da.length ? da.length + ' aa, ' : '')
+                        + da.domains.length + (da.domains.length === 1 ? ' domain' : ' domains')
+                        + '<br>';
+                    da.domains.slice().sort(function (a, b) {
+                        return (a.from - b.from) || (a.to - b.to);
+                    }).forEach(function (dom) {
+                        let name = dom.name || '(unnamed)';
+                        let span = (dom.from !== undefined && dom.to !== undefined)
+                            ? dom.from + '-' + dom.to : '';
+                        // the confidence on a domain is its e-value; an
+                        // explicit 0 is a real score, so test for undefined
+                        let ev = (dom.confidence !== undefined && dom.confidence !== null)
+                            ? ' (E=' + dom.confidence + ')' : '';
+                        text += '-- ' + name + ': ' + span + ev + '<br>';
+                    });
+                }
             }
         }
         if (d.events) {
