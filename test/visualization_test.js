@@ -924,6 +924,7 @@ runTest("numeric bands              : ", testNumericBands);
 runTest("wide band + tier           : ", testWideBand);
 runTest("numeric values sort as nums: ", testNumericValuesSortNumerically);
 runTest("numeric never refused     : ", testNumericNeverRefusedForUniqueness);
+runTest("clade-scoped properties   : ", testCladeScopedPropertiesOffered);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
 runTest("label collision            : ", testLabelCollision);
@@ -2313,6 +2314,44 @@ function testJointContractFixture() {
     if (bad.length) {
         bad.slice(0, 6).forEach(function (b) { console.log('    ' + b); });
         if (bad.length > 6) { console.log('    ... and ' + (bad.length - 6) + ' more'); }
+        return false;
+    }
+    return true;
+}
+
+// applies_to="clade" is node data at a tip: the clade rooted at an external
+// node IS that node. The repseq pipeline writes clade for every field, and
+// until 2026-09-12 the classifier accepted only node -- so a repseq tree with
+// country, host, subtype and year on every tip offered NOTHING, four of the
+// thirteen trees in test_trees among them. parent_branch stays out: that is
+// the branch above the node, not the node.
+function testCladeScopedPropertiesOffered() {
+    function tree(applies) {
+        var tips = [];
+        for (var i = 0; i < 30; ++i) { tips.push('t' + i); }
+        var phy = forester.parseNewHampshire('(' + tips.join(',') + ');', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = [{ref: 'x:Host', datatype: 'xsd:string', applies_to: applies,
+                             value: (i % 2) ? 'Human' : 'Avian'}];
+        });
+        return phy;
+    }
+    var clade = forester.visualizationCandidates(tree('clade'));
+    if (clade.length !== 1 || clade[0].ref !== 'x:Host') {
+        console.log('    a clade-scoped property was not offered');
+        return false;
+    }
+    // and its VALUES must read back, or it is offered and colours nothing
+    if (clade[0].values.slice().sort().join(',') !== 'Avian,Human') {
+        console.log('    offered, but the values did not read back: ' + clade[0].values.join(','));
+        return false;
+    }
+    if (forester.visualizationCandidates(tree('node')).length !== 1) {
+        console.log('    node-scoped regressed');
+        return false;
+    }
+    if (forester.visualizationCandidates(tree('parent_branch')).length !== 0) {
+        console.log('    a parent_branch property was offered as node data');
         return false;
     }
     return true;

@@ -866,6 +866,20 @@
         return prettifyVisLabel(local);
     };
 
+    // Is this property about the node itself? phyloXML's applies_to has six
+    // values and two of them describe the node's own data at a tip: 'node',
+    // and 'clade' -- the clade rooted at an external node IS that node. Tools
+    // differ on which they write: BV-BRC/ViPR exports say node, the repseq
+    // pipeline says clade for every field, and until 2026-09-12 this library
+    // accepted only node, so a repseq tree with country, host, subtype and
+    // year on every tip offered NOTHING to colour by -- four of the thirteen
+    // trees in test_trees, silently. The desktop applies no filter at all.
+    // 'parent_branch' is deliberately still out: that is the branch above the
+    // node, and colouring a node by its branch's property would be wrong.
+    forester.isNodeScopedProperty = function (p) {
+        return p.applies_to === 'node' || p.applies_to === 'clade';
+    };
+
     forester.visualizationCandidates = function (tree) {
         let total = 0;
         let stats = Object.create(null);   // id -> {kind, ref, label, nodes, values:Set, multi}; null-proto: ids embed file refs
@@ -902,7 +916,7 @@
             if (n.properties) {
                 for (let i = 0; i < n.properties.length; ++i) {
                     let p = n.properties[i];
-                    if (p.ref && p.applies_to === 'node' && !visExcludedRef(p.ref)) {
+                    if (p.ref && forester.isNodeScopedProperty(p) && !visExcludedRef(p.ref)) {
                         add('prop:' + p.ref, 'property', p.ref, null, p.value);
                     }
                 }
@@ -1160,7 +1174,7 @@
                 let seen = {};
                 for (let i = 0; i < n.properties.length; ++i) {
                     let p = n.properties[i];
-                    if (!p.ref || p.applies_to !== 'node' || seen[p.ref]
+                    if (!p.ref || !forester.isNodeScopedProperty(p) || seen[p.ref]
                         || p.ref.indexOf(VIS_EXCLUDED_REF_PREFIX) === 0) {
                         continue;
                     }
@@ -1225,7 +1239,7 @@
         }
         for (let i = 0; i < node.properties.length; ++i) {
             let p = node.properties[i];
-            if (!p.ref || p.applies_to !== 'node' || p.value === undefined || p.value === null) {
+            if (!p.ref || !forester.isNodeScopedProperty(p) || p.value === undefined || p.value === null) {
                 continue;
             }
             let v = String(p.value).trim();
@@ -1404,7 +1418,7 @@
             if (node.properties) {
                 for (let i = 0; i < node.properties.length; ++i) {
                     let p = node.properties[i];
-                    if (p.ref === candidate.ref && p.applies_to === 'node') {
+                    if (p.ref === candidate.ref && forester.isNodeScopedProperty(p)) {
                         let v = clean(p.value);
                         if (v !== null) {
                             // a classifier-built candidate folds the value the

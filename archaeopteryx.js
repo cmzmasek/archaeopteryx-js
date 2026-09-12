@@ -3455,7 +3455,7 @@ function (root, d3, forester, phyloXml) {
         if (_vis && _vis.labelRef && !phynode.children && phynode.properties) {
             for (let i = 0; i < phynode.properties.length; ++i) {
                 let p = phynode.properties[i];
-                if (p.ref === _vis.labelRef && p.applies_to === 'node' && p.value) {
+                if (p.ref === _vis.labelRef && forester.isNodeScopedProperty(p) && p.value) {
                     return String(p.value);
                 }
             }
@@ -3728,7 +3728,7 @@ function (root, d3, forester, phyloXml) {
                     if (value.selected === true && value.propertyRef) {
                         let prop_text = '';
                         for (let pm = 0; pm < props_length; ++pm) {
-                            if (phynode.properties[pm].ref === value.propertyRef && phynode.properties[pm].datatype === 'xsd:string' && phynode.properties[pm].applies_to === 'node') {
+                            if (phynode.properties[pm].ref === value.propertyRef && phynode.properties[pm].datatype === 'xsd:string' && forester.isNodeScopedProperty(phynode.properties[pm])) {
                                 if (prop_text.length > 0) {
                                     prop_text += ', '
                                 }
@@ -4500,7 +4500,7 @@ function (root, d3, forester, phyloXml) {
                     if (labelRef && n.properties) {
                         for (let pi = 0; pi < n.properties.length; ++pi) {
                             let p = n.properties[pi];
-                            if (p.ref === labelRef && p.applies_to === 'node' && p.value) {
+                            if (p.ref === labelRef && forester.isNodeScopedProperty(p) && p.value) {
                                 return String(p.value);
                             }
                         }
@@ -5261,7 +5261,7 @@ function (root, d3, forester, phyloXml) {
                         let properties_text = '';
                         let prev_property_ref = null;
                         for (let pl = 0; pl < l; ++pl) {
-                            if (sorted_properties[pl].applies_to === 'node') {
+                            if (forester.isNodeScopedProperty(sorted_properties[pl])) {
                                 if (sorted_properties[pl].ref === prev_property_ref) {
                                     properties_text = addSepSame(properties_text);
                                 } else {
