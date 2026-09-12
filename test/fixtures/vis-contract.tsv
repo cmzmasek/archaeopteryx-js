@@ -6,13 +6,13 @@
 BVBRC:accession	EXCLUDED	Accession
 BVBRC:collection_year	offered	Collection Year
 BVBRC:genbank_accessions	EXCLUDED	Genbank Accessions
-BVBRC:genome_id	offered	Genome Id
+BVBRC:genome_id	EXCLUDED	Genome Id
 BVBRC:genome_name	offered	Genome Name
 BVBRC:geographic_group	offered	Geographic Group
 BVBRC:host_common_name	offered	Host Common Name
 BVBRC:host_group	offered	Host Group
 BVBRC:isolation_country	offered	Isolation Country
-BVBRC:patric_id	offered	Patric Id
+BVBRC:patric_id	EXCLUDED	Patric Id
 BVBRC:product	offered	Product
 BVBRC:species	offered	Species
 BVBRC:state_province	offered	State Province
@@ -66,6 +66,7 @@ x:Author	EXCLUDED	Author
 x:Author(s)	EXCLUDED	Author(s)
 x:Authority	offered	Authority
 x:Authors	EXCLUDED	Authors
+x:Centroid	offered	Centroid
 x:DATA USE	EXCLUDED	DATA USE
 x:Data usage	offered	Data Usage
 x:Data use	EXCLUDED	Data Use
@@ -74,16 +75,21 @@ x:DataSet	EXCLUDED	Data Set
 x:DataUse	EXCLUDED	Data Use
 x:DataUseTerms	EXCLUDED	Data Use Terms
 x:Dataset	offered	Dataset
+x:Feature_ID	EXCLUDED	Feature ID
 x:FluSeason	offered	Flu Season
 x:GBAccession	EXCLUDED	GBAccession
 x:Genbank Accession	EXCLUDED	Genbank Accession
+x:Genome Id	EXCLUDED	Genome Id
+x:GenomeID	EXCLUDED	Genome ID
 x:GlobalH1Clade	offered	Global H1 Clade
+x:Grid	offered	Grid
 x:Group	offered	Group
 x:Grouping	offered	Grouping
 x:H5Clade	offered	H5 Clade
 x:H5N1	offered	H5N1
 x:HA	offered	HA
 x:Host	offered	Host
+x:Hybrid	offered	Hybrid
 x:IN-GROUP	DEPRIORITIZED	IN-GROUP
 x:Identifier	EXCLUDED	Identifier
 x:Identifiers	EXCLUDED	Identifiers
@@ -94,9 +100,12 @@ x:In-Groups	DEPRIORITIZED	In-Groups
 x:InGroup	DEPRIORITIZED	In Group
 x:Ingredient	offered	Ingredient
 x:Ingroup	DEPRIORITIZED	Ingroup
+x:Lipid	offered	Lipid
 x:Metadata	offered	Metadata
 x:NCBI_Taxon_Id	EXCLUDED	NCBI Taxon Id
+x:Nucleic Acid	offered	Nucleic Acid
 x:OUT-GROUP	DEPRIORITIZED	OUT-GROUP
+x:Orchid	offered	Orchid
 x:Out	offered	Out
 x:Out Group	DEPRIORITIZED	Out Group
 x:Out-Group	DEPRIORITIZED	Out-Group
@@ -105,11 +114,14 @@ x:Outcome	offered	Outcome
 x:Outgroups	DEPRIORITIZED	Outgroups
 x:Output	offered	Output
 x:PANGO	offered	PANGO
+x:Plasmid	offered	Plasmid
+x:Rapid	offered	Rapid
 x:Region Set	EXCLUDED	Region Set
 x:Region-Set	EXCLUDED	Region-Set
 x:RegionSet	EXCLUDED	Region Set
 x:Set	EXCLUDED	Set
 x:Settings	offered	Settings
+x:Steroid	offered	Steroid
 x:Strain Identifier	EXCLUDED	Strain Identifier
 x:Submitting-Author	EXCLUDED	Submitting-Author
 x:Subset	offered	Subset
@@ -131,8 +143,12 @@ x:dataUseTerms	EXCLUDED	Data Use Terms
 x:data_use_terms	EXCLUDED	Data Use Terms
 x:gbAccession	EXCLUDED	Gb Accession
 x:genbank_accession	EXCLUDED	Genbank Accession
+x:genomeId	EXCLUDED	Genome Id
+x:genome_id	EXCLUDED	Genome Id
+x:genome_ids	EXCLUDED	Genome Ids
 x:geographic_group	offered	Geographic Group
 x:host	offered	Host
+x:id	EXCLUDED	Id
 x:identifierX	offered	Identifier X
 x:in_group	DEPRIORITIZED	In Group
 x:ingroup	DEPRIORITIZED	Ingroup
@@ -140,6 +156,7 @@ x:lowerUPPER	offered	Lower UPPER
 x:ncbi_taxid	EXCLUDED	Ncbi Taxid
 x:out_group	DEPRIORITIZED	Out Group
 x:outgroup	DEPRIORITIZED	Outgroup
+x:patric_id	EXCLUDED	Patric Id
 x:regionSet	EXCLUDED	Region Set
 x:region_set	EXCLUDED	Region Set
 x:state_province	offered	State Province

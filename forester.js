@@ -650,9 +650,19 @@
         /(^| )authors?( |$)/,   // Author, Authors, Author(s), Abbr Authors
         /(^| )set( |$)/,        // Region Set -- but not Dataset or Subset
         /(^| )data use( |$)/,   // Data use, Data-Use Terms
+        /(^| )ids?( |$)/,       // genome_id, patric_id, GenomeID, Feature_ID
         /accessions?$/,         // ...Accession, ...Accessions
         /identifiers?$/         // ...Identifier, ...Identifiers
     ];
+    // A note on why "id" is a WORD rule and accession/identifier are suffix
+    // rules, since the inconsistency is deliberate. "accession" and
+    // "identifier" are long enough that a name ending in those letters is one:
+    // GBAccession is an accession. "id" is two letters and ends a great many
+    // ordinary words -- Plasmid, Hybrid, Nucleic Acid, Lipid, Steroid, Orchid,
+    // Centroid, Grid, Rapid -- any of which is a plausible property on a
+    // biological tree. Matched as a word it catches genome_id, patric_id,
+    // GenomeID, genomeId and Feature_ID while leaving every one of those
+    // alone.
 
     // Offered, but never the tree's OPENING visualization unless it is the
     // only thing on offer. "In-Group" and "Out-Group" say which tips were the
