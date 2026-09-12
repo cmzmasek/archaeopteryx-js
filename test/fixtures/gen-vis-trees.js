@@ -13,7 +13,13 @@
 // changes (node test/fixtures/gen-vis-trees.js), never to make the test pass.
 //
 // Tiers: 0 clean categorical, 1 every numeric, 2 wide, 3 deprioritized,
-// 4 sparse, 5 near-unique. Only 0 and 1 open a tree.
+// 4 sparse, 5 near-unique. The FIRST CANDIDATE THAT IS NOT WIDE opens the
+// tree, so 0, 1, 3 and 4 can open one (each only when nothing above it
+// exists) and 2 and 5 never do.
+//
+// Candidacy is decided on the tree; a view (subtree) never re-decides it. The
+// trees here are static on purpose -- the view rule is pinned by the summary
+// tests in visualization_test.js, not by a fixture.
 
 'use strict';
 
@@ -95,6 +101,16 @@ const TREES = {
     // --- what opens the tree ---------------------------------------------
     opens_uncoloured_wide_only: {n: 35, f: {'x:F': seq(21)}},          // sole candidate is wide: nothing opens
     opens_by_sparse_when_alone: {n: 30, f: {'x:F': i => i < 18 ? AB(i) : null}},  // sparse alone DOES open
+    opens_past_wide: {n: 36, f: {                                      // a wide field precedes the In-Group in
+        'x:Wide': seq(21), 'x:In-Group': i => (i % 2) ? 'in' : 'out'   // the menu but does not stop it opening
+    }},
+    // --- numeric grammar and folding ------------------------------------
+    numeric_grammar: {n: 20, f: {
+        'x:Fold':  i => ['1', '1.0', '2', '+2', '3'][i % 5],           // 1/1.0 and 2/+2 fold: 3 distinct, numeric
+        'x:Hex':   i => (i % 4) ? String(i % 4) : '0x1A',             // "0x1A" is not a number here: categorical
+        'x:Inf':   i => (i % 4) ? String(i % 4) : 'Infinity',         // nor is Infinity
+        'x:Forms': i => ['+5', '.5', '5.', '1e3', '7'][i % 5]         // every decimal spelling is; +5 and 5. fold
+    }},
     // --- names, as a cross-check that the two halves agree ---------------
     name_rules: {n: 30, f: {
         'x:Host': AB, 'x:genome_id': AB, 'x:Abbr Authors': AB, 'x:Out-Group': AB, 'x:Plasmid': AB
@@ -119,17 +135,18 @@ Object.keys(TREES).forEach(function (name) {
     const cands = forester.visualizationCandidates(phy);
     const byRef = Object.create(null);
     cands.forEach(function (c, i) { byRef[c.ref || c.id] = {c: c, rank: i}; });
-    const opens = cands.length && !cands[0].wide ? (cands[0].ref || cands[0].id) : '-';
+    const first = forester.openingVisualization(cands);
+    const opens = first ? (first.ref || first.id) : '-';
     Object.keys(spec.f).forEach(function (ref) {
         const hit = byRef[ref];
         if (!hit) {
-            rows.push([name, ref, 'refused', '-', '-', '-', '-', '-', '-', '-', '-', '-', opens].join('\t'));
+            rows.push([name, ref, 'refused', '-', '-', '-', '-', '-', '-', '-', '-', '-', opens, '-'].join('\t'));
             return;
         }
         const c = hit.c;
         rows.push([name, ref, 'offered', tierOf(c), hit.rank, c.numeric ? 1 : 0, c.wide ? 1 : 0,
                    c.nearUnique ? 1 : 0, c.sparse ? 1 : 0, c.deprioritized ? 1 : 0,
-                   c.colorMode, c.shape ? 1 : 0, opens].join('\t'));
+                   c.colorMode, c.shape ? 1 : 0, opens, c.values.length].join('\t'));
     });
     // a candidate the spec did not declare would be a bug in this generator
     cands.forEach(function (c) {
@@ -142,9 +159,12 @@ const header = [
     '# test/fixtures/gen-vis-trees.js from forester.js by RUNNING it. Do not edit;',
     '# regenerate deliberately when a rule changes, never to make a test pass.',
     '# tree <TAB> ref <TAB> verdict <TAB> tier <TAB> rank <TAB> numeric <TAB> wide <TAB> nearUnique',
-    '#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens',
+    '#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens <TAB> distinct',
     '# tier: 0 clean categorical, 1 numeric, 2 wide, 3 deprioritized, 4 sparse, 5 near-unique',
-    '# opens: the ref the viewer colours the tree with on load ("-" = uncoloured)'
+    '# opens: the ref the viewer colours the tree with on load -- the first candidate that',
+    '#   is not wide ("-" = uncoloured)',
+    '# distinct: distinct values AFTER grouping (case folds for categories; spellings of one',
+    '#   number fold for numerics: "1" and "1.0" are one value)'
 ];
 fs.writeFileSync(path.join(__dirname, 'vis-trees.tsv'), header.join('\n') + '\n' + rows.join('\n') + '\n');
 console.log(Object.keys(TREES).length + ' trees, ' + rows.length + ' expectation rows written');

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v0</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v4</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v5</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v6</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v7</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v8</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v9</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v10</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v11</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v12</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v13</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v14</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v15</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v16</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v17</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v18</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v19</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v20</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v0</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v4</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v5</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v6</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v7</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v8</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t30</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v9</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t31</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v10</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t32</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v11</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t33</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v12</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+      <clade>
+        <name>t34</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v13</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">out</property>
+      </clade>
+      <clade>
+        <name>t35</name>
+        <property ref="x:Wide" datatype="xsd:string" applies_to="node">v14</property>
+        <property ref="x:In-Group" datatype="xsd:string" applies_to="node">in</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

@@ -943,6 +943,166 @@ function testWrapperTolerated() {
 
 // --------------------------------------------------------------
 
+// --------------------------------------------------------------
+// 2026-09-12 audit: the numeric grammar, numeric key folding, what opens a
+// tree, and the two rules for a changing tree -- a VIEW (subtree) never
+// re-decides candidacy, it re-summarizes; an EDIT re-derives candidacy but
+// keeps what the user had chosen while it still has a value.
+// --------------------------------------------------------------
+
+// rows: one object per tip, {ref: value | null}; a rooted tree with one tip each
+function propTree(rows) {
+    return {children: [{children: rows.map(function (r, i) {
+        var props = [];
+        Object.keys(r).forEach(function (ref) {
+            if (r[ref] === null || r[ref] === undefined) { return; }
+            props.push({ref: ref, value: r[ref], applies_to: 'node', datatype: 'xsd:string'});
+        });
+        return {name: 't' + i, properties: props};
+    })}]};
+}
+
+function byRef(cands, ref) {
+    return cands.filter(function (c) { return c.ref === ref; })[0] || null;
+}
+
+// "numeric" is a pinned decimal grammar, not the host language's Number():
+// hex, binary, Infinity and NaN are words here, every decimal spelling is a
+// number, and a locale comma is not.
+function testNumericGrammar() {
+    function cls(values) {
+        var rows = values.map(function (v) { return {'x:F': v}; });
+        var c = byRef(forester.visualizationCandidates(propTree(rows.concat(rows))), 'x:F');
+        return c ? (c.numeric ? 'numeric' : 'category') : 'refused';
+    }
+    var cases = [
+        [['0x1A', '1', '2'], 'category'], [['0b101', '1', '2'], 'category'],
+        [['Infinity', '1', '2'], 'category'], [['NaN', '1', '2'], 'category'],
+        [['1,5', '1', '2'], 'category'], [['1_000', '1', '2'], 'category'],
+        [['+5', '.5', '5.', '1e3', '-2E-1', '7'], 'numeric'], [['2009', '2010', '2011'], 'numeric']
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var got = cls(cases[i][0]);
+        if (got !== cases[i][1]) {
+            console.log('    ' + JSON.stringify(cases[i][0]) + ': ' + got + ', want ' + cases[i][1]);
+            return false;
+        }
+    }
+    return true;
+}
+
+// Spellings of one number are one value: "1", "1.0" and "1.00" fold, the
+// shortest spelling represents them, and a node carrying "1.0" reads as "1"
+// so it gets the same colour and legend row. The summary agrees.
+function testNumericKeyFolding() {
+    var rows = ['1', '1.0', '1.00', '2', '+2', '3', '3'].map(function (v) { return {'x:F': v}; });
+    var phy = propTree(rows);
+    var c = byRef(forester.visualizationCandidates(phy), 'x:F');
+    if (!c || !c.numeric) { console.log('    not numeric'); return false; }
+    if (c.values.join(',') !== '1,2,3') { console.log('    values ' + c.values.join(',')); return false; }
+    if (c.counts['1'] !== 3 || c.counts['2'] !== 2 || c.counts['3'] !== 2) { console.log('    counts ' + JSON.stringify(c.counts)); return false; }
+    var read = forester.getAllExternalNodes(phy).map(function (n) { return forester.visualizationNodeValue(n, c); }).sort().join(',');
+    if (read !== '1,1,1,2,2,3,3') { console.log('    node values ' + read); return false; }
+    var s = forester.visualizationSummary(c, phy);
+    if (s.values.join(',') !== '1,2,3' || s.counts['1'] !== 3 || s.distinct !== 3) { console.log('    summary ' + JSON.stringify(s)); return false; }
+    // folding can leave one value, which is then refused like any other
+    var one = ['1', '1.0', '+1', '1e0'].map(function (v) { return {'x:F': v}; });
+    return byRef(forester.visualizationCandidates(propTree(one)), 'x:F') === null;
+}
+
+// The tree opens with the first candidate that is NOT wide: a wide field
+// precedes an In-Group in the menu and does not stop it opening the tree.
+function testOpeningRule() {
+    var rows = [];
+    for (var i = 0; i < 36; ++i) { rows.push({'x:Wide': 'w' + (i % 21), 'x:In-Group': (i % 2) ? 'in' : 'out'}); }
+    var cands = forester.visualizationCandidates(propTree(rows));
+    if (cands.length !== 2 || cands[0].ref !== 'x:Wide' || !cands[0].wide || cands[1].ref !== 'x:In-Group') {
+        console.log('    order ' + summarize(cands).join(';'));
+        return false;
+    }
+    var open = forester.openingVisualization(cands);
+    if (!open || open.ref !== 'x:In-Group') { console.log('    opens ' + (open && open.ref)); return false; }
+    var wideOnly = forester.visualizationCandidates(propTree(rows.map(function (r) { return {'x:Wide': r['x:Wide']}; })));
+    return wideOnly.length === 1 && forester.openingVisualization(wideOnly) === null
+        && forester.openingVisualization([]) === null;
+}
+
+// A VIEW re-summarizes, it never re-classifies. Adenoviridae opens by Genus;
+// inside an all-Aviadenovirus clade the classifier refuses Genus (one value)
+// -- which is exactly why the viewer must not ask it -- while the summary
+// says: one value, on every tip, and it is one of the tree's values, so it
+// keeps its colour. A numeric field's band follows the view: Year is a
+// gradient on the tree and individual colours inside a clade of few years.
+function testViewSummaryNotReclassified() {
+    var phy = loadTree('Adenoviridae');
+    var cands = forester.visualizationCandidates(phy);
+    var genus = byRef(cands, 'vipr:Genus');
+    if (!genus || forester.openingVisualization(cands) !== genus) { console.log('    Genus does not open'); return false; }
+    var clade = null, cladeTips = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (!n.children) { return; }
+        var tips = forester.getAllExternalNodes(n);
+        if (tips.length < 4) { return; }
+        var vals = {};
+        tips.forEach(function (t) { vals[String(forester.visualizationNodeValue(t, genus))] = true; });
+        var keys = Object.keys(vals);
+        if (keys.length === 1 && keys[0] !== 'null' && (!clade || tips.length < cladeTips)) { clade = n; cladeTips = tips.length; }
+    });
+    if (!clade || cladeTips > 10) { console.log('    no small one-genus clade'); return false; }
+    var view = {children: [clade]};   // exactly how the viewer roots a subtree
+    if (byRef(forester.visualizationCandidates(view), 'vipr:Genus') !== null) { console.log('    classifier offered Genus inside the clade'); return false; }
+    var s = forester.visualizationSummary(genus, view);
+    if (s.values.length !== 1 || s.total !== cladeTips || s.coverage !== cladeTips || s.counts[s.values[0]] !== cladeTips) {
+        console.log('    summary ' + JSON.stringify(s));
+        return false;
+    }
+    if (genus.values.indexOf(s.values[0]) < 0) { console.log('    value not in the tree domain'); return false; }
+    if (s.colorMode !== undefined) { console.log('    a category got a band'); return false; }
+    var year = byRef(cands, 'vipr:Year');
+    if (!year || !year.numeric || year.colorMode !== 'range') { console.log('    Year on the tree: ' + (year && year.colorMode)); return false; }
+    var ys = forester.visualizationSummary(year, view);
+    if (!(ys.distinct >= 1 && ys.distinct <= 10 && ys.colorMode === 'category' && ys.switchable === true)) {
+        console.log('    Year in the clade: ' + JSON.stringify(ys));
+        return false;
+    }
+    // a field ABSENT from the view: an empty summary, never an error
+    var host = byRef(cands, 'vipr:Host');
+    var tips = forester.getAllExternalNodes(clade);
+    tips.forEach(function (t) { t.properties = t.properties.filter(function (p) { return p.ref !== 'vipr:Host'; }); });
+    var hs = forester.visualizationSummary(host, view);
+    return hs.values.length === 0 && hs.coverage === 0 && hs.total === cladeTips;
+}
+
+// An EDIT re-derives the candidates but keeps a chosen field while it still
+// has a value: colour by F, delete every B, and F -- now one value, refused
+// by the rules -- stays, appended and flagged, with the tree's summary. A
+// chosen field that is still offered is not duplicated; one with no value
+// left anywhere is dropped.
+function testEditKeepsValuedChoice() {
+    var phy = propTree([
+        {'x:F': 'A', 'x:G': 'p'}, {'x:F': 'A', 'x:G': 'q'}, {'x:F': 'A', 'x:G': 'p'},
+        {'x:F': 'B', 'x:G': 'p'}, {'x:F': 'B', 'x:G': 'q'}, {'x:F': 'B', 'x:G': 'q'}
+    ]);
+    var f = byRef(forester.visualizationCandidates(phy), 'x:F');
+    if (!f) { return false; }
+    var root = phy.children[0];
+    root.children = root.children.filter(function (n) { return n.properties[0].value !== 'B'; });
+    var after = forester.visualizationCandidatesKeeping(phy, [f, null]);
+    var kept = byRef(after, 'x:F');
+    if (kept !== f || !kept.kept || kept.values.join() !== 'A' || kept.coverage !== 3 || kept.total !== 3 || kept.counts.A !== 3) {
+        console.log('    kept: ' + JSON.stringify(kept && {values: kept.values, coverage: kept.coverage, total: kept.total, kept: kept.kept}));
+        return false;
+    }
+    var g = byRef(after, 'x:G');
+    if (!g || g.kept || after[after.length - 1] !== f || after.length !== 2) { console.log('    order/offered: ' + summarize(after).join(';')); return false; }
+    var again = forester.visualizationCandidatesKeeping(phy, [g]);
+    if (again.length !== 1 || again[0].ref !== 'x:G' || again[0].kept) { console.log('    duplicated or flagged'); return false; }
+    root.children.forEach(function (n) { n.properties = n.properties.filter(function (p) { return p.ref !== 'x:F'; }); });
+    return byRef(forester.visualizationCandidatesKeeping(phy, [f]), 'x:F') === null;
+}
+
+// --------------------------------------------------------------
+
 console.log("\nvisualization candidate classifier\n");
 
 runTest("Adenoviridae               : ", testAdenoviridae);
@@ -991,6 +1151,11 @@ runTest("prefix, word boundary      : ", testPrefixWordBoundary);
 runTest("node value vs classifier   : ", testNodeValueAgreesWithClassifier);
 runTest("node value, element slots  : ", testNodeValueElementSlots);
 runTest("wrapper tolerated          : ", testWrapperTolerated);
+runTest("numeric grammar            : ", testNumericGrammar);
+runTest("numeric key folding        : ", testNumericKeyFolding);
+runTest("opening rule               : ", testOpeningRule);
+runTest("view: summarize, not reclassify: ", testViewSummaryNotReclassified);
+runTest("edit: keep a valued choice : ", testEditKeepsValuedChoice);
 
 // --------------------------------------------------------------
 // forester.suggestLabelFields: which of the three label checkboxes
@@ -2491,7 +2656,8 @@ function testJointContractTrees() {
         var cands = candidatesOf(tree);
         var idx = -1;
         cands.forEach(function (c, i) { if ((c.ref || c.id) === ref) { idx = i; } });
-        var opens = cands.length && !cands[0].wide ? (cands[0].ref || cands[0].id) : '-';
+        var first = forester.openingVisualization(cands);
+        var opens = first ? (first.ref || first.id) : '-';
         if (opens !== r[12]) {
             bad.push(tree + ': opens ' + opens + ', fixture says ' + r[12]);
         }
@@ -2507,6 +2673,9 @@ function testJointContractTrees() {
         if (got !== want) {
             bad.push(tree + ' ' + ref + ': [tier rank num wide nu sp dep mode shape] '
                 + got.replace(/\t/g, ' ') + ', fixture says ' + want.replace(/\t/g, ' '));
+        }
+        if (String(c.values.length) !== r[13]) {
+            bad.push(tree + ' ' + ref + ': ' + c.values.length + ' distinct values, fixture says ' + r[13]);
         }
     });
     // and nothing is offered that the fixture does not declare

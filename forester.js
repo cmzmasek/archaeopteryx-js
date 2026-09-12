@@ -561,50 +561,70 @@
     // caller-supplied "nodeVisualizations" configuration: the tree is the
     // only input.
     //
-    // Only external nodes are considered; the domains always come from the
-    // COMPLETE tree, so a value keeps its colour inside a subtree view even
-    // when the subtree does not contain it.
+    // Only external nodes are considered.
+    //
+    // Candidacy is decided on the TREE, once: at launch, and again only after
+    // the user edits it (deletes a subtree). A VIEW -- the subtree the user
+    // switches into -- never re-decides it; it only re-summarizes each
+    // candidate over the tips on screen (visualizationSummary). A clade is by
+    // nature a set of tips sharing a value, and one value is refused, so
+    // re-classifying per view would (and until 2026-09-12 did) drop the
+    // chosen colouring in most clades. The desktop works the same way.
     //
     // Candidates: taxonomy code / scientific name / common name, sequence
-    // name / symbol / gene name, and node properties (applies_to "node").
-    // The "style:" namespace is never a candidate -- the desktop reserves it
-    // for per-node rendering instructions (font_color, node_shape, ...), so
-    // treating it as data would mean colouring by a colour.
+    // name / symbol / gene name, and node properties whose applies_to is
+    // "node" or "clade" (isNodeScopedProperty). The "style:" namespace is
+    // never a candidate -- the desktop reserves it for per-node rendering
+    // instructions (font_color, node_shape, ...), so treating it as data
+    // would mean colouring by a colour. Nor are record-keeping fields, by
+    // NAME (VIS_EXCLUDED_WORD_RES below): authors, sets, data-use terms,
+    // ids, accessions, identifiers, taxon ids.
     //
     // The rules, tuned against the real ViPR / BV-BRC trees in docs/data
-    // (which test/visualization_test.js holds as executable fixtures):
+    // (which test/visualization_test.js holds as executable fixtures) and
+    // pinned for the desktop by test/fixtures/vis-contract.tsv (names) and
+    // test/fixtures/vis-trees.tsv (data):
     //
-    //   coverage    present on >= 2/3 of the external nodes. Database
-    //               exports are always patchy -- demanding 100% would
-    //               reject nearly every field of the BV-BRC trees while a
-    //               field on 9% of nodes (state_province) says nothing.
-    //               Nodes without a value simply keep the default look.
-    //   repetition  at least 2 distinct values (1 paints the whole tree
-    //               alike), and fewer distinct values than external nodes
-    //               (all-unique means identifiers).
-    //   categorical <= 20 distinct values -> Color. Above ~12 the reader
-    //               leans on the legend, but the real trees cluster at
-    //               15-17 (host names, countries, taxonomy codes).
-    //   wide        21+ distinct values are still offered -- as the desktop
-    //               does, every value gets a colour and the LEGEND caps the
-    //               display -- but only when values genuinely repeat:
-    //               distinct/covered <= 0.6, or near-unique fields (strains,
-    //               species names, dates) would flood the menus. Wide fields
-    //               rank after everything else and are never auto-applied.
-    //   numeric     every value parses as a finite number. Up to 10 distinct
-    //               values default to individual colours -- numbers that few
-    //               are usually codes (HA/NA subtypes), and ten is what the
-    //               palette's strong first half holds -- 11 to 20 default to
-    //               a Color-range, and both of those may be switched in the
-    //               legend; above 20 it is a range with no switch. Guard:
-    //               distinct/covered <= 0.9, or "numeric" identifiers
-    //               (genome ids) would become ramps.
-    //   shape       <= 7 distinct values (d3 v7 has exactly 7 distinct
-    //               fill symbols), numeric or not -- two years as two
-    //               shapes is genuinely useful.
     //   multi-value a ref carried more than once by any external node is
     //               not a candidate: a node cannot be two colours, and
     //               picking one silently is worse than not offering it.
+    //   repetition  at least 2 distinct values (1 paints the whole tree
+    //               alike). A CATEGORICAL field with as many distinct
+    //               values as the tree has tips is an identifier and is
+    //               refused; a NUMERIC one is kept, because a measurement
+    //               is naturally one value per sample.
+    //   coverage    a field on fewer than 2/3 of the tips is SPARSE: offered,
+    //               ranked after everything dense, never opening a tree that
+    //               has anything denser. Database exports are always patchy,
+    //               and a half-annotated field is often the interesting one.
+    //   categorical <= 20 distinct values -> Color. Above ~12 the reader
+    //               leans on the legend, but the real trees cluster at
+    //               15-17 (host names, countries, taxonomy codes).
+    //   wide        21+ distinct values are still offered -- every value
+    //               gets a colour and the LEGEND caps the display -- but
+    //               never open a tree. If they repeat reasonably
+    //               (distinct/covered <= 3/5) they rank after the numerics;
+    //               if they barely repeat they are NEAR-UNIQUE and rank at
+    //               the very bottom (strains, species names, dates).
+    //   numeric     every value matches VIS_NUMERIC_RE, a decimal grammar
+    //               pinned below; spellings of one number ("1", "1.0") fold
+    //               to one value. Up to 10 distinct values default to
+    //               individual colours -- numbers that few are usually codes
+    //               (HA/NA subtypes), and ten is what the palette's strong
+    //               first half holds -- 11 to 20 default to a Color-range,
+    //               and both of those may be switched in the legend; above
+    //               20 it is a range with no switch. The band is computed
+    //               per VIEW. No uniqueness test for numbers.
+    //   shape       <= 7 distinct values (d3 v7 has exactly 7 distinct
+    //               fill symbols), numeric or not -- two years as two
+    //               shapes is genuinely useful.
+    //   in/out-group offered, ranked after the numerics: a fact about the
+    //               analysis the person who rooted the tree already knows.
+    //
+    // Ranking, best first (tierOf below): 0 clean categorical, 1 numeric,
+    // 2 wide, 3 in/out-group, 4 sparse, 5 near-unique; within a tier by
+    // coverage x balance. The tree OPENS with the first candidate that is
+    // not wide (openingVisualization).
     //
     const VIS_MIN_COVERAGE_NUM = 2;    // coverage >= 2/3, held as a
     const VIS_MIN_COVERAGE_DEN = 3;    // fraction so the test is integer-exact
@@ -614,6 +634,14 @@
     const VIS_WIDE_REPEAT_NUM = 3;         // wide categorical: distinct/covered <= 0.6,
     const VIS_WIDE_REPEAT_DEN = 5;         // held integer-exact
     const VIS_EXCLUDED_REF_PREFIX = 'style:';
+    // What "numeric" means, spelled out: an optional sign, decimal digits with
+    // an optional fraction, an optional exponent. PINNED as a grammar because
+    // the host language's own idea of a number is not portable: JavaScript's
+    // Number() accepts "0x1A" and "0b101", Java's parseDouble accepts
+    // "Infinity" and "NaN", and a field of either would be a gradient in one
+    // program and a category in the other. Values are trimmed before this
+    // sees them.
+    const VIS_NUMERIC_RE = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
     // Refs that are never a visualization, however their values distribute.
     // A taxon identifier repeats like a category and passes every statistical
     // test above, yet says nothing a colour could carry that the species name
@@ -826,6 +854,19 @@
         return hit || s;
     }
 
+    // How a numeric field draws by default, from how many distinct values it
+    // shows: up to VIS_NUMERIC_CATEGORY_MAX as individual colours (numbers
+    // that few are usually codes), up to VIS_MAX_COLOR_CATEGORIES as a
+    // gradient the legend can switch back to colours, above that a gradient
+    // only. Computed per VIEW: ten distinct years inside a clade draw better
+    // as ten colours than as a slice of the whole tree's gradient.
+    function visNumericModes(distinct) {
+        return {
+            colorMode: distinct <= VIS_NUMERIC_CATEGORY_MAX ? 'category' : 'range',
+            switchable: distinct <= VIS_MAX_COLOR_CATEGORIES
+        };
+    }
+
     // Fixed candidate slots for the phyloXML elements (properties use their
     // ref). CROSS-IMPLEMENTATION CONTRACT with desktop Archaeopteryx: the
     // ids here (tax:code, seq:name, ...) and the rule that taxonomy/sequence
@@ -979,7 +1020,41 @@
                 canon[key] = rep;
                 counts[rep] = group.count;
             });
-            let distinct = Object.keys(canon).length;
+            let values = Object.keys(counts);
+            let numeric = values.every(function (v) {
+                return VIS_NUMERIC_RE.test(v);
+            });
+            if (numeric) {
+                // "1", "1.0" and "+1" are one value. Group the spellings by
+                // the number they denote; the representative is the SHORTEST
+                // spelling, ties alphabetically (a number has no preferred
+                // spelling, so frequency would only pick the exporter's
+                // habit). canon then maps every raw spelling to it, so
+                // visualizationNodeValue folds a node's "1.0" the same way.
+                let byNumber = Object.create(null);
+                values.forEach(function (v) {
+                    let k = String(Number(v));
+                    let g = byNumber[k];
+                    if (!g) {
+                        byNumber[k] = {rep: v, count: counts[v]};
+                    } else {
+                        g.count += counts[v];
+                        if (v.length < g.rep.length || (v.length === g.rep.length && v < g.rep)) {
+                            g.rep = v;
+                        }
+                    }
+                });
+                let folded = Object.create(null);
+                Object.keys(byNumber).forEach(function (k) {
+                    folded[byNumber[k].rep] = byNumber[k].count;
+                });
+                Object.keys(canon).forEach(function (key) {
+                    canon[key] = byNumber[String(Number(canon[key]))].rep;
+                });
+                counts = folded;
+                values = Object.keys(counts);
+            }
+            let distinct = values.length;
             // Sparse fields are RANKED LAST, not refused. A half-annotated
             // field is often the most interesting thing in the tree -- someone
             // hand-annotates a subset precisely because it is worth marking --
@@ -1000,10 +1075,6 @@
             if (distinct < 2) {
                 return;
             }
-            let values = Object.keys(counts);
-            let numeric = values.every(function (v) {
-                return Number.isFinite(Number(v));
-            });
             let colorMode;
             let switchable = false;
             let wide = false;
@@ -1022,8 +1093,9 @@
                 // BVBRC_Accession). Identifiers are a fact about a name, not a
                 // distribution, and the name rules are the right instrument.
                 // Removed 2026-09-12, jointly with the desktop.
-                colorMode = distinct <= VIS_NUMERIC_CATEGORY_MAX ? 'category' : 'range';
-                switchable = distinct <= VIS_MAX_COLOR_CATEGORIES;
+                let modes = visNumericModes(distinct);
+                colorMode = modes.colorMode;
+                switchable = modes.switchable;
                 values.sort(function (a, b) {
                     return Number(a) - Number(b);
                 });
@@ -1091,7 +1163,7 @@
                 total: total,
                 values: values,
                 counts: counts,
-                canon: s.kind === 'property' ? canon : null,
+                canon: (s.kind === 'property' || numeric) ? canon : null,
                 cut: s.cut,
                 score: (covered / total) * balance,
                 colorMode: colorMode,
@@ -1117,10 +1189,12 @@
         // Best first: clean categorical fields, then EVERY numeric field, then
         // the wide categoricals (offered, never leading), then the
         // deprioritized ones, then the sparse, and last the barely-repeating
-        // wide ones -- within each tier by score, ties
-        // alphabetically. The first entry is what the viewer applies on load,
-        // so the bottom tier can only be applied automatically when it is the
-        // ONLY candidate, which is the whole point of it.
+        // wide ones -- within each tier by score, ties alphabetically. What
+        // OPENS the tree is openingVisualization below: the first entry that
+        // is not wide. So tiers 0, 1, 3 and 4 can open a tree, each only when
+        // nothing above it exists, and tiers 2 and 5 never do -- a wide field
+        // above an In-Group does not stop the In-Group from opening the tree,
+        // it just precedes it in the menu.
         function tierOf(c) {
             if (c.nearUnique) {
                 return 5;
@@ -1467,13 +1541,110 @@
                 for (let j = 0; j < list.length; ++j) {
                     let v = clean(VIS_ELEMENT_SLOTS[i].get(list[j]));
                     if (v !== null) {
-                        return v;
+                        // verbatim, except that a numeric slot folds its
+                        // spellings exactly as the classifier grouped them
+                        return candidate.canon ? (candidate.canon[v] || v) : v;
                     }
                 }
                 return null;
             }
         }
         return null;
+    };
+
+    // The visualization a tree OPENS with: the first candidate that is not
+    // wide (21+ values are offered, never imposed), or null for none. One
+    // definition, used by the viewer and by the fixture generator, so the
+    // rule the desktop ports is the rule the viewer runs.
+    forester.openingVisualization = function (candidates) {
+        for (let i = 0; i < candidates.length; ++i) {
+            if (!candidates[i].wide) {
+                return candidates[i];
+            }
+        }
+        return null;
+    };
+
+    // What a VIEW shows of a candidate: its values, counts and coverage over
+    // the tips under `root` -- the subtree the user switched into, or the
+    // whole tree. Candidacy is decided ONCE, on the tree
+    // (visualizationCandidates); a view never re-decides it, it only
+    // re-summarizes. Until 2026-09-12 the viewer re-ran the classifier on
+    // every subtree, and since a clade is by nature a set of tips sharing a
+    // value, and one value is refused, entering a clade dropped the colouring
+    // in 61% of the corpus's clades (4,192 of 6,857) and did not bring it back
+    // on return. Values are read exactly as the classifier grouped them, so
+    // everything found here is in the candidate's domain and keeps its
+    // colour. A numeric candidate also gets the view's colour-mode band
+    // (see visNumericModes); a category keeps its mode.
+    forester.visualizationSummary = function (candidate, root) {
+        let counts = Object.create(null);
+        let total = 0;
+        let coverage = 0;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (n.children) {
+                return;
+            }
+            total++;
+            let v = forester.visualizationNodeValue(n, candidate);
+            if (v !== null) {
+                coverage++;
+                counts[v] = (counts[v] || 0) + 1;
+            }
+        });
+        let values = Object.keys(counts);
+        if (candidate.numeric) {
+            values.sort(function (a, b) {
+                return Number(a) - Number(b);
+            });
+        } else {
+            values.sort();
+        }
+        let summary = {values: values, counts: counts, coverage: coverage, total: total, distinct: values.length};
+        if (candidate.numeric) {
+            let modes = visNumericModes(values.length);
+            summary.colorMode = modes.colorMode;
+            summary.switchable = modes.switchable;
+        }
+        return summary;
+    };
+
+    // The candidates of a tree the user has EDITED (a subtree deleted), with
+    // the fields they had chosen KEPT as long as those still carry a value
+    // somewhere in what remains. The refusal rules decide what is offered,
+    // never what is already chosen: colouring by Host and deleting every
+    // clade but one must not silently uncolour the tree because one host is
+    // "not a category". A kept field is appended after the offered ones and
+    // flagged `kept`, so the menu holds it exactly as long as the user does;
+    // the next edit drops it unless it is still chosen. `chosen` is the
+    // previous candidate objects -- their grouping travels with them.
+    forester.visualizationCandidatesKeeping = function (tree, chosen) {
+        let candidates = forester.visualizationCandidates(tree);
+        let ids = Object.create(null);
+        candidates.forEach(function (c) {
+            ids[c.id] = true;
+        });
+        (chosen || []).forEach(function (c) {
+            if (!c || ids[c.id]) {
+                return;
+            }
+            let s = forester.visualizationSummary(c, tree);
+            if (s.coverage === 0) {
+                return;
+            }
+            c.values = s.values;
+            c.counts = s.counts;
+            c.coverage = s.coverage;
+            c.total = s.total;
+            if (c.numeric) {
+                c.colorMode = s.colorMode;
+                c.switchable = s.switchable;
+            }
+            c.kept = true;
+            ids[c.id] = true;
+            candidates.push(c);
+        });
+        return candidates;
     };
 
     forester.collectBasicTreeProperties = function (tree) {

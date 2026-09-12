@@ -2,35 +2,44 @@
 # test/fixtures/gen-vis-trees.js from forester.js by RUNNING it. Do not edit;
 # regenerate deliberately when a rule changes, never to make a test pass.
 # tree <TAB> ref <TAB> verdict <TAB> tier <TAB> rank <TAB> numeric <TAB> wide <TAB> nearUnique
-#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens
+#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens <TAB> distinct
 # tier: 0 clean categorical, 1 numeric, 2 wide, 3 deprioritized, 4 sparse, 5 near-unique
-# opens: the ref the viewer colours the tree with on load ("-" = uncoloured)
-multi_valued	x:F	refused	-	-	-	-	-	-	-	-	-	-
-single_value	x:F	refused	-	-	-	-	-	-	-	-	-	-
-sparse_at_bar_20_of_30	x:F	offered	0	0	0	0	0	0	0	category	1	x:F
-sparse_under_19_of_30	x:F	offered	4	0	0	0	0	1	0	category	1	x:F
-all_distinct_categorical	x:F	refused	-	-	-	-	-	-	-	-	-	-
-all_distinct_numeric	x:F	offered	1	0	1	0	0	0	0	range	0	x:F
-numeric_discrete_10	x:F	offered	1	0	1	0	0	0	0	category	0	x:F
-numeric_range_11	x:F	offered	1	0	1	0	0	0	0	range	0	x:F
-category_limit_20	x:F	offered	0	0	0	0	0	0	0	category	0	x:F
-wide_21_of_35	x:F	offered	2	0	0	1	0	0	0	category	0	-
-near_unique_21_of_34	x:F	offered	5	0	0	1	1	0	0	category	0	-
-shape_7	x:F	offered	0	0	0	0	0	0	0	category	1	x:F
-shape_8	x:F	offered	0	0	0	0	0	0	0	category	0	x:F
-tier_order	x:Clean	offered	0	0	0	0	0	0	0	category	1	x:Clean
-tier_order	x:Numeric	offered	1	1	1	0	0	0	0	category	0	x:Clean
-tier_order	x:Wide	offered	2	2	0	1	0	0	0	category	0	x:Clean
-tier_order	x:In-Group	offered	3	3	0	0	0	0	1	category	1	x:Clean
-tier_order	x:Sparse	offered	4	4	0	0	0	1	0	category	1	x:Clean
-tier_order	x:Barely	offered	5	5	0	1	1	0	0	category	0	x:Clean
-applies_to	x:OnNode	offered	0	1	0	0	0	0	0	category	1	x:OnClade
-applies_to	x:OnClade	offered	0	0	0	0	0	0	0	category	1	x:OnClade
-applies_to	x:OnBranch	refused	-	-	-	-	-	-	-	-	-	x:OnClade
-opens_uncoloured_wide_only	x:F	offered	2	0	0	1	0	0	0	category	0	-
-opens_by_sparse_when_alone	x:F	offered	4	0	0	0	0	1	0	category	1	x:F
-name_rules	x:Host	offered	0	0	0	0	0	0	0	category	1	x:Host
-name_rules	x:genome_id	refused	-	-	-	-	-	-	-	-	-	x:Host
-name_rules	x:Abbr Authors	refused	-	-	-	-	-	-	-	-	-	x:Host
-name_rules	x:Out-Group	offered	3	2	0	0	0	0	1	category	1	x:Host
-name_rules	x:Plasmid	offered	0	1	0	0	0	0	0	category	1	x:Host
+# opens: the ref the viewer colours the tree with on load -- the first candidate that
+#   is not wide ("-" = uncoloured)
+# distinct: distinct values AFTER grouping (case folds for categories; spellings of one
+#   number fold for numerics: "1" and "1.0" are one value)
+multi_valued	x:F	refused	-	-	-	-	-	-	-	-	-	-	-
+single_value	x:F	refused	-	-	-	-	-	-	-	-	-	-	-
+sparse_at_bar_20_of_30	x:F	offered	0	0	0	0	0	0	0	category	1	x:F	2
+sparse_under_19_of_30	x:F	offered	4	0	0	0	0	1	0	category	1	x:F	2
+all_distinct_categorical	x:F	refused	-	-	-	-	-	-	-	-	-	-	-
+all_distinct_numeric	x:F	offered	1	0	1	0	0	0	0	range	0	x:F	30
+numeric_discrete_10	x:F	offered	1	0	1	0	0	0	0	category	0	x:F	10
+numeric_range_11	x:F	offered	1	0	1	0	0	0	0	range	0	x:F	11
+category_limit_20	x:F	offered	0	0	0	0	0	0	0	category	0	x:F	20
+wide_21_of_35	x:F	offered	2	0	0	1	0	0	0	category	0	-	21
+near_unique_21_of_34	x:F	offered	5	0	0	1	1	0	0	category	0	-	21
+shape_7	x:F	offered	0	0	0	0	0	0	0	category	1	x:F	7
+shape_8	x:F	offered	0	0	0	0	0	0	0	category	0	x:F	8
+tier_order	x:Clean	offered	0	0	0	0	0	0	0	category	1	x:Clean	2
+tier_order	x:Numeric	offered	1	1	1	0	0	0	0	category	0	x:Clean	8
+tier_order	x:Wide	offered	2	2	0	1	0	0	0	category	0	x:Clean	22
+tier_order	x:In-Group	offered	3	3	0	0	0	0	1	category	1	x:Clean	2
+tier_order	x:Sparse	offered	4	4	0	0	0	1	0	category	1	x:Clean	2
+tier_order	x:Barely	offered	5	5	0	1	1	0	0	category	0	x:Clean	30
+applies_to	x:OnNode	offered	0	1	0	0	0	0	0	category	1	x:OnClade	2
+applies_to	x:OnClade	offered	0	0	0	0	0	0	0	category	1	x:OnClade	2
+applies_to	x:OnBranch	refused	-	-	-	-	-	-	-	-	-	x:OnClade	-
+opens_uncoloured_wide_only	x:F	offered	2	0	0	1	0	0	0	category	0	-	21
+opens_by_sparse_when_alone	x:F	offered	4	0	0	0	0	1	0	category	1	x:F	2
+opens_past_wide	x:Wide	offered	2	0	0	1	0	0	0	category	0	x:In-Group	21
+opens_past_wide	x:In-Group	offered	3	1	0	0	0	0	1	category	1	x:In-Group	2
+numeric_grammar	x:Fold	offered	1	3	1	0	0	0	0	category	1	x:Hex	3
+numeric_grammar	x:Hex	offered	0	0	0	0	0	0	0	category	1	x:Hex	4
+numeric_grammar	x:Inf	offered	0	1	0	0	0	0	0	category	1	x:Hex	4
+numeric_grammar	x:Forms	offered	1	2	1	0	0	0	0	category	1	x:Hex	4
+name_rules	x:Host	offered	0	0	0	0	0	0	0	category	1	x:Host	2
+name_rules	x:genome_id	refused	-	-	-	-	-	-	-	-	-	x:Host	-
+name_rules	x:Abbr Authors	refused	-	-	-	-	-	-	-	-	-	x:Host	-
+name_rules	x:Out-Group	offered	3	2	0	0	0	0	1	category	1	x:Host	2
+name_rules	x:Plasmid	offered	0	1	0	0	0	0	0	category	1	x:Host	2

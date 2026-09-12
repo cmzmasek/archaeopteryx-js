@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">0x1A</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">Infinity</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">+5</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1.0</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">.5</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">5.</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">+2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">1e3</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">0x1A</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">Infinity</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">7</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">+5</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1.0</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">.5</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">5.</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">+2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">0x1A</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">Infinity</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">1e3</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">7</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">+5</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1.0</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">.5</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">0x1A</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">Infinity</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">5.</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">+2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">1e3</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">7</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">+5</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">1.0</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">0x1A</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">Infinity</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">.5</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">1</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">5.</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">+2</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">2</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">1e3</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Fold" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Hex" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Inf" datatype="xsd:string" applies_to="node">3</property>
+        <property ref="x:Forms" datatype="xsd:string" applies_to="node">7</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

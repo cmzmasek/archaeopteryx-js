@@ -181,11 +181,14 @@ and decides by itself what is worth showing. There is nothing to configure.
   legends show the top 20 with a `[+N more]` chip. Legends are part of PNG,
   PDF
   and SVG exports (exports always come out light).
-* **Switch into a subtree** (or delete part of the tree) and the menus,
-  counts and legends are re-derived for what is on screen — a field with too
-  many values on the full tree may become available inside a clade. Colours
-  never change when you do this: a value keeps its colour for the whole
-  session.
+* **Switch into a subtree** and the legend re-describes what is on screen —
+  rows, counts, the **no value** row, and a numeric field's colours-or-gradient
+  band — while the menus and your Color / Shape choice stand exactly as they
+  were: colouring by Genus and entering a one-genus clade shows a one-row
+  legend, not a grey tree. A category value keeps its colour for the whole
+  session; a gradient re-spans the values on screen. **Deleting** part of the
+  tree re-derives the menus from what is left, and keeps your choice as long
+  as its field still has a value somewhere.
 * The **Visualizations** checkbox hides the chosen colours/shapes; the
   **Visual Styles** checkbox controls colours embedded in the tree file
   itself (and phyloXML branch colours). Search hits and selections always

@@ -1528,9 +1528,16 @@ function (root, d3, forester, phyloXml) {
     // the next launch).
     //
     // The candidates come from forester.visualizationCandidates: the tree is
-    // the only input. Each candidate carries its scales, built once per
-    // launch from the COMPLETE tree -- so a value keeps its colour inside a
-    // subtree view even when the subtree does not contain it.
+    // the only input, and candidacy is decided on the TREE -- at launch, and
+    // again only after a permanent edit (a deletion). A VIEW -- the subtree
+    // the user switched into -- never changes what is offered or chosen; it
+    // only re-summarizes each candidate over the tips on screen (legend rows
+    // and counts, the "no value" row, a numeric field's band and gradient
+    // range) through forester.visualizationSummary. Colour and shape
+    // identities live in the memory maps below and so survive every view.
+    // Until 2026-09-12 the classifier was re-run per view and its refusals
+    // applied to the chosen field, which dropped the colouring in 61% of the
+    // corpus's clades and did not bring it back on return.
     // The tree as displayed right now: the subtree the user switched into,
     // otherwise the (possibly edited) full tree.
     function displayedRoot() {
@@ -1577,7 +1584,8 @@ function (root, d3, forester, phyloXml) {
         if (!_settings.enableVisualizations) {
             return;
         }
-        computeVisualizationCandidates(_treeData);
+        installCandidates(forester.visualizationCandidates(_treeData));
+        summarizeView(_treeData);
         // The embedder may name the visualization to open with (the
         // initialVisualization setting, matched case-insensitively against
         // the Color-menu label or the internal id). A name this tree cannot
@@ -1604,14 +1612,20 @@ function (root, d3, forester, phyloXml) {
             _vis.autoColorId = requested.id;
             _vis.colorId = requested.id;
             _state.showVisualizations = true;
-        } else if (_vis.candidates.length > 0 && !_vis.candidates[0].wide) {
-            // Auto-apply the best candidate: the classifier returns them best
-            // first, so a tree opens already coloured by its most informative
-            // field instead of grey with a menu to discover. A wide field
-            // (21+ values, legend capped) is offered but never imposed.
-            _vis.autoColorId = _vis.candidates[0].id;
-            _vis.colorId = _vis.autoColorId;
-            _state.showVisualizations = true;
+        } else {
+            // Auto-apply the best candidate that is not WIDE: the classifier
+            // returns them best first, so a tree opens already coloured by
+            // its most informative field instead of grey with a menu to
+            // discover. A wide field (21+ values, legend capped) is offered
+            // but never imposed -- and it does not block what sits below it
+            // either: a tree carrying a wide field and an In-Group opens by
+            // the In-Group, not uncoloured.
+            let first = forester.openingVisualization(_vis.candidates);
+            if (first) {
+                _vis.autoColorId = first.id;
+                _vis.colorId = _vis.autoColorId;
+                _state.showVisualizations = true;
+            }
         }
     }
 
@@ -1941,47 +1955,70 @@ function (root, d3, forester, phyloXml) {
         buildCategoryScale(vis);
     }
 
-    function computeVisualizationCandidates(viewRoot) {
-        _vis.candidates = [];
+    // The tree's candidates become THE candidates: the menu, the tiers, the
+    // ids the memory maps are keyed by. Their scales come from summarizeView.
+    function installCandidates(list) {
+        _vis.candidates = list;
         _vis.byId = {};
-        forester.visualizationCandidates(viewRoot).forEach(function (c) {
-            if (c.numeric) {
-                // ramps are POSITION in the view's range, not identity: a
-                // subtree spanning six years gets a full-width gradient
-                let nums = c.values.map(Number);
-                let mean = nums.reduce(function (a, b) {
-                    return a + b;
-                }, 0) / nums.length;
-                c.rangeScale = d3.scaleLinear()
-                    .range(VIS_COLOR_RAMP)
-                    .domain([nums[0], mean, nums[nums.length - 1]]);
-            }
-            function memoryKey(v) {
-                return visMemoryKey(c, v);
-            }
-            // a switchable candidate needs both scales standing by
-            if (c.colorMode === 'category' || c.switchable) {
-                buildCategoryScale(c);
-            }
-            if (c.shape) {
-                let mem = _vis.shapeMemory[c.id] || (_vis.shapeMemory[c.id] = {});
-                let next = _vis.shapeNext[c.id] || 0;
-                c.values.forEach(function (v) {
-                    let k = memoryKey(v);
-                    if (!(k in mem)) {
-                        mem[k] = VIS_SHAPES[next++ % VIS_SHAPES.length];
-                    }
-                });
-                _vis.shapeNext[c.id] = next;
-                c.shapeScale = d3.scaleOrdinal()
-                    .domain(c.values)
-                    .range(c.values.map(function (v) {
-                        return mem[memoryKey(v)];
-                    }));
-            }
-            _vis.candidates.push(c);
+        list.forEach(function (c) {
             _vis.byId[c.id] = c;
         });
+    }
+
+    // Re-summarizes every candidate over the tips under `root` and rebuilds
+    // its scales from that: the whole tree at launch and after an edit, the
+    // displayed subtree on every view change.
+    function summarizeView(root) {
+        _vis.candidates.forEach(function (c) {
+            let s = forester.visualizationSummary(c, root);
+            c.values = s.values;
+            c.counts = s.counts;
+            c.coverage = s.coverage;
+            c.total = s.total;
+            if (c.numeric) {
+                c.colorMode = s.colorMode;
+                c.switchable = s.switchable;
+            }
+            buildScales(c);
+        });
+    }
+
+    function buildScales(c) {
+        c.rangeScale = null;
+        if (c.numeric && c.values.length > 0) {
+            // ramps are POSITION in the view's range, not identity: a
+            // subtree spanning six years gets a full-width gradient
+            let nums = c.values.map(Number);
+            let mean = nums.reduce(function (a, b) {
+                return a + b;
+            }, 0) / nums.length;
+            c.rangeScale = d3.scaleLinear()
+                .range(VIS_COLOR_RAMP)
+                .domain([nums[0], mean, nums[nums.length - 1]]);
+        }
+        function memoryKey(v) {
+            return visMemoryKey(c, v);
+        }
+        // a switchable candidate needs both scales standing by
+        if (c.colorMode === 'category' || c.switchable) {
+            buildCategoryScale(c);
+        }
+        if (c.shape) {
+            let mem = _vis.shapeMemory[c.id] || (_vis.shapeMemory[c.id] = {});
+            let next = _vis.shapeNext[c.id] || 0;
+            c.values.forEach(function (v) {
+                let k = memoryKey(v);
+                if (!(k in mem)) {
+                    mem[k] = VIS_SHAPES[next++ % VIS_SHAPES.length];
+                }
+            });
+            _vis.shapeNext[c.id] = next;
+            c.shapeScale = d3.scaleOrdinal()
+                .domain(c.values)
+                .range(c.values.map(function (v) {
+                    return mem[memoryKey(v)];
+                }));
+        }
     }
 
     function currentColorVis() {
@@ -1995,7 +2032,10 @@ function (root, d3, forester, phyloXml) {
     // A candidate's colour mode, honouring the legend's [colors] / [gradient]
     // switch, and the scale that mode wants.
     function colorModeOf(vis) {
-        return _vis.colorModeById[vis.id] || vis.colorMode;
+        // the legend's [colors]/[gradient] choice holds only while the field
+        // is switchable in THIS view (as on the desktop): above 20 distinct
+        // values it is a gradient, whatever was chosen inside a smaller clade
+        return (vis.switchable && _vis.colorModeById[vis.id]) || vis.colorMode;
     }
 
     // Legend row order: numbers list in numeric order by default, words by
@@ -2045,9 +2085,10 @@ function (root, d3, forester, phyloXml) {
     // a titled, bordered panel; value rows with counts; a [by count] / [A-Z]
     // sort toggle in the title row (count-first is the desktop's default);
     // and for numeric ranges a horizontal gradient bar with the min and max
-    // beneath it. Unlike the desktop there is no "+N more" cap machinery:
-    // the classifier already refuses fields above 20 values, so a legend
-    // can never overflow.
+    // beneath it. A long legend shows its 20 most frequent rows and a
+    // [+N more] chip, like the desktop's. Rows, counts and the "no value"
+    // row describe the tips on SCREEN (the view's summary); the colours are
+    // launch-lifetime identities from the memory maps.
     //
     // The cards live in the tree's own svg, so they ride along into the PNG
     // and SVG exports, and their colours are the four theme colours the
@@ -2113,7 +2154,9 @@ function (root, d3, forester, phyloXml) {
         const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
         const ink = _state.labelColorDefault;
         const frame = _state.branchColorDefault;
-        const isRange = kind === 'color' && colorModeOf(vis) === 'range';
+        // a field with no value in this view has no range to draw: the card
+        // is then just its "no value" row
+        const isRange = kind === 'color' && colorModeOf(vis) === 'range' && vis.values.length > 0;
 
         const LEGEND_MAX_ROWS = 20;
         let rows = [];
@@ -3334,7 +3377,10 @@ function (root, d3, forester, phyloXml) {
         if (value === null) {
             return null;
         }
-        return colorModeOf(vis) === 'range' ? vis.rangeScale(Number(value)) : vis.categoryScale(value);
+        if (colorModeOf(vis) === 'range') {
+            return vis.rangeScale ? vis.rangeScale(Number(value)) : null;
+        }
+        return vis.categoryScale(value);
     }
 
     let makeVisNodeFillColor = function (node) {
@@ -5494,7 +5540,7 @@ function (root, d3, forester, phyloXml) {
                         fakeNode.y0 = 0;
                         _root = fakeNode;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                        refreshVisualizations();
+                        refreshVisualizations(false);
                         search0();
                         search1();
                         zoomToFit();
@@ -5607,7 +5653,7 @@ function (root, d3, forester, phyloXml) {
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
-                        refreshVisualizations();
+                        refreshVisualizations(true);
                         search0();
                         search1();
                         zoomToFit();
@@ -5622,27 +5668,36 @@ function (root, d3, forester, phyloXml) {
     }
 
 
-    // After a permanent tree edit (subtree deletion), the candidates are
-    // re-derived from what is left; the user's choices survive when their
-    // fields do. Plain subtree NAVIGATION does not come through here -- a
-    // subtree keeps its parent tree's visualizations, so colours stay
-    // stable diving in and out.
-    // The view changed -- into or out of a subtree, or the tree was edited.
-    // Candidates, menus and legends are recomputed for what is displayed; the
-    // user's choices survive when their fields do (otherwise the menu goes
-    // back to default and the tree to plain ink -- honest, not a silent
-    // switch); colour/shape identities persist via the memory maps; and no
-    // checkbox moves, because a view change is not a user choice.
-    function refreshVisualizations() {
+    // The view changed (into or out of a subtree), or the tree was EDITED.
+    //
+    // A view never changes what is offered or chosen: the menu stands, the
+    // colour and shape stand, and only the summaries move -- legend rows and
+    // counts, the "no value" row, a numeric band -- to describe the tips on
+    // screen. Diving into a one-value clade coloured by Genus shows a
+    // one-row legend, not a grey tree.
+    //
+    // An edit re-derives the candidates from what is left, because it is a
+    // different tree now. The chosen fields are kept as long as they still
+    // carry a value on any remaining tip (visualizationCandidatesKeeping):
+    // the refusal rules decide what is OFFERED, never what is already
+    // chosen. Only a field with no value left anywhere falls back to default.
+    // No checkbox moves either way, because a view change is not a user choice.
+    function refreshVisualizations(edited) {
         if (!_vis) {
             return;
         }
-        let colorId = _vis.colorId;
-        let shapeId = _vis.shapeId;
-        computeVisualizationCandidates(displayedRoot());
-        _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
-        _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
-        populateVisualizationMenus();
+        if (edited) {
+            let colorId = _vis.colorId;
+            let shapeId = _vis.shapeId;
+            installCandidates(forester.visualizationCandidatesKeeping(_treeData,
+                [currentColorVis(), currentShapeVis()]));
+            _vis.colorId = (colorId && _vis.byId[colorId]) ? colorId : null;
+            _vis.shapeId = (shapeId && _vis.byId[shapeId] && _vis.byId[shapeId].shape) ? shapeId : null;
+        }
+        summarizeView(displayedRoot());
+        if (edited) {
+            populateVisualizationMenus();
+        }
         removeColorLegend(LEGEND_LABEL_COLOR);
         removeShapeLegend(LEGEND_NODE_SHAPE);
     }
@@ -6768,7 +6823,7 @@ function (root, d3, forester, phyloXml) {
             _root = _root_const;
             _in_subtree = false;
             _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-            refreshVisualizations();
+            refreshVisualizations(false);
             search0();
             search1();
             zoomToFit();
@@ -6807,7 +6862,7 @@ function (root, d3, forester, phyloXml) {
                 }
 
                 _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                refreshVisualizations();
+                refreshVisualizations(false);
                 search0();
                 search1();
                 zoomToFit();
@@ -6880,7 +6935,7 @@ function (root, d3, forester, phyloXml) {
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
         syncZoomRowButtons();
-        refreshVisualizations();
+        refreshVisualizations(false);
         // Esc resets to the launch state -- the auto-applied colour, when its
         // field still exists in what remains of the tree.
         if (_vis) {
