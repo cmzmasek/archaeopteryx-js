@@ -669,13 +669,14 @@
     //
     // What these have in common is that they describe the RECORD rather than
     // the organism: who deposited it, which collection it belongs to, what may
-    // be done with it, and what to call it in a database. They repeat like
+    // be done with it and until when, and what to call it in a database. They repeat like
     // categories and so pass every statistical test, but a colour spent on one
     // says nothing about the tree.
     const VIS_EXCLUDED_WORD_RES = [
         /(^| )authors?( |$)/,   // Author, Authors, Author(s), Abbr Authors
         /(^| )set( |$)/,        // Region Set -- but not Dataset or Subset
         /(^| )data use( |$)/,   // Data use, Data-Use Terms
+        /(^| )restricted ?until( |$)/,   // Restricted Until, restricted_until, restrictedUntil: a data-use embargo date
         /(^| )ids?( |$)/,       // genome_id, patric_id, GenomeID, Feature_ID
         /accessions?$/,         // ...Accession, ...Accessions
         /identifiers?$/         // ...Identifier, ...Identifiers

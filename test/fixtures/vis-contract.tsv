@@ -166,3 +166,14 @@ x:submittingAuthor	EXCLUDED	Submitting Author
 x:taxon_id	EXCLUDED	Taxon Id
 x:taxonomy_id	EXCLUDED	Taxonomy Id
 x:x_2_y	offered	X 2 Y
+x:Restricted Until	EXCLUDED	Restricted Until
+x:restricted_until	EXCLUDED	Restricted Until
+x:restricted-until	EXCLUDED	Restricted-until
+x:restrictedUntil	EXCLUDED	Restricted Until
+x:RestrictedUntil	EXCLUDED	Restricted Until
+x:RESTRICTED_UNTIL	EXCLUDED	RESTRICTED UNTIL
+x:restricteduntil	EXCLUDED	Restricteduntil
+BVBRC:restricted_until	EXCLUDED	Restricted Until
+x:Restricted	offered	Restricted
+x:Unrestricted	offered	Unrestricted
+x:Restriction	offered	Restriction
