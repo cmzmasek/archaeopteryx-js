@@ -1007,6 +1007,7 @@
             let colorMode;
             let switchable = false;
             let wide = false;
+            let nearUnique = false;
             if (numeric) {
                 // No uniqueness refusal for numbers. There used to be one
                 // (distinct/covered > 9/10 -> refused) meant to catch numeric
@@ -1041,10 +1042,20 @@
                     return;
                 }
                 if (distinct > VIS_MAX_COLOR_CATEGORIES) {
-                    if (distinct * VIS_WIDE_REPEAT_DEN > covered * VIS_WIDE_REPEAT_NUM) {
-                        return;
-                    }
+                    // More than 20 values. If they repeat reasonably (distinct
+                    // no more than 3/5 of covered) this is a WIDE category:
+                    // offered, never leading. If they barely repeat -- but DO
+                    // repeat, else the all-distinct test above would have
+                    // refused it -- it goes to the very bottom of the menu.
+                    // Christian, 2026-09-12: an all-distinct categorical is an
+                    // identifier and stays refused; a barely-repeating one is
+                    // nearly one, so it is offered last rather than hidden,
+                    // because a refusal cannot be seen failing and a rank can.
+                    // It is wide as well, so it never opens a tree.
                     wide = true;
+                    if (distinct * VIS_WIDE_REPEAT_DEN > covered * VIS_WIDE_REPEAT_NUM) {
+                        nearUnique = true;
+                    }
                 }
                 colorMode = 'category';
                 values.sort();
@@ -1079,6 +1090,7 @@
                 colorMode: colorMode,
                 switchable: switchable,
                 wide: wide,
+                nearUnique: nearUnique,
                 sparse: sparse,
                 deprioritized: visDeprioritizedRef(s.ref || id),
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
@@ -1097,11 +1109,15 @@
 
         // Best first: clean categorical fields, then EVERY numeric field, then
         // the wide categoricals (offered, never leading), then the
-        // deprioritized ones, and last the sparse -- within each tier by score, ties
+        // deprioritized ones, then the sparse, and last the barely-repeating
+        // wide ones -- within each tier by score, ties
         // alphabetically. The first entry is what the viewer applies on load,
         // so the bottom tier can only be applied automatically when it is the
         // ONLY candidate, which is the whole point of it.
         function tierOf(c) {
+            if (c.nearUnique) {
+                return 5;
+            }
             if (c.sparse) {
                 return 4;
             }

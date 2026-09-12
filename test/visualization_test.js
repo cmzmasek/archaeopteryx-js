@@ -127,7 +127,14 @@ function testAdenoviridae() {
     return expectExactly('Adenoviridae', [
         'prop:vipr:Genus category+shape',
         'prop:vipr:Year range',
-        'prop:vipr:Host category [wide]'
+        'prop:vipr:Host category [wide]',
+        // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
+        // very bottom since 2026-09-12 rather than refused
+        'seq:name category [wide]',
+        'tax:scientific_name category [wide]',
+        'prop:vipr:Species category [wide]',
+        'prop:vipr:Strain category [wide]',
+        'prop:vipr:Collection_Date category [wide]'
     ]);
 }
 
@@ -140,7 +147,14 @@ function testCaliciviridae100() {
     return expectExactly('Caliciviridae_100', [
         'prop:vipr:Genus category',
         'prop:vipr:Year range',
-        'prop:vipr:Host category [wide]'
+        'prop:vipr:Host category [wide]',
+        // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
+        // very bottom since 2026-09-12 rather than refused
+        'seq:name category [wide]',
+        'tax:scientific_name category [wide]',
+        'prop:vipr:Species category [wide]',
+        'prop:vipr:Strain category [wide]',
+        'prop:vipr:Collection_Date category [wide]'
     ]);
 }
 
@@ -154,7 +168,12 @@ function testCaliciviridae500() {
         'prop:vipr:Year range',
         'tax:scientific_name category [wide]',
         'prop:vipr:Species category [wide]',
-        'prop:vipr:Host category [wide]'
+        'prop:vipr:Host category [wide]',
+        // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
+        // very bottom since 2026-09-12 rather than refused
+        'seq:name category [wide]',
+        'prop:vipr:Strain category [wide]',
+        'prop:vipr:Collection_Date category [wide]'
     ]);
 }
 
@@ -216,7 +235,11 @@ function testConfidences() {
 // and strain are 346 distinct -- identifiers, all correctly refused.
 function testFluH5() {
     return expectExactly('flu_h5', [
-        'prop:BVBRC:subtype category+shape'
+        'prop:BVBRC:subtype category+shape',
+        // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
+        // very bottom since 2026-09-12 rather than refused
+        'prop:BVBRC:genome_name category [wide]',
+        'prop:BVBRC:strain category [wide]'
     ]);
 }
 
@@ -238,7 +261,11 @@ function testHerpesDnapol() {
         'prop:BVBRC:collection_year range',
         // 9% coverage: offered since 2026-09-11, ranked last as sparse rather
         // than refused outright
-        'prop:BVBRC:state_province category'
+        'prop:BVBRC:state_province category',
+        // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
+        // very bottom since 2026-09-12 rather than refused
+        'prop:BVBRC:genome_name category [wide]',
+        'prop:BVBRC:strain category [wide]'
     ]);
 }
 
@@ -276,11 +303,19 @@ function testRefusals() {
         [herpes, 'prop:BVBRC:patric_id'],        // identifier
         [herpes, 'prop:BVBRC:accession'],        // identifier
         [flu, 'prop:BVBRC:species'],             // one value on every node
-        [flu, 'prop:BVBRC:genome_name'],         // 346 distinct of 354
-        [flu, 'prop:BVBRC:genome_id'],           // numeric identifier
-        [herpes, 'prop:BVBRC:strain'],           // wide guard: 183/199 barely repeat
-        [flu, 'prop:BVBRC:strain']               // wide guard: 346/354
+        [flu, 'prop:BVBRC:genome_id']            // numeric identifier
     ];
+    // genome_name and strain barely repeat (346/354, 183/199). They used to be
+    // refused by the wide guard; since 2026-09-12 they are offered at the very
+    // bottom, wide and near-unique, so they can never open a tree. Asserted
+    // positively rather than dropped, so the case stays under test.
+    var fluC = forester.visualizationCandidates(loadTree('flu_h5'));
+    var last = fluC[fluC.length - 1];
+    if (!last || last.ref !== 'BVBRC:strain' || !last.wide || !last.nearUnique) {
+        console.log('    flu strain should be offered, wide, near-unique and LAST; got '
+            + (last ? last.ref + ' wide=' + last.wide + ' nearUnique=' + last.nearUnique : 'nothing'));
+        return false;
+    }
     // state_province used to be in that list at 9% coverage. It is now OFFERED
     // and flagged sparse -- so it is asserted here rather than dropped, which
     // keeps the case under test instead of quietly losing it.
@@ -291,8 +326,12 @@ function testRefusals() {
             + (sp ? 'sparse=' + sp.sparse : 'not offered'));
         return false;
     }
-    if (hp[hp.length - 1].ref !== 'BVBRC:state_province') {
-        console.log('    state_province should sort last');
+    // sparse is tier 4; only the near-unique tail (tier 5) may follow it
+    var spIdx = hp.map(function (c) { return c.ref; }).indexOf('BVBRC:state_province');
+    var tail = hp.slice(spIdx + 1);
+    if (tail.length === 0 || !tail.every(function (c) { return c.nearUnique; })) {
+        console.log('    only near-unique fields may sort below sparse state_province; got '
+            + tail.map(function (c) { return c.ref; }).join(', '));
         return false;
     }
 
@@ -380,8 +419,8 @@ function testCoverageBoundary() {
     return under[0].sparse === true;   // ... but flagged sparse
 }
 
-// 20 categories colour, 21 do not. (22 tips, one duplicated value keeps
-// distinct below the node count.)
+// 20 categories colour cleanly; 21 is wide. (22 tips, one duplicated value
+// keeps distinct below the node count.)
 function testCategoryLimit() {
     function catTree(distinct) {
         var vals = [];
@@ -391,8 +430,11 @@ function testCategoryLimit() {
         return starTree(vals);
     }
     var atLimit = only(catTree(20));
-    return atLimit !== null && atLimit.colorMode === 'category'
-        && forester.visualizationCandidates(catTree(21)).length === 0;
+    if (atLimit === null || atLimit.colorMode !== 'category' || atLimit.wide) return false;
+    // 21 distinct over 23 tips barely repeats (21/23 > 3/5): no longer refused,
+    // it is offered wide and at the very bottom
+    var over = only(catTree(21));
+    return over !== null && over.wide === true && over.nearUnique === true;
 }
 
 // 7 distinct values get shapes, 8 do not (d3 v7 has 7 distinct fill symbols).
@@ -444,9 +486,9 @@ function testNumericBands() {
     return cat !== null && cat.switchable === false;
 }
 
-// The wide band: 21+ distinct categorical values are admitted when they
-// repeat (distinct/covered <= 0.6), refused when they barely do -- and a
-// wide field always ranks behind clean categoricals and ranges.
+// The wide band: 21+ distinct categorical values are wide when they repeat
+// (distinct/covered <= 0.6) and wide AND near-unique when they barely do --
+// offered either way, never leading, the near-unique ones at the very bottom.
 function testWideBand() {
     function wideTree(distinct, covered) {
         var vals = [];
@@ -456,7 +498,9 @@ function testWideBand() {
     var atLimit = only(wideTree(21, 35));         // 21/35 = 0.6 exactly
     if (!atLimit || atLimit.wide !== true || atLimit.colorMode !== 'category') return false;
     if (atLimit.switchable !== false || atLimit.shape !== false) return false;
-    if (forester.visualizationCandidates(wideTree(21, 34)).length !== 0) return false;   // 0.617: out
+    var barely = only(wideTree(21, 34));   // 0.617: barely repeats -> offered, wide, at the bottom
+    if (!barely || barely.wide !== true || barely.nearUnique !== true) return false;
+    if (atLimit.nearUnique) return false;   // 0.6 exactly is the ordinary wide band
     // tier: a low-scoring clean categorical still outranks a high-scoring wide
     var phy = wideTree(25, 60);
     var i = 0;
@@ -563,7 +607,7 @@ function testLabelCollision() {
 // and Genus still comes first.
 function testCategoricalTierFirst() {
     var cands = forester.visualizationCandidates(loadTree('Caliciviridae_100'));
-    if (cands.length !== 3) return false;   // Genus, Year, and wide Host
+    if (cands.length < 3) return false;    // Genus, Year, wide Host, then the near-unique tail
     var genus = cands[0], year = cands[1];
     return genus.id === 'prop:vipr:Genus' && year.id === 'prop:vipr:Year'
         && year.score > genus.score;
@@ -925,6 +969,7 @@ runTest("wide band + tier           : ", testWideBand);
 runTest("numeric values sort as nums: ", testNumericValuesSortNumerically);
 runTest("numeric never refused     : ", testNumericNeverRefusedForUniqueness);
 runTest("clade-scoped properties   : ", testCladeScopedPropertiesOffered);
+runTest("unique vs barely-repeating: ", testUniqueVersusBarelyRepeating);
 runTest("applies_to filtered        : ", testAppliesToFiltered);
 runTest("taxonomy / sequence slots  : ", testTaxonomyAndSequenceSlots);
 runTest("label collision            : ", testLabelCollision);
@@ -2352,6 +2397,53 @@ function testCladeScopedPropertiesOffered() {
     }
     if (forester.visualizationCandidates(tree('parent_branch')).length !== 0) {
         console.log('    a parent_branch property was offered as node data');
+        return false;
+    }
+    return true;
+}
+
+// Christian's three-way rule, 2026-09-12, which the JS side owns and the
+// desktop follows: a categorical field where EVERY tip has its own value is
+// an identifier and is refused; a numeric one is a measurement and is kept;
+// a categorical with more than 20 values that barely repeat -- but DO repeat
+// -- goes to the very bottom of the menu, below sparse, and never opens a
+// tree. Refusals cannot be seen failing; ranks can.
+function testUniqueVersusBarelyRepeating() {
+    function tree(vals, extra) {
+        var tips = [];
+        for (var i = 0; i < vals.length; ++i) { tips.push('t' + i); }
+        var phy = forester.parseNewHampshire('(' + tips.join(',') + ');', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = [{ref: 'x:F', datatype: 'xsd:string', applies_to: 'node', value: vals[i]}];
+            if (extra && extra[i] !== null) {
+                n.properties.push({ref: 'x:Sparse', datatype: 'xsd:string', applies_to: 'node', value: extra[i]});
+            }
+        });
+        return phy;
+    }
+    var allDistinct = [];
+    for (var a = 0; a < 30; ++a) { allDistinct.push('s' + a); }
+    if (forester.visualizationCandidates(tree(allDistinct)).length !== 0) {
+        console.log('    an all-distinct categorical was offered');
+        return false;
+    }
+    var barely = [];
+    for (var b = 0; b < 30; ++b) { barely.push('s' + (b % 25)); }   // 25 distinct / 30: repeats, barely
+    var c = forester.visualizationCandidates(tree(barely));
+    if (c.length !== 1 || !c[0].wide || !c[0].nearUnique) {
+        console.log('    a barely-repeating categorical was not offered wide + near-unique');
+        return false;
+    }
+    if (c[0].values.length !== 25) {
+        console.log('    offered, but the values did not read back: ' + c[0].values.length);
+        return false;
+    }
+    // below SPARSE: a half-annotated two-value field still outranks it
+    var sparse = [];
+    for (var d = 0; d < 30; ++d) { sparse.push(d < 18 ? ((d % 2) ? 'P' : 'Q') : null); }
+    var both = forester.visualizationCandidates(tree(barely, sparse));
+    if (both.length !== 2 || both[0].ref !== 'x:Sparse' || !both[1].nearUnique) {
+        console.log('    near-unique did not sort below sparse: ' + both.map(function (x) { return x.ref; }).join(', '));
         return false;
     }
     return true;
