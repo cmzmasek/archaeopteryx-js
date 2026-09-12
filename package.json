@@ -32,7 +32,7 @@
     "url": "git+https://github.com/cmzmasek/archaeopteryx-js.git"
   },
   "dependencies": {
-    "phyloxml": ">=0.9.16",
+    "phyloxml": "^1.0.2",
     "d3": "^7.9.0"
   },
   "devDependencies": {
