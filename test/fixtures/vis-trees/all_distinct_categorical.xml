@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s0</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s1</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s2</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s3</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s4</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s5</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s6</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s7</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s8</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s9</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s10</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s11</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s12</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s13</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s14</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s15</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s16</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s17</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s18</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s19</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s20</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s21</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s22</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s23</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s24</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s25</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s26</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s27</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s28</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">s29</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

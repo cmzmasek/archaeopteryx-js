@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:genome_id" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Abbr Authors" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Out-Group" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Plasmid" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v0</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v4</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v5</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v6</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v7</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v0</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v4</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v5</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v6</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:F" datatype="xsd:string" applies_to="node">v7</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>
