@@ -2385,6 +2385,93 @@ function testAuditPrototypeValueNames() {
     return ({}).nodes === undefined && ({}).count === undefined && ({}).spellings === undefined;
 }
 
+// parseTrees returns EVERY tree the data holds -- a Nexus TREES block, a
+// New Hampshire text with several ';'-terminated trees, a phyloXML with
+// several phylogenies -- and parseTree the first of them, so a file that
+// used to show only its first (or, for Newick, its LAST) tree now offers
+// all of them. The internal-label promotion and the parent links reach
+// every tree of the list, not just the first.
+function testParseTrees() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tips = function (phy) {
+        return forester.getAllExternalNodes(phy).map(function (n) { return n.name; }).sort().join(',');
+    };
+    // four tips each: the 'auto' promotion wants more than one labelled node
+    var nex = '#NEXUS\nBegin Trees;\n Tree first=((a,b)95,(c,d)90);\n Tree second=((e,f)80,(g,h)70);\nEnd;\n';
+    var nexTrees = aptx.parseTrees('t.nex', nex);
+    if (nexTrees.length !== 2 || nexTrees[0].name !== 'first' || nexTrees[1].name !== 'second' || tips(nexTrees[1]) !== 'e,f,g,h') {
+        console.log('    nexus: ' + nexTrees.length + ' trees');
+        return false;
+    }
+    if (!nexTrees[1].confidencesFromInternalLabels) {
+        console.log('    the promotion skipped tree 2 of the Nexus');
+        return false;
+    }
+    var nh = aptx.parseTrees('t.nwk', '((a,b)90,(c,d)80);\n((e,f)70,(g,h)60);\n((i,j),k);');
+    if (nh.length !== 3 || tips(nh[0]) !== 'a,b,c,d' || tips(nh[2]) !== 'i,j,k' || !nh[1].confidencesFromInternalLabels) {
+        console.log('    newick: ' + nh.length + ' trees');
+        return false;
+    }
+    if (tips(aptx.parseTree('t.nwk', '((a,b),c);\n((d,e),f);')) !== 'a,b,c') {
+        console.log('    parseTree did not return the first tree');
+        return false;
+    }
+    var xml = '<phyloxml xmlns="http://www.phyloxml.org">'
+        + '<phylogeny rooted="true"><name>T1</name><clade><clade><name>a</name></clade><clade><name>b</name></clade></clade></phylogeny>'
+        + '<phylogeny rooted="true"><name>T2</name><clade><clade><name>c</name></clade><clade><name>d</name></clade></clade></phylogeny>'
+        + '</phyloxml>';
+    var xmlTrees = aptx.parseTrees('', xml);
+    if (xmlTrees.length !== 2 || xmlTrees[1].name !== 'T2' || tips(xmlTrees[1]) !== 'c,d') {
+        console.log('    phyloxml: ' + xmlTrees.length + ' trees');
+        return false;
+    }
+    if (!xmlTrees[1].children[0].parent) {
+        console.log('    parents not added on phylogeny 2');
+        return false;
+    }
+    return aptx.parseTree('', xml).name === 'T1';
+}
+
+// launch() takes a tree or a list of trees: an empty list and a broken
+// member are refused by name (the member by its position), the single-tree
+// wording is unchanged, and a list of good trees gets exactly as far as a
+// single tree does here (to the d3 / container checks).
+function testLaunchTreeList() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = {children: [{}]};
+    function thrown(fn) {
+        try { fn(); return null; } catch (e) { return e.message || String(e); }
+    }
+    var m = thrown(function () { aptx.launch('#x', [], {}); });
+    if (!m || m.indexOf('list is empty') < 0) {
+        console.log('    empty list: ' + m);
+        return false;
+    }
+    m = thrown(function () { aptx.launch('#x', [tree, {}], {}); });
+    if (!m || m.indexOf('tree 2 of 2 is empty') < 0) {
+        console.log('    broken member: ' + m);
+        return false;
+    }
+    m = thrown(function () { aptx.launch('#x', {}, {}); });
+    if (!m || m.indexOf('input tree is empty') < 0) {
+        console.log('    single wording: ' + m);
+        return false;
+    }
+    var single = thrown(function () { aptx.launch('#x', tree, {}); });
+    var list = thrown(function () { aptx.launch('#x', [tree, tree], {}); });
+    if (single === null || single !== list) {
+        console.log('    single: ' + single + ' / list: ' + list);
+        return false;
+    }
+    return true;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -2408,6 +2495,8 @@ runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
 runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
+runTest("parseTrees: every tree     : ", testParseTrees);
+runTest("launch: a list of trees    : ", testLaunchTreeList);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 runTest("versions agree           : ", testVersionsAgree);
 

@@ -93,16 +93,31 @@ export interface ViewerHandle {
     /** The nodes the user has selected via the node menu (when
      * enableManualNodeSelection is on). */
     getSelectedNodes(): PhylogenyNode[];
+    /** How many trees the launch holds: one, or every tree the file held
+     * (launch() with the array parseTrees returns). */
+    getTreeCount(): number;
+    /** Which of them is shown (0-based). */
+    getTreeIndex(): number;
+    /** Shows another tree of the launch in the same container under the
+     * same config; it opens fresh. Returns the handle for the new viewer. */
+    showTree(index: number): ViewerHandle;
     /** Unmounts the viewer completely: the DOM inside the container, the
      * body-level pieces, the window resize listener and every page-level
      * key/wheel handler. A later launch() works normally. */
     destroy(): void;
 }
 
+/** How bare numeric internal labels of a Newick / Nexus tree are read:
+ * 'auto' decides per tree, 'confidence' takes every one as a support
+ * value, 'label' keeps them as names. */
+export type InternalNumericLabels = 'auto' | 'confidence' | 'label';
+
 export interface Archaeopteryx {
     /** Launch the viewer into a container (a CSS selector or the element
-     * itself; an unresolvable container throws). Exactly three arguments. */
-    launch(container: string | Element, tree: Phylogeny, config?: ArchaeopteryxConfig): ViewerHandle;
+     * itself; an unresolvable container throws). Exactly three arguments.
+     * A tree, or every tree of a file (parseTrees): the first is shown and
+     * the control panel gets a picker for the others. */
+    launch(container: string | Element, tree: Phylogeny | Phylogeny[], config?: ArchaeopteryxConfig): ViewerHandle;
 
     /** Parse-and-launch in one step. Fetch the file content yourself; the
      * fileName picks the parser (extension; content is sniffed too).
@@ -112,19 +127,24 @@ export interface Archaeopteryx {
 
     /** Parse tree data, auto-detecting the format from content and fileName:
      * Nexus (#NEXUS / .nex / .nexus), Auspice/Nextstrain v2 JSON ({ / .json),
-     * phyloXML (*xml), otherwise New Hampshire (Newick). */
+     * phyloXML (*xml), otherwise New Hampshire (Newick). The FIRST tree the
+     * data holds; parseTrees returns them all. */
     parseTree(fileName: string, data: string,
-        nhConfidenceValuesInBrackets?: boolean,
-        nhConfidenceValuesAsInternalNames?: boolean): Phylogeny;
+        internalNumericLabels?: InternalNumericLabels): Phylogeny;
+    /** Every tree the data holds, in file order: a Nexus TREES block, a
+     * Newick text with one tree per ';', a phyloXML with several
+     * phylogenies (an Auspice dataset is one tree). Hand the array to
+     * launch(). */
+    parseTrees(fileName: string, data: string,
+        internalNumericLabels?: InternalNumericLabels): Phylogeny[];
 
     parsePhyloXML(data: string): Phylogeny;
     parseNewHampshire(data: string,
-        confidenceValuesInBrackets?: boolean,
-        confidenceValuesAsInternalNames?: boolean): Phylogeny;
-    /** A Nexus file can hold several trees; the FIRST is returned. */
+        internalNumericLabels?: InternalNumericLabels): Phylogeny;
+    /** A Nexus file can hold several trees; the FIRST is returned
+     * (parseTrees returns them all). */
     parseNexus(data: string,
-        confidenceValuesInBrackets?: boolean,
-        confidenceValuesAsInternalNames?: boolean): Phylogeny;
+        internalNumericLabels?: InternalNumericLabels): Phylogeny;
     parseAuspiceJson(data: string | object): Phylogeny;
 
     /** Module-level twin of the handle's getSelectedNodes. */

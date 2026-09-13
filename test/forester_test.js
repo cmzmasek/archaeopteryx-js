@@ -84,9 +84,54 @@ runTest("Nexus un-doubling          : ", testNexusUnquoting);
 runTest("phyloXML foreign namespace : ", testPhyloXmlForeignNamespace);
 runTest("label quoting on write    : ", testLabelQuotingOnWrite);
 runTest("scale bar length          : ", testScaleBarLength);
+runTest("multi-tree New Hampshire  : ", testMultiTreeNewHampshire);
 
 // The scale bar picks 1, 2 or 5 x 10^k so that it is about the target
 // length: the rounding thresholds, the label spelling, the unusable scales.
+// A New Hampshire text can hold several trees, one per ';'. They split at
+// the ';' that ends a tree -- never at one inside a quoted label or a
+// [&...] annotation -- and parseNewHampshireTrees reads them all, while
+// parseNewHampshire reads the FIRST (it used to run them together and hand
+// back the LAST, the others silently dropped).
+function testMultiTreeNewHampshire() {
+    var tips = function (phy) {
+        return forester.getAllExternalNodes(phy).map(function (n) { return n.name; }).sort().join(',');
+    };
+    var two = "((a:1,b:2):3,c:4);\n\n((d,e),f)[&&NHX:C=x;y];\n";
+    var parts = forester.splitNewHampshire(two);
+    if (parts.length !== 2 || parts[0] !== "((a:1,b:2):3,c:4);" || parts[1] !== "((d,e),f)[&&NHX:C=x;y];") {
+        console.log('    split: ' + JSON.stringify(parts));
+        return false;
+    }
+    var quoted = forester.splitNewHampshire("('x;y',\"p;q\")r;('it''s;',b);(a,b)");
+    if (quoted.length !== 3 || quoted[0] !== "('x;y',\"p;q\")r;" || quoted[1] !== "('it''s;',b);" || quoted[2] !== "(a,b)") {
+        console.log('    quoted split: ' + JSON.stringify(quoted));
+        return false;
+    }
+    if (forester.splitNewHampshire("(a,b)").length !== 1 || forester.splitNewHampshire("  \n").length !== 0) {
+        return false;
+    }
+    var trees = forester.parseNewHampshireTrees(two, true, false);
+    if (trees.length !== 2 || tips(trees[0]) !== 'a,b,c' || tips(trees[1]) !== 'd,e,f') {
+        console.log('    trees: ' + trees.map(tips).join(' | '));
+        return false;
+    }
+    if (tips(forester.parseNewHampshire(two, true, false)) !== 'a,b,c') {
+        console.log('    parseNewHampshire on two trees: ' + tips(forester.parseNewHampshire(two, true, false)));
+        return false;
+    }
+    // the annotation with the ';' inside reached its node intact
+    var f = forester.getAllExternalNodes(trees[1]).filter(function (n) { return n.name === 'f'; })[0];
+    var comment = (trees[1].children[0].properties || []).concat(f.properties || []).filter(function (p) { return p.ref === 'nh:comment'; })[0];
+    if (!comment || comment.value !== 'x;y') {
+        console.log('    NHX comment: ' + JSON.stringify(comment));
+        return false;
+    }
+    // one tree is one tree, with or without its ';'
+    return tips(forester.parseNewHampshire("((a,b),c)", true, false)) === 'a,b,c'
+        && forester.parseNewHampshireTrees("((a,b),c);", true, false).length === 1;
+}
+
 function testScaleBarLength() {
     var s = forester.scaleBarLength;
     // 100 px target: 1000 px/unit -> 0.1 unit is 100 px

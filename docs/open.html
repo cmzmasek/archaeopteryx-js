@@ -505,14 +505,22 @@
     var pendingMetadata = null;   // {name, text} until a tree consumes it, then kept for relaunches
 
     function looksLikeTable(text) {
-        var lines = String(text || '').split(/\r?\n/).filter(function (l) {
+        var raw = String(text || '');
+        // Nexus first, on the RAW text: the comment filter below drops its
+        // "#NEXUS" line, and the "Begin Taxa;" that follows reads as a
+        // semicolon-separated table (which is how every Nexus file was
+        // refused here for a day)
+        if (/^\s*#NEXUS\b/i.test(raw)) {
+            return false;
+        }
+        var lines = raw.split(/\r?\n/).filter(function (l) {
             return l.trim().length > 0 && l.charAt(0) !== '#';
         });
         if (lines.length < 2) {
             return false;
         }
         var first = lines[0].trim();
-        if (/^[<(\[{]/.test(first) || /^#NEXUS/i.test(first)) {
+        if (/^[<(\[{]/.test(first)) {
             return false;
         }
         return /[\t,;]/.test(first);
@@ -583,15 +591,18 @@
 
     function openTreeNow(fileName, text) {
         var config = currentConfig();
-        var tree;
+        var trees;
         try {
             // internalNumericLabels acts at parse time, so it is handed
-            // to the parser here, exactly as launchArchaeopteryx would
-            tree = archaeopteryx.parseTree(fileName, text, config.internalNumericLabels);
+            // to the parser here, exactly as launchArchaeopteryx would.
+            // Every tree the file holds: the viewer shows the first and
+            // offers the rest in its panel.
+            trees = archaeopteryx.parseTrees(fileName, text, config.internalNumericLabels);
         } catch (e) {
             showError('Could not parse tree: ' + (e && e.message ? e.message : String(e)));
             return;
         }
+        var tree = trees[0];
         if (!tree || forester.getAllExternalNodes(tree).length < 2) {
             showError('The input parsed, but fewer than two tips were found '
                 + '— it does not look like a phylogenetic tree.');
@@ -600,7 +611,11 @@
         var metadataReport = null;
         if (pendingMetadata) {
             try {
-                metadataReport = forester.joinMetadataTable(tree, pendingMetadata.text);
+                // joined onto every tree; the report is the first tree's
+                trees.forEach(function (t) {
+                    var report = forester.joinMetadataTable(t, pendingMetadata.text);
+                    metadataReport = metadataReport || report;
+                });
             } catch (e) {
                 showError('Could not join the metadata table: ' + (e && e.message ? e.message : String(e)));
                 pendingMetadata = null;
@@ -611,7 +626,7 @@
                 viewer.destroy();
                 viewer = null;
             }
-            viewer = archaeopteryx.launch('#phylogram1', tree, config);
+            viewer = archaeopteryx.launch('#phylogram1', trees, config);
         } catch (e) {
             showError(e && e.message ? e.message : String(e));
             // a config launch() rejects must not leave a blank page: put the
@@ -619,7 +634,7 @@
             // the error message
             if (lastGoodConfig) {
                 try {
-                    viewer = archaeopteryx.launch('#phylogram1', tree, lastGoodConfig);
+                    viewer = archaeopteryx.launch('#phylogram1', trees, lastGoodConfig);
                 } catch (e2) {
                     // the original message is the one that matters
                 }
@@ -631,7 +646,8 @@
         lastGoodConfig = config;
         landing.hidden = true;
         toolbar.hidden = false;
-        viewingLine.textContent = 'Viewing: ' + (fileName || 'pasted tree');
+        viewingLine.textContent = 'Viewing: ' + (fileName || 'pasted tree')
+            + (trees.length > 1 ? ' \u00b7 ' + trees.length + ' trees' : '');
         describeMetadata(metadataReport);
         if (metadataReport && metadataReport.matchedTips === 0) {
             showError('The metadata table "' + pendingMetadata.name + '" matched none of the tips: its first column must hold the tip names'

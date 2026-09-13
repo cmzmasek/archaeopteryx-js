@@ -466,6 +466,13 @@ const viewer = archaeopteryx.launchArchaeopteryx(container, fileName, data, conf
 const tree = archaeopteryx.parseTree(fileName, data);
 const viewer = archaeopteryx.launch(container, tree, config);
 
+// every tree the file holds (a Nexus TREES block, a multi-tree Newick,
+// several phylogenies): launch() takes the list, shows the first, and
+// the panel gets a picker for the rest
+const trees = archaeopteryx.parseTrees(fileName, data);
+const viewer = archaeopteryx.launch(container, trees, config);
+viewer.showTree(1);   // also viewer.getTreeIndex(), viewer.getTreeCount()
+
 // later, e.g. when an SPA removes the view:
 viewer.destroy();
 ```
@@ -555,9 +562,13 @@ The parser is picked from the data and the `location`: content starting with
 `#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, JSON content
 (or a name ending in `.json`) as an **Auspice/Nextstrain v2** `dataset.json`,
 a name ending in `xml` as phyloXML, anything else as New Hampshire (Newick).
-A Nexus file shows its **first** tree; a protein/DNA/RNA characters matrix in
-the file (sequential or interleaved) lands on the tips as an aligned
-`mol_seq`, so the alignment track appears just as it does for phyloXML.
+A file holding **several trees** — a Nexus TREES block, a Newick file with one
+tree per `;`, a phyloXML with several phylogenies — opens on the first, and a
+picker with previous / next buttons at the top of the control panel moves
+between them; each tree opens fresh under the same config, the way a new tab
+does on the desktop. A protein/DNA/RNA characters matrix in a Nexus file
+(sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
+alignment track appears just as it does for phyloXML.
 
 An Auspice dataset opens on the **time view** (branch lengths from `num_date`
 differences; a divergence-only build falls back to `div` differences): the

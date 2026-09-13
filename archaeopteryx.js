@@ -372,6 +372,9 @@ function (root, d3, forester, phyloXml) {
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
     const UNCOLLAPSE_ALL_BUTTON = 'uncollapse_all_b';
+    const TREE_PREV_BUTTON = 'tree_prev_b';
+    const TREE_NEXT_BUTTON = 'tree_next_b';
+    const TREE_SELECT = 'tree_select';
     // The desktop Archaeopteryx logo (forester/archaeopteryx_icon_assets/
     // archaeopteryx-anime.svg), inlined so the library stays a single file.
     // Gradient ids are prefixed: they were generic enough to collide with an
@@ -499,6 +502,9 @@ function (root, d3, forester, phyloXml) {
     let _floatGroup = null;
     let _floatStrips = {};                // class -> {top, height} in tree coordinates
     let _treeData = null;
+    let _trees = [];              // every tree of the launch (one, or all a file held); _treeData is _trees[_treeIndex]
+    let _treeIndex = 0;
+    let _launchConfig = null;     // the config as launch() received it, for showTree()
     let _treeFn = null;
     let _vis = null;        // the automatic visualizations: candidates, scales, choices
     let _w = null;
@@ -5052,6 +5058,16 @@ function (root, d3, forester, phyloXml) {
             // resolves once the tree is drawn: at once for a small tree,
             // after the deferred first draw for a big one
             ready: _readyPromise,
+            // the trees of the launch -- one, or every tree the file held:
+            // how many, which is shown, and showing another (a fresh
+            // viewer for it; the handle returned is the one to keep)
+            getTreeCount: function () {
+                return _trees.length;
+            },
+            getTreeIndex: function () {
+                return _treeIndex;
+            },
+            showTree: showTree,
             destroy: destroyViewer
         };
     }
@@ -5104,6 +5120,9 @@ function (root, d3, forester, phyloXml) {
         _root = null;
         _root_const = null;
         _treeData = null;
+        _trees = [];
+        _treeIndex = 0;
+        _launchConfig = null;
         _basicTreeProperties = null;
         _baseSvg = null;
         _svgGroup = null;
@@ -5159,9 +5178,26 @@ function (root, d3, forester, phyloXml) {
         if (phylo === undefined || phylo === null) {
             throw new Error(ERROR + 'input tree is undefined or null');
         }
-        if ((!phylo.children) || (phylo.children.length < 1)) {
-            throw new Error(ERROR + 'input tree is empty or illegally formatted');
+        // One tree, or a list of them (every tree a file holds -- parseTrees):
+        // the list is kept, the first is shown, and the panel's picker and the
+        // handle's showTree() move between them.
+        let trees = Array.isArray(phylo) ? phylo.slice() : [phylo];
+        if (trees.length === 0) {
+            throw new Error(ERROR + 'input tree list is empty');
         }
+        trees.forEach(function (t, i) {
+            if (!t || (!t.children) || (t.children.length < 1)) {
+                throw new Error(ERROR + (trees.length > 1 ? 'input tree ' + (i + 1) + ' of ' + trees.length : 'input tree')
+                    + ' is empty or illegally formatted');
+            }
+        });
+        return launchInto(container, trees, 0, config);
+    };
+
+    // The launch proper, for one tree of the list: launch() validates and
+    // starts at the first, showTree() re-enters here for another.
+    function launchInto(container, trees, index, config) {
+        let phylo = trees[index];
         let cfg = readConfig(config);
         requireForester();
         requireD3();
@@ -5169,6 +5205,9 @@ function (root, d3, forester, phyloXml) {
 
         let previousContainer = _container; // for the different-container teardown below
         _treeData = phylo;
+        _trees = trees;
+        _treeIndex = index;
+        _launchConfig = config;
         _container = containerEl;
         _zoomListener = d3.zoom()
             .scaleExtent([0.1, 10])
@@ -5310,10 +5349,24 @@ function (root, d3, forester, phyloXml) {
         }
 
         return makeViewerHandle();
+    }
 
-        //////////////////////////////////////////////////////////////////////
-
-    };
+    // Shows another tree of the launched list in the same container under
+    // the same config. The tree opens fresh -- its own presets, a clean
+    // view -- the way a new tab does on the desktop. The panel's picker and
+    // previous / next buttons come here, as does the handle's showTree().
+    function showTree(index) {
+        if (!_container) {
+            throw new Error(ERROR + 'showTree(): nothing is launched');
+        }
+        if (!Number.isInteger(index) || index < 0 || index >= _trees.length) {
+            throw new Error(ERROR + 'showTree(): the index must be 0 to ' + (_trees.length - 1) + ', got ' + index);
+        }
+        if (index === _treeIndex) {
+            return makeViewerHandle();
+        }
+        return launchInto(_container, _trees, index, _launchConfig);
+    }
 
     archaeopteryx.parsePhyloXML = function (data) {
         requirePhyloXml();
@@ -5370,8 +5423,9 @@ function (root, d3, forester, phyloXml) {
         return forester.parseAuspiceJson(data);
     };
 
-    // A Nexus file can hold several trees; the FIRST one is displayed (any
-    // alignment from the file's characters matrix rides along on its tips).
+    // A Nexus file can hold several trees; this returns the FIRST one
+    // (parseTrees returns them all; any alignment from the file's characters
+    // matrix rides along on the tips).
     archaeopteryx.parseNexus = function (data, mode, legacyMode) {
         requireForester();
         let m = (typeof mode === 'boolean' || mode === undefined) ? legacyMode : mode;
@@ -9281,6 +9335,8 @@ function (root, d3, forester, phyloXml) {
             case 'ladderize_desc': sw = 8; cap = 'round'; body = glyphLadderize(false); break;
             case 'midpoint': sw = 8; cap = 'round'; body = glyphMidpoint(); break;
             case 'uncollapse_all': sw = 8.5; cap = 'round'; body = glyphUncollapseAll(); break;
+            case 'tree_prev': sw = 9; cap = 'round'; body = glyphChevron(false); break;
+            case 'tree_next': sw = 9; cap = 'round'; body = glyphChevron(true); break;
             case 'sun': body = glyphSun(); break;
             case 'moon': body = glyphMoon(); break;
             default: throw new Error('unknown control-panel glyph: ' + kind);
@@ -9294,6 +9350,11 @@ function (root, d3, forester, phyloXml) {
     // ported point for point into the 100-unit box: the collapsed-clade
     // triangle, apex at the parent, base toward the tips it opens back out
     // into -- three of them.
+    // A chevron pointing left or right: the previous / next tree buttons.
+    function glyphChevron(right) {
+        return right ? '<path d="M38,18 L66,50 L38,82"/>' : '<path d="M62,18 L34,50 L62,82"/>';
+    }
+
     function glyphUncollapseAll() {
         return '<path d="M6,50 L44,16 L44,84 Z" fill="currentColor" stroke="none"/>'
             + '<path d="M56,20 H94 M56,50 H94 M56,80 H94"/>';
@@ -9508,6 +9569,11 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-name { font-weight:600; font-size:11.5px; line-height:1.35; color:var(--p-ink); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; }'
             + '.aptx-panel .' + TREE_DESC + ' .aptx-tree-descr { margin-top:3px; font-size:10px; line-height:1.45; color:var(--p-muted); overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }'
             + '.aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-name, .aptx-panel .' + TREE_DESC + '.aptx-expanded .aptx-tree-descr { display:block; -webkit-line-clamp:unset; overflow:visible; }'
+            // A file with several trees: previous / picker / next in one row
+            + '.aptx-panel .aptx-tree-picker { display:flex; align-items:center; gap:4px; min-width:0; }'
+            + '.aptx-panel .aptx-tree-picker select { flex:1 1 auto; min-width:0; height:24px; }'
+            + '.aptx-panel .aptx-tree-picker .aptx-gbtn { flex:0 0 auto; min-width:26px; padding:0 4px; margin:0; }'
+            + '.aptx-panel .aptx-tree-picker + .' + TREE_DESC + ' { margin-top:5px; }'
             + '.aptx-panel .aptx-panel-title { font-size:12px; }'
             + '.aptx-panel fieldset { border:0; border-top:1px solid var(--p-line); margin:0; padding:6px 12px; min-width:0; }'
             + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 5px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
@@ -10483,6 +10549,15 @@ function (root, d3, forester, phyloXml) {
         on(MSA_CB, 'click', msaCbClicked);
         on(DOMAINS_CB, 'click', domainsCbClicked);
         on(UNCOLLAPSE_ALL_BUTTON, 'click', uncollapseAll);
+        on(TREE_PREV_BUTTON, 'click', function () {
+            showTree(_treeIndex - 1);
+        });
+        on(TREE_NEXT_BUTTON, 'click', function () {
+            showTree(_treeIndex + 1);
+        });
+        on(TREE_SELECT, 'change', function () {
+            showTree(parseInt(this.value, 10));
+        });
         onHoldRepeat(DOMAIN_WIDTH_DEC, function () { domainWidthStep(false); });
         onHoldRepeat(DOMAIN_WIDTH_INC, function () { domainWidthStep(true); });
         on(DOMAIN_EVALUE_DEC, 'click', function () { domainEvalueStep(-1); });
@@ -10762,13 +10837,23 @@ function (root, d3, forester, phyloXml) {
         // so tree-file text needs no escaping here. Both can be very long, so CSS
         // clamps each to a few lines; the caller (enableTreeDescExpand) adds the
         // click/keyboard expand affordance only when the text actually overflows.
+        // A launch with several trees puts the tree picker in the same
+        // fieldset, above the description; the picker shows the name, so
+        // the name line is left out then.
         function makeTreeDesc() {
-            let name = _treeData.name ? String(_treeData.name).trim() : '';
+            let several = _trees.length > 1;
+            let name = (_treeData.name && !several) ? String(_treeData.name).trim() : '';
             let desc = _treeData.description ? String(_treeData.description).trim() : '';
-            if (!name && !desc) {
+            if (!name && !desc && !several) {
                 return null;
             }
             let fieldset = document.createElement('fieldset');
+            if (several) {
+                fieldset.appendChild(makeTreePicker());
+            }
+            if (!name && !desc) {
+                return fieldset;
+            }
             let block = document.createElement('div');
             block.className = TREE_DESC;
             let tooltip = '';
@@ -10789,6 +10874,35 @@ function (root, d3, forester, phyloXml) {
             block.title = tooltip;
             fieldset.appendChild(block);
             return fieldset;
+        }
+
+        // A file with several trees: previous / picker / next in one row,
+        // the picker listing every tree by its name (or its number). Each
+        // opens fresh in the same container (showTree). The end buttons are
+        // disabled at the ends: the panel is rebuilt per tree, so the
+        // state set here is always current.
+        function makeTreePicker() {
+            let n = _trees.length;
+            let row = document.createElement('div');
+            row.className = 'aptx-tree-picker';
+            row.insertAdjacentHTML('beforeend', makeGlyphButton('tree_prev', TREE_PREV_BUTTON, 'previous tree'));
+            let select = document.createElement('select');
+            select.id = TREE_SELECT;
+            select.name = TREE_SELECT;
+            select.title = 'Tree ' + (_treeIndex + 1) + ' of ' + n + ' -- pick another';
+            for (let i = 0; i < n; ++i) {
+                let opt = document.createElement('option');
+                opt.value = String(i);
+                let treeName = _trees[i].name ? String(_trees[i].name).trim() : '';
+                opt.textContent = treeName || ('Tree ' + (i + 1));
+                opt.selected = (i === _treeIndex);
+                select.appendChild(opt);
+            }
+            row.appendChild(select);
+            row.insertAdjacentHTML('beforeend', makeGlyphButton('tree_next', TREE_NEXT_BUTTON, 'next tree'));
+            row.querySelector('#' + TREE_PREV_BUTTON).disabled = (_treeIndex === 0);
+            row.querySelector('#' + TREE_NEXT_BUTTON).disabled = (_treeIndex === n - 1);
+            return row;
         }
 
         // Make the tree name/description block a keyboard-accessible
@@ -11713,8 +11827,65 @@ function (root, d3, forester, phyloXml) {
 // Convenience methods for loading tree on HTML page
 // --------------------------------------------------------------
 
+    // The mode as parseTree / parseTrees accept it. The retired brackets
+    // flag used to be the third argument, so a boolean there means the old
+    // four-argument shape and the mode is the fourth; a string is the mode
+    // itself. PARSE_DEFAULTS, not literals -- initializeSettings applies the
+    // same object, and it runs at launch(), AFTER this has already parsed.
+    function resolveInternalLabelsMode(mode, legacyMode) {
+        let m = (typeof mode === 'boolean' || mode === undefined) ? legacyMode : mode;
+        if (typeof m === 'boolean') {
+            // the retired positional flag: true meant "every numeric internal
+            // label is a confidence", which is 'confidence'.
+            return m ? 'confidence' : PARSE_DEFAULTS.internalNumericLabels;
+        }
+        return m === undefined ? PARSE_DEFAULTS.internalNumericLabels : m;
+    }
+
+    // Every tree the data holds, the format picked from the content and the
+    // location: a Nexus TREES block, a New Hampshire text with one tree per
+    // ';', a phyloXML with several phylogenies; an Auspice dataset is one
+    // tree. Bare numeric internal labels are promoted on every tree.
+    function parseAllTrees(location, data, mode) {
+        requireForester();
+        let loc = location ? String(location).toLowerCase() : '';
+        let text = forester.isString(data) ? data : '';
+        let trees;
+        // Nexus announces itself with "#NEXUS" on the first line, so the
+        // content decides; the filename alone is enough too.
+        if (/^\s*#nexus\b/i.test(text) || /\.(nex|nexus)$/.test(loc)) {
+            trees = forester.parseNexus(data, true, false);
+            if (trees.length === 0) {
+                throw new Error('no tree found in the Nexus data');
+            }
+            trees.forEach(function (t) {
+                promoteInternalLabels(t, mode);
+            });
+        } else if (/^\s*\{/.test(text) || /\.json$/.test(loc)) {
+            trees = [archaeopteryx.parseAuspiceJson(data)];
+        } else if (/^\s*</.test(text) || loc.substr(-3, 3) === 'xml') {
+            // No other supported format can start with '<', so content alone
+            // is enough -- pasted phyloXML has no filename to go by.
+            requirePhyloXml();
+            trees = phyloXml.parse(data, {trim: true, normalize: true});
+            if (trees.length === 0) {
+                throw new Error('no phylogeny found in the phyloXML data');
+            }
+            trees.forEach(function (t) {
+                forester.addParents(t);
+            });
+        } else {
+            trees = forester.parseNewHampshireTrees(data, true, false);
+            trees.forEach(function (t) {
+                promoteInternalLabels(t, mode);
+            });
+        }
+        return trees;
+    }
+
     /**
-     * Convenience method for loading tree on HTML page
+     * Parses tree data for an HTML page: the FIRST tree the data holds
+     * (parseTrees returns them all).
      *
      * @param location - file name (only its extension is used; the content is
      *                    sniffed too, so a pasted tree with no name works)
@@ -11725,41 +11896,21 @@ function (root, d3, forester, phyloXml) {
      *                    position and is still accepted (and ignored) there,
      *                    with the mode following it.
      * @param legacyMode - the mode, when the retired flag occupies `mode`
-     * @returns {*}
+     * @returns {*} the first tree
      */
     archaeopteryx.parseTree = function (location, data, mode, legacyMode) {
-        // The retired brackets flag used to be the third argument, so a
-        // boolean there means the old four-argument shape and the mode is the
-        // fourth. A string is the mode itself.
-        let internalNumericLabels = (typeof mode === 'boolean' || mode === undefined) ? legacyMode : mode;
-        // PARSE_DEFAULTS, not literals -- initializeSettings applies the same
-        // object, and it runs at launch(), AFTER this has already parsed.
-        if (typeof internalNumericLabels === 'boolean') {
-            // the retired positional flag: true meant "every numeric internal
-            // label is a confidence", which is 'confidence'.
-            internalNumericLabels = internalNumericLabels
-                ? 'confidence' : PARSE_DEFAULTS.internalNumericLabels;
-        } else if (internalNumericLabels === undefined) {
-            internalNumericLabels = PARSE_DEFAULTS.internalNumericLabels;
-        }
-        let tree;
-        let loc = location ? String(location).toLowerCase() : '';
-        // Nexus announces itself with "#NEXUS" on the first line, so the
-        // content decides; the filename alone is enough too.
-        if ((forester.isString(data) && /^\s*#nexus\b/i.test(data))
-            || /\.(nex|nexus)$/.test(loc)) {
-            tree = archaeopteryx.parseNexus(data, internalNumericLabels);
-        } else if ((forester.isString(data) && /^\s*\{/.test(data)) || /\.json$/.test(loc)) {
-            tree = archaeopteryx.parseAuspiceJson(data);
-        } else if ((forester.isString(data) && /^\s*</.test(data))
-            || loc.substr(-3, 3) === 'xml') {
-            // No other supported format can start with '<', so content alone
-            // is enough -- pasted phyloXML has no filename to go by.
-            tree = archaeopteryx.parsePhyloXML(data);
-        } else {
-            tree = archaeopteryx.parseNewHampshire(data, internalNumericLabels);
-        }
-        return tree;
+        return parseAllTrees(location, data, resolveInternalLabelsMode(mode, legacyMode))[0];
+    };
+
+    /**
+     * Every tree the data holds, in file order, as an array: a Nexus TREES
+     * block, a New Hampshire text with several ';'-terminated trees, a
+     * phyloXML with several phylogenies (an Auspice dataset is one tree).
+     * launch() takes the array and shows the first, with a picker in the
+     * control panel for the others. Same arguments as parseTree.
+     */
+    archaeopteryx.parseTrees = function (location, data, mode, legacyMode) {
+        return parseAllTrees(location, data, resolveInternalLabelsMode(mode, legacyMode));
     };
 
     // Show the viewer's own "working" card in a container. For the part of a
@@ -11832,9 +11983,11 @@ function (root, d3, forester, phyloXml) {
                 + ' "internalNumericLabels".');
         }
         let c = config || {};
-        let tree;
+        let trees;
         try {
-            tree = archaeopteryx.parseTree(fileName, data,
+            // every tree the file holds: launch() shows the first and the
+            // panel's picker offers the rest
+            trees = archaeopteryx.parseTrees(fileName, data,
                 effectiveInternalLabelsMode(c));
         } catch (e) {
             // Worth catching only to say that it was the parse, not the launch,
@@ -11848,7 +12001,7 @@ function (root, d3, forester, phyloXml) {
         // launch() already reports its own failures well enough; wrapping them
         // added nothing but a prefix, and swallowing them left the caller with
         // a blank page and no way to find out why.
-        return archaeopteryx.launch(container, tree, config);
+        return archaeopteryx.launch(container, trees, config);
     };
 
 

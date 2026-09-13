@@ -2330,6 +2330,17 @@
         // the shared contract -- and throwing on a combination a user
         // plausibly wants is what forced callers into workarounds.
 
+        // A text holding several trees (one per ';') reads as its FIRST;
+        // parseNewHampshireTrees reads them all. Before this the statements
+        // ran together and the LAST tree came back, the others silently
+        // dropped.
+        {
+            let statements = forester.splitNewHampshire(nhStr);
+            if (statements.length > 1) {
+                nhStr = statements[0];
+            }
+        }
+
         let ancs = [];
         let x = {};
 
@@ -2579,6 +2590,66 @@
                 }
             });
         }
+    };
+
+    // Splits a New Hampshire text into its tree statements, one per ';'
+    // outside quotes and [...] comments (a ';' inside a quoted label or a
+    // [&...] annotation is data), each trimmed; blank statements are
+    // dropped. A text without a terminating ';' is one statement.
+    forester.splitNewHampshire = function (nhStr) {
+        let s = String(nhStr);
+        let parts = [];
+        let start = 0;
+        let inSingle = false;
+        let inDouble = false;
+        let depth = 0;
+        for (let i = 0, n = s.length; i < n; ++i) {
+            let c = s.charAt(i);
+            if (inSingle) {
+                if (c === "'") {
+                    inSingle = false;
+                }
+            } else if (inDouble) {
+                if (c === '"') {
+                    inDouble = false;
+                }
+            } else if (depth > 0) {
+                if (c === ']') {
+                    --depth;
+                } else if (c === '[') {
+                    ++depth;
+                }
+            } else if (c === "'") {
+                inSingle = true;
+            } else if (c === '"') {
+                inDouble = true;
+            } else if (c === '[') {
+                depth = 1;
+            } else if (c === ';') {
+                parts.push(s.substring(start, i + 1));
+                start = i + 1;
+            }
+        }
+        parts.push(s.substring(start));
+        return parts.map(function (p) {
+            return p.trim();
+        }).filter(function (p) {
+            return p.length > 0;
+        });
+    };
+
+    // Every tree in a New Hampshire text (a file can hold many, one per
+    // ';'), each parsed as parseNewHampshire does, in file order. A text
+    // with no statement at all is handed to parseNewHampshire whole, so it
+    // fails the way an empty tree always did.
+    forester.parseNewHampshireTrees = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
+        let statements = forester.splitNewHampshire(nhStr);
+        if (statements.length === 0) {
+            return [forester.parseNewHampshire(nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames)];
+        }
+        return statements.map(function (statement) {
+            return forester.parseNewHampshire(statement, confidenceValuesInBrackets, confidenceValuesAsInternalNames);
+        });
     };
 
     // Parses a Nexus-formatted string and returns an ARRAY of tree objects,
