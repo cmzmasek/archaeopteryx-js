@@ -1252,7 +1252,9 @@ labels shown AND, in a radial layout, radial rather than upright labels.
 Scale: one factor for the tree, `f = W_eff / Lmax × 0.9` px per residue.
 `W` (the track width) starts at `0.25 × viewport width`; `d+` / `d−` scale it
 by 1.2 / 0.8 and stop at 2000 / 20. `W_eff = W` in the rectangular layout,
-`min(W, 0.2 × radius)` in the radial ones. `Lmax` is the longest architecture
+a width of the radial layouts' own, which starts at `min(W, 0.2 × radius)`
+and is then stepped by the same buttons (the desktop caps the drawn width at
+that fifth of the radius instead). `Lmax` is the longest architecture
 in the displayed tree, counting every domain whatever its E-value, so the
 threshold never rescales. The rectangular layout reserves `20 + W + 10` px
 from `_w` past the label reservation (`_domainReserve`, counted wherever `_w`

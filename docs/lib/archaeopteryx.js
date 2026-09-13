@@ -4622,7 +4622,7 @@ function (root, d3, forester, phyloXml) {
             throw new Error(ERROR + '"domainEvalueExponent" must be an integer from '
                 + forester.DOMAIN_EVALUE_EXPONENT_MIN + ' to ' + forester.DOMAIN_EVALUE_EXPONENT_MAX);
         }
-        _domain = {width: null, palette: null, next: 0, legendFrac: null};
+        _domain = {width: null, radialWidth: null, palette: null, next: 0, legendFrac: null};
         if (_basicTreeProperties.domainArchitectures) {
             // malformed domains are skipped, never fatal -- said once, here
             let ignored = forester.domainArchitectureStats(_treeData).ignored;
@@ -6622,10 +6622,16 @@ function (root, d3, forester, phyloXml) {
             && (!radialDisplay() || !_radialLabelsHorizontal);
     }
 
-    // The track width W: a quarter of the viewport at first use (the
-    // layout's width, if smaller); d+ / d- scale it by 1.2 / 0.8 and stop
-    // at 2000 / 20.
-    function domainTrackWidth() {
+    // The track width W of the rectangular layouts: a quarter of the
+    // viewport at first use (the layout's width, if smaller). The radial
+    // layouts keep a width of their own, starting at the smaller of W and a
+    // fifth of the radius, so a long architecture does not run off the
+    // circle at first sight. d+ / d- scale whichever width the current
+    // layout uses by 1.2 / 0.8 and stop at 2000 / 20. (The desktop instead
+    // caps the drawn width at that fifth of the radius on every redraw,
+    // which leaves its buttons stepping a number the cap then discards --
+    // Christian: "all buttons should work as expected".)
+    function domainRectangularWidth() {
         if (!_domain.width) {
             let vp = svgSize();
             let vw = Math.min(_displayWidth, (vp && vp.w) ? vp.w : _displayWidth);
@@ -6634,17 +6640,30 @@ function (root, d3, forester, phyloXml) {
         return _domain.width;
     }
 
-    // In a radial layout the track is capped at a share of the radius, or a
-    // long architecture would run off the circle.
-    function domainEffectiveWidth() {
-        let w = domainTrackWidth();
-        if (radialDisplay()) {
-            let r = _state.circularDisplay ? (_radial ? _radial.maxRad : 0) : (_unroot ? _unroot.maxRad : 0);
-            if (r > 0) {
-                w = Math.min(w, DOMAIN_RADIAL_WIDTH_FRACTION * r);
-            }
+    function domainTrackWidth() {
+        if (!radialDisplay()) {
+            return domainRectangularWidth();
         }
-        return w;
+        if (!_domain.radialWidth) {
+            let r = _state.circularDisplay ? (_radial ? _radial.maxRad : 0) : (_unroot ? _unroot.maxRad : 0);
+            if (!(r > 0)) {
+                return domainRectangularWidth();   // no radius yet (before the first radial draw)
+            }
+            _domain.radialWidth = Math.max(DOMAIN_WIDTH_MIN, Math.min(domainRectangularWidth(), DOMAIN_RADIAL_WIDTH_FRACTION * r));
+        }
+        return _domain.radialWidth;
+    }
+
+    function setDomainTrackWidth(w) {
+        if (radialDisplay()) {
+            _domain.radialWidth = w;
+        } else {
+            _domain.width = w;
+        }
+    }
+
+    function domainEffectiveWidth() {
+        return domainTrackWidth();
     }
 
     // px per residue, one factor for every architecture on the tree; Lmax
@@ -6992,9 +7011,16 @@ function (root, d3, forester, phyloXml) {
         if (grow ? w >= DOMAIN_WIDTH_MAX : w <= DOMAIN_WIDTH_MIN) {
             return;
         }
-        _domain.width = w * (grow ? DOMAIN_WIDTH_GROW : DOMAIN_WIDTH_SHRINK);
+        setDomainTrackWidth(w * (grow ? DOMAIN_WIDTH_GROW : DOMAIN_WIDTH_SHRINK));
         syncDomainControls();
-        scheduleUpdate(null, 0);
+        // a radial layout has no column to reserve, but the fit must take the
+        // new track length into account, so it is refitted
+        if (radialDisplay()) {
+            scheduleUpdate(null, 0, true);
+            afterUpdate(zoomToFit);
+        } else {
+            scheduleUpdate(null, 0);
+        }
     }
 
     function domainEvalueStep(delta) {
@@ -7941,7 +7967,10 @@ function (root, d3, forester, phyloXml) {
                 }
             }
             let n = _suggest.rows.length;
-            setActiveSuggestion(e.key === 'ArrowDown' ? (_suggest.active + 1) % n : (_suggest.active - 1 + n) % n);
+            let a = _suggest.active;
+            // on a list with no row chosen yet, Down starts at the top and Up
+            // at the bottom (the desktop found Up landing one short of it)
+            setActiveSuggestion(e.key === 'ArrowDown' ? (a + 1) % n : (a < 0 ? n - 1 : (a - 1 + n) % n));
             e.preventDefault();
         } else if (e.key === 'Enter') {
             if (_suggest && _suggest.active >= 0) {
@@ -8039,6 +8068,7 @@ function (root, d3, forester, phyloXml) {
             _radialLabelsHorizontal = false;
         }
         syncZoomRowButtons();
+        afterUpdate(syncDomainControls);   // the track width buttons follow the layout's own width
         zoomToFit();
     }
 
