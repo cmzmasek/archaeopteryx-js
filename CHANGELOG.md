@@ -6,6 +6,108 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.3.0 — 2026-09-12
+
+Protein domain architectures, a visualization-selection system settled with
+the desktop Java Archaeopteryx and pinned by shared fixtures, a repaired
+overview, and a viewer that redraws very large trees in half the time.
+
+### Added
+
+- **Protein domain architectures.** A tree whose tips carry
+  `<domain_architecture>` draws them beside the tips: a grey backbone per
+  protein with a rounded box per domain that passes the E-value threshold,
+  coloured by name from the Tableau palette, the name on the box when it
+  fits, on one scale for the whole tree so lengths compare across tips. In
+  the rectangular layout the tracks form one aligned column past the labels;
+  in circular and unrooted they ride each tip's spoke. A **Domain
+  Architectures** section in the control panel holds the track width (hold
+  to repeat), the threshold as `10⁻³` with step buttons from `10⁻²⁰` to
+  `10³`, a label mode (on domains / legend / none) and a glow. The legend
+  card lists `NAME (count)` in the order the names appear down the tree,
+  lives bottom-right, drags, and double-clicks home. Everything is plain
+  rectangles and one gradient per colour, so SVG, PDF and PNG exports match
+  the screen. Ported from the desktop's display to its own spec and drawn to
+  the numbers it computed on `apaf.xml` — `test/domain_test.js` pins them,
+  including the placement decided jointly: residue `r` covers
+  `[(r−1)·f, r·f]`. Config keys `showDomainArchitectures` (on automatically
+  when a tree carries any), `domainLabels`, `domainGlow`,
+  `domainEvalueExponent`.
+- **Domain architectures in the node-data dialog**, in position order along
+  the protein.
+- **Shared visualization-selection fixtures.** `test/fixtures/vis-contract.tsv`
+  (182 property names) and `vis-trees.tsv` with its 21 small phyloXML trees
+  (39 rows) are the acceptance test both programs run: every row agrees, and
+  so do the opening colour and the full Color-by menu on 122 real trees.
+
+### Changed
+
+- **Which properties are offered under Color-by and Shape, and which one
+  opens a tree.** The rules are now defined here and the desktop follows
+  them exactly:
+  - record-keeping properties are never offered — authors, sets, data-use
+    terms, ids, accessions, identifiers and "restricted until" in every
+    spelling describe the record, not the organism;
+  - In-Group / Out-Group are offered but demoted, and never open a tree;
+  - a sparse field (under two thirds of the tips) is ranked last, not refused;
+  - a numeric field is never refused for being unique and ranks right after
+    the clean categoricals; "numeric" is a pinned decimal grammar (hex,
+    `Infinity`, `NaN` and `1,5` are words) and spellings of one number fold
+    (`1` and `1.0` are one value);
+  - `applies_to="clade"` counts as node data, so repseq trees colour at all;
+  - a barely repeating categorical (over 20 values, mostly unique) is
+    offered at the very bottom; an all-distinct one is still refused;
+  - a value that folds to nothing (`_`) is no value at all;
+  - **a subtree view never re-classifies**: the menus and the chosen
+    colouring stand and only the legend re-describes what is on screen —
+    entering a clade used to drop the colouring in 61% of the corpus's
+    clades; after a deletion a chosen field stays as long as it still has a
+    value anywhere; and **a tree opens with the first candidate that is not
+    wide**, so a wide field no longer blocks the In-Group beneath it.
+- The big-tree threshold, above which redraws coalesce behind a "Drawing N
+  nodes" card, rises from 2,000 to 3,000 nodes: the viewer got faster (see
+  below), so the card was announcing waits that no longer happen.
+- Double-clicking the canvas no longer zooms it — a stray click that missed
+  a node scaled everything, fonts included.
+- The busy card no longer asks for the system's progress cursor.
+- The Apaf-1 demo moves up in the gallery, describes its domain tracks and
+  cites the paper it comes from.
+- Depends on `phyloxml ^1.0.2` (the open-ended range admitted versions that
+  cannot be required in Node); the re-vendored `phyloxml.js` no longer
+  writes an `xsi:schemaLocation` hint, since phyloxml.org has lapsed.
+
+### Fixed
+
+- **The overview miniature.** It drew the previous layout, or nothing, with
+  its "you are here" rectangle placed against stale geometry. It is built
+  from the model now, with one labels-inclusive extent, drawn as a single
+  path, and the rectangle has a minimum size so it stays visible when the
+  view is a sliver of a 13,000-tip tree.
+- A one-node Newick tree (`a;`) reads its name; it used to come in unnamed
+  and be written back empty.
+- Three demo trees (`confidences`, `influenza`, the synthetic genome
+  alignment) are schema-valid phyloXML again and open on the desktop.
+- `forester.isNumber` checks for a number; `destroyViewer` clears a pending
+  redraw.
+
+### Performance
+
+- Redrawing the 18,512-node demo tree went from about 4.2 s to about 1.9 s:
+  the link-insert reference is resolved once instead of 18,512 times (28×
+  on that step), node mouse events are delegated to the tree group (five
+  listeners instead of 92,560), a transition is built only when something
+  animates, the optional node children are collected with one query, node
+  circle attributes are set in one pass, and the overview is one path.
+
+### Removed
+
+- Twelve `forester` exports that nothing called, and the collapse data
+  model (`_children`) they served — tombstoned in `REMOVED_CONFIG`;
+  `branchesWithPositiveLength`.
+- The search fields' two-letter codes (`NN`, `TS`, `GN` …), the alphabet of
+  the 2.x `GN:name` search syntax that the field menu replaced in 3.0.0. A
+  typed prefix is literal text; a field is chosen from the menu.
+
 ## 3.2.1 — 2026-09-10
 
 ### Fixed
