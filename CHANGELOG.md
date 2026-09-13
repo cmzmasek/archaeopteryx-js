@@ -6,6 +6,110 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.4.0 — 2026-09-13
+
+The field-review release: the five things every other browser tree viewer
+did and this one did not — metadata tables beside the tree, a scale bar,
+collapsing clades, every tree of a multi-tree file, and views you can share
+as a link — plus keyboard shortcuts, a root stub, and a round of
+search-panel refinements.
+
+### Added
+
+- **Metadata tables.** A TSV, CSV or semicolon-separated table with a
+  header row and the tip name in its first column is joined onto the tips
+  as node properties (`forester.joinMetadataTable(tree, text)`), and from
+  there nothing is special: its columns are offered under Color-by and
+  Shape by the usual rules, are search fields (numeric when every filled
+  cell is a number), show in the node data and are written into phyloXML
+  exports. A column's ref is `meta:` plus its header with whitespace as `_`
+  (a header already reading `ns:name` is kept); the datatype is inferred
+  (`xsd:integer`, `xsd:double`, else `xsd:string`). Tip names match
+  exactly, then case-insensitively; empty cells add nothing; the table wins
+  over a property the tip already carries. Quoted cells, `#` comments and
+  Windows line ends are fine. The join returns a report of columns,
+  matched and unmatched tips and unmatched rows. The desktop Archaeopteryx
+  writes the same convention. The open page takes a table the same three
+  ways as a tree: drop, choose or paste, before or after the tree.
+- **A scale bar for phylograms**: a round number of branch-length units
+  (1, 2 or 5 × 10ᵏ, about 100 px, `forester.scaleBarLength`), drawn in tree
+  coordinates so it zooms and exports with the tree. Bottom left in the
+  rectangular layout, below the fan in circular and unrooted; none in a
+  cladogram or under a time axis.
+- **Collapsing a clade.** The node menu's **Collapse/Uncollapse** folds an
+  internal node's clade into a triangle and opens it again, **Uncollapse
+  Subtree** opens everything below a node, and a tool-row button (the
+  desktop's glyph, lit only while something is collapsed) or **Esc** opens
+  the whole tree — the desktop's controls, exactly. The triangle stands on
+  a vertical base at the clade's average tip distance, grows gently with
+  its tip count, and is filled in the colour most of its tips wear. Its
+  label is the node's name; else the Color-by value nearly all its tips
+  share ("Bovine · 12 tips"); else the tips' common name prefix; always
+  with the tip count, and `[found/total]` while a search hits inside. A
+  fully found clade takes the found colour. Display state only: exports
+  carry every tip, and the unrooted layout shows every clade open.
+- **Every tree of a multi-tree file.** A Nexus TREES block, a Newick file
+  with one tree per `;` and a phyloXML with several phylogenies open on
+  the first tree, with a previous / picker / next row at the top of the
+  control panel; each tree opens fresh under the same config. New
+  `archaeopteryx.parseTrees()` returns them all, `launch()` accepts the
+  array, and the handle gains `getTreeCount()`, `getTreeIndex()` and
+  `showTree(i)`. `forester.parseNewHampshireTrees()` and
+  `forester.splitNewHampshire()` do the Newick half.
+- **Shareable views.** The layout, display type, labels, colour and shape
+  fields, both searches, the subtree, the collapsed clades, the sizes, the
+  rotation and the tracks form a view. The demo pages keep it in the URL
+  hash and follow every change, so the address bar is always a link to
+  what is on screen (**Copy link to this view** in the toolbar). For
+  embedders: the handle's `getViewState()` / `applyViewState()`,
+  `archaeopteryx.encodeViewState()` / `decodeViewState()` for the hash
+  form, and two config keys, `view` (open straight into one) and
+  `onViewChange(state, encoded)`. Nodes are named by their launch-time
+  preorder index; zoom, pan, the legend's position and the selection are
+  not part of a view.
+- **Keyboard shortcuts**, ⌘ on macOS and Ctrl on Windows and Linux: fit
+  (0), zoom (+ / −, Shift+arrows for one axis), expand to fit the labels
+  (Shift+E), next layout (Shift+L), next display type (Shift+D), time axis
+  (Shift+X), ladderize (Shift+O), uncollapse all (Shift+U), the search box
+  (F), next / previous hit (G / Shift+G), previous / next tree
+  (Shift+< / >), and the list itself (/), which opens a cheat sheet also
+  linked from the About box. The letters follow the desktop where it has
+  the action. The plain keys are unchanged. The README has the table for
+  both platforms.
+- **A stub branch into the root** in the rectangular layouts, 12 px, for a
+  rooted tree and for every subtree view; a root that has a branch length
+  in the file draws it to scale in a phylogram.
+- The **Auto-hide Labels** item is boxed in the accent colour while labels
+  are actually being hidden, with a tooltip saying how many show, as on
+  the desktop.
+
+### Changed
+
+- **Search suggestions** are an in-page list in the panel's theme instead
+  of the browser's `<datalist>`: they filter the way the chosen mode
+  matches, bold the matched part, show ten rows and how many more, move
+  with the arrow keys, pick with Enter, and respect **Match case** (a
+  joint rule with the desktop).
+- The unrooted layout draws no root branch of any kind; the fan starts at
+  the tree's own root.
+- The domain-track width buttons work in the circular and unrooted
+  layouts, which keep a width of their own starting at a fifth of the
+  radius.
+- `forester.parseNewHampshire` on a text holding several trees returns the
+  **first**; it used to run the statements together and return the last.
+- `forester.visualizationSummary` also accepts an array of tips.
+
+### Fixed
+
+- An invalid regex or number turns the search box red while typing, not
+  only after the focus leaves it.
+- A cladogram no longer spends a depth unit on the invisible level above
+  the root, and a phylogram subtree view no longer opens with a root branch
+  as long as the clade's distance from the original root.
+- The root no longer wears a hollow circle in some views and not others.
+- Up on a freshly opened suggestion list starts at the last row, not the
+  second to last.
+
 ## 3.3.0 — 2026-09-12
 
 Protein domain architectures, a visualization-selection system settled with
