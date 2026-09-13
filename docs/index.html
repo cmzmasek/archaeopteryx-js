@@ -49,6 +49,7 @@
         }
         .card {
             display: block;
+            position: relative;   /* the Open link stretches over the whole card */
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 10px;
@@ -64,7 +65,14 @@
         }
         .card h3 { margin: 0 0 6px; font-size: 16px; }
         .card p { margin: 0; color: var(--muted); font-size: 14px; }
-        .card .open { margin-top: 12px; color: var(--accent); font-size: 13px; font-weight: 600; }
+        .card .open { display: block; margin-top: 12px; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+        /* the whole card is the Open link's hit area, so a card stays one click
+           while a citation inside it can be its own link */
+        .card .open::after { content: ''; position: absolute; inset: 0; }
+        .card:focus-within { border-color: var(--accent); }
+        .card .cite { position: relative; z-index: 1; margin-top: 10px; font-size: 12px; line-height: 1.4; }
+        .card .cite a { color: var(--accent); text-decoration: none; }
+        .card .cite a:hover { text-decoration: underline; }
         .own-tree {
             display: block;
             background: linear-gradient(135deg, #eaf4ff, #f6fbff);
@@ -123,6 +131,8 @@
         {key: 'herpes_dnapol', label: 'Herpesviridae DNA polymerase (201 tips)', desc: 'The most heavily annotated demo — 13 BV-BRC properties, including host group, geography and collection year.'},
         {key: 'caliciviridae_500', label: 'Caliciviridae (186 strains)', desc: 'A real ViPR whole-genome tree, annotated with Genus, Host, Species, Strain and Year.'},
         {key: 'adenoviridae', label: 'Adenoviridae (321 strains)', desc: 'A ViPR hexon-gene tree — the largest demo here, and the densest test of label handling.'},
+        {key: 'apaf', label: 'Apaf-1 gene family', desc: 'The Apaf-1 / CED-4 family across the animals, each protein drawn with its domain architecture beside its tip — CARD, NB-ARC and WD40 domains as coloured boxes on a backbone, with an E-value threshold and a legend.',
+            cite: {text: 'From Zmasek, Zhang, Ye &amp; Godzik, <em>Surprising complexity of the ancestral apoptosis network</em>, Genome Biology 8, R226 (2007).', link: 'doi:10.1186/gb-2007-8-10-r226', url: 'https://doi.org/10.1186/gb-2007-8-10-r226'}},
         {key: 'alignment_nt', label: 'Nucleotide alignment (600 columns)', desc: 'Sixteen tips with a 600-column nucleotide alignment — wider than its window, so the track scrolls.'},
         {key: 'genome_alignment', label: 'Genome alignment (150 × 30,000 columns)', desc: '150 genome-length nucleotide sequences, 30,000 columns — a synthetic alignment evolved along a random tree, so related genomes really are alike and gap blocks follow clades. The track only ever draws the columns on screen; the bar beneath it pages, jumps to a column and reads back where you are. No real organism is represented.'},
         {key: 'alignment', label: 'Sequence alignment', desc: 'A six-tip tree with an embedded 34-column protein alignment, shown as a residue track beside the tree.'},
@@ -130,7 +140,6 @@
         {key: 'dinosaur', label: 'Dinosaur time tree', desc: 'A time-calibrated archosaur tree with the coloured ICS geologic axis (Period over Epoch) beneath the phylogram.'},
         {key: 'ammonite', label: 'Ammonite time tree (fossil ranges)', desc: 'Every genus extinct: the geologic axis stops at the K-Pg (66 Ma), and tips carry sepia fossil-range bars.'},
         {key: 'late_cretaceous', label: 'Late Cretaceous time tree (stages)', desc: 'Thirteen well-known Late Cretaceous dinosaurs, Cenomanian to Maastrichtian. The whole tree sits inside one geologic Series, so the axis bands the Series over its six STAGES in ICS colours — the finer rung the Dinosaur and Ammonite trees are too wide to reach. Press X− a few times: the narrowest stages keep their colour and drop their names.'},
-        {key: 'apaf', label: 'Apaf-1 gene family', desc: 'A classic protein gene-family phylogeny with confidence values.'},
         {key: 'bcl2', label: 'Bcl-2 family', desc: 'Bcl-2 proteins with node annotations and sequences.'},
         {key: 'confidences', label: 'Confidence values', desc: 'A tree carrying branch support / confidence values.'},
         {key: 'branch_events', label: 'Branch events', desc: 'Duplication / speciation events mapped onto branches.'},
@@ -142,11 +151,14 @@
     ];
     var grid = document.getElementById('grid');
     TREES.forEach(function (t) {
-        var a = document.createElement('a');
-        a.className = 'card';
-        a.href = 'demo.html?tree=' + t.key;
-        a.innerHTML = '<h3>' + t.label + '</h3><p>' + t.desc + '</p><div class="open">Open demo →</div>';
-        grid.appendChild(a);
+        var card = document.createElement('div');
+        card.className = 'card';
+        var cite = t.cite
+            ? '<p class="cite">' + t.cite.text + ' <a href="' + t.cite.url + '" target="_blank" rel="noopener">' + t.cite.link + '</a></p>'
+            : '';
+        card.innerHTML = '<h3>' + t.label + '</h3><p>' + t.desc + '</p>' + cite
+            + '<a class="open" href="demo.html?tree=' + t.key + '">Open demo →</a>';
+        grid.appendChild(card);
     });
 </script>
 </body>
