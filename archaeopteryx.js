@@ -589,13 +589,32 @@ function (root, d3, forester, phyloXml) {
     let _zoomed_x_or_y = false;
     let _node_mouseover_div;
 
-    function branchLengthScaling(nodes, width) {
+    // The displayed tree's own root: the single child of _root, which is the
+    // parsed tree's invisible wrapper (the <phylogeny> element, or the node
+    // above a Newick root) or, in a subtree view, the fake node holding the
+    // clade. Null if _root is not such a wrapper.
+    function topNode() {
+        return (_root && _root.children && _root.children.length === 1) ? _root.children[0] : null;
+    }
 
-        if (_root.parent) {
-            _root.parent.distToRoot = 0;
-        }
+    function branchLengthScaling(nodes, width) {
+        // Distances start at the displayed tree's root. When the whole tree
+        // is shown and the file gives that root a branch length, the branch
+        // is drawn to scale (Christian, 2026-09-13; it used to be replaced by
+        // half the average branch length). A subtree's root starts at 0
+        // whatever its branch was: the branch above it is not on screen, and
+        // its parent's distance is from another layout -- that stale sum
+        // used to draw a root branch as long as the clade's distance from
+        // the original root.
+        let top = topNode();
         forester.preOrderTraversalAll(_root, function (n) {
-            n.distToRoot = (n.parent ? n.parent.distToRoot : 0) + bl(n);
+            if (n === _root) {
+                n.distToRoot = 0;
+            } else if (n === top) {
+                n.distToRoot = _in_subtree ? 0 : bl(n);
+            } else {
+                n.distToRoot = n.parent.distToRoot + bl(n);
+            }
         });
         let distsToRoot = nodes.map(function (n) {
             return n.distToRoot;
@@ -610,13 +629,31 @@ function (root, d3, forester, phyloXml) {
         return yScale;
 
         function bl(node) {
-            if (!node.branch_length || node.branch_length < 0) {
-                return 0;
-            } else if (!node.parent || !node.parent.parent) {
-                return _basicTreeProperties.averageBranchLength * 0.5;
-            }
-            return node.branch_length;
+            return (!node.branch_length || node.branch_length < 0) ? 0 : node.branch_length;
         }
+    }
+
+    // The root stub (Christian, 2026-09-13): a short branch into the
+    // displayed tree's root, drawn by putting the wrapper node ROOT_STUB_PX
+    // to the left of it so their link has that length. Shown in the
+    // rectangular layouts for a rooted tree -- a phyloXML rooted="false" or
+    // a Nexus [&U] tree shows none -- and in every subtree view, whose root
+    // is a clade's, whatever the tree says. When the whole tree is a
+    // phylogram and the file gives the root a length, that branch is drawn
+    // to scale instead. The radial layouts never draw a stub: the wrapper
+    // sits on the root.
+    const ROOT_STUB_PX = 12;
+
+    function placeRootStub() {
+        let top = topNode();
+        if (!top) {
+            return;
+        }
+        if (_state.phylogram && !_in_subtree && top.y > _root.y) {
+            return;   // a real root branch, to scale
+        }
+        let rooted = _in_subtree || (_treeData && _treeData.rooted !== false);
+        _root.y = (radialDisplay() || !rooted) ? top.y : top.y - ROOT_STUB_PX;
     }
 
     // Current zoom scale (k) from the zoom behavior's stored transform.
@@ -2645,6 +2682,25 @@ function (root, d3, forester, phyloXml) {
             return hn.data;
         }).reverse();
 
+        // The wrapper is laid out as a level of its own, so a cladogram spent
+        // one depth unit on the invisible branch above the root. Pull the
+        // root back to 0 and stretch the rest to the full width; the stub is
+        // placed afterwards (placeRootStub), and a phylogram overrides these
+        // positions anyway.
+        {
+            let top = topNode();
+            if (top && top.y > 0 && _w > top.y) {
+                let unit = top.y;
+                let stretch = _w / (_w - unit);
+                forester.preOrderTraversalAll(_root, function (n) {
+                    if (n !== _root) {
+                        n.y = (n.y - unit) * stretch;
+                    }
+                });
+                _root.y = 0;
+            }
+        }
+
         // The dim gate: only while a hit is actually DRAWN, so the tree never
         // washes out with nothing emphasised (a 0-hit search, or every hit
         // hidden inside a collapsed clade / outside the displayed subtree).
@@ -2666,6 +2722,7 @@ function (root, d3, forester, phyloXml) {
         if (_state.phylogram === true) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
         }
+        placeRootStub();
 
         if (_state.circularDisplay) {
             let maxY = 0;
@@ -3255,11 +3312,15 @@ function (root, d3, forester, phyloXml) {
         let styled = _state.nodeSizeDefault > 0 && node.parent && !node.hasVis
             && styleOf !== null && !!styleOf.nodeColor;
 
-        // a zero-length branch off the root would otherwise be invisible
-        let zeroLengthRootChild = _state.phylogram && node.parent && !node.parent.parent
-            && (!node.branch_length || node.branch_length <= 0);
-
-        return (visualized || styled || zeroLengthRootChild) ? _state.nodeSizeDefault : 0;
+        // The root is no exception. A 2.x rule gave "a zero-length branch
+        // off the root" a circle so it would not vanish -- but the tree is
+        // laid out from the invisible wrapper above the root, so the node it
+        // matched was the root itself, and only in a phylogram with nothing
+        // coloured: a circle that appeared and disappeared with the display
+        // type and meant nothing. Dropped 2026-09-13; the root is now marked
+        // by its stub (placeRootStub), and wears a circle only for the
+        // reasons any node does.
+        return (visualized || styled) ? _state.nodeSizeDefault : 0;
     };
 
     let makeBranchWidth = function (link) {

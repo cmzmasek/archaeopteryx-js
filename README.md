@@ -202,6 +202,15 @@ panel: **rectangular** (root at left), **circular**, and **unrooted** — the
 desktop's equal-angle fan, where each subtree opens a wedge proportional to
 how many tips it holds.
 
+In the rectangular layouts a rooted tree shows a short **stub** branch into
+its root; a tree that declares itself unrooted (phyloXML `rooted="false"`, a
+Nexus `[&U]` tree) shows none, and the circular and unrooted layouts never
+draw one. A subtree view always shows the stub, since a clade has a definite
+root, whatever the branch above it was. When the whole tree is a phylogram
+and the file gives the root a branch length, that branch is drawn to scale
+instead of the stub. The root itself wears a circle only for the reasons any
+node does — an event, a search hit, a selection, a visualization.
+
 In the two radial layouts the zoom row changes meaning, exactly as on the
 desktop: **Y+ / Y− become the plain + / − zoom** (a circle has one diameter;
 the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
