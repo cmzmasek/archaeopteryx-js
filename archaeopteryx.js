@@ -412,8 +412,6 @@ function (root, d3, forester, phyloXml) {
     const SEARCH_MODE_SELECT_1 = 'sms1';
     const SEARCH_VALUE2_0 = 'sv2_0';
     const SEARCH_VALUE2_1 = 'sv2_1';
-    const SEARCH_DATALIST_0 = 'sdl0';
-    const SEARCH_DATALIST_1 = 'sdl1';
     const SEARCH_AUTOCOMPLETE_CAP = 2000;
     const SEARCH_COMBINE_SELECT = 'scmb';
     const SEARCH_COMBINE_ROW = 'scmb_row';
@@ -7585,12 +7583,14 @@ function (root, d3, forester, phyloXml) {
     }
 
     function resetSearch0() {
+        closeSuggestions();
         setValue(SEARCH_FIELD_0, '');
         setValue(SEARCH_VALUE2_0, '');
         runSearches();
     }
 
     function resetSearch1() {
+        closeSuggestions();
         setValue(SEARCH_FIELD_1, '');
         setValue(SEARCH_VALUE2_1, '');
         runSearches();
@@ -7695,24 +7695,242 @@ function (root, d3, forester, phyloXml) {
         if (idx === 0) { search0(); } else { search1(); }
     }
 
-    // Populate (or detach) the value box's <datalist> so the browser offers
-    // type-ahead value suggestions for specific text fields only.
+    // ===================== Search suggestions =====================
+    // The value box's type-ahead: the distinct values of the chosen field,
+    // filtered as you type, in an in-page list under the box drawn like the
+    // node menu in the panel's own theme. It replaces the browser's
+    // <datalist> widget -- the one control the page could not style, which
+    // sat in the panel like a stranger. Off, as before, for numeric fields,
+    // Any Text and the molecular sequence (field.suggest === false), and in
+    // regex mode. The values are gathered once per field or mode change
+    // (updateSearchAutocomplete), not per keystroke: on a big tree that is a
+    // walk of every node.
+
+    const SUGGEST_MAX_ROWS = 10;
+    let _suggestValues = [null, null];   // per box: the field's distinct values, or null when suggestions are off
+    let _suggest = null;                 // the open list: {idx, input, box, rows, active, onOutside}
+    let _suggestPicked = false;          // an Enter that picked a row must not also re-run the search on keyup
+    let _suggestSkipFocus = false;       // the focus a pick hands back must not reopen the list
+
     function updateSearchAutocomplete(idx) {
-        let dlId = idx === 0 ? SEARCH_DATALIST_0 : SEARCH_DATALIST_1;
-        let dl = byId(dlId);
-        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
-        if (!dl || !input) return;
+        closeSuggestions();
         let spec = currentSearchSpec(idx);
-        let enable = !spec.field.numeric && spec.field.suggest !== false && spec.mode !== 'regex';
-        dl.innerHTML = '';
-        if (!enable) { input.removeAttribute('list'); return; }
-        let vals = forester.distinctSearchValues(_root, spec.field, SEARCH_AUTOCOMPLETE_CAP);
-        for (let i = 0; i < vals.length; ++i) {
-            let opt = document.createElement('option');
-            opt.value = vals[i];
-            dl.appendChild(opt);
+        let on = !spec.field.numeric && spec.field.suggest !== false && spec.mode !== 'regex';
+        _suggestValues[idx] = on ? forester.distinctSearchValues(_root, spec.field, SEARCH_AUTOCOMPLETE_CAP) : null;
+    }
+
+    // The term being typed is the last one: ',' is OR and '+' is AND in the
+    // plain-text modes, and a pick replaces just that term.
+    function suggestTermStart(text) {
+        return Math.max(text.lastIndexOf(','), text.lastIndexOf('+')) + 1;
+    }
+
+    // The values the typed term admits, matched the way the box's mode will
+    // match them: a prefix for "starts with", a suffix for "ends with", a
+    // substring otherwise.
+    function suggestMatches(idx, term) {
+        let values = _suggestValues[idx] || [];
+        let mode = getValue(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
+        let needle = term.toLowerCase();
+        return values.filter(function (v) {
+            if (needle.length === 0) {
+                return true;
+            }
+            let lv = v.toLowerCase();
+            if (mode === 'starts_with') {
+                return lv.indexOf(needle) === 0;
+            }
+            if (mode === 'ends_with') {
+                return lv.length >= needle.length && lv.lastIndexOf(needle) === lv.length - needle.length;
+            }
+            return lv.indexOf(needle) >= 0;
+        });
+    }
+
+    function openSuggestions(idx) {
+        closeSuggestions();
+        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
+        if (!input || !_suggestValues[idx] || _suggestValues[idx].length === 0) {
+            return;
         }
-        input.setAttribute('list', dlId);
+        let text = input.value;
+        let start = suggestTermStart(text);
+        let term = text.substring(start).trim();
+        let matches = suggestMatches(idx, term);
+        // nothing to offer when nothing matches, or the one match is what is already typed
+        if (matches.length === 0 || (matches.length === 1 && matches[0].toLowerCase() === term.toLowerCase())) {
+            return;
+        }
+        let box = document.createElement('div');
+        box.className = 'aptx-suggest';
+        if (_panelTheme) {
+            box.classList.add('aptx-' + _panelTheme); // follow the panel's light/dark choice
+        }
+        let needle = term.toLowerCase();
+        let rows = [];
+        matches.slice(0, SUGGEST_MAX_ROWS).forEach(function (v) {
+            let b = document.createElement('button');
+            b.type = 'button';
+            b.tabIndex = -1;
+            b.title = v;
+            // the matched part in bold, wherever it sits in the value
+            let at = needle.length > 0 ? v.toLowerCase().indexOf(needle) : -1;
+            if (at >= 0) {
+                b.appendChild(document.createTextNode(v.substring(0, at)));
+                let hit = document.createElement('b');
+                hit.textContent = v.substring(at, at + needle.length);
+                b.appendChild(hit);
+                b.appendChild(document.createTextNode(v.substring(at + needle.length)));
+            } else {
+                b.textContent = v;
+            }
+            b.addEventListener('mousedown', function (e) {
+                e.preventDefault();   // the focus stays in the box: no blur, no flicker
+            });
+            b.addEventListener('click', function (e) {
+                e.stopPropagation();
+                pickSuggestion(idx, v);
+            });
+            box.appendChild(b);
+            rows.push(b);
+        });
+        if (matches.length > SUGGEST_MAX_ROWS) {
+            let more = document.createElement('div');
+            more.className = 'aptx-suggest-more';
+            more.textContent = (matches.length - SUGGEST_MAX_ROWS) + ' more — keep typing';
+            box.appendChild(more);
+        }
+        document.body.appendChild(box);
+        // under the box and as wide as it, or above it when the window's
+        // bottom is too close
+        let r = input.getBoundingClientRect();
+        box.style.minWidth = Math.round(r.width) + 'px';
+        let h = box.getBoundingClientRect().height;
+        let below = r.bottom + 3;
+        let top = (below + h > document.documentElement.clientHeight - 8 && r.top - h - 3 > 8) ? r.top - h - 3 : below;
+        box.style.left = Math.round(r.left + window.scrollX) + 'px';
+        box.style.top = Math.round(top + window.scrollY) + 'px';
+        // a press anywhere else closes it -- in the capture phase, since d3's
+        // zoom stops mousedown on the tree from reaching the document
+        let onOutside = function (e) {
+            if (_suggest && !_suggest.box.contains(e.target) && e.target !== input) {
+                closeSuggestions();
+            }
+        };
+        document.addEventListener('mousedown', onOutside, true);
+        _suggest = {idx: idx, input: input, box: box, rows: rows, active: -1, onOutside: onOutside};
+    }
+
+    function closeSuggestions() {
+        if (!_suggest) {
+            return;
+        }
+        document.removeEventListener('mousedown', _suggest.onOutside, true);
+        _suggest.box.remove();
+        _suggest = null;
+    }
+
+    function setActiveSuggestion(i) {
+        if (!_suggest) {
+            return;
+        }
+        _suggest.rows.forEach(function (b, k) {
+            b.classList.toggle('aptx-active', k === i);
+        });
+        _suggest.active = i;
+    }
+
+    function pickSuggestion(idx, value) {
+        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
+        closeSuggestions();
+        if (!input) {
+            return;
+        }
+        let text = input.value;
+        input.value = text.substring(0, suggestTermStart(text)) + value;
+        _suggestSkipFocus = true;
+        input.focus();
+        runSearches();
+    }
+
+    // Keys in the value box: the arrows open the list and move along it,
+    // Enter picks, Escape and Tab close. An Escape that closed the list must
+    // not also reset the view, exactly as the node menu's does not.
+    function suggestKeydown(idx, e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            if (!_suggest) {
+                openSuggestions(idx);
+                if (!_suggest) {
+                    return;
+                }
+            }
+            let n = _suggest.rows.length;
+            setActiveSuggestion(e.key === 'ArrowDown' ? (_suggest.active + 1) % n : (_suggest.active - 1 + n) % n);
+            e.preventDefault();
+        } else if (e.key === 'Enter') {
+            if (_suggest && _suggest.active >= 0) {
+                _suggestPicked = true;
+                pickSuggestion(idx, _suggest.rows[_suggest.active].title);
+                e.preventDefault();
+            } else {
+                closeSuggestions();
+            }
+        } else if (e.key === 'Escape') {
+            if (_suggest) {
+                closeSuggestions();
+                _menuConsumedEsc = true;
+                e.stopPropagation();
+            }
+        } else if (e.key === 'Tab') {
+            closeSuggestions();
+        }
+    }
+
+    // The value box's keyup runs the search. A navigation key changes no
+    // value, and an Enter that just picked a row has already run it.
+    const SUGGEST_NAV_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape', 'Tab', 'Shift',
+        'Control', 'Alt', 'Meta', 'Home', 'End', 'PageUp', 'PageDown', 'CapsLock'];
+
+    function searchValueKeyup(e) {
+        if (SUGGEST_NAV_KEYS.indexOf(e.key) >= 0) {
+            return;
+        }
+        if (e.key === 'Enter' && _suggestPicked) {
+            _suggestPicked = false;
+            return;
+        }
+        runSearches();
+    }
+
+    function wireSuggestions(idx) {
+        let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
+        if (!input) {
+            return;
+        }
+        input.addEventListener('keydown', function (e) {
+            suggestKeydown(idx, e);
+        });
+        input.addEventListener('input', function () {
+            openSuggestions(idx);
+        });
+        input.addEventListener('focus', function () {
+            if (_suggestSkipFocus) {
+                _suggestSkipFocus = false;
+                return;
+            }
+            if (input.value.length > 0) {
+                openSuggestions(idx);
+            }
+        });
+        input.addEventListener('blur', function () {
+            // after a tick: a click on a row keeps the focus, anything else
+            // that took it closes the list
+            setTimeout(function () {
+                if (_suggest && _suggest.idx === idx && document.activeElement !== input) {
+                    closeSuggestions();
+                }
+            }, 120);
+        });
     }
 
 
@@ -8547,16 +8765,16 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel * { box-sizing:border-box; }'
             + '@media (prefers-color-scheme:dark){ .aptx-panel:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
             + '.aptx-panel.aptx-dark {' + dark + '}'
-            // The node menu is a separate overlay (it cannot live inside the
-            // panel), so it carries its own copy of the palette and follows the
-            // same light / dark rules.
-            + '.aptx-node-menu {'
+            // The node menu and the search suggestions are separate overlays
+            // (they cannot live inside the panel), so they carry their own
+            // copy of the palette and follow the same light / dark rules.
+            + '.aptx-node-menu, .aptx-suggest {'
             + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '}'
-            + '@media (prefers-color-scheme:dark){ .aptx-node-menu:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
-            + '.aptx-node-menu.aptx-dark {' + dark + '}'
+            + '@media (prefers-color-scheme:dark){ .aptx-node-menu:not(.aptx-light):not(.aptx-dark), .aptx-suggest:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
+            + '.aptx-node-menu.aptx-dark, .aptx-suggest.aptx-dark {' + dark + '}'
             // The menu itself: fixed 11px type, so it does NOT scale with the
             // tree's zoom the way the old svg-drawn menu did.
             + '.aptx-node-menu { position:absolute; z-index:1000; min-width:196px; max-width:280px; padding:4px;'
@@ -8578,6 +8796,22 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-node-menu button.aptx-menu-danger:hover, .aptx-node-menu button.aptx-menu-danger:focus-visible {'
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
+            // The search suggestions: the node menu's chrome under the value box.
+            + '.aptx-suggest { position:absolute; z-index:1000; max-width:320px; padding:4px; box-sizing:border-box;'
+            + '  border:1px solid var(--p-line-strong); border-radius:10px; background:var(--p-bg); color:var(--p-ink);'
+            + '  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);'
+            + '  box-shadow:0 12px 30px -12px rgba(23,34,46,0.42),0 2px 6px -2px rgba(23,34,46,0.2);'
+            + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  font-size:11px; line-height:1.45; }'
+            + '.aptx-suggest button { display:block; width:100%; text-align:left; margin:0; padding:4px 9px;'
+            + '  border:0; border-radius:6px; background:transparent; color:var(--p-ink); font:inherit;'
+            + '  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+            + '  transition:background .1s,color .1s; }'
+            + '.aptx-suggest button b { font-weight:700; color:var(--p-accent); }'
+            + '.aptx-suggest button:hover, .aptx-suggest button.aptx-active { background:var(--p-accent); color:#fff; }'
+            + '.aptx-suggest button:hover b, .aptx-suggest button.aptx-active b { color:#fff; }'
+            + '.aptx-suggest-more { padding:4px 9px 2px; margin-top:3px; border-top:1px solid var(--p-line);'
+            + '  font-size:10px; color:var(--p-faint); }'
             // The node-data dialog, on the same palette as the panel and the menu.
             + '.aptx-dialog, .aptx-busy, .aptx-msa-nav {'
             + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
@@ -9601,9 +9835,14 @@ function (root, d3, forester, phyloXml) {
         }
 
 
-        on(SEARCH_FIELD_0, 'keyup', search0);
+        on(SEARCH_FIELD_0, 'keyup', searchValueKeyup);
 
-        on(SEARCH_FIELD_1, 'keyup', search1);
+        on(SEARCH_FIELD_1, 'keyup', searchValueKeyup);
+        wireSuggestions(0);
+        wireSuggestions(1);
+        // the list is placed in page coordinates: a scroll or resize moves the box out from under it
+        window.addEventListener('resize', closeSuggestions);
+        document.addEventListener('scroll', closeSuggestions, true);
 
         on(SEARCH_VALUE2_0, 'keyup', search0);
 
@@ -10296,7 +10535,6 @@ function (root, d3, forester, phyloXml) {
             let val2 = idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1;
             let reset = idx === 0 ? RESET_SEARCH_A_BTN : RESET_SEARCH_B_BTN;
             let resetTip = idx === 0 ? RESET_SEARCH_A_BTN_TOOLTIP : RESET_SEARCH_B_BTN_TOOLTIP;
-            let dl = idx === 0 ? SEARCH_DATALIST_0 : SEARCH_DATALIST_1;
             let h = "";
             h = h.concat('<label class="aptx-field-label" for="' + val + '">' + label + '</label>');
             h = h.concat('<div class="aptx-search-menus">');
@@ -10308,7 +10546,6 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<input class="aptx-search-value2" style="display:none" title="upper bound of the range" type="text" name="' + val2 + '" id="' + val2 + '">');
             h = h.concat(makeButton('R', reset, resetTip));
             h = h.concat('</div>');
-            h = h.concat('<datalist id="' + dl + '"></datalist>');
             return h;
         }
 
