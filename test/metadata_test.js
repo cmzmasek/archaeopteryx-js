@@ -85,9 +85,9 @@ function testParseDelimited() {
         return false;
     }
     var threw = 0;
-    try { forester.parseDelimitedTable(''); } catch (e) { threw++; }
-    try { forester.parseDelimitedTable('# only comments\n\n'); } catch (e) { threw++; }
-    try { forester.parseDelimitedTable('justonecolumn\nDog\n'); } catch (e) { threw++; }
+    try { forester.parseDelimitedTable(''); } catch { threw++; }
+    try { forester.parseDelimitedTable('# only comments\n\n'); } catch { threw++; }
+    try { forester.parseDelimitedTable('justonecolumn\nDog\n'); } catch { threw++; }
     return threw === 3;
 }
 

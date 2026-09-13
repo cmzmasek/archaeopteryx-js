@@ -1602,11 +1602,23 @@
     // everything found here is in the candidate's domain and keeps its
     // colour. A numeric candidate also gets the view's colour-mode band
     // (see visNumericModes); a category keeps its mode.
+    // `root` is a node, walked in preorder, or an array of the tips to
+    // describe (the viewer passes what is on screen, which a collapsed clade
+    // shortens).
     forester.visualizationSummary = function (candidate, root) {
         let counts = Object.create(null);
         let total = 0;
         let coverage = 0;
-        forester.preOrderTraversalAll(root, function (n) {
+        let tips = root;
+        if (!Array.isArray(root)) {
+            tips = [];
+            forester.preOrderTraversalAll(root, function (n) {
+                if (!n.children) {
+                    tips.push(n);
+                }
+            });
+        }
+        tips.forEach(function (n) {
             if (n.children) {
                 return;
             }

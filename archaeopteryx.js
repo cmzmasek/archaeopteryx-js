@@ -371,6 +371,7 @@ function (root, d3, forester, phyloXml) {
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
+    const UNCOLLAPSE_ALL_BUTTON = 'uncollapse_all_b';
     // The desktop Archaeopteryx logo (forester/archaeopteryx_icon_assets/
     // archaeopteryx-anime.svg), inlined so the library stays a single file.
     // Gradient ids are prefixed: they were generic enough to collide with an
@@ -1141,7 +1142,7 @@ function (root, d3, forester, phyloXml) {
         // collapsed clade has no drawn position.
         let hits = [];
         if (_root) {
-            forester.preOrderTraversal(_root, function (n) {
+            forEachDisplayed(function (n) {
                 let c = getFoundColor(n);
                 if (c) {
                     hits.push({node: n, color: c});
@@ -1457,6 +1458,9 @@ function (root, d3, forester, phyloXml) {
             b.textContent = item.label;
             if (item.danger) {
                 b.className = 'aptx-menu-danger';
+            }
+            if (item.disabled) {
+                b.disabled = true;   // offered but not applicable here, as the desktop greys it
             }
             b.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -2039,8 +2043,19 @@ function (root, d3, forester, phyloXml) {
     // its scales from that: the whole tree at launch and after an edit, the
     // displayed subtree on every view change.
     function summarizeView(root) {
+        // the tips on screen: the view's, minus what collapsed clades hide
+        let tips = [];
+        (function walk(n) {
+            if (!n.children) {
+                tips.push(n);
+            } else if (!isCollapsed(n)) {
+                for (let i = 0; i < n.children.length; ++i) {
+                    walk(n.children[i]);
+                }
+            }
+        })(root);
         _vis.candidates.forEach(function (c) {
-            let s = forester.visualizationSummary(c, root);
+            let s = forester.visualizationSummary(c, tips);
             c.values = s.values;
             c.counts = s.counts;
             c.coverage = s.coverage;
@@ -2663,17 +2678,24 @@ function (root, d3, forester, phyloXml) {
             - bottomOverlayReserve());
         _treeFn = _treeFn.size([_clusterH, _w]);
 
+        // A collapsed clade is a leaf that asks for more than one row: the
+        // separation between neighbouring leaves is the mean of their
+        // weights, a plain tip weighing 1 and a collapsed clade 2r - 1 so
+        // that it spans r rows (collapsedRows).
+        let leafWeight = function (hn) {
+            return isCollapsed(hn.data) ? (2 * collapsedRows(hn.data)) - 1 : 1;
+        };
         _treeFn = _treeFn.separation(function separation(a, b) {
-            return a.parent === b.parent ? 1 : 1;
+            return (leafWeight(a) + leafWeight(b)) / 2;
         });
 
-        let uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
         // d3 v7: d3.cluster() lays out a d3.hierarchy rather than mutating our
         // own nodes in place (as d3 v3's d3.layout.cluster().nodes() did). Run
         // the layout on a hierarchy, then copy the computed x/y/depth back onto
-        // the forester nodes so the rest of the renderer is unchanged.
+        // the forester nodes so the rest of the renderer is unchanged. A
+        // collapsed node ends the hierarchy: what it hides is not laid out.
         let hierarchy = d3.hierarchy(_root, function (d) {
-            return d.children;
+            return isCollapsed(d) ? null : d.children;
         });
         _treeFn(hierarchy);
         hierarchy.each(function (hn) {
@@ -2684,6 +2706,18 @@ function (root, d3, forester, phyloXml) {
         let nodes = hierarchy.descendants().map(function (hn) {
             return hn.data;
         }).reverse();
+        let leaves = hierarchy.leaves();
+        let uncollsed_nodes = leaves.length;   // the rows on screen: tips and collapsed clades
+        {
+            // px per row unit: the leaves span the cluster height in
+            // separation units (a collapsed clade counts for its rows)
+            let units = 0;
+            for (let i = 1; i < leaves.length; ++i) {
+                units += (leafWeight(leaves[i - 1]) + leafWeight(leaves[i])) / 2;
+            }
+            _rowUnit = units > 0 ? (leaves[leaves.length - 1].x - leaves[0].x) / units : _clusterH;
+        }
+        _cladogramUnit = hierarchy.height > 0 ? _w / hierarchy.height : _w;
 
         // The wrapper is laid out as a level of its own, so a cladogram spent
         // one depth unit on the invisible branch above the root. Pull the
@@ -2695,12 +2729,23 @@ function (root, d3, forester, phyloXml) {
             if (top && top.y > 0 && _w > top.y) {
                 let unit = top.y;
                 let stretch = _w / (_w - unit);
-                forester.preOrderTraversalAll(_root, function (n) {
+                forEachDisplayed(function (n) {
                     if (n !== _root) {
                         n.y = (n.y - unit) * stretch;
                     }
                 });
                 _root.y = 0;
+                _cladogramUnit = unit * stretch;
+            }
+            // a collapsed clade is laid out on the tip column like any leaf;
+            // in a cladogram its apex steps back one level so the wedge ends
+            // where the tips would (a phylogram places it by distance)
+            if (!_state.phylogram) {
+                forEachDisplayed(function (n) {
+                    if (isCollapsed(n)) {
+                        n.y -= _cladogramUnit;
+                    }
+                });
             }
         }
 
@@ -2871,6 +2916,7 @@ function (root, d3, forester, phyloXml) {
         // d3 v4+ no longer folds entered nodes into the update selection, so
         // merge them before the shared styling/positioning below.
         node = nodeEnter.merge(node);
+        drawCollapsedClades(node);
 
         // Create the optional children only where they will show something,
         // and drop them where they will not. Must run BEFORE node.transition()
@@ -3541,7 +3587,7 @@ function (root, d3, forester, phyloXml) {
                 if (isNodeFound(n)) {
                     hits.push(n);
                 }
-                if (n.children) {
+                if (n.children && !isCollapsed(n)) {   // a hit inside a collapsed clade has no position to step to
                     for (let i = 0; i < n.children.length; ++i) {
                         walk(n.children[i]);
                     }
@@ -3809,6 +3855,9 @@ function (root, d3, forester, phyloXml) {
     }
 
     let makeNodeLabel = function (phynode) {
+        if (isCollapsed(phynode)) {
+            return '';   // a collapsed clade carries its own label (drawCollapsedClades)
+        }
         if (!_state.showExternalLabels && !(phynode.children)) {
             return null;
         }
@@ -5336,6 +5385,9 @@ function (root, d3, forester, phyloXml) {
     function calcMaxExtLabel() {
         _maxLabelLength = _state.nodeLabelGap;
         forester.preOrderTraversal(_root, function (d) {
+            if (isCollapsed(d)) {
+                _maxLabelLength = Math.max(collapsedLabel(d).length, _maxLabelLength);
+            }
             if (!d.children) {
                 let l = makeNodeLabel(d);
                 if (l) {
@@ -5670,6 +5722,9 @@ function (root, d3, forester, phyloXml) {
             }
 
             function switchToSubtree(node) {
+                if (node.collapsed) {
+                    node.collapsed = false;   // a subtree view shows what the clade holds
+                }
                 if (node.parent) {
                     if (!(node.children)) {
                         if (node.parent.parent) {
@@ -5746,6 +5801,14 @@ function (root, d3, forester, phyloXml) {
                 // "Switch to ..." matches the desktop's wording for this action.
                 items.push({separator: true});
                 items.push({label: 'Switch to Subtree', action: function () { switchToSubtree(d); }});
+                // the desktop's two collapse entries, with its enabling rules:
+                // the toggle for an internal node that is not the root and not
+                // in the unrooted layout; the subtree uncollapse only when
+                // something below is collapsed
+                items.push({label: 'Collapse/Uncollapse', disabled: !(collapseAllowed() && d.children),
+                    action: function () { collapseToggle(d); }});
+                items.push({label: 'Uncollapse Subtree', disabled: !hasCollapsedIn(d),
+                    action: function () { uncollapse(d); }});
             }
             if (d.parent && d.children) {
                 // redrawn with no transition: animating a swap sends the two
@@ -6106,7 +6169,7 @@ function (root, d3, forester, phyloXml) {
             updateMsaScrollbar(0, 1, 0);
             return;
         }
-        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+        let tips = displayedTips().filter(function (d) {
             return d.x !== undefined;
         }).sort(function (p, q) {
             return p.x - q.x;
@@ -6606,6 +6669,286 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
+    // ===================== Collapsed clades =====================
+    // Collapsing is DISPLAY state on the node (d.collapsed) and nothing
+    // else: forester never sees it, the writers never see it, and the data
+    // tree keeps every tip. The layout treats a collapsed node as a leaf and
+    // the viewer draws it as a wedge -- apex at the node, its two edges
+    // reaching the clade's nearest and farthest tips so its depth stays
+    // readable, filled in the clade's dominant Color-by colour, its height
+    // growing gently with the tip count -- named by the node's own name,
+    // else by the one Color-by value nearly all its tips share, else by the
+    // tips' common name prefix, always with the tip count, and with
+    // "[found/total]" while a search hits inside it (the desktop's touch).
+    // The CONTROLS are the desktop's exactly (Christian, 2026-09-13): the
+    // node menu's "Collapse/Uncollapse" and "Uncollapse Subtree", the
+    // uncollapse-all button in the tool row with the desktop's glyph, no
+    // collapsing in the unrooted layout, never the root. Every walk of the
+    // DISPLAYED tree goes through forEachDisplayed; a hidden tip keeps its
+    // stale position and must never be drawn from.
+    let _rowUnit = 0;           // px per row in the last rectangular layout
+
+    function collapseAllowed() {
+        return !_state.unrootedDisplay;
+    }
+
+    function isCollapsed(d) {
+        return d.collapsed === true && !!d.children && collapseAllowed();
+    }
+
+    // visits the displayed tree: a collapsed node, not what it hides
+    function forEachDisplayed(fn) {
+        if (!_root) {
+            return;
+        }
+        (function walk(n) {
+            fn(n);
+            if (n.children && !isCollapsed(n)) {
+                for (let i = 0; i < n.children.length; ++i) {
+                    walk(n.children[i]);
+                }
+            }
+        })(_root);
+    }
+
+    function displayedTips() {
+        let out = [];
+        forEachDisplayed(function (n) {
+            if (!n.children) {
+                out.push(n);
+            }
+        });
+        return out;
+    }
+
+    function displayedLeafCount() {
+        let count = 0;
+        forEachDisplayed(function (n) {
+            if (!n.children || isCollapsed(n)) {
+                count++;
+            }
+        });
+        return count;
+    }
+
+    function hasCollapsedIn(node) {
+        let found = false;
+        forester.preOrderTraversal(node, function (n) {
+            if (n.collapsed === true && n.children) {
+                found = true;
+            }
+        });
+        return found;
+    }
+
+    function collapseToggle(d) {
+        if (!collapseAllowed() || !d.children || !d.parent || !d.parent.parent) {
+            return;
+        }
+        d.collapsed = !d.collapsed;
+        calcMaxExtLabel();
+        scheduleUpdate(null, 0);
+    }
+
+    function uncollapse(node) {
+        forester.preOrderTraversal(node, function (n) {
+            n.collapsed = false;
+        });
+        calcMaxExtLabel();
+        scheduleUpdate(null, 0);
+    }
+
+    function uncollapseAll() {
+        if (_root) {
+            uncollapse(_root);
+        }
+    }
+
+    function clearCollapsedFlags(node) {
+        forester.preOrderTraversal(node, function (n) {
+            n.collapsed = false;
+        });
+    }
+
+    // How tall a collapsed clade draws, in rows: 1 for a pair, growing with
+    // the logarithm of the tip count, capped so a huge clade does not eat
+    // the screen. The cluster layout's separation turns it into space.
+    function collapsedRows(d) {
+        let tips = forester.getAllExternalNodes(d).length;
+        return Math.max(1, Math.min(2.5, 1 + (Math.log2(Math.max(2, tips)) / 4)));
+    }
+
+    // The clade's name: the node's own; else the one Color-by value at least
+    // 95% of its tips share (a clade named "Bovine" while you look at
+    // hosts); else the tips' common name prefix, trailing separators
+    // dropped; else nothing.
+    function collapsedName(d) {
+        if (d.name && String(d.name).trim().length > 0) {
+            return String(d.name).trim();
+        }
+        let tips = forester.getAllExternalNodes(d);
+        let vis = currentColorVis();
+        if (vis && tips.length > 0) {
+            let counts = Object.create(null);
+            tips.forEach(function (t) {
+                let v = forester.visualizationNodeValue(t, vis);
+                if (v !== null && v !== undefined) {
+                    counts[v] = (counts[v] || 0) + 1;
+                }
+            });
+            let best = null;
+            Object.keys(counts).forEach(function (v) {
+                if (best === null || counts[v] > counts[best]) {
+                    best = v;
+                }
+            });
+            if (best !== null && counts[best] >= 0.95 * tips.length) {
+                return best;
+            }
+        }
+        let prefix = forester.commonNamePrefix(d, forester.nodeLabelProperty(_treeData));
+        prefix = prefix ? prefix.replace(/[\s_\-.:|/]+$/, '') : '';
+        return prefix.length >= 2 ? prefix : '';
+    }
+
+    function collapsedFoundCounts(d) {
+        let found = 0;
+        let total = 0;
+        forester.preOrderTraversal(d, function (n) {
+            if (!n.children) {
+                total++;
+                if (isNodeFound(n)) {
+                    found++;
+                }
+            }
+        });
+        return {found: found, total: total};
+    }
+
+    function collapsedLabel(d) {
+        let name = collapsedName(d);
+        let total = forester.getAllExternalNodes(d).length;
+        let text = (name ? name + ' · ' : '') + total + (total === 1 ? ' tip' : ' tips');
+        let hits = collapsedFoundCounts(d);
+        if (hits.found > 0) {
+            text += ' [' + hits.found + '/' + hits.total + ']';
+        }
+        return text;
+    }
+
+    // The colour most of the clade's tips wear under the current Color-by;
+    // the branch colour when nothing is coloured.
+    function collapsedColor(d) {
+        let vis = currentColorVis();
+        if (!vis || !_state.showVisualizations) {
+            return _state.branchColorDefault;
+        }
+        let counts = Object.create(null);
+        let best = null;
+        forester.getAllExternalNodes(d).forEach(function (t) {
+            let c = makeLabelColor(t);
+            if (c === _state.labelColorDefault) {
+                return;   // an uncoloured tip casts no vote
+            }
+            counts[c] = (counts[c] || 0) + 1;
+            if (best === null || counts[c] > counts[best]) {
+                best = c;
+            }
+        });
+        return best || _state.branchColorDefault;
+    }
+
+    // The wedge's reach: the clade's nearest and farthest tips, in the
+    // layout's x. A phylogram measures them; a cladogram, where every leaf
+    // sits on the tip column, gives the wedge one depth step.
+    function collapsedReach(d) {
+        if (_state.phylogram && _yScale) {
+            let min = Infinity;
+            let max = -Infinity;
+            forester.preOrderTraversal(d, function (n) {
+                if (!n.children) {
+                    if (n.distToRoot < min) { min = n.distToRoot; }
+                    if (n.distToRoot > max) { max = n.distToRoot; }
+                }
+            });
+            if (isFinite(min)) {
+                return [Math.max(d.y, _yScale(min)), Math.max(d.y, _yScale(max))];
+            }
+        }
+        return [d.y + _cladogramUnit, d.y + _cladogramUnit];
+    }
+
+    let _cladogramUnit = 0;   // one depth step of the last cladogram layout, px
+
+    // Draws every collapsed clade in the current node selection: a wedge
+    // path and a label as children of the node's own group, so they move
+    // with it, take its clicks and menu, and ride into exports.
+    function drawCollapsedClades(node) {
+        let wedge = node.selectAll('path.aptx-collapsed').data(function (d) {
+            return isCollapsed(d) ? [d] : [];
+        });
+        wedge.exit().remove();
+        wedge = wedge.enter().append('path').attr('class', 'aptx-collapsed').merge(wedge);
+        let label = node.selectAll('text.aptx-collapsed-label').data(function (d) {
+            return isCollapsed(d) ? [d] : [];
+        });
+        label.exit().remove();
+        label = label.enter().append('text').attr('class', 'aptx-collapsed-label').merge(label);
+
+        let fs = _state.externalNodeFontSize;
+        wedge.each(function (d) {
+            let color = collapsedColor(d);
+            let hits = collapsedFoundCounts(d);
+            let foundColor = hits.found > 0 ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : null;
+            let h = Math.max(6, collapsedRows(d) * _rowUnit * 0.82);
+            let reach = collapsedReach(d);
+            let path;
+            if (radialDisplay()) {
+                // in the rotated frame: +x along the spoke, the base at the tips' radii
+                let r0 = radialRadius(d.y);
+                let r1 = radialRadius(reach[0]);
+                let r2 = radialRadius(reach[1]);
+                path = 'M' + r0 + ',0 L' + r1 + ',' + (-h / 2) + ' L' + r2 + ',' + (h / 2) + ' Z';
+            } else {
+                let dx1 = reach[0] - d.y;
+                let dx2 = reach[1] - d.y;
+                path = 'M0,0 L' + dx1 + ',' + (-h / 2) + ' L' + dx2 + ',' + (h / 2) + ' Z';
+            }
+            d3.select(this)
+                .attr('d', path)
+                .attr('transform', radialDisplay() ? 'rotate(' + labelAngleDeg(d) + ')' : null)
+                .style('fill', (hits.found > 0 && hits.found === hits.total) ? foundColor : color)
+                .style('fill-opacity', (hits.found > 0 && hits.found === hits.total) ? 0.45 : 0.22)
+                .style('stroke', foundColor || color)
+                .style('stroke-width', foundColor ? 1.5 : 1)
+                .style('stroke-opacity', 0.9)
+                .style('stroke-linejoin', 'round');
+        });
+        label.each(function (d) {
+            let reach = collapsedReach(d);
+            let hits = collapsedFoundCounts(d);
+            let allFound = hits.found > 0 && hits.found === hits.total;
+            let ink = allFound ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : _state.labelColorDefault;
+            let t = d3.select(this)
+                .text(collapsedLabel(d))
+                .style('font', (allFound ? '600 ' : '') + fs + 'px ' + FONT_DEFAULTS)
+                .style('fill', ink)
+                .style('pointer-events', 'none');
+            if (radialDisplay()) {
+                let r = radialRadius(Math.max(reach[0], reach[1])) - radialRadius(d.y) + _state.nodeLabelGap;
+                let flip = labelFlip(d);
+                t.attr('transform', 'rotate(' + labelAngleDeg(d) + ') translate(' + r + ',0)' + (flip ? ' rotate(180)' : ''))
+                    .attr('text-anchor', flip ? 'end' : 'start')
+                    .attr('x', 0).attr('dy', '0.32em');
+            } else {
+                t.attr('transform', null)
+                    .attr('text-anchor', 'start')
+                    .attr('x', Math.max(reach[0], reach[1]) - d.y + _state.nodeLabelGap)
+                    .attr('dy', (0.3 * fs) + 'px');
+            }
+        });
+    }
+
     // ===================== Protein domain architectures =====================
     // The desktop's domain display, ported from its RenderableDomainArchitecture
     // and TreePanel (the spec is section D1 of the repo's TODO.md). Each tip's
@@ -6744,7 +7087,7 @@ function (root, d3, forester, phyloXml) {
         if (!domainsShown() || !_root) {
             return;
         }
-        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+        let tips = displayedTips().filter(function (d) {
             return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
         });
         let f = domainScale();
@@ -6882,7 +7225,7 @@ function (root, d3, forester, phyloXml) {
         // rows in the order the tips are on screen -- top to bottom, or
         // clockwise -- not the data's order, which a ladderized display
         // does not follow
-        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+        let tips = displayedTips().filter(function (d) {
             return d.x !== undefined;
         }).sort(function (p, q) {
             return p.x - q.x;
@@ -7231,7 +7574,7 @@ function (root, d3, forester, phyloXml) {
         // average branch length (see bl()), which would shift every band.
         let anchor = null;
         let maxTipX = 0;
-        forester.preOrderTraversal(_root, function (n) {
+        forEachDisplayed(function (n) {
             if (n.children) {
                 return;
             }
@@ -7269,7 +7612,7 @@ function (root, d3, forester, phyloXml) {
         let sc = info.type === 'calendar' ? -corr : corr;
 
         // ---- HPD age bars (internal) + fossil range bars (tips) ----
-        forester.preOrderTraversal(_root, function (d) {
+        forEachDisplayed(function (d) {
             if (!d.date || typeof d.date.minimum !== 'number' || typeof d.date.maximum !== 'number'
                 || d.y === undefined) {
                 return;
@@ -7503,7 +7846,7 @@ function (root, d3, forester, phyloXml) {
             setZoomScale(1);
             update(_root, 0);
             _zoomed_x_or_y = true;
-            const uncollsed_nodes = forester.calcSumOfExternalDescendants(_root);
+            const uncollsed_nodes = displayedLeafCount();
             _displayHeight = _state.externalNodeFontSize * (uncollsed_nodes * 1.3);
             const min = 40;
             if (_displayHeight < min) {
@@ -7621,6 +7964,7 @@ function (root, d3, forester, phyloXml) {
             _root = _root_const;
             _in_subtree = false;
         }
+        clearCollapsedFlags(_root);   // the launch state has nothing collapsed
 
         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
 
@@ -8936,6 +9280,7 @@ function (root, d3, forester, phyloXml) {
             case 'ladderize_asc': sw = 8; cap = 'round'; body = glyphLadderize(true); break;
             case 'ladderize_desc': sw = 8; cap = 'round'; body = glyphLadderize(false); break;
             case 'midpoint': sw = 8; cap = 'round'; body = glyphMidpoint(); break;
+            case 'uncollapse_all': sw = 8.5; cap = 'round'; body = glyphUncollapseAll(); break;
             case 'sun': body = glyphSun(); break;
             case 'moon': body = glyphMoon(); break;
             default: throw new Error('unknown control-panel glyph: ' + kind);
@@ -8943,6 +9288,15 @@ function (root, d3, forester, phyloXml) {
         return '<svg class="aptx-glyph" viewBox="0 0 ' + w + ' 100" aria-hidden="true" focusable="false"'
             + ' fill="none" stroke="currentColor" stroke-width="' + sw + '"'
             + ' stroke-linecap="' + cap + '" stroke-linejoin="' + join + '">' + body + '</svg>';
+    }
+
+    // The desktop's UNCOLLAPSE_ALL glyph (ControlButtonIcon.paintUncollapse),
+    // ported point for point into the 100-unit box: the collapsed-clade
+    // triangle, apex at the parent, base toward the tips it opens back out
+    // into -- three of them.
+    function glyphUncollapseAll() {
+        return '<path d="M6,50 L44,16 L44,84 Z" fill="currentColor" stroke="none"/>'
+            + '<path d="M56,20 H94 M56,50 H94 M56,80 H94"/>';
     }
 
     function injectPanelStyles() {
@@ -9009,6 +9363,8 @@ function (root, d3, forester, phyloXml) {
             + '  transition:background .1s,color .1s; }'
             + '.aptx-node-menu button:hover, .aptx-node-menu button:focus-visible {'
             + '  background:var(--p-accent); color:#fff; outline:none; }'
+            + '.aptx-node-menu button:disabled, .aptx-node-menu button:disabled:hover {'
+            + '  background:transparent; color:var(--p-faint); cursor:default; }'
             + '.aptx-node-menu button.aptx-menu-danger:hover, .aptx-node-menu button.aptx-menu-danger:focus-visible {'
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
@@ -10126,6 +10482,7 @@ function (root, d3, forester, phyloXml) {
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
         on(DOMAINS_CB, 'click', domainsCbClicked);
+        on(UNCOLLAPSE_ALL_BUTTON, 'click', uncollapseAll);
         onHoldRepeat(DOMAIN_WIDTH_DEC, function () { domainWidthStep(false); });
         onHoldRepeat(DOMAIN_WIDTH_INC, function () { domainWidthStep(true); });
         on(DOMAIN_EVALUE_DEC, 'click', function () { domainEvalueStep(-1); });
@@ -10643,6 +11000,7 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all'));
             h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree)'));
             h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree)'));
+            h = h.concat(makeGlyphButton('uncollapse_all', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all'));
             h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -10981,6 +11339,8 @@ function (root, d3, forester, phyloXml) {
 
     function updateButtonEnabledState() {
         syncZoomRowButtons(); // layout- and tree-dependent disables track every render
+        // the uncollapse-all button lives only while something is collapsed, as on the desktop
+        ((_root && collapseAllowed() && hasCollapsedIn(_root)) ? enableButton : disableButton)(byId(UNCOLLAPSE_ALL_BUTTON));
         if (_in_subtree) {
             enableButton(byId(RETURN_TO_SUPERTREE_BUTTON_BY_ONE));
             enableButton(byId(RETURN_TO_SUPERTREE_BUTTON));

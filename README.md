@@ -213,6 +213,24 @@ of any kind, real or stub: there the root is a point of the fan, not the end
 of a branch from nowhere. The root itself wears a circle only for the reasons
 any node does — an event, a search hit, a selection, a visualization.
 
+**Collapsing a clade.** The node menu's **Collapse/Uncollapse** folds an
+internal node's whole clade into a wedge and opens it again; **Uncollapse
+Subtree** opens everything below a node; the tool row's uncollapse-all button
+(the desktop's glyph, lit only while something is collapsed) opens the whole
+tree, and so does **Esc**. The wedge has its apex at the node and its two
+edges reach the clade's nearest and farthest tips, so its depth stays
+readable; it is filled in the colour most of its tips wear under the current
+Color-by, grows gently taller with its tip count, and is named — the node's
+own name if it has one; else the one Color-by value nearly all its tips share,
+so a clade reads "Bovine · 12 tips" while you look at hosts; else the tips'
+common name prefix; always with the tip count, and with `[found/total]` while
+a search hits inside it. Legends, alignment rows and domain tracks describe
+the tips on screen, so a collapsed clade's tips leave them. Collapsing is
+display state only: nothing is removed, exports and downloads carry every
+tip, and the unrooted layout, which has no rows to fold, shows every clade
+open. The controls are the desktop's; the drawing and naming are this
+program's.
+
 A phylogram carries a **scale bar** at the bottom left: a round number of
 branch-length units (1, 2 or 5 × 10ᵏ, whichever makes the bar about 100 px)
 with its length written above it. It is drawn with the tree, so it zooms and
