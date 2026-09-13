@@ -2805,6 +2805,7 @@ function (root, d3, forester, phyloXml) {
                 });
             }
         }
+        syncDynahideIndicator(_state.dynahide && !_state.unrootedDisplay && _dynahide_factor >= 2);
 
         updateButtonEnabledState();
 
@@ -8237,6 +8238,27 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
+    // The desktop draws a box around "Auto-hide Labels" while labels are
+    // actually being hidden -- the switch being on is one thing, the tree
+    // being dense enough for it to bite is another. Same here, in the
+    // panel's accent: the checkbox item gets a box and its tooltip says how
+    // many labels are shown. Called on every redraw, since the density
+    // changes with the vertical zoom, the font size and the view.
+    function syncDynahideIndicator(active) {
+        let cb = byId(DYNAHIDE_CB);
+        let item = cb ? cb.closest('.aptx-check') : null;
+        if (!item) {
+            return;
+        }
+        if (item.dataset.baseTitle === undefined) {
+            item.dataset.baseTitle = item.title;
+        }
+        item.classList.toggle('aptx-check-active', !!active);
+        item.title = active
+            ? item.dataset.baseTitle + ' — hiding now: 1 in ' + _dynahide_factor + ' labels shown'
+            : item.dataset.baseTitle;
+    }
+
     function dynaHideCbClicked() {
         _state.dynahide = getCheckboxValue(DYNAHIDE_CB);
         resetVis();
@@ -9017,7 +9039,13 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel label { cursor:pointer; }'
             + '.aptx-panel input[type=checkbox],.aptx-panel input[type=radio] { accent-color:var(--p-accent); width:13px; height:13px; vertical-align:-2px; margin:0 4px 0 0; }'
             // checkbox/radio + label as one item (used by the Display Data grid and the inline P/A/C and search-option rows)
-            + '.aptx-panel .aptx-check { display:flex; align-items:center; gap:6px; cursor:pointer; min-width:0; }'
+            // every item carries an invisible box, so the one that lights up
+            // (Auto-hide Labels while it is hiding) does not shift its neighbours
+            + '.aptx-panel .aptx-check { display:flex; align-items:center; gap:6px; cursor:pointer; min-width:0;'
+            + '  padding:1px 4px; margin:-1px -4px; border:1px solid transparent; border-radius:5px;'
+            + '  transition:border-color .15s,background .15s; }'
+            + '.aptx-panel .aptx-check.aptx-check-active { border-color:var(--p-accent); background:var(--p-accent-weak); }'
+            + '.aptx-panel .aptx-check.aptx-check-active > span { color:var(--p-accent-ink); font-weight:600; }'
             + '.aptx-panel .aptx-check > input { margin:0; flex:none; }'
             + '.aptx-panel .aptx-check > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }'
             + '.aptx-panel .aptx-checkgrid { display:grid; grid-template-columns:1fr 1fr; gap:3px 10px; }'
