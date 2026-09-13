@@ -298,34 +298,39 @@ press centres the previous / next hit in the viewport, wrapping around.
 
 ## Keyboard
 
-Ctrl on Windows and Linux, ⌘ on macOS. **Ctrl+/** (⌘/) shows the list in
-the viewer; it is also linked from the About box.
+The same actions on every platform; only the modifier differs: **⌘** on
+macOS, **Ctrl** on Windows and Linux. **⌘/** (Ctrl+/) shows this list in
+the viewer, drawn for the platform you are on; the About box links to it
+too.
 
-| Keys | Does |
-|---|---|
-| Ctrl+0 | Fit the tree to the window |
-| Ctrl++ / Ctrl+− | Zoom in / out |
-| Ctrl+Shift+↑ / ↓ | Zoom in / out vertically |
-| Ctrl+Shift+→ / ← | Zoom in / out horizontally (circular: rotate) |
-| Ctrl+Shift+E | Expand vertically until the labels fit |
-| Ctrl+Shift+L | Next layout: rectangular, circular, unrooted |
-| Ctrl+Shift+D | Next display type: phylogram, aligned, cladogram |
-| Ctrl+Shift+X | Time axis on / off |
-| Ctrl+Shift+O | Ladderize |
-| Ctrl+Shift+U | Uncollapse every clade |
-| Ctrl+F | Go to the search box |
-| Ctrl+G / Ctrl+Shift+G | Next / previous search hit |
-| Ctrl+Shift+< / > | Previous / next tree of a multi-tree file |
-| Esc or Home | Back to the whole tree, the launch view |
-| O | Move the overview to the next corner |
-| PageUp / PageDown | Larger / smaller font |
+| macOS | Windows / Linux | Does |
+|---|---|---|
+| ⌘0 | Ctrl+0 | Fit the tree to the window |
+| ⌘+ / ⌘− | Ctrl++ / Ctrl+− | Zoom in / out |
+| ⌘⇧↑ / ⌘⇧↓ | Ctrl+Shift+↑ / ↓ | Zoom in / out vertically |
+| ⌘⇧→ / ⌘⇧← | Ctrl+Shift+→ / ← | Zoom in / out horizontally (circular: rotate) |
+| ⌘⇧E | Ctrl+Shift+E | Expand vertically until the labels fit |
+| ⌘⇧L | Ctrl+Shift+L | Next layout: rectangular, circular, unrooted |
+| ⌘⇧D | Ctrl+Shift+D | Next display type: phylogram, aligned, cladogram |
+| ⌘⇧X | Ctrl+Shift+X | Time axis on / off |
+| ⌘⇧O | Ctrl+Shift+O | Ladderize |
+| ⌘⇧U | Ctrl+Shift+U | Uncollapse every clade |
+| ⌘F | Ctrl+F | Go to the search box |
+| ⌘G / ⌘⇧G | Ctrl+G / Ctrl+Shift+G | Next / previous search hit |
+| ⌘⇧< / ⌘⇧> | Ctrl+Shift+< / > | Previous / next tree of a multi-tree file |
+| ⌘/ | Ctrl+/ | The shortcut list |
+| Esc or Home | Esc or Home | Back to the whole tree, the launch view |
+| O | O | Move the overview to the next corner |
+| Page Up / Page Down | PageUp / PageDown | Larger / smaller font |
 
-The letters follow the desktop where it has the action (its Alt+O, Alt+U,
-Alt+E and ⌘0, ⌘G). The **mouse wheel** zooms (Shift: vertical only;
-Shift+Alt: horizontal; Ctrl+Shift: font size). There is no key for
-re-rooting, by decision. Inside a text box only the combos that cannot
+Mouse wheel, also the same everywhere: plain zooms both axes, **Shift**
+vertical only, **Shift+Alt** (macOS: Shift+Option) horizontal only,
+**Ctrl+Shift** the font size. Inside a text box only the combos that cannot
 interfere with typing fire (fit, zoom, search, the list); the plain keys
-never do.
+never do. The letters follow the desktop Archaeopteryx where it has the
+action (its Alt+O, Alt+U, Alt+E and ⌘0, ⌘G). There is no key for
+re-rooting, by decision. On Linux, Ctrl+Shift+U inside a text field is the
+desktop's Unicode entry: it stays with the text field there, as it should.
 
 ## Sharing a view
 
