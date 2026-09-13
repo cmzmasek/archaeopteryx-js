@@ -9034,7 +9034,9 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-search-menus { display:flex; gap:4px; margin:2px 0 3px; }'
             + '.aptx-panel .aptx-search-menus select { flex:1 1 0; width:auto; min-width:0; height:24px; font:inherit; }'
             // red cue for an unmatchable query (bad regex / non-number); box-shadow, since the value boxes carry an inline outline:none
-            + '.aptx-panel .aptx-search-invalid { box-shadow:0 0 0 2px #e5484d; border-color:#e5484d; }'
+            // specific enough to beat the plain input rule (which used to keep
+            // the border in the line colour, leaving only the ring)
+            + '.aptx-panel input[type=text].aptx-search-invalid { box-shadow:0 0 0 2px #e5484d; border-color:#e5484d; }'
             + '.aptx-panel .aptx-combine { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }'
             + '.aptx-panel .aptx-combine .aptx-field-label { margin:0; flex:none; }'
             + '.aptx-panel .aptx-combine select { flex:1 1 auto; min-width:0; height:26px; font:inherit; }'
@@ -9106,6 +9108,10 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-seg .aptx-glyph { height:13px; }'
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
             + '.aptx-panel input[type=text]:focus,.aptx-panel select:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
+            // an invalid regex or number stays red WHILE TYPING: without this
+            // the focus rule above, more specific and later, painted the box in
+            // the accent until the focus left it
+            + '.aptx-panel input[type=text].aptx-search-invalid:focus { border-color:#e5484d; box-shadow:0 0 0 2px #e5484d; }'
             // --- collapsible sections, internal scroll, whole-panel hide ---
             // the panel is a child of the tree's container now, so it can be held
             // to that container's height rather than the whole viewport's
