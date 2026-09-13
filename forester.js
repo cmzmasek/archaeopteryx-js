@@ -1688,6 +1688,10 @@
         properties.taxonomies = false;
         properties.alignedMolSeqs = true;
         properties.maxMolSeqLength = 0;
+        // protein domain architectures on the tips: whether any tip carries
+        // one, and the longest (Lmax, the scale every track shares)
+        properties.domainArchitectures = false;
+        properties.maxDomainArchitectureLength = 0;
         properties.externalNodesCount = 0;
         properties.nodeCount = 0;
         // Branches that carry a length AT ALL -- an explicit zero is a real
@@ -1769,6 +1773,13 @@
                         }
                         if (!s.mol_seq.is_aligned) {
                             properties.alignedMolSeqs = false;
+                        }
+                    }
+                    let da = forester.domainArchitectureOf(n);
+                    if (da) {
+                        properties.domainArchitectures = true;
+                        if (Number(da.length) > properties.maxDomainArchitectureLength) {
+                            properties.maxDomainArchitectureLength = Number(da.length);
                         }
                     }
                 }
@@ -3554,6 +3565,233 @@
         return (typeof s === 'string' || s instanceof String);
     };
 
+
+    // --------------------------------------------------------------
+    // Protein domain architectures
+    // --------------------------------------------------------------
+    // The pure half of drawing <domain_architecture> beside the tips, ported
+    // from desktop Archaeopteryx (RenderableDomainArchitecture, TreePanel and
+    // AptxUtil at forester 416c705b; the spec is section D1 of the repo's
+    // TODO.md): which domains a threshold admits, where each box sits along
+    // the backbone, the Tableau palette and how names take their colours,
+    // the legend rows and the E-value readout. Everything a fixture can pin
+    // lives here and test/domain_test.js checks it against the numbers the
+    // desktop computed by running its own classes on apaf.xml. The SVG and
+    // the controls are archaeopteryx.js's.
+
+    const DOMAIN_PALETTE = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
+        '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];   // Tableau 10
+    forester.DOMAIN_UNNAMED_COLOR = '#808080';                   // a domain with no name
+    forester.DOMAIN_EVALUE_EXPONENT_DEFAULT = -3;
+    forester.DOMAIN_EVALUE_EXPONENT_MIN = -20;
+    forester.DOMAIN_EVALUE_EXPONENT_MAX = 3;
+
+    function hexToRgb(hex) {
+        let n = parseInt(hex.substring(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+
+    function rgbToHex(rgb) {
+        return '#' + rgb.map(function (c) {
+            let s = Math.max(0, Math.min(255, Math.round(c))).toString(16);
+            return s.length < 2 ? '0' + s : s;
+        }).join('');
+    }
+
+    // Colour i of the qualitative sequence: Tableau 10 for the first ten,
+    // then the same ten shifted toward white (odd cycles) or black (even
+    // cycles), further with each cycle, capped at 0.55.
+    forester.domainQualitativeColor = function (i) {
+        let base = hexToRgb(DOMAIN_PALETTE[i % DOMAIN_PALETTE.length]);
+        let cycle = Math.floor(i / DOMAIN_PALETTE.length);
+        if (cycle === 0) {
+            return rgbToHex(base);
+        }
+        let t = Math.min(0.55, 0.2 * cycle);
+        let toward = (cycle % 2 === 1) ? 255 : 0;
+        return rgbToHex(base.map(function (c) {
+            return Math.round(c + t * (toward - c));
+        }));
+    };
+
+    forester.domainLighten = function (hex, t) {
+        return rgbToHex(hexToRgb(hex).map(function (c) {
+            return c + Math.round((255 - c) * t);
+        }));
+    };
+
+    forester.domainDarken = function (hex, t) {
+        return rgbToHex(hexToRgb(hex).map(function (c) {
+            return Math.round(c * (1 - t));
+        }));
+    };
+
+    // The ink a name is written in on its box: near-black on a light base,
+    // white on a dark one.
+    forester.domainLabelInk = function (hex) {
+        let c = hexToRgb(hex);
+        let lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+        return lum > 0.55 ? '#141a1d' : '#ffffff';
+    };
+
+    forester.domainEvalueThreshold = function (exponent) {
+        return Math.pow(10, exponent);
+    };
+
+    // "10" with the exponent in superscript digits: 10⁻³, 10⁰, 10³.
+    const SUPERSCRIPT_DIGITS = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    forester.domainEvalueLabel = function (exponent) {
+        let digits = String(Math.abs(exponent)).split('').map(function (d) {
+            return SUPERSCRIPT_DIGITS[+d];
+        }).join('');
+        return '10' + (exponent < 0 ? '⁻' : '') + digits;
+    };
+
+    function domainNumber(v) {
+        return (v === null || v === undefined || v === '') ? NaN : Number(v);
+    }
+
+    // The architecture a node carries: the first of its sequences that has
+    // one, provided its length is a positive integer -- without a length
+    // there is no backbone to draw on. The desktop refuses the whole file in
+    // that case; refusing input over a drawing attribute is the one kind of
+    // strictness this library does not copy, so the architecture is simply
+    // not drawn.
+    forester.domainArchitectureOf = function (node) {
+        if (!node.sequences) {
+            return null;
+        }
+        for (let i = 0; i < node.sequences.length; ++i) {
+            let da = node.sequences[i].domain_architecture;
+            if (da) {
+                let L = domainNumber(da.length);
+                return (Number.isInteger(L) && L > 0) ? da : null;
+            }
+        }
+        return null;
+    };
+
+    // The drawable domains of an architecture, in from order (equal froms
+    // keep file order). A malformed domain -- a coordinate missing or not an
+    // integer, to <= from, no E-value -- is left out and counted, never
+    // fatal; the caller reports the count once.
+    forester.domainArchitectureDomains = function (da) {
+        let domains = [];
+        let ignored = 0;
+        (da.domains || []).forEach(function (d) {
+            let from = domainNumber(d.from);
+            let to = domainNumber(d.to);
+            let e = domainNumber(d.confidence);
+            if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from || !isFinite(e)) {
+                ignored++;
+                return;
+            }
+            domains.push({name: d.name ? String(d.name) : '', from: from, to: to, length: to - from + 1, evalue: e});
+        });
+        domains.sort(function (a, b) {
+            return a.from - b.from;
+        });
+        return {domains: domains, ignored: ignored};
+    };
+
+    // The tree's domain facts: tips carrying an architecture, the longest
+    // architecture (Lmax -- it sets one scale for every track and, counting
+    // every domain whatever its E-value, never moves with the threshold),
+    // the drawable domain count and the malformed count.
+    forester.domainArchitectureStats = function (tree) {
+        let stats = {tips: 0, maxLength: 0, domains: 0, ignored: 0};
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children) {
+                return;
+            }
+            let da = forester.domainArchitectureOf(n);
+            if (!da) {
+                return;
+            }
+            stats.tips++;
+            let L = Number(da.length);
+            if (L > stats.maxLength) {
+                stats.maxLength = L;
+            }
+            let dd = forester.domainArchitectureDomains(da);
+            stats.domains += dd.domains.length;
+            stats.ignored += dd.ignored;
+        });
+        return stats;
+    };
+
+    // What a threshold admits over the tips: the distinct drawn names sorted
+    // by UTF-16 code unit (the palette's order -- Java's string order,
+    // uppercase before lowercase, so DED sorts before Death), the drawn box
+    // count, the legend rows in first-appearance order (tips in the order
+    // given, domains in from order) each with its count of drawn boxes, and
+    // how many drawn boxes have no name. `tips` is a root, walked in
+    // preorder, or an array of tips in DISPLAY order -- the legend reads
+    // the way the eye goes down the tree, which a ladderized display does
+    // not do in data order.
+    forester.domainSummary = function (tips, exponent) {
+        let T = forester.domainEvalueThreshold(exponent);
+        let counts = Object.create(null);
+        let legend = [];
+        let boxes = 0;
+        let unnamed = 0;
+        let nodes = tips;
+        if (!Array.isArray(tips)) {
+            nodes = [];
+            forester.preOrderTraversalAll(tips, function (n) {
+                if (!n.children) {
+                    nodes.push(n);
+                }
+            });
+        }
+        nodes.forEach(function (n) {
+            let da = forester.domainArchitectureOf(n);
+            if (!da) {
+                return;
+            }
+            forester.domainArchitectureDomains(da).domains.forEach(function (d) {
+                if (d.evalue > T) {
+                    return;
+                }
+                boxes++;
+                if (d.name.length === 0) {
+                    unnamed++;
+                    return;
+                }
+                if (!(d.name in counts)) {
+                    counts[d.name] = 0;
+                    legend.push({name: d.name, count: 0});
+                }
+                counts[d.name]++;
+            });
+        });
+        legend.forEach(function (row) {
+            row.count = counts[row.name];
+        });
+        return {names: Object.keys(counts).sort(), boxes: boxes, legend: legend, unnamed: unnamed};
+    };
+
+    // One architecture's geometry: the backbone and the boxes the threshold
+    // admits, given its start x and the px per residue f. Residue r covers
+    // [(r-1) f, r f], so a domain from..to spans [start + (from-1) f,
+    // start + to f] and a domain 1..L is exactly the backbone (decided with
+    // the desktop 2026-09-12; until its 416c705b it placed at from f, one
+    // residue to the right). A box with no width is skipped.
+    forester.domainBoxes = function (da, start, f, exponent) {
+        let T = forester.domainEvalueThreshold(exponent);
+        let boxes = [];
+        forester.domainArchitectureDomains(da).domains.forEach(function (d) {
+            if (d.evalue > T) {
+                return;
+            }
+            let w = d.length * f;
+            if (!(w > 0) || !isFinite(w)) {
+                return;
+            }
+            boxes.push({name: d.name, x: start + ((d.from - 1) * f), w: w, from: d.from, to: d.to, evalue: d.evalue});
+        });
+        return {backbone: {x: start, w: Number(da.length) * f}, boxes: boxes};
+    };
 
     // --------------------------------------------------------------
     // Search engine

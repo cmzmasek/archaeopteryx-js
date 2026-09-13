@@ -239,6 +239,37 @@ Ctrl+Shift: font size). Everything else is a button; the old Alt+letter
 combos are gone (macOS labels that key Option and types glyphs with it).
 Nothing fires while the cursor is in a text box.
 
+## Protein domain architectures
+
+A tree whose tips carry `<domain_architecture>` elements (a protein's length
+and its domains, each with a position and an E-value) draws them as **domain
+tracks** beside the tips: a thin grey backbone, `L` residues long, with a
+rounded box per domain, placed at its residues on one scale shared by the
+whole tree so lengths compare across tips, coloured by domain name from the
+Tableau palette, with the name written on the box when it fits. The tracks
+appear from the start whenever a tree carries them; the **Domain
+Architectures** checkbox under Display Data toggles them, and their own
+section holds the controls:
+
+* **Track width** `−` / `+` — the longest architecture's track starts at a
+  quarter of the window and scales by 0.8 / 1.2 per press (hold to repeat).
+* **E-value ≤** `−` `10⁻³` `+` — only domains at or under the threshold are
+  drawn; each press moves it by a factor of ten, from `10⁻²⁰` to `10³`. The
+  colours are dealt again to the names that remain, in sorted order.
+* **Labels** — `On domains` (the default), `Legend` (a card, at home in the
+  bottom-right corner, draggable, double-click to send it back: one row per
+  drawn name with its box count, in the order the names first appear down
+  the tree), or `None`.
+* **Glow** — a soft glow in each domain's own colour around its box.
+
+In the circular and unrooted layouts the tracks ride each tip's spoke
+outward and carry no names (the legend still works); they need radial
+labels, which switching layouts turns on. A malformed domain — a missing or
+impossible position or E-value — is skipped and counted in a console
+warning, never fatal. The tracks ride into the SVG, PDF and PNG exports.
+This is the desktop's domain display, drawn to the same numbers
+(`test/domain_test.js` holds them).
+
 ## Sequence alignments
 
 A tree whose tips carry `<mol_seq is_aligned="true">` shows the alignment as
@@ -619,6 +650,10 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
+| `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
+| `domainGlow` | `false` | Open with the glow around each domain box on. |
+| `domainEvalueExponent` | `-3` | The E-value threshold's exponent at launch, an integer from `-20` to `3`: domains with an E-value at or under `10^exponent` are drawn. |
 | `showTimeAxis` | tree-derived | Open with the time axis shown. Default: on when the tree carries `<date>` elements, off otherwise — an explicit `true`/`false` overrides that. |
 | `timeAxisGrid` | `false` | Open with the Time Grid vertical lines on (only meaningful — and only offered as a checkbox — while the time axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
@@ -1191,6 +1226,55 @@ minus π/2 in circular; `labelAngleDeg` rotates a label along its spoke and
 `layoutPointXY(d)` resolves a node's position in any layout for every
 consumer (overview dots, hit navigator, node transforms). Unrooted disables
 aligned phylograms and label auto-hiding, as the desktop does.
+
+### The domain tracks
+
+Data model: per-tip `sequences[i].domain_architecture = {length, domains:
+[{name, from, to, confidence}]}` — the first sequence carrying one; `length`
+must be a positive integer or the architecture is not drawn. A domain is
+drawable when `from` and `to` are integers with `to > from` and `confidence`
+(its E-value) is a number; otherwise it is skipped and counted
+(`forester.domainArchitectureDomains`). Gate: `showDomainArchitectures`
+state (auto-on when `_basicTreeProperties.domainArchitectures`) AND external
+labels shown AND, in a radial layout, radial rather than upright labels.
+
+Scale: one factor for the tree, `f = W_eff / Lmax × 0.9` px per residue.
+`W` (the track width) starts at `0.25 × viewport width`; `d+` / `d−` scale it
+by 1.2 / 0.8 and stop at 2000 / 20. `W_eff = W` in the rectangular layout,
+`min(W, 0.2 × radius)` in the radial ones. `Lmax` is the longest architecture
+in the displayed tree, counting every domain whatever its E-value, so the
+threshold never rescales. The rectangular layout reserves `20 + W + 10` px
+from `_w` past the label reservation (`_domainReserve`, counted wherever `_w`
+is), so the tree compresses to make room; the radial fit adds
+`4 + W_eff + 10` to the ring. Placement: rectangular `start = _w +
+nodeLabelGap + labelSpace + 20` for every tip (one aligned column) with box
+height `clamp(round(tipPitch / 2), 6, 16)`; circular `r0 = maxRad +
+labelSpace + 4` under `rotate(spoke)`; unrooted `translate(tip)
+rotate(spoke)` with `start = labelSpace + 4`. A domain `from..to` covers
+`[start + (from − 1) f, start + to f]` — residue `r` is `[(r − 1) f, r f]`,
+decided jointly with the desktop on 2026-09-12.
+
+Drawing, per box, in this order: three stepped shadow rects (`rgb(8,18,21)`
+at 40 / 28 / 17 of 255, offset 0.4/0.7, 0.9/1.5, 1.6/2.5), the optional two
+glow rects (the base colour at 20 then 34 of 255, grown by 3.2 then 1.6),
+the body (a vertical gradient `lighten(base, 0.12)` → `darken(base, 0.10)`,
+corner radius `min(2, min(w, h) / 2)`) with a 1 px `darken(base, 0.24)`
+border, and the name — rectangular only, in `min(external font, h − 2)` px
+when that is over 4 px and the text is at most `w − 4` wide, in near-black
+when the base luminance is over 0.55 and white otherwise. Colours: the drawn
+names over the whole tree, sorted by code unit, take Tableau 10 in order,
+then the same ten shifted toward white (odd cycles) or black (even cycles)
+by `min(0.55, 0.2 × cycle)`; an unnamed domain is `#808080`; dealt at load,
+after an edit and on every threshold change, and a name met later takes the
+next unused index. Legend (`'legend'` mode): title `Protein domains
+(E ≤ 1e<exp>)`, rows `NAME (count)` in first-appearance order over the tips
+in display order, clipped to 240 px; home bottom-right, inset 10; a drag
+keeps its place as a fraction of the view, a double-click sends it home.
+Everything is plain rects plus one `<linearGradient>` per colour in the
+track group's own `<defs>`, so exports match the screen. The acceptance
+numbers — apaf.xml: 31 tips, `Lmax` 2080, 202 domains; 9 names / 166 boxes
+at 1e−3; the palette; 22_MOUSE's box offsets at `W = 300` — are the
+desktop's, in `test/domain_test.js`.
 
 ### The alignment track
 

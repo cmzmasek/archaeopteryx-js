@@ -251,6 +251,7 @@ function (root, d3, forester, phyloXml) {
     const LABEL_SIZE_CALC_FACTOR = 0.5;
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
+    const LEGEND_DOMAINS = 'legendDomains';
     const NH_EXPORT_FORMAT = 'Newick';
     const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
@@ -352,6 +353,15 @@ function (root, d3, forester, phyloXml) {
     const DOWNLOAD_BUTTON = 'dl_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
+    const DOMAINS_CB = 'domains_cb';
+    const DOMAIN_CONTROLS = 'domain_controls';
+    const DOMAIN_WIDTH_DEC = 'domain_width_dec';
+    const DOMAIN_WIDTH_INC = 'domain_width_inc';
+    const DOMAIN_EVALUE_DEC = 'domain_evalue_dec';
+    const DOMAIN_EVALUE_INC = 'domain_evalue_inc';
+    const DOMAIN_EVALUE_READOUT = 'domain_evalue';
+    const DOMAIN_LABELS_SELECT = 'domain_labels';
+    const DOMAIN_GLOW_CB = 'domain_glow_cb';
     const TIME_AXIS_CB = 'timeaxis_cb';
     const TIME_GRID_CB = 'timegrid_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
@@ -512,6 +522,28 @@ function (root, d3, forester, phyloXml) {
     let _msaScroller = null;              // the fixed HTML range input, created lazily
     let _msaNav = null;                   // the bar around it: paging, jump-to-column, readout
     let _msaGeom = null;                  // window geometry of the last draw, for the hover readout
+    // ------ protein domain architectures (the desktop's domain display) ------
+    const DOMAIN_TRACK_START_GAP = 20;    // px from the aligned label column to the backbone's start
+    const DOMAIN_TRACK_END_GAP = 10;      // px kept free past the widest track
+    const DOMAIN_RADIAL_GAP = 4;          // px from the label ring / the tip's label to the backbone, radial layouts
+    const DOMAIN_WIDTH_MIN = 20;          // the track width stops growing / shrinking at these
+    const DOMAIN_WIDTH_MAX = 2000;
+    const DOMAIN_WIDTH_GROW = 1.2;        // one d+ press
+    const DOMAIN_WIDTH_SHRINK = 0.8;      // one d- press
+    const DOMAIN_WIDTH_VIEWPORT_FRACTION = 0.25;   // the initial track width
+    const DOMAIN_RADIAL_WIDTH_FRACTION = 0.2;      // ... capped at this share of the radius in radial layouts
+    const DOMAIN_SCALE_HEADROOM = 0.9;    // drawn length over reserved length
+    const DOMAIN_BOX_MIN_H = 6;
+    const DOMAIN_BOX_MAX_H = 16;
+    const DOMAIN_BACKBONE_COLOR = 'rgb(100,100,100)';   // the same in both themes and in exports
+    const DOMAIN_SHADOW_COLOR = 'rgb(8,18,21)';
+    const DOMAIN_SHADOWS = [[0.4, 0.7, 40], [0.9, 1.5, 28], [1.6, 2.5, 17]];   // dx, dy, alpha of 255, in drawing order
+    const DOMAIN_GLOWS = [[3.2, 20], [1.6, 34]];                              // grown by, alpha of 255
+    const DOMAIN_LEGEND_INSET = 10;       // px from the bottom-right corner, the legend's home
+    const DOMAIN_LEGEND_ROW_MAX_PX = 240; // a legend row is clipped to this
+    const DOMAIN_LABEL_MODES = ['none', 'domains', 'legend'];
+    let _domain = null;                   // {width, palette, next, legendFrac}, set per launch
+    let _domainReserve = 0;               // horizontal px reserved for the tracks, set with _w
     // ------ time axis (the desktop's geologic / calendar overlays) ------
     const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
     const TIME_CAL_RESERVE = 26;          // the calendar year ruler
@@ -999,7 +1031,7 @@ function (root, d3, forester, phyloXml) {
         // the viewport: measured box=[0,13 1497x755] against
         // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
         // no by precisely 254px and the overview appeared after every Fit.
-        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset;
+        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve;
         let h = maxY - minY;
         return {x: minX, y: minY, width: maxX - minX, height: h > 0 ? h : 1};
     }
@@ -2563,6 +2595,8 @@ function (root, d3, forester, phyloXml) {
             // the alignment track reserves its window on the right, so the
             // tree and labels compress to make room rather than overlapping
             _msaReserve = 0;
+            // and the domain tracks reserve their column past the labels
+            _domainReserve = domainReserve();
             if (msaShown()) {
                 let fullPx = _basicTreeProperties.maxMolSeqLength * MSA_COL_WIDTH;
                 // budgeted from the VIEWPORT: sizing it from the zoomed layout
@@ -2573,11 +2607,11 @@ function (root, d3, forester, phyloXml) {
                 let band = Math.max(MSA_MIN_BAND_PX, Math.round(vw * MSA_MAX_VIEWPORT_FRACTION));
                 // a wide alignment must not squeeze the tree itself away: the
                 // band yields until the tree keeps its minimum share
-                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
+                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
                 band = Math.max(MSA_MIN_BAND_PX, Math.min(band, maxBand));
                 _msaReserve = MSA_TRACK_GAP + Math.min(fullPx, band);
             }
-            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve;
+            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve;
             if (_w < 1) {
                 _w = 1;
             }
@@ -3184,6 +3218,8 @@ function (root, d3, forester, phyloXml) {
         }
 
         hideHoverGlow(); // the hovered node may have moved; the next mouseover re-shows it
+        drawDomainArchitectures();
+        drawDomainLegend();
         drawMsaTrack();
         drawTimeOverlays();
         rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
@@ -4265,6 +4301,10 @@ function (root, d3, forester, phyloXml) {
     const STATE_KEYS = [
         'layout',
         'showMsa',
+        'showDomainArchitectures',
+        'domainLabels',
+        'domainGlow',
+        'domainEvalueExponent',
         'showTimeAxis',
         'timeAxisGrid',
         'showSupportDots',
@@ -4483,6 +4523,39 @@ function (root, d3, forester, phyloXml) {
         if (_state.showMsa === undefined) {
             _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
                 && _basicTreeProperties.maxMolSeqLength > 0;
+        }
+        // A tree with protein domain architectures on its tips draws them
+        // from the start (the desktop switches its toggle on at load), again
+        // unless the caller decided. The track width is set at the first
+        // draw from the viewport; threshold, label mode and glow come from
+        // the config or the desktop's defaults.
+        if (_state.showDomainArchitectures === undefined) {
+            _state.showDomainArchitectures = _basicTreeProperties.domainArchitectures === true;
+        }
+        if (_state.domainLabels === undefined) {
+            _state.domainLabels = 'domains';
+        } else if (DOMAIN_LABEL_MODES.indexOf(_state.domainLabels) < 0) {
+            throw new Error(ERROR + '"domainLabels" must be "none", "domains" or "legend"');
+        }
+        if (_state.domainGlow === undefined) {
+            _state.domainGlow = false;
+        }
+        if (_state.domainEvalueExponent === undefined) {
+            _state.domainEvalueExponent = forester.DOMAIN_EVALUE_EXPONENT_DEFAULT;
+        } else if (!Number.isInteger(_state.domainEvalueExponent)
+            || _state.domainEvalueExponent < forester.DOMAIN_EVALUE_EXPONENT_MIN
+            || _state.domainEvalueExponent > forester.DOMAIN_EVALUE_EXPONENT_MAX) {
+            throw new Error(ERROR + '"domainEvalueExponent" must be an integer from '
+                + forester.DOMAIN_EVALUE_EXPONENT_MIN + ' to ' + forester.DOMAIN_EVALUE_EXPONENT_MAX);
+        }
+        _domain = {width: null, palette: null, next: 0, legendFrac: null};
+        if (_basicTreeProperties.domainArchitectures) {
+            // malformed domains are skipped, never fatal -- said once, here
+            let ignored = forester.domainArchitectureStats(_treeData).ignored;
+            if (ignored > 0) {
+                console.warn(MESSAGE + ignored + ' protein domain' + (ignored === 1 ? '' : 's')
+                    + ' with a missing or impossible from / to / E-value ignored');
+            }
         }
         // Likewise a dated tree draws its time axis from the start --
         // geologic ICS bands or calendar years, decided from the <date>
@@ -5679,6 +5752,9 @@ function (root, d3, forester, phyloXml) {
     // chosen. Only a field with no value left anywhere falls back to default.
     // No checkbox moves either way, because a view change is not a user choice.
     function refreshVisualizations(edited) {
+        if (edited && _domain) {
+            _domain.palette = null;   // the tree changed: the domain names are dealt their colours again
+        }
         if (!_vis) {
             return;
         }
@@ -5717,7 +5793,7 @@ function (root, d3, forester, phyloXml) {
         // part of the real spans (an anchor ratio taken from anything else
         // once flung the whole tree off-screen after three X+ presses).
         return {
-            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve),
+            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve),
             vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT) - bottomOverlayReserve())
         };
     }
@@ -6449,6 +6525,448 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
+    // ===================== Protein domain architectures =====================
+    // The desktop's domain display, ported from its RenderableDomainArchitecture
+    // and TreePanel (the spec is section D1 of the repo's TODO.md). Each tip's
+    // architecture is a grey backbone of L residues with a rounded box per
+    // domain the E-value threshold admits: in one aligned column past the
+    // labels in the rectangular layout, riding the tip's spoke in the radial
+    // ones. One scale for the whole tree -- f px per residue, from the track
+    // width and the longest architecture -- so lengths compare across tips.
+    // Which domains, where, which colour and which legend rows are forester's
+    // (tested against the desktop's numbers); this is the SVG, the legend
+    // card and the controls. The boxes take no pointer events: nothing to
+    // hover or click, as on the desktop.
+
+    function domainsShown() {
+        return _state.showDomainArchitectures === true
+            && _basicTreeProperties.domainArchitectures === true
+            && _basicTreeProperties.maxDomainArchitectureLength > 0
+            && _state.showExternalLabels
+            // in a radial layout the boxes ride the spokes, so only radial
+            // labels go with them
+            && (!radialDisplay() || !_radialLabelsHorizontal);
+    }
+
+    // The track width W: a quarter of the viewport at first use (the
+    // layout's width, if smaller); d+ / d- scale it by 1.2 / 0.8 and stop
+    // at 2000 / 20.
+    function domainTrackWidth() {
+        if (!_domain.width) {
+            let vp = svgSize();
+            let vw = Math.min(_displayWidth, (vp && vp.w) ? vp.w : _displayWidth);
+            _domain.width = Math.max(DOMAIN_WIDTH_MIN, Math.round(vw * DOMAIN_WIDTH_VIEWPORT_FRACTION));
+        }
+        return _domain.width;
+    }
+
+    // In a radial layout the track is capped at a share of the radius, or a
+    // long architecture would run off the circle.
+    function domainEffectiveWidth() {
+        let w = domainTrackWidth();
+        if (radialDisplay()) {
+            let r = _state.circularDisplay ? (_radial ? _radial.maxRad : 0) : (_unroot ? _unroot.maxRad : 0);
+            if (r > 0) {
+                w = Math.min(w, DOMAIN_RADIAL_WIDTH_FRACTION * r);
+            }
+        }
+        return w;
+    }
+
+    // px per residue, one factor for every architecture on the tree; Lmax
+    // counts every domain whatever its E-value, so the threshold never
+    // rescales the tracks
+    function domainScale() {
+        return (domainEffectiveWidth() / _basicTreeProperties.maxDomainArchitectureLength) * DOMAIN_SCALE_HEADROOM;
+    }
+
+    // The room the longest tip label takes: the same estimate the layout is
+    // sized against (there are no font metrics in the model).
+    function domainLabelSpace() {
+        return (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
+    }
+
+    // The rectangular layout reserves the tracks' column so the tree and
+    // labels compress to make room, as the alignment track does; the radial
+    // layouts fit the tracks into the ring instead (fitRadialExtent).
+    function domainReserve() {
+        if (!domainsShown() || radialDisplay()) {
+            return 0;
+        }
+        return DOMAIN_TRACK_START_GAP + domainTrackWidth() + DOMAIN_TRACK_END_GAP;
+    }
+
+    function domainRadialExtent() {
+        if (!domainsShown() || !radialDisplay()) {
+            return 0;
+        }
+        return DOMAIN_RADIAL_GAP + domainEffectiveWidth() + DOMAIN_TRACK_END_GAP;
+    }
+
+    // Colours: the names the threshold admits over the WHOLE tree, sorted by
+    // code unit, take the palette in order. Dealt at load, after an edit and
+    // whenever the threshold changes (the drawn set changes then, so colours
+    // can shift); a name met later takes the next unused colour and keeps
+    // it. Never derived from the name's characters -- that let SH2 and SH3
+    // collide on the desktop.
+    function domainPalette() {
+        if (!_domain.palette) {
+            let names = forester.domainSummary(forester.getTreeRoot(_treeData), _state.domainEvalueExponent).names;
+            _domain.palette = Object.create(null);
+            names.forEach(function (name, i) {
+                _domain.palette[name] = i;
+            });
+            _domain.next = names.length;
+        }
+        return _domain.palette;
+    }
+
+    function domainColor(name) {
+        if (!name) {
+            return forester.DOMAIN_UNNAMED_COLOR;
+        }
+        let palette = domainPalette();
+        if (palette[name] === undefined) {
+            palette[name] = _domain.next++;
+        }
+        return forester.domainQualitativeColor(palette[name]);
+    }
+
+    function domainBoxHeight(pitch) {
+        return Math.max(DOMAIN_BOX_MIN_H, Math.min(DOMAIN_BOX_MAX_H, Math.round(pitch)));
+    }
+
+    function drawDomainArchitectures() {
+        if (!_svgGroup) {
+            return;
+        }
+        _svgGroup.selectAll('g.aptx-domains').remove();
+        if (!domainsShown() || !_root) {
+            return;
+        }
+        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+            return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
+        });
+        let f = domainScale();
+        if (tips.length === 0 || !(f > 0) || !isFinite(f)) {
+            return;
+        }
+        let g = _svgGroup.append('g').attr('class', 'aptx-domains').style('pointer-events', 'none');
+        // one vertical gradient per base colour, lighter at the top; the
+        // defs ride into the SVG / PDF / PNG exports with the boxes
+        let defs = g.append('defs');
+        let made = Object.create(null);
+        function gradientFor(base) {
+            let id = 'aptx-dom-' + base.substring(1);
+            if (!made[id]) {
+                made[id] = true;
+                let grad = defs.append('linearGradient').attr('id', id)
+                    .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1);
+                grad.append('stop').attr('offset', '0%').attr('stop-color', forester.domainLighten(base, 0.12));
+                grad.append('stop').attr('offset', '100%').attr('stop-color', forester.domainDarken(base, 0.10));
+            }
+            return 'url(#' + id + ')';
+        }
+        let labelSpace = domainLabelSpace();
+        if (_state.circularDisplay) {
+            // every bar starts on one ring past the labels and rides its
+            // tip's spoke outward
+            let r0 = _radial.maxRad + labelSpace + DOMAIN_RADIAL_GAP;
+            let h = domainBoxHeight((r0 * 2 * Math.PI) / tips.length);
+            tips.forEach(function (d) {
+                let t = g.append('g').attr('transform', 'rotate(' + labelAngleDeg(d) + ')');
+                drawOneArchitecture(t, forester.domainArchitectureOf(d), r0, -h / 2, h, f, false, gradientFor);
+            });
+        } else if (_state.unrootedDisplay) {
+            // no common ring: each bar starts past its own tip's label
+            let h = domainBoxHeight((Math.PI * 2 * _unroot.maxRad) / tips.length);
+            let start = labelSpace + DOMAIN_RADIAL_GAP;
+            tips.forEach(function (d) {
+                let t = g.append('g').attr('transform', 'translate(' + d.ux + ',' + d.uy + ') rotate(' + labelAngleDeg(d) + ')');
+                drawOneArchitecture(t, forester.domainArchitectureOf(d), start, -h / 2, h, f, false, gradientFor);
+            });
+        } else {
+            // one aligned column: past the deepest tip and the longest label.
+            // The box height follows the tip pitch (half of it), 6 to 16 px.
+            tips.sort(function (p, q) {
+                return p.x - q.x;
+            });
+            let n = tips.length;
+            let pitch = n > 1 ? (tips[n - 1].x - tips[0].x) / (n - 1) : _state.externalNodeFontSize;
+            let h = domainBoxHeight(pitch / 2);
+            let start = _w + _state.nodeLabelGap + labelSpace + DOMAIN_TRACK_START_GAP;
+            let labelsOn = _state.domainLabels === 'domains';
+            tips.forEach(function (d) {
+                drawOneArchitecture(g, forester.domainArchitectureOf(d), start, d.x - (h / 2), h, f, labelsOn, gradientFor);
+            });
+        }
+    }
+
+    function domainRect(g, x, y, w, h, r) {
+        return g.append('rect')
+            .attr('x', x).attr('y', y).attr('width', w).attr('height', h)
+            .attr('rx', r).attr('ry', r);
+    }
+
+    // One architecture, in the desktop's order: the backbone, then per
+    // admitted domain its stepped drop shadow, the optional glow, the
+    // gradient body with its border, and -- rectangular only -- the name,
+    // when it fits the box.
+    function drawOneArchitecture(g, da, start, y1, h, f, labelsOn, gradientFor) {
+        if (!da) {
+            return;
+        }
+        let geo = forester.domainBoxes(da, start, f, _state.domainEvalueExponent);
+        g.append('rect')
+            .attr('x', geo.backbone.x).attr('y', y1 + (h / 2) - 0.5)
+            .attr('width', geo.backbone.w).attr('height', 1)
+            .style('fill', DOMAIN_BACKBONE_COLOR);
+        let fs = Math.min(_state.externalNodeFontSize, h - 2);
+        let font = fs + 'px ' + FONT_DEFAULTS;
+        geo.boxes.forEach(function (b) {
+            let base = domainColor(b.name);
+            let r = Math.min(2, Math.min(b.w, h) / 2);
+            DOMAIN_SHADOWS.forEach(function (s) {
+                domainRect(g, b.x + s[0], y1 + s[1], b.w, h, r)
+                    .style('fill', DOMAIN_SHADOW_COLOR)
+                    .style('fill-opacity', s[2] / 255);
+            });
+            if (_state.domainGlow) {
+                DOMAIN_GLOWS.forEach(function (gl) {
+                    let o = gl[0];
+                    domainRect(g, b.x - o, y1 - o, b.w + (2 * o), h + (2 * o), r + o)
+                        .style('fill', base)
+                        .style('fill-opacity', gl[1] / 255);
+                });
+            }
+            domainRect(g, b.x, y1, b.w, h, r)
+                .style('fill', gradientFor(base))
+                .style('stroke', forester.domainDarken(base, 0.24))
+                .style('stroke-width', 1);
+            if (labelsOn && b.name && fs > 4 && legendTextWidth(b.name, font) <= b.w - 4) {
+                g.append('text')
+                    .attr('x', b.x + (b.w / 2)).attr('y', y1 + (h / 2))
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', 'middle')
+                    .style('font', font)
+                    .style('fill', forester.domainLabelInk(base))
+                    .text(b.name);
+            }
+        });
+    }
+
+    function clipTextToWidth(text, font, maxPx) {
+        if (legendTextWidth(text, font) <= maxPx) {
+            return text;
+        }
+        let s = text;
+        while (s.length > 1 && legendTextWidth(s + '…', font) > maxPx) {
+            s = s.substring(0, s.length - 1);
+        }
+        return s + '…';
+    }
+
+    // The domain legend, in "Legend" mode only: the names drawn in the view,
+    // in first-appearance order, each with its box count; a flat swatch per
+    // row. Its home is the bottom-right corner; a drag keeps its place as a
+    // fraction of the view, a double-click sends it home. Its own card, so
+    // it neither follows nor crowds the Color-by legend.
+    function drawDomainLegend() {
+        if (!_baseSvg) {
+            return;
+        }
+        _baseSvg.selectAll('g.' + LEGEND_DOMAINS).remove();
+        if (!_root || !domainsShown() || _state.domainLabels !== 'legend') {
+            return;
+        }
+        // rows in the order the tips are on screen -- top to bottom, or
+        // clockwise -- not the data's order, which a ladderized display
+        // does not follow
+        let tips = forester.getAllExternalNodes(_root).filter(function (d) {
+            return d.x !== undefined;
+        }).sort(function (p, q) {
+            return p.x - q.x;
+        });
+        let summary = forester.domainSummary(tips, _state.domainEvalueExponent);
+        let size = svgSize();
+        if (summary.legend.length === 0 || !size) {
+            return;
+        }
+        const FS = Math.max(11, _state.externalNodeFontSize || 11);
+        const PAD = 9;
+        const ROW = FS + 6;
+        const SWATCH = 10;
+        const GAP = 6;
+        const rowFont = FS + 'px ' + FONT_DEFAULTS;
+        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
+        const ink = _state.labelColorDefault;
+        const frame = _state.branchColorDefault;
+        let title = 'Protein domains (E ≤ 1e' + _state.domainEvalueExponent + ')';
+        let rows = summary.legend.map(function (r) {
+            return {
+                text: clipTextToWidth(r.name + ' (' + r.count + ')', rowFont, DOMAIN_LEGEND_ROW_MAX_PX),
+                color: domainColor(r.name)
+            };
+        });
+        let width = legendTextWidth(title, titleFont);
+        rows.forEach(function (r) {
+            width = Math.max(width, SWATCH + GAP + legendTextWidth(r.text, rowFont));
+        });
+        width += 2 * PAD;
+        let height = PAD + ROW + (rows.length * ROW) + PAD - 2;
+        let x, y;
+        if (_domain.legendFrac) {
+            x = _domain.legendFrac.fx * size.w;
+            y = _domain.legendFrac.fy * size.h;
+        } else {
+            x = size.w - width - DOMAIN_LEGEND_INSET;
+            y = size.h - height - DOMAIN_LEGEND_INSET;
+        }
+        x = Math.max(0, Math.min(size.w - 20, x));
+        y = Math.max(0, Math.min(size.h - 20, y));
+
+        let g = _baseSvg.append('g').attr('class', LEGEND_DOMAINS)
+            .style('cursor', 'move')
+            .call(d3.drag()
+                .on('start', function (event) {
+                    if (event.sourceEvent) {
+                        event.sourceEvent.stopPropagation();   // not a pan of the tree
+                    }
+                })
+                .on('drag', function (event) {
+                    x += event.dx;
+                    y += event.dy;
+                    _domain.legendFrac = {fx: x / size.w, fy: y / size.h};
+                    drawDomainLegend();
+                }))
+            .on('dblclick', function (event) {
+                event.stopPropagation();
+                _domain.legendFrac = null;
+                drawDomainLegend();
+            });
+        g.append('title').text('drag to move; double-click to send it back to the corner');
+        g.append('rect')
+            .attr('x', x).attr('y', y)
+            .attr('width', width).attr('height', height)
+            .attr('rx', 5)
+            .style('fill', _state.backgroundColorDefault)
+            .style('fill-opacity', 0.92)
+            .style('stroke', frame)
+            .style('stroke-opacity', 0.5);
+        let baseline = y + PAD + FS;
+        g.append('text')
+            .attr('x', x + PAD).attr('y', baseline)
+            .style('font', titleFont)
+            .style('fill', ink)
+            .text(title);
+        rows.forEach(function (r) {
+            baseline += ROW;
+            g.append('rect')
+                .attr('x', x + PAD).attr('y', baseline - SWATCH + 1)
+                .attr('width', SWATCH).attr('height', SWATCH)
+                .attr('rx', 2)
+                .style('fill', r.color);
+            g.append('text')
+                .attr('x', x + PAD + SWATCH + GAP).attr('y', baseline)
+                .style('font', rowFont)
+                .style('fill', ink)
+                .text(r.text);
+        });
+    }
+
+    // The controls follow the toggle: hidden without it, and while shown
+    // the readout, the select, the glow box and the four step buttons say
+    // where things stand (a button at its limit is disabled, not a no-op).
+    function syncDomainControls() {
+        let fs = byId(DOMAIN_CONTROLS);
+        if (!fs) {
+            return;
+        }
+        let on = _state.showDomainArchitectures === true && _basicTreeProperties.domainArchitectures === true;
+        setCheckboxValue(DOMAINS_CB, _state.showDomainArchitectures === true);
+        fs.style.display = on ? '' : 'none';
+        if (!on) {
+            return;
+        }
+        let readout = byId(DOMAIN_EVALUE_READOUT);
+        if (readout) {
+            readout.textContent = forester.domainEvalueLabel(_state.domainEvalueExponent);
+        }
+        let w = domainTrackWidth();
+        (w > DOMAIN_WIDTH_MIN ? enableButton : disableButton)(byId(DOMAIN_WIDTH_DEC));
+        (w < DOMAIN_WIDTH_MAX ? enableButton : disableButton)(byId(DOMAIN_WIDTH_INC));
+        (_state.domainEvalueExponent > forester.DOMAIN_EVALUE_EXPONENT_MIN ? enableButton : disableButton)(byId(DOMAIN_EVALUE_DEC));
+        (_state.domainEvalueExponent < forester.DOMAIN_EVALUE_EXPONENT_MAX ? enableButton : disableButton)(byId(DOMAIN_EVALUE_INC));
+        setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
+        setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
+    }
+
+    function domainsCbClicked() {
+        _state.showDomainArchitectures = getCheckboxValue(DOMAINS_CB);
+        if (_state.showDomainArchitectures && radialDisplay()) {
+            _radialLabelsHorizontal = false;   // the boxes ride the spokes, so the labels must too
+            syncZoomRowButtons();
+        }
+        syncDomainControls();
+        scheduleUpdate(null, 0);
+    }
+
+    // d+ / d-: the width grows by 1.2 while under 2000, shrinks by 0.8 while
+    // over 20 (so one press can carry it past a limit; the next is refused)
+    function domainWidthStep(grow) {
+        let w = domainTrackWidth();
+        if (grow ? w >= DOMAIN_WIDTH_MAX : w <= DOMAIN_WIDTH_MIN) {
+            return;
+        }
+        _domain.width = w * (grow ? DOMAIN_WIDTH_GROW : DOMAIN_WIDTH_SHRINK);
+        syncDomainControls();
+        scheduleUpdate(null, 0);
+    }
+
+    function domainEvalueStep(delta) {
+        let e = _state.domainEvalueExponent + delta;
+        if (e < forester.DOMAIN_EVALUE_EXPONENT_MIN || e > forester.DOMAIN_EVALUE_EXPONENT_MAX) {
+            return;
+        }
+        _state.domainEvalueExponent = e;
+        _domain.palette = null;   // the drawn set changed: the palette is dealt again
+        syncDomainControls();
+        scheduleUpdate(null, 0, true);
+    }
+
+    function domainLabelsChanged() {
+        _state.domainLabels = getValue(DOMAIN_LABELS_SELECT);
+        scheduleUpdate(null, 0, true);
+    }
+
+    function domainGlowCbClicked() {
+        _state.domainGlow = getCheckboxValue(DOMAIN_GLOW_CB);
+        scheduleUpdate(null, 0, true);
+    }
+
+    // A step button that repeats while held: one step on press, then after
+    // a pause one every 90 ms until release (the desktop's auto-repeat on
+    // d- / d+). A keyboard press steps once.
+    function onHoldRepeat(id, step) {
+        let delay = null;
+        let repeat = null;
+        onHold(id, function () {
+            step();
+            delay = setTimeout(function () {
+                repeat = setInterval(step, 90);
+            }, 400);
+        }, function () {
+            if (delay) {
+                clearTimeout(delay);
+                delay = null;
+            }
+            if (repeat) {
+                clearInterval(repeat);
+                repeat = null;
+            }
+        });
+    }
+
     // Search B starts hidden to keep the panel compact; one click (or a
     // configured initial value) reveals it, and it stays revealed.
     function revealSearchB() {
@@ -6788,7 +7306,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
-        let outer = maxRad + labelSpace;
+        let outer = maxRad + labelSpace + domainRadialExtent();
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
         if (!isFinite(scale) || scale <= 0) {
@@ -7222,6 +7740,10 @@ function (root, d3, forester, phyloXml) {
     function layoutButtonClicked() {
         _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
         _state.unrootedDisplay = getCheckboxValue(LAYOUT_UNROOTED_BUTTON);
+        if (radialDisplay() && _state.showDomainArchitectures && _basicTreeProperties.domainArchitectures) {
+            // the domain boxes ride the tips' spokes, so the labels must too
+            _radialLabelsHorizontal = false;
+        }
         syncZoomRowButtons();
         zoomToFit();
     }
@@ -8266,6 +8788,11 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-zoomrow { display:flex; }'
             + '.aptx-panel .aptx-zoomrow .aptx-gbtn { flex:1 1 0; padding:0; }'
             + '.aptx-panel .aptx-zoomrow .aptx-gbtn:last-child { margin-right:0; }'
+            + '.aptx-panel .aptx-domrow { display:flex; align-items:center; gap:4px; margin:3px 0; }'
+            + '.aptx-panel .aptx-domrow .aptx-domlabel { flex:0 0 64px; font-size:10px; color:var(--p-muted); }'
+            + '.aptx-panel .aptx-domrow input[type=button] { width:30px; padding:0; margin:0; }'
+            + '.aptx-panel .aptx-domrow select { flex:1 1 auto; min-width:0; }'
+            + '.aptx-panel .aptx-domreadout { flex:1 1 auto; text-align:center; font-size:12px; font-variant-numeric:tabular-nums; color:var(--p-ink); }'
             + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
             + '.aptx-panel .aptx-seg .aptx-glyph { height:13px; }'
             + '.aptx-panel input[type=text],.aptx-panel select { font-family:inherit; font-size:11px; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; max-width:100%; padding:3px 6px; }'
@@ -9022,6 +9549,8 @@ function (root, d3, forester, phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeDisplayControl());
 
+            c0.insertAdjacentHTML('beforeend',makeDomainControls());
+
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
 
 
@@ -9129,6 +9658,13 @@ function (root, d3, forester, phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
+        on(DOMAINS_CB, 'click', domainsCbClicked);
+        onHoldRepeat(DOMAIN_WIDTH_DEC, function () { domainWidthStep(false); });
+        onHoldRepeat(DOMAIN_WIDTH_INC, function () { domainWidthStep(true); });
+        on(DOMAIN_EVALUE_DEC, 'click', function () { domainEvalueStep(-1); });
+        on(DOMAIN_EVALUE_INC, 'click', function () { domainEvalueStep(1); });
+        on(DOMAIN_LABELS_SELECT, 'change', domainLabelsChanged);
+        on(DOMAIN_GLOW_CB, 'click', domainGlowCbClicked);
         on(TIME_AXIS_CB, 'click', timeAxisCbClicked);
         on(TIME_GRID_CB, 'click', timeGridCbClicked);
 
@@ -9596,6 +10132,9 @@ function (root, d3, forester, phyloXml) {
             if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
                 opts.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
             }
+            if (_basicTreeProperties.domainArchitectures) {
+                opts.push(makeCheckboxItem('Domain Architectures', DOMAINS_CB, 'to show/hide the protein domain architectures beside the tips', true));
+            }
             if (_timeInfo && _timeInfo.type) {
                 opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
                     + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
@@ -9670,6 +10209,35 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('</select>');
             h = h.concat('</fieldset>');
             h = h.concat('</form>');
+            return h;
+        }
+
+        // The desktop's domain controls, shown only while the Domain
+        // Architectures toggle is on (syncDomainControls): the track width,
+        // the E-value threshold with its readout, the label mode, the glow.
+        function makeDomainControls() {
+            let h = '<fieldset id="' + DOMAIN_CONTROLS + '" style="display:none">';
+            h = h.concat('<legend>Domain Architectures</legend>');
+            h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel">Track width</span>');
+            h = h.concat(makeButton('−', DOMAIN_WIDTH_DEC, 'narrow the domain tracks (hold to repeat)'));
+            h = h.concat(makeButton('+', DOMAIN_WIDTH_INC, 'widen the domain tracks (hold to repeat)'));
+            h = h.concat('</div>');
+            h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel">E-value ≤</span>');
+            h = h.concat(makeButton('−', DOMAIN_EVALUE_DEC, 'Decrease the E-value threshold by a factor of 10'));
+            h = h.concat('<span class="aptx-domreadout" id="' + DOMAIN_EVALUE_READOUT
+                + '" title="domains with an E-value up to this are drawn"></span>');
+            h = h.concat(makeButton('+', DOMAIN_EVALUE_INC, 'Increase the E-value threshold by a factor of 10'));
+            h = h.concat('</div>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + DOMAIN_LABELS_SELECT + '">Labels</label>');
+            h = h.concat('<select name="' + DOMAIN_LABELS_SELECT + '" id="' + DOMAIN_LABELS_SELECT
+                + '" title="where the domain names go: on the boxes (rectangular layout only), in a legend, or nowhere">');
+            h = h.concat('<option value="domains">On domains</option>');
+            h = h.concat('<option value="legend">Legend</option>');
+            h = h.concat('<option value="none">None</option>');
+            h = h.concat('</select></div>');
+            h = h.concat('<div class="aptx-checkgrid">'
+                + makeCheckboxItem('Glow', DOMAIN_GLOW_CB, 'a soft glow in each domain\'s own colour around its box') + '</div>');
+            h = h.concat('</fieldset>');
             return h;
         }
 
@@ -9854,6 +10422,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(MSA_CB, _state.showMsa);
+        syncDomainControls();
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
         setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
