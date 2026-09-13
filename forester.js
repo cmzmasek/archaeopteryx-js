@@ -3794,6 +3794,25 @@
     };
 
     // --------------------------------------------------------------
+    // Scale bar
+    // --------------------------------------------------------------
+    // A phylogram's scale bar spans a round number of branch-length units
+    // -- 1, 2 or 5 times a power of ten -- chosen so the bar comes out about
+    // targetPx long at pxPerUnit pixels per unit. Returns {length, label,
+    // px}, or null when the scale is unusable (zero, negative or infinite).
+    forester.scaleBarLength = function (pxPerUnit, targetPx) {
+        if (!(pxPerUnit > 0) || !isFinite(pxPerUnit)) {
+            return null;
+        }
+        let raw = (targetPx || 100) / pxPerUnit;
+        let k = Math.floor(Math.log10(raw));
+        let base = raw / Math.pow(10, k);
+        let nice = base < 1.5 ? 1 : (base < 3.5 ? 2 : (base < 7.5 ? 5 : 10));
+        let length = Number((nice * Math.pow(10, k)).toPrecision(2));
+        return {length: length, label: String(length), px: length * pxPerUnit};
+    };
+
+    // --------------------------------------------------------------
     // Metadata tables
     // --------------------------------------------------------------
     // A table beside the tree -- TSV or CSV with a header row, the first

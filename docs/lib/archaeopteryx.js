@@ -1067,6 +1067,9 @@ function (root, d3, forester, phyloXml) {
         // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
         // no by precisely 254px and the overview appeared after every Fit.
         maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve;
+        if (scaleBarShown()) {
+            maxY += SCALE_BAR_RESERVE;   // the bar sits under the last row
+        }
         let h = maxY - minY;
         return {x: minX, y: minY, width: maxX - minX, height: h > 0 ? h : 1};
     }
@@ -2754,6 +2757,7 @@ function (root, d3, forester, phyloXml) {
             // centre on a spoke leading in from nowhere.
             let top = topNode() || _root;
             let lengthOf;
+            let pxPerUnit = 0;   // the phylogram's scale, for the scale bar
             if (_state.phylogram) {
                 let maxDist = 0;
                 forester.preOrderTraversal(top, function (n) {
@@ -2762,6 +2766,7 @@ function (root, d3, forester, phyloXml) {
                     }
                 });
                 let factor = maxDist > 0 ? budget / maxDist : 1;
+                pxPerUnit = maxDist > 0 ? factor : 0;
                 lengthOf = function (n) {
                     return Math.max(0, n.distToRoot - n.parent.distToRoot) * factor;
                 };
@@ -2779,6 +2784,7 @@ function (root, d3, forester, phyloXml) {
                 };
             }
             _unroot = forester.equalAngleLayout(top, UNROOTED_START_ANGLE + _radialRotation, lengthOf);
+            _unroot.pxPerUnit = pxPerUnit;
             if (top !== _root) {
                 // the wrapper sits on the root, so their link has no length
                 _root.ux = top.ux;
@@ -3288,6 +3294,7 @@ function (root, d3, forester, phyloXml) {
         }
 
         hideHoverGlow(); // the hovered node may have moved; the next mouseover re-shows it
+        drawScaleBar();
         drawDomainArchitectures();
         drawDomainLegend();
         drawMsaTrack();
@@ -7114,7 +7121,81 @@ function (root, d3, forester, phyloXml) {
         // The navigation bar is fixed at the viewport bottom, so the track's
         // own bottom rows (conservation, consensus, ruler) must end above it
         // or the bar covers them -- the old bare slider did exactly that.
-        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE + MSA_NAV_RESERVE : 0, timeAxisBottomReserve());
+        // The scale bar sits in the same band, under the tree's last row.
+        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE + MSA_NAV_RESERVE : 0, timeAxisBottomReserve(),
+            scaleBarShown() && !radialDisplay() ? SCALE_BAR_RESERVE : 0);
+    }
+
+    // ===================== Scale bar =====================
+    // A phylogram carries a scale bar at the bottom left of the tree: a
+    // round number of branch-length units (forester.scaleBarLength) with
+    // end ticks and its length written above, drawn in the tree's own
+    // coordinates so it zooms and exports with the tree and its label stays
+    // true. Not in a cladogram (nothing to measure) and not under a time
+    // axis (which is a scale already); in the radial layouts it sits below
+    // the fan at its left edge.
+    const SCALE_BAR_TARGET_PX = 100;
+    const SCALE_BAR_RESERVE = 30;
+
+    function scaleBarShown() {
+        return _state.phylogram === true && _basicTreeProperties.branchLengths === true && !timeAxisShown();
+    }
+
+    // pixels per branch-length unit in the current layout's own coordinates
+    function branchLengthPixelsPerUnit() {
+        if (!_state.phylogram || !_yScale) {
+            return 0;
+        }
+        if (_state.unrootedDisplay) {
+            return (_unroot && _unroot.pxPerUnit) ? _unroot.pxPerUnit : 0;
+        }
+        let unit = _yScale(1) - _yScale(0);
+        if (_state.circularDisplay) {
+            return (_radial && _radial.maxY > 0) ? unit * (_radial.maxRad / _radial.maxY) : 0;
+        }
+        return unit;
+    }
+
+    function drawScaleBar() {
+        if (!_svgGroup) {
+            return;
+        }
+        _svgGroup.selectAll('g.aptx-scalebar').remove();
+        if (!scaleBarShown()) {
+            return;
+        }
+        let bar = forester.scaleBarLength(branchLengthPixelsPerUnit(), SCALE_BAR_TARGET_PX);
+        if (!bar) {
+            return;
+        }
+        let x, y;
+        if (radialDisplay()) {
+            let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
+            let r = (_state.circularDisplay ? _radial.maxRad : _unroot.maxRad) + labelSpace;
+            x = -r;
+            y = r + 24;
+        } else {
+            x = 0;
+            y = _clusterH + SCALE_BAR_RESERVE - 12;
+        }
+        let stroke = _state.branchColorDefault;
+        let width = Math.max(1, _state.branchWidthDefault);
+        let fs = Math.max(9, _state.externalNodeFontSize);
+        let g = _svgGroup.append('g').attr('class', 'aptx-scalebar').style('pointer-events', 'none');
+        g.append('line')
+            .attr('x1', x).attr('y1', y).attr('x2', x + bar.px).attr('y2', y)
+            .style('stroke', stroke).style('stroke-width', width);
+        [x, x + bar.px].forEach(function (tx) {
+            g.append('line')
+                .attr('x1', tx).attr('y1', y - 4).attr('x2', tx).attr('y2', y + 4)
+                .style('stroke', stroke).style('stroke-width', width);
+        });
+        g.append('text')
+            .attr('x', x + (bar.px / 2)).attr('y', y - 6)
+            .attr('text-anchor', 'middle')
+            .style('font', fs + 'px ' + FONT_DEFAULTS)
+            .style('fill', _state.labelColorDefault)
+            .text(bar.label);
     }
 
     function hexToRgbTriple(hex) {

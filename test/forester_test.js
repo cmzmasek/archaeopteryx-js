@@ -83,6 +83,31 @@ runTest("Common name prefix         : ", testCommonNamePrefix);
 runTest("Nexus un-doubling          : ", testNexusUnquoting);
 runTest("phyloXML foreign namespace : ", testPhyloXmlForeignNamespace);
 runTest("label quoting on write    : ", testLabelQuotingOnWrite);
+runTest("scale bar length          : ", testScaleBarLength);
+
+// The scale bar picks 1, 2 or 5 x 10^k so that it is about the target
+// length: the rounding thresholds, the label spelling, the unusable scales.
+function testScaleBarLength() {
+    var s = forester.scaleBarLength;
+    // 100 px target: 1000 px/unit -> 0.1 unit is 100 px
+    var a = s(1000, 100);
+    if (!a || a.length !== 0.1 || a.label !== '0.1' || Math.abs(a.px - 100) > 1e-9) { console.log('    a ' + JSON.stringify(a)); return false; }
+    // 700 px/unit -> raw 0.143 -> 0.1 (base 1.43 < 1.5) -> 70 px
+    var b = s(700, 100);
+    if (!b || b.length !== 0.1 || Math.abs(b.px - 70) > 1e-9) { console.log('    b ' + JSON.stringify(b)); return false; }
+    // 500 px/unit -> raw 0.2 -> 0.2 -> 100 px; 300 -> raw 0.333 -> 0.2 (base 3.33 < 3.5) -> 60 px
+    var c = s(500, 100), d = s(300, 100);
+    if (!c || c.length !== 0.2 || !d || d.length !== 0.2 || Math.abs(d.px - 60) > 1e-9) { return false; }
+    // 150 px/unit -> raw 0.667 -> 0.5 (base 6.67 < 7.5) -> 75 px; 120 -> raw 0.833 -> 1 (base 8.33 -> 10 x 10^-1) -> 120 px
+    var e = s(150, 100), f = s(120, 100);
+    if (!e || e.length !== 0.5 || !f || f.length !== 1 || f.label !== '1' || Math.abs(f.px - 120) > 1e-9) { return false; }
+    // whole units and tiny units keep a plain label
+    var g = s(0.5, 100), h = s(2e6, 100);
+    if (!g || g.length !== 200 || g.label !== '200' || !h || h.length !== 0.00005 || h.label !== '0.00005') { console.log('    g ' + JSON.stringify(g) + ' h ' + JSON.stringify(h)); return false; }
+    // the default target is 100 px
+    if (JSON.stringify(s(1000)) !== JSON.stringify(s(1000, 100))) { return false; }
+    return s(0, 100) === null && s(-1, 100) === null && s(Infinity, 100) === null && s(NaN, 100) === null;
+}
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

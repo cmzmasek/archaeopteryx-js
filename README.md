@@ -213,6 +213,13 @@ of any kind, real or stub: there the root is a point of the fan, not the end
 of a branch from nowhere. The root itself wears a circle only for the reasons
 any node does — an event, a search hit, a selection, a visualization.
 
+A phylogram carries a **scale bar** at the bottom left: a round number of
+branch-length units (1, 2 or 5 × 10ᵏ, whichever makes the bar about 100 px)
+with its length written above it. It is drawn with the tree, so it zooms and
+exports with it and its label always holds. A cladogram has nothing to
+measure and shows none, and a tree under a time axis leaves the measuring to
+the axis.
+
 In the two radial layouts the zoom row changes meaning, exactly as on the
 desktop: **Y+ / Y− become the plain + / − zoom** (a circle has one diameter;
 the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
