@@ -298,12 +298,34 @@ press centres the previous / next hit in the viewport, wrapping around.
 
 ## Keyboard
 
-Deliberately minimal: **Esc** or **Home** resets the view, **O** cycles the
-overview between corners, **PageUp / PageDown** change the font size — and
-the **mouse wheel** zooms (Shift: vertical only; Shift+Alt: horizontal;
-Ctrl+Shift: font size). Everything else is a button; the old Alt+letter
-combos are gone (macOS labels that key Option and types glyphs with it).
-Nothing fires while the cursor is in a text box.
+Ctrl on Windows and Linux, ⌘ on macOS. **Ctrl+/** (⌘/) shows the list in
+the viewer; it is also linked from the About box.
+
+| Keys | Does |
+|---|---|
+| Ctrl+0 | Fit the tree to the window |
+| Ctrl++ / Ctrl+− | Zoom in / out |
+| Ctrl+Shift+↑ / ↓ | Zoom in / out vertically |
+| Ctrl+Shift+→ / ← | Zoom in / out horizontally (circular: rotate) |
+| Ctrl+Shift+E | Expand vertically until the labels fit |
+| Ctrl+Shift+L | Next layout: rectangular, circular, unrooted |
+| Ctrl+Shift+D | Next display type: phylogram, aligned, cladogram |
+| Ctrl+Shift+X | Time axis on / off |
+| Ctrl+Shift+O | Ladderize |
+| Ctrl+Shift+U | Uncollapse every clade |
+| Ctrl+F | Go to the search box |
+| Ctrl+G / Ctrl+Shift+G | Next / previous search hit |
+| Ctrl+Shift+< / > | Previous / next tree of a multi-tree file |
+| Esc or Home | Back to the whole tree, the launch view |
+| O | Move the overview to the next corner |
+| PageUp / PageDown | Larger / smaller font |
+
+The letters follow the desktop where it has the action (its Alt+O, Alt+U,
+Alt+E and ⌘0, ⌘G). The **mouse wheel** zooms (Shift: vertical only;
+Shift+Alt: horizontal; Ctrl+Shift: font size). There is no key for
+re-rooting, by decision. Inside a text box only the combos that cannot
+interfere with typing fire (fit, zoom, search, the list); the plain keys
+never do.
 
 ## Sharing a view
 

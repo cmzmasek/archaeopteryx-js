@@ -7590,6 +7590,192 @@ function (root, d3, forester, phyloXml) {
         return Object.keys(state).length > 0 ? state : null;
     };
 
+    // ===================== Keyboard shortcuts =====================
+    // Ctrl on Windows and Linux, Cmd on macOS (Christian, 2026-09-13: "Ctrl/Cmd
+    // combos are better"). The letters follow the desktop where it has the
+    // action (its Alt+O order, Alt+U uncollapse all, Alt+E expand, Cmd+0 fit,
+    // Cmd+G / Cmd+Shift+G next / previous hit); the layout, display type
+    // and time-axis keys are ours. Combos the browser reserves (new tab,
+    // close, tab switching, and on macOS the screenshot keys) are avoided,
+    // and the few browser functions that are overridden (page zoom, find
+    // next) matter little on a page that is one tree. No key for rooting,
+    // by decision. Plain keys stay as they were: Esc / Home reset, O moves
+    // the overview, PageUp / PageDown size the font. Inside a text box only
+    // the combos that cannot interfere with typing fire.
+
+    const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+    const SHORTCUTS_DIALOG = 'aptx_shortcuts';
+
+    // key: what e.key reads (letters lower-case); shift: whether Shift is
+    // held; typing: the combo also fires from inside a text box
+    const SHORTCUTS = [
+        {key: '0', label: '0', what: 'Fit the tree to the window', run: function () { zoomToFit(); }, typing: true},
+        {key: '=', label: '+', aliases: ['+'], what: 'Zoom in', run: function () { zoomInY(); if (!radialDisplay()) { zoomInX(); } }, typing: true},
+        {key: '-', label: '−', aliases: ['_'], what: 'Zoom out', run: function () { zoomOutY(); if (!radialDisplay()) { zoomOutX(); } }, typing: true},
+        {key: 'arrowup', label: '↑', shift: true, what: 'Zoom in vertically', run: function () { zoomInY(); }},
+        {key: 'arrowdown', label: '↓', shift: true, what: 'Zoom out vertically', run: function () { zoomOutY(); }},
+        {key: 'arrowright', label: '→', shift: true, what: 'Zoom in horizontally (circular: rotate)', run: function () { zoomInX(); }},
+        {key: 'arrowleft', label: '←', shift: true, what: 'Zoom out horizontally (circular: rotate back)', run: function () { zoomOutX(); }},
+        {key: 'e', label: 'E', shift: true, what: 'Expand vertically until the labels fit', run: function () { zoomToExpandY(); }},
+        {key: 'l', label: 'L', shift: true, what: 'Next layout: rectangular, circular, unrooted', run: cycleLayout},
+        {key: 'd', label: 'D', shift: true, what: 'Next display type: phylogram, aligned, cladogram', run: cycleDisplayType},
+        {key: 'x', label: 'X', shift: true, what: 'Time axis on / off', run: toggleTimeAxis},
+        {key: 'o', label: 'O', shift: true, what: 'Ladderize (order the tree)', run: function () { ladderizeButtonPressed(); }},
+        {key: 'u', label: 'U', shift: true, what: 'Uncollapse every clade', run: function () { uncollapseAll(); }},
+        {key: 'f', label: 'F', what: 'Go to the search box', run: focusSearch, typing: true},
+        {key: 'g', label: 'G', what: 'Next search hit', run: function () { stepToFoundNode(1); }, typing: true},
+        {key: 'g', label: 'G', shift: true, what: 'Previous search hit', run: function () { stepToFoundNode(-1); }, typing: true},
+        {key: ',', label: '<', aliases: ['<'], shift: true, what: 'Previous tree of the file', run: function () { stepTree(-1); }},
+        {key: '.', label: '>', aliases: ['>'], shift: true, what: 'Next tree of the file', run: function () { stepTree(1); }},
+        {key: '/', label: '/', aliases: ['?'], what: 'This list', run: showShortcutsDialog, typing: true}
+    ];
+
+    function shortcutMatches(sc, e) {
+        let k = (e.key || '').toLowerCase();
+        if (k !== sc.key && !(sc.aliases && sc.aliases.indexOf(e.key) >= 0)) {
+            return false;
+        }
+        return !!sc.shift === !!e.shiftKey;
+    }
+
+    // The one document-level handler for the combos: keydown, so the
+    // browser's own action is stopped before it runs.
+    function shortcutKeyDown(e) {
+        let mod = IS_MAC ? (e.metaKey && !e.ctrlKey) : (e.ctrlKey && !e.metaKey);
+        if (!mod || e.altKey || !_root) {
+            return;
+        }
+        let typing = isTypingTarget(e.target);
+        for (let i = 0; i < SHORTCUTS.length; ++i) {
+            let sc = SHORTCUTS[i];
+            if (shortcutMatches(sc, e)) {
+                if (typing && !sc.typing) {
+                    return;
+                }
+                e.preventDefault();
+                sc.run();
+                return;
+            }
+        }
+    }
+
+    function cycleLayout() {
+        let next = _state.unrootedDisplay ? 'rectangular' : (_state.circularDisplay ? 'unrooted' : 'circular');
+        setCheckboxValue(LAYOUT_RECT_BUTTON, next === 'rectangular');
+        setCheckboxValue(LAYOUT_CIRC_BUTTON, next === 'circular');
+        setCheckboxValue(LAYOUT_UNROOTED_BUTTON, next === 'unrooted');
+        layoutButtonClicked();
+    }
+
+    // Phylogram, aligned phylogram, cladogram -- skipping what the tree or
+    // the layout rules out (no branch lengths: cladogram only; unrooted has
+    // no aligned phylogram).
+    function cycleDisplayType() {
+        let measured = _basicTreeProperties && _basicTreeProperties.branchLengths === true;
+        if (!measured) {
+            toCladegram();
+            return;
+        }
+        if (_state.phylogram && !_state.alignPhylogram) {
+            if (_state.unrootedDisplay) {
+                toCladegram();
+            } else {
+                toAlignedPhylogram();
+            }
+        } else if (_state.phylogram) {
+            toCladegram();
+        } else {
+            toPhylogram();
+        }
+    }
+
+    // The Time Axis checkbox's toggle; when the distance / time tree switch
+    // arrives it takes over this key.
+    function toggleTimeAxis() {
+        let cb = byId(TIME_AXIS_CB);
+        if (!cb || cb.disabled) {
+            return;
+        }
+        cb.checked = !cb.checked;
+        timeAxisCbClicked();
+    }
+
+    function focusSearch() {
+        let f = byId(SEARCH_FIELD_0);
+        if (f) {
+            f.focus();
+            f.select();
+        }
+    }
+
+    function stepTree(delta) {
+        let i = _treeIndex + delta;
+        if (i >= 0 && i < _trees.length) {
+            showTree(i);
+        }
+    }
+
+    function shortcutLabel(sc) {
+        let parts = [];
+        if (IS_MAC) {
+            parts.push('⌘');
+            if (sc.shift) {
+                parts.push('⇧');
+            }
+        } else {
+            parts.push('Ctrl');
+            if (sc.shift) {
+                parts.push('Shift');
+            }
+        }
+        parts.push(sc.label);
+        return parts;
+    }
+
+    function keyChips(parts) {
+        let holder = document.createElement('span');
+        holder.className = 'aptx-keys';
+        parts.forEach(function (p) {
+            let kbd = document.createElement('kbd');
+            kbd.className = 'aptx-kbd';
+            kbd.textContent = p;
+            holder.appendChild(kbd);
+        });
+        return holder;
+    }
+
+    // The cheat sheet: every combo above, then the plain keys.
+    function showShortcutsDialog() {
+        let shell = makeDialogShell(SHORTCUTS_DIALOG, 'Keyboard shortcuts', 400);
+        shell.body.classList.add('aptx-shortcuts');
+        let rows = SHORTCUTS.map(function (sc) {
+            return [shortcutLabel(sc), sc.what];
+        }).concat([
+            [['Esc'], 'Back to the whole tree, the launch view'],
+            [['O'], 'Move the overview to the next corner'],
+            [['PageUp'], 'Larger font'],
+            [['PageDown'], 'Smaller font']
+        ]);
+        rows.forEach(function (row) {
+            let line = document.createElement('div');
+            line.className = 'aptx-dialog-line';
+            let key = document.createElement('span');
+            key.className = 'aptx-dialog-key';
+            key.appendChild(keyChips(row[0]));
+            let val = document.createElement('span');
+            val.className = 'aptx-dialog-val';
+            val.textContent = row[1];
+            line.appendChild(key);
+            line.appendChild(val);
+            shell.body.appendChild(line);
+        });
+        let note = document.createElement('p');
+        note.className = 'aptx-shortcuts-note';
+        note.textContent = 'The mouse wheel zooms; with Shift it zooms vertically only, with Shift+Alt horizontally, with Ctrl+Shift it sizes the font.';
+        shell.body.appendChild(note);
+        shell.dialog.showModal();
+    }
+
     // ===================== Protein domain architectures =====================
     // The desktop's domain display, ported from its RenderableDomainArchitecture
     // and TreePanel (the spec is section D1 of the repo's TODO.md). Each tip's
@@ -10109,6 +10295,12 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-line + .aptx-dialog-line { border-top:1px solid var(--p-line); }'
             + '.aptx-dialog-key { flex:0 0 42%; color:var(--p-muted); }'
             + '.aptx-dialog-val { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }'
+            // the shortcuts cheat sheet: key chips in the key column
+            + '.aptx-shortcuts .aptx-dialog-key { flex-basis:38%; display:flex; align-items:center; }'
+            + '.aptx-shortcuts .aptx-dialog-val { align-self:center; }'
+            + '.aptx-keys { display:inline-flex; gap:3px; flex-wrap:wrap; }'
+            + '.aptx-kbd { font-family:inherit; font-size:10.5px; line-height:1; padding:3px 5px; min-width:18px; text-align:center; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-bottom-width:2px; border-radius:4px; }'
+            + '.aptx-shortcuts-note { margin:8px 0 0; font-size:10.5px; line-height:1.4; color:var(--p-muted); }'
             + '.aptx-dialog-mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;'
             + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
             // The hover tooltip, on the same palette.
@@ -10850,7 +11042,8 @@ function (root, d3, forester, phyloXml) {
         [['Website', WEBSITE, 'cmzmasek.github.io/archaeopteryx-js'],
             ['Desktop version', DESKTOP_WEBSITE, 'cmzmasek.github.io/archaeopteryx'],
             ['Source code', SOURCE_WEBSITE, 'github.com/cmzmasek/archaeopteryx-js'],
-            ['License', LICENSE_WEBSITE, LICENSE_NAME]].forEach(function (row) {
+            ['License', LICENSE_WEBSITE, LICENSE_NAME],
+            ['Keyboard', null, 'shortcuts (' + (IS_MAC ? '\u2318 /' : 'Ctrl+/') + ')']].forEach(function (row) {
             let line = document.createElement('div');
             line.className = 'aptx-dialog-line';
             let key = document.createElement('span');
@@ -10859,9 +11052,19 @@ function (root, d3, forester, phyloXml) {
             let val = document.createElement('span');
             val.className = 'aptx-dialog-val';
             let a = document.createElement('a');
-            a.href = row[1];
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
+            if (row[1]) {
+                a.href = row[1];
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+            } else {
+                // the shortcuts row opens the cheat sheet in place of the About box
+                a.href = '#';
+                a.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    shell.dialog.close();
+                    showShortcutsDialog();
+                });
+            }
             a.textContent = row[2];
             val.appendChild(a);
             line.appendChild(key);
@@ -11317,12 +11520,11 @@ function (root, d3, forester, phyloXml) {
         _docListenersBound = true;
 
         bindDoc('keyup', function (e) {
-            // The DELIBERATELY minimal shortcut set (user decision,
-            // 2026-09-03): Esc/Home reset, O cycles the overview corner,
-            // PageUp/PageDown size the font, and the wheel zooms. Everything
-            // else is a button -- the old Alt+letter combos were near-
-            // undiscoverable (macOS labels the key Option and types glyphs
-            // with it).
+            // The plain keys: Esc/Home reset, O cycles the overview corner,
+            // PageUp/PageDown size the font, and the wheel zooms. The old
+            // Alt+letter combos were near-undiscoverable (macOS labels the
+            // key Option and types glyphs with it); the Ctrl / Cmd combos
+            // that replaced them in 2026-09 live in SHORTCUTS, on keydown.
             if (isTypingTarget(e.target)) {
                 return; // nothing fires from inside a text box
             }
@@ -11339,7 +11541,11 @@ function (root, d3, forester, phyloXml) {
         });
 
         bindDoc('keydown', function (e) {
-            if (isTypingTarget(e.target)) {
+            if (e.defaultPrevented) {
+                return;
+            }
+            shortcutKeyDown(e);   // the Ctrl / Cmd combos (SHORTCUTS)
+            if (e.defaultPrevented || isTypingTarget(e.target)) {
                 return;
             }
             if (e.keyCode === VK_PAGE_UP) {
