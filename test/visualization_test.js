@@ -2472,6 +2472,97 @@ function testLaunchTreeList() {
     return true;
 }
 
+// A view survives its hash form: every key, a value with spaces, '&', '='
+// and a non-ASCII letter, an empty show list (a fact, not an omission);
+// refs keep their ':' and lists their ',' readable; junk decodes to
+// nothing rather than to garbage, and a key the decoder does not know is
+// dropped.
+function testViewStateCodec() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var canon = function (o) {
+        return JSON.stringify(o, function (k, v) {
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                var out = {};
+                Object.keys(v).sort().forEach(function (key) { out[key] = v[key]; });
+                return out;
+            }
+            return v;
+        });
+    };
+    var state = {tree: 2, layout: 'circular', display: 'cladogram', order: 'desc', root: 'midpoint',
+        subtree: 17, collapsed: [3, 44, 128], colorBy: 'tax:common_name', shapeBy: 'meta:Host',
+        show: ['name', 'external', 'custom:x'], font: 9.5, node: 3, branch: 1.5, rotation: -3,
+        horizontalLabels: true, msa: false, domains: true, domainLabels: 'legend', domainGlow: false,
+        domainEvalue: -3, timeAxis: true, timeGrid: false,
+        searchA: {field: 'Any Text', mode: 'regex', value: 'a b&c=d \u00e9'},
+        searchB: {field: 'meta:Score', mode: 'range', value: '1', value2: '2.5'},
+        combine: 'and', matchCase: true, inverse: false};
+    var enc = aptx.encodeViewState(state);
+    if (enc.indexOf('#') >= 0 || enc.indexOf(' ') >= 0 || enc.indexOf('colorBy=tax:common_name') < 0
+        || enc.indexOf('collapsed=3,44,128') < 0 || enc.indexOf('a=a+b%26c%3Dd+%C3%A9') < 0
+        || enc.indexOf('af=Any+Text') < 0 || enc.indexOf('msa=0') < 0) {
+        console.log('    encoded: ' + enc);
+        return false;
+    }
+    var back = aptx.decodeViewState('#' + enc);
+    if (canon(back) !== canon(state)) {
+        console.log('    round trip differs:\n    ' + canon(back) + '\n    ' + canon(state));
+        return false;
+    }
+    var none = aptx.decodeViewState(aptx.encodeViewState({show: []}));
+    if (!none || !Array.isArray(none.show) || none.show.length !== 0) {
+        console.log('    empty show list lost: ' + JSON.stringify(none));
+        return false;
+    }
+    if (aptx.decodeViewState('') !== null || aptx.decodeViewState('#') !== null || aptx.decodeViewState(null) !== null
+        || aptx.decodeViewState('garbage') !== null || aptx.decodeViewState('font=abc&tree=x&layout=') !== null) {
+        console.log('    junk decoded to something');
+        return false;
+    }
+    var partial = aptx.decodeViewState('foo=1&layout=unrooted&%E0%A4%A=1');
+    if (!partial || partial.layout !== 'unrooted' || Object.keys(partial).length !== 1) {
+        console.log('    unknown keys: ' + JSON.stringify(partial));
+        return false;
+    }
+    return aptx.encodeViewState(null) === '' && aptx.encodeViewState({}) === '';
+}
+
+// The two view config keys are validated like the rest: a wrong type is
+// refused by name, a good one reaches the container check as any launch
+// does here.
+function testViewConfigKeys() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = {children: [{}]};
+    function thrown(fn) {
+        try { fn(); return null; } catch (e) { return e.message || String(e); }
+    }
+    var m = thrown(function () { aptx.launch('#x', tree, {view: 'circular'}); });
+    if (!m || m.indexOf('"view"') < 0) {
+        console.log('    view as a string: ' + m);
+        return false;
+    }
+    m = thrown(function () { aptx.launch('#x', tree, {onViewChange: 'x'}); });
+    if (!m || m.indexOf('"onViewChange"') < 0) {
+        console.log('    onViewChange as a string: ' + m);
+        return false;
+    }
+    var plain = thrown(function () { aptx.launch('#x', tree, {}); });
+    var withView = thrown(function () {
+        aptx.launch('#x', tree, {view: {layout: 'circular', show: []}, onViewChange: function () {}});
+    });
+    if (plain === null || plain !== withView) {
+        console.log('    plain: ' + plain + ' / with view: ' + withView);
+        return false;
+    }
+    return true;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -2497,6 +2588,8 @@ runTest("phylogram branch counts : ", testPhylogramBranchCounts);
 runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("parseTrees: every tree     : ", testParseTrees);
 runTest("launch: a list of trees    : ", testLaunchTreeList);
+runTest("view state <-> hash string : ", testViewStateCodec);
+runTest("view config keys           : ", testViewConfigKeys);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 runTest("versions agree           : ", testVersionsAgree);
 

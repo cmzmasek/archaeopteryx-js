@@ -305,6 +305,29 @@ Ctrl+Shift: font size). Everything else is a button; the old Alt+letter
 combos are gone (macOS labels that key Option and types glyphs with it).
 Nothing fires while the cursor is in a text box.
 
+## Sharing a view
+
+A view is what you made of a tree with the panel: the layout and display
+type, which labels show, the colour and shape fields, both searches, the
+clade you switched to, the clades you collapsed, the font, node and branch
+sizes, the rotation, the tracks. On the demo pages it rides in the URL's
+`#` hash and follows every change, so the address bar is always a link to
+what is on screen: copy it (**Copy link to this view** in the toolbar) and
+the recipient opens the same tree in the same view. Opening your own file
+keeps the view in the hash too, so the same file reopened at that address
+comes back as you left it. Zoom, pan, the legend's position and the node
+selection are not part of a view; a shared view opens fitted.
+
+Embedders get the same four pieces: the handle's `getViewState()` and
+`applyViewState(state)`, the config's `view` (open straight into one) and
+`onViewChange(state, encoded)` (called when it changes), and
+`archaeopteryx.encodeViewState()` / `decodeViewState()` for the hash form,
+which reads like
+`layout=circular&colorBy=tax:common_name&show=name,external&font=9&collapsed=12,44&a=HUMAN&af=Any+Text&am=contains`.
+Nodes are named by their launch-time preorder index, so a view belongs to
+the tree it was made on; a key a view leaves out keeps its current value,
+and anything that does not fit the tree is skipped.
+
 ## Protein domain architectures
 
 A tree whose tips carry `<domain_architecture>` elements (a protein's length
@@ -701,7 +724,7 @@ shorter than the dot itself stays clean.
 One object, passed as the third argument. It is optional, and the best
 configuration is usually an empty one — almost everything that used to be
 configured is now read off the tree (see **Intelligent pre-sets** above). The
-twenty-eight keys below are the ones no tree can answer for you.
+thirty keys below are the ones no tree can answer for you.
 
 There used to be two objects, `options` and `settings`, split by whether the
 user could also change the value from the control panel. That was a fact about
@@ -737,6 +760,8 @@ copy-pastable JSON.
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
+| `view` | `null` | Open straight into a saved view — the object `getViewState()` returns, or `decodeViewState()` reads from a URL hash: layout, display type, labels, colours, searches, the clade and the collapsed clades, sizes. See **Sharing a view**. |
+| `onViewChange` | `null` | `function (state, encoded)`, called once per settled redraw when the view changed: `state` as `getViewState()` returns it, `encoded` its hash-ready string. The demo pages write it into the URL. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
 | `enableVisualizations` | `true` | Offer the Color / Shape visualizations (which fields they cover is decided from the tree). |
 | `initialVisualization` | `null` | The visualization to open with, by its Color-menu name (e.g. `'Host'`; case-insensitive). A name the tree cannot honour logs a console warning and falls back to the automatic choice, so a site-wide value is safe on trees without that field. Default: Archaeopteryx.js picks the most informative field itself. |

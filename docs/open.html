@@ -591,6 +591,21 @@
 
     function openTreeNow(fileName, text) {
         var config = currentConfig();
+        // The view rides in the URL hash, as on demo.html: reopening the
+        // same file at that address brings the view back, and every change
+        // rewrites the hash. A DIFFERENT file starts without one -- a view
+        // names nodes by their position, which would be some other clade
+        // here.
+        if (lastText !== null && text !== lastText && window.location.hash) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        var view = archaeopteryx.decodeViewState(window.location.hash);
+        if (view) {
+            config.view = view;
+        }
+        config.onViewChange = function (state, encoded) {
+            history.replaceState(null, '', window.location.pathname + window.location.search + (encoded ? '#' + encoded : ''));
+        };
         var trees;
         try {
             // internalNumericLabels acts at parse time, so it is handed

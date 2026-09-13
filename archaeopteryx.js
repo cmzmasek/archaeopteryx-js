@@ -505,6 +505,9 @@ function (root, d3, forester, phyloXml) {
     let _trees = [];              // every tree of the launch (one, or all a file held); _treeData is _trees[_treeIndex]
     let _treeIndex = 0;
     let _launchConfig = null;     // the config as launch() received it, for showTree()
+    let _viewOps = {order: null, root: null};   // the tree operations a shared view replays: ladderize direction, midpoint rooting
+    let _lastViewEncoded;                        // the view last reported to onViewChange; undefined = not settled yet
+    let _viewNotifyPending = false;
     let _treeFn = null;
     let _vis = null;        // the automatic visualizations: candidates, scales, choices
     let _w = null;
@@ -3353,6 +3356,7 @@ function (root, d3, forester, phyloXml) {
         drawTimeOverlays();
         rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
         updateSearchHitNavigation();
+        noteViewChange();
     }
 
     // A node is drawn as a shape only when there is a reason to show one: it
@@ -4465,9 +4469,11 @@ function (root, d3, forester, phyloXml) {
         'ladderizeTree',
         'nhExportWriteConfidences',
         'nodeLabels',
+        'onViewChange',
         'pngExportScale',
         'rootOffset',
         'supportDotMinimum',
+        'view',
         'zoomToFitUponWindowResize'
     ];
 
@@ -4926,6 +4932,16 @@ function (root, d3, forester, phyloXml) {
             throw new Error(ERROR + 'internalNumericLabels must be "auto", "confidence" or "label"');
         }
         // custom label-field checkboxes (was launch()'s sixth positional arg)
+        if (_settings.view === undefined || _settings.view === null) {
+            _settings.view = null;
+        } else if (typeof _settings.view !== 'object') {
+            throw new Error(ERROR + '"view" must be a view state object (getViewState / decodeViewState) or null');
+        }
+        if (_settings.onViewChange === undefined || _settings.onViewChange === null) {
+            _settings.onViewChange = null;
+        } else if (typeof _settings.onViewChange !== 'function') {
+            throw new Error(ERROR + '"onViewChange" must be a function (state, encoded) or null');
+        }
         if (_settings.nodeLabels === undefined) {
             _settings.nodeLabels = null;
         } else if (_settings.nodeLabels !== null && typeof _settings.nodeLabels !== 'object') {
@@ -5028,6 +5044,12 @@ function (root, d3, forester, phyloXml) {
         if (_settings.ladderizeTree) {
             ladderizeSubtree(_root, true);   // one pass: a definite arrangement
         }
+        _viewOps = {order: null, root: null};
+        if (_settings.view) {
+            // the shared view, its searches found before the first draw
+            applyViewState(_settings.view, true);
+            runSearches();
+        }
         if (_state.searchAinitialValue) {
             search0();
         }
@@ -5041,6 +5063,7 @@ function (root, d3, forester, phyloXml) {
 
         search0();
         search1();
+        settleViewNotification();
     }
 
     function bindDoc(type, fn, opts) {
@@ -5068,6 +5091,14 @@ function (root, d3, forester, phyloXml) {
                 return _treeIndex;
             },
             showTree: showTree,
+            // the view -- layout, display, labels, colours, searches, the
+            // clade and the collapsed clades, sizes -- as a plain object,
+            // and opening one (see also archaeopteryx.encodeViewState /
+            // decodeViewState and the config's view / onViewChange)
+            getViewState: getViewState,
+            applyViewState: function (state) {
+                applyViewState(state, false);
+            },
             destroy: destroyViewer
         };
     }
@@ -5123,6 +5154,8 @@ function (root, d3, forester, phyloXml) {
         _trees = [];
         _treeIndex = 0;
         _launchConfig = null;
+        _lastViewEncoded = undefined;
+        _viewOps = {order: null, root: null};
         _basicTreeProperties = null;
         _baseSvg = null;
         _svgGroup = null;
@@ -5191,7 +5224,20 @@ function (root, d3, forester, phyloXml) {
                     + ' is empty or illegally formatted');
             }
         });
-        return launchInto(container, trees, 0, config);
+        // the two view keys are checked up here with the other arguments,
+        // before anything is touched (and where Node can test it)
+        if (config && config.view !== undefined && config.view !== null && typeof config.view !== 'object') {
+            throw new Error(ERROR + '"view" must be a view state object (getViewState / decodeViewState) or null');
+        }
+        if (config && config.onViewChange !== undefined && config.onViewChange !== null && typeof config.onViewChange !== 'function') {
+            throw new Error(ERROR + '"onViewChange" must be a function (state, encoded) or null');
+        }
+        // a view names the tree it was made on; a fresh launch reports no
+        // view until one changes (settleViewNotification)
+        _lastViewEncoded = undefined;
+        let view = config && config.view;
+        let start = (view && Number.isInteger(view.tree) && view.tree > 0 && view.tree < trees.length) ? view.tree : 0;
+        return launchInto(container, trees, start, config);
     };
 
     // The launch proper, for one tree of the list: launch() validates and
@@ -5209,6 +5255,7 @@ function (root, d3, forester, phyloXml) {
         _treeIndex = index;
         _launchConfig = config;
         _container = containerEl;
+        assignViewIds(phylo);
         _zoomListener = d3.zoom()
             .scaleExtent([0.1, 10])
             .filter(function (event) {
@@ -7003,6 +7050,546 @@ function (root, d3, forester, phyloXml) {
         });
     }
 
+    // ===================== Shareable views =====================
+    // A view is what a person made of a tree with the panel: the layout and
+    // display type, what is labelled, the colours, the searches, the clade
+    // they switched to, the ones they collapsed, the sizes. It is a plain
+    // object (getViewState), a short "key=value&..." string (encodeViewState
+    // / decodeViewState) that a page keeps in its URL hash, and a launch
+    // config key (view) that opens a tree straight into it; onViewChange
+    // tells the page whenever it changes. A node is named by its viewId, the
+    // launch-time preorder index, which ladderizing and re-rooting leave
+    // alone. NOT in a view: zoom and pan (a view opens fitted), the legend's
+    // position, the node selection.
+
+    const VIEW_SHOW_FLAGS = [
+        ['name', NODE_NAME_CB, 'showNodeName'],
+        ['taxonomy', TAXONOMY_CB, 'showTaxonomy'],
+        ['sequence', SEQUENCE_CB, 'showSequence'],
+        ['confidence', CONFIDENCE_VALUES_CB, 'showConfidenceValues'],
+        ['branchLength', BRANCH_LENGTH_VALUES_CB, 'showBranchLengthValues'],
+        ['external', EXTERNAL_LABEL_CB, 'showExternalLabels'],
+        ['internal', INTERNAL_LABEL_CB, 'showInternalLabels'],
+        ['nodeEvents', NODE_EVENTS_CB, 'showNodeEvents'],
+        ['branchEvents', BRANCH_EVENTS_CB, 'showBranchEvents'],
+        ['supportDots', SUPPORT_DOTS_CB, 'showSupportDots'],
+        ['shortNames', SHORTEN_NODE_NAME_CB, 'shortenNodeNames'],
+        ['autoHide', DYNAHIDE_CB, 'dynahide'],
+        ['visualizations', VIS_CB, 'showVisualizations'],
+        ['visualStyles', VISUAL_STYLES_CB, 'useVisualStyles']
+    ];
+    const RADIAL_ROTATION_STEP = Math.PI / 32;   // one press of the rotate buttons
+
+    // Launch-time preorder ids, given once per tree object: a tree shown
+    // again keeps them, so a shared view still names the same nodes.
+    function assignViewIds(phy) {
+        if (phy.viewId !== undefined) {
+            return;
+        }
+        let i = 0;
+        forester.preOrderTraversalAll(phy, function (n) {
+            n.viewId = i++;
+        });
+    }
+
+    function nodeByViewId(id) {
+        let found = null;
+        forester.preOrderTraversalAll(_root_const, function (n) {
+            if (found === null && n.viewId === id) {
+                found = n;
+            }
+        });
+        return found;
+    }
+
+    // The config's custom label checkboxes (nodeLabels) that are offered
+    function customLabelEntries() {
+        let out = [];
+        if (_nodeLabels) {
+            Object.keys(_nodeLabels).forEach(function (key) {
+                let v = _nodeLabels[key];
+                if (v && v.label && v.showButton === true && v.propertyRef && v.description) {
+                    out.push({key: key, entry: v});
+                }
+            });
+        }
+        return out;
+    }
+
+    function searchStateOf(idx) {
+        let spec = currentSearchSpec(idx);
+        let value = (spec.value === null || spec.value === undefined) ? '' : String(spec.value);
+        if (value.trim().length === 0) {
+            return null;
+        }
+        let q = {field: spec.field.label, mode: spec.mode, value: value};
+        if (spec.mode === 'range' && spec.value2) {
+            q.value2 = String(spec.value2);
+        }
+        return q;
+    }
+
+    function getViewState() {
+        let s = {};
+        if (_treeIndex > 0) {
+            s.tree = _treeIndex;
+        }
+        s.layout = _state.unrootedDisplay ? 'unrooted' : (_state.circularDisplay ? 'circular' : 'rectangular');
+        s.display = _state.phylogram ? (_state.alignPhylogram ? 'aligned' : 'phylogram') : 'cladogram';
+        if (_viewOps.root) {
+            s.root = _viewOps.root;
+        }
+        if (_viewOps.order) {
+            s.order = _viewOps.order;
+        }
+        if (_in_subtree && _root && _root.children && _root.children[0] && _root.children[0].viewId !== undefined) {
+            s.subtree = _root.children[0].viewId;
+        }
+        let collapsed = [];
+        forester.preOrderTraversalAll(_root_const, function (n) {
+            if (n.collapsed && n.viewId !== undefined) {
+                collapsed.push(n.viewId);
+            }
+        });
+        if (collapsed.length > 0) {
+            s.collapsed = collapsed;
+        }
+        s.colorBy = (_vis && _vis.colorId) || 'none';
+        if (_vis && _vis.shapeId) {
+            s.shapeBy = _vis.shapeId;
+        }
+        s.show = VIEW_SHOW_FLAGS.filter(function (f) {
+            return _state[f[2]] === true;
+        }).map(function (f) {
+            return f[0];
+        });
+        customLabelEntries().forEach(function (c) {
+            if (c.entry.selected === true) {
+                s.show.push('custom:' + c.key);
+            }
+        });
+        s.font = _state.externalNodeFontSize;
+        s.node = _state.nodeSizeDefault;
+        s.branch = _state.branchWidthDefault;
+        let rotation = Math.round(_radialRotation / RADIAL_ROTATION_STEP);
+        if (rotation !== 0) {
+            s.rotation = rotation;
+        }
+        if (_radialLabelsHorizontal) {
+            s.horizontalLabels = true;
+        }
+        if (_basicTreeProperties.alignedMolSeqs === true && _basicTreeProperties.maxMolSeqLength > 0) {
+            s.msa = _state.showMsa === true;
+        }
+        if (_basicTreeProperties.domainArchitectures === true) {
+            s.domains = _state.showDomainArchitectures === true;
+            s.domainLabels = _state.domainLabels;
+            s.domainGlow = _state.domainGlow === true;
+            s.domainEvalue = _state.domainEvalueExponent;
+        }
+        if (_timeInfo && _timeInfo.type) {
+            s.timeAxis = _state.showTimeAxis === true;
+            s.timeGrid = _state.timeAxisGrid === true;
+        }
+        let a = searchStateOf(0);
+        let b = searchStateOf(1);
+        if (a) {
+            s.searchA = a;
+        }
+        if (b) {
+            s.searchB = b;
+        }
+        if (a && b) {
+            let combine = getValue(SEARCH_COMBINE_SELECT);
+            if (combine === 'and' || combine === 'or') {
+                s.combine = combine;
+            }
+        }
+        if (_state.searchIsCaseSensitive === true) {
+            s.matchCase = true;
+        }
+        if (_state.searchNegateResult === true) {
+            s.inverse = true;
+        }
+        return s;
+    }
+
+    // Opens a view: the tree operations first (midpoint rooting, the
+    // ladderize direction), then the clade and the collapsed clades by node
+    // id, then everything the panel shows. A key the view leaves out keeps
+    // its current value, except the two searches, which an empty view
+    // clears (a view with no search has none). `initial` is the launch --
+    // initialize() draws afterwards; otherwise the tree is redrawn and
+    // fitted. Anything not understood, a hand-edited hash or a view of some
+    // other tree, is skipped rather than guessed at.
+    function applyViewState(s, initial) {
+        if (!s || typeof s !== 'object') {
+            return;
+        }
+        if (!initial && Number.isInteger(s.tree) && s.tree !== _treeIndex && s.tree >= 0 && s.tree < _trees.length) {
+            let cfg = Object.assign({}, _launchConfig || {});
+            cfg.view = s;
+            launchInto(_container, _trees, s.tree, cfg);
+            return;
+        }
+        if (s.root === 'midpoint' && _viewOps.root !== 'midpoint'
+            && (_treeData.rerootable === undefined || _treeData.rerootable === true)) {
+            forester.midpointRoot(_root_const);
+            _viewOps.root = 'midpoint';
+        }
+        if (s.order === 'asc' || s.order === 'desc') {
+            ladderizeSubtree(_root_const, s.order === 'asc', false);
+            _viewOps.order = s.order;
+            if (!_treeFn.visData) {
+                _treeFn.visData = {};
+            }
+            _treeFn.visData.ladderize = s.order !== 'asc';   // the next press goes the other way
+        }
+        _root = _root_const;
+        _in_subtree = false;
+        clearCollapsedFlags(_root_const);
+        if (Number.isInteger(s.subtree)) {
+            let node = nodeByViewId(s.subtree);
+            if (node && node.children && node.parent && node.parent.parent) {
+                _in_subtree = true;
+                _root = {children: [node], x: 0, x0: 0, y: 0, y0: 0};
+            }
+        }
+        if (Array.isArray(s.collapsed) && s.collapsed.length > 0) {
+            let ids = new Set(s.collapsed);
+            forester.preOrderTraversalAll(_root_const, function (n) {
+                if (n.children && n.parent && n.parent.parent && ids.has(n.viewId)) {
+                    n.collapsed = true;
+                }
+            });
+        }
+        _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+
+        if (s.layout === 'rectangular' || s.layout === 'circular' || s.layout === 'unrooted') {
+            _state.circularDisplay = s.layout === 'circular';
+            _state.unrootedDisplay = s.layout === 'unrooted';
+        }
+        if (s.display === 'phylogram' || s.display === 'aligned' || s.display === 'cladogram') {
+            let measured = _basicTreeProperties.branchLengths === true;
+            _state.phylogram = measured && s.display !== 'cladogram';
+            _state.alignPhylogram = measured && s.display === 'aligned' && !_state.unrootedDisplay;
+        }
+        if (Array.isArray(s.show)) {
+            let on = new Set(s.show);
+            VIEW_SHOW_FLAGS.forEach(function (f) {
+                _state[f[2]] = on.has(f[0]);
+            });
+            customLabelEntries().forEach(function (c) {
+                c.entry.selected = on.has('custom:' + c.key);
+            });
+        }
+        if (isFinite(s.font)) {
+            setFontSizes(Number(s.font));
+        }
+        if (isFinite(s.node)) {
+            _state.nodeSizeDefault = Math.min(NODE_SIZE_MAX, Math.max(NODE_SIZE_MIN, Number(s.node)));
+        }
+        if (isFinite(s.branch)) {
+            _state.branchWidthDefault = Math.min(BRANCH_WIDTH_MAX, Math.max(BRANCH_WIDTH_MIN, Number(s.branch)));
+        }
+        if (Number.isInteger(s.rotation)) {
+            _radialRotation = (s.rotation * RADIAL_ROTATION_STEP) % (2 * Math.PI);
+        }
+        if (typeof s.horizontalLabels === 'boolean') {
+            _radialLabelsHorizontal = s.horizontalLabels;
+        }
+        if (typeof s.msa === 'boolean') {
+            _state.showMsa = s.msa;
+        }
+        if (typeof s.domains === 'boolean') {
+            _state.showDomainArchitectures = s.domains;
+        }
+        if (s.domainLabels === 'none' || s.domainLabels === 'domains' || s.domainLabels === 'legend') {
+            _state.domainLabels = s.domainLabels;
+        }
+        if (typeof s.domainGlow === 'boolean') {
+            _state.domainGlow = s.domainGlow;
+        }
+        if (Number.isInteger(s.domainEvalue) && s.domainEvalue >= forester.DOMAIN_EVALUE_EXPONENT_MIN
+            && s.domainEvalue <= forester.DOMAIN_EVALUE_EXPONENT_MAX && s.domainEvalue !== _state.domainEvalueExponent) {
+            _state.domainEvalueExponent = s.domainEvalue;
+            if (_domain) {
+                _domain.palette = null;   // the drawn set changed: the palette is dealt again
+            }
+        }
+        if (typeof s.timeAxis === 'boolean') {
+            _state.showTimeAxis = s.timeAxis;
+        }
+        if (typeof s.timeGrid === 'boolean') {
+            _state.timeAxisGrid = s.timeGrid;
+        }
+        if (!radialDisplay()) {
+            _radialLabelsHorizontal = false;
+        } else if (_state.showDomainArchitectures && _basicTreeProperties.domainArchitectures) {
+            _radialLabelsHorizontal = false;   // the domain boxes ride the spokes, so the labels must too
+        }
+        if (_vis) {
+            if (s.colorBy === 'none') {
+                _vis.colorId = null;
+            } else if (s.colorBy && _vis.byId[s.colorBy]) {
+                _vis.colorId = s.colorBy;
+                _state.showVisualizations = true;
+            }
+            if (s.shapeBy === 'none') {
+                _vis.shapeId = null;
+            } else if (s.shapeBy && _vis.byId[s.shapeBy] && _vis.byId[s.shapeBy].shape) {
+                _vis.shapeId = s.shapeBy;
+                _state.showVisualizations = true;
+            }
+        }
+        _state.searchIsCaseSensitive = s.matchCase === true;
+        _state.searchNegateResult = s.inverse === true;
+        applySearchState(0, s.searchA);
+        applySearchState(1, s.searchB);
+        setValue(SEARCH_COMBINE_SELECT,
+            (s.searchA && s.searchB && (s.combine === 'and' || s.combine === 'or')) ? s.combine : 'independent');
+
+        refreshVisualizations(false);
+        resetVis();
+        syncViewControls();
+        if (!initial) {
+            runSearches();
+            zoomToFit();
+        }
+    }
+
+    // One search box from its view state: the field by its label, the mode
+    // when the field offers it, the value(s); nothing given clears the box.
+    function applySearchState(idx, q) {
+        let fieldSel = byId(idx === 0 ? SEARCH_FIELD_SELECT_0 : SEARCH_FIELD_SELECT_1);
+        let modeSel = byId(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
+        if (!fieldSel || !modeSel) {
+            return;
+        }
+        let want = (q && typeof q === 'object') ? q : {};
+        let fi = want.field ? _searchFields.findIndex(function (f) {
+            return f.label === want.field;
+        }) : -1;
+        fieldSel.value = String(fi >= 0 ? fi : 0);
+        populateSearchModeMenu(idx);
+        if (want.mode && Array.from(modeSel.options).some(function (o) { return o.value === want.mode; })) {
+            modeSel.value = want.mode;
+        }
+        setValue(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1, want.value ? String(want.value) : '');
+        setValue(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1, want.value2 ? String(want.value2) : '');
+        updateSearchValue2Visibility(idx);
+        updateSearchAutocomplete(idx);
+        if (idx === 1 && want.value) {
+            showSearchB();
+        }
+    }
+
+    // The panel's controls from the state, after applyViewState
+    function syncViewControls() {
+        setDisplayTypeButtons();
+        syncZoomRowButtons();
+        VIEW_SHOW_FLAGS.forEach(function (f) {
+            setCheckboxValue(f[1], _state[f[2]] === true);
+        });
+        customLabelEntries().forEach(function (c) {
+            if (c.entry.cb_id) {
+                setCheckboxValue(c.entry.cb_id, c.entry.selected === true);
+            }
+        });
+        setCheckboxValue(MSA_CB, _state.showMsa === true);
+        setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis === true);
+        setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid === true);
+        setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
+        setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
+        syncDomainControls();
+        setSliderValue(FONT_SIZE_SLIDER, _state.externalNodeFontSize);
+        setSliderValue(NODE_SIZE_SLIDER, _state.nodeSizeDefault);
+        setSliderValue(BRANCH_WIDTH_SLIDER, _state.branchWidthDefault);
+        setSelectMenuValue(LABEL_COLOR_SELECT_MENU, (_vis && _vis.colorId) || DEFAULT);
+        setSelectMenuValue(NODE_SHAPE_SELECT_MENU, (_vis && _vis.shapeId) || DEFAULT);
+        setCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB, _state.searchIsCaseSensitive === true);
+        setCheckboxValue(SEARCH_OPTIONS_NEGATE_RES_CB, _state.searchNegateResult === true);
+        syncLadderizeGlyph();
+    }
+
+    // The ladderize glyph shows the direction the NEXT press will use.
+    function syncLadderizeGlyph() {
+        let orderBtn = byId(LADDERIZE_BUTTON);
+        if (orderBtn) {
+            let next = !(_treeFn && _treeFn.visData && _treeFn.visData.ladderize === false);
+            orderBtn.innerHTML = makeGlyph(next ? 'ladderize_asc' : 'ladderize_desc');
+        }
+    }
+
+    // onViewChange: once per settled redraw, only when the view actually
+    // changed. The launch's own view is recorded and not reported -- the
+    // page put the tree up and knows what it asked for -- but a relaunch
+    // that changed it (the tree picker) is reported like any change.
+    function noteViewChange() {
+        if (_initializing || !_settings || typeof _settings.onViewChange !== 'function' || _viewNotifyPending) {
+            return;
+        }
+        _viewNotifyPending = true;
+        let seq = _launchSeq;
+        setTimeout(function () {
+            _viewNotifyPending = false;
+            if (seq !== _launchSeq || !_root || !_container) {
+                return;
+            }
+            reportView(false);
+        }, 0);
+    }
+
+    function settleViewNotification() {
+        if (_settings && typeof _settings.onViewChange === 'function') {
+            reportView(_lastViewEncoded === undefined);
+        }
+    }
+
+    function reportView(silent) {
+        let state = getViewState();
+        let encoded = archaeopteryx.encodeViewState(state);
+        if (encoded === _lastViewEncoded) {
+            return;
+        }
+        _lastViewEncoded = encoded;
+        if (silent) {
+            return;
+        }
+        try {
+            _settings.onViewChange(state, encoded);
+        } catch (e) {
+            console.error(ERROR + 'onViewChange threw: ' + (e && e.message ? e.message : e));
+        }
+    }
+
+    // The string form: "key=value&key=value", the values URL-encoded but
+    // with ':' and ',' kept readable (refs and lists) and spaces as '+'.
+    // Lists are comma-joined, booleans 1 / 0, the two searches flattened
+    // to a / af / am / a2 and b / bf / bm / b2. Made for a URL hash, where
+    // none of these characters needs escaping.
+    const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine'];
+    const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
+    const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
+    const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'domains', 'domainGlow', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+    const VIEW_SEARCH_KEYS = [['searchA', 'a'], ['searchB', 'b']];
+
+    function encodeViewValue(v) {
+        return encodeURIComponent(String(v)).replace(/%3A/gi, ':').replace(/%2C/gi, ',').replace(/%20/g, '+');
+    }
+
+    function decodeViewValue(v) {
+        try {
+            return decodeURIComponent(String(v).replace(/\+/g, '%20'));
+        } catch {
+            return '';
+        }
+    }
+
+    archaeopteryx.encodeViewState = function (state) {
+        if (!state || typeof state !== 'object') {
+            return '';
+        }
+        let parts = [];
+        let put = function (k, v) {
+            if (v !== undefined && v !== null && v !== '') {
+                parts.push(k + '=' + encodeViewValue(v));
+            }
+        };
+        VIEW_INT_KEYS.concat(VIEW_TEXT_KEYS, VIEW_NUMBER_KEYS).forEach(function (k) {
+            put(k, state[k]);
+        });
+        if (Array.isArray(state.show)) {
+            parts.push('show=' + state.show.map(encodeViewValue).join(','));   // an empty list is a fact: nothing shown
+        }
+        if (Array.isArray(state.collapsed) && state.collapsed.length > 0) {
+            put('collapsed', state.collapsed.join(','));
+        }
+        VIEW_BOOL_KEYS.forEach(function (k) {
+            if (typeof state[k] === 'boolean') {
+                put(k, state[k] ? 1 : 0);
+            }
+        });
+        VIEW_SEARCH_KEYS.forEach(function (sk) {
+            let q = state[sk[0]];
+            if (q && typeof q === 'object' && q.value) {
+                put(sk[1], q.value);
+                put(sk[1] + 'f', q.field);
+                put(sk[1] + 'm', q.mode);
+                put(sk[1] + '2', q.value2);
+            }
+        });
+        return parts.join('&');
+    };
+
+    archaeopteryx.decodeViewState = function (text) {
+        if (text === undefined || text === null) {
+            return null;
+        }
+        let s = String(text).replace(/^#/, '');
+        if (s.length === 0) {
+            return null;
+        }
+        let raw = {};
+        s.split('&').forEach(function (pair) {
+            let eq = pair.indexOf('=');
+            if (eq > 0) {
+                raw[decodeViewValue(pair.substring(0, eq))] = decodeViewValue(pair.substring(eq + 1));
+            }
+        });
+        let state = {};
+        VIEW_TEXT_KEYS.forEach(function (k) {
+            if (raw[k] !== undefined && raw[k] !== '') {
+                state[k] = raw[k];
+            }
+        });
+        VIEW_INT_KEYS.forEach(function (k) {
+            if (raw[k] !== undefined && /^-?\d+$/.test(raw[k])) {
+                state[k] = parseInt(raw[k], 10);
+            }
+        });
+        VIEW_NUMBER_KEYS.forEach(function (k) {
+            let n = parseFloat(raw[k]);
+            if (isFinite(n)) {
+                state[k] = n;
+            }
+        });
+        VIEW_BOOL_KEYS.forEach(function (k) {
+            if (raw[k] === '1' || raw[k] === '0') {
+                state[k] = raw[k] === '1';
+            }
+        });
+        if (raw.show !== undefined) {
+            state.show = raw.show.split(',').filter(function (x) {
+                return x.length > 0;
+            });
+        }
+        if (raw.collapsed !== undefined) {
+            state.collapsed = raw.collapsed.split(',').filter(function (x) {
+                return /^\d+$/.test(x);
+            }).map(function (x) {
+                return parseInt(x, 10);
+            });
+        }
+        VIEW_SEARCH_KEYS.forEach(function (sk) {
+            let p = sk[1];
+            if (raw[p]) {
+                let q = {value: raw[p]};
+                if (raw[p + 'f']) {
+                    q.field = raw[p + 'f'];
+                }
+                if (raw[p + 'm']) {
+                    q.mode = raw[p + 'm'];
+                }
+                if (raw[p + '2']) {
+                    q.value2 = raw[p + '2'];
+                }
+                state[sk[0]] = q;
+            }
+        });
+        return Object.keys(state).length > 0 ? state : null;
+    };
+
     // ===================== Protein domain architectures =====================
     // The desktop's domain display, ported from its RenderableDomainArchitecture
     // and TreePanel (the spec is section D1 of the repo's TODO.md). Each tip's
@@ -7473,7 +8060,9 @@ function (root, d3, forester, phyloXml) {
 
     // Search B starts hidden to keep the panel compact; one click (or a
     // configured initial value) reveals it, and it stays revealed.
-    function revealSearchB() {
+    // Search B is folded away until wanted: the '+ Search B' link (which
+    // focuses it) or a view that carries a second search.
+    function showSearchB() {
         let wrap = byId(SEARCH_B_WRAP);
         if (wrap) {
             wrap.style.display = '';
@@ -7482,6 +8071,10 @@ function (root, d3, forester, phyloXml) {
         if (tgl) {
             tgl.style.display = 'none';
         }
+    }
+
+    function revealSearchB() {
+        showSearchB();
         let f = byId(SEARCH_FIELD_1);
         if (f) {
             f.focus();
@@ -7973,13 +8566,10 @@ function (root, d3, forester, phyloXml) {
             if (_treeFn.visData.ladderize === undefined) {
                 _treeFn.visData.ladderize = true;
             }
-            ladderizeSubtree(_root, _treeFn.visData.ladderize, true);
+            let largestFirst = ladderizeSubtree(_root, _treeFn.visData.ladderize, true);
+            _viewOps.order = largestFirst ? 'asc' : 'desc';   // what a shared view replays
             _treeFn.visData.ladderize = !_treeFn.visData.ladderize;
-            // The glyph shows the direction the NEXT press will ladderize in.
-            let orderBtn = byId(LADDERIZE_BUTTON);
-            if (orderBtn) {
-                orderBtn.innerHTML = makeGlyph(_treeFn.visData.ladderize ? 'ladderize_asc' : 'ladderize_desc');
-            }
+            syncLadderizeGlyph();
             update(null, 0);
         }
     }
@@ -8002,6 +8592,7 @@ function (root, d3, forester, phyloXml) {
                 {
                     label: 'Midpoint re-root', action: function () {
                         forester.midpointRoot(_root);
+                        _viewOps.root = 'midpoint';   // what a shared view replays
                         zoomToFit();
                     }
                 },
@@ -11430,11 +12021,16 @@ function (root, d3, forester, phyloXml) {
     // definite result -- with it on, ladderizing a tree that is already
     // ladderized REVERSES it, so the outcome depends on the order the tree
     // happened to arrive in.
+    // Returns the direction actually applied (largest first or not): when
+    // the tree already stood that way and alternating was asked for, the
+    // other one.
     function ladderizeSubtree(n, largestFirst, alternateIfUnchanged) {
         let changed = forester.ladderize(n, largestFirst);
         if (alternateIfUnchanged && !changed) {
             forester.ladderize(n, !largestFirst);
+            return !largestFirst;
         }
+        return largestFirst;
     }
 
     function setDisplayTypeButtons() {

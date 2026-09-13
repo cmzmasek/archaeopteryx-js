@@ -73,6 +73,9 @@ export interface ArchaeopteryxConfig {
     nhConfidenceValuesInBrackets?: boolean;
     nhExportWriteConfidences?: boolean;
     nodeLabels?: Record<string, NodeLabelSpec> | null;
+    /** Called once per settled redraw when the view changed: the state as
+     * getViewState() returns it, and its hash-ready string. */
+    onViewChange?: ((state: ViewState, encoded: string) => void) | null;
     pngExportScale?: number;
     rootOffset?: number;
     searchAinitialValue?: string | null;
@@ -82,9 +85,65 @@ export interface ArchaeopteryxConfig {
     showTimeAxis?: boolean;
     supportDotMinimum?: number;
     timeAxisGrid?: boolean;
+    /** Open straight into a view (getViewState / decodeViewState). */
+    view?: ViewState | null;
     visualizationsLegendXpos?: number;
     visualizationsLegendYpos?: number;
     zoomToFitUponWindowResize?: boolean;
+}
+
+/** One search box in a view: the field by its menu label, the mode, the
+ * value (and the range's second value). */
+export interface ViewSearch {
+    field?: string;
+    mode?: string;
+    value: string;
+    value2?: string;
+}
+
+/** A view of a tree as the control panel left it: what getViewState()
+ * returns, what the config's view key and applyViewState() take, and what
+ * encodeViewState() / decodeViewState() turn into a URL-hash string and
+ * back. Every key is optional; a key left out keeps its current value,
+ * except searchA / searchB, which an absent key clears. Nodes (subtree,
+ * collapsed) are named by their launch-time preorder index. */
+export interface ViewState {
+    /** Which tree of a multi-tree launch (0-based). */
+    tree?: number;
+    layout?: Layout;
+    display?: 'phylogram' | 'aligned' | 'cladogram';
+    /** The ladderize direction applied. */
+    order?: 'asc' | 'desc';
+    /** Midpoint re-rooted. */
+    root?: 'midpoint';
+    subtree?: number;
+    collapsed?: number[];
+    /** A visualization id (as the Color-by menu values them), or 'none'. */
+    colorBy?: string;
+    shapeBy?: string;
+    /** The panel's checked boxes: name, taxonomy, sequence, confidence,
+     * branchLength, external, internal, nodeEvents, branchEvents,
+     * supportDots, shortNames, autoHide, visualizations, visualStyles, and
+     * custom:<key> for a nodeLabels checkbox. */
+    show?: string[];
+    font?: number;
+    node?: number;
+    branch?: number;
+    /** Radial rotation in button presses (pi/32 each). */
+    rotation?: number;
+    horizontalLabels?: boolean;
+    msa?: boolean;
+    domains?: boolean;
+    domainLabels?: 'none' | 'domains' | 'legend';
+    domainGlow?: boolean;
+    domainEvalue?: number;
+    timeAxis?: boolean;
+    timeGrid?: boolean;
+    searchA?: ViewSearch;
+    searchB?: ViewSearch;
+    combine?: 'and' | 'or';
+    matchCase?: boolean;
+    inverse?: boolean;
 }
 
 /** What launch() returns: the per-viewer surface an embedder needs after
@@ -101,6 +160,11 @@ export interface ViewerHandle {
     /** Shows another tree of the launch in the same container under the
      * same config; it opens fresh. Returns the handle for the new viewer. */
     showTree(index: number): ViewerHandle;
+    /** The view as the panel left it (see ViewState). */
+    getViewState(): ViewState;
+    /** Opens a view on the running viewer; a view of another tree of the
+     * launch relaunches into that tree. */
+    applyViewState(state: ViewState): void;
     /** Unmounts the viewer completely: the DOM inside the container, the
      * body-level pieces, the window resize listener and every page-level
      * key/wheel handler. A later launch() works normally. */
@@ -149,6 +213,12 @@ export interface Archaeopteryx {
 
     /** Module-level twin of the handle's getSelectedNodes. */
     getSelectedNodes(): PhylogenyNode[];
+
+    /** A view as a "key=value&..." string for a URL hash, and back. decode
+     * accepts a leading '#', ignores what it does not know, and returns
+     * null for nothing. */
+    encodeViewState(state: ViewState): string;
+    decodeViewState(text: string | null | undefined): ViewState | null;
 }
 
 export const archaeopteryx: Archaeopteryx;

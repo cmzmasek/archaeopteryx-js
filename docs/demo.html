@@ -105,6 +105,7 @@
     <span class="title"><img class="logo" src="images/archaeopteryx-logo.png" srcset="images/archaeopteryx-logo.png 1x, images/archaeopteryx-logo@2x.png 2x" width="16" height="16" alt="">Archaeopteryx.js</span> &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
     <select id="treePicker"></select>
     <span class="desc"><a href="open.html">Open your own tree &rarr;</a></span>
+    <span class="desc"><a href="#" id="shareView" title="Copies this page's address, the view included">Copy link to this view</a></span>
 </div>
 
 <pre id="errbox"></pre>
@@ -194,6 +195,16 @@
         var config = Object.assign({
             enableDynamicSizing: true
         }, tree.config || {});
+        // The view rides in the URL hash: a shared link opens the tree as it
+        // was left, and every change rewrites the hash in place (never a
+        // history entry -- back and forward stay with the tree picker).
+        var view = archaeopteryx.decodeViewState(window.location.hash);
+        if (view) {
+            config.view = view;
+        }
+        config.onViewChange = function (state, encoded) {
+            history.replaceState(null, '', window.location.pathname + window.location.search + (encoded ? '#' + encoded : ''));
+        };
 
         fetch(tree.file, {cache: 'no-cache'})
             .then(function (r) {
@@ -238,6 +249,25 @@
 
     window.addEventListener('load', function () {
         buildPicker();
+        document.getElementById('shareView').addEventListener('click', function (e) {
+            e.preventDefault();
+            var link = this;
+            var done = function (ok) {
+                link.textContent = ok ? 'Link copied' : 'Could not copy \u2014 use the address bar';
+                setTimeout(function () {
+                    link.textContent = 'Copy link to this view';
+                }, 2000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(window.location.href).then(function () {
+                    done(true);
+                }, function () {
+                    done(false);
+                });
+            } else {
+                done(false);
+            }
+        });
         loadTree();
         makeToolbarDraggable(document.getElementById('toolbar'), 'aptx-demo-toolbar-pos');
     });
