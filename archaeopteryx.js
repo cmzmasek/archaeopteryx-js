@@ -7827,18 +7827,25 @@ function (root, d3, forester, phyloXml) {
         return Math.max(text.lastIndexOf(','), text.lastIndexOf('+')) + 1;
     }
 
+    // Suggestions compare the way the search will: verbatim while Match
+    // case is on, folded to lower case otherwise (Christian, 2026-09-13,
+    // joint with the desktop).
+    function suggestFold(s) {
+        return _state.searchIsCaseSensitive === true ? s : s.toLowerCase();
+    }
+
     // The values the typed term admits, matched the way the box's mode will
     // match them: a prefix for "starts with", a suffix for "ends with", a
     // substring otherwise.
     function suggestMatches(idx, term) {
         let values = _suggestValues[idx] || [];
         let mode = getValue(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
-        let needle = term.toLowerCase();
+        let needle = suggestFold(term);
         return values.filter(function (v) {
             if (needle.length === 0) {
                 return true;
             }
-            let lv = v.toLowerCase();
+            let lv = suggestFold(v);
             if (mode === 'starts_with') {
                 return lv.indexOf(needle) === 0;
             }
@@ -7860,7 +7867,7 @@ function (root, d3, forester, phyloXml) {
         let term = text.substring(start).trim();
         let matches = suggestMatches(idx, term);
         // nothing to offer when nothing matches, or the one match is what is already typed
-        if (matches.length === 0 || (matches.length === 1 && matches[0].toLowerCase() === term.toLowerCase())) {
+        if (matches.length === 0 || (matches.length === 1 && suggestFold(matches[0]) === suggestFold(term))) {
             return;
         }
         let box = document.createElement('div');
@@ -7868,7 +7875,7 @@ function (root, d3, forester, phyloXml) {
         if (_panelTheme) {
             box.classList.add('aptx-' + _panelTheme); // follow the panel's light/dark choice
         }
-        let needle = term.toLowerCase();
+        let needle = suggestFold(term);
         let rows = [];
         matches.slice(0, SUGGEST_MAX_ROWS).forEach(function (v) {
             let b = document.createElement('button');
@@ -7876,7 +7883,7 @@ function (root, d3, forester, phyloXml) {
             b.tabIndex = -1;
             b.title = v;
             // the matched part in bold, wherever it sits in the value
-            let at = needle.length > 0 ? v.toLowerCase().indexOf(needle) : -1;
+            let at = needle.length > 0 ? suggestFold(v).indexOf(needle) : -1;
             if (at >= 0) {
                 b.appendChild(document.createTextNode(v.substring(0, at)));
                 let hit = document.createElement('b');
@@ -8353,6 +8360,7 @@ function (root, d3, forester, phyloXml) {
 
     function searchOptionsCaseSenstiveCbClicked() {
         _state.searchIsCaseSensitive = getCheckboxValue(SEARCH_OPTIONS_CASE_SENSITIVE_CB);
+        closeSuggestions();   // an open list was filtered the other way; the next keystroke refilters
         search0();
         search1();
     }
