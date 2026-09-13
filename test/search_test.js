@@ -91,10 +91,10 @@ function makeTestTree() {
     return {phy: phy, byName: byName};
 }
 
-function field(phy, key) {
+function field(phy, label) {
     var fields = forester.availableSearchFields(phy);
     for (var i = 0; i < fields.length; ++i) {
-        if (fields[i].key === key) {
+        if (fields[i].label === label) {
             return fields[i];
         }
     }
@@ -144,6 +144,8 @@ runTest("invalid input fails closed : ", testInvalidInputFailsClosed);
 runTest("distinct values            : ", testDistinctValues);
 runTest("phylogeny wrapper skipped  : ", testPhylogenyWrapperNotSearchable);
 runTest("super-root not a tree node : ", testSuperRootNotCountedAsNode);
+runTest("no field prefix in a query  : ", testNoFieldPrefixSyntax);
+runTest("built-in fields by identity: ", testBuiltInFieldsByIdentity);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -231,10 +233,10 @@ function testRegexMode() {
 function testAvailableFields() {
     var f = makeTestTree();
     var keys = forester.availableSearchFields(f.phy).map(function (x) {
-        return x.key;
+        return x.label;
     });
-    var expected = ['ANY', 'NN', 'TS', 'TN', 'TC', 'TI', 'SY', 'SN', 'GN', 'SS', 'SA', 'AN', 'MS',
-        'BL', 'CO', 'PROP:x:Count', 'PROP:x:Year', 'CS', 'NC', 'DE', 'DR', 'NT'];
+    var expected = ['Any Text', 'Node Name', 'Taxonomy Scientific', 'Taxonomy Common', 'Taxonomy Code', 'Taxonomy Identifier', 'Taxonomy Synonym', 'Seq Name', 'Gene Name', 'Gene Symbol', 'Seq Accession', 'Annotation', 'Molecular Sequence',
+        'Branch Length', 'Confidence', 'x:Count', 'x:Year', 'Clade Size (tips)', 'Number of Children', 'Depth from Root', 'Distance from Root', 'Node Type'];
     return keys.join('|') === expected.join('|');
 }
 
@@ -244,129 +246,129 @@ function testAvailableFieldsBareTree() {
     // Root, which needs branch lengths)
     var phy = forester.parseNewHampshire('((A,B),C);');
     var keys = forester.availableSearchFields(phy).map(function (x) {
-        return x.key;
+        return x.label;
     });
-    return keys.join('|') === ['ANY', 'NN', 'CS', 'NC', 'DE', 'NT'].join('|');
+    return keys.join('|') === ['Any Text', 'Node Name', 'Clade Size (tips)', 'Number of Children', 'Depth from Root', 'Node Type'].join('|');
 }
 
 function testPropertyNumericTyping() {
     var f = makeTestTree();
     // no datatype + every value parses as a number -> numeric
-    if (field(f.phy, 'PROP:x:Count').numeric !== true) return false;
+    if (field(f.phy, 'x:Count').numeric !== true) return false;
     // a declared non-numeric datatype (xsd:string) wins -> text, even though
     // the values ('2001') would parse
-    if (field(f.phy, 'PROP:x:Year').numeric !== false) return false;
+    if (field(f.phy, 'x:Year').numeric !== false) return false;
     return true;
 }
 
 function testTextSearchSpecificField() {
     var f = makeTestTree();
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'homo'))) !== 'A') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TC', 'contains', 'MOUSE'))) !== 'B') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'GN', 'contains', 'APAF1'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'homo'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Code', 'contains', 'MOUSE'))) !== 'B') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Gene Name', 'contains', 'APAF1'))) !== 'A') return false;
     // a specific field does not leak into others: 'gamma' is a sequence name,
     // not a taxonomy
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'gamma'))) !== '') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'gamma'))) !== '') return false;
     return true;
 }
 
 function testTextSearchAnyText() {
     var f = makeTestTree();
     // Any Text spans node name, taxonomy, sequence, annotation, properties
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', 'sapiens'))) !== 'A') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', 'apoptosis'))) !== 'A') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', '2001'))) !== 'B') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', 'CDE'))) !== 'CDE') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'sapiens'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'apoptosis'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', '2001'))) !== 'B') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'CDE'))) !== 'CDE') return false;
     // Any Text deliberately excludes the molecular sequence
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', 'MDAKAR'))) !== '') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'MDAKAR'))) !== '') return false;
     // ...but the explicit Molecular Sequence field finds it
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'MS', 'contains', 'MDAKAR'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Molecular Sequence', 'contains', 'MDAKAR'))) !== 'A') return false;
     return true;
 }
 
 function testOrAndTerms() {
     var f = makeTestTree();
     // ',' = OR
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'catus,musculus'))) !== 'B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'catus,musculus'))) !== 'B,C') return false;
     // '+' = AND within one field value
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'SN', 'contains', 'gamma+kinase'))) !== 'E') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'SN', 'contains', 'gamma+zzz'))) !== '') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Seq Name', 'contains', 'gamma+kinase'))) !== 'E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Seq Name', 'contains', 'gamma+zzz'))) !== '') return false;
     // OR of an AND group and a plain term
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', 'gamma+kinase,sapiens'))) !== 'A,E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'gamma+kinase,sapiens'))) !== 'A,E') return false;
     // a separator-only query matches nothing (even with inverse -- no select-all)
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'contains', ',', {inverse: true})).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', ',', {inverse: true})).size !== 0) return false;
     return true;
 }
 
 function testCaseSensitivity() {
     var f = makeTestTree();
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'HOMO'))) !== 'A') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'HOMO', {caseSensitive: true}))) !== '') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'Homo', {caseSensitive: true}))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'HOMO'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'HOMO', {caseSensitive: true}))) !== '') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'Homo', {caseSensitive: true}))) !== 'A') return false;
     return true;
 }
 
 function testNumericComparators() {
     var f = makeTestTree();
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'eq', '0.1'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'eq', '0.1'))) !== 'A') return false;
     // comma decimal separator works in the operand
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'eq', '0,1'))) !== 'A') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'gt', '0.2'))) !== 'AB,CDE,D') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'ge', '0.2'))) !== 'AB,B,CDE,D') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'lt', '0.1'))) !== 'E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'eq', '0,1'))) !== 'A') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'gt', '0.2'))) !== 'AB,CDE,D') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'ge', '0.2'))) !== 'AB,B,CDE,D') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'lt', '0.1'))) !== 'E') return false;
     // ne selects every branch-length-carrying node except A
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'ne', '0.1'))) !== 'AB,B,C,CDE,D,E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'ne', '0.1'))) !== 'AB,B,C,CDE,D,E') return false;
     return true;
 }
 
 function testNumericRange() {
     var f = makeTestTree();
     // range is inclusive at both ends
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'range', '0.1', {value2: '0.2'}))) !== 'A,B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'range', '0.1', {value2: '0.2'}))) !== 'A,B,C') return false;
     // swapped bounds are tolerated
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'range', '0.2', {value2: '0.1'}))) !== 'A,B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'range', '0.2', {value2: '0.1'}))) !== 'A,B,C') return false;
     // a missing second bound resets (matches nothing)
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'range', '0.1')).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'range', '0.1')).size !== 0) return false;
     return true;
 }
 
 function testConfidenceField() {
     var f = makeTestTree();
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'CO', 'ge', '90'))) !== 'AB') return false;
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'CO', 'gt', '95')).size !== 0) return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Confidence', 'ge', '90'))) !== 'AB') return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Confidence', 'gt', '95')).size !== 0) return false;
     return true;
 }
 
 function testPropertySearch() {
     var f = makeTestTree();
     // numeric property, numeric comparison
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'PROP:x:Count', 'gt', '6'))) !== 'C') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'PROP:x:Count', 'le', '5'))) !== 'B') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'x:Count', 'gt', '6'))) !== 'C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'x:Count', 'le', '5'))) !== 'B') return false;
     // string-typed property, text matching
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'PROP:x:Year', 'contains', '2001'))) !== 'B') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'x:Year', 'contains', '2001'))) !== 'B') return false;
     // a property field is scoped to its ref
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'PROP:x:Year', 'contains', '12')).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'x:Year', 'contains', '12')).size !== 0) return false;
     return true;
 }
 
 function testStructureFields() {
     var f = makeTestTree();
     // every leaf has clade size 1
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'CS', 'eq', '1'))) !== 'A,B,C,D,E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Clade Size (tips)', 'eq', '1'))) !== 'A,B,C,D,E') return false;
     // NC > 2 finds the polytomy
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'NC', 'gt', '2'))) !== 'CDE') return false;
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'NC', 'eq', '2'))) !== 'AB,Root') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Number of Children', 'gt', '2'))) !== 'CDE') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Number of Children', 'eq', '2'))) !== 'AB,Root') return false;
     // distance from root sums branch lengths (A = 0.3 + 0.1, CDE = 0.4); this
     // also exercises the approximate eq (0.3 + 0.1 !== 0.4 in binary floats)
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'DR', 'eq', '0.4'))) !== 'A,CDE') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Distance from Root', 'eq', '0.4'))) !== 'A,CDE') return false;
     return true;
 }
 
 function testNodeTypeField() {
     var f = makeTestTree();
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'NT', 'contains', 'leaf'))) !== 'A,B,C,D,E') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Node Type', 'contains', 'leaf'))) !== 'A,B,C,D,E') return false;
     // 'internal' = the named clades (not the leaves, not the tree root)
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'NT', 'contains', 'internal'))) !== 'AB,CDE,Root') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Node Type', 'contains', 'internal'))) !== 'AB,CDE,Root') return false;
     return true;
 }
 
@@ -374,38 +376,38 @@ function testInverseFieldScoped() {
     var f = makeTestTree();
     // inverse of 'homo' on Taxonomy Scientific = the OTHER nodes that HAVE a
     // scientific name (B, C) -- not the taxonomy-less D / E / internals
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'homo', {inverse: true}))) !== 'B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'homo', {inverse: true}))) !== 'B,C') return false;
     // inverse of a no-hit query selects every field-carrying node
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'contains', 'zzz', {inverse: true}))) !== 'A,B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'contains', 'zzz', {inverse: true}))) !== 'A,B,C') return false;
     return true;
 }
 
 function testInvalidInputFailsClosed() {
     var f = makeTestTree();
     // an uncompilable regex matches nothing (never throws)
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'regex', '\\d{')).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'regex', '\\d{')).size !== 0) return false;
     // ...even with inverse on (reset, not select-all)
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'ANY', 'regex', '\\d{', {inverse: true})).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'regex', '\\d{', {inverse: true})).size !== 0) return false;
     // a non-number on a numeric field matches nothing
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'eq', 'abc')).size !== 0) return false;
-    if (forester.searchWithSpec(f.phy, spec(f.phy, 'BL', 'eq', 'abc', {inverse: true})).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'eq', 'abc')).size !== 0) return false;
+    if (forester.searchWithSpec(f.phy, spec(f.phy, 'Branch Length', 'eq', 'abc', {inverse: true})).size !== 0) return false;
     // regex mode does not split on ',' / '+' (they are regex syntax)
-    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'TS', 'regex', 'catus|musculus'))) !== 'B,C') return false;
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'regex', 'catus|musculus'))) !== 'B,C') return false;
     return true;
 }
 
 function testDistinctValues() {
     var f = makeTestTree();
-    var vals = forester.distinctSearchValues(f.phy, field(f.phy, 'TS'));
+    var vals = forester.distinctSearchValues(f.phy, field(f.phy, 'Taxonomy Scientific'));
     if (vals.join('|') !== 'Felis catus|Homo sapiens|Mus musculus') return false;
     // gating: nothing for Any Text, numeric fields, or the molecular sequence
-    if (forester.distinctSearchValues(f.phy, field(f.phy, 'ANY')).length !== 0) return false;
-    if (forester.distinctSearchValues(f.phy, field(f.phy, 'BL')).length !== 0) return false;
-    if (forester.distinctSearchValues(f.phy, field(f.phy, 'MS')).length !== 0) return false;
+    if (forester.distinctSearchValues(f.phy, field(f.phy, 'Any Text')).length !== 0) return false;
+    if (forester.distinctSearchValues(f.phy, field(f.phy, 'Branch Length')).length !== 0) return false;
+    if (forester.distinctSearchValues(f.phy, field(f.phy, 'Molecular Sequence')).length !== 0) return false;
     // the cap limits the list
-    if (forester.distinctSearchValues(f.phy, field(f.phy, 'TS'), 2).length !== 2) return false;
+    if (forester.distinctSearchValues(f.phy, field(f.phy, 'Taxonomy Scientific'), 2).length !== 2) return false;
     // node type is enumerable
-    if (forester.distinctSearchValues(f.phy, field(f.phy, 'NT')).join('|') !== 'internal|leaf|root') return false;
+    if (forester.distinctSearchValues(f.phy, field(f.phy, 'Node Type')).join('|') !== 'internal|leaf|root') return false;
     return true;
 }
 
@@ -425,15 +427,15 @@ function testPhylogenyWrapperNotSearchable() {
     inner.parent = wrapper;
 
     // "Influenza" appears only in the wrapper: nothing should match it
-    if (forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'Influenza')).size !== 0) return false;
-    if (forester.searchWithSpec(wrapper, spec(wrapper, 'ANY', 'contains', 'Influenza')).size !== 0) return false;
+    if (forester.searchWithSpec(wrapper, spec(wrapper, 'Node Name', 'contains', 'Influenza')).size !== 0) return false;
+    if (forester.searchWithSpec(wrapper, spec(wrapper, 'Any Text', 'contains', 'Influenza')).size !== 0) return false;
 
     // the real nodes are still searchable, the real root included
-    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'Origin'))) !== 'Origin') return false;
-    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'A'))) !== 'A,AB') return false;
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'Node Name', 'contains', 'Origin'))) !== 'Origin') return false;
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'Node Name', 'contains', 'A'))) !== 'A,AB') return false;
 
     // and the wrapper does not sneak in through an inverse search either
-    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'NN', 'contains', 'A', {inverse: true}))) !== 'B,C,Origin') return false;
+    if (names(forester.searchWithSpec(wrapper, spec(wrapper, 'Node Name', 'contains', 'A', {inverse: true}))) !== 'B,C,Origin') return false;
     return true;
 }
 
@@ -461,4 +463,48 @@ function testSuperRootNotCountedAsNode() {
     if (q.nodeCount !== 5) return false;
     if (q.longestNodeName !== 2) return false;   // "AB", not the 33-character tree name
     return true;
+}
+
+// The 2.x search syntax named its field with a two-letter suffix ("gamma:SN",
+// "GN:gene1"); 3.0.0 replaced that with the field menu. A query is literal
+// text now -- a colon and a code in it mean nothing, in any field, in any
+// mode -- and the field objects the menu lists carry no such codes at all.
+// Christian, 2026-09-12: "No more searches like GN:gene1!"
+function testNoFieldPrefixSyntax() {
+    var f = makeTestTree();
+    if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', 'gamma'))) !== 'E') return false;
+    var dead = ['SN:gamma', 'gamma:SN', 'NN:A', 'A:NN', 'ANY:gamma', 'Any Text:gamma'];
+    for (var i = 0; i < dead.length; ++i) {
+        if (forester.searchWithSpec(f.phy, spec(f.phy, 'Any Text', 'contains', dead[i])).size !== 0) {
+            console.log('    "' + dead[i] + '" matched something: the prefix syntax is alive');
+            return false;
+        }
+        if (forester.searchWithSpec(f.phy, spec(f.phy, 'Seq Name', 'starts_with', dead[i])).size !== 0) return false;
+    }
+    // and no field the menu lists carries a code: only a label, a numeric flag and its extractor
+    var fields = forester.availableSearchFields(f.phy);
+    for (var k = 0; k < fields.length; ++k) {
+        if (fields[k].key !== undefined || typeof fields[k].label !== 'string' || typeof fields[k].extract !== 'function'
+            || typeof fields[k].numeric !== 'boolean') {
+            console.log('    field ' + k + ' is ' + JSON.stringify(Object.keys(fields[k])));
+            return false;
+        }
+    }
+    return true;
+}
+
+// The viewer's label presets ask "does this tree carry a taxonomy code?" by
+// testing whether forester.searchFields.taxonomyCode is among the tree's
+// available fields -- the SAME object, not a lookalike. Pin that identity,
+// and that a tree without the data does not offer the object.
+function testBuiltInFieldsByIdentity() {
+    var F = forester.searchFields;
+    var f = makeTestTree();
+    var offered = forester.availableSearchFields(f.phy);
+    if (offered[0] !== F.anyText || offered[1] !== F.nodeName) return false;
+    if (offered.indexOf(F.taxonomyCode) < 0 || offered.indexOf(F.sequenceName) < 0 || offered.indexOf(F.branchLength) < 0) return false;
+    if (offered.indexOf(F.taxonomyLineage) >= 0 || offered.indexOf(F.domain) >= 0) return false;   // the test tree has neither
+    if (F.taxonomyCode.label !== 'Taxonomy Code' || F.sequenceSymbol.label !== 'Gene Symbol' || F.cladeSize.metrics !== true) return false;
+    var bare = forester.availableSearchFields(forester.parseNewHampshire('((A,B),C);'));
+    return bare.indexOf(F.taxonomyCode) < 0 && bare.indexOf(F.nodeName) === 1 && bare.indexOf(F.nodeType) === bare.length - 1;
 }

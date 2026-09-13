@@ -3567,16 +3567,6 @@
     // and ',' = OR / '+' = AND inside a text value. Used by archaeopteryx.js;
     // pure tree logic, no DOM -- tested by test/search_test.js.
 
-    const SEARCH_FIELD_LABELS = {
-        NN: 'Node Name',
-        TS: 'Taxonomy Scientific', TN: 'Taxonomy Common', TC: 'Taxonomy Code',
-        TI: 'Taxonomy Identifier', SY: 'Taxonomy Synonym', LN: 'Taxonomy Lineage',
-        SN: 'Seq Name', GN: 'Gene Name', SS: 'Gene Symbol', SA: 'Seq Accession',
-        MS: 'Molecular Sequence', DO: 'Domain', AN: 'Annotation', XR: 'Cross-Reference'
-    };
-    const SEARCH_TEXT_ORDER = ['TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'DO', 'AN', 'XR', 'MS'];
-    // Fields folded into the "Any Text" umbrella (desktop omits MS + DO there).
-    const SEARCH_ANY_TEXT_KEYS = ['NN', 'TS', 'TN', 'TC', 'TI', 'SY', 'LN', 'SN', 'GN', 'SS', 'SA', 'AN', 'XR'];
     const SEARCH_NUMERIC_DATATYPES = new Set(['decimal', 'double', 'float', 'integer', 'int', 'long', 'short',
         'byte', 'unsignedint', 'unsignedlong', 'unsignedshort', 'unsignedbyte', 'nonnegativeinteger',
         'nonpositiveinteger', 'negativeinteger', 'positiveinteger']);
@@ -3584,23 +3574,123 @@
     function searchTaxa(n) { return (n.taxonomies && n.taxonomies.length) ? n.taxonomies : []; }
     function searchSeqs(n) { return (n.sequences && n.sequences.length) ? n.sequences : []; }
 
-    const SEARCH_TEXT_EXTRACTORS = {
-        NN: n => (n.name ? [n.name] : []),
-        TS: n => searchTaxa(n).map(t => t.scientific_name).filter(Boolean),
-        TN: n => searchTaxa(n).map(t => t.common_name).filter(Boolean),
-        TC: n => searchTaxa(n).map(t => t.code).filter(Boolean),
-        TI: n => searchTaxa(n).map(t => t.id && t.id.value).filter(Boolean),
-        SY: n => searchTaxa(n).reduce((a, t) => a.concat(t.synonyms || []), []).filter(Boolean),
-        LN: n => searchTaxa(n).reduce((a, t) => a.concat(t.lineage || []), []).filter(Boolean),
-        SN: n => searchSeqs(n).map(s => s.name).filter(Boolean),
-        GN: n => searchSeqs(n).map(s => s.gene_name).filter(Boolean),
-        SS: n => searchSeqs(n).map(s => s.symbol).filter(Boolean),
-        SA: n => searchSeqs(n).map(s => s.accession && s.accession.value).filter(Boolean),
-        MS: n => searchSeqs(n).map(s => s.mol_seq).filter(Boolean),
-        DO: n => searchSeqs(n).reduce((a, s) => a.concat((s.domain_architecture && s.domain_architecture.domains) ? s.domain_architecture.domains.map(d => d.name) : []), []).filter(Boolean),
-        AN: n => searchSeqs(n).reduce((a, s) => a.concat((s.annotations || []).reduce((b, an) => b.concat([an.desc, an.ref]), [])), []).filter(Boolean),
-        XR: n => searchSeqs(n).reduce((a, s) => a.concat((s.cross_references || []).reduce((b, x) => b.concat([x.value, x.source, x.comment]), [])), []).filter(Boolean)
+    // A search field is an object -- {label, numeric, extract(node, root)}
+    // and a few flags -- and nothing more: the field menu lists them, a spec
+    // carries one, the engine calls its extract. There are no field ids.
+    // Until 2026-09-12 every field was named by a two-letter code (NN, TS,
+    // SA, ...): the suffixes of the 2.x search syntax ("foo:NN"). 3.0.0
+    // replaced that syntax with the field menu, and the alphabet outlived it
+    // as ids until Christian spotted it. A field is multi-valued; any value
+    // matching is a match; root is needed only by Node Type.
+    //
+    // Flags: `anyText` -- "Any Text" ORs the field in (the molecular
+    // sequence and the domains stay out, as on the desktop); `always` -- in
+    // the menu even when no node carries it; `suggest: false` -- the value
+    // box does not offer its values as type-ahead (near-unique, huge);
+    // `metrics` -- needs the per-node depth / distance / clade size first.
+    function textField(label, extract, flags) {
+        return Object.assign({label: label, numeric: false, extract: extract}, flags || {});
+    }
+    function numericField(label, extract, flags) {
+        return Object.assign({label: label, numeric: true, extract: extract}, flags || {});
+    }
+
+    // The text fields of a node; the labels are the desktop's, verbatim.
+    const SEARCH_NODE_NAME = textField('Node Name', n => (n.name ? [n.name] : []), {always: true, anyText: true});
+    const SEARCH_TAXONOMY_SCIENTIFIC_NAME = textField('Taxonomy Scientific', n => searchTaxa(n).map(t => t.scientific_name).filter(Boolean), {anyText: true});
+    const SEARCH_TAXONOMY_COMMON_NAME = textField('Taxonomy Common', n => searchTaxa(n).map(t => t.common_name).filter(Boolean), {anyText: true});
+    const SEARCH_TAXONOMY_CODE = textField('Taxonomy Code', n => searchTaxa(n).map(t => t.code).filter(Boolean), {anyText: true});
+    const SEARCH_TAXONOMY_ID = textField('Taxonomy Identifier', n => searchTaxa(n).map(t => t.id && t.id.value).filter(Boolean), {anyText: true});
+    const SEARCH_TAXONOMY_SYNONYM = textField('Taxonomy Synonym', n => searchTaxa(n).reduce((a, t) => a.concat(t.synonyms || []), []).filter(Boolean), {anyText: true});
+    const SEARCH_TAXONOMY_LINEAGE = textField('Taxonomy Lineage', n => searchTaxa(n).reduce((a, t) => a.concat(t.lineage || []), []).filter(Boolean), {anyText: true});
+    const SEARCH_SEQUENCE_NAME = textField('Seq Name', n => searchSeqs(n).map(s => s.name).filter(Boolean), {anyText: true});
+    const SEARCH_GENE_NAME = textField('Gene Name', n => searchSeqs(n).map(s => s.gene_name).filter(Boolean), {anyText: true});
+    // phyloXML <sequence><symbol>: the gene symbol
+    const SEARCH_SEQUENCE_SYMBOL = textField('Gene Symbol', n => searchSeqs(n).map(s => s.symbol).filter(Boolean), {anyText: true});
+    const SEARCH_SEQUENCE_ACCESSION = textField('Seq Accession', n => searchSeqs(n).map(s => s.accession && s.accession.value).filter(Boolean), {anyText: true});
+    const SEARCH_DOMAIN = textField('Domain', n => searchSeqs(n).reduce((a, s) => a.concat((s.domain_architecture && s.domain_architecture.domains) ? s.domain_architecture.domains.map(d => d.name) : []), []).filter(Boolean));
+    const SEARCH_ANNOTATION = textField('Annotation', n => searchSeqs(n).reduce((a, s) => a.concat((s.annotations || []).reduce((b, an) => b.concat([an.desc, an.ref]), [])), []).filter(Boolean), {anyText: true});
+    const SEARCH_CROSS_REFERENCE = textField('Cross-Reference', n => searchSeqs(n).reduce((a, s) => a.concat((s.cross_references || []).reduce((b, x) => b.concat([x.value, x.source, x.comment]), [])), []).filter(Boolean), {anyText: true});
+    const SEARCH_MOLECULAR_SEQUENCE = textField('Molecular Sequence', n => searchSeqs(n).map(s => s.mol_seq).filter(Boolean), {suggest: false});
+    // in menu order
+    const SEARCH_TEXT_FIELDS = [
+        SEARCH_NODE_NAME, SEARCH_TAXONOMY_SCIENTIFIC_NAME, SEARCH_TAXONOMY_COMMON_NAME, SEARCH_TAXONOMY_CODE,
+        SEARCH_TAXONOMY_ID, SEARCH_TAXONOMY_SYNONYM, SEARCH_TAXONOMY_LINEAGE, SEARCH_SEQUENCE_NAME, SEARCH_GENE_NAME,
+        SEARCH_SEQUENCE_SYMBOL, SEARCH_SEQUENCE_ACCESSION, SEARCH_DOMAIN, SEARCH_ANNOTATION, SEARCH_CROSS_REFERENCE,
+        SEARCH_MOLECULAR_SEQUENCE
+    ];
+
+    // "Any Text": every anyText field above plus every custom property.
+    const SEARCH_ANY_TEXT = textField('Any Text', function (node) {
+        let out = [];
+        SEARCH_TEXT_FIELDS.forEach(function (f) {
+            if (f.anyText) out = out.concat(f.extract(node));
+        });
+        if (node.properties) {
+            for (let i = 0; i < node.properties.length; ++i) {
+                let p = node.properties[i];
+                if (!isInternalPropRef(p.ref) && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
+            }
+        }
+        return out;
+    }, {suggest: false});
+
+    const SEARCH_BRANCH_LENGTH = numericField('Branch Length', n => (typeof n.branch_length === 'number') ? [n.branch_length] : []);
+    const SEARCH_CONFIDENCE = numericField('Confidence', n => n.confidences ? n.confidences.map(c => c.value).filter(v => typeof v === 'number') : []);
+    const SEARCH_CLADE_SIZE = numericField('Clade Size (tips)', n => [n._srchClade], {metrics: true});
+    const SEARCH_CHILD_COUNT = numericField('Number of Children', n => [n.children ? n.children.length : 0]);
+    const SEARCH_DEPTH = numericField('Depth from Root', n => [n._srchDepth], {metrics: true});
+    const SEARCH_DISTANCE_FROM_ROOT = numericField('Distance from Root', n => [n._srchDist], {metrics: true});
+    const SEARCH_NODE_TYPE = textField('Node Type', function (node, root) {
+        let kids = node.children;
+        let isLeaf = !kids || kids.length === 0;
+        return [isLeaf ? 'leaf' : (node === root ? 'root' : 'internal')];
+    });
+
+    // The built-in fields by name, for a caller that asks "does this tree
+    // carry X?" -- the viewer's label presets test whether a field object is
+    // among availableSearchFields(tree), by identity. Property fields have
+    // no entry here: there is one per ref, made per tree.
+    forester.searchFields = {
+        anyText: SEARCH_ANY_TEXT,
+        nodeName: SEARCH_NODE_NAME,
+        taxonomyScientificName: SEARCH_TAXONOMY_SCIENTIFIC_NAME,
+        taxonomyCommonName: SEARCH_TAXONOMY_COMMON_NAME,
+        taxonomyCode: SEARCH_TAXONOMY_CODE,
+        taxonomyId: SEARCH_TAXONOMY_ID,
+        taxonomySynonym: SEARCH_TAXONOMY_SYNONYM,
+        taxonomyLineage: SEARCH_TAXONOMY_LINEAGE,
+        sequenceName: SEARCH_SEQUENCE_NAME,
+        geneName: SEARCH_GENE_NAME,
+        sequenceSymbol: SEARCH_SEQUENCE_SYMBOL,
+        sequenceAccession: SEARCH_SEQUENCE_ACCESSION,
+        domain: SEARCH_DOMAIN,
+        annotation: SEARCH_ANNOTATION,
+        crossReference: SEARCH_CROSS_REFERENCE,
+        molecularSequence: SEARCH_MOLECULAR_SEQUENCE,
+        branchLength: SEARCH_BRANCH_LENGTH,
+        confidence: SEARCH_CONFIDENCE,
+        cladeSize: SEARCH_CLADE_SIZE,
+        childCount: SEARCH_CHILD_COUNT,
+        depth: SEARCH_DEPTH,
+        distanceFromRoot: SEARCH_DISTANCE_FROM_ROOT,
+        nodeType: SEARCH_NODE_TYPE
     };
+
+    // One field per custom property ref; numeric when its declared datatype
+    // or, failing that, every one of its values says so.
+    function propertyField(ref, numeric) {
+        return {label: ref, numeric: numeric, extract: function (node) {
+            let out = [];
+            if (node.properties) {
+                for (let i = 0; i < node.properties.length; ++i) {
+                    let p = node.properties[i];
+                    if (p.ref === ref && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
+                }
+            }
+            return out;
+        }};
+    }
 
     function isInternalPropRef(ref) { return !ref || ref.indexOf('aptx:') === 0; }
 
@@ -3669,19 +3759,19 @@
     // dropdowns). Always exposes Any Text + Node Name; adds the text, numeric
     // and custom-property fields that are present, then structure fields.
     forester.availableSearchFields = function (root) {
-        let fields = [];
-        fields.push({ key: 'ANY', label: 'Any Text', numeric: false });
-        fields.push({ key: 'NN', label: SEARCH_FIELD_LABELS.NN, numeric: false });
-        if (!root) return fields;
+        let fields = [SEARCH_ANY_TEXT];
+        if (!root) {
+            SEARCH_TEXT_FIELDS.forEach(function (f) { if (f.always) fields.push(f); });
+            return fields;
+        }
 
-        let present = {};
+        let present = new Set();
         let hasBL = false, hasConf = false;
         let propRefs = {}; // ref -> { num, tot, dtNum, dtStr }
         forester.preOrderTraversalAll(root, function (n) {
-            for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
-                let key = SEARCH_TEXT_ORDER[k];
-                if (!present[key] && SEARCH_TEXT_EXTRACTORS[key](n).length > 0) present[key] = true;
-            }
+            SEARCH_TEXT_FIELDS.forEach(function (f) {
+                if (!f.always && !present.has(f) && f.extract(n).length > 0) present.add(f);
+            });
             if (!hasBL && typeof n.branch_length === 'number' && n.branch_length >= 0) hasBL = true;
             if (!hasConf && n.confidences) {
                 for (let i = 0; i < n.confidences.length; ++i) {
@@ -3700,23 +3790,20 @@
             }
         });
 
-        for (let k = 0; k < SEARCH_TEXT_ORDER.length; ++k) {
-            let key = SEARCH_TEXT_ORDER[k];
-            if (present[key]) fields.push({ key: key, label: SEARCH_FIELD_LABELS[key], numeric: false });
-        }
-        if (hasBL) fields.push({ key: 'BL', label: 'Branch Length', numeric: true });
-        if (hasConf) fields.push({ key: 'CO', label: 'Confidence', numeric: true });
+        SEARCH_TEXT_FIELDS.forEach(function (f) {
+            if (f.always || present.has(f)) fields.push(f);
+        });
+        if (hasBL) fields.push(SEARCH_BRANCH_LENGTH);
+        if (hasConf) fields.push(SEARCH_CONFIDENCE);
         let refs = Object.keys(propRefs).sort();
         for (let i = 0; i < refs.length; ++i) {
             let r = propRefs[refs[i]];
             let numeric = r.dtStr ? false : (r.dtNum ? true : (r.tot > 0 && r.num === r.tot));
-            fields.push({ key: 'PROP:' + refs[i], label: refs[i], numeric: numeric, propRef: refs[i] });
+            fields.push(propertyField(refs[i], numeric));
         }
-        fields.push({ key: 'CS', label: 'Clade Size (tips)', numeric: true });
-        fields.push({ key: 'NC', label: 'Number of Children', numeric: true });
-        fields.push({ key: 'DE', label: 'Depth from Root', numeric: true });
-        if (hasBL) fields.push({ key: 'DR', label: 'Distance from Root', numeric: true });
-        fields.push({ key: 'NT', label: 'Node Type', numeric: false });
+        fields.push(SEARCH_CLADE_SIZE, SEARCH_CHILD_COUNT, SEARCH_DEPTH);
+        if (hasBL) fields.push(SEARCH_DISTANCE_FROM_ROOT);
+        fields.push(SEARCH_NODE_TYPE);
         return fields;
     };
 
@@ -3738,51 +3825,6 @@
             n._srchClade = s;
         });
     }
-
-    // Extract the value(s) of a field from a node (strings for text fields,
-    // numbers for the numeric ones). A field is multi-valued; any value matching
-    // is a match. root is needed only for the Node Type field.
-    forester.extractSearchValues = function (node, field, root) {
-        let key = field.key;
-        if (key === 'ANY') {
-            let out = [];
-            for (let i = 0; i < SEARCH_ANY_TEXT_KEYS.length; ++i) {
-                out = out.concat(SEARCH_TEXT_EXTRACTORS[SEARCH_ANY_TEXT_KEYS[i]](node));
-            }
-            if (node.properties) {
-                for (let i = 0; i < node.properties.length; ++i) {
-                    let p = node.properties[i];
-                    if (!isInternalPropRef(p.ref) && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
-                }
-            }
-            return out;
-        }
-        if (key === 'NT') {
-            let kids = node.children;
-            let isLeaf = !kids || kids.length === 0;
-            return [isLeaf ? 'leaf' : (node === root ? 'root' : 'internal')];
-        }
-        if (key.indexOf('PROP:') === 0) {
-            let out = [];
-            if (node.properties) {
-                for (let i = 0; i < node.properties.length; ++i) {
-                    let p = node.properties[i];
-                    if (p.ref === field.propRef && p.value !== null && p.value !== undefined && p.value !== '') out.push(p.value);
-                }
-            }
-            return out;
-        }
-        if (SEARCH_TEXT_EXTRACTORS[key]) return SEARCH_TEXT_EXTRACTORS[key](node);
-        switch (key) {
-            case 'BL': return (typeof node.branch_length === 'number') ? [node.branch_length] : [];
-            case 'CO': return node.confidences ? node.confidences.map(c => c.value).filter(v => typeof v === 'number') : [];
-            case 'CS': return [node._srchClade];
-            case 'NC': { let kids = node.children; return [kids ? kids.length : 0]; }
-            case 'DE': return [node._srchDepth];
-            case 'DR': return [node._srchDist];
-            default: return [];
-        }
-    };
 
     // Run one search spec { field, mode, value, value2, caseSensitive, inverse }
     // over the tree and return the Set of matching nodes.
@@ -3810,7 +3852,7 @@
         // values are unchanged; only the set of nodes considered is narrowed.
         let nodes = realRootOf(root);
         let field = spec.field;
-        if (field.key === 'CS' || field.key === 'DE' || field.key === 'DR' || field.key === 'NC') computeSearchMetrics(root);
+        if (field.metrics) computeSearchMetrics(root);
 
         let v = (spec.value === null || spec.value === undefined) ? '' : String(spec.value);
         v = v.replace(/\s+/g, ' ').trim();
@@ -3823,7 +3865,7 @@
             let lo = (b !== null) ? Math.min(a, b) : a;
             let hi = (b !== null) ? Math.max(a, b) : a;
             test = function (n) {
-                let vals = forester.extractSearchValues(n, field, root);
+                let vals = field.extract(n, root);
                 for (let i = 0; i < vals.length; ++i) {
                     let x = (typeof vals[i] === 'number') ? vals[i] : forester.parseFiniteDouble(vals[i]);
                     if (x !== null && numMatches(x, spec.mode, a, lo, hi)) return true;
@@ -3852,7 +3894,7 @@
             }
             if (!compiled.length) return result;
             test = function (n) {
-                let vals = forester.extractSearchValues(n, field, root);
+                let vals = field.extract(n, root);
                 for (let oi = 0; oi < compiled.length; ++oi) {
                     let ands = compiled[oi], ok = true;
                     for (let ai = 0; ai < ands.length; ++ai) {
@@ -3872,7 +3914,7 @@
             // Complement, scoped to nodes that actually carry this field.
             let inv = new Set();
             forester.preOrderTraversalAll(nodes, function (n) {
-                if (!result.has(n) && forester.extractSearchValues(n, field, root).length > 0) inv.add(n);
+                if (!result.has(n) && field.extract(n, root).length > 0) inv.add(n);
             });
             return inv;
         }
@@ -3880,13 +3922,14 @@
     };
 
     // Distinct, trimmed, sorted values of a specific text field across the tree,
-    // for the value-box autocomplete. Empty for numeric, Any Text, or Molecular
-    // Sequence (near-unique / huge). cap limits the list length (optional).
+    // for the value-box autocomplete. Empty for a numeric field and for the
+    // fields flagged suggest: false (Any Text; the molecular sequence, which
+    // is near-unique and huge). cap limits the list length (optional).
     forester.distinctSearchValues = function (root, field, cap) {
-        if (!root || !field || field.numeric || field.key === 'ANY' || field.key === 'MS') return [];
+        if (!root || !field || field.numeric || field.suggest === false) return [];
         let set = new Set();
         forester.preOrderTraversalAll(root, function (n) {
-            let vals = forester.extractSearchValues(n, field, root);
+            let vals = field.extract(n, root);
             for (let i = 0; i < vals.length; ++i) {
                 if (vals[i] !== null && vals[i] !== undefined) {
                     let v = String(vals[i]).trim();

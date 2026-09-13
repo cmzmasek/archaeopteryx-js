@@ -4384,12 +4384,8 @@ function (root, d3, forester, phyloXml) {
         // explicitly is derived from what the loaded tree actually contains
         // (an explicit caller option always wins). Field presence comes from
         // the same per-tree discovery that drives the search Field menu.
-        let presentFields = new Set();
-        if (_treeData) {
-            forester.availableSearchFields(_treeData).forEach(function (f) {
-                presentFields.add(f.key);
-            });
-        }
+        let presentFields = new Set(_treeData ? forester.availableSearchFields(_treeData) : []);
+        let F = forester.searchFields;
 
         // Branch lengths are worth drawing to scale only when MOST of the
         // branches that CARRY THE SCALE have one. Two corrections to the
@@ -4512,18 +4508,18 @@ function (root, d3, forester, phyloXml) {
         // Which taxonomy fields to label with is decided from the tree, not
         // configured: show the scientific name and code when present, and fall
         // back to the common name only when there is no scientific name.
-        _state.showTaxonomyCode = presentFields.has('TC');
-        _state.showTaxonomyScientificName = presentFields.has('TS');
-        _state.showTaxonomyCommonName = presentFields.has('TN') && !presentFields.has('TS');
+        _state.showTaxonomyCode = presentFields.has(F.taxonomyCode);
+        _state.showTaxonomyScientificName = presentFields.has(F.taxonomyScientificName);
+        _state.showTaxonomyCommonName = presentFields.has(F.taxonomyCommonName) && !presentFields.has(F.taxonomyScientificName);
         _state.showTaxonomyRank = false;
         _state.showTaxonomySynonyms = false;
         // Likewise ONE good sequence identifier rather than all of them, in
         // order of preference: sequence name, gene name, symbol, accession.
-        _state.showSequenceName = presentFields.has('SN');
-        _state.showSequenceGeneSymbol = presentFields.has('GN') && !presentFields.has('SN');
-        _state.showSequenceSymbol = presentFields.has('SS') && !presentFields.has('SN') && !presentFields.has('GN');
-        _state.showSequenceAccession = presentFields.has('SA') && !presentFields.has('SN')
-            && !presentFields.has('GN') && !presentFields.has('SS');
+        _state.showSequenceName = presentFields.has(F.sequenceName);
+        _state.showSequenceGeneSymbol = presentFields.has(F.geneName) && !presentFields.has(F.sequenceName);
+        _state.showSequenceSymbol = presentFields.has(F.sequenceSymbol) && !presentFields.has(F.sequenceName) && !presentFields.has(F.geneName);
+        _state.showSequenceAccession = presentFields.has(F.sequenceAccession) && !presentFields.has(F.sequenceName)
+            && !presentFields.has(F.geneName) && !presentFields.has(F.sequenceSymbol);
 
         // Which of the three groups start CHECKED is then decided from the
         // label text itself (forester.suggestLabelFields): a field whose text
@@ -7090,12 +7086,10 @@ function (root, d3, forester, phyloXml) {
 
     // Read a search box's current field / mode / value(s) into a spec.
     function currentSearchSpec(idx) {
-        let key = getValue(idx === 0 ? SEARCH_FIELD_SELECT_0 : SEARCH_FIELD_SELECT_1);
-        let field = null;
-        for (let i = 0; i < _searchFields.length; ++i) {
-            if (_searchFields[i].key === key) { field = _searchFields[i]; break; }
-        }
-        if (!field) field = _searchFields[0] || { key: 'ANY', label: 'Any Text', numeric: false };
+        // the field menu's option values index _searchFields; before a tree
+        // is loaded there is only Any Text
+        let field = _searchFields[Number(getValue(idx === 0 ? SEARCH_FIELD_SELECT_0 : SEARCH_FIELD_SELECT_1))]
+            || _searchFields[0] || forester.availableSearchFields(null)[0];
         let mode = getValue(idx === 0 ? SEARCH_MODE_SELECT_0 : SEARCH_MODE_SELECT_1);
         if (!mode) mode = field.numeric ? 'eq' : 'contains';
         return {
@@ -7120,20 +7114,23 @@ function (root, d3, forester, phyloXml) {
     // Fill both search-field dropdowns from the loaded tree's available fields,
     // then set up each box's mode menu. Called when a tree is (re)loaded.
     function populateSearchMenus() {
+        let before = _searchFields;
         _searchFields = forester.availableSearchFields(_root);
         [SEARCH_FIELD_SELECT_0, SEARCH_FIELD_SELECT_1].forEach(function (selId) {
             let sel = byId(selId);
             if (!sel) return;
-            let prev = sel.value;
+            // a box keeps its field when the new tree still offers it (labels
+            // are unique: a property's label is its ref, which has a colon)
+            let prev = before[Number(sel.value)];
+            let keep = prev ? _searchFields.findIndex(f => f.label === prev.label) : -1;
             sel.innerHTML = '';
             for (let i = 0; i < _searchFields.length; ++i) {
                 let opt = document.createElement('option');
-                opt.value = _searchFields[i].key;
+                opt.value = String(i);
                 opt.textContent = _searchFields[i].label;
                 sel.appendChild(opt);
             }
-            if (prev && _searchFields.some(f => f.key === prev)) sel.value = prev;
-            else sel.value = 'ANY';
+            sel.value = String(keep >= 0 ? keep : 0);
         });
         populateSearchModeMenu(0);
         populateSearchModeMenu(1);
@@ -7188,7 +7185,7 @@ function (root, d3, forester, phyloXml) {
         let input = byId(idx === 0 ? SEARCH_FIELD_0 : SEARCH_FIELD_1);
         if (!dl || !input) return;
         let spec = currentSearchSpec(idx);
-        let enable = !spec.field.numeric && spec.field.key !== 'ANY' && spec.field.key !== 'MS' && spec.mode !== 'regex';
+        let enable = !spec.field.numeric && spec.field.suggest !== false && spec.mode !== 'regex';
         dl.innerHTML = '';
         if (!enable) { input.removeAttribute('list'); return; }
         let vals = forester.distinctSearchValues(_root, spec.field, SEARCH_AUTOCOMPLETE_CAP);
