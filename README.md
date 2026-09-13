@@ -204,12 +204,14 @@ how many tips it holds.
 
 In the rectangular layouts a rooted tree shows a short **stub** branch into
 its root; a tree that declares itself unrooted (phyloXML `rooted="false"`, a
-Nexus `[&U]` tree) shows none, and the circular and unrooted layouts never
-draw one. A subtree view always shows the stub, since a clade has a definite
-root, whatever the branch above it was. When the whole tree is a phylogram
-and the file gives the root a branch length, that branch is drawn to scale
-instead of the stub. The root itself wears a circle only for the reasons any
-node does — an event, a search hit, a selection, a visualization.
+Nexus `[&U]` tree) shows none, and the circular layout never draws one. A
+subtree view always shows the stub, since a clade has a definite root,
+whatever the branch above it was. When the whole tree is a phylogram and the
+file gives the root a branch length, that branch is drawn to scale instead
+of the stub — except in the **unrooted** display, which draws no root branch
+of any kind, real or stub: there the root is a point of the fan, not the end
+of a branch from nowhere. The root itself wears a circle only for the reasons
+any node does — an event, a search hit, a selection, a visualization.
 
 In the two radial layouts the zoom row changes meaning, exactly as on the
 desktop: **Y+ / Y− become the plain + / − zoom** (a circle has one diameter;

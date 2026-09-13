@@ -2746,17 +2746,24 @@ function (root, d3, forester, phyloXml) {
             // branchLengthScaling just wrote) and are one constant step per
             // level in cladogram mode; the radial budget matches circular's.
             let budget = Math.min(_displayWidth, _displayHeight) * 0.42;
+            // The fan is laid out from the displayed tree's OWN root, never
+            // from the wrapper above it: an unrooted display draws no root
+            // branch at all, not the file's real one and not the stub
+            // (Christian, 2026-09-13). Laid out from the wrapper, the root
+            // hung one cladogram step -- or its own branch length -- off the
+            // centre on a spoke leading in from nowhere.
+            let top = topNode() || _root;
             let lengthOf;
             if (_state.phylogram) {
                 let maxDist = 0;
-                forester.preOrderTraversal(_root, function (n) {
-                    if (!n.children && n.distToRoot > maxDist) {
-                        maxDist = n.distToRoot;
+                forester.preOrderTraversal(top, function (n) {
+                    if (!n.children && n.distToRoot - top.distToRoot > maxDist) {
+                        maxDist = n.distToRoot - top.distToRoot;
                     }
                 });
                 let factor = maxDist > 0 ? budget / maxDist : 1;
                 lengthOf = function (n) {
-                    return Math.max(0, n.distToRoot - (n.parent ? n.parent.distToRoot : 0)) * factor;
+                    return Math.max(0, n.distToRoot - n.parent.distToRoot) * factor;
                 };
             } else {
                 let maxDepth = 0;
@@ -2765,12 +2772,19 @@ function (root, d3, forester, phyloXml) {
                         maxDepth = nodes[i].depth;
                     }
                 }
-                let step = budget / Math.max(1, maxDepth);
+                // depths count from the wrapper, so the tree's own levels are one fewer
+                let step = budget / Math.max(1, maxDepth - (top === _root ? 0 : 1));
                 lengthOf = function () {
                     return step;
                 };
             }
-            _unroot = forester.equalAngleLayout(_root, UNROOTED_START_ANGLE + _radialRotation, lengthOf);
+            _unroot = forester.equalAngleLayout(top, UNROOTED_START_ANGLE + _radialRotation, lengthOf);
+            if (top !== _root) {
+                // the wrapper sits on the root, so their link has no length
+                _root.ux = top.ux;
+                _root.uy = top.uy;
+                _root.uangle = top.uangle;
+            }
         } else {
             _radial = null;
             _unroot = null;
