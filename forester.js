@@ -3794,6 +3794,190 @@
     };
 
     // --------------------------------------------------------------
+    // Metadata tables
+    // --------------------------------------------------------------
+    // A table beside the tree -- TSV or CSV with a header row, the first
+    // column naming the tip -- joined onto the tips as node properties, so
+    // that everything downstream of a property sees the columns as if the
+    // file had carried them: the automatic Color-by and Shape candidates,
+    // the legends, the search fields, the node-data dialog, the phyloXML
+    // writer. Every other browser viewer takes such a table; it was the one
+    // input this library lacked (field review, 2026-09-13).
+
+    forester.METADATA_NAMESPACE = 'meta';
+
+    function splitDelimitedLine(line, delimiter) {
+        let out = [];
+        let cur = '';
+        let quoted = false;
+        for (let i = 0; i < line.length; ++i) {
+            let c = line.charAt(i);
+            if (quoted) {
+                if (c === '"') {
+                    if (line.charAt(i + 1) === '"') {   // a doubled quote is a literal one
+                        cur += '"';
+                        i++;
+                    } else {
+                        quoted = false;
+                    }
+                } else {
+                    cur += c;
+                }
+            } else if (c === '"') {
+                quoted = true;
+            } else if (c === delimiter) {
+                out.push(cur);
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        out.push(cur);
+        return out.map(function (s) {
+            return s.trim();
+        });
+    }
+
+    // Splits delimited text into its header and rows. The delimiter is
+    // whichever of tab, comma and semicolon occurs most in the header line
+    // (tab when none does); fields may be double-quoted; blank lines and
+    // lines starting with '#' are skipped; Windows line ends are fine.
+    // Header names and cells come back trimmed. Throws when there is no
+    // header or fewer than two columns.
+    forester.parseDelimitedTable = function (text) {
+        let lines = String(text || '').split(/\r?\n/).filter(function (l) {
+            return l.trim().length > 0 && l.charAt(0) !== '#';
+        });
+        if (lines.length === 0) {
+            throw new Error('the table is empty');
+        }
+        let delimiter = '\t';
+        let best = -1;
+        ['\t', ',', ';'].forEach(function (d) {
+            let n = lines[0].split(d).length - 1;
+            if (n > best) {
+                best = n;
+                delimiter = d;
+            }
+        });
+        let columns = splitDelimitedLine(lines[0], delimiter);
+        if (columns.length < 2) {
+            throw new Error('the table needs a header row with at least two columns: the tip name, then the data');
+        }
+        let rows = [];
+        for (let i = 1; i < lines.length; ++i) {
+            rows.push(splitDelimitedLine(lines[i], delimiter));
+        }
+        return {columns: columns, rows: rows, delimiter: delimiter};
+    };
+
+    // The property ref for a column. A header that already reads as a
+    // phyloXML ref (ns:local, no whitespace) is kept as it is; any other
+    // becomes "meta:" plus the header with its whitespace as '_' -- the
+    // display name prettifies that back to spaces, so "Collection Date"
+    // stays "Collection Date" in every menu.
+    forester.metadataColumnRef = function (header, index) {
+        let h = String(header || '').trim();
+        if (h.length === 0) {
+            h = 'column_' + (index + 1);
+        }
+        if (/^[A-Za-z0-9_]+:\S+$/.test(h)) {
+            return h;
+        }
+        return forester.METADATA_NAMESPACE + ':' + h.replace(/\s+/g, '_');
+    };
+
+    // Joins a table onto the tree's tips. The first column is the key,
+    // matched to the tip's name exactly, then case-insensitively. Every
+    // other column becomes one property per matched tip with a non-empty
+    // cell (applies_to node; the datatype is xsd:integer or xsd:double when
+    // every filled cell of the column is such a number, xsd:string
+    // otherwise). A property the tip already carries under the same ref is
+    // replaced -- the table wins. Returns what happened:
+    //   {columns: [{header, ref, datatype, filled}], tips, matchedTips,
+    //    unmatchedTips: [names], unmatchedRows: [keys], properties}
+    forester.joinMetadataTable = function (tree, text) {
+        let table = forester.parseDelimitedTable(text);
+        let tips = forester.getAllExternalNodes(tree);
+        let byName = Object.create(null);
+        let byLower = Object.create(null);
+        tips.forEach(function (n) {
+            if (n.name) {
+                byName[n.name] = n;
+                let lower = n.name.toLowerCase();
+                if (!byLower[lower]) {
+                    byLower[lower] = n;
+                }
+            }
+        });
+        let columns = [];
+        for (let j = 1; j < table.columns.length; ++j) {
+            let filled = table.rows.map(function (r) {
+                return r[j] === undefined ? '' : r[j];
+            }).filter(function (v) {
+                return v.length > 0;
+            });
+            let datatype = 'xsd:string';
+            if (filled.length > 0) {
+                if (filled.every(function (v) { return /^[+-]?\d+$/.test(v); })) {
+                    datatype = 'xsd:integer';
+                } else if (filled.every(function (v) { return VIS_NUMERIC_RE.test(v); })) {
+                    datatype = 'xsd:double';
+                }
+            }
+            columns.push({header: table.columns[j], ref: forester.metadataColumnRef(table.columns[j], j),
+                datatype: datatype, filled: 0});
+        }
+        let matched = new Set();
+        let unmatchedRows = [];
+        let properties = 0;
+        table.rows.forEach(function (r) {
+            let key = r[0] === undefined ? '' : r[0];
+            if (key.length === 0) {
+                return;
+            }
+            let tip = byName[key] || byLower[key.toLowerCase()];
+            if (!tip) {
+                unmatchedRows.push(key);
+                return;
+            }
+            matched.add(tip);
+            columns.forEach(function (col, k) {
+                let v = r[k + 1] === undefined ? '' : r[k + 1];
+                if (v.length === 0) {
+                    return;
+                }
+                if (!tip.properties) {
+                    tip.properties = [];
+                }
+                let existing = null;
+                for (let i = 0; i < tip.properties.length; ++i) {
+                    if (tip.properties[i].ref === col.ref) {
+                        existing = tip.properties[i];
+                        break;
+                    }
+                }
+                if (existing) {
+                    existing.value = v;
+                    existing.datatype = col.datatype;
+                    existing.applies_to = 'node';
+                } else {
+                    tip.properties.push({ref: col.ref, value: v, datatype: col.datatype, applies_to: 'node'});
+                }
+                col.filled++;
+                properties++;
+            });
+        });
+        let unmatchedTips = tips.filter(function (n) {
+            return !matched.has(n);
+        }).map(function (n) {
+            return n.name || '';
+        });
+        return {columns: columns, tips: tips.length, matchedTips: matched.size,
+            unmatchedTips: unmatchedTips, unmatchedRows: unmatchedRows, properties: properties};
+    };
+
+    // --------------------------------------------------------------
     // Search engine
     // --------------------------------------------------------------
     // Field-and-mode search over a phylogeny (mirrors the desktop Archaeopteryx

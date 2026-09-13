@@ -385,6 +385,10 @@
     &nbsp;&middot;&nbsp; <a href="index.html">all demos&nbsp;↗</a>
     <span class="viewing" id="viewingLine"></span>
     <span class="viewing"><a href="#" id="openAnother">Open another tree…</a> <span style="color:#7f93a3">(or drop a file)</span></span>
+    <span class="viewing"><a href="#" id="addMetadata">Add a metadata table…</a> <span style="color:#7f93a3">(TSV or CSV, first column = tip name)</span></span>
+    <span class="viewing" id="metadataLine"></span>
+    <input type="file" id="metaInput" hidden accept=".tsv,.csv,.txt,.tab">
+
     <span class="viewing"><a href="#" id="expertToggle">Expert options</a> <span style="color:#7f93a3">(launch config)</span></span>
 </div>
 
@@ -398,8 +402,11 @@
 
         <label class="choose-btn" for="fileInput">Choose a file</label>
         <input type="file" id="fileInput" hidden
-               accept=".xml,.phyloxml,.nex,.nexus,.nx,.nh,.nwk,.newick,.nhx,.tre,.tree,.treefile,.json,.txt">
+               accept=".xml,.phyloxml,.nex,.nexus,.nx,.nh,.nwk,.newick,.nhx,.tre,.tree,.treefile,.json,.txt,.tsv,.csv,.tab">
         <p class="drophint">…or drop a tree file anywhere on this page.</p>
+        <p class="drophint">A <b>metadata table</b> can come the same ways, before or after the tree:
+            TSV or CSV with a header row, the first column naming the tip. Its columns join the
+            tips and are offered for Color-by and Shape, searched, and shown in the node data.</p>
 
         <div class="pastewrap">
             <label for="pasteBox">…or paste a tree here (best for small trees):</label>
@@ -490,8 +497,71 @@
     // next frame. Small inputs skip all of this and stay synchronous.
     var BIG_INPUT_CHARS = 1000000;
 
+    // ---- metadata tables ------------------------------------------------
+    // A TSV / CSV dropped, chosen or pasted -- before the tree or while one
+    // is showing -- is joined onto the tips (forester.joinMetadataTable) and
+    // the tree relaunches with the columns as properties. Told apart from a
+    // tree by its first line: no tree starts with a delimited header.
+    var pendingMetadata = null;   // {name, text} until a tree consumes it, then kept for relaunches
+
+    function looksLikeTable(text) {
+        var lines = String(text || '').split(/\r?\n/).filter(function (l) {
+            return l.trim().length > 0 && l.charAt(0) !== '#';
+        });
+        if (lines.length < 2) {
+            return false;
+        }
+        var first = lines[0].trim();
+        if (/^[<(\[{]/.test(first) || /^#NEXUS/i.test(first)) {
+            return false;
+        }
+        return /[\t,;]/.test(first);
+    }
+
+    function openMetadata(fileName, text) {
+        showError('');
+        try {
+            forester.parseDelimitedTable(text);   // fail early, with the parser's own words
+        } catch (e) {
+            showError('Could not read the metadata table' + (fileName ? ' "' + fileName + '"' : '') + ': '
+                + (e && e.message ? e.message : String(e)));
+            return;
+        }
+        pendingMetadata = {name: fileName || 'pasted table', text: text};
+        if (lastText !== null) {
+            ++loadSeq;
+            openTree(lastFileName, lastText);   // relaunch: the join happens in openTreeNow
+        } else {
+            describeMetadata(null);
+            showError('Metadata table "' + pendingMetadata.name + '" is ready and will be joined to the next tree you open.');
+        }
+    }
+
+    function describeMetadata(report) {
+        var line = document.getElementById('metadataLine');
+        if (!pendingMetadata || !report) {
+            line.textContent = '';
+            return;
+        }
+        var text = 'Metadata: ' + report.columns.length + (report.columns.length === 1 ? ' column' : ' columns')
+            + ' joined to ' + report.matchedTips + ' of ' + report.tips + ' tips';
+        if (report.unmatchedRows.length > 0) {
+            text += '; ' + report.unmatchedRows.length + (report.unmatchedRows.length === 1 ? ' row' : ' rows')
+                + ' matched no tip';
+        }
+        line.textContent = text;
+        line.title = (report.unmatchedRows.length ? 'rows without a tip: ' + report.unmatchedRows.slice(0, 12).join(', ')
+            + (report.unmatchedRows.length > 12 ? ', …' : '') + '\n' : '')
+            + (report.unmatchedTips.length ? 'tips without a row: ' + report.unmatchedTips.slice(0, 12).join(', ')
+            + (report.unmatchedTips.length > 12 ? ', …' : '') : '');
+    }
+
     function openTree(fileName, text) {
         showError('');
+        if (looksLikeTable(text)) {
+            openMetadata(fileName, text);
+            return;
+        }
         if (!text || !text.trim()) {
             showError(fileName ? 'The file is empty.'
                 : 'The paste box is empty. Paste a tree — or click "try an example".');
@@ -527,6 +597,15 @@
                 + '— it does not look like a phylogenetic tree.');
             return;
         }
+        var metadataReport = null;
+        if (pendingMetadata) {
+            try {
+                metadataReport = forester.joinMetadataTable(tree, pendingMetadata.text);
+            } catch (e) {
+                showError('Could not join the metadata table: ' + (e && e.message ? e.message : String(e)));
+                pendingMetadata = null;
+            }
+        }
         try {
             if (viewer) {
                 viewer.destroy();
@@ -553,6 +632,11 @@
         landing.hidden = true;
         toolbar.hidden = false;
         viewingLine.textContent = 'Viewing: ' + (fileName || 'pasted tree');
+        describeMetadata(metadataReport);
+        if (metadataReport && metadataReport.matchedTips === 0) {
+            showError('The metadata table "' + pendingMetadata.name + '" matched none of the tips: its first column must hold the tip names'
+                + (metadataReport.unmatchedRows.length ? ' (first keys: ' + metadataReport.unmatchedRows.slice(0, 5).join(', ') + ')' : '') + '.');
+        }
     }
 
     function readFile(f) {
@@ -573,6 +657,23 @@
             readFile(this.files[0]);
             this.value = '';   // so picking the same file again re-fires change
         }
+    });
+
+    document.getElementById('metaInput').addEventListener('change', function () {
+        if (this.files && this.files[0]) {
+            var f = this.files[0];
+            f.text().then(function (text) {
+                openMetadata(f.name, text);
+            }, function () {
+                showError('Could not read the file "' + f.name + '".');
+            });
+            this.value = '';
+        }
+    });
+
+    document.getElementById('addMetadata').addEventListener('click', function (e) {
+        e.preventDefault();
+        document.getElementById('metaInput').click();
     });
 
     document.getElementById('pasteBtn').addEventListener('click', function () {

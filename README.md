@@ -223,6 +223,36 @@ also resets rotation and label direction. Unrooted
 additionally greys out the aligned-phylogram option and Auto-hide Labels
 (there is no common label edge, and no even row spacing to hide against).
 
+## Metadata tables
+
+A tree file rarely carries everything known about its tips. A **metadata
+table** beside it does: TSV or CSV, a header row, the first column naming the
+tip and every other column a piece of data. On the [open page](https://cmzmasek.github.io/archaeopteryx-js/open.html)
+drop, choose or paste the table before or after the tree — a table pasted
+first waits for the tree; one added while a tree is showing joins it and the
+view relaunches — and the toolbar says how many columns joined how many tips,
+with the rows that matched no tip and the tips without a row a hover away.
+
+Each column becomes a node property (`meta:` plus the header, so "Collection
+Date" comes back as `Collection Date` in every menu; a header that already
+reads as `namespace:name` is kept as it is). From there nothing is special:
+the columns are offered for **Color-by** and **Shape** by the same rules as
+any property, with the same legends; they are **search** fields, typed
+numeric when every filled cell is a number; they appear in the **node data**;
+and they are written into a phyloXML export, so a saved tree keeps them.
+Tip names are matched exactly, then case-insensitively; empty cells add
+nothing; a column the tree already carries under the same ref is replaced by
+the table's values. Quoted cells, `#` comment lines and Windows line ends are
+fine.
+
+Embedders do the same in two lines, before `launch()`:
+
+```js
+const tree = archaeopteryx.parseTree(name, treeText);
+const report = forester.joinMetadataTable(tree, tableText);  // {columns, tips, matchedTips, unmatchedTips, unmatchedRows, properties}
+archaeopteryx.launch('#tree', tree, config);
+```
+
 ## Searching
 
 Two search boxes (A and B), each with its own **field** menu (built from what
@@ -542,6 +572,7 @@ a popup any more, and nothing fails silently.
 | **Auspice / Nextstrain** `dataset.json` (v2) | in | Phylodynamic builds: sampling dates and their confidence, cumulative divergence, and discrete traits (country, clade, host, ...) with their posterior distributions. | [5] |
 | **BEAST** / BEAST 2 / TreeAnnotator annotations | in (embedded in Newick/Nexus) | `[&posterior=...,height_95%_HPD={lo,hi},rate=...]`-style blobs: posterior clade support, node-age confidence intervals, per-branch rates and other traits. FigTree's `!color` is read the same way. | [6, 7] |
 | **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
+| **Metadata table** (`.tsv`, `.csv`) | in (beside a tree) | A header row and one row per tip, the first column naming the tip: every other column is joined onto the tips as a property, so it is offered for Color-by and Shape, searched, shown in the node data and written into phyloXML exports. See [Metadata tables](#metadata-tables). | — |
 | **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. Offered in the Download menu only when the tree actually carries molecular sequences (aligned or not). | [9] |
 | SVG · PNG · vector PDF | out | A snapshot of the drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
 
