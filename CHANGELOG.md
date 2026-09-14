@@ -27,6 +27,13 @@ consumers only see a change when a version is cut.
   selected, as for search hits.
 - **Switching trees in a multi-tree file clears collapsing**, on the tree
   left and the tree opened: each tree opens with nothing collapsed.
+- **Download Ext. Node Data writes a table with a header.** One row per tip,
+  one column per field, named as the desktop's node-data export names them
+  (`name`, `taxonomy_scientific_name`, …, `branch_length`, then each
+  property ref), empty where a tip has no value; columns no tip fills are
+  left out. It used to write each tip's values one after another with no
+  header, so a column held different fields on different rows. The file is
+  now `.tsv`, and it opens again as a metadata table.
 
 ### Fixed
 

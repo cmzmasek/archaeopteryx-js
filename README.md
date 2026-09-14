@@ -278,6 +278,13 @@ nothing; a column the tree already carries under the same ref is replaced by
 the table's values. Quoted cells, `#` comment lines and Windows line ends are
 fine.
 
+The node menu's **Download Ext. Node Data** writes the other direction: the
+tips under a node as a tab-separated table, header first, with the desktop
+Archaeopteryx's column names (`name`, `taxonomy_scientific_name`, …,
+`branch_length`, then one column per property ref). A column no tip fills
+is left out, and a `node_id` column comes first when tip names are blank or
+repeated. Such a file opens again as a metadata table.
+
 Embedders do the same in two lines, before `launch()`:
 
 ```js

@@ -5622,134 +5622,21 @@ function (root, d3, forester, phyloXml) {
                 update();
             }
 
+            // The tips under the node as a tab-separated table with a header,
+            // the desktop's columns (forester.externalNodeDataTable), top to
+            // bottom as drawn; it reads back through a metadata-table join.
             function downloadExternalNodeDataAll(node) {
-
-                let addSep = function (t) {
-                    if (t.length > 0) {
-                        t += '\t';
-                    }
-                    return t;
-                };
-
-                let addSepSame = function (t) {
-                    if (t.length > 0) {
-                        t += ', ';
-                    }
-                    return t;
-                };
-                let text_all = '';
-
                 const ext_nodes = forester.getAllExternalNodes(node).reverse();
-
                 let filename;
                 if (ext_nodes.length === 1 && ext_nodes[0].name) {
-                    filename = 'External_Node_Data_for_Node_' + ext_nodes[0].name.replace(/\W/g, '_') + '.txt';
+                    filename = 'External_Node_Data_for_Node_' + ext_nodes[0].name.replace(/\W/g, '_') + '.tsv';
                 } else {
-                    filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.txt';
+                    filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.tsv';
                 }
-
-                for (let j = 0, l = ext_nodes.length; j < l; ++j) {
-                    let text = '';
-                    let n = ext_nodes[j];
-                    if (n.name) {
-                        text += n.name
-                    }
-
-                    if (n.properties && (n.properties.length > 0)) {
-                        const sorted_properties = n.properties.concat().sort();
-                        const l = sorted_properties.length;
-                        let properties_text = '';
-                        let prev_property_ref = null;
-                        for (let pl = 0; pl < l; ++pl) {
-                            if (forester.isNodeScopedProperty(sorted_properties[pl])) {
-                                if (sorted_properties[pl].ref === prev_property_ref) {
-                                    properties_text = addSepSame(properties_text);
-                                } else {
-                                    prev_property_ref = sorted_properties[pl].ref;
-                                    properties_text = addSep(properties_text);
-                                }
-                                properties_text += sorted_properties[pl].value;
-                            }
-                        }
-                        if (properties_text.length > 0) {
-                            text = addSep(text);
-                            text += properties_text;
-                        }
-                    }
-
-                    if (n.taxonomies) {
-                        let tax_text = '';
-                        for (let i = 0; i < n.taxonomies.length; ++i) {
-                            let t = n.taxonomies[i];
-                            if (t.id) {
-                                if (t.id.provider) {
-                                    tax_text = addSep(tax_text);
-                                    tax_text += '[' + t.id.provider + ']:' + t.id.value;
-                                } else {
-                                    tax_text = addSep(tax_text);
-                                    tax_text += t.id.value;
-                                }
-                            }
-                            if (t.code) {
-                                tax_text = addSep(tax_text);
-                                tax_text += t.code;
-                            }
-                            if (t.scientific_name) {
-                                tax_text = addSep(tax_text);
-                                tax_text += t.scientific_name;
-                            }
-                            if (t.common_name) {
-                                tax_text = addSep(tax_text);
-                                tax_text += t.common_name;
-                            }
-                            if (t.rank) {
-                                tax_text = addSep(tax_text);
-                                tax_text += t.rank;
-                            }
-                        }
-                        text = addSep(text);
-                        text += tax_text;
-                    }
-                    if (n.sequences) {
-                        let seq_text = '';
-                        for (let i = 0; i < n.sequences.length; ++i) {
-                            let s = n.sequences[i];
-                            if (s.accession) {
-                                if (s.accession.source) {
-                                    seq_text = addSep(seq_text);
-                                    seq_text += '[' + s.accession.source + ']:' + s.accession.value;
-                                } else {
-                                    seq_text = addSep(seq_text);
-                                    seq_text += s.accession.value;
-                                }
-                            }
-                            if (s.symbol) {
-                                seq_text = addSep(seq_text);
-                                seq_text += s.symbol;
-                            }
-                            if (s.name) {
-                                seq_text = addSep(seq_text);
-                                seq_text += s.name;
-                            }
-                            if (s.gene_name) {
-                                seq_text = addSep(seq_text);
-                                seq_text += s.gene_name;
-                            }
-                            if (s.location) {
-                                seq_text = addSep(seq_text);
-                                seq_text += s.location;
-                            }
-                        }
-                        text = addSep(text);
-                        text += seq_text;
-                    }
-                    if (text.length > 0) {
-                        text_all += text + '\n';
-                    }
-                }
-
-                saveAs(new Blob([text_all], {type: "application/txt"}), filename);
-
+                const tsv = forester.externalNodeDataTsv(ext_nodes, function (n, i) {
+                    return (n.viewId !== undefined) ? n.viewId : i + 1;
+                });
+                saveAs(new Blob([tsv], {type: 'text/tab-separated-values'}), filename);
                 update();
             }
 

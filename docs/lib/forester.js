@@ -3978,6 +3978,98 @@
     // becomes "meta:" plus the header with its whitespace as '_' -- the
     // display name prettifies that back to spaces, so "Collection Date"
     // stays "Collection Date" in every menu.
+    // The tips' data as a table, one row per tip in the order given, header
+    // first: what the node menu's "Download Ext. Node Data" writes. The
+    // columns and their names are the desktop's (NodeDataExporter.toNodeDataTsv),
+    // so the two programs write the same table: name (always), the first
+    // taxonomy's scientific name, common name, code, id and rank, the first
+    // sequence's name, gene name, symbol, accession and type, the branch
+    // length, then one column per property ref, sorted, holding its first
+    // value. A column no tip has a value for is left out. When the tip names
+    // cannot key the rows (one blank or repeated), a node_id column comes
+    // first, from idOf(tip, index) or the row number. Tabs and line breaks
+    // inside a value become spaces. A property keeps its ref as the header,
+    // so the table joins back onto a tree with joinMetadataTable.
+    forester.externalNodeDataTable = function (tips, idOf) {
+        tips = tips || [];
+        if (tips.length === 0) {
+            return {columns: [], rows: []};
+        }
+        let clean = function (v) {
+            return (v === undefined || v === null) ? '' : String(v).replace(/[\t\n\r]/g, ' ');
+        };
+        let tax = function (n) {
+            return (n.taxonomies && n.taxonomies[0]) || {};
+        };
+        let seq = function (n) {
+            return (n.sequences && n.sequences[0]) || {};
+        };
+        let cols = [];
+        let add = function (name, extract, force) {
+            let vals = tips.map(function (n, i) {
+                return clean(extract(n, i));
+            });
+            if (force || vals.some(function (v) { return v.length > 0; })) {
+                cols.push({name: name, vals: vals});
+            }
+        };
+        let seen = new Set();
+        let unique = tips.every(function (n) {
+            if (!n.name || seen.has(n.name)) {
+                return false;
+            }
+            seen.add(n.name);
+            return true;
+        });
+        if (!unique) {
+            add('node_id', function (n, i) { return idOf ? idOf(n, i) : i + 1; }, true);
+        }
+        add('name', function (n) { return n.name; }, true);
+        add('taxonomy_scientific_name', function (n) { return tax(n).scientific_name; });
+        add('taxonomy_common_name', function (n) { return tax(n).common_name; });
+        add('taxonomy_code', function (n) { return tax(n).code; });
+        add('taxonomy_id', function (n) { return tax(n).id && tax(n).id.value; });
+        add('taxonomy_rank', function (n) { return tax(n).rank; });
+        add('sequence_name', function (n) { return seq(n).name; });
+        add('gene_name', function (n) { return seq(n).gene_name; });
+        add('sequence_symbol', function (n) { return seq(n).symbol; });
+        add('sequence_accession', function (n) { return seq(n).accession && seq(n).accession.value; });
+        add('sequence_type', function (n) { return seq(n).type; });
+        add('branch_length', function (n) { return (typeof n.branch_length === 'number') ? n.branch_length : ''; });
+        let refs = new Set();
+        tips.forEach(function (n) {
+            (n.properties || []).forEach(function (p) {
+                if (p.ref) {
+                    refs.add(p.ref);
+                }
+            });
+        });
+        Array.from(refs).sort().forEach(function (ref) {
+            add(ref, function (n) {
+                let p = (n.properties || []).filter(function (q) { return q.ref === ref; })[0];
+                return p ? p.value : '';
+            });
+        });
+        return {
+            columns: cols.map(function (c) { return c.name; }),
+            rows: tips.map(function (n, i) {
+                return cols.map(function (c) { return c.vals[i]; });
+            })
+        };
+    };
+
+    // externalNodeDataTable as tab-separated text, header line first; empty
+    // for no tips.
+    forester.externalNodeDataTsv = function (tips, idOf) {
+        let t = forester.externalNodeDataTable(tips, idOf);
+        if (t.columns.length === 0) {
+            return '';
+        }
+        return [t.columns].concat(t.rows).map(function (r) {
+            return r.join('\t');
+        }).join('\n') + '\n';
+    };
+
     forester.metadataColumnRef = function (header, index) {
         let h = String(header || '').trim();
         if (h.length === 0) {

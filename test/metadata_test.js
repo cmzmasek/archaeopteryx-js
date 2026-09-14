@@ -179,6 +179,60 @@ function testDownstream() {
     return hits.size === 2;
 }
 
+// Download Ext. Node Data: header first with the desktop's column names,
+// columns no tip fills left out, one row per tip in the order given, tabs in
+// a value flattened, node_id first when the names cannot key the rows -- and
+// the table joins back onto a fresh tree value for value.
+function testExternalNodeDataTable() {
+    var nh = '((Human:0.1,Chimp:0.2):0.3,Dog:0.4);';
+    var phy = forester.parseNewHampshire(nh, true, false);
+    var human = tip(phy, 'Human'), chimp = tip(phy, 'Chimp'), dog = tip(phy, 'Dog');
+    human.taxonomies = [{scientific_name: 'Homo sapiens', code: 'HUMAN', id: {value: '9606', provider: 'ncbi'}}];
+    chimp.taxonomies = [{scientific_name: 'Pan troglodytes'}];
+    human.sequences = [{accession: {value: 'NM_1', source: 'refseq'}, symbol: 'APAF'}];
+    human.properties = [{ref: 'meta:Year', value: '2001', applies_to: 'node'},
+        {ref: 'BVBRC:host', value: 'lab\tbench', applies_to: 'node'}];
+    dog.properties = [{ref: 'BVBRC:host', value: 'kennel', applies_to: 'node'}];
+    var tips = [human, chimp, dog];
+    var lines = forester.externalNodeDataTsv(tips).split('\n');
+    var expected = [
+        'name\ttaxonomy_scientific_name\ttaxonomy_code\ttaxonomy_id\tsequence_symbol\tsequence_accession\tbranch_length\tBVBRC:host\tmeta:Year',
+        'Human\tHomo sapiens\tHUMAN\t9606\tAPAF\tNM_1\t0.1\tlab bench\t2001',
+        'Chimp\tPan troglodytes\t\t\t\t\t0.2\t\t',
+        'Dog\t\t\t\t\t\t0.4\tkennel\t',
+        ''
+    ];
+    if (lines.join('\n') !== expected.join('\n')) {
+        console.log('    got:\n' + lines.map(function (l) { return '      ' + JSON.stringify(l); }).join('\n'));
+        return false;
+    }
+    // names that cannot key the rows: node_id first, from idOf or the row number
+    chimp.name = 'Human';
+    var dup = forester.externalNodeDataTable(tips);
+    var dupIds = forester.externalNodeDataTable(tips, function (n) { return n === dog ? 'd' : 'x'; });
+    chimp.name = 'Chimp';
+    if (dup.columns[0] !== 'node_id' || dup.rows.map(function (r) { return r[0]; }).join() !== '1,2,3'
+        || dupIds.rows[2][0] !== 'd' || forester.externalNodeDataTable(tips).columns[0] !== 'name') {
+        console.log('    node_id: ' + JSON.stringify(dup.columns.slice(0, 2)) + ' ' + JSON.stringify(dup.rows));
+        return false;
+    }
+    if (forester.externalNodeDataTsv([]) !== '') {
+        return false;
+    }
+    // back in through the metadata-table join
+    var fresh = forester.parseNewHampshire(nh, true, false);
+    var report = forester.joinMetadataTable(fresh, forester.externalNodeDataTsv(tips));
+    var hostH = propOf(tip(fresh, 'Human'), 'BVBRC:host');
+    var hostD = propOf(tip(fresh, 'Dog'), 'BVBRC:host');
+    var year = propOf(tip(fresh, 'Human'), 'meta:Year');
+    if (report.matchedTips !== 3 || !hostH || hostH.value !== 'lab bench' || !hostD || hostD.value !== 'kennel'
+        || !year || year.value !== '2001' || propOf(tip(fresh, 'Chimp'), 'BVBRC:host') !== null) {
+        console.log('    round trip: ' + JSON.stringify({matched: report.matchedTips, hostH: hostH, hostD: hostD, year: year}));
+        return false;
+    }
+    return true;
+}
+
 console.log("\nmetadata tables\n");
 
 runTest("parse TSV / CSV / semicolon : ", testParseDelimited);
@@ -186,6 +240,7 @@ runTest("column refs                 : ", testColumnRefs);
 runTest("join and report             : ", testJoin);
 runTest("the table wins              : ", testTableWins);
 runTest("downstream: color-by, search: ", testDownstream);
+runTest("ext. node data table        : ", testExternalNodeDataTable);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
