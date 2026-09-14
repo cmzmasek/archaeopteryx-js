@@ -24,8 +24,25 @@ consumers only see a change when a version is cut.
   support: the Confidence labels, Support Dots and the Confidence search
   field leave them out, and midpoint or manual re-rooting removes them. A
   shared view carries `root=mad` and `madValues`.
+- **A warning before re-rooting a tree with data on internal nodes**, from
+  the re-root button's menu or the node menu: when the re-root would change
+  the clade of internal nodes carrying names, taxonomy, sequences, events,
+  distributions, dates, references or node properties, it says how many of
+  them, with Re-root and Cancel. It is worked out on a copy first
+  (`forester.cladesChangedByRerooting`, `forester.nodeHasData`), and nothing
+  is asked when no such clade changes. The desktop words it the same way.
+- **Tips around**: in the unrooted layout of a tree its file declares
+  unrooted, the hover card and Display Node Data show an internal node's
+  tips on each side (`2 · 3 · 5`) instead of distance to parent, depth and
+  tips below, a tip's distance to parent reads Branch length, and the
+  root-measured search fields are not offered.
 
 ### Changed
+
+- **Greyed re-root controls say why**: the re-root button's tooltip, and a
+  greyed Reroot now shown in the node menu, read "This tree is marked as not
+  re-rootable (rerootable="false")." or "Time trees can't be re-rooted:
+  their branch lengths are times measured from this root."
 
 - **A time tree can no longer be re-rooted**, by the re-root button, the
   node menu's Reroot or a shared view. A time tree is one whose internal

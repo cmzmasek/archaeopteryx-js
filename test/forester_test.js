@@ -92,6 +92,100 @@ runTest("MAD vs brute force        : ", testMadBruteForce);
 runTest("MAD desktop contract      : ", testMadDesktopContract);
 runTest("MAD values never support  : ", testMadValuesNeverSupport);
 runTest("time tree detection       : ", testIsTimeTree);
+runTest("re-root effect on clades  : ", testCladesChangedByRerooting);
+
+// Which internal-node data a re-root can take the meaning from, and a
+// prediction of what a re-root will do to it: computed on a copy, it leaves
+// the tree alone and names exactly the nodes whose tips the real re-root
+// then changes -- or removes, as it removes an old two-child root. Every
+// fixture tree up to 18 tips, by MAD, midpoint and a node's branch.
+function testCladesChangedByRerooting() {
+    var probe = function (extra) {
+        return forester.nodeHasData(Object.assign({children: [{}, {}]}, extra));
+    };
+    if (probe({}) || !probe({name: 'x'}) || !probe({taxonomies: [{code: 'X'}]}) || probe({taxonomies: [{}]})
+        || probe({properties: [{ref: 'aptx:x', value: '1', applies_to: 'node'}]}) || !probe({date: {value: 1}})
+        || !probe({events: {duplications: 1}}) || !probe({sequences: [{name: 's'}]})
+        || !probe({properties: [{ref: 'meta:Host', value: 'bat', applies_to: 'node'}]})
+        || probe({properties: [{ref: 'style:font_color', value: '#fff', applies_to: 'node'}]})
+        || probe({properties: [{ref: 'meta:rate', value: '1', applies_to: 'parent_branch'}]})
+        || probe({confidences: [{value: 90}], branch_length: 1, width: 2})) {
+        console.log('    nodeHasData misjudged a node');
+        return false;
+    }
+    var plain = forester.parseNewHampshire("((A:1,B:1):1,(C:1,D:1):1)", true, false);
+    var none = forester.cladesChangedByRerooting(plain, 'midpoint');
+    if (none.annotated.length !== 0 || none.changed.length !== 0) {
+        return false;
+    }
+    var clades = function (phy) {
+        var m = new Map();
+        forester.getAllNodes(phy).forEach(function (n) {
+            if (n.children && n.name) {
+                m.set(n, madTipNames(n).join(','));
+            }
+        });
+        return m;
+    };
+    var bad = null;
+    var checked = 0;
+    var withChanges = 0;
+    var withoutChanges = 0;
+    readMadFixture().forEach(function (row) {
+        ['mad', 'midpoint', 'node'].forEach(function (method) {
+            var phy = forester.parseNewHampshire(row.newick, true, false);
+            if (bad || forester.getAllExternalNodes(phy).length > 18) {
+                return;
+            }
+            var k = 0;
+            forester.getAllNodes(phy).forEach(function (n) {
+                if (n.children && n.parent) {
+                    n.name = 'n' + (k++);
+                }
+            });
+            var movable = forester.getAllNodes(phy).filter(function (n) { return n.parent && n.parent.parent; });
+            var target = movable[Math.floor(movable.length * 2 / 3)];
+            var written = forester.toNewHampshire(phy);
+            var before = clades(phy);
+            var predicted = forester.cladesChangedByRerooting(phy, method, target);
+            if (forester.toNewHampshire(phy) !== written) {
+                bad = '#' + row.index + ' ' + method + ': the prediction changed the tree';
+                return;
+            }
+            if (method === 'mad') {
+                forester.madRoot(phy);
+            } else if (method === 'midpoint') {
+                forester.midpointRoot(phy);
+            } else {
+                forester.reRoot(phy, target, -1);
+            }
+            var after = clades(phy);
+            var actual = [];
+            before.forEach(function (tips, n) {
+                if (after.get(n) !== tips) {
+                    actual.push(n.name);
+                }
+            });
+            var said = predicted.changed.map(function (n) { return n.name; });
+            if (predicted.annotated.length !== k || said.sort().join() !== actual.sort().join()) {
+                bad = '#' + row.index + ' ' + method + ': predicted [' + said.join() + '] of ' + predicted.annotated.length
+                    + ', the re-root changed [' + actual.join() + '] of ' + k;
+                return;
+            }
+            ++checked;
+            if (actual.length > 0) {
+                ++withChanges;
+            } else {
+                ++withoutChanges;
+            }
+        });
+    });
+    if (bad || checked < 600 || withChanges < 100 || withoutChanges < 10) {
+        console.log('    ' + (bad || ('checked ' + checked + ', with changes ' + withChanges + ', without ' + withoutChanges)));
+        return false;
+    }
+    return true;
+}
 
 // A time tree has dated ancestors (BEAST heights, Nextstrain dates, phyloXML
 // <date>s on internal nodes); tip dates alone are collection dates on a

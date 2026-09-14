@@ -266,7 +266,29 @@ node's menu offers **Reroot** on the branch above that node. None of them is
 offered for a tree whose phyloXML says `rerootable="false"`, nor for a time
 tree, one whose internal nodes are mostly dated (BEAST node heights,
 Nextstrain dates, phyloXML `<date>`s): a new root would contradict the dates.
-A shared view's root is ignored for such a tree.
+For such a tree the re-root button and the node menu's Reroot are greyed,
+their tooltip saying why, and a shared view's root is ignored.
+
+A re-root can take the meaning away from data on internal nodes: a node's
+name, taxonomy, sequence, events, distribution, date, references or node
+properties describe its clade, and a new root changes the clade of every
+node between the old root and the new one. So before re-rooting (from the
+button's menu or the node menu), the change is worked out on a copy of the
+tree, and when it would change the clade of any internal node carrying data,
+a warning says how many (“This tree has data on 15 internal nodes.
+Re-rooting changes the clade of 3 of them, so their data may no longer
+describe them.”) with **Re-root** and **Cancel**. Branch lengths, support and
+MAD values, branch colours and `style:` properties do not count: they belong
+to the branch, or to the look.
+
+A tree its file declares unrooted (phyloXML `rooted="false"`, Nexus `[&U]`),
+shown in the unrooted layout, has no root to measure from. There the hover
+card and Display Node Data show an internal node's **Tips around** — the tips
+on each of its sides, smallest first, such as `2 · 3 · 5` — instead of
+distance to parent, depth and tips below; a tip shows its **Branch length**
+and no depth; and the Depth from Root, Distance from Root and Clade Size
+search fields are not offered. The same tree in the rectangular or circular
+layout keeps all of them, since those layouts draw a root.
 
 **MAD rooting** (minimal ancestor deviation) roots the tree without assuming
 a clock. The common ancestor of two tips ought to lie halfway between them,

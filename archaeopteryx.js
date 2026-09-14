@@ -1465,6 +1465,13 @@ function (root, d3, forester, phyloXml) {
                 menu.appendChild(document.createElement('hr'));
                 return;
             }
+            if (item.note) {   // a sentence to read before choosing, such as a warning
+                let note = document.createElement('div');
+                note.className = 'aptx-node-menu-note';
+                note.textContent = item.note;
+                menu.appendChild(note);
+                return;
+            }
             let b = document.createElement('button');
             b.type = 'button';
             b.textContent = item.label;
@@ -5888,17 +5895,25 @@ function (root, d3, forester, phyloXml) {
                     update(null, 0);
                 }});
             }
-            if (!_in_subtree && d.parent && d.parent.parent
-                && rerootingAllowed()) {
-                items.push({label: 'Reroot', action: function () {
-                    rerootKeepingCollapse(function () {
-                        forester.removeMadConfidences(tree);   // they rate the MAD rooting only
-                        forester.reRoot(tree, d, -1);
-                    });
-                    _basicTreeProperties = forester.collectBasicTreeProperties(_root);
-                    syncMadValuesCheckbox();
-                    zoomToFit();
-                }});
+            if (!_in_subtree && d.parent && d.parent.parent) {
+                let blocked = rerootBlockedReason();
+                if (blocked) {
+                    // offered but greyed, saying why, as the desktop does
+                    items.push({label: 'Reroot', disabled: true, title: blocked, action: function () {
+                    }});
+                } else {
+                    items.push({label: 'Reroot', action: function () {
+                        confirmRerooting(tree, 'node', d, event, function () {
+                            rerootKeepingCollapse(function () {
+                                forester.removeMadConfidences(tree);   // they rate the MAD rooting only
+                                forester.reRoot(tree, d, -1);
+                            });
+                            _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+                            syncMadValuesCheckbox();
+                            zoomToFit();
+                        });
+                    }});
+                }
             }
             if (_settings.enableManualNodeSelection) {
                 items.push({label: 'Select/Deselect Node', action: function () { selectDeselectNode(d); }});
@@ -7321,6 +7336,9 @@ function (root, d3, forester, phyloXml) {
         if (s.layout === 'rectangular' || s.layout === 'circular' || s.layout === 'unrooted') {
             _state.circularDisplay = s.layout === 'circular';
             _state.unrootedDisplay = s.layout === 'unrooted';
+            if (_treeData && _treeData.rooted === false && byId(SEARCH_FIELD_SELECT_0)) {
+                populateSearchMenus();   // before the view's searches pick their fields
+            }
         }
         if (s.display === 'phylogram' || s.display === 'aligned' || s.display === 'cladogram') {
             let measured = _basicTreeProperties.branchLengths === true;
@@ -8813,11 +8831,26 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // The one test every way of re-rooting asks -- the re-root button and its
-    // menu, the node menu's Reroot, a shared view's root: never a tree its
-    // file marks rerootable="false", never a time tree.
+    // Why the tree cannot be re-rooted, or null when it can. Every way of
+    // re-rooting asks -- the re-root button and its menu, the node menu's
+    // Reroot, a shared view's root: never a tree its file marks
+    // rerootable="false", never a time tree. The reason is the greyed
+    // controls' tooltip, as on the desktop.
+    function rerootBlockedReason() {
+        if (!_treeData) {
+            return 'no tree';
+        }
+        if (_treeData.rerootable === false) {
+            return 'This tree is marked as not re-rootable (rerootable="false").';
+        }
+        if (_timeTree) {
+            return 'Time trees can\'t be re-rooted: their branch lengths are times measured from this root.';
+        }
+        return null;
+    }
+
     function rerootingAllowed() {
-        return !!_treeData && _treeData.rerootable !== false && !_timeTree;
+        return rerootBlockedReason() === null;
     }
 
     // MAD rooting needs branch lengths, three tips, and a tree that may be
@@ -8848,6 +8881,30 @@ function (root, d3, forester, phyloXml) {
         syncMadValuesCheckbox();
     }
 
+    // Before a re-root from the panel or the node menu (a shared view never
+    // asks: whoever shared it chose): when it would change the clade of
+    // internal nodes carrying data, say so where the choice was made, and
+    // re-root only on "Re-root". Otherwise re-root at once.
+    function confirmRerooting(phy, method, node, anchor, proceed) {
+        let effect = forester.cladesChangedByRerooting(phy, method, node);
+        let k = effect.changed.length;
+        if (k === 0) {
+            proceed();
+            return;
+        }
+        let n = effect.annotated.length;
+        let text = (n === 1)
+            ? 'This tree has data on 1 internal node. Re-rooting changes its clade, so its data may no longer describe it.'
+            : 'This tree has data on ' + n + ' internal nodes. Re-rooting changes the clade of ' + k + ' of them, so '
+            + (k === 1 ? 'its data may no longer describe it.' : 'their data may no longer describe them.');
+        showNodeMenu([
+            {note: text},
+            {label: 'Re-root', action: proceed},
+            {label: 'Cancel', action: function () {
+            }}
+        ], anchor, 'Re-root tree');
+    }
+
     // Re-rooting rearranges the whole tree and its button is easy to hit by
     // accident, so it asks first -- through the same little popup the node
     // menu uses (click anywhere else or press Esc to cancel) -- and the popup
@@ -8867,15 +8924,19 @@ function (root, d3, forester, phyloXml) {
             if (madRootingPossible()) {
                 items.push({
                     label: 'MAD re-root (Tria et al., 2017)', title: MAD_CITATION, action: function () {
-                        rootTreeBy('mad');
-                        zoomToFit();
+                        confirmRerooting(_root_const, 'mad', null, ev, function () {
+                            rootTreeBy('mad');
+                            zoomToFit();
+                        });
                     }
                 });
             }
             items.push({
                 label: 'Midpoint re-root', action: function () {
-                    rootTreeBy('midpoint');
-                    zoomToFit();
+                    confirmRerooting(_root_const, 'midpoint', null, ev, function () {
+                        rootTreeBy('midpoint');
+                        zoomToFit();
+                    });
                 }
             });
             items.push({
@@ -9087,7 +9148,11 @@ function (root, d3, forester, phyloXml) {
     // then set up each box's mode menu. Called when a tree is (re)loaded.
     function populateSearchMenus() {
         let before = _searchFields;
-        _searchFields = forester.availableSearchFields(_root);
+        // an unrooted tree in the unrooted layout has no root to measure from
+        let rootMeasured = [forester.searchFields.depth, forester.searchFields.distanceFromRoot, forester.searchFields.cladeSize];
+        _searchFields = forester.availableSearchFields(_root).filter(function (f) {
+            return !unrootedContext() || rootMeasured.indexOf(f) < 0;
+        });
         [SEARCH_FIELD_SELECT_0, SEARCH_FIELD_SELECT_1].forEach(function (selId) {
             let sel = byId(selId);
             if (!sel) return;
@@ -9422,6 +9487,11 @@ function (root, d3, forester, phyloXml) {
     function layoutButtonClicked() {
         _state.circularDisplay = getCheckboxValue(LAYOUT_CIRC_BUTTON);
         _state.unrootedDisplay = getCheckboxValue(LAYOUT_UNROOTED_BUTTON);
+        if (_treeData && _treeData.rooted === false) {
+            populateSearchMenus();   // the root-measured search fields go and come with the unrooted layout
+            search0();
+            search1();
+        }
         if (radialDisplay() && _state.showDomainArchitectures && _basicTreeProperties.domainArchitectures) {
             // the domain boxes ride the tips' spokes, so the labels must too
             _radialLabelsHorizontal = false;
@@ -10327,6 +10397,7 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-node-menu button.aptx-menu-danger:hover, .aptx-node-menu button.aptx-menu-danger:focus-visible {'
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
+            + '.aptx-node-menu-note { padding:4px 9px 7px; color:var(--p-ink); white-space:normal; }'
             // The search suggestions: the node menu's chrome under the value box.
             + '.aptx-suggest { position:absolute; z-index:1000; max-width:320px; padding:4px; box-sizing:border-box;'
             + '  border:1px solid var(--p-line-strong); border-radius:10px; background:var(--p-bg); color:var(--p-ink);'
@@ -10809,6 +10880,32 @@ function (root, d3, forester, phyloXml) {
     // Content arrives as "Label: value" lines separated by <br>. Setting the
     // label part apart makes a wall of such lines scannable. Lines without a
     // label (a heading like "Taxonomy", or a FASTA sequence) are left alone.
+    // The unrooted layout of a tree its file declares unrooted (phyloXML
+    // rooted="false", Nexus [&U]; a plain Newick tree declares nothing). The
+    // unrooted layout of a rooted tree still has its root.
+    function unrootedContext() {
+        return _state.unrootedDisplay === true && !!_treeData && _treeData.rooted === false;
+    }
+
+    // The tips on each side of an internal node of an unrooted tree, one
+    // count per neighbour, smallest first: what "tips below" becomes when
+    // there is no below.
+    function tipsAround(d) {
+        let sides = d.children.map(function (c) {
+            return forester.calcSumOfAllExternalDescendants(c);
+        });
+        let below = sides.reduce(function (a, b) {
+            return a + b;
+        }, 0);
+        let all = forester.calcSumOfAllExternalDescendants(forester.getTreeRoot(_treeData));
+        if (all > below) {
+            sides.push(all - below);
+        }
+        return sides.sort(function (a, b) {
+            return a - b;
+        });
+    }
+
     // The node's data as the hover tooltip and the "Display Node Data" dialog
     // both show it -- ONE builder, because they used to be two near-copies
     // and carried the same two bugs twice (a bare "Date: " line whenever a
@@ -10822,13 +10919,19 @@ function (root, d3, forester, phyloXml) {
     // the section above it. markUpDataLabels() renders the result: a line
     // shaped "Key: value" is a row, anything else a heading, and a leading
     // "- " marks a row as a section's sub-entry.
+    //
+    // A tree its file declares unrooted, shown in the unrooted layout, has no
+    // root to measure from (unrootedContext): an internal node shows no
+    // distance to parent, depth or tips below but the tips on each of its
+    // sides, and a tip's branch is just its branch length -- as on the desktop.
     function nodeDataText(d) {
         let text = '';
+        let unrooted = unrootedContext();
         if (d.name) {
             text += 'Name: ' + d.name + '<br>';
         }
-        if (d.branch_length) {
-            text += 'Distance to parent: ' + d.branch_length + '<br>';
+        if (d.branch_length && !(unrooted && d.children)) {
+            text += (unrooted ? 'Branch length: ' : 'Distance to parent: ') + d.branch_length + '<br>';
         }
         let date = dateText(d.date);
         if (date) {
@@ -10842,9 +10945,13 @@ function (root, d3, forester, phyloXml) {
                 }
             }
         }
-        text += 'Depth: ' + forester.calcDepth(d) + '<br>';
-        if (d.children) {
-            text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
+        if (!unrooted) {
+            text += 'Depth: ' + forester.calcDepth(d) + '<br>';
+            if (d.children) {
+                text += 'Tips below: ' + forester.calcSumOfAllExternalDescendants(d) + '<br>';
+            }
+        } else if (d.children) {
+            text += 'Tips around: ' + tipsAround(d).join(' · ') + '<br>';
         }
         if (d.confidences) {
             for (let i = 0; i < d.confidences.length; ++i) {
@@ -12391,10 +12498,16 @@ function (root, d3, forester, phyloXml) {
             disableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
         }
 
-        if (!_in_subtree && rerootingAllowed()) {
-            enableButton(byId(MIDPOINT_ROOT_BUTTON));
+        let rerootButton = byId(MIDPOINT_ROOT_BUTTON);
+        let blocked = rerootBlockedReason();
+        if (!_in_subtree && !blocked) {
+            enableButton(rerootButton);
         } else {
-            disableButton(byId(MIDPOINT_ROOT_BUTTON));
+            disableButton(rerootButton);
+        }
+        if (rerootButton) {
+            rerootButton.title = blocked
+                || (_in_subtree ? 'return to the whole tree to re-root it' : 're-root the tree: MAD or midpoint');
         }
         let b;
         if (_foundNodes0 && !_searchBox0Empty) {

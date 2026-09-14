@@ -747,6 +747,127 @@
         });
     };
 
+    /**
+     * Whether a node carries data about the node itself, the kind a
+     * re-rooting can take the meaning away from: a name, taxonomy, sequence
+     * (a domain architecture lives there), events, distribution, date,
+     * references, or a property about the node. Not data in this sense: the
+     * branch above it -- length, support and MAD values, colour, width, a
+     * property applying to the branch -- which re-rooting carries along,
+     * visual styling (style: properties), the viewer's own aptx: properties,
+     * and an empty taxonomy. The desktop's list is the same.
+     *
+     * @param node
+     * @returns {boolean}
+     */
+    forester.nodeHasData = function (node) {
+        let filled = function (x) {
+            return x !== undefined && x !== null && x !== '' && !(Array.isArray(x) && x.length === 0);
+        };
+        if ((typeof node.name === 'string' && node.name.length > 0)
+            || (node.taxonomies && node.taxonomies.some(function (t) {
+                return t && Object.keys(t).some(function (key) { return filled(t[key]); });
+            }))
+            || (node.sequences && node.sequences.length > 0)
+            || node.events
+            || (node.distributions && node.distributions.length > 0)
+            || node.date
+            || (node.references && node.references.length > 0)) {
+            return true;
+        }
+        return !!node.properties && node.properties.some(function (p) {
+            return p.applies_to !== BRANCH_EVENT_APPLIES_TO
+                && !(typeof p.ref === 'string' && (p.ref.indexOf('style:') === 0 || p.ref.indexOf('aptx:') === 0));
+        });
+    };
+
+    /**
+     * What a re-rooting would do to the data on internal nodes, worked out on
+     * a bare copy so the tree itself is untouched: `annotated`, the internal
+     * nodes carrying data (nodeHasData), and `changed`, those among them whose
+     * clade -- the tips below -- the re-rooting changes. Those lie between
+     * the old root and the new one (an old two-child root disappears); every
+     * other node keeps its tips. Midpoint and MAD rooting find their root on
+     * the copy first. Nothing is copied when no internal node carries data.
+     *
+     * @param phy the tree
+     * @param method 'mad', 'midpoint', or 'node': the root on the branch above `node`
+     * @param node the node, for 'node'
+     * @returns {{annotated: Array, changed: Array}} nodes of `phy`
+     */
+    forester.cladesChangedByRerooting = function (phy, method, node) {
+        let t = madTraversal(forester.getTreeRoot(phy));
+        let annotated = [];
+        for (let k = 0; k < t.pre.length; ++k) {
+            if (t.kids[k].length > 0 && forester.nodeHasData(t.pre[k])) {
+                annotated.push(t.pre[k]);
+            }
+        }
+        if (annotated.length === 0) {
+            return {annotated: annotated, changed: []};
+        }
+        // the copy: shape and branch lengths only, each copy knowing its original
+        let copyOf = new Map();
+        let tipNumber = new Map();
+        for (let k = 0; k < t.pre.length; ++k) {
+            let c = {branch_length: t.pre[k].branch_length, original: t.pre[k]};
+            if (t.kids[k].length > 0) {
+                c.children = [];
+            } else {
+                tipNumber.set(t.pre[k], tipNumber.size);
+            }
+            if (k > 0) {
+                c.parent = copyOf.get(t.pre[t.parentOf[k]]);
+                c.parent.children.push(c);
+            }
+            copyOf.set(t.pre[k], c);
+        }
+        let copy = {children: [copyOf.get(t.pre[0])]};
+        copy.children[0].parent = copy;
+        if (method === 'mad') {
+            forester.madRoot(copy);
+        } else if (method === 'midpoint') {
+            forester.midpointRoot(copy);
+        } else {
+            forester.reRoot(copy, copyOf.get(node), -1);
+        }
+        // the tips below every node, before and after, as a count and two hashes
+        let hash = madTipHashes(tipNumber.size);
+        let cladeKeys = function (traversal, originalOf) {
+            let count = new Int32Array(traversal.pre.length);
+            let xa = new Int32Array(traversal.pre.length);
+            let xb = new Int32Array(traversal.pre.length);
+            let keys = new Map();
+            for (let q = 0; q < traversal.post.length; ++q) {
+                let k = traversal.post[q];
+                let ch = traversal.kids[k];
+                if (ch.length === 0) {
+                    let i = tipNumber.get(originalOf(traversal.pre[k]));
+                    count[k] = 1;
+                    xa[k] = hash.xa[i + 1] ^ hash.xa[i];
+                    xb[k] = hash.xb[i + 1] ^ hash.xb[i];
+                    continue;
+                }
+                for (let c = 0; c < ch.length; ++c) {
+                    count[k] += count[ch[c]];
+                    xa[k] ^= xa[ch[c]];
+                    xb[k] ^= xb[ch[c]];
+                }
+                let original = originalOf(traversal.pre[k]);
+                if (original) {   // not the copy's new root node
+                    keys.set(original, count[k] + ':' + xa[k] + ':' + xb[k]);
+                }
+            }
+            return keys;
+        };
+        let before = cladeKeys(t, function (n) { return n; });
+        let after = cladeKeys(madTraversal(forester.getTreeRoot(copy)), function (c) { return c.original; });
+        return {
+            annotated: annotated,
+            changed: annotated.filter(function (n) { return after.get(n) !== before.get(n); })
+        };
+    };
+
     function madLength(node) {
         return node.branch_length > 0 ? node.branch_length : 0;
     }
