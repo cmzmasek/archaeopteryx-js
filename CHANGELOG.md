@@ -6,7 +6,10 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.5.1 — 2026-09-14
+
+A fix to 3.5.0's MAD rooting: on trees with near-zero branches it could pick
+a different, worse root each time it was run. The desktop ships the same fix.
 
 ### Fixed
 
