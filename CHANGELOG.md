@@ -6,6 +6,19 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Fixed
+
+- **MAD rooting no longer moves the root back and forth when run again.**
+  On trees with tips a hair apart (FastTree writes a zero branch as 5e-9),
+  those pairs' terms cancelled catastrophically in floating point and put
+  every branch's score off by amounts that depended on the current root: 8
+  of the 10 Flavivirus demo trees and the H5N1 tree rooted differently on a
+  second run, onto a worse root every other time. Tip pairs closer than
+  1/100,000 of the tree's diameter are now left out of the deviation sums,
+  like identical tips already were. The desktop makes the same change.
+
 ## 3.5.0 — 2026-09-14
 
 Rooting, made to match the desktop: MAD rooting beside midpoint rooting,

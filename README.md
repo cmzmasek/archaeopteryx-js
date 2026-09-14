@@ -296,8 +296,11 @@ so every branch and position is scored by how far the tip pairs' ancestors
 fall from that halfway point, and the root goes where that deviation is
 smallest [1]. It has been compared with other rooting methods on prokaryotic
 gene families [2]. It needs branch lengths and at least three tips, and is
-offered only then. The algorithm is the desktop Archaeopteryx's, and gives
-the same roots; it runs in O(n²) time and O(n) memory (the 13,246-tip H5N1
+offered only then. Tip pairs closer than 1/100,000 of the tree's diameter
+(identical sequences, or FastTree's 5 × 10⁻⁹ stand-in for a zero branch) are
+left out of the deviation sums: their deviation measures noise, and summing
+it would swamp the precision of all the others. The algorithm is the desktop
+Archaeopteryx's, and gives the same roots; it runs in O(n²) time and O(n) memory (the 13,246-tip H5N1
 demo tree roots in 0.4 s, measured in Node).
 
 Every internal branch then carries its **MAD value**: the root-mean-square

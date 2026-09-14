@@ -134,4 +134,24 @@ let out = [
     out.push(nwk(randomTree(150, seed, 2)));
     out.push(nwk(randomMultifurcating(150, seed)));
 });
+// Near-zero branches, as FastTree writes a zero (5e-9): tips this close are
+// left out of MAD's sums, or their terms cancel catastrophically. Appended
+// last, so the rows above keep their indices.
+function nearZero(node, seed) {
+    let r = rng(seed * 1000 + 19);
+    let visit = function (n) {
+        if (n.branch_length !== undefined && r() < 0.3) {
+            n.branch_length = 5e-9;
+        }
+        (n.children || []).forEach(visit);
+    };
+    visit(node);
+    return node;
+}
+[1, 2, 3, 5, 7].forEach(function (seed) {
+    [8, 16, 30].forEach(function (n) {
+        out.push(nwk(nearZero(randomTree(n, seed, 3), seed)));
+        out.push(nwk(nearZero(randomMultifurcating(n, seed), seed)));
+    });
+});
 process.stdout.write(out.join('\n') + '\n');

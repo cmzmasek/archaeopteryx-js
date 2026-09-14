@@ -90,6 +90,82 @@ runTest("MAD rooting exact cases   : ", testMadRootExactCases);
 runTest("MAD branch values         : ", testMadBranchValues);
 runTest("MAD vs brute force        : ", testMadBruteForce);
 runTest("MAD desktop contract      : ", testMadDesktopContract);
+runTest("MAD re-run stays put      : ", testMadStableOnRealTrees);
+
+// Tips a hair apart (FastTree writes 5e-9 for a zero branch) made MAD's sums
+// cancel catastrophically: re-running it on the Flavivirus prM tree moved the
+// root back and forth, onto a worse root every other time. Pairs closer than
+// 1e-5 of the diameter are left out now. Every Flavivirus tree roots the same
+// on a second run, and prM matches the brute force both as read and after a
+// MAD re-root.
+function testMadStableOnRealTrees() {
+    var file = pth.join(__dirname, '..', 'docs', 'data', 'flavivirus-mature-peptides.xml');
+    var rootKey = function (phy) {
+        return forester.getTreeRoot(phy).children.map(function (c) { return madTipNames(c).join(','); }).sort().join(' | ');
+    };
+    var trees = readPhyloXmlFromFile(file);
+    var moved = trees.filter(function (t) {
+        forester.addParents(t);
+        forester.madRoot(t);
+        var first = rootKey(t);
+        forester.madRoot(t);
+        return rootKey(t) !== first;
+    }).map(function (t) { return t.name; });
+    if (trees.length !== 10 || moved.length > 0) {
+        console.log('    a second MAD run moved the root: ' + moved.join(', '));
+        return false;
+    }
+    var prm = readPhyloXmlFromFile(file).filter(function (t) { return /prM/.test(t.name); })[0];
+    forester.addParents(prm);
+    var asRead = madValidate(prm);
+    forester.madRoot(prm);
+    var afterMad = madValidate(prm);
+    if (asRead || afterMad) {
+        console.log('    prM as read: ' + asRead + '; after a MAD re-root: ' + afterMad);
+        return false;
+    }
+    // the cut is 1e-5 of the diameter, not merely "tiny": A and B are 4e-6
+    // apart in a tree about 5.5 across, so they are left out, and their
+    // lopsided pair (deviation -0.5) would otherwise add 0.25 to the scores
+    var pinned = madValidate(forester.parseNewHampshire("((A:0.000001,B:0.000003):1,(C:1,D:2):1.5,E:3)", true, false));
+    if (pinned) {
+        console.log('    pair at 7e-7 of the diameter: ' + pinned);
+        return false;
+    }
+    // ... and a pair 4e-4 apart, at 7e-5 of the diameter, still counts
+    var counted = madValidate(forester.parseNewHampshire("((A:0.0001,B:0.0003):1,(C:1,D:2):1.5,E:3)", true, false));
+    if (counted) {
+        console.log('    pair at 7e-5 of the diameter: ' + counted);
+        return false;
+    }
+    return true;
+}
+
+// madRoot on a copy of the tree against the brute force: the global minimum
+// reached, and every internal branch given the brute force's value. Returns
+// what is wrong, or null.
+function madValidate(phy) {
+    var all = madTipNames(forester.getTreeRoot(phy));
+    var nPairs = all.length * (all.length - 1) / 2;
+    var eps = madNearEps(phy);
+    var brute = madBruteForce(phy, all);
+    var bruteMin = Infinity;
+    Object.keys(brute).forEach(function (k) { bruteMin = Math.min(bruteMin, brute[k]); });
+    var work = madClone(phy);
+    forester.madRoot(work);
+    if (Math.abs(madScoreSsd(work, eps) - bruteMin) > 1e-6) {
+        return 'reaches ' + madScoreSsd(work, eps) + ', the minimum is ' + bruteMin;
+    }
+    var off = forester.getAllNodes(work).filter(function (nd) {
+        if (!nd.parent || !nd.parent.parent || !nd.children) {
+            return false;
+        }
+        var v = madValue(nd);
+        var expected = brute[madSideKey(all, nd)];
+        return !isFinite(v) || expected === undefined || Math.abs(v * v * nPairs - expected) > 1e-6;
+    });
+    return off.length > 0 ? off.length + ' branch value(s) off the brute force' : null;
+}
 runTest("MAD values never support  : ", testMadValuesNeverSupport);
 runTest("time tree detection       : ", testIsTimeTree);
 runTest("re-root effect on clades  : ", testCladesChangedByRerooting);
@@ -408,15 +484,16 @@ function testMadBruteForce() {
             continue;
         }
         var all = madTipNames(forester.getTreeRoot(original));
-        var brute = madBruteForce(input, all);
+        var eps = madNearEps(original);
+        var brute = madBruteForce(original, all);
         var bruteMin = Infinity;
         Object.keys(brute).forEach(function (k) { bruteMin = Math.min(bruteMin, brute[k]); });
         var work = forester.parseNewHampshire(input, true, false);
         forester.madRoot(work);
         var root = forester.getTreeRoot(work);
-        if (Math.abs(madScoreSsd(work) - bruteMin) > 1e-6 || forester.getAllExternalNodes(work).length !== n
+        if (Math.abs(madScoreSsd(work, eps) - bruteMin) > 1e-6 || forester.getAllExternalNodes(work).length !== n
             || root.children.length < 2) {
-            console.log('    #' + rows[r].index + ' not at the minimum: ' + madScoreSsd(work) + ' vs ' + bruteMin);
+            console.log('    #' + rows[r].index + ' not at the minimum: ' + madScoreSsd(work, eps) + ' vs ' + bruteMin);
             return false;
         }
         var nPairs = n * (n - 1) / 2;
@@ -444,8 +521,50 @@ function testMadBruteForce() {
     return true;
 }
 
-// The tree's current rooting, scored: the sum of squared ancestor deviations.
-function madScoreSsd(phy) {
+// The distance at or below which madRoot leaves a tip pair out: 1e-5 of the
+// tree's diameter, and never less than 1e-9.
+function madNearEps(phy) {
+    var tips = forester.getAllExternalNodes(forester.getTreeRoot(phy));
+    var longest = 0;
+    for (var a = 0; a < tips.length; ++a) {
+        var ancestors = new Set();
+        for (var p = tips[a]; p; p = p.parent) {
+            ancestors.add(p);
+        }
+        for (var b = a + 1; b < tips.length; ++b) {
+            var lca = tips[b];
+            while (!ancestors.has(lca)) {
+                lca = lca.parent;
+            }
+            var dl = madDistToRoot(lca);
+            longest = Math.max(longest, madDistToRoot(tips[a]) - dl + madDistToRoot(tips[b]) - dl);
+        }
+    }
+    return Math.max(1e-9, 1e-5 * longest);
+}
+
+// a copy of the shape, names and branch lengths
+function madClone(phy) {
+    var copyNode = function (n) {
+        var c = {name: n.name, branch_length: n.branch_length};
+        if (n.children) {
+            c.children = n.children.map(function (k) {
+                var kc = copyNode(k);
+                kc.parent = c;
+                return kc;
+            });
+        }
+        return c;
+    };
+    var root = copyNode(forester.getTreeRoot(phy));
+    var copy = {children: [root]};
+    root.parent = copy;
+    return copy;
+}
+
+// The tree's current rooting, scored: the sum of squared ancestor deviations
+// over the pairs further apart than eps.
+function madScoreSsd(phy, eps) {
     var tips = forester.getAllExternalNodes(forester.getTreeRoot(phy));
     var ssd = 0;
     for (var a = 0; a < tips.length; ++a) {
@@ -462,7 +581,7 @@ function madScoreSsd(phy) {
             var dl = madDistToRoot(lca);
             var dj = madDistToRoot(tips[b]);
             var dij = (di - dl) + (dj - dl);
-            if (dij > 1e-9) {
+            if (dij > eps) {
                 var dev = (2 * (di - dl)) / dij - 1;
                 ssd += dev * dev;
             }
@@ -472,8 +591,8 @@ function madScoreSsd(phy) {
 }
 
 // branch (as its side key) -> the smallest total deviation with the root on it
-function madBruteForce(input, all) {
-    var original = forester.parseNewHampshire(input, true, false);
+function madBruteForce(original, all) {
+    var eps = madNearEps(original);
     var tips = forester.getAllExternalNodes(forester.getTreeRoot(original));
     var result = {};
     forester.getAllNodes(original).forEach(function (c) {
@@ -502,7 +621,7 @@ function madBruteForce(input, all) {
                 }
                 var dl = madDistToRoot(lca);
                 var dij = (madDistToRoot(i) - dl) + (madDistToRoot(j) - dl);
-                if (dij > 1e-9) {
+                if (dij > eps) {
                     sumInv += 1 / dij;
                     sumInvSq += 1 / (dij * dij);
                     sumA += aj / (dij * dij);
@@ -513,12 +632,12 @@ function madBruteForce(input, all) {
         var x = sumInvSq > 1e-12 ? (sumInv - 2 * sumA) / (2 * sumInvSq) : 0;
         x = Math.min(Math.max(x, 0), length);
         var wanted = madTipNames(c).join(',');
-        var copy = forester.parseNewHampshire(input, true, false);
+        var copy = madClone(original);
         var cc = forester.getAllNodes(copy).filter(function (nd) {
             return nd.parent && nd.parent.parent && madTipNames(nd).join(',') === wanted;
         })[0];
         forester.reRoot(copy, cc, x);
-        var ssd = madScoreSsd(copy);
+        var ssd = madScoreSsd(copy, eps);
         var key = madSideKey(all, c);
         if (result[key] === undefined || ssd < result[key]) {
             result[key] = ssd;

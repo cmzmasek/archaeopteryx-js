@@ -455,6 +455,14 @@
     forester.MAD_CONFIDENCE_TYPE = 'MAD';
 
     const MAD_EPSILON = 1e-9;
+    // Tip pairs closer than this share of the tree's diameter are left out of
+    // every sum, like pairs at distance 0. Their 1/d^2 terms (tips 1e-8 apart,
+    // as FastTree's 5e-9 "zero" branches make them, reach 1e16) cancel
+    // catastrophically in the subtractions below and swamp every other pair:
+    // MAD then answered differently from every rooting, and re-rooting moved
+    // the root back and forth. The diameter does not depend on the rooting, so
+    // neither does the cut. Joint with the desktop (Christian, 2026-09-14).
+    const MAD_NEAR_FRACTION = 1e-5;
 
     /**
      * Roots the tree by Minimal Ancestor Deviation (Tria, Landan & Dagan,
@@ -471,6 +479,11 @@
      * square deviation were the root placed on that branch -- low is good,
      * and the root's branch carries the smallest. Pendant branches get none,
      * and MAD values from an earlier run are replaced.
+     *
+     * Tip pairs closer than 1e-5 of the tree's diameter (identical sequences,
+     * FastTree's 5e-9 "zero" branches) are left out of the deviation sums:
+     * their deviation measures noise, and their terms would swamp the
+     * precision of all the others.
      *
      * A no-op for fewer than three tips or a tree without branch lengths.
      * O(n^2) time and O(n) memory: the desktop fills an n x n distance matrix
@@ -513,6 +526,27 @@
         if (maxDepth <= 0) {
             return false;   // no usable branch lengths
         }
+        // the diameter, the longest tip-to-tip path: at every node, its two
+        // longest paths down through different children
+        let longestDown = new Float64Array(m);
+        let diameter = 0;
+        for (let q = 0; q < m; ++q) {
+            let k = post[q];
+            let first = 0;
+            let second = 0;
+            for (let c = 0; c < kids[k].length; ++c) {
+                let path = longestDown[kids[k][c]] + madLength(pre[kids[k][c]]);
+                if (path > first) {
+                    second = first;
+                    first = path;
+                } else if (path > second) {
+                    second = path;
+                }
+            }
+            longestDown[k] = first;
+            diameter = Math.max(diameter, first + second);
+        }
+        let nearEps = Math.max(MAD_EPSILON, MAD_NEAR_FRACTION * diameter);
         let tipDepth = new Float64Array(n);
         for (let i = 0; i < n; ++i) {
             tipDepth[i] = depth[tipPos[i]];
@@ -529,7 +563,7 @@
         let w2 = new Float64Array(m);      // sum_{i!=j in subtree} (2*depth[j]/d - 1)^2   (j second)
         let col0 = new Float64Array(n);
         let colInv = new Float64Array(n);
-        let partners = new Int32Array(n);   // the tips each tip is apart from (d > MAD_EPSILON)
+        let partners = new Int32Array(n);   // the tips each tip is counted against (d > nearEps)
         for (let q = 0; q < m; ++q) {
             let k = post[q];
             let ch = kids[k];
@@ -554,7 +588,7 @@
                         for (let j = lo[ch[b]]; j < hi[ch[b]]; ++j) {
                             let dj = tipDepth[j];
                             let dij = (di - dm) + (dj - dm);
-                            if (dij > MAD_EPSILON) {
+                            if (dij > nearEps) {
                                 let inv = 1.0 / dij;
                                 let inv2 = inv * inv;
                                 let dev = (2.0 * (di - dm) * inv) - 1.0;
