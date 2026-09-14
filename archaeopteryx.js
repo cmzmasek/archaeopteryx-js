@@ -1147,12 +1147,12 @@ function (root, d3, forester, phyloXml) {
         // on the desktop: dots in the search colours, so hits outside the
         // current viewport can be spotted and steered to. Search results
         // re-run update(), which ends here, so the dots track every search.
-        // Visible nodes only (children, not _children): a hit inside a
-        // collapsed clade has no drawn position.
+        // Displayed nodes only: a hit inside a collapsed clade has no drawn
+        // position, so the clade gets the dot, in its wedge's mark colour.
         let hits = [];
         if (_root) {
             forEachDisplayed(function (n) {
-                let c = getFoundColor(n);
+                let c = getFoundColor(n) || (isCollapsed(n) ? collapsedMarkColor(n) : null);
                 if (c) {
                     hits.push({node: n, color: c});
                 }
@@ -3638,11 +3638,13 @@ function (root, d3, forester, phyloXml) {
         if (_root && ((_foundNodes0 && _foundNodes0.size > 0) || (_foundNodes1 && _foundNodes1.size > 0))) {
             // natural (top-to-bottom) drawing order -- forester's preorder
             // walks children in reverse, which made the NEXT arrow step upward
+            // a collapsed clade holding hits is ONE stop, on its node: the hits
+            // inside have no position of their own to step to
             let walk = function (n) {
-                if (isNodeFound(n)) {
+                if (isNodeFound(n) || (isCollapsed(n) && collapsedFoundCounts(n).found > 0)) {
                     hits.push(n);
                 }
-                if (n.children && !isCollapsed(n)) {   // a hit inside a collapsed clade has no position to step to
+                if (n.children && !isCollapsed(n)) {
                     for (let i = 0; i < n.children.length; ++i) {
                         walk(n.children[i]);
                     }
@@ -5457,6 +5459,10 @@ function (root, d3, forester, phyloXml) {
         if (index === _treeIndex) {
             return makeViewerHandle();
         }
+        // collapsing is part of the view, and a switched-to tree opens fresh:
+        // nothing collapsed, now or when you come back (Christian, 2026-09-14)
+        clearCollapsedFlags(_trees[_treeIndex]);
+        clearCollapsedFlags(_trees[index]);
         return launchInto(_container, _trees, index, _launchConfig);
     }
 
@@ -5974,7 +5980,12 @@ function (root, d3, forester, phyloXml) {
             }
             if (!_in_subtree && d.parent && d.parent.parent
                 && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
-                items.push({label: 'Reroot', action: function () { forester.reRoot(tree, d, -1); zoomToFit(); }});
+                items.push({label: 'Reroot', action: function () {
+                    rerootKeepingCollapse(function () {
+                        forester.reRoot(tree, d, -1);
+                    });
+                    zoomToFit();
+                }});
             }
             if (_settings.enableManualNodeSelection) {
                 items.push({label: 'Select/Deselect Node', action: function () { selectDeselectNode(d); }});
@@ -6893,6 +6904,7 @@ function (root, d3, forester, phyloXml) {
         }
         d.collapsed = !d.collapsed;
         calcMaxExtLabel();
+        refreshVisualizations(false);   // the legends describe the tips on screen
         scheduleUpdate(null, 0);
     }
 
@@ -6901,6 +6913,7 @@ function (root, d3, forester, phyloXml) {
             n.collapsed = false;
         });
         calcMaxExtLabel();
+        refreshVisualizations(false);
         scheduleUpdate(null, 0);
     }
 
@@ -6914,6 +6927,47 @@ function (root, d3, forester, phyloXml) {
         forester.preOrderTraversal(node, function (n) {
             n.collapsed = false;
         });
+    }
+
+    // Runs a re-rooting without turning a collapsed clade inside out. A clade
+    // on the path to the new root has its parent turned into a child, so its
+    // flag would go on hiding a different set of tips -- with a midpoint
+    // inside a collapsed clade, the whole rest of the tree. Such a clade
+    // opens; every other clade keeps its tips and stays collapsed.
+    function rerootKeepingCollapse(reroot) {
+        let flagged = [];
+        forester.preOrderTraversalAll(_root_const || _root, function (n) {
+            if (n.collapsed === true && n.children) {
+                flagged.push({node: n, tips: forester.getAllExternalNodes(n)});
+            }
+        });
+        reroot();
+        let opened = false;
+        flagged.forEach(function (f) {
+            let now = f.node.children ? forester.getAllExternalNodes(f.node) : [];
+            let kept = new Set(f.tips);
+            if (now.length !== f.tips.length || !now.every(function (t) { return kept.has(t); })) {
+                f.node.collapsed = false;
+                opened = true;
+            }
+        });
+        if (opened) {
+            calcMaxExtLabel();
+            refreshVisualizations(false);
+        }
+    }
+
+    // What a collapsed clade is marked with for the tips it hides: the colour
+    // of its first search hit, else the selection colour when a tip is
+    // selected, else null. The wedge, the overview dot and the dimming all
+    // read it, so they always agree.
+    function collapsedMarkColor(d) {
+        let tips = forester.getAllExternalNodes(d);
+        let hit = tips.filter(isNodeFound)[0];
+        if (hit) {
+            return getFoundColor(hit);
+        }
+        return tips.some(function (t) { return _selectedNodes.has(t); }) ? _state.selectedColorDefault : null;
     }
 
     // How tall a collapsed clade draws, in rows: 1 for a pair, growing with
@@ -6960,13 +7014,19 @@ function (root, d3, forester, phyloXml) {
     // Whether any tip hidden in a collapsed clade is a hit or selected -- the
     // clade then stays undimmed, as that tip would be if it were drawn.
     function collapsedHoldsHighlight(d) {
-        let held = false;
-        forester.preOrderTraversal(d, function (n) {
-            if (!held && !n.children && getFoundColor(n)) {
-                held = true;
-            }
-        });
-        return held;
+        return collapsedMarkColor(d) !== null;
+    }
+
+    // Whether every tip a collapsed clade hides is marked: all of them search
+    // hits when the clade holds any hit, else all of them selected. Such a
+    // wedge is filled in the mark colour and its label set in it, bold.
+    function collapsedFullyMarked(d) {
+        let hits = collapsedFoundCounts(d);
+        if (hits.found > 0) {
+            return hits.found === hits.total;
+        }
+        let tips = forester.getAllExternalNodes(d);
+        return tips.length > 0 && tips.every(function (t) { return _selectedNodes.has(t); });
     }
 
     function collapsedFoundCounts(d) {
@@ -7060,8 +7120,8 @@ function (root, d3, forester, phyloXml) {
         let fs = _state.externalNodeFontSize;
         wedge.each(function (d) {
             let color = collapsedColor(d);
-            let hits = collapsedFoundCounts(d);
-            let foundColor = hits.found > 0 ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : null;
+            let mark = collapsedMarkColor(d);
+            let full = collapsedFullyMarked(d);
             let h = Math.max(6, collapsedRows(d) * _rowUnit * 0.82);
             let reach = collapsedReach(d);
             let path;
@@ -7082,18 +7142,17 @@ function (root, d3, forester, phyloXml) {
             d3.select(this)
                 .attr('d', path)
                 .attr('transform', radialDisplay() ? 'rotate(' + labelAngleDeg(d) + ')' : null)
-                .style('fill', (hits.found > 0 && hits.found === hits.total) ? foundColor : color)
-                .style('fill-opacity', (hits.found > 0 && hits.found === hits.total) ? 0.45 : 0.22)
-                .style('stroke', foundColor || color)
-                .style('stroke-width', foundColor ? 1.5 : 1)
+                .style('fill', full ? mark : color)
+                .style('fill-opacity', full ? 0.45 : 0.22)
+                .style('stroke', mark || color)
+                .style('stroke-width', mark ? 1.5 : 1)
                 .style('stroke-opacity', 0.9)
                 .style('stroke-linejoin', 'round');
         });
         label.each(function (d) {
             let far = collapsedReach(d)[1];   // the label clears the farthest tip
-            let hits = collapsedFoundCounts(d);
-            let allFound = hits.found > 0 && hits.found === hits.total;
-            let ink = allFound ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : _state.labelColorDefault;
+            let allFound = collapsedFullyMarked(d);
+            let ink = allFound ? collapsedMarkColor(d) : _state.labelColorDefault;
             let t = d3.select(this)
                 .text(collapsedLabel(d))
                 .style('font', (allFound ? '600 ' : '') + fs + 'px ' + FONT_DEFAULTS)
@@ -7315,7 +7374,9 @@ function (root, d3, forester, phyloXml) {
         }
         if (s.root === 'midpoint' && _viewOps.root !== 'midpoint'
             && (_treeData.rerootable === undefined || _treeData.rerootable === true)) {
-            forester.midpointRoot(_root_const);
+            rerootKeepingCollapse(function () {
+                forester.midpointRoot(_root_const);
+            });
             _viewOps.root = 'midpoint';
         }
         if (s.order === 'asc' || s.order === 'desc') {
@@ -8858,7 +8919,9 @@ function (root, d3, forester, phyloXml) {
             showNodeMenu([
                 {
                     label: 'Midpoint re-root', action: function () {
-                        forester.midpointRoot(_root);
+                        rerootKeepingCollapse(function () {
+                            forester.midpointRoot(_root);
+                        });
                         _viewOps.root = 'midpoint';   // what a shared view replays
                         zoomToFit();
                     }

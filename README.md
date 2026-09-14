@@ -228,7 +228,12 @@ own name if it has one; else the one Color-by value nearly all its tips share,
 so a clade reads "Bovine · 12 tips" while you look at hosts; else the tips'
 common name prefix; always with the tip count, and with `[found/total]` while
 a search hits inside it. Legends, alignment rows and domain tracks describe
-the tips on screen, so a collapsed clade's tips leave them. Collapsing is
+the tips on screen, so a collapsed clade's tips leave them,
+and the counts follow every clade you fold or open. A clade holding search
+hits is one dot in the overview and one stop for the hit navigator; one
+holding selected tips is outlined in the selection colour, and filled when
+all its tips are selected. Re-rooting opens any collapsed clade whose tips it
+would change, such as one the new midpoint falls inside. Collapsing is
 display state only: nothing is removed, exports and downloads carry every
 tip, and the unrooted layout, which has no rows to fold, shows every clade
 open. The controls are the desktop's; the drawing and naming are this
@@ -299,7 +304,7 @@ A collapsed clade holding a hit counts as on screen: it stays bright, its
 wedge outlined in the search colour and its label counting the hits, and
 the rest fades even when every hit is inside collapsed clades. The **overview** miniature marks every hit as a dot in the same
 colour, and a **◀ k / N ▶** navigator appears under the search boxes: each
-press centres the previous / next hit in the viewport, wrapping around.
+press centres the previous / next hit in the viewport, wrapping around. A collapsed clade holding hits is one dot and one stop.
 
 ## Keyboard
 
@@ -620,7 +625,7 @@ a name ending in `xml` as phyloXML, anything else as New Hampshire (Newick).
 A file holding **several trees** — a Nexus TREES block, a Newick file with one
 tree per `;`, a phyloXML with several phylogenies — opens on the first, and a
 picker with previous / next buttons at the top of the control panel moves
-between them; each tree opens fresh under the same config, the way a new tab
+between them; each tree opens fresh under the same config, nothing collapsed, the way a new tab
 does on the desktop. A protein/DNA/RNA characters matrix in a Nexus file
 (sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
 alignment track appears just as it does for phyloXML.

@@ -19,6 +19,14 @@ consumers only see a change when a version is cut.
 - **Search dims the rest of the tree when every hit is inside collapsed
   clades.** Those clades stay bright, outlined and counting their hits;
   before, dimming stayed off until a hit was drawn as a tip.
+- **A collapsed clade holding search hits** is one stop for the hit
+  navigator, centred on its node, and one dot in the overview, in its
+  wedge's colour. It used to be skipped by both.
+- **Selecting tips inside a collapsed clade shows on its wedge**: an outline
+  in the selection colour, a fill and a bold label when all its tips are
+  selected, as for search hits.
+- **Switching trees in a multi-tree file clears collapsing**, on the tree
+  left and the tree opened: each tree opens with nothing collapsed.
 
 ### Fixed
 
@@ -31,6 +39,13 @@ consumers only see a change when a version is cut.
 - A collapsed clade holding search hits (or selected tips) is no longer
   dimmed while hits elsewhere in the tree are shown; it was faded along
   with every non-matching node, found outline and all.
+- Midpoint re-rooting no longer turns a collapsed clade inside out. When the
+  new root fell inside a collapsed clade, the clade went on hiding every
+  other tip of the tree; re-rooting now opens any collapsed clade whose tips
+  it changes, and every other clade stays collapsed. The node menu's Reroot
+  follows the same rule.
+- The Color-by and Shape legends recount when a clade is collapsed or
+  opened; their counts used to keep the tips a collapsed clade hides.
 
 ## 3.4.0 — 2026-09-13
 
