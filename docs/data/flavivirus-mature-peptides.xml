@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <phyloxml xmlns="http://www.phyloxml.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:repseq="https://github.com/cmzmasek/repseq" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd">
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_C [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus C</name>
     <description>This tree is based on the C mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:03:07 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=C</description>
     <clade>
       <name>Flaviviridae</name>
@@ -4071,7 +4071,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_prM [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus prM</name>
     <description>This tree is based on the prM mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:03:13 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=prM</description>
     <clade>
       <name>Flaviviridae</name>
@@ -8510,7 +8510,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_E [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus E</name>
     <description>This tree is based on the E mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:03:26 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=E</description>
     <clade>
       <name>Flaviviridae</name>
@@ -13301,7 +13301,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS1 [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS1</name>
     <description>This tree is based on the NS1 mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:03:46 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS1</description>
     <clade>
       <name>Flaviviridae</name>
@@ -20220,7 +20220,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS2A [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS2A</name>
     <description>This tree is based on the NS2A mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:03:53 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS2A</description>
     <clade>
       <name>Flaviviridae</name>
@@ -24755,7 +24755,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS2B [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS2B</name>
     <description>This tree is based on the NS2B mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:04:00 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS2B</description>
     <clade>
       <name>Flaviviridae</name>
@@ -29030,7 +29030,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS3 [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS3</name>
     <description>This tree is based on the NS3 mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:04:23 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS3</description>
     <clade>
       <name>Flaviviridae</name>
@@ -35297,7 +35297,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS4A [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS4A</name>
     <description>This tree is based on the NS4A mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:04:31 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS4A</description>
     <clade>
       <name>Flaviviridae</name>
@@ -40424,7 +40424,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS4B [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS4B</name>
     <description>This tree is based on the NS4B mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:04:41 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS4B</description>
     <clade>
       <name>Flaviviridae</name>
@@ -45571,7 +45571,7 @@
     <property ref="repseq:leaf_unit" datatype="xsd:string" applies_to="phylogeny">sequence</property>
   </phylogeny>
   <phylogeny rooted="true">
-    <name>amarillovirales_flavivirus_NS5 [protein|MAFFT|FastTree JTT]</name>
+    <name>Flavivirus NS5</name>
     <description>This tree is based on the NS5 mature peptide (amino-acid), sliced from the flavivirus polyprotein; each leaf is one representative sequence. | repseq 0.73.0 phylogeny | generated 2026-07-30 01:05:34 UTC | alphabet=protein | MSA=MAFFT v7.520 (2023/Mar/22) | tree=FastTree FastTree Version 2.1.11 Double precision (No SSE3) | model=JTT | bootstrap=none | rooting=taxonomy | markers=NS5</description>
     <clade>
       <name>Flaviviridae</name>
