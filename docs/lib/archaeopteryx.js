@@ -6959,26 +6959,28 @@ function (root, d3, forester, phyloXml) {
         return best || _state.branchColorDefault;
     }
 
-    // The wedge's base: the desktop's triangle (paintCollapsedNode with its
-    // default "collapsed with average height") stands on a VERTICAL base at
-    // the clade's average tip distance, so the shape is symmetric about the
-    // node's row and its depth still reads. A cladogram, where every leaf
-    // sits on the tip column, gives it one depth step.
-    function collapsedBase(d) {
+    // The wedge's reach: the clade's nearest and farthest tips, in the
+    // layout's x. One edge runs to the nearest tip and the other to the
+    // farthest, so the shape itself shows how uneven the clade's branch
+    // lengths are (as iTOL draws it). Christian chose this over the
+    // desktop's symmetric triangle on an average base (2026-09-14). A
+    // phylogram measures the tips; a cladogram, where every leaf sits on
+    // the tip column, gives the wedge one depth step.
+    function collapsedReach(d) {
         if (_state.phylogram && _yScale) {
-            let sum = 0;
-            let n = 0;
+            let min = Infinity;
+            let max = -Infinity;
             forester.preOrderTraversal(d, function (t) {
                 if (!t.children && typeof t.distToRoot === 'number') {
-                    sum += t.distToRoot;
-                    ++n;
+                    if (t.distToRoot < min) { min = t.distToRoot; }
+                    if (t.distToRoot > max) { max = t.distToRoot; }
                 }
             });
-            if (n > 0) {
-                return Math.max(d.y + 2, _yScale(sum / n));
+            if (isFinite(min)) {
+                return [Math.max(d.y + 2, _yScale(min)), Math.max(d.y + 2, _yScale(max))];
             }
         }
-        return d.y + _cladogramUnit;
+        return [d.y + _cladogramUnit, d.y + _cladogramUnit];
     }
 
     let _cladogramUnit = 0;   // one depth step of the last cladogram layout, px
@@ -7004,18 +7006,21 @@ function (root, d3, forester, phyloXml) {
             let hits = collapsedFoundCounts(d);
             let foundColor = hits.found > 0 ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : null;
             let h = Math.max(6, collapsedRows(d) * _rowUnit * 0.82);
-            let base = collapsedBase(d);
+            let reach = collapsedReach(d);
             let path;
             if (radialDisplay()) {
                 // in the rotated frame: +x along the spoke from the node (the
-                // group's origin, already at the node's radius), the base
-                // across it -- a distance, never an absolute radius, or the
-                // wedge lands a whole radius further out than its label
-                let dr = radialRadius(base) - radialRadius(d.y);
-                path = 'M0,0 L' + dr + ',' + (-h / 2) + ' L' + dr + ',' + (h / 2) + ' Z';
+                // group's origin, already at the node's radius) -- distances,
+                // never absolute radii, or the wedge lands a whole radius
+                // further out than its label
+                let r0 = radialRadius(d.y);
+                let dr1 = radialRadius(reach[0]) - r0;
+                let dr2 = radialRadius(reach[1]) - r0;
+                path = 'M0,0 L' + dr1 + ',' + (-h / 2) + ' L' + dr2 + ',' + (h / 2) + ' Z';
             } else {
-                let dx = base - d.y;
-                path = 'M0,0 L' + dx + ',' + (-h / 2) + ' L' + dx + ',' + (h / 2) + ' Z';
+                let dx1 = reach[0] - d.y;
+                let dx2 = reach[1] - d.y;
+                path = 'M0,0 L' + dx1 + ',' + (-h / 2) + ' L' + dx2 + ',' + (h / 2) + ' Z';
             }
             d3.select(this)
                 .attr('d', path)
@@ -7028,7 +7033,7 @@ function (root, d3, forester, phyloXml) {
                 .style('stroke-linejoin', 'round');
         });
         label.each(function (d) {
-            let base = collapsedBase(d);
+            let far = collapsedReach(d)[1];   // the label clears the farthest tip
             let hits = collapsedFoundCounts(d);
             let allFound = hits.found > 0 && hits.found === hits.total;
             let ink = allFound ? getFoundColor(forester.getAllExternalNodes(d).filter(isNodeFound)[0]) : _state.labelColorDefault;
@@ -7038,7 +7043,7 @@ function (root, d3, forester, phyloXml) {
                 .style('fill', ink)
                 .style('pointer-events', 'none');
             if (radialDisplay()) {
-                let r = radialRadius(base) - radialRadius(d.y) + _state.nodeLabelGap;
+                let r = radialRadius(far) - radialRadius(d.y) + _state.nodeLabelGap;
                 let flip = labelFlip(d);
                 t.attr('transform', 'rotate(' + labelAngleDeg(d) + ') translate(' + r + ',0)' + (flip ? ' rotate(180)' : ''))
                     .attr('text-anchor', flip ? 'end' : 'start')
@@ -7046,7 +7051,7 @@ function (root, d3, forester, phyloXml) {
             } else {
                 t.attr('transform', null)
                     .attr('text-anchor', 'start')
-                    .attr('x', base - d.y + _state.nodeLabelGap)
+                    .attr('x', far - d.y + _state.nodeLabelGap)
                     .attr('dy', (0.3 * fs) + 'px');
             }
         });

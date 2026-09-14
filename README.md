@@ -217,9 +217,10 @@ any node does — an event, a search hit, a selection, a visualization.
 internal node's whole clade into a wedge and opens it again; **Uncollapse
 Subtree** opens everything below a node; the tool row's uncollapse-all button
 (the desktop's glyph, lit only while something is collapsed) opens the whole
-tree, and so does **Esc**. The wedge is the desktop's triangle: its apex at
-the node, its vertical base at the clade's average tip distance (one depth
-step in a cladogram), so its depth stays readable; it is filled in the colour most of its tips wear under the current
+tree, and so does **Esc**. The wedge has its apex at the node, one edge
+reaching the clade's nearest tip and the other its farthest, so the shape
+shows how uneven the clade's branch lengths are, as iTOL draws it (one depth
+step in a cladogram); it is filled in the colour most of its tips wear under the current
 Color-by, grows gently taller with its tip count, and is named — the node's
 own name if it has one; else the one Color-by value nearly all its tips share,
 so a clade reads "Bovine · 12 tips" while you look at hosts; else the tips'
