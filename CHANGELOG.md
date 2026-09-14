@@ -17,6 +17,15 @@ consumers only see a change when a version is cut.
   distance instead. The label clears the farthest tip. The circular-layout
   fix from 3.4.0, which keeps the wedge on its node, stays.
 
+### Fixed
+
+- A collapsed clade's label lines up with the tip labels: on the label
+  column in the aligned phylogram and on the outer ring in the circular
+  layout, rotated or upright, with the same faint guide line or dashed
+  connector the tips get. It used to sit just past its wedge in every
+  display. A circular tree also scales to a collapsed clade's farthest tip,
+  so a wedge holding the deepest tip no longer crosses the label ring.
+
 ## 3.4.0 — 2026-09-13
 
 The field-review release: the five things every other browser tree viewer

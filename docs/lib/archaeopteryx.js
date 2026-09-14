@@ -2782,10 +2782,15 @@ function (root, d3, forester, phyloXml) {
         placeRootStub();
 
         if (_state.circularDisplay) {
+            // the outermost drawn point sets the scale: a node, or the far
+            // edge of a collapsed clade's wedge -- which reaches the clade's
+            // farthest tip, hidden from nodes but not from the drawing, and
+            // would otherwise poke through the ring the labels stand on
             let maxY = 0;
             for (let i = 0; i < nodes.length; ++i) {
-                if (nodes[i].y > maxY) {
-                    maxY = nodes[i].y;
+                let y = isCollapsed(nodes[i]) ? Math.max(nodes[i].y, collapsedReach(nodes[i])[1]) : nodes[i].y;
+                if (y > maxY) {
+                    maxY = y;
                 }
             }
             _radial = {
@@ -3303,43 +3308,75 @@ function (root, d3, forester, phyloXml) {
         // _svgGroup, so that name put them in the way of selectAll('path.link')
         // -- the main link data-join, and the overview's miniature.
         _svgGroup.selectAll('g.aptx-align-ext').remove();
-        if (!radialDisplay() && _state.phylogram && _state.alignPhylogram && _state.showExternalLabels
-            && (_state.showNodeName || _state.showTaxonomy || _state.showSequence)) {
+        let alignedRect = !radialDisplay() && _state.phylogram && _state.alignPhylogram;
+        let tipGuides = alignedRect && _state.showExternalLabels
+            && (_state.showNodeName || _state.showTaxonomy || _state.showSequence);
+        // a collapsed clade's label always shows, so its guide does too: from
+        // past the wedge's farthest tip to the label column
+        let collapsedGuides = alignedRect ? nodes.filter(function (d) {
+            return isCollapsed(d) && !(_state.dynahide && d.hide);
+        }) : [];
+        if (tipGuides || collapsedGuides.length > 0) {
             let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
-            ext.selectAll('path')
-                .data(links.filter(function (d) {
-                    return (!d.target.children && !(_state.dynahide && d.target.hide));
-                }))
-                .enter().append('path')
-                .attr('fill', 'none')
-                .attr('stroke-width', 1)
-                .attr('stroke', _state.branchColorDefault)
-                .style('stroke-opacity', 0.25)
+            let guideStyle = function (sel) {
+                return sel.attr('fill', 'none')
+                    .attr('stroke-width', 1)
+                    .attr('stroke', _state.branchColorDefault)
+                    .style('stroke-opacity', 0.25);
+            };
+            if (tipGuides) {
+                guideStyle(ext.selectAll('path.aptx-tip-guide')
+                    .data(links.filter(function (d) {
+                        return (!d.target.children && !(_state.dynahide && d.target.hide));
+                    }))
+                    .enter().append('path').attr('class', 'aptx-tip-guide'))
+                    .attr('d', function (d) {
+                        return connection(d.target);
+                    });
+            }
+            guideStyle(ext.selectAll('path.aptx-collapsed-guide')
+                .data(collapsedGuides)
+                .enter().append('path').attr('class', 'aptx-collapsed-guide'))
                 .attr('d', function (d) {
-                    return connection(d.target);
+                    let x1 = collapsedReach(d)[1] + 5;
+                    return (_w - x1) > 5 ? 'M' + x1 + ',' + d.x + 'L' + _w + ',' + d.x : null;
                 });
         }
 
         // circular: a thin dashed connector from each external node out to the
         // common label ring (so labels line up like iTOL's aligned display).
         _svgGroup.selectAll('g.aptx-radial-conn').remove();
-        if (_state.circularDisplay && _state.showExternalLabels) {
-            let conn = _svgGroup.insert('g', 'g').attr('class', 'aptx-radial-conn');
-            conn.selectAll('line')
-                .data(nodes.filter(function (d) {
-                    return !d.children && !(_state.dynahide && d.hide);
-                }))
-                .enter().append('line')
-                .attr('stroke', _state.branchColorDefault)
-                // width/opacity match the rectangular aligned extensions; the
-                // dash alone marks these as connectors (0.5px at 0.3 vanished)
-                .attr('stroke-width', 1)
-                .style('stroke-opacity', 0.4)
-                .style('stroke-dasharray', '2,3')
-                .attr('x1', function (d) { return radialXY(d.x, d.y)[0]; })
-                .attr('y1', function (d) { return radialXY(d.x, d.y)[1]; })
-                .attr('x2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[0]; })
-                .attr('y2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[1]; });
+        if (_state.circularDisplay) {
+            // tips while their labels show; a collapsed clade always (its label
+            // always shows), from its wedge's farthest reach out to the ring
+            let connected = nodes.filter(function (d) {
+                if (_state.dynahide && d.hide) {
+                    return false;
+                }
+                if (isCollapsed(d)) {
+                    return _radial.maxRad - radialRadius(collapsedReach(d)[1]) > 2;
+                }
+                return !d.children && _state.showExternalLabels;
+            });
+            let innerY = function (d) {
+                return isCollapsed(d) ? collapsedReach(d)[1] : d.y;
+            };
+            if (connected.length > 0) {
+                let conn = _svgGroup.insert('g', 'g').attr('class', 'aptx-radial-conn');
+                conn.selectAll('line')
+                    .data(connected)
+                    .enter().append('line')
+                    .attr('stroke', _state.branchColorDefault)
+                    // width/opacity match the rectangular aligned extensions; the
+                    // dash alone marks these as connectors (0.5px at 0.3 vanished)
+                    .attr('stroke-width', 1)
+                    .style('stroke-opacity', 0.4)
+                    .style('stroke-dasharray', '2,3')
+                    .attr('x1', function (d) { return radialXY(d.x, innerY(d))[0]; })
+                    .attr('y1', function (d) { return radialXY(d.x, innerY(d))[1]; })
+                    .attr('x2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[0]; })
+                    .attr('y2', function (d) { return polarXY(radialAngle(d.x), _radial.maxRad)[1]; });
+            }
         }
 
         for (let i = 0, len = nodes.length; i !== len; ++i) {
@@ -7042,16 +7079,33 @@ function (root, d3, forester, phyloXml) {
                 .style('font', (allFound ? '600 ' : '') + fs + 'px ' + FONT_DEFAULTS)
                 .style('fill', ink)
                 .style('pointer-events', 'none');
-            if (radialDisplay()) {
-                let r = radialRadius(far) - radialRadius(d.y) + _state.nodeLabelGap;
-                let flip = labelFlip(d);
+            // placed exactly as a tip's label is (update's text.extlabel): on
+            // the common ring in circular, rotated along the spoke or upright;
+            // on the label column in the aligned phylogram; else just past the
+            // wedge, where a tip's label sits past its tip
+            let gap = _state.nodeLabelGap;
+            let flip = radialDisplay() && labelFlip(d);
+            if (_state.circularDisplay && _radial) {
+                t.attr('text-anchor', flip ? 'end' : 'start')
+                    .attr('x', flip ? -gap : gap).attr('dy', '0.32em');
+                if (_radialLabelsHorizontal) {
+                    let p = radialXY(d.x, d.y);
+                    let q = polarXY(radialAngle(d.x), _radial.maxRad);
+                    t.attr('transform', 'translate(' + (q[0] - p[0]) + ',' + (q[1] - p[1]) + ')');
+                } else {
+                    let off = _radial.maxRad - radialRadius(d.y);
+                    t.attr('transform', 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (flip ? ' rotate(180)' : ''));
+                }
+            } else if (radialDisplay()) {
+                let r = radialRadius(far) - radialRadius(d.y) + gap;
                 t.attr('transform', 'rotate(' + labelAngleDeg(d) + ') translate(' + r + ',0)' + (flip ? ' rotate(180)' : ''))
                     .attr('text-anchor', flip ? 'end' : 'start')
                     .attr('x', 0).attr('dy', '0.32em');
             } else {
+                let column = (_state.phylogram && _state.alignPhylogram) ? _w : far;
                 t.attr('transform', null)
                     .attr('text-anchor', 'start')
-                    .attr('x', far - d.y + _state.nodeLabelGap)
+                    .attr('x', column - d.y + gap)
                     .attr('dy', (0.3 * fs) + 'px');
             }
         });
