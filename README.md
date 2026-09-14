@@ -295,7 +295,8 @@ Hits are hard to miss: their labels take the search colour **in bold**, a
 translucent **pulsing halo** breathes behind each hit, and everything that is
 *not* a hit fades — the desktop's "dim non-matches", engaged only while at
 least one hit is actually visible, so a fruitless search never washes the
-tree out. The **overview** miniature marks every hit as a dot in the same
+tree out. A collapsed clade holding a hit stays bright too, its wedge
+outlined in the search colour and its label counting the hits. The **overview** miniature marks every hit as a dot in the same
 colour, and a **◀ k / N ▶** navigator appears under the search boxes: each
 press centres the previous / next hit in the viewport, wrapping around.
 

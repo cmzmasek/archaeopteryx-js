@@ -3158,9 +3158,14 @@ function (root, d3, forester, phyloXml) {
         // Dim Non-Matches: one opacity on the node GROUP dims its labels, dot,
         // shape and branch-data numbers together; the branch lines are separate
         // path.link elements and keep their full colour, as on the desktop.
-        // Hits and selected nodes (getFoundColor) are never dimmed.
+        // Hits and selected nodes (getFoundColor) are never dimmed -- and
+        // neither is a collapsed clade holding one: its wedge and label live in
+        // the clade node's group, and the clade node itself is never a hit.
         node.style('opacity', function (d) {
-            return (_dimNonMatches && !getFoundColor(d)) ? DIM_NON_MATCH_OPACITY : null;
+            if (!_dimNonMatches || getFoundColor(d) || (isCollapsed(d) && collapsedHoldsHighlight(d))) {
+                return null;
+            }
+            return DIM_NON_MATCH_OPACITY;
         });
 
         let nodeUpdate = animateOrSet(node, transitionDuration)
@@ -6947,6 +6952,18 @@ function (root, d3, forester, phyloXml) {
         let prefix = forester.commonNamePrefix(d, forester.nodeLabelProperty(_treeData));
         prefix = prefix ? prefix.replace(/[\s_\-.:|/]+$/, '') : '';
         return prefix.length >= 2 ? prefix : '';
+    }
+
+    // Whether any tip hidden in a collapsed clade is a hit or selected -- the
+    // clade then stays undimmed, as that tip would be if it were drawn.
+    function collapsedHoldsHighlight(d) {
+        let held = false;
+        forester.preOrderTraversal(d, function (n) {
+            if (!held && !n.children && getFoundColor(n)) {
+                held = true;
+            }
+        });
+        return held;
     }
 
     function collapsedFoundCounts(d) {

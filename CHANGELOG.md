@@ -25,6 +25,9 @@ consumers only see a change when a version is cut.
   connector the tips get. It used to sit just past its wedge in every
   display. A circular tree also scales to a collapsed clade's farthest tip,
   so a wedge holding the deepest tip no longer crosses the label ring.
+- A collapsed clade holding search hits (or selected tips) is no longer
+  dimmed while hits elsewhere in the tree are shown; it was faded along
+  with every non-matching node, found outline and all.
 
 ## 3.4.0 — 2026-09-13
 
