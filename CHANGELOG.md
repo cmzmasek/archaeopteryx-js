@@ -6,7 +6,12 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.4.1 — 2026-09-14
+
+Collapsed clades made to fit the rest of the viewer — their shape, labels,
+colours, search, selection, re-rooting and tree switching — plus a
+Molecular Sequence search that finds sequences again and a node-data
+download with a proper header.
 
 ### Changed
 
