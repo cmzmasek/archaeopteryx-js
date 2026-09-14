@@ -91,6 +91,45 @@ runTest("MAD branch values         : ", testMadBranchValues);
 runTest("MAD vs brute force        : ", testMadBruteForce);
 runTest("MAD desktop contract      : ", testMadDesktopContract);
 runTest("MAD values never support  : ", testMadValuesNeverSupport);
+runTest("time tree detection       : ", testIsTimeTree);
+
+// A time tree has dated ancestors (BEAST heights, Nextstrain dates, phyloXML
+// <date>s on internal nodes); tip dates alone are collection dates on a
+// divergence tree. The viewer never re-roots a time tree.
+function testIsTimeTree() {
+    var nwk = "(((A:1,B:1):1,C:2):1,(D:1,E:1):2)";
+    var dated = function (which) {
+        var phy = forester.parseNewHampshire(nwk, true, false);
+        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+            if (which(n)) {
+                n.date = {value: 2000};
+            }
+        });
+        return phy;
+    };
+    var minority = forester.parseNewHampshire(nwk, true, false);
+    forester.getTreeRoot(minority).date = {value: 5};   // 1 of 4 internal nodes
+    var half = forester.parseNewHampshire(nwk, true, false);
+    forester.getTreeRoot(half).date = {value: 5};      // 2 of 4 internal nodes: not a majority
+    forester.getTreeRoot(half).children[1].date = {value: 3};
+    var single = forester.parseNewHampshire("(A:1,B:1)", true, false);
+    forester.getTreeRoot(single).date = {value: 5};     // 1 of 1: a majority, but fewer than two
+    var beastText = require('fs').readFileSync(pth.join(__dirname, '..', 'docs', 'data', 'beast-annotations.nex'), 'utf8');
+    var results = {
+        none: forester.isTimeTree(forester.parseNewHampshire(nwk, true, false)),
+        tips: forester.isTimeTree(dated(function (n) { return !n.children; })),
+        ancestors: forester.isTimeTree(dated(function (n) { return !!n.children; })),
+        minority: forester.isTimeTree(minority),
+        half: forester.isTimeTree(half),
+        single: forester.isTimeTree(single),
+        beast: forester.isTimeTree(forester.parseNexus(beastText, true, false)[0])
+    };
+    if (results.none || results.tips || !results.ancestors || results.minority || results.half || results.single || !results.beast) {
+        console.log('    ' + JSON.stringify(results));
+        return false;
+    }
+    return true;
+}
 
 // A MAD value rates a root position, not a clade: the Newick/Nexus support
 // slot never holds one (and a branch with both keeps its support), and the

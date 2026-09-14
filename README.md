@@ -262,7 +262,11 @@ additionally greys out the aligned-phylogram option and Auto-hide Labels
 
 The tool row's re-root button asks how: **MAD re-root (Tria et al., 2017)**
 or **Midpoint re-root** (hover over the MAD entry for the full citation). A
-node's menu offers **Reroot** on the branch above that node.
+node's menu offers **Reroot** on the branch above that node. None of them is
+offered for a tree whose phyloXML says `rerootable="false"`, nor for a time
+tree, one whose internal nodes are mostly dated (BEAST node heights,
+Nextstrain dates, phyloXML `<date>`s): a new root would contradict the dates.
+A shared view's root is ignored for such a tree.
 
 **MAD rooting** (minimal ancestor deviation) roots the tree without assuming
 a clock. The common ancestor of two tips ought to lie halfway between them,

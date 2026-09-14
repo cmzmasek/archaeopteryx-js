@@ -27,6 +27,11 @@ consumers only see a change when a version is cut.
 
 ### Changed
 
+- **A time tree can no longer be re-rooted**, by the re-root button, the
+  node menu's Reroot or a shared view. A time tree is one whose internal
+  nodes are mostly dated (BEAST node heights, Nextstrain dates, phyloXML
+  `<date>`s); `forester.isTimeTree(phy)`. phyloXML's `rerootable="false"` was
+  already honoured by every way of re-rooting.
 - **Newick and Nexus downloads never write a MAD value as support**, and a
   branch carrying both keeps its support value in the file. phyloXML keeps
   MAD values as `<confidence type="MAD">`.

@@ -5243,6 +5243,32 @@
         'calendar year': 1, 'calendar years': 1
     };
 
+    /**
+     * Whether the tree's branch lengths are time: most of its internal nodes
+     * carry a date, and at least two do -- BEAST node heights, Nextstrain
+     * dates, phyloXML <date>s on ancestors. Tip dates alone do not make one:
+     * a divergence tree can carry collection dates, and re-rooting it (as a
+     * root-to-tip regression does) is a normal step. A time tree is never
+     * re-rooted: a new root would contradict the ancestors' dates. The
+     * desktop's rule is the same (its detectTimeTree, internal-node half).
+     *
+     * @param phy the tree
+     * @returns {boolean}
+     */
+    forester.isTimeTree = function (phy) {
+        let internal = 0;
+        let dated = 0;
+        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+            if (n.children && n.children.length > 0) {
+                ++internal;
+                if (n.date && typeof n.date.value === 'number' && isFinite(n.date.value)) {
+                    ++dated;
+                }
+            }
+        });
+        return dated >= 2 && dated * 2 > internal;
+    };
+
     // Everything the viewer needs to decide about and draw a time axis:
     // {type: 'geologic'|'calendar'|null, rootAge, presentDate, dated,
     //  hasInternalIntervals, hasExternalIntervals}. rootAge (geologic) and

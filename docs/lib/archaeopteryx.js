@@ -561,6 +561,7 @@ function (root, d3, forester, phyloXml) {
     const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, FigTree-like
     const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
     let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
+    let _timeTree = false;                // forester.isTimeTree: never re-rooted
     let _clusterH = 0;                    // the cluster layout's vertical extent, set per render
     let _docListenersBound = false;       // page-level key/wheel handlers bind once, not per launch
     let _docListeners = [];               // ...and destroy() can take every one of them down again
@@ -4772,6 +4773,7 @@ function (root, d3, forester, phyloXml) {
         // elements by forester.timeAxisInfo -- again unless the caller set
         // showTimeAxis explicitly.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
+        _timeTree = _treeData ? forester.isTimeTree(_treeData) : false;
         if (_state.showTimeAxis === undefined) {
             _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
         }
@@ -5887,7 +5889,7 @@ function (root, d3, forester, phyloXml) {
                 }});
             }
             if (!_in_subtree && d.parent && d.parent.parent
-                && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
+                && rerootingAllowed()) {
                 items.push({label: 'Reroot', action: function () {
                     rerootKeepingCollapse(function () {
                         forester.removeMadConfidences(tree);   // they rate the MAD rooting only
@@ -7285,7 +7287,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         if ((s.root === 'midpoint' || s.root === 'mad') && _viewOps.root !== s.root
-            && (_treeData.rerootable === undefined || _treeData.rerootable === true)) {
+            && rerootingAllowed()) {
             rootTreeBy(s.root);
         }
         if (s.order === 'asc' || s.order === 'desc') {
@@ -8811,10 +8813,17 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // MAD rooting needs branch lengths, three tips, and a tree its file lets
-    // be re-rooted.
+    // The one test every way of re-rooting asks -- the re-root button and its
+    // menu, the node menu's Reroot, a shared view's root: never a tree its
+    // file marks rerootable="false", never a time tree.
+    function rerootingAllowed() {
+        return !!_treeData && _treeData.rerootable !== false && !_timeTree;
+    }
+
+    // MAD rooting needs branch lengths, three tips, and a tree that may be
+    // re-rooted at all.
     function madRootingPossible() {
-        return (_treeData.rerootable === undefined || _treeData.rerootable === true)
+        return rerootingAllowed()
             && !!_basicTreeProperties && !!_basicTreeProperties.branchLengths
             && _basicTreeProperties.externalNodesCount >= 3;
     }
@@ -8844,7 +8853,7 @@ function (root, d3, forester, phyloXml) {
     // menu uses (click anywhere else or press Esc to cancel) -- and the popup
     // is where the method is picked.
     function midpointRootButtonPressed(event) {
-        if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
+        if (!_in_subtree && _root && rerootingAllowed()) {
             let ev = event;
             if (!ev || ev.pageX === undefined || (ev.pageX === 0 && ev.pageY === 0)) {
                 // keyboard/synthetic invocation: anchor the popup at the button
@@ -12382,7 +12391,7 @@ function (root, d3, forester, phyloXml) {
             disableButton(byId(RETURN_TO_SUPERTREE_BUTTON));
         }
 
-        if (!_in_subtree && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
+        if (!_in_subtree && rerootingAllowed()) {
             enableButton(byId(MIDPOINT_ROOT_BUTTON));
         } else {
             disableButton(byId(MIDPOINT_ROOT_BUTTON));
