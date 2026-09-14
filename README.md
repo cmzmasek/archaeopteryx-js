@@ -27,6 +27,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Auspice / Nextstrain JSON](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
 * [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
 * [BEAST annotations (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=beast)
+* [Flavivirus mature peptides (10 trees)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flavivirus)
 * [SARS-CoV-2 time tree (calendar)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=sarscov2)
 * [Herpesviridae DNA polymerase (201 tips)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=herpes_dnapol)
 * [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
