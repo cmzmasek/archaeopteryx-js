@@ -413,6 +413,8 @@ displayed), and a 1-based **column ruler**. **Hover any residue** for its
 alignment column, its position within that sequence's own ungapped residues,
 its full name, class, and Kyte-Doolittle hydropathy. The **Alignment**
 checkbox under Display Data toggles the whole track.
+To find a motif, pick **Molecular Sequence** in a search box: it matches the
+residues as written, gap characters included, as the desktop does.
 
 Alignments arrive with the tree: as phyloXML `<mol_seq is_aligned="true">`
 elements, or in a **Nexus** file whose characters matrix accompanies its tree.

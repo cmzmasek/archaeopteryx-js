@@ -4135,7 +4135,13 @@
     const SEARCH_DOMAIN = textField('Domain', n => searchSeqs(n).reduce((a, s) => a.concat((s.domain_architecture && s.domain_architecture.domains) ? s.domain_architecture.domains.map(d => d.name) : []), []).filter(Boolean));
     const SEARCH_ANNOTATION = textField('Annotation', n => searchSeqs(n).reduce((a, s) => a.concat((s.annotations || []).reduce((b, an) => b.concat([an.desc, an.ref]), [])), []).filter(Boolean), {anyText: true});
     const SEARCH_CROSS_REFERENCE = textField('Cross-Reference', n => searchSeqs(n).reduce((a, s) => a.concat((s.cross_references || []).reduce((b, x) => b.concat([x.value, x.source, x.comment]), [])), []).filter(Boolean), {anyText: true});
-    const SEARCH_MOLECULAR_SEQUENCE = textField('Molecular Sequence', n => searchSeqs(n).map(s => s.mol_seq).filter(Boolean), {suggest: false});
+    // The residues: the phyloXML and Nexus readers give mol_seq as {value,
+    // is_aligned}, and a hand-built tree may carry the plain string. Reading
+    // the object itself compared every query against "[object Object]", so
+    // this field never matched a real file (its test built the string form).
+    const SEARCH_MOLECULAR_SEQUENCE = textField('Molecular Sequence', n => searchSeqs(n).map(function (s) {
+        return (s.mol_seq && typeof s.mol_seq === 'object') ? s.mol_seq.value : s.mol_seq;
+    }).filter(Boolean), {suggest: false});
     // in menu order
     const SEARCH_TEXT_FIELDS = [
         SEARCH_NODE_NAME, SEARCH_TAXONOMY_SCIENTIFIC_NAME, SEARCH_TAXONOMY_COMMON_NAME, SEARCH_TAXONOMY_CODE,

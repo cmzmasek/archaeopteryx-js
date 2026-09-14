@@ -76,7 +76,7 @@ function makeTestTree() {
     }];
     byName.A.sequences = [{
         name: 'Apaf-1', gene_name: 'APAF1', symbol: 'APAF', accession: {value: 'NM_001160'},
-        mol_seq: 'MDAKAR',
+        mol_seq: {value: 'MDAKAR', is_aligned: false},   // the readers' shape, not a bare string
         annotations: [{desc: 'apoptosis regulator', ref: 'GO:0006915'}]
     }];
     byName.B.taxonomies = [{scientific_name: 'Mus musculus', code: 'MOUSE'}];
@@ -146,6 +146,7 @@ runTest("phylogeny wrapper skipped  : ", testPhylogenyWrapperNotSearchable);
 runTest("super-root not a tree node : ", testSuperRootNotCountedAsNode);
 runTest("no field prefix in a query  : ", testNoFieldPrefixSyntax);
 runTest("built-in fields by identity: ", testBuiltInFieldsByIdentity);
+runTest("molecular sequence, as read: ", testMolecularSequenceAsRead);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -394,6 +395,68 @@ function testInvalidInputFailsClosed() {
     // regex mode does not split on ',' / '+' (they are regex syntax)
     if (names(forester.searchWithSpec(f.phy, spec(f.phy, 'Taxonomy Scientific', 'regex', 'catus|musculus'))) !== 'B,C') return false;
     return true;
+}
+
+// The Molecular Sequence field searches the residues of trees as the readers
+// build them. It compared the mol_seq OBJECT ({value, is_aligned}) and so
+// never matched a real file, while the fixture above carried a bare string
+// and passed. An aligned Nexus matrix, through the real parser: gaps,
+// MatchChar resolution and all. A hand-built bare string still works.
+function testMolecularSequenceAsRead() {
+    var nexus = [
+        "#NEXUS",
+        "Begin Characters;",
+        " Dimensions NTax=4 NChar=20;",
+        " Format DataType=protein Missing=? Gap=- MatchChar=.;",
+        " Matrix",
+        "  Homo_sapiens    MKVL-AT-QWACDEFGHIKL",
+        "  Mus_musculus    .R..................",
+        "  Rattus          ..I...........W.....",
+        "  Gallus          M.--..........Y.....",
+        " ;",
+        "End;",
+        "Begin Trees;",
+        " Tree t=((Homo_sapiens:0.1,Mus_musculus:0.2):0.3,(Rattus:0.4,Gallus:0.5):0.6);",
+        "End;",
+        ""
+    ].join("\n");
+    var phy = forester.parseNexus(nexus)[0];
+    var tip = forester.getAllExternalNodes(phy)[0];
+    if (!tip.sequences || typeof tip.sequences[0].mol_seq !== 'object') {
+        console.log('    the reader no longer gives mol_seq as an object -- revisit this test');
+        return false;
+    }
+    var hits = function (mode, value, cs) {
+        var h = forester.searchWithSpec(phy, spec(phy, 'Molecular Sequence', mode, value, {caseSensitive: cs}));
+        return Array.from(h).map(function (n) { return n.name; }).sort().join(',');
+    };
+    var cases = [
+        // Homo MKVL-AT-QWACDEFGHIKL  Mus MRVL-AT-QWACDEFGHIKL
+        // Rattus MKIL-AT-QWACDEWGHIKL  Gallus MK---AT-QWACDEYGHIKL
+        ['contains', 'ACDEFG', false, 'Homo_sapiens,Mus_musculus'],
+        ['contains', 'ACDEWG', false, 'Rattus'],
+        ['contains', 'acdewg', false, 'Rattus'],
+        ['contains', 'acdewg', true, ''],
+        ['starts_with', 'MR', false, 'Mus_musculus'],
+        ['ends_with', 'YGHIKL', false, 'Gallus'],
+        ['regex', 'DE[WY]G', false, 'Gallus,Rattus'],
+        // gaps are searched as written, as on the desktop (SearchField adds
+        // getMolecularSequence() unchanged): a motif across a gap needs it
+        ['contains', 'K---A', false, 'Gallus'],
+        ['contains', 'KVLAT', false, '']
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var c = cases[i];
+        var got = hits(c[0], c[1], c[2]);
+        if (got !== c[3]) {
+            console.log('    ' + c[0] + ' "' + c[1] + '"' + (c[2] ? ' (match case)' : '') + ': got "' + got + '", expected "' + c[3] + '"');
+            return false;
+        }
+    }
+    // the plain-string form a hand-built tree may carry
+    var f = makeTestTree();
+    f.byName.A.sequences[0].mol_seq = 'MDAKAR';
+    return names(forester.searchWithSpec(f.phy, spec(f.phy, 'Molecular Sequence', 'contains', 'DAKA'))) === 'A';
 }
 
 function testDistinctValues() {

@@ -46,6 +46,10 @@ consumers only see a change when a version is cut.
   follows the same rule.
 - The Color-by and Shape legends recount when a clade is collapsed or
   opened; their counts used to keep the tips a collapsed clade hides.
+- **Searching the Molecular Sequence field finds sequences again.** It
+  compared each query against the sequence object instead of its residues,
+  so it never matched a tree read from phyloXML or Nexus. Residues are
+  searched as written, gap characters included, as on the desktop.
 
 ## 3.4.0 — 2026-09-13
 
