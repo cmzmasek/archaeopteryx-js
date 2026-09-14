@@ -2527,6 +2527,12 @@ function testViewStateCodec() {
         console.log('    unknown keys: ' + JSON.stringify(partial));
         return false;
     }
+    // a MAD root and the MAD Values checkbox ride along like the rest
+    var mad = aptx.decodeViewState('#' + aptx.encodeViewState({root: 'mad', show: ['madValues', 'confidence']}));
+    if (!mad || mad.root !== 'mad' || mad.show.join() !== 'madValues,confidence') {
+        console.log('    MAD view: ' + JSON.stringify(mad));
+        return false;
+    }
     return aptx.encodeViewState(null) === '' && aptx.encodeViewState({}) === '';
 }
 

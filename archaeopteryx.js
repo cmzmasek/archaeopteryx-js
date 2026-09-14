@@ -350,6 +350,7 @@ function (root, d3, forester, phyloXml) {
     const CLADOGRAM_BUTTON = 'cla_b';
     const CONFIDENCE_VALUES_CB = 'conf_cb';
     const SUPPORT_DOTS_CB = 'suppdots_cb';
+    const MAD_VALUES_CB = 'mad_cb';
     const DOWNLOAD_BUTTON = 'dl_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
@@ -371,6 +372,7 @@ function (root, d3, forester, phyloXml) {
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
+    const MAD_CITATION = 'Tria F, Landan G, Dagan T. Phylogenetic rooting using minimal ancestor deviation. Nature Ecology and Evolution. 2017;1:0193';
     const UNCOLLAPSE_ALL_BUTTON = 'uncollapse_all_b';
     const TREE_PREV_BUTTON = 'tree_prev_b';
     const TREE_NEXT_BUTTON = 'tree_next_b';
@@ -1465,6 +1467,9 @@ function (root, d3, forester, phyloXml) {
             let b = document.createElement('button');
             b.type = 'button';
             b.textContent = item.label;
+            if (item.title) {
+                b.title = item.title;
+            }
             if (item.danger) {
                 b.className = 'aptx-menu-danger';
             }
@@ -3200,7 +3205,7 @@ function (root, d3, forester, phyloXml) {
         if (_state.showBranchLengthValues) {
             nodeChild('text.bllabel').text(makeBranchLengthLabel);
         }
-        if (_state.showConfidenceValues) {
+        if (_state.showConfidenceValues || _state.showMadValues) {
             nodeChild('text.conflabel').text(makeConfidenceValuesLabel);
         }
         if (_state.showBranchEvents) {
@@ -3811,7 +3816,7 @@ function (root, d3, forester, phyloXml) {
 
     function syncOptionalNodeChildren(node) {
         let wantBl = _state.showBranchLengthValues === true;
-        let wantConf = _state.showConfidenceValues === true;
+        let wantConf = _state.showConfidenceValues === true || _state.showMadValues === true;
         let wantEvent = _state.showBranchEvents === true;
         let wantDot = _state.showSupportDots === true;
 
@@ -4080,39 +4085,32 @@ function (root, d3, forester, phyloXml) {
         }
     };
 
+    // A branch's values as "MAD/support", as the desktop writes them: the MAD
+    // value (from MAD rooting, to two decimals, 0 included -- low is good)
+    // while MAD Values is on, then the support values while Confidence is on,
+    // those only when one reaches the minimum. A MAD value is never support.
     let makeConfidenceValuesLabel = function (phynode) {
-        if (phynode.confidences && phynode.confidences.length > 0) {
-            let c = phynode.confidences;
-            let cl = c.length;
-            if (_state.minConfidenceValueToShow) {
-                let show = false;
-                for (let i = 0; i < cl; ++i) {
-                    if (c[i].value >= _state.minConfidenceValueToShow) {
-                        show = true;
-                        break;
-                    }
-                }
-                if (!show) {
-                    return;
-                }
-            }
-            if (cl === 1) {
-                if (c[0].value) {
-                    return +c[0].value.toFixed(CONFIDENCE_VALUE_DIGITS_DEFAULT);
-                }
-            } else {
-                let s = "";
-                for (let ii = 0; ii < cl; ++ii) {
-                    if (c[ii].value) {
-                        if (ii > 0) {
-                            s += "/";
-                        }
-                        s += +c[ii].value.toFixed(CONFIDENCE_VALUE_DIGITS_DEFAULT);
-                    }
-                }
-                return s;
-            }
+        if (!phynode.confidences || phynode.confidences.length === 0) {
+            return;
         }
+        let parts = [];
+        let support = [];
+        phynode.confidences.forEach(function (c) {
+            if (c.type !== forester.MAD_CONFIDENCE_TYPE) {
+                support.push(c);
+            } else if (_state.showMadValues && typeof c.value === 'number' && isFinite(c.value)) {
+                parts.push(+c.value.toFixed(2));
+            }
+        });
+        if (_state.showConfidenceValues && support.length > 0
+            && (!_state.minConfidenceValueToShow || support.some(function (c) { return c.value >= _state.minConfidenceValueToShow; }))) {
+            support.forEach(function (c) {
+                if (c.value) {
+                    parts.push(+c.value.toFixed(CONFIDENCE_VALUE_DIGITS_DEFAULT));
+                }
+            });
+        }
+        return parts.length > 0 ? parts.join('/') : undefined;
     };
 
     let makeBranchEventsLabel = function (phynode) {
@@ -4173,12 +4171,23 @@ function (root, d3, forester, phyloXml) {
         return (branchWidth + SUPPORT_DOT_EXTRA_DIAMETER) / 2;
     }
 
+    // A branch's first confidence that is support: a MAD value (MAD rooting)
+    // rates a root position, not the clade.
+    function firstSupportValue(d) {
+        for (let i = 0; i < d.confidences.length; ++i) {
+            if (d.confidences[i].type !== forester.MAD_CONFIDENCE_TYPE) {
+                return d.confidences[i].value;
+            }
+        }
+        return undefined;
+    }
+
     function showSupportDot(d) {
         if (!_state.showSupportDots || !d.parent
             || !d.confidences || d.confidences.length === 0) {
             return false;
         }
-        let v = d.confidences[0].value;
+        let v = firstSupportValue(d);
         if (typeof v !== 'number' || !isFinite(v) || v < supportDotThreshold()) {
             return false;
         }
@@ -5881,8 +5890,11 @@ function (root, d3, forester, phyloXml) {
                 && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
                 items.push({label: 'Reroot', action: function () {
                     rerootKeepingCollapse(function () {
+                        forester.removeMadConfidences(tree);   // they rate the MAD rooting only
                         forester.reRoot(tree, d, -1);
                     });
+                    _basicTreeProperties = forester.collectBasicTreeProperties(_root);
+                    syncMadValuesCheckbox();
                     zoomToFit();
                 }});
             }
@@ -7106,6 +7118,7 @@ function (root, d3, forester, phyloXml) {
         ['taxonomy', TAXONOMY_CB, 'showTaxonomy'],
         ['sequence', SEQUENCE_CB, 'showSequence'],
         ['confidence', CONFIDENCE_VALUES_CB, 'showConfidenceValues'],
+        ['madValues', MAD_VALUES_CB, 'showMadValues'],
         ['branchLength', BRANCH_LENGTH_VALUES_CB, 'showBranchLengthValues'],
         ['external', EXTERNAL_LABEL_CB, 'showExternalLabels'],
         ['internal', INTERNAL_LABEL_CB, 'showInternalLabels'],
@@ -7271,12 +7284,9 @@ function (root, d3, forester, phyloXml) {
             launchInto(_container, _trees, s.tree, cfg);
             return;
         }
-        if (s.root === 'midpoint' && _viewOps.root !== 'midpoint'
+        if ((s.root === 'midpoint' || s.root === 'mad') && _viewOps.root !== s.root
             && (_treeData.rerootable === undefined || _treeData.rerootable === true)) {
-            rerootKeepingCollapse(function () {
-                forester.midpointRoot(_root_const);
-            });
-            _viewOps.root = 'midpoint';
+            rootTreeBy(s.root);
         }
         if (s.order === 'asc' || s.order === 'desc') {
             ladderizeSubtree(_root_const, s.order === 'asc', false);
@@ -8801,9 +8811,38 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // Midpoint re-rooting rearranges the whole tree and its button is easy to
-    // hit by accident, so it asks first -- through the same little popup the
-    // node menu uses (click anywhere else or press Esc to cancel).
+    // MAD rooting needs branch lengths, three tips, and a tree its file lets
+    // be re-rooted.
+    function madRootingPossible() {
+        return (_treeData.rerootable === undefined || _treeData.rerootable === true)
+            && !!_basicTreeProperties && !!_basicTreeProperties.branchLengths
+            && _basicTreeProperties.externalNodesCount >= 3;
+    }
+
+    // Roots the whole tree by 'mad' or 'midpoint', from the re-root menu or a
+    // shared view. MAD values rate the MAD rooting only, so any other rooting
+    // removes them.
+    function rootTreeBy(method) {
+        let rooted = true;
+        rerootKeepingCollapse(function () {
+            if (method === 'mad') {
+                rooted = forester.madRoot(_root_const);
+            } else {
+                forester.removeMadConfidences(_root_const);
+                forester.midpointRoot(_root_const);
+            }
+        });
+        if (rooted) {
+            _viewOps.root = method;   // what a shared view replays
+        }
+        _basicTreeProperties = forester.collectBasicTreeProperties(_root_const);
+        syncMadValuesCheckbox();
+    }
+
+    // Re-rooting rearranges the whole tree and its button is easy to hit by
+    // accident, so it asks first -- through the same little popup the node
+    // menu uses (click anywhere else or press Esc to cancel) -- and the popup
+    // is where the method is picked.
     function midpointRootButtonPressed(event) {
         if (!_in_subtree && _root && ((_treeData.rerootable === undefined) || (_treeData.rerootable === true))) {
             let ev = event;
@@ -8815,21 +8854,26 @@ function (root, d3, forester, phyloXml) {
                     ev = {pageX: window.scrollX + r.right + 4, pageY: window.scrollY + r.top};
                 }
             }
-            showNodeMenu([
-                {
-                    label: 'Midpoint re-root', action: function () {
-                        rerootKeepingCollapse(function () {
-                            forester.midpointRoot(_root);
-                        });
-                        _viewOps.root = 'midpoint';   // what a shared view replays
+            let items = [];
+            if (madRootingPossible()) {
+                items.push({
+                    label: 'MAD re-root (Tria et al., 2017)', title: MAD_CITATION, action: function () {
+                        rootTreeBy('mad');
                         zoomToFit();
                     }
-                },
-                {
-                    label: 'Cancel', action: function () {
-                    }
+                });
+            }
+            items.push({
+                label: 'Midpoint re-root', action: function () {
+                    rootTreeBy('midpoint');
+                    zoomToFit();
                 }
-            ], ev, 'midpoint re-root the tree?');
+            });
+            items.push({
+                label: 'Cancel', action: function () {
+                }
+            });
+            showNodeMenu(items, ev, 're-root the tree?');
         }
     }
 
@@ -9527,6 +9571,31 @@ function (root, d3, forester, phyloXml) {
     function supportDotsCbClicked() {
         _state.showSupportDots = getCheckboxValue(SUPPORT_DOTS_CB);
         scheduleUpdate();
+    }
+
+    function madValuesCbClicked() {
+        _state.showMadValues = getCheckboxValue(MAD_VALUES_CB);
+        scheduleUpdate();
+    }
+
+    // The MAD Values checkbox is built for every tree MAD rooting could root
+    // and shows while the tree carries MAD values: after MAD rooting, or from
+    // a file saved after it. Any other rooting removes the values, and the
+    // checkbox goes with them. Inside a subtree the whole tree's state stands.
+    function syncMadValuesCheckbox() {
+        let cb = byId(MAD_VALUES_CB);
+        if (!cb || _in_subtree) {
+            return;
+        }
+        let present = !!(_basicTreeProperties && _basicTreeProperties.madValues);
+        if (!present) {
+            _state.showMadValues = false;
+        }
+        setCheckboxValue(MAD_VALUES_CB, _state.showMadValues === true);
+        let item = cb.closest('label');
+        if (item) {
+            item.style.display = present ? '' : 'none';
+        }
     }
 
     function branchLengthsCbClicked() {
@@ -11359,6 +11428,7 @@ function (root, d3, forester, phyloXml) {
 
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
         on(SUPPORT_DOTS_CB, 'click', supportDotsCbClicked);
+        on(MAD_VALUES_CB, 'click', madValuesCbClicked);
         on(SEARCH_B_TOGGLE, 'click', revealSearchB);
         on(SEARCH_NAV_PREV, 'click', function () {
             stepToFoundNode(-1);
@@ -11867,6 +11937,9 @@ function (root, d3, forester, phyloXml) {
             if (_basicTreeProperties.confidences) {
                 labels.push(makeCheckboxItem('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
             }
+            if (_basicTreeProperties.madValues || madRootingPossible()) {
+                labels.push(makeCheckboxItem('MAD Values', MAD_VALUES_CB, 'to show/hide MAD values: the ancestor deviation were the root on that branch (lower is better, the root branch has the smallest)'));
+            }
             if (_basicTreeProperties.branchLengths) {
                 labels.push(makeCheckboxItem('Branch Length', BRANCH_LENGTH_VALUES_CB, 'to show/hide branch length values'));
             }
@@ -11955,7 +12028,7 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree)'));
             h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree)'));
             h = h.concat(makeGlyphButton('uncollapse_all', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all'));
-            h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 'midpoint re-root'));
+            h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 're-root the tree: MAD or midpoint'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -12190,6 +12263,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(SEQUENCE_CB, _state.showSequence)
         setCheckboxValue(CONFIDENCE_VALUES_CB, _state.showConfidenceValues);
         setCheckboxValue(SUPPORT_DOTS_CB, _state.showSupportDots);
+        syncMadValuesCheckbox();
         setCheckboxValue(BRANCH_LENGTH_VALUES_CB, _state.showBranchLengthValues);
         setCheckboxValue(NODE_EVENTS_CB, _state.showNodeEvents);
         setCheckboxValue(BRANCH_EVENTS_CB, _state.showBranchEvents);

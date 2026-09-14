@@ -85,6 +85,386 @@ runTest("phyloXML foreign namespace : ", testPhyloXmlForeignNamespace);
 runTest("label quoting on write    : ", testLabelQuotingOnWrite);
 runTest("scale bar length          : ", testScaleBarLength);
 runTest("multi-tree New Hampshire  : ", testMultiTreeNewHampshire);
+runTest("reRoot at a node          : ", testReRootAtNode);
+runTest("MAD rooting exact cases   : ", testMadRootExactCases);
+runTest("MAD branch values         : ", testMadBranchValues);
+runTest("MAD vs brute force        : ", testMadBruteForce);
+runTest("MAD desktop contract      : ", testMadDesktopContract);
+runTest("MAD values never support  : ", testMadValuesNeverSupport);
+
+// A MAD value rates a root position, not a clade: the Newick/Nexus support
+// slot never holds one (and a branch with both keeps its support), and the
+// tree properties and the Confidence search field leave them out.
+function testMadValuesNeverSupport() {
+    var bare = forester.parseNewHampshire("((A:1,B:2):1,(C:3,D:4):1)", true, false);
+    forester.madRoot(bare);
+    var nh = forester.toNewHampshire(bare, 9, false, true);
+    if (nh !== "(D:3.638418079,(C:3,(A:1,B:2):2):0.361581921);") {
+        console.log('    no support, Newick: ' + nh);
+        return false;
+    }
+    if (forester.toNexus(bare, 9, true).indexOf("(D:3.638418079,(C:3,(A:1,B:2):2):0.361581921);") < 0) {
+        console.log('    no support, Nexus: ' + forester.toNexus(bare, 9, true));
+        return false;
+    }
+    var props = forester.collectBasicTreeProperties(bare);
+    if (props.madValues !== true || props.confidences !== false || props.maxConfidence !== 0) {
+        console.log('    properties: ' + JSON.stringify({mad: props.madValues, conf: props.confidences, max: props.maxConfidence}));
+        return false;
+    }
+    if (forester.availableSearchFields(forester.getTreeRoot(bare)).indexOf(forester.searchFields.confidence) >= 0) {
+        console.log('    Confidence search offered on MAD values alone');
+        return false;
+    }
+    var boot = forester.parseNewHampshire("((A:1,B:2)x:1[80],(C:3,D:4)y:1[90])", true, false);
+    forester.madRoot(boot);
+    var x = forester.findByNodeName(boot, 'x')[0];
+    var written = forester.toNewHampshire(boot, 9, false, true);
+    if (written.indexOf("x:2[90]") < 0 || /\[0\./.test(written)) {
+        console.log('    with support, Newick: ' + written);
+        return false;
+    }
+    var p2 = forester.collectBasicTreeProperties(boot);
+    return p2.madValues === true && p2.confidences === true && p2.maxConfidence === 90
+        && forester.searchFields.confidence.extract(x).join() === '90';
+}
+
+// A position of 0 puts the root right at the node (MAD rooting can); no
+// position still means the middle of the branch.
+function testReRootAtNode() {
+    var byName = function (phy, name) { return forester.findByNodeName(phy, name)[0]; };
+    var deep = forester.parseNewHampshire("(((A:1,B:2):3,C:4):5,D:6)", true, false);
+    forester.reRoot(deep, byName(deep, 'A'), 0);
+    if (byName(deep, 'A').branch_length !== 0 || byName(deep, 'A').parent.children.length !== 2) {
+        console.log('    deep: ' + forester.toNewHampshire(deep));
+        return false;
+    }
+    var nearRoot = forester.parseNewHampshire("((A:1,B:2):3,C:4)", true, false);
+    forester.reRoot(nearRoot, byName(nearRoot, 'C'), 0);
+    if (byName(nearRoot, 'C').branch_length !== 0) {
+        console.log('    near root: ' + forester.toNewHampshire(nearRoot));
+        return false;
+    }
+    var middle = forester.parseNewHampshire("(((A:1,B:2):3,C:4):5,D:6)", true, false);
+    forester.reRoot(middle, byName(middle, 'A'));
+    return byName(middle, 'A').branch_length === 0.5;
+}
+
+function madDistToRoot(node) {
+    var d = 0;
+    while (node.parent && node.parent.parent) {
+        d += node.branch_length > 0 ? node.branch_length : 0;
+        node = node.parent;
+    }
+    return d;
+}
+
+// a branch's MAD value: NaN for none, Infinity for more than one (a bug)
+function madValue(node) {
+    var c = (node.confidences || []).filter(function (x) { return x.type === forester.MAD_CONFIDENCE_TYPE; });
+    return c.length === 0 ? NaN : (c.length === 1 ? c[0].value : Infinity);
+}
+
+function madTipNames(node) {
+    return forester.getAllExternalNodes(node).map(function (t) { return t.name; }).sort();
+}
+
+// the tips on the side of the branch above `node` without the alphabetically first tip
+function madSideKey(allNames, node) {
+    var under = madTipNames(node);
+    var side = under.indexOf(allNames[0]) >= 0
+        ? allNames.filter(function (x) { return under.indexOf(x) < 0; })
+        : under;
+    return side.join(',');
+}
+
+// The desktop's hand-verified cases and its no-op guards.
+function testMadRootExactCases() {
+    var near = function (a, b) { return Math.abs(a - b) < 1e-9; };
+    var byName = function (phy, name) { return forester.findByNodeName(phy, name)[0]; };
+    // a 3-tip star with one long branch: the clock root is 2.5 from every tip
+    var t0 = forester.parseNewHampshire("(A:1,B:1,C:4)", true, false);
+    if (forester.madRoot(t0) !== true || forester.getTreeRoot(t0).children.length !== 2
+        || !near(byName(t0, 'C').branch_length, 2.5)
+        || !['A', 'B', 'C'].every(function (n) { return near(madDistToRoot(byName(t0, n)), 2.5); })) {
+        console.log('    t0: ' + forester.toNewHampshire(t0));
+        return false;
+    }
+    // symmetric and balanced: the central branch's midpoint, every tip 2 from the root
+    var t1 = forester.parseNewHampshire("((A:1,B:1):1,(C:1,D:1):1)", true, false);
+    forester.madRoot(t1);
+    if (!['A', 'B', 'C', 'D'].every(function (n) { return near(madDistToRoot(byName(t1, n)), 2); })) {
+        console.log('    t1: ' + forester.toNewHampshire(t1));
+        return false;
+    }
+    // no-ops: two tips, no branch lengths -- the tree untouched, no values added
+    var two = forester.parseNewHampshire("(A:1,B:1)", true, false);
+    var bare = forester.parseNewHampshire("((A,B),(C,D))", true, false);
+    var before = forester.toNewHampshire(bare);
+    if (forester.madRoot(two) !== false || forester.madRoot(bare) !== false
+        || forester.toNewHampshire(bare) !== before
+        || forester.getAllNodes(bare).some(function (n) { return !isNaN(madValue(n)); })) {
+        return false;
+    }
+    // the same input roots the same way every time
+    var input = "((((A:0.3,B:0.9):0.2,C:1.4):0.7,(D:0.5,E:0.6):0.1):0.4,(F:2.1,G:0.2):0.3,H:1.1)";
+    var a = forester.parseNewHampshire(input, true, false);
+    var b = forester.parseNewHampshire(input, true, false);
+    forester.madRoot(a);
+    forester.madRoot(b);
+    return forester.toNewHampshire(a) === forester.toNewHampshire(b);
+}
+
+// Internal branches carry exactly one MAD value, pendant branches none; the
+// root's branch has the smallest; a second run replaces rather than adds;
+// removeMadConfidences keeps every other confidence.
+function testMadBranchValues() {
+    var t0 = forester.parseNewHampshire("(A:1,B:1,C:4)", true, false);
+    forester.madRoot(t0);
+    var min = Infinity;
+    var bad = forester.getAllNodes(t0).filter(function (n) {
+        if (!n.parent || !n.parent.parent) {
+            return false;
+        }
+        var v = madValue(n);
+        if (!n.children) {
+            return !isNaN(v);
+        }
+        min = Math.min(min, v);
+        return !isFinite(v);
+    });
+    if (bad.length > 0 || min > 1e-6) {
+        console.log('    t0 values: ' + bad.length + ' bad, smallest ' + min);
+        return false;
+    }
+    var t4 = forester.parseNewHampshire("((A:1,B:2)x:1[80],(C:3,D:4)y:1[90])", true, false);
+    forester.madRoot(t4);
+    forester.madRoot(t4);
+    var nodes = forester.getAllNodes(t4);
+    if (nodes.some(function (n) { return madValue(n) === Infinity; })) {
+        console.log('    a second run added a second MAD value');
+        return false;
+    }
+    var others = function () {
+        return nodes.filter(function (n) {
+            return (n.confidences || []).some(function (c) { return c.type !== forester.MAD_CONFIDENCE_TYPE; });
+        }).length;
+    };
+    var otherCount = others();
+    forester.removeMadConfidences(t4);
+    if (otherCount === 0 || others() !== otherCount || nodes.some(function (n) { return !isNaN(madValue(n)); })) {
+        return false;
+    }
+    // a branch left with nothing has no confidences at all, not an empty list
+    return nodes.every(function (n) { return n.confidences === undefined || n.confidences.length > 0; });
+}
+
+// Every fixture tree up to 40 tips, against an independent O(n^3) brute
+// force: for every branch the analytic best position from its cross pairs,
+// a fresh copy re-rooted there and scored pair by pair through the common
+// ancestors. madRoot must reach the global minimum and give every internal
+// branch the brute force's value.
+function testMadBruteForce() {
+    var rows = readMadFixture();
+    var checked = 0;
+    for (var r = 0; r < rows.length; ++r) {
+        var input = rows[r].newick;
+        var original = forester.parseNewHampshire(input, true, false);
+        var n = forester.getAllExternalNodes(original).length;
+        if (n > 40) {
+            continue;
+        }
+        var all = madTipNames(forester.getTreeRoot(original));
+        var brute = madBruteForce(input, all);
+        var bruteMin = Infinity;
+        Object.keys(brute).forEach(function (k) { bruteMin = Math.min(bruteMin, brute[k]); });
+        var work = forester.parseNewHampshire(input, true, false);
+        forester.madRoot(work);
+        var root = forester.getTreeRoot(work);
+        if (Math.abs(madScoreSsd(work) - bruteMin) > 1e-6 || forester.getAllExternalNodes(work).length !== n
+            || root.children.length < 2) {
+            console.log('    #' + rows[r].index + ' not at the minimum: ' + madScoreSsd(work) + ' vs ' + bruteMin);
+            return false;
+        }
+        var nPairs = n * (n - 1) / 2;
+        var wrong = forester.getAllNodes(work).filter(function (nd) {
+            if (nd === root || !nd.parent) {
+                return false;
+            }
+            var v = madValue(nd);
+            if (!nd.children) {
+                return !isNaN(v);
+            }
+            var expected = brute[madSideKey(all, nd)];
+            return !isFinite(v) || expected === undefined || Math.abs(v * v * nPairs - expected) > 1e-6;
+        });
+        if (wrong.length > 0) {
+            console.log('    #' + rows[r].index + ' ' + wrong.length + ' branch value(s) off the brute force');
+            return false;
+        }
+        ++checked;
+    }
+    if (checked < 240) {
+        console.log('    only ' + checked + ' trees checked');
+        return false;
+    }
+    return true;
+}
+
+// The tree's current rooting, scored: the sum of squared ancestor deviations.
+function madScoreSsd(phy) {
+    var tips = forester.getAllExternalNodes(forester.getTreeRoot(phy));
+    var ssd = 0;
+    for (var a = 0; a < tips.length; ++a) {
+        var di = madDistToRoot(tips[a]);
+        var ancestors = new Set();
+        for (var p = tips[a]; p; p = p.parent) {
+            ancestors.add(p);
+        }
+        for (var b = a + 1; b < tips.length; ++b) {
+            var lca = tips[b];
+            while (!ancestors.has(lca)) {
+                lca = lca.parent;
+            }
+            var dl = madDistToRoot(lca);
+            var dj = madDistToRoot(tips[b]);
+            var dij = (di - dl) + (dj - dl);
+            if (dij > 1e-9) {
+                var dev = (2 * (di - dl)) / dij - 1;
+                ssd += dev * dev;
+            }
+        }
+    }
+    return ssd;
+}
+
+// branch (as its side key) -> the smallest total deviation with the root on it
+function madBruteForce(input, all) {
+    var original = forester.parseNewHampshire(input, true, false);
+    var tips = forester.getAllExternalNodes(forester.getTreeRoot(original));
+    var result = {};
+    forester.getAllNodes(original).forEach(function (c) {
+        if (!c.parent || !c.parent.parent) {
+            return;
+        }
+        var dc = madDistToRoot(c);
+        var inside = new Set(forester.getAllExternalNodes(c));
+        var sumInv = 0, sumInvSq = 0, sumA = 0;
+        tips.forEach(function (j) {
+            if (!inside.has(j)) {
+                return;
+            }
+            var aj = madDistToRoot(j) - dc;
+            tips.forEach(function (i) {
+                if (inside.has(i)) {
+                    return;
+                }
+                var ancestors = new Set();
+                for (var p = i; p; p = p.parent) {
+                    ancestors.add(p);
+                }
+                var lca = j;
+                while (!ancestors.has(lca)) {
+                    lca = lca.parent;
+                }
+                var dl = madDistToRoot(lca);
+                var dij = (madDistToRoot(i) - dl) + (madDistToRoot(j) - dl);
+                if (dij > 1e-9) {
+                    sumInv += 1 / dij;
+                    sumInvSq += 1 / (dij * dij);
+                    sumA += aj / (dij * dij);
+                }
+            });
+        });
+        var length = c.branch_length > 0 ? c.branch_length : 0;
+        var x = sumInvSq > 1e-12 ? (sumInv - 2 * sumA) / (2 * sumInvSq) : 0;
+        x = Math.min(Math.max(x, 0), length);
+        var wanted = madTipNames(c).join(',');
+        var copy = forester.parseNewHampshire(input, true, false);
+        var cc = forester.getAllNodes(copy).filter(function (nd) {
+            return nd.parent && nd.parent.parent && madTipNames(nd).join(',') === wanted;
+        })[0];
+        forester.reRoot(copy, cc, x);
+        var ssd = madScoreSsd(copy);
+        var key = madSideKey(all, c);
+        if (result[key] === undefined || ssd < result[key]) {
+            result[key] = ssd;
+        }
+    });
+    return result;
+}
+
+function readMadFixture() {
+    var fs = require('fs');
+    return fs.readFileSync(pth.join(__dirname, 'fixtures', 'mad-contract.tsv'), 'utf8').split('\n')
+        .filter(function (l) { return l.length > 0 && l.charAt(0) !== '#'; })
+        .map(function (l) {
+            var f = l.split('\t');
+            return {index: f[0], newick: f[1], root: f[2], mad: f[3] || ''};
+        });
+}
+
+// The joint contract: the desktop's own madRoot, run on every fixture tree
+// (test/fixtures/MadContract.java), against ours -- the same root split, the
+// same positions, the same annotated branches with the same values. Values
+// compare as the desktop's tests do, squared and scaled by the pair count:
+// on a clock tree a value near 0 is the square root of round-off.
+function testMadDesktopContract() {
+    var rows = readMadFixture();
+    if (rows.length < 250) {
+        console.log('    fixture looks truncated: ' + rows.length + ' rows');
+        return false;
+    }
+    var entries = function (s) {
+        var m = {};
+        s.split(' ').filter(Boolean).forEach(function (e) {
+            var i = e.lastIndexOf('=');
+            (m[e.slice(0, i)] = m[e.slice(0, i)] || []).push(Number(e.slice(i + 1)));
+        });
+        Object.keys(m).forEach(function (k) { m[k].sort(function (a, b) { return a - b; }); });
+        return m;
+    };
+    var bad = [];
+    rows.forEach(function (row) {
+        var phy = forester.parseNewHampshire(row.newick, true, false);
+        forester.madRoot(phy);
+        var root = forester.getTreeRoot(phy);
+        var all = madTipNames(root);
+        var nPairs = all.length * (all.length - 1) / 2;
+        var ours = entries(root.children.map(function (c) { return madTipNames(c).join(',') + '=' + c.branch_length; }).join(' '));
+        var mads = [];
+        forester.getAllNodes(phy).forEach(function (nd) {
+            if (!isNaN(madValue(nd))) {
+                mads.push(madSideKey(all, nd) + '=' + madValue(nd));
+            }
+        });
+        var ourMad = entries(mads.join(' '));
+        var theirs = entries(row.root);
+        var theirMad = entries(row.mad);
+        var same = function (a, b, close) {
+            var ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
+            return ka.join('|') === kb.join('|') && ka.every(function (k) {
+                return a[k].length === b[k].length && a[k].every(function (v, i) { return close(v, b[k][i]); });
+            });
+        };
+        if (!same(theirs, ours, function (a, b) { return Math.abs(a - b) <= 1e-9; })) {
+            bad.push('#' + row.index + ' root: desktop ' + row.root + ' / ours ' + root.children.map(function (c) { return madTipNames(c).join(',') + '=' + c.branch_length; }).join(' '));
+        } else if (!same(theirMad, ourMad, function (a, b) { return Math.abs(a * a - b * b) * nPairs <= 1e-6; })) {
+            bad.push('#' + row.index + ' MAD values differ');
+        }
+    });
+    if (bad.length > 0) {
+        console.log('    ' + bad.length + ' of ' + rows.length + ' differ from the desktop; first: ' + bad[0]);
+        return false;
+    }
+    // a 5,000-tip caterpillar nests too deep for recursion
+    var cat = 'T0:1';
+    for (var i = 1; i < 5000; ++i) {
+        cat = '(' + cat + ',T' + i + ':' + (1 + (i % 7) / 10) + '):0.1';
+    }
+    var deep = forester.parseNewHampshire('(' + cat + ',X:2)', true, false);
+    return forester.madRoot(deep) === true && forester.getAllExternalNodes(forester.getTreeRoot(deep)).length === 5001;
+}
 
 // The scale bar picks 1, 2 or 5 x 10^k so that it is about the target
 // length: the rounding thresholds, the label spelling, the unusable scales.

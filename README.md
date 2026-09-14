@@ -258,6 +258,41 @@ also resets rotation and label direction. Unrooted
 additionally greys out the aligned-phylogram option and Auto-hide Labels
 (there is no common label edge, and no even row spacing to hide against).
 
+## Rooting
+
+The tool row's re-root button asks how: **MAD re-root (Tria et al., 2017)**
+or **Midpoint re-root** (hover over the MAD entry for the full citation). A
+node's menu offers **Reroot** on the branch above that node.
+
+**MAD rooting** (minimal ancestor deviation) roots the tree without assuming
+a clock. The common ancestor of two tips ought to lie halfway between them,
+so every branch and position is scored by how far the tip pairs' ancestors
+fall from that halfway point, and the root goes where that deviation is
+smallest [1]. It has been compared with other rooting methods on prokaryotic
+gene families [2]. It needs branch lengths and at least three tips, and is
+offered only then. The algorithm is the desktop Archaeopteryx's, and gives
+the same roots; it runs in O(n²) time and O(n) memory (the 13,246-tip H5N1
+demo tree roots in 0.4 s, measured in Node).
+
+Every internal branch then carries its **MAD value**: the root-mean-square
+deviation the tree would have with the root on that branch. Lower is better,
+and the root's branch has the smallest. The **MAD Values** checkbox (Display
+Data → Labels, present while the tree carries them) writes them on the
+branches, ahead of any support value, as `MAD/support`: `0.02/95`. They are
+not support, so the Confidence labels, Support Dots and the Confidence search
+field leave them out. Midpoint or manual re-rooting removes them, since they
+describe the MAD rooting only. A shared view remembers a MAD root. A phyloXML
+download keeps them as `<confidence type="MAD">`, as the desktop writes them;
+a Newick or Nexus download never puts one where a support value goes.
+
+1. Tria, F.D.K., Landan, G., Dagan, T. (2017). Phylogenetic rooting using
+   minimal ancestor deviation. *Nature Ecology & Evolution*, 1, 0193.
+   <https://www.nature.com/articles/s41559-017-0193>
+2. Wade, T., Rangel, L.T., Kundu, S., Fournier, G.P., Bansal, M.S. (2020).
+   Assessing the accuracy of phylogenetic rooting methods on prokaryotic
+   gene families. *PLOS ONE*, 15(5), e0232950.
+   <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0232950>
+
 ## Metadata tables
 
 A tree file rarely carries everything known about its tips. A **metadata

@@ -252,7 +252,9 @@
         if (!node) {
             throw ("cannot re-root on null node");
         }
-        if (!branchLength) {
+        // no position: the middle of the branch. 0 is a position -- the root
+        // right at the node, where MAD rooting can put it.
+        if (typeof branchLength !== 'number' || isNaN(branchLength)) {
             branchLength = -1;
         }
         if (forester.isString(node)) {
@@ -448,6 +450,389 @@
             forester.reRoot(phy, a, x);
         }
     };
+
+    /** The confidence type of the per-branch values madRoot records. */
+    forester.MAD_CONFIDENCE_TYPE = 'MAD';
+
+    const MAD_EPSILON = 1e-9;
+
+    /**
+     * Roots the tree by Minimal Ancestor Deviation (Tria, Landan & Dagan,
+     * Nature Ecology & Evolution 1, 0193, 2017; doi:10.1038/s41559-017-0193),
+     * ported from the desktop's PhylogenyMethods.madRoot.
+     *
+     * Under a (relaxed) clock the ancestor of two tips is equidistant from
+     * both; the pair (i,j) with ancestor a deviates by |2*dist(a,i)/dist(i,j) - 1|.
+     * For every branch the root position minimizing the summed squared
+     * deviation of all tip pairs is found analytically, and the branch and
+     * position with the smallest total become the root.
+     *
+     * Every internal branch gets a confidence of type 'MAD': the root-mean-
+     * square deviation were the root placed on that branch -- low is good,
+     * and the root's branch carries the smallest. Pendant branches get none,
+     * and MAD values from an earlier run are replaced.
+     *
+     * A no-op for fewer than three tips or a tree without branch lengths.
+     * O(n^2) time and O(n) memory: the desktop fills an n x n distance matrix
+     * only to sum its columns (1.4 GB at 13,000 tips), so the column sums are
+     * added up here as the pairs are met, and a subtree's tips are a range of
+     * tip numbers rather than a list.
+     *
+     * @param phy the tree
+     * @returns {boolean} whether the tree was re-rooted
+     */
+    forester.madRoot = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return false;
+        }
+        let t = madTraversal(root);
+        let pre = t.pre;
+        let kids = t.kids;
+        let post = t.post;
+        let m = pre.length;
+        let tipNo = new Int32Array(m).fill(-1);
+        let tipPos = [];
+        for (let k = 0; k < m; ++k) {
+            if (kids[k].length === 0) {
+                tipNo[k] = tipPos.length;
+                tipPos.push(k);
+            }
+        }
+        let n = tipPos.length;
+        if (n < 3) {
+            return false;
+        }
+        // depth (distance from the current root) of every node
+        let depth = new Float64Array(m);
+        let maxDepth = 0;
+        for (let k = 1; k < m; ++k) {
+            depth[k] = depth[t.parentOf[k]] + madLength(pre[k]);
+            maxDepth = Math.max(maxDepth, depth[k]);
+        }
+        if (maxDepth <= 0) {
+            return false;   // no usable branch lengths
+        }
+        let tipDepth = new Float64Array(n);
+        for (let i = 0; i < n; ++i) {
+            tipDepth[i] = depth[tipPos[i]];
+        }
+        // Pass 1 (post-order): the within-subtree deviation sums, and the
+        // column sums sum_i 1/d^2 and sum_i 1/d of every tip. For a pair whose
+        // common ancestor sits at depth dm, d = depth[i] + depth[j] - 2*dm and
+        // the deviation is 2*(depth[i]-dm)/d - 1.
+        let lo = new Int32Array(m);        // a subtree's tips are the numbers lo..hi-1
+        let hi = new Int32Array(m);
+        let down = new Float64Array(m);    // sum dev^2 over pairs with their ancestor inside the subtree
+        let w0 = new Float64Array(m);      // sum_{i!=j in subtree} 1/d^2                 (ordered)
+        let w1 = new Float64Array(m);      // sum_{i!=j in subtree} (2*depth[j]/d^2 - 1/d) (j second)
+        let w2 = new Float64Array(m);      // sum_{i!=j in subtree} (2*depth[j]/d - 1)^2   (j second)
+        let col0 = new Float64Array(n);
+        let colInv = new Float64Array(n);
+        let partners = new Int32Array(n);   // the tips each tip is apart from (d > MAD_EPSILON)
+        for (let q = 0; q < m; ++q) {
+            let k = post[q];
+            let ch = kids[k];
+            if (ch.length === 0) {
+                lo[k] = tipNo[k];
+                hi[k] = tipNo[k] + 1;
+                continue;
+            }
+            let dm = depth[k];
+            let dwn = 0, sw0 = 0, sw1 = 0, sw2 = 0;
+            for (let c = 0; c < ch.length; ++c) {
+                dwn += down[ch[c]];
+                sw0 += w0[ch[c]];
+                sw1 += w1[ch[c]];
+                sw2 += w2[ch[c]];
+            }
+            // the pairs whose ancestor is this node: one tip from each of two children
+            for (let a = 0; a < ch.length; ++a) {
+                for (let b = a + 1; b < ch.length; ++b) {
+                    for (let i = lo[ch[a]]; i < hi[ch[a]]; ++i) {
+                        let di = tipDepth[i];
+                        for (let j = lo[ch[b]]; j < hi[ch[b]]; ++j) {
+                            let dj = tipDepth[j];
+                            let dij = (di - dm) + (dj - dm);
+                            if (dij > MAD_EPSILON) {
+                                let inv = 1.0 / dij;
+                                let inv2 = inv * inv;
+                                let dev = (2.0 * (di - dm) * inv) - 1.0;
+                                dwn += dev * dev;
+                                sw0 += 2.0 * inv2;   // both orderings
+                                sw1 += (2.0 * (di + dj) * inv2) - (2.0 * inv);
+                                let gi = (2.0 * di * inv) - 1.0;
+                                let gj = (2.0 * dj * inv) - 1.0;
+                                sw2 += (gi * gi) + (gj * gj);
+                                col0[i] += inv2;
+                                col0[j] += inv2;
+                                colInv[i] += inv;
+                                colInv[j] += inv;
+                                ++partners[i];
+                                ++partners[j];
+                            }
+                        }
+                    }
+                }
+            }
+            lo[k] = lo[ch[0]];
+            hi[k] = hi[ch[ch.length - 1]];
+            down[k] = dwn;
+            w0[k] = sw0;
+            w1[k] = sw1;
+            w2[k] = sw2;
+        }
+        // Pass 2 (post-order): per-subtree "all-i" sums a0,a1,a2; the cross
+        // sums between a subtree and its complement are then b_k = a_k - w_k.
+        let a0 = new Float64Array(m);
+        let a1 = new Float64Array(m);
+        let a2 = new Float64Array(m);
+        let b0 = new Float64Array(m);
+        let b1 = new Float64Array(m);
+        let b2 = new Float64Array(m);
+        for (let q = 0; q < m; ++q) {
+            let k = post[q];
+            let s0 = 0, s1 = 0, s2 = 0;
+            if (kids[k].length === 0) {
+                let j = tipNo[k];
+                s0 = col0[j];
+                s1 = (2.0 * tipDepth[j] * col0[j]) - colInv[j];
+                // (2*depth/d - 1)^2 expands to 4*depth^2/d^2 - 4*depth/d + 1: the
+                // 1 is owed once per pair actually summed. The desktop adds n - 1,
+                // which also counts the pairs at distance 0 (identical sequences)
+                // that every other sum skips.
+                s2 = (4.0 * tipDepth[j] * tipDepth[j] * col0[j]) - (4.0 * tipDepth[j] * colInv[j]) + partners[j];
+            } else {
+                for (let c = 0; c < kids[k].length; ++c) {
+                    s0 += a0[kids[k][c]];
+                    s1 += a1[kids[k][c]];
+                    s2 += a2[kids[k][c]];
+                }
+            }
+            a0[k] = s0;
+            a1[k] = s1;
+            a2[k] = s2;
+            b0[k] = s0 - w0[k];
+            b1[k] = s1 - w1[k];
+            b2[k] = s2 - w2[k];
+        }
+        // Pass 3 (pre-order): up[k] = the deviation sum of the pairs whose
+        // ancestor lies outside subtree k, by the rerooting recursion, so
+        // every branch's total is O(1).
+        let up = new Float64Array(m);
+        let atParent = new Float64Array(m);   // a branch's cross deviation with the root at its parent
+        for (let k = 0; k < m; ++k) {
+            let ch = kids[k];
+            if (ch.length === 0) {
+                continue;
+            }
+            let sumDown = 0;
+            let sumAtParent = 0;
+            for (let c = 0; c < ch.length; ++c) {
+                let x = ch[c];
+                sumDown += down[x];
+                atParent[x] = madCross(depth[x], b0[x], b1[x], b2[x], madLength(pre[x]));
+                sumAtParent += atParent[x];
+            }
+            // cross deviation among all the groups meeting here: the child subtrees and the complement
+            let own = (k === 0) ? 0.0 : madCross(depth[k], b0[k], b1[k], b2[k], 0.0);
+            let crossAmong = (sumAtParent + own) / 2.0;
+            for (let c = 0; c < ch.length; ++c) {
+                let x = ch[c];
+                up[x] = up[k] + (sumDown - down[x]) + (crossAmong - atParent[x]);
+            }
+        }
+        // The branch and position with the smallest total deviation, and every
+        // branch's smallest MAD value keyed by the tips on its far side, so
+        // the value finds its branch again after the re-root has turned
+        // parents into children. The first minimum in post-order wins, as on
+        // the desktop.
+        let hash = madTipHashes(n);
+        let nPairs = (n * (n - 1.0)) / 2.0;
+        let madByKey = new Map();
+        let bestSsd = Infinity;
+        let best = -1;
+        let bestX = 0;
+        for (let q = 0; q < m; ++q) {
+            let c = post[q];
+            if (c === 0) {
+                continue;
+            }
+            let length = madLength(pre[c]);
+            // the optimal root position, as a distance from c toward its parent, kept on the branch
+            let x = (b0[c] > MAD_EPSILON) ? (depth[c] - (b1[c] / (2.0 * b0[c]))) : 0.0;
+            if (x < 0) {
+                x = 0;
+            } else if (x > length) {
+                x = length;
+            }
+            let ssd = madCross(depth[c], b0[c], b1[c], b2[c], x) + down[c] + up[c];
+            // a sum of squares; clamp a tiny negative left by cancellation, so sqrt is never NaN
+            let mad = Math.sqrt(Math.max(0.0, ssd) / nPairs);
+            let key = hash.key(hi[c] - lo[c], hash.xa[hi[c]] ^ hash.xa[lo[c]], hash.xb[hi[c]] ^ hash.xb[lo[c]], lo[c] === 0);
+            let prev = madByKey.get(key);
+            if (prev === undefined || mad < prev) {
+                madByKey.set(key, mad);   // the two halves of a bifurcating root share a key
+            }
+            if (ssd < bestSsd) {
+                bestSsd = ssd;
+                best = c;
+                bestX = x;
+            }
+        }
+        if (best < 0) {
+            return false;
+        }
+        let tipNumber = new Map();
+        for (let i = 0; i < n; ++i) {
+            tipNumber.set(pre[tipPos[i]], i);
+        }
+        forester.removeMadConfidences(phy);
+        forester.reRoot(phy, pre[best], bestX);
+        // annotate the internal branches of the re-rooted tree
+        let r = madTraversal(forester.getTreeRoot(phy));
+        let count = new Int32Array(r.pre.length);
+        let xa = new Int32Array(r.pre.length);
+        let xb = new Int32Array(r.pre.length);
+        let hasFirst = new Uint8Array(r.pre.length);
+        for (let q = 0; q < r.post.length; ++q) {
+            let k = r.post[q];
+            let ch = r.kids[k];
+            if (ch.length === 0) {
+                let i = tipNumber.get(r.pre[k]);
+                count[k] = 1;
+                xa[k] = hash.xa[i + 1] ^ hash.xa[i];
+                xb[k] = hash.xb[i + 1] ^ hash.xb[i];
+                hasFirst[k] = (i === 0) ? 1 : 0;
+                continue;
+            }
+            for (let c = 0; c < ch.length; ++c) {
+                count[k] += count[ch[c]];
+                xa[k] ^= xa[ch[c]];
+                xb[k] ^= xb[ch[c]];
+                hasFirst[k] |= hasFirst[ch[c]];
+            }
+            if (k !== 0) {
+                let mad = madByKey.get(hash.key(count[k], xa[k], xb[k], hasFirst[k] === 1));
+                if (mad !== undefined) {
+                    let kept = r.pre[k].confidences || [];
+                    r.pre[k].confidences = kept.concat([{value: mad, type: forester.MAD_CONFIDENCE_TYPE}]);
+                }
+            }
+        }
+        return true;
+    };
+
+    /**
+     * Removes every 'MAD' confidence (from madRoot) and keeps all others: a
+     * tree rooted any other way no longer has the rooting those values rate.
+     *
+     * @param phy the tree
+     */
+    forester.removeMadConfidences = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return;
+        }
+        madTraversal(root).pre.forEach(function (node) {
+            if (node.confidences && node.confidences.some(function (c) { return c.type === forester.MAD_CONFIDENCE_TYPE; })) {
+                // a new array: re-rooting can leave two branches sharing one
+                let kept = node.confidences.filter(function (c) { return c.type !== forester.MAD_CONFIDENCE_TYPE; });
+                if (kept.length > 0) {
+                    node.confidences = kept;
+                } else {
+                    delete node.confidences;
+                }
+            }
+        });
+    };
+
+    function madLength(node) {
+        return node.branch_length > 0 ? node.branch_length : 0;
+    }
+
+    // The sum of squared cross-pair deviations between subtree c and its
+    // complement, with the root at distance x from c toward its parent. With
+    // K = 2*(x - depth[c]) a pair deviates by K/d + (2*depth[j]/d - 1), so the
+    // sum is K^2*b0 + 2*K*b1 + b2.
+    function madCross(depthC, b0, b1, b2, x) {
+        let k = 2.0 * (x - depthC);
+        return (k * k * b0) + (2.0 * k * b1) + b2;
+    }
+
+    // Pre-order (the root at 0, parents before children) and post-order,
+    // children left to right, as node positions -- without recursion, since
+    // a caterpillar tree nests as deep as it has tips.
+    function madTraversal(root) {
+        let pre = [];
+        let parentOf = [];
+        let stack = [root];
+        let stackParent = [-1];
+        while (stack.length > 0) {
+            let node = stack.pop();
+            let p = stackParent.pop();
+            let k = pre.length;
+            pre.push(node);
+            parentOf.push(p);
+            if (node.children) {
+                for (let i = node.children.length - 1; i >= 0; --i) {
+                    stack.push(node.children[i]);
+                    stackParent.push(k);
+                }
+            }
+        }
+        let kids = pre.map(function () {
+            return [];
+        });
+        for (let k = 1; k < pre.length; ++k) {
+            kids[parentOf[k]].push(k);   // siblings come in left to right
+        }
+        // the mirrored pre-order, reversed, is the post-order left to right
+        let post = [];
+        let st = [0];
+        while (st.length > 0) {
+            let k = st.pop();
+            post.push(k);
+            for (let c = 0; c < kids[k].length; ++c) {
+                st.push(kids[k][c]);
+            }
+        }
+        post.reverse();
+        return {pre: pre, parentOf: parentOf, kids: kids, post: post};
+    }
+
+    // A set of tips as a key that does not depend on the rooting: its size
+    // and two 32-bit XOR hashes of its tips, taken on the side WITHOUT tip 0
+    // so both sides of a branch give the same key. xa/xb are prefix XORs, so
+    // the tips lo..hi-1 hash to xa[hi] ^ xa[lo].
+    function madTipHashes(n) {
+        let xa = new Int32Array(n + 1);
+        let xb = new Int32Array(n + 1);
+        let s = 0x2545f491;
+        let next = function () {   // a fixed seed: the same tree always hashes the same
+            s = (s + 0x9e3779b9) | 0;
+            let z = s;
+            z = Math.imul(z ^ (z >>> 16), 0x85ebca6b);
+            z = Math.imul(z ^ (z >>> 13), 0xc2b2ae35);
+            return z ^ (z >>> 16);
+        };
+        for (let i = 0; i < n; ++i) {
+            xa[i + 1] = xa[i] ^ next();
+            xb[i + 1] = xb[i] ^ next();
+        }
+        return {
+            xa: xa,
+            xb: xb,
+            key: function (size, ha, hb, holdsFirst) {
+                if (holdsFirst) {
+                    size = n - size;
+                    ha ^= xa[n];
+                    hb ^= xb[n];
+                }
+                return size + ':' + ha + ':' + hb;
+            }
+        };
+    }
 
     forester.getFurthestDescendant = function (node) {
         let children = forester.getAllExternalNodes(node);
@@ -1691,6 +2076,8 @@
         properties.longestNodeName = 0;
         properties.branchLengths = false;
         properties.confidences = false;
+        // MAD values (madRoot) rate root positions, not clades: never support
+        properties.madValues = false;
         // the largest confidence value seen -- how a caller tells a
         // posterior-probability tree (max <= 1) from a bootstrap tree
         properties.maxConfidence = 0;
@@ -1803,8 +2190,12 @@
                 }
             }
             if (n.confidences && n.confidences.length > 0) {
-                properties.confidences = true;
                 for (let ci = 0; ci < n.confidences.length; ++ci) {
+                    if (n.confidences[ci].type === forester.MAD_CONFIDENCE_TYPE) {
+                        properties.madValues = true;
+                        continue;
+                    }
+                    properties.confidences = true;
                     let cv = n.confidences[ci].value;
                     if (typeof cv === 'number' && isFinite(cv) && cv > properties.maxConfidence) {
                         properties.maxConfidence = cv;
@@ -3470,11 +3861,17 @@
                     nh += ":" + node.branch_length;
                 }
             }
-            if (writeConfidences && node.confidences && node.confidences.length === 1 && node.confidences[0].value !== undefined && node.confidences[0].value !== null) {
+            // the support slot holds support: a MAD value (madRoot) never goes
+            // there -- it would read as support, and would crowd out the
+            // bootstrap on a branch carrying both. phyloXML keeps it, typed.
+            let support = writeConfidences && node.confidences
+                ? node.confidences.filter(function (c) { return c.type !== forester.MAD_CONFIDENCE_TYPE; })
+                : [];
+            if (support.length === 1 && support[0].value !== undefined && support[0].value !== null) {
                 if (decPointsMax && decPointsMax > 0) {
-                    nh += "[" + forester.roundNumber(node.confidences[0].value, decPointsMax) + "]";
+                    nh += "[" + forester.roundNumber(support[0].value, decPointsMax) + "]";
                 } else {
-                    nh += "[" + node.confidences[0].value + "]";
+                    nh += "[" + support[0].value + "]";
                 }
             }
             if (!last) {
@@ -4258,7 +4655,8 @@
     }, {suggest: false});
 
     const SEARCH_BRANCH_LENGTH = numericField('Branch Length', n => (typeof n.branch_length === 'number') ? [n.branch_length] : []);
-    const SEARCH_CONFIDENCE = numericField('Confidence', n => n.confidences ? n.confidences.map(c => c.value).filter(v => typeof v === 'number') : []);
+    // support only: a MAD value rates a root position, not the clade
+    const SEARCH_CONFIDENCE = numericField('Confidence', n => n.confidences ? n.confidences.filter(c => c.type !== forester.MAD_CONFIDENCE_TYPE).map(c => c.value).filter(v => typeof v === 'number') : []);
     const SEARCH_CLADE_SIZE = numericField('Clade Size (tips)', n => [n._srchClade], {metrics: true});
     const SEARCH_CHILD_COUNT = numericField('Number of Children', n => [n.children ? n.children.length : 0]);
     const SEARCH_DEPTH = numericField('Depth from Root', n => [n._srchDepth], {metrics: true});
@@ -4397,7 +4795,7 @@
             if (!hasBL && typeof n.branch_length === 'number' && n.branch_length >= 0) hasBL = true;
             if (!hasConf && n.confidences) {
                 for (let i = 0; i < n.confidences.length; ++i) {
-                    if (typeof n.confidences[i].value === 'number') { hasConf = true; break; }
+                    if (typeof n.confidences[i].value === 'number' && n.confidences[i].type !== forester.MAD_CONFIDENCE_TYPE) { hasConf = true; break; }
                 }
             }
             if (n.properties) {

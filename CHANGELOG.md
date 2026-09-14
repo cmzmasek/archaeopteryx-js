@@ -6,6 +6,34 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **MAD rooting** (minimal ancestor deviation, Tria et al. 2017). The
+  re-root button's menu offers **MAD re-root (Tria et al., 2017)** above
+  Midpoint re-root, with the full citation on hover, for any tree with
+  branch lengths and at least three tips. Ported from the desktop and
+  checked against it on 254 trees; it runs in O(n²) time and O(n) memory
+  (the 13,246-tip H5N1 demo tree roots in 0.4 s in Node). Pairs of tips at distance
+  zero (identical sequences) are left out of every deviation sum. In code:
+  `forester.madRoot(phy)` and `forester.removeMadConfidences(phy)`.
+- **MAD values.** Every internal branch of a MAD-rooted tree carries its
+  deviation as a confidence of type `MAD`, which a new **MAD Values**
+  checkbox writes on the branches as `MAD/support`. They never count as
+  support: the Confidence labels, Support Dots and the Confidence search
+  field leave them out, and midpoint or manual re-rooting removes them. A
+  shared view carries `root=mad` and `madValues`.
+
+### Changed
+
+- **Newick and Nexus downloads never write a MAD value as support**, and a
+  branch carrying both keeps its support value in the file. phyloXML keeps
+  MAD values as `<confidence type="MAD">`.
+- **`forester.reRoot(phy, node, 0)` puts the root at the node.** A position
+  of 0 used to be read as no position at all, which puts the root in the
+  middle of the branch.
+
 ## 3.4.1 — 2026-09-14
 
 Collapsed clades made to fit the rest of the viewer — their shape, labels,

@@ -114,15 +114,15 @@ export interface ViewState {
     display?: 'phylogram' | 'aligned' | 'cladogram';
     /** The ladderize direction applied. */
     order?: 'asc' | 'desc';
-    /** Midpoint re-rooted. */
-    root?: 'midpoint';
+    /** Re-rooted: at the midpoint, or by minimal ancestor deviation. */
+    root?: 'midpoint' | 'mad';
     subtree?: number;
     collapsed?: number[];
     /** A visualization id (as the Color-by menu values them), or 'none'. */
     colorBy?: string;
     shapeBy?: string;
     /** The panel's checked boxes: name, taxonomy, sequence, confidence,
-     * branchLength, external, internal, nodeEvents, branchEvents,
+     * madValues, branchLength, external, internal, nodeEvents, branchEvents,
      * supportDots, shortNames, autoHide, visualizations, visualStyles, and
      * custom:<key> for a nodeLabels checkbox. */
     show?: string[];
