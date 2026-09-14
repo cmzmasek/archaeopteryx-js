@@ -2758,13 +2758,16 @@ function (root, d3, forester, phyloXml) {
             }
         }
 
-        // The dim gate: only while a hit is actually DRAWN, so the tree never
+        // The dim gate: only while a hit is actually SHOWN, so the tree never
         // washes out with nothing emphasised (a 0-hit search, or every hit
-        // hidden inside a collapsed clade / outside the displayed subtree).
+        // outside the displayed subtree). A collapsed clade holding a hit
+        // counts as shown: it stays bright, outlined and counting its hits,
+        // so the rest fading points at it (Christian, 2026-09-14: "less
+        // confusing to users" than no dimming at all).
         _dimNonMatches = false;
         if ((_foundNodes0 && _foundNodes0.size > 0) || (_foundNodes1 && _foundNodes1.size > 0)) {
             for (let i = 0, len = nodes.length; i !== len; ++i) {
-                if (isNodeFound(nodes[i])) {
+                if (isNodeFound(nodes[i]) || (isCollapsed(nodes[i]) && collapsedFoundCounts(nodes[i]).found > 0)) {
                     _dimNonMatches = true;
                     break;
                 }

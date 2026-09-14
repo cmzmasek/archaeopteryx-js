@@ -16,6 +16,9 @@ consumers only see a change when a version is cut.
   drew the desktop's symmetric triangle on a base at the average tip
   distance instead. The label clears the farthest tip. The circular-layout
   fix from 3.4.0, which keeps the wedge on its node, stays.
+- **Search dims the rest of the tree when every hit is inside collapsed
+  clades.** Those clades stay bright, outlined and counting their hits;
+  before, dimming stayed off until a hit was drawn as a tip.
 
 ### Fixed
 
