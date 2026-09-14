@@ -6,7 +6,14 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.5.0 — 2026-09-14
+
+Rooting, made to match the desktop: MAD rooting beside midpoint rooting,
+MAD values that never pass for support, trees that must not be re-rooted
+(marked so by their file, or time trees) greyed with the reason, a warning
+before a re-root changes the clades of internal nodes that carry data, and
+"Tips around" for unrooted trees. The desktop shipped the same rules in
+forester 0.11.146 and 0.11.147. Plus a multi-tree demo.
 
 ### Added
 
@@ -36,6 +43,9 @@ consumers only see a change when a version is cut.
   tips on each side (`2 · 3 · 5`) instead of distance to parent, depth and
   tips below, a tip's distance to parent reads Branch length, and the
   root-measured search fields are not offered.
+- **Flavivirus mature peptides demo**: ten trees in one phyloXML file, one
+  per mature peptide of the flavivirus polyprotein (C, prM, E, NS1 … NS5) in
+  genome order, stepped through with the multi-tree picker.
 
 ### Changed
 
@@ -43,11 +53,10 @@ consumers only see a change when a version is cut.
   greyed Reroot now shown in the node menu, read "This tree is marked as not
   re-rootable (rerootable="false")." or "Time trees can't be re-rooted:
   their branch lengths are times measured from this root."
-
 - **A time tree can no longer be re-rooted**, by the re-root button, the
-  node menu's Reroot or a shared view. A time tree is one whose internal
-  nodes are mostly dated (BEAST node heights, Nextstrain dates, phyloXML
-  `<date>`s); `forester.isTimeTree(phy)`. phyloXML's `rerootable="false"` was
+  node menu's Reroot or a shared view. A time tree is one where a majority,
+  and at least two, of the internal nodes are dated (BEAST node heights,
+  Nextstrain dates, phyloXML `<date>`s); `forester.isTimeTree(phy)`. phyloXML's `rerootable="false"` was
   already honoured by every way of re-rooting.
 - **Newick and Nexus downloads never write a MAD value as support**, and a
   branch carrying both keeps its support value in the file. phyloXML keeps
