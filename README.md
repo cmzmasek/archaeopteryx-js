@@ -223,7 +223,8 @@ shows how uneven the clade's branch lengths are, as iTOL draws it (one depth
 step in a cladogram). Its label stands where a tip's would: on the label
 column in the aligned phylogram and on the outer ring in circular, with the
 same guide line; it is filled in the colour most of its tips wear under the current
-Color-by, grows gently taller with its tip count, and is named — the node's
+Color-by (the colour
+they wore, even when no tip on screen shares their value), grows gently taller with its tip count, and is named — the node's
 own name if it has one; else the one Color-by value nearly all its tips share,
 so a clade reads "Bovine · 12 tips" while you look at hosts; else the tips'
 common name prefix; always with the tip count, and with `[found/total]` while

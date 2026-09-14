@@ -53,6 +53,11 @@ consumers only see a change when a version is cut.
   follows the same rule.
 - The Color-by and Shape legends recount when a clade is collapsed or
   opened; their counts used to keep the tips a collapsed clade hides.
+- A collapsed clade whose tips carry a Color-by value found nowhere else on
+  screen keeps that value's colour. Its wedge used to be filled in another
+  value's colour: the Bcl-2 demo's "Fruit fly" clade, green before
+  collapsing, turned the blue of "African clawed frog". The legend still
+  lists only the values on screen.
 - **Searching the Molecular Sequence field finds sequences again.** It
   compared each query against the sequence object instead of its residues,
   so it never matched a tree read from phyloXML or Nexus. Residues are

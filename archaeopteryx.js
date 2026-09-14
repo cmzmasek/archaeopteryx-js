@@ -1997,6 +1997,7 @@ function (root, d3, forester, phyloXml) {
             }
         });
         _vis.colorNext[vis.id] = next;
+        vis.categoryOnScreen = new Set(vis.values);   // what the scale may be asked about (visualizationColorFor)
         vis.categoryScale = d3.scaleOrdinal()
             .domain(vis.values)
             .range(vis.values.map(function (v) {
@@ -3597,6 +3598,17 @@ function (root, d3, forester, phyloXml) {
         }
         if (colorModeOf(vis) === 'range') {
             return vis.rangeScale ? vis.rangeScale(Number(value)) : null;
+        }
+        // A value only tips hidden in a collapsed clade carry is not on
+        // screen, so not in the scale's domain -- and a d3 ordinal scale asked
+        // about an unknown value extends its domain and hands out an on-screen
+        // value's colour. Such a value keeps its remembered colour instead
+        // (assigned at launch over the whole tree, or the user's override):
+        // the clade's wedge keeps the colour its tips wore. Christian,
+        // 2026-09-14; reported by the desktop session, which follows.
+        if (vis.categoryOnScreen && !vis.categoryOnScreen.has(value)) {
+            let mem = _vis.colorMemory[vis.id];
+            return (mem && mem[visMemoryKey(vis, value)]) || null;
         }
         return vis.categoryScale(value);
     }
