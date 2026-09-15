@@ -6,7 +6,11 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.6.1 — 2026-09-14
+
+Two display fixes: PDF exports set the legend titles in the same sans-serif
+as the rest of the figure, and a tree filling the whole window no longer
+leaves a white band at the bottom.
 
 ### Fixed
 
