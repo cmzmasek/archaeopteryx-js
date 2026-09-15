@@ -6,7 +6,11 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.7.0 — 2026-09-15
+
+One new tool, ported from the desktop Archaeopteryx: representative tips,
+which thins out a large tree to one tip per group of close tips and can cut
+those tips out into a new tree.
 
 ### Added
 
