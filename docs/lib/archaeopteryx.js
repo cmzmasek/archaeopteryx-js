@@ -8313,54 +8313,122 @@ function (root, d3, forester, phyloXml) {
         return Math.max(DOMAIN_BOX_MIN_H, Math.min(DOMAIN_BOX_MAX_H, Math.round(pitch)));
     }
 
+    // A rounded rectangle as path data, placed by m = [cos, sin, tx, ty] -- a
+    // rotation, then a translation, as an SVG transform would -- or unplaced
+    // when m is null. The corners are the quarter circles an SVG rect with
+    // rx = ry = r draws; a rotation leaves a circular arc circular. Returns
+    // '' for a non-finite rectangle, which in a shared path would end the
+    // path data there and lose every rectangle after it.
+    function roundRectPath(x, y, w, h, r, m) {
+        if (!isFinite(x) || !isFinite(y) || !(w > 0) || !isFinite(w) || !(h > 0) || !isFinite(h)) {
+            return '';
+        }
+        let pt = function (px, py) {
+            return m
+                ? ((px * m[0]) - (py * m[1]) + m[2]) + ',' + ((px * m[1]) + (py * m[0]) + m[3])
+                : px + ',' + py;
+        };
+        if (!(r > 0)) {
+            return 'M' + pt(x, y) + 'L' + pt(x + w, y) + 'L' + pt(x + w, y + h) + 'L' + pt(x, y + h) + 'Z';
+        }
+        let arc = 'A' + r + ',' + r + ' 0 0 1 ';
+        return 'M' + pt(x + r, y) + 'L' + pt(x + w - r, y) + arc + pt(x + w, y + r)
+            + 'L' + pt(x + w, y + h - r) + arc + pt(x + w - r, y + h)
+            + 'L' + pt(x + r, y + h) + arc + pt(x, y + h - r)
+            + 'L' + pt(x, y + r) + arc + pt(x + r, y) + 'Z';
+    }
+
+    // The track, drawn the desktop's way: per architecture a backbone, per
+    // admitted domain a stepped drop shadow, the optional glow, the gradient
+    // body with its border, and -- rectangular only -- the name when it fits.
+    //
+    // Batched like the tree (drawTreeGeometry). Each domain used to be three
+    // shadow rects, two glow rects when on, and a body, in a <g> per tip in
+    // the radial layouts: 32,346 elements on a 1,386-node BV-BRC tree with
+    // 1,428 architectures, 23,208 of them shadows, and a redraw of 430 ms
+    // against 22 ms with the track off (2026-09-14). Now every backbone is
+    // one path, each shadow level one path and each glow level one path per
+    // colour, all under the bodies; the elements are kept and reused from
+    // redraw to redraw.
+    //
+    // The BODIES stay one rect each: their vertical gradient is sized to the
+    // element's own bounding box, so one path per colour would stretch a
+    // single gradient over the whole column. (One path per colour per ROW
+    // would keep it exact, but on the flu trees nearly every box in a row
+    // has a colour of its own: 7,706 such pairs for 7,736 boxes.)
+    //
+    // What batching changes: where two domains of one architecture overlap,
+    // the later one's shadow and glow used to fall across the earlier body,
+    // and now lie under it; overlapping shadows of one level no longer
+    // darken each other.
     function drawDomainArchitectures() {
         if (!_svgGroup) {
             return;
         }
-        _svgGroup.selectAll('g.aptx-domains').remove();
-        if (!domainsShown() || !_root) {
-            return;
-        }
-        let tips = displayedTips().filter(function (d) {
+        let existing = _svgGroup.select('g.aptx-domains');
+        let tips = (domainsShown() && _root) ? displayedTips().filter(function (d) {
             return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
-        });
-        let f = domainScale();
+        }) : [];
+        let f = tips.length > 0 ? domainScale() : 0;
         if (tips.length === 0 || !(f > 0) || !isFinite(f)) {
+            existing.remove();
             return;
         }
-        let g = _svgGroup.append('g').attr('class', 'aptx-domains').style('pointer-events', 'none');
+        // [defs, the batched paths, the bodies, the names], kept between
+        // redraws and moved to the end of the tree group, where a fresh
+        // append used to put it
+        let g = existing.node();
+        if (!g) {
+            g = document.createElementNS(d3.namespaces.svg, 'g');
+            g.setAttribute('class', 'aptx-domains');
+            g.style.pointerEvents = 'none';
+            ['defs', 'g', 'g', 'g'].forEach(function (tag) {
+                g.appendChild(document.createElementNS(d3.namespaces.svg, tag));
+            });
+        }
+        _svgGroup.node().appendChild(g);
+        let defs = g.children[0];
+        let underLayer = g.children[1];
+        let bodyLayer = g.children[2];
+        let labelLayer = g.children[3];
+
         // one vertical gradient per base colour, lighter at the top; the
         // defs ride into the SVG / PDF / PNG exports with the boxes
-        let defs = g.append('defs');
+        defs.textContent = '';
         let made = Object.create(null);
         function gradientFor(base) {
             let id = 'aptx-dom-' + base.substring(1);
             if (!made[id]) {
                 made[id] = true;
-                let grad = defs.append('linearGradient').attr('id', id)
+                let grad = d3.select(defs).append('linearGradient').attr('id', id)
                     .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1);
                 grad.append('stop').attr('offset', '0%').attr('stop-color', forester.domainLighten(base, 0.12));
                 grad.append('stop').attr('offset', '100%').attr('stop-color', forester.domainDarken(base, 0.10));
             }
             return 'url(#' + id + ')';
         }
+
+        // Where each tip's architecture goes: its start along the track, the
+        // top and height of its boxes, and in the radial layouts the rotation
+        // (and for unrooted the translation) that places it.
         let labelSpace = domainLabelSpace();
+        let rows = [];
         if (_state.circularDisplay) {
             // every bar starts on one ring past the labels and rides its
             // tip's spoke outward
             let r0 = _radial.maxRad + labelSpace + DOMAIN_RADIAL_GAP;
             let h = domainBoxHeight((r0 * 2 * Math.PI) / tips.length);
             tips.forEach(function (d) {
-                let t = g.append('g').attr('transform', 'rotate(' + labelAngleDeg(d) + ')');
-                drawOneArchitecture(t, forester.domainArchitectureOf(d), r0, -h / 2, h, f, false, gradientFor);
+                rows.push({d: d, start: r0, y1: -h / 2, h: h, angle: labelAngleDeg(d), tx: 0, ty: 0,
+                    transform: 'rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
             });
         } else if (_state.unrootedDisplay) {
             // no common ring: each bar starts past its own tip's label
             let h = domainBoxHeight((Math.PI * 2 * _unroot.maxRad) / tips.length);
             let start = labelSpace + DOMAIN_RADIAL_GAP;
             tips.forEach(function (d) {
-                let t = g.append('g').attr('transform', 'translate(' + d.ux + ',' + d.uy + ') rotate(' + labelAngleDeg(d) + ')');
-                drawOneArchitecture(t, forester.domainArchitectureOf(d), start, -h / 2, h, f, false, gradientFor);
+                rows.push({d: d, start: start, y1: -h / 2, h: h, angle: labelAngleDeg(d), tx: d.ux, ty: d.uy,
+                    transform: 'translate(' + d.ux + ',' + d.uy + ') rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
             });
         } else {
             // one aligned column: past the deepest tip and the longest label.
@@ -8374,61 +8442,113 @@ function (root, d3, forester, phyloXml) {
             let start = _w + _state.nodeLabelGap + labelSpace + DOMAIN_TRACK_START_GAP;
             let labelsOn = _state.domainLabels === 'domains';
             tips.forEach(function (d) {
-                drawOneArchitecture(g, forester.domainArchitectureOf(d), start, d.x - (h / 2), h, f, labelsOn, gradientFor);
+                rows.push({d: d, start: start, y1: d.x - (h / 2), h: h, angle: null, transform: null, labelsOn: labelsOn});
             });
         }
-    }
 
-    function domainRect(g, x, y, w, h, r) {
-        return g.append('rect')
-            .attr('x', x).attr('y', y).attr('width', w).attr('height', h)
-            .attr('rx', r).attr('ry', r);
-    }
-
-    // One architecture, in the desktop's order: the backbone, then per
-    // admitted domain its stepped drop shadow, the optional glow, the
-    // gradient body with its border, and -- rectangular only -- the name,
-    // when it fits the box.
-    function drawOneArchitecture(g, da, start, y1, h, f, labelsOn, gradientFor) {
-        if (!da) {
-            return;
-        }
-        let geo = forester.domainBoxes(da, start, f, _state.domainEvalueExponent);
-        g.append('rect')
-            .attr('x', geo.backbone.x).attr('y', y1 + (h / 2) - 0.5)
-            .attr('width', geo.backbone.w).attr('height', 1)
-            .style('fill', DOMAIN_BACKBONE_COLOR);
-        let fs = Math.min(_state.externalNodeFontSize, h - 2);
-        let font = fs + 'px ' + FONT_DEFAULTS;
-        geo.boxes.forEach(function (b) {
-            let base = domainColor(b.name);
-            let r = Math.min(2, Math.min(b.w, h) / 2);
-            DOMAIN_SHADOWS.forEach(function (s) {
-                domainRect(g, b.x + s[0], y1 + s[1], b.w, h, r)
-                    .style('fill', DOMAIN_SHADOW_COLOR)
-                    .style('fill-opacity', s[2] / 255);
-            });
-            if (_state.domainGlow) {
-                DOMAIN_GLOWS.forEach(function (gl) {
-                    let o = gl[0];
-                    domainRect(g, b.x - o, y1 - o, b.w + (2 * o), h + (2 * o), r + o)
-                        .style('fill', base)
-                        .style('fill-opacity', gl[1] / 255);
+        // ---- collect: path data for the batched parts, a list for the rest
+        let backbones = [];
+        let shadows = DOMAIN_SHADOWS.map(function () {
+            return [];
+        });
+        let glows = DOMAIN_GLOWS.map(function () {
+            return new Map();   // base colour -> path data
+        });
+        let bodies = [];
+        let names = [];
+        rows.forEach(function (row) {
+            let da = forester.domainArchitectureOf(row.d);
+            if (!da) {
+                return;
+            }
+            let geo = forester.domainBoxes(da, row.start, f, _state.domainEvalueExponent);
+            let m = null;
+            if (row.angle !== null) {
+                let a = row.angle * Math.PI / 180;
+                m = [Math.cos(a), Math.sin(a), row.tx, row.ty];
+            }
+            let h = row.h;
+            let y1 = row.y1;
+            backbones.push(roundRectPath(geo.backbone.x, y1 + (h / 2) - 0.5, geo.backbone.w, 1, 0, m));
+            let fs = Math.min(_state.externalNodeFontSize, h - 2);
+            let font = fs + 'px ' + FONT_DEFAULTS;
+            geo.boxes.forEach(function (b) {
+                let base = domainColor(b.name);
+                let r = Math.min(2, Math.min(b.w, h) / 2);
+                DOMAIN_SHADOWS.forEach(function (s, k) {
+                    shadows[k].push(roundRectPath(b.x + s[0], y1 + s[1], b.w, h, r, m));
                 });
+                if (_state.domainGlow) {
+                    DOMAIN_GLOWS.forEach(function (gl, k) {
+                        let o = gl[0];
+                        let parts = glows[k].get(base);
+                        if (!parts) {
+                            parts = [];
+                            glows[k].set(base, parts);
+                        }
+                        parts.push(roundRectPath(b.x - o, y1 - o, b.w + (2 * o), h + (2 * o), r + o, m));
+                    });
+                }
+                bodies.push({x: b.x, y: y1, w: b.w, h: h, r: r, transform: row.transform,
+                    fill: gradientFor(base), stroke: forester.domainDarken(base, 0.24)});
+                if (row.labelsOn && b.name && fs > 4 && legendTextWidth(b.name, font) <= b.w - 4) {
+                    names.push({x: b.x + (b.w / 2), y: y1 + (h / 2), font: font,
+                        fill: forester.domainLabelInk(base), text: b.name});
+                }
+            });
+        });
+
+        // ---- draw: bottom to top, reusing the elements already there
+        let under = [];
+        let addUnder = function (parts, fill, opacity) {
+            let d = parts.join('');
+            if (d !== '') {
+                under.push({d: d, fill: fill, opacity: opacity});
             }
-            domainRect(g, b.x, y1, b.w, h, r)
-                .style('fill', gradientFor(base))
-                .style('stroke', forester.domainDarken(base, 0.24))
-                .style('stroke-width', 1);
-            if (labelsOn && b.name && fs > 4 && legendTextWidth(b.name, font) <= b.w - 4) {
-                g.append('text')
-                    .attr('x', b.x + (b.w / 2)).attr('y', y1 + (h / 2))
-                    .attr('dy', '0.35em')
-                    .attr('text-anchor', 'middle')
-                    .style('font', font)
-                    .style('fill', forester.domainLabelInk(base))
-                    .text(b.name);
+        };
+        addUnder(backbones, DOMAIN_BACKBONE_COLOR, '');
+        DOMAIN_SHADOWS.forEach(function (s, k) {
+            addUnder(shadows[k], DOMAIN_SHADOW_COLOR, s[2] / 255);
+        });
+        DOMAIN_GLOWS.forEach(function (gl, k) {
+            glows[k].forEach(function (parts, base) {
+                addUnder(parts, base, gl[1] / 255);
+            });
+        });
+        let paths = sizeLayer(underLayer, 'path', under.length);
+        under.forEach(function (u, k) {
+            paths[k].setAttribute('d', u.d);
+            paths[k].style.fill = u.fill;
+            paths[k].style.fillOpacity = u.opacity;
+        });
+        let rects = sizeLayer(bodyLayer, 'rect', bodies.length);
+        bodies.forEach(function (b, k) {
+            let el = rects[k];
+            el.setAttribute('x', b.x);
+            el.setAttribute('y', b.y);
+            el.setAttribute('width', b.w);
+            el.setAttribute('height', b.h);
+            el.setAttribute('rx', b.r);
+            el.setAttribute('ry', b.r);
+            if (b.transform) {
+                el.setAttribute('transform', b.transform);
+            } else {
+                el.removeAttribute('transform');
             }
+            el.style.fill = b.fill;
+            el.style.stroke = b.stroke;
+            el.style.strokeWidth = 1;
+        });
+        let texts = sizeLayer(labelLayer, 'text', names.length);
+        names.forEach(function (t, k) {
+            let el = texts[k];
+            el.setAttribute('x', t.x);
+            el.setAttribute('y', t.y);
+            el.setAttribute('dy', '0.35em');
+            el.setAttribute('text-anchor', 'middle');
+            el.style.font = t.font;
+            el.style.fill = t.fill;
+            el.textContent = t.text;
         });
     }
 
