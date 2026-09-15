@@ -6,6 +6,17 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Fixed
+
+- **PDF export: legend titles in a serif font.** The legend titles (and the
+  label of a collapsed clade whose tips are all search hits) are semibold,
+  a weight the PDF's built-in fonts do not have, so the PDF fell back to
+  Times. They now come out in Helvetica Bold. The domain legend's title also
+  came out as spaced-out garbage there, because the built-in fonts cannot
+  show "≤"; the PDF spells it "<=".
+
 ## 3.6.0 — 2026-09-14
 
 Big trees, drawn a new way: branches, dots, shapes and the domain track

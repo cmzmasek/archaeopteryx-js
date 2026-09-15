@@ -13290,6 +13290,22 @@ function (root, d3, forester, phyloXml) {
         holder.style.top = '0';
         holder.appendChild(el);
         document.body.appendChild(holder);
+        // jsPDF's built-in faces come in two weights only: svg2pdf passes any
+        // other (the legend titles' 600) on as a style Helvetica lacks, and
+        // jsPDF then falls back to Times -- snap every weight to one of the two.
+        // Those faces also encode only WinAnsi, where '≤' and '≥' come out as
+        // spaced-out garbage, so the ones the viewer draws itself are spelled out.
+        el.querySelectorAll('text, tspan').forEach(function (t) {
+            let weight = parseInt(window.getComputedStyle(t).fontWeight, 10);
+            if (weight !== 400 && weight !== 700) {
+                t.style.fontWeight = weight >= 600 ? 'bold' : 'normal';
+            }
+            t.childNodes.forEach(function (c) {
+                if (c.nodeType === Node.TEXT_NODE && /[≤≥]/.test(c.nodeValue)) {
+                    c.nodeValue = c.nodeValue.replace(/≤/g, '<=').replace(/≥/g, '>=');
+                }
+            });
+        });
         let svgEl = treeSvgElement();
         let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
         let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
