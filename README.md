@@ -322,6 +322,38 @@ a Newick or Nexus download never puts one where a support value goes.
    gene families. *PLOS ONE*, 15(5), e0232950.
    <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0232950>
 
+## Representative tips
+
+A large tree often holds many near-identical tips. The tool row's
+**representative tips** button thins them out the way the desktop
+Archaeopteryx's Tools → Select Representative Tips does: the tips are grouped
+into the largest clades whose tips are all close to each other, and one tip of
+each group is kept. Distance is patristic, the sum of the branch lengths on
+the path between two tips; in a tree without branch lengths it counts edges.
+
+The dialog takes either a **distance cutoff**, and no two tips of a group are
+then farther apart than it, or a **target number** of representatives, for
+which the cutoff giving the nearest count the tree allows is used (a tie keeps
+more tips; the count reached is reported). A distance cutoff needs branch
+lengths. The tip kept is the group's **most central** one (the medoid, with
+the smallest summed distance to its group-mates) or its **most divergent** one
+(the longest terminal branch). Tips that are selected or found by a search can
+be kept whatever their group: they stand in for their group's representative,
+so more tips than the target may stay.
+
+The tips kept show as search A's hits, with its colour, hit count and
+step-through, and a summary offers **Create tree**: a tree of only those tips,
+added to the tree picker and opened drawn as the tree was (phylogram, aligned
+or cladogram). It is named after the tree and the count, as in
+`mammals_233reps`, and its description says how it was made. An internal node
+left with one child is replaced by that child, whose branch gains the node's
+length; the new root keeps the original root's own branch length. The original
+tree is not changed.
+
+The grouping and the tips kept are the desktop's: they match its own results
+on 129 generated trees in 5,666 settings (`test/fixtures/rep-contract.tsv`,
+made by running the desktop's code).
+
 ## Metadata tables
 
 A tree file rarely carries everything known about its tips. A **metadata

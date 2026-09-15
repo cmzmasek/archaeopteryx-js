@@ -380,6 +380,8 @@ function (root, d3, forester, phyloXml) {
     const INTERNAL_LABEL_CB = 'intl_cb';
     const LABEL_COLOR_SELECT_MENU = 'lcs_menu';
     const MIDPOINT_ROOT_BUTTON = 'midpointr_b';
+    const REPRESENTATIVES_BUTTON = 'reps_b';
+    const REPRESENTATIVES_DIALOG = 'reps_dialog';
     const MAD_CITATION = 'Tria F, Landan G, Dagan T. Phylogenetic rooting using minimal ancestor deviation. Nature Ecology and Evolution. 2017;1:0193';
     const UNCOLLAPSE_ALL_BUTTON = 'uncollapse_all_b';
     const TREE_PREV_BUTTON = 'tree_prev_b';
@@ -9439,6 +9441,297 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
+    // ---- representative tips ------------------------------------------------
+    //
+    // The desktop's Tools > Select Representative Tips, from the tool row: a
+    // dialog takes a distance cutoff or a target count, the representative to
+    // keep and whether the selected and found tips stay; the tips kept show
+    // as search A's hits, and can be cut out into a new tree in the tree
+    // picker (the desktop's new tab). The choosing is
+    // forester.selectRepresentativeTips, held to the desktop's own results by
+    // test/fixtures/rep-contract.tsv.
+
+    // the dialog's inputs, remembered while the page is open (the desktop
+    // remembers them for its session)
+    let _repsInputs = {byCutoff: true, cutoff: '0.05', target: '100', pickIndex: 0};
+
+    // what the viewer writes onto a tree's nodes, left off a tree cut out of it
+    const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
+        'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText'];
+
+    // the whole tree's tip count, counted again only when the tree changes
+    // (every change makes new _basicTreeProperties)
+    let _repsTipCount = {properties: null, count: 0};
+
+    function wholeTreeTipCount() {
+        if (_repsTipCount.properties !== _basicTreeProperties) {
+            _repsTipCount = {
+                properties: _basicTreeProperties,
+                count: _root_const ? forester.getAllExternalNodes(_root_const).length : 0
+            };
+        }
+        return _repsTipCount.count;
+    }
+
+    // why representative tips cannot be selected now, or null
+    function representativesBlockedReason() {
+        if (_in_subtree) {
+            return 'return to the whole tree to select representative tips';
+        }
+        if (!_root_const || wholeTreeTipCount() < 3) {
+            return 'the tree needs at least three tips to select representatives';
+        }
+        return null;
+    }
+
+    function repsElement(parent, tag, className, text) {
+        let e = document.createElement(tag);
+        if (className) {
+            e.className = className;
+        }
+        if (text !== undefined) {
+            e.textContent = text;
+        }
+        parent.appendChild(e);
+        return e;
+    }
+
+    function repsButton(parent, label, primary, action) {
+        let b = repsElement(parent, 'button', 'aptx-reps-button' + (primary ? ' aptx-reps-primary' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', action);
+        return b;
+    }
+
+    // Java's Double.parseDouble and Integer.parseInt, which read the desktop's
+    // fields: null for what they refuse
+    function javaParseDouble(s) {
+        let m = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)[fFdD]?$/.exec(s);
+        if (m) {
+            return Number(m[1]);
+        }
+        return /^[+-]?(?:Infinity|NaN)$/.test(s) ? Number(s) : null;
+    }
+
+    function javaParseInt(s) {
+        if (!/^[+-]?\d+$/.test(s)) {
+            return null;
+        }
+        let v = Number(s);
+        return (v < -2147483648 || v > 2147483647) ? null : v;
+    }
+
+    function representativesButtonPressed() {
+        if (representativesBlockedReason()) {
+            return;
+        }
+        // the selected and found tips can be kept; taken now, before the
+        // result replaces search A's hits
+        let protectable = [];
+        let seen = new Set();
+        [_selectedNodes, _foundNodes0, _foundNodes1].forEach(function (nodes) {
+            (nodes || []).forEach(function (n) {
+                if ((!n.children || n.children.length === 0) && !seen.has(n)) {
+                    seen.add(n);
+                    protectable.push(n);
+                }
+            });
+        });
+        showRepresentativesDialog(_treeData, forester.hasUsableBranchLengths(_treeData), protectable);
+    }
+
+    // The desktop's input dialog, its texts and checks included; a distance
+    // cutoff needs branch lengths.
+    function showRepresentativesDialog(phy, hasLengths, protectable) {
+        let shell = makeDialogShell(REPRESENTATIVES_DIALOG, 'Select representative tips', 330);
+        let body = shell.body;
+        body.classList.add('aptx-reps');
+        let startByCutoff = hasLengths && _repsInputs.byCutoff;
+
+        repsElement(body, 'div', 'aptx-reps-lead', 'Select one representative per group of similar tips:');
+        let choice = function (type, label, checked, disabled) {
+            let row = repsElement(body, 'label', 'aptx-reps-choice' + (disabled ? ' aptx-reps-disabled' : ''));
+            let input = repsElement(row, 'input');
+            input.type = type;
+            input.name = REPRESENTATIVES_DIALOG + '_' + type;
+            input.checked = checked;
+            input.disabled = disabled;
+            repsElement(row, 'span', null, label);
+            return input;
+        };
+        let byCutoff = choice('radio', 'By distance cutoff', startByCutoff, !hasLengths);
+        let byTarget = choice('radio', 'By target number of representatives', !startByCutoff, false);
+        if (!hasLengths) {
+            repsElement(body, 'div', 'aptx-reps-note',
+                'This tree has no branch lengths, so only "target number" is available.');
+        }
+
+        repsElement(body, 'div', 'aptx-dialog-head', 'Value');
+        let value = repsElement(body, 'input', 'aptx-reps-input');
+        value.type = 'text';
+        value.spellcheck = false;
+        value.autocomplete = 'off';
+        value.value = startByCutoff ? _repsInputs.cutoff : _repsInputs.target;
+        let hint = repsElement(body, 'div', 'aptx-reps-note');
+
+        repsElement(body, 'div', 'aptx-dialog-head', 'Representative');
+        let pick = repsElement(body, 'select', 'aptx-reps-input');
+        ['Most central (medoid)', 'Most divergent (longest branch)'].forEach(function (label) {
+            repsElement(pick, 'option', null, label);
+        });
+        pick.selectedIndex = _repsInputs.pickIndex;
+
+        let n = protectable.length;
+        let protect = choice('checkbox', n > 0
+            ? 'Keep the ' + n + ' selected/found ' + (n === 1 ? 'tip' : 'tips') + ' (never drop them)'
+            : 'Keep selected/found tips (none are selected)', n > 0, n === 0);
+        protect.parentNode.classList.add('aptx-reps-protect');
+
+        let error = repsElement(body, 'div', 'aptx-reps-error');
+        let sync = function () {
+            hint.textContent = byCutoff.checked
+                ? 'Maximum distance between any two tips kept in the same group.'
+                : 'Approximate number of representative tips to keep.';
+            error.textContent = '';
+        };
+        byCutoff.addEventListener('change', function () {
+            value.value = _repsInputs.cutoff;
+            sync();
+        });
+        byTarget.addEventListener('change', function () {
+            value.value = _repsInputs.target;
+            sync();
+        });
+        sync();
+
+        let submit = function () {
+            let text = value.value.trim();
+            let cutoff = 0;
+            let target = 0;
+            if (byCutoff.checked) {
+                cutoff = javaParseDouble(text);
+                if (cutoff === null) {
+                    error.textContent = 'Please enter a numeric distance cutoff (for example 0.05).';
+                    return;
+                }
+                if (!isFinite(cutoff) || cutoff <= 0) {
+                    error.textContent = 'The distance cutoff must be a positive number.';
+                    return;
+                }
+            } else {
+                target = javaParseInt(text);
+                if (target === null) {
+                    error.textContent = 'Please enter a whole number of representatives (for example 100).';
+                    return;
+                }
+                if (target < 1) {
+                    error.textContent = 'The target number of representatives must be at least 1.';
+                    return;
+                }
+            }
+            // a tree without branch lengths forced the target: that is not a preference
+            if (hasLengths) {
+                _repsInputs.byCutoff = byCutoff.checked;
+            }
+            if (byCutoff.checked) {
+                _repsInputs.cutoff = text;
+            } else {
+                _repsInputs.target = text;
+            }
+            _repsInputs.pickIndex = pick.selectedIndex;
+            shell.dialog.close();
+
+            let options = {
+                pick: pick.selectedIndex === 1 ? forester.REPRESENTATIVE_LONGEST_BRANCH : forester.REPRESENTATIVE_MEDOID,
+                protectedTips: protect.checked ? protectable : []
+            };
+            if (byCutoff.checked) {
+                options.cutoff = cutoff;
+            } else {
+                options.target = target;
+            }
+            let result = forester.selectRepresentativeTips(phy, options);
+            showRepresentativesAsHits(result);
+            showRepresentativesResult(phy, result, byCutoff.checked, cutoff, target, options.pick);
+        };
+        value.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submit();
+            }
+        });
+
+        let actions = repsElement(body, 'div', 'aptx-reps-actions');
+        repsButton(actions, 'Cancel', false, function () {
+            shell.dialog.close();
+        });
+        repsButton(actions, 'Select', true, submit);
+        shell.dialog.showModal();
+        value.focus();
+        value.select();
+    }
+
+    // The tips kept, as search A's hits -- the desktop shows them as its
+    // found nodes: A's colour, the hit count, the step-through. The next
+    // search replaces them, and resetting search A clears them.
+    function showRepresentativesAsHits(result) {
+        _foundNodes0 = new Set(result.keptTips);
+        _searchBox0Empty = false;
+        _searchHitIndex = -1;
+        scheduleUpdate(null, 0, true);
+        updateSearchHitNavigation();
+    }
+
+    // The desktop's summary, and its offer of a new tree of the tips kept.
+    function showRepresentativesResult(phy, result, byCutoff, cutoff, target, pick) {
+        let shell = makeDialogShell(REPRESENTATIVES_DIALOG, 'Representative tips selected', 360);
+        shell.body.classList.add('aptx-reps');
+        result.summary.split('\n').forEach(function (line) {
+            repsElement(shell.body, 'div', 'aptx-reps-line', line);
+        });
+        let n = result.keptCount;
+        repsElement(shell.body, 'div', 'aptx-reps-question',
+            'Create a new tree containing only these ' + n + (n === 1 ? ' tip?' : ' tips?'));
+        let actions = repsElement(shell.body, 'div', 'aptx-reps-actions');
+        repsButton(actions, 'Close', false, function () {
+            shell.dialog.close();
+        });
+        let create = repsButton(actions, 'Create tree', true, function () {
+            shell.dialog.close();
+            openRepresentativeTree(phy, result, byCutoff, cutoff, target, pick);
+        });
+        shell.dialog.showModal();
+        create.focus();
+    }
+
+    // The tips kept, cut out into a new tree at the end of the tree picker,
+    // which opens at once: named <parent>_Nreps, its description saying how
+    // it was made, drawn as this tree is (phylogram, aligned or cladogram),
+    // as the desktop's derived tab. This tree is left as it is.
+    function openRepresentativeTree(phy, result, byCutoff, cutoff, target, pick) {
+        let copy = forester.copyTreeKeepingTips(phy, result.keptTips);
+        forester.preOrderTraversalAll(copy, function (n) {
+            VIEW_NODE_FIELDS.forEach(function (f) {
+                delete n[f];
+            });
+        });
+        forester.addParents(copy);
+        let parentName = (typeof phy.name === 'string' && phy.name.length > 0) ? phy.name : null;
+        copy.name = forester.representativeTreeName(parentName, result.keptCount);
+        let provenance = forester.representativeTreeDescription(byCutoff, cutoff, target, pick, result.keptCount,
+            forester.stripShortExtension(parentName), result.tipCount);
+        copy.description = copy.description ? copy.description + ' ' + provenance : provenance;
+
+        let display = _state.phylogram ? (_state.alignPhylogram ? 'aligned' : 'phylogram') : 'cladogram';
+        clearCollapsedFlags(_trees[_treeIndex]);
+        _trees.push(copy);
+        let launchConfig = _launchConfig;
+        let cfg = Object.assign({}, launchConfig || {});
+        cfg.view = {display: display};
+        launchInto(_container, _trees, _trees.length - 1, cfg);
+        _launchConfig = launchConfig;   // later switches open each tree its own way
+    }
+
     function escPressed() {
         if (_in_subtree) {
             _root = _root_const;
@@ -10770,6 +11063,16 @@ function (root, d3, forester, phyloXml) {
             + glyphDot(50, 50, 11);
     }
 
+    // Representative tips: two clades of two tips, one tip of each kept --
+    // the dot. The desktop has it only as a menu item, so it is drawn to
+    // match the midpoint glyph's weight.
+    function glyphRepresentatives() {
+        return '<path d="M10,30 V70 M10,30 H38 M10,70 H38 M38,16 V44 M38,56 V84'
+            + ' M38,16 H66 M38,44 H66 M38,56 H66 M38,84 H66"/>'
+            + glyphDot(84, 16, 10)
+            + glyphDot(84, 84, 10);
+    }
+
     // Build one glyph as an inline <svg>. Stroke weight, caps and joins follow
     // the desktop class each glyph came from.
     function makeGlyph(kind) {
@@ -10794,6 +11097,7 @@ function (root, d3, forester, phyloXml) {
             case 'ladderize_asc': sw = 8; cap = 'round'; body = glyphLadderize(true); break;
             case 'ladderize_desc': sw = 8; cap = 'round'; body = glyphLadderize(false); break;
             case 'midpoint': sw = 8; cap = 'round'; body = glyphMidpoint(); break;
+            case 'representatives': sw = 8; cap = 'round'; body = glyphRepresentatives(); break;
             case 'uncollapse_all': sw = 8.5; cap = 'round'; body = glyphUncollapseAll(); break;
             case 'tree_prev': sw = 9; cap = 'round'; body = glyphChevron(false); break;
             case 'tree_next': sw = 9; cap = 'round'; body = glyphChevron(true); break;
@@ -10985,6 +11289,29 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-keys { display:inline-flex; gap:3px; flex-wrap:wrap; }'
             + '.aptx-kbd { font-family:inherit; font-size:10.5px; line-height:1; padding:3px 5px; min-width:18px; text-align:center; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-bottom-width:2px; border-radius:4px; }'
             + '.aptx-shortcuts-note { margin:8px 0 0; font-size:10.5px; line-height:1.4; color:var(--p-muted); }'
+            // representative tips: the input dialog and its result
+            + '.aptx-reps { line-height:1.35; }'
+            + '.aptx-reps-lead { margin:0 0 4px; }'
+            + '.aptx-reps-choice { display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; }'
+            + '.aptx-reps-choice input { accent-color:var(--p-accent); width:13px; height:13px; margin:0; flex:none; }'
+            + '.aptx-reps-disabled { color:var(--p-faint); cursor:default; }'
+            + '.aptx-reps-input { display:block; box-sizing:border-box; width:100%; font:inherit; color:var(--p-ink);'
+            + '  background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; padding:4px 7px; }'
+            + '.aptx-reps-input:focus { outline:none; border-color:var(--p-accent); box-shadow:0 0 0 3px var(--p-accent-weak); }'
+            + '.aptx-reps-note { margin-top:3px; font-size:10.5px; color:var(--p-muted); }'
+            + '.aptx-reps-protect { margin-top:10px; }'
+            + '.aptx-reps-error { margin-top:6px; font-size:10.5px; color:#e5484d; }'
+            + '.aptx-reps-error:empty { display:none; }'
+            + '.aptx-reps-line { padding:1px 0; }'
+            + '.aptx-reps-question { margin-top:9px; font-weight:600; }'
+            + '.aptx-reps-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }'
+            + '.aptx-reps-button { font:inherit; font-size:11px; height:26px; padding:0 12px; color:var(--p-ink);'
+            + '  background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; cursor:pointer;'
+            + '  transition:background .12s,border-color .12s,color .12s; }'
+            + '.aptx-reps-button:hover,.aptx-reps-primary { background:var(--p-accent-weak); border-color:var(--p-accent);'
+            + '  color:var(--p-accent-ink); }'
+            + '.aptx-reps-primary { font-weight:600; }'
+            + '.aptx-reps-button:focus-visible { outline:none; box-shadow:0 0 0 3px var(--p-accent-weak); }'
             + '.aptx-dialog-mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;'
             + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
             // The hover tooltip, on the same palette.
@@ -11123,7 +11450,9 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-slider-row input[type=range] { flex:1 1 auto; min-width:0; margin:0; }'
             + '.aptx-panel .aptx-linkbtn { background:none; border:0; padding:1px 0 2px; margin:0; font:inherit; font-size:10px; color:var(--p-accent); cursor:pointer; display:block; }'
             + '.aptx-panel .aptx-linkbtn:hover { text-decoration:underline; }'
-            + '.aptx-panel .aptx-toolrow { margin-top:5px; }'
+            // one row, its buttons sharing it evenly, its edges on the zoom rows'
+            + '.aptx-panel .aptx-toolrow { margin-top:5px; display:flex; gap:3px; }'
+            + '.aptx-panel .aptx-toolrow .aptx-gbtn { flex:1 1 0; min-width:0; padding:0; margin:2px 0; }'
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
             + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
             + '.aptx-panel .aptx-searchnav .aptx-gbtn:last-child { margin-right:0; }'
@@ -12208,6 +12537,8 @@ function (root, d3, forester, phyloXml) {
 
         on(MIDPOINT_ROOT_BUTTON, 'click', midpointRootButtonPressed);
 
+        on(REPRESENTATIVES_BUTTON, 'click', representativesButtonPressed);
+
         // Search Controls
         // ---------------
 
@@ -12656,6 +12987,7 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeGlyphButton('up_one_level', RETURN_TO_SUPERTREE_BUTTON_BY_ONE, 'move up by one level towards the complete tree (if in a sub-tree)'));
             h = h.concat(makeGlyphButton('uncollapse_all', UNCOLLAPSE_ALL_BUTTON, 'uncollapse all'));
             h = h.concat(makeGlyphButton('midpoint', MIDPOINT_ROOT_BUTTON, 're-root the tree: MAD or midpoint'));
+            h = h.concat(makeGlyphButton('representatives', REPRESENTATIVES_BUTTON, 'select representative tips: one per group of close tips'));
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -13019,6 +13351,16 @@ function (root, d3, forester, phyloXml) {
         if (rerootButton) {
             rerootButton.title = blocked
                 || (_in_subtree ? 'return to the whole tree to re-root it' : 're-root the tree: MAD or midpoint');
+        }
+        let repsButton = byId(REPRESENTATIVES_BUTTON);
+        if (repsButton) {
+            let repsBlocked = representativesBlockedReason();
+            if (repsBlocked) {
+                disableButton(repsButton);
+            } else {
+                enableButton(repsButton);
+            }
+            repsButton.title = repsBlocked || 'select representative tips: one per group of close tips';
         }
         let b;
         if (_foundNodes0 && !_searchBox0Empty) {

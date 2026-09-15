@@ -781,6 +781,557 @@
         });
     };
 
+    // ---- representative tips ------------------------------------------------
+    //
+    // Tree-based dereplication, the desktop's "Select Representative Tips"
+    // (RepresentativeTipSelector) ported step for step, the order of its sums
+    // and its 1e-9 tolerance included: test/fixtures/rep-contract.tsv holds
+    // the desktop's own results and extractions (RepContract.java), and the
+    // tests hold ours to them.
+    //
+    // Tips are grouped into the maximal clades whose diameter -- the largest
+    // patristic distance between two of their tips -- is at most a cutoff, and
+    // each group keeps one representative. A clade's diameter only grows
+    // rootward, so the groups are one cut through the tree. Without branch
+    // lengths the distance is topological, one unit per edge.
+
+    forester.REPRESENTATIVE_MEDOID = 'medoid';
+    forester.REPRESENTATIVE_LONGEST_BRANCH = 'longest_branch';
+
+    const REPRESENTATIVE_EPS = 1e-9;
+
+    function repIsTip(n) {
+        return !n.children || n.children.length === 0;
+    }
+
+    // below `top`, parents before children, children in their order
+    function repPreorder(top) {
+        let out = [];
+        let stack = [top];
+        while (stack.length > 0) {
+            let n = stack.pop();
+            out.push(n);
+            if (n.children) {
+                for (let i = n.children.length - 1; i >= 0; --i) {
+                    stack.push(n.children[i]);
+                }
+            }
+        }
+        return out;
+    }
+
+    // the branch above a node, a missing or negative length counting 0
+    function repEdge(n, topological) {
+        if (topological) {
+            return 1;
+        }
+        let d = n.branch_length;
+        return (typeof d === 'number' && d > 0) ? d : 0;
+    }
+
+    /**
+     * Whether any branch of the tree carries a length (0 included). Without
+     * one, representative tips are chosen by topological distance, and a
+     * distance cutoff means nothing.
+     *
+     * @param phy the tree
+     * @returns {boolean}
+     */
+    forester.hasUsableBranchLengths = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        return repPreorder(root).some(function (n) {
+            return n !== root && typeof n.branch_length === 'number';
+        });
+    };
+
+    // every node's diameter, in one pass from the tips up
+    function repDiameters(pre, topological) {
+        let height = new Map();
+        let diameter = new Map();
+        for (let i = pre.length - 1; i >= 0; --i) {
+            let n = pre[i];
+            if (repIsTip(n)) {
+                height.set(n, 0);
+                diameter.set(n, 0);
+                continue;
+            }
+            let best1 = 0;   // the longest reach down through one child
+            let best2 = 0;   // through another
+            let maxChildDiameter = 0;
+            for (let c = 0; c < n.children.length; ++c) {
+                let child = n.children[c];
+                let reach = height.get(child) + repEdge(child, topological);
+                if (reach >= best1) {
+                    best2 = best1;
+                    best1 = reach;
+                } else if (reach > best2) {
+                    best2 = reach;
+                }
+                maxChildDiameter = Math.max(maxChildDiameter, diameter.get(child));
+            }
+            height.set(n, best1);
+            diameter.set(n, Math.max(maxChildDiameter, n.children.length >= 2 ? best1 + best2 : 0));
+        }
+        return diameter;
+    }
+
+    // the groups' clades: the highest nodes whose diameter is within the cutoff
+    function repGroupRoots(root, diameter, cutoff) {
+        let roots = [];
+        let stack = [root];
+        while (stack.length > 0) {
+            let n = stack.pop();
+            if (repIsTip(n) || diameter.get(n) <= cutoff + REPRESENTATIVE_EPS) {
+                roots.push(n);
+            } else {
+                for (let i = 0; i < n.children.length; ++i) {
+                    stack.push(n.children[i]);
+                }
+            }
+        }
+        return roots;
+    }
+
+    // The cutoff whose group count comes closest to the target: the count
+    // changes only at clade diameters and never grows with the cutoff, so a
+    // binary search finds the smallest diameter giving at most the target,
+    // and its neighbour below gives more. A tie keeps more representatives;
+    // -1 stands for "below every diameter", every tip its own group.
+    function repCutoffForTarget(pre, root, diameter, target, tipCount) {
+        let values = [];
+        pre.forEach(function (n) {
+            if (!repIsTip(n)) {
+                values.push(diameter.get(n));
+            }
+        });
+        values.sort(function (a, b) { return a - b; });
+        let cand = [];
+        values.forEach(function (v) {
+            if (cand.length === 0 || v > cand[cand.length - 1] + REPRESENTATIVE_EPS) {
+                cand.push(v);
+            }
+        });
+        let count = function (cutoff) {
+            return repGroupRoots(root, diameter, cutoff).length;
+        };
+        let lo = 0;
+        let hi = cand.length - 1;
+        let boundary = cand.length - 1;
+        while (lo <= hi) {
+            let mid = (lo + hi) >>> 1;
+            if (count(cand[mid]) <= target) {
+                boundary = mid;
+                hi = mid - 1;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        let tHigh = cand[boundary];
+        let cHigh = count(tHigh);
+        let tLow = boundary > 0 ? cand[boundary - 1] : -1;
+        let cLow = boundary > 0 ? count(tLow) : tipCount;
+        return (Math.abs(cLow - target) <= Math.abs(cHigh - target)) ? tLow : tHigh;
+    }
+
+    function repLongestBranch(members, topological) {
+        let best = members[0];
+        let bestLength = repEdge(best, topological);
+        for (let i = 1; i < members.length; ++i) {
+            let length = repEdge(members[i], topological);
+            if (length > bestLength + REPRESENTATIVE_EPS) {
+                best = members[i];
+                bestLength = length;
+            }
+        }
+        return best;
+    }
+
+    // The tip with the smallest summed distance to its group-mates, by the
+    // rerooting sum-of-distances recursion (linear, never all pairs): `down`
+    // sums the distances to the tips below a node, `up` to all the others.
+    function repMedoid(pre, members, topological) {
+        let tipsBelow = new Map();
+        let down = new Map();
+        for (let i = pre.length - 1; i >= 0; --i) {
+            let n = pre[i];
+            if (repIsTip(n)) {
+                tipsBelow.set(n, 1);
+                down.set(n, 0);
+                continue;
+            }
+            let s = 0;
+            let d = 0;
+            for (let c = 0; c < n.children.length; ++c) {
+                let child = n.children[c];
+                let e = repEdge(child, topological);
+                let cs = tipsBelow.get(child);
+                s += cs;
+                d += down.get(child) + (e * cs);
+            }
+            tipsBelow.set(n, s);
+            down.set(n, d);
+        }
+        let total = tipsBelow.get(pre[0]);
+        let up = new Map();
+        up.set(pre[0], 0);
+        pre.forEach(function (n) {
+            if (repIsTip(n)) {
+                return;
+            }
+            let un = up.get(n);
+            let dn = down.get(n);
+            for (let c = 0; c < n.children.length; ++c) {
+                let child = n.children[c];
+                let e = repEdge(child, topological);
+                let cs = tipsBelow.get(child);
+                up.set(child, un + dn - down.get(child) - (e * cs) + (e * (total - cs)));
+            }
+        });
+        let best = members[0];
+        let bestTotal = up.get(best);
+        for (let i = 1; i < members.length; ++i) {
+            let t = up.get(members[i]);
+            if (t < bestTotal - REPRESENTATIVE_EPS) {
+                best = members[i];
+                bestTotal = t;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Chooses representative tips: groups the tips into the maximal clades
+     * whose members are all within a distance of each other, and keeps one
+     * tip per group -- the desktop's Select Representative Tips.
+     *
+     * By `cutoff`, no two tips of a group are farther apart than it. By
+     * `target`, the cutoff is the one whose group count comes closest to that
+     * many (a tie keeps more); the count made is reported, since only certain
+     * counts are possible. Without branch lengths the distance counts edges.
+     *
+     * A protected tip is never dropped: it stands in for its group's
+     * representative, and a group with several keeps them all -- which can
+     * keep more tips than the target.
+     *
+     * The tree is not changed.
+     *
+     * @param phy the tree
+     * @param options {cutoff: number} or {target: integer}, with
+     *        pick: forester.REPRESENTATIVE_MEDOID (default, the most central
+     *        tip) or forester.REPRESENTATIVE_LONGEST_BRANCH (the most
+     *        divergent), and protectedTips: tips (nodes) never to drop
+     * @returns {{groups: Array, keptTips: Array, keptCount: number,
+     *          protectedKeptCount: number, tipCount: number,
+     *          effectiveCutoff: number, topological: boolean, pick: string,
+     *          requestedTarget: number, summary: string}}
+     *          groups: {clade, members, kept}, in tree order of their first
+     *          kept tip; requestedTarget is -1 for a cutoff
+     */
+    forester.selectRepresentativeTips = function (phy, options) {
+        let opts = options || {};
+        let root = phy ? forester.getTreeRoot(phy) : null;
+        if (!root) {
+            throw new Error('the tree is null or empty');
+        }
+        let byCutoff = opts.cutoff !== undefined;
+        if (byCutoff === (opts.target !== undefined)) {
+            throw new Error('give either a cutoff or a target');
+        }
+        if (byCutoff && (typeof opts.cutoff !== 'number' || !isFinite(opts.cutoff) || opts.cutoff < 0)) {
+            throw new Error('cutoff must be a finite, non-negative number');
+        }
+        if (!byCutoff && !(Number.isInteger(opts.target) && opts.target >= 1)) {
+            throw new Error('target number of representatives must be at least 1');
+        }
+        let pick = opts.pick === undefined ? forester.REPRESENTATIVE_MEDOID : opts.pick;
+        if (pick !== forester.REPRESENTATIVE_MEDOID && pick !== forester.REPRESENTATIVE_LONGEST_BRANCH) {
+            throw new Error('unknown representative pick: ' + pick);
+        }
+        let protectedTips = new Set(opts.protectedTips || []);
+
+        let pre = repPreorder(root);
+        let order = new Map();
+        pre.forEach(function (n, i) {
+            order.set(n, i);
+        });
+        let tips = pre.filter(repIsTip);
+        let topological = !forester.hasUsableBranchLengths(phy);
+        let diameter = repDiameters(pre, topological);
+        let groupRoots;
+        let effectiveCutoff;
+        if (byCutoff) {
+            groupRoots = repGroupRoots(root, diameter, opts.cutoff);
+            effectiveCutoff = opts.cutoff;
+        } else if (opts.target >= tips.length) {
+            groupRoots = tips;
+            effectiveCutoff = 0;
+        } else if (opts.target <= 1) {
+            groupRoots = [root];
+            effectiveCutoff = diameter.get(root);
+        } else {
+            let cutoff = repCutoffForTarget(pre, root, diameter, opts.target, tips.length);
+            groupRoots = repGroupRoots(root, diameter, cutoff);
+            effectiveCutoff = Math.max(0, cutoff);
+        }
+
+        let protectedKeptCount = 0;
+        let groups = groupRoots.map(function (clade) {
+            let sub = repPreorder(clade);
+            let members = sub.filter(repIsTip);
+            let kept = members.filter(function (m) {
+                return protectedTips.has(m);
+            });
+            if (kept.length > 0) {
+                protectedKeptCount += kept.length;
+            } else if (members.length === 1) {
+                kept = [members[0]];
+            } else if (pick === forester.REPRESENTATIVE_LONGEST_BRANCH) {
+                kept = [repLongestBranch(members, topological)];
+            } else {
+                kept = [repMedoid(sub, members, topological)];
+            }
+            return {clade: clade, members: members, kept: kept};
+        });
+        groups.sort(function (a, b) {
+            return order.get(a.kept[0]) - order.get(b.kept[0]);
+        });
+        let keptTips = [];
+        groups.forEach(function (g) {
+            g.kept.forEach(function (k) {
+                keptTips.push(k);
+            });
+        });
+        let result = {
+            groups: groups,
+            keptTips: keptTips,
+            keptCount: keptTips.length,
+            protectedKeptCount: protectedKeptCount,
+            tipCount: tips.length,
+            effectiveCutoff: effectiveCutoff,
+            topological: topological,
+            pick: pick,
+            requestedTarget: byCutoff ? -1 : opts.target
+        };
+        result.summary = representativeSummary(result);
+        return result;
+    };
+
+    // Java's Double.toString, which the desktop's texts print numbers with:
+    // the shortest digits that read back as the number (as JS's), but always
+    // with a fraction ("1.0"), and in E notation outside [0.001, 10^7).
+    function javaDoubleText(d) {
+        if (d === 0) {
+            return (1 / d < 0) ? '-0.0' : '0.0';
+        }
+        if (!isFinite(d)) {
+            return String(d);
+        }
+        let a = Math.abs(d);
+        if (a >= 1e-3 && a < 1e7) {
+            let s = String(d);
+            return s.indexOf('.') < 0 ? s + '.0' : s;
+        }
+        let e = d.toExponential();
+        let i = e.indexOf('e');
+        let mantissa = e.slice(0, i);
+        return (mantissa.indexOf('.') < 0 ? mantissa + '.0' : mantissa) + 'E' + e.slice(i + 1).replace('+', '');
+    }
+
+    // a distance to five decimals, a whole number without its fraction
+    function representativeDistanceText(d) {
+        let r = Math.round(d * 1e5) / 1e5;
+        return (r === Math.round(r)) ? String(r) : javaDoubleText(r);
+    }
+
+    function representativeSummary(result) {
+        let groups = result.groups.length;
+        let s = 'Grouped ' + result.tipCount + (result.tipCount === 1 ? ' tip' : ' tips')
+            + ' into ' + groups + (groups === 1 ? ' group.' : ' groups.');
+        if (result.requestedTarget > 0 && groups !== result.requestedTarget) {
+            s += ' (requested ' + result.requestedTarget + ')';
+        }
+        s += '\nEach group\'s tips are within a distance of ' + representativeDistanceText(result.effectiveCutoff)
+            + ' of each other';
+        if (result.topological) {
+            s += ' (topological distance — the tree has no branch lengths)';
+        }
+        s += '.';
+        if (result.protectedKeptCount > 0) {
+            s += '\nKeeping ' + result.keptCount + (result.keptCount === 1 ? ' tip, including ' : ' tips, including ')
+                + result.protectedKeptCount
+                + (result.protectedKeptCount === 1 ? ' selected tip protected from removal.'
+                    : ' selected tips protected from removal.');
+        }
+        s += '\nRepresentative per group: '
+            + (result.pick === forester.REPRESENTATIVE_LONGEST_BRANCH ? 'most divergent (longest branch)'
+                : 'most central (medoid)') + '.';
+        return s;
+    }
+
+    // a copy of a node's own data (never its children or parent link)
+    function repCopyData(v) {
+        if (Array.isArray(v)) {
+            return v.map(repCopyData);
+        }
+        if (v !== null && typeof v === 'object') {
+            let o = {};
+            Object.keys(v).forEach(function (k) {
+                if (k !== 'parent' && k !== 'children') {
+                    o[k] = repCopyData(v[k]);
+                }
+            });
+            return o;
+        }
+        return v;
+    }
+
+    /**
+     * A copy of the tree holding only the given tips, pruned as the desktop
+     * prunes (Phylogeny.deleteSubtree): a node left with one child is
+     * replaced by that child, whose branch gains the node's length (a missing
+     * or negative length adds nothing; two of them leave the length missing);
+     * a root left with one child is replaced by it. The new root keeps the
+     * original root's own branch length (normally none), where the desktop's
+     * depends on the order it deletes in. The tree is not changed.
+     *
+     * @param phy the tree
+     * @param keep the tips to keep (nodes of phy), at least one
+     * @returns the copy, with every node's data copied
+     */
+    forester.copyTreeKeepingTips = function (phy, keep) {
+        let keepSet = new Set(keep);
+        let top = phy.children && phy.children.length === 1 && !phy.parent ? phy : {children: [phy]};
+        let copies = new Map();
+        let copyTop = repCopyData(top === phy ? phy : {});
+        copies.set(top, copyTop);
+        let stack = [top];
+        while (stack.length > 0) {
+            let n = stack.pop();
+            if (n.children) {
+                copies.get(n).children = n.children.map(function (child) {
+                    let cc = repCopyData(child);
+                    copies.set(child, cc);
+                    stack.push(child);
+                    return cc;
+                });
+            }
+        }
+        let tips = repPreorder(top).filter(function (n) {
+            return n !== top && repIsTip(n);
+        });
+        let dropped = tips.filter(function (n) {
+            return !keepSet.has(n);
+        });
+        if (dropped.length === tips.length) {
+            throw new Error('at least one tip must be kept');
+        }
+        let parentOf = new Map();
+        stack = [copyTop];
+        while (stack.length > 0) {
+            let n = stack.pop();
+            (n.children || []).forEach(function (child) {
+                parentOf.set(child, n);
+                stack.push(child);
+            });
+        }
+        let add = function (a, b) {
+            let okA = typeof a === 'number' && a >= 0;
+            let okB = typeof b === 'number' && b >= 0;
+            return (okA && okB) ? a + b : (okA ? a : (okB ? b : undefined));
+        };
+        dropped.forEach(function (tip) {
+            let t = copies.get(tip);
+            let p = parentOf.get(t);
+            let i = p.children.indexOf(t);
+            if (parentOf.get(p) === copyTop) {
+                if (p.children.length === 2) {
+                    let other = p.children[1 - i];
+                    copyTop.children[0] = other;
+                    parentOf.set(other, copyTop);
+                } else {
+                    p.children.splice(i, 1);
+                }
+            } else {
+                let pp = parentOf.get(p);
+                if (p.children.length === 2) {
+                    let other = p.children[1 - i];
+                    let length = add(p.branch_length, other.branch_length);
+                    if (length === undefined) {
+                        delete other.branch_length;
+                    } else {
+                        other.branch_length = length;
+                    }
+                    pp.children[pp.children.indexOf(p)] = other;
+                    parentOf.set(other, pp);
+                } else {
+                    p.children.splice(i, 1);
+                }
+            }
+            if (p.children.length === 0) {
+                delete p.children;
+            }
+        });
+        // The root keeps the original root's own branch length, normally
+        // none. What the desktop's pruning leaves there depends on the order
+        // it deletes tips in -- that is, on node ids -- so the same selection
+        // gave 0.05 in one session and 0.25 in another (Christian, 2026-09-15).
+        let rootLength = top.children[0].branch_length;
+        if (typeof rootLength === 'number') {
+            copyTop.children[0].branch_length = rootLength;
+        } else {
+            delete copyTop.children[0].branch_length;
+        }
+        return copyTop;
+    };
+
+    /**
+     * Strips a file-type suffix -- a dot and 1 to 5 other characters, such as
+     * .xml or .nexus -- from a tree name, as the desktop does.
+     *
+     * @param name
+     * @returns {string|null}
+     */
+    forester.stripShortExtension = function (name) {
+        return (name === null || name === undefined) ? null : String(name).replace(/\.[^.]{1,5}$/, '');
+    };
+
+    /**
+     * The desktop's name for a tree of representative tips: the parent's name
+     * without its file suffix, then the count -- mammals_233reps, _1rep --
+     * or "tree" for an unnamed parent.
+     *
+     * @param parentName
+     * @param count
+     * @returns {string}
+     */
+    forester.representativeTreeName = function (parentName, count) {
+        let stripped = forester.stripShortExtension(parentName);
+        return (stripped ? stripped : 'tree') + '_' + count + (count === 1 ? 'rep' : 'reps');
+    };
+
+    /**
+     * The desktop's provenance sentence for a tree of representative tips,
+     * which it adds to the tree's description.
+     *
+     * @param byCutoff true for a cutoff, false for a target
+     * @param cutoff
+     * @param target
+     * @param pick forester.REPRESENTATIVE_MEDOID or _LONGEST_BRANCH
+     * @param count tips kept
+     * @param parentName
+     * @param parentTipCount
+     * @returns {string}
+     */
+    forester.representativeTreeDescription = function (byCutoff, cutoff, target, pick, count, parentName, parentTipCount) {
+        let pickText = pick === forester.REPRESENTATIVE_LONGEST_BRANCH ? 'longest-branch' : 'medoid';
+        let algorithm = byCutoff
+            ? 'distance-cutoff (maximum distance ' + javaDoubleText(cutoff) + ', ' + pickText + ' representative)'
+            : 'target-count (target ' + target + ', ' + pickText + ' representative)';
+        return 'Used the ' + algorithm + ' algorithm to select ' + count + ' representative '
+            + (count === 1 ? 'tip' : 'tips') + ' from tree named "' + (parentName ? parentName : 'tree') + '" with '
+            + parentTipCount + (parentTipCount === 1 ? ' tip.' : ' tips.');
+    };
+
     /**
      * Whether a node carries data about the node itself, the kind a
      * re-rooting can take the meaning away from: a name, taxonomy, sequence

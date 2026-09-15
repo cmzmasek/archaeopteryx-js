@@ -6,6 +6,25 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **Representative tips**, as the desktop's Tools → Select Representative
+  Tips. A new tool-row button groups the tips into the largest clades whose
+  tips are all within a distance cutoff, or into about a target number of
+  groups, and keeps one tip of each: the most central (medoid) or the most
+  divergent (longest branch), plus any selected or found tips. The tips kept
+  show as search A's hits, and **Create tree** adds a tree of only those tips
+  to the tree picker, named `<tree>_Nreps`, with how it was made in its
+  description. The grouping matches the desktop's on all 5,666 settings of a
+  fixture made by running the desktop's own code. One rule is new to both
+  programs: the new tree's root keeps the original root's branch length, where
+  the desktop's depended on node ids. forester.js gains
+  `selectRepresentativeTips`, `hasUsableBranchLengths`, `copyTreeKeepingTips`,
+  `representativeTreeName`, `representativeTreeDescription` and
+  `stripShortExtension`.
+
 ## 3.6.1 — 2026-09-14
 
 Two display fixes: PDF exports set the legend titles in the same sans-serif

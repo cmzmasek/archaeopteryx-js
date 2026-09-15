@@ -91,6 +91,434 @@ runTest("MAD branch values         : ", testMadBranchValues);
 runTest("MAD vs brute force        : ", testMadBruteForce);
 runTest("MAD desktop contract      : ", testMadDesktopContract);
 runTest("MAD re-run stays put      : ", testMadStableOnRealTrees);
+runTest("representative tips       : ", testRepresentativeDesktopUnitTests);
+runTest("representatives contract  : ", testRepresentativeDesktopContract);
+runTest("representatives extracted : ", testRepresentativeExtraction);
+runTest("representatives texts     : ", testRepresentativeTexts);
+
+// ---- representative tips ----------------------------------------------------
+
+function repTree(nwk) {
+    return forester.parseNewHampshire(nwk, true, false);
+}
+
+function repTip(phy, name) {
+    return forester.getAllExternalNodes(forester.getTreeRoot(phy)).filter(function (t) {
+        return t.name === name;
+    })[0];
+}
+
+function repNames(nodes) {
+    return nodes.map(function (n) { return n.name; }).sort().join(',');
+}
+
+function repFail(message) {
+    console.log('    ' + message);
+    return false;
+}
+
+// the patristic distance between two tips, the long way round
+function repPairDistance(phy, a, b) {
+    var parent = new Map();
+    var stack = [forester.getTreeRoot(phy)];
+    while (stack.length > 0) {
+        var n = stack.pop();
+        (n.children || []).forEach(function (c) {
+            parent.set(c, n);
+            stack.push(c);
+        });
+    }
+    var edge = function (x) {
+        return (typeof x.branch_length === 'number' && x.branch_length > 0) ? x.branch_length : 0;
+    };
+    var up = new Map();
+    var d = 0;
+    var x = a;
+    up.set(x, 0);
+    while (parent.has(x)) {
+        d += edge(x);
+        x = parent.get(x);
+        up.set(x, d);
+    }
+    var e = 0;
+    var y = b;
+    while (!up.has(y)) {
+        e += edge(y);
+        y = parent.get(y);
+    }
+    return e + up.get(y);
+}
+
+// the tree as test/fixtures/RepContract.java writes it
+function repWritten(n, isRoot) {
+    var s = '';
+    if (n.children && n.children.length > 0) {
+        s += '(' + n.children.map(function (c) { return repWritten(c, false); }).join(',') + ')';
+    }
+    s += n.name || '';
+    if (!isRoot) {
+        s += ':' + ((typeof n.branch_length === 'number') ? n.branch_length.toFixed(9) : '-');
+    }
+    return s;
+}
+
+// Java's %.9f rounds from the shortest digits and toFixed from the exact
+// value, so lengths are compared as numbers
+function repSameWritten(a, b) {
+    var re = /:(-|-?\d+\.\d+)/g;
+    if (a.replace(re, ':#') !== b.replace(re, ':#')) {
+        return false;
+    }
+    var na = (a.match(re) || []).map(function (m) { return m.slice(1); });
+    var nb = (b.match(re) || []).map(function (m) { return m.slice(1); });
+    return na.every(function (v, i) {
+        return (v === '-' || nb[i] === '-') ? v === nb[i] : Math.abs(Number(v) - Number(nb[i])) <= 2e-9;
+    });
+}
+
+// The desktop's RepresentativeTipSelectorTest, case for case.
+function testRepresentativeDesktopUnitTests() {
+    var sel = forester.selectRepresentativeTips;
+    var LONG = forester.REPRESENTATIVE_LONGEST_BRANCH;
+    var twoCherries = function () { return repTree('((A:0.01,B:0.01):0.4,(C:0.01,D:0.01):0.4)'); };
+    // medoid totals A=1.4, B=1.1, C=1.0, D=1.1: C is the only minimum
+    var caterpillar = function () { return repTree('(A:0.05,(B:0.1,(C:0.05,D:0.1):0.2):0.2)'); };
+    // group counts {4, 3, 2, 1}
+    var nested = function () { return repTree('(A:0.01,(B:0.01,(C:0.01,D:0.01):0.5):0.5)'); };
+    var count = function (phy, target) { return sel(phy, {target: target}).groups.length; };
+    var i;
+
+    // cutoff clustering
+    var r = sel(twoCherries(), {cutoff: 0.02});
+    if (r.groups.length !== 2 || r.topological || r.tipCount !== 4 || r.keptCount !== 2
+        || !r.groups.every(function (g) { return g.members.length === 2; })) {
+        return repFail('cutoff 0.02 on two cherries: ' + r.summary);
+    }
+    if (sel(twoCherries(), {cutoff: 1}).groups.length !== 1 || sel(twoCherries(), {cutoff: 0}).groups.length !== 4) {
+        return repFail('cutoff 1 should give one group, cutoff 0 four');
+    }
+
+    // the group count never grows with the cutoff
+    var previous = Infinity;
+    var cutoffs = [0, 0.01, 0.02, 0.3, 0.52, 0.9, 1.02, 5];
+    for (i = 0; i < cutoffs.length; ++i) {
+        var c = sel(nested(), {cutoff: cutoffs[i]}).groups.length;
+        if (c > previous) {
+            return repFail('the group count grew at cutoff ' + cutoffs[i]);
+        }
+        previous = c;
+    }
+
+    // complete linkage: no two tips of a group farther apart than the cutoff
+    var phy = nested();
+    r = sel(phy, {cutoff: 0.52});
+    for (i = 0; i < r.groups.length; ++i) {
+        var m = r.groups[i].members;
+        for (var a = 0; a < m.length; ++a) {
+            for (var b = a + 1; b < m.length; ++b) {
+                if (repPairDistance(phy, m[a], m[b]) > 0.52 + 1e-9) {
+                    return repFail('a group breaks the cutoff: ' + m[a].name + '-' + m[b].name);
+                }
+            }
+        }
+        if (m.indexOf(r.groups[i].kept[0]) < 0) {
+            return repFail('a representative outside its group');
+        }
+    }
+
+    // target counts
+    if (count(nested(), 3) !== 3 || count(nested(), 2) !== 2 || count(nested(), 1) !== 1
+        || count(nested(), 4) !== 4 || count(nested(), 9) !== 4) {
+        return repFail('target counts on the nested tree');
+    }
+    // counts {4, 2, 1}: 3 is as close to 4 as to 2, and a tie keeps more
+    if (count(twoCherries(), 3) !== 4) {
+        return repFail('a tie should keep more representatives, got ' + count(twoCherries(), 3));
+    }
+    if (sel(twoCherries(), {target: 3}).summary.indexOf('requested 3') < 0) {
+        return repFail('the summary should note the requested target');
+    }
+
+    // medoid: the brute-force minimum, and it is C
+    phy = caterpillar();
+    r = sel(phy, {cutoff: 10});
+    var members = r.groups[0].members;
+    var total = function (t) {
+        return members.reduce(function (s, o) { return s + (o === t ? 0 : repPairDistance(phy, t, o)); }, 0);
+    };
+    var best = Math.min.apply(null, members.map(total));
+    if (r.groups.length !== 1 || Math.abs(total(r.groups[0].kept[0]) - best) > 1e-9 || r.groups[0].kept[0].name !== 'C') {
+        return repFail('the medoid should be C, got ' + r.groups[0].kept[0].name);
+    }
+
+    // longest branch: the longest terminal branch, the first of equals (B and D have 0.1)
+    r = sel(caterpillar(), {cutoff: 10, pick: LONG});
+    if (r.groups[0].kept[0].name !== 'B' || r.pick !== LONG) {
+        return repFail('the longest branch should be B, got ' + r.groups[0].kept[0].name);
+    }
+
+    // no branch lengths: topological distance (a cherry spans 2 edges, the tree 4)
+    phy = repTree('((A,B),(C,D))');
+    r = sel(phy, {cutoff: 1});
+    if (forester.hasUsableBranchLengths(phy) || !r.topological || r.groups.length !== 4
+        || sel(phy, {cutoff: 2}).groups.length !== 2 || r.summary.indexOf('topological') < 0) {
+        return repFail('topological fallback: ' + r.summary);
+    }
+
+    // the same representatives on a copy
+    phy = nested();
+    var tipOrder = function (t) {
+        var names = [];
+        var walk = function (n) {
+            if (n.children && n.children.length > 0) {
+                n.children.forEach(walk);
+            } else {
+                names.push(n.name);
+            }
+        };
+        walk(forester.getTreeRoot(t));
+        return names.join();
+    };
+    var copy = forester.copyTreeKeepingTips(phy, forester.getAllExternalNodes(forester.getTreeRoot(phy)));
+    if (repNames(sel(phy, {cutoff: 0.52}).keptTips) !== repNames(sel(copy, {cutoff: 0.52}).keptTips)
+        || tipOrder(copy) !== 'A,B,C,D') {
+        return repFail('a copy chose differently, or reordered its tips');
+    }
+
+    // accessors, and the all-singletons target reporting cutoff 0, not -1
+    r = sel(twoCherries(), {cutoff: 0.02});
+    if (r.keptTips.length !== 2 || r.effectiveCutoff < 0 || !r.groups.every(function (g) {
+        return g.clade && g.kept.length > 0 && g.kept.every(function (k) { return g.members.indexOf(k) >= 0; });
+    })) {
+        return repFail('accessors');
+    }
+    r = sel(twoCherries(), {target: 3});
+    if (r.effectiveCutoff !== 0 || r.groups.length !== 4) {
+        return repFail('the all-singletons target should report cutoff 0, got ' + r.effectiveCutoff);
+    }
+    if (sel(twoCherries(), {cutoff: 0}).summary.indexOf('within a distance of 0 of') < 0
+        || sel(repTree('((A,B),(C,D))'), {cutoff: 2}).summary.indexOf('within a distance of 2 of') < 0
+        || sel(twoCherries(), {cutoff: 0.05}).summary.indexOf('within a distance of 0.05 of') < 0) {
+        return repFail('distances in the summary');
+    }
+
+    // protection
+    phy = caterpillar();
+    r = sel(phy, {cutoff: 10, protectedTips: [repTip(phy, 'A')]});
+    if (r.groups.length !== 1 || r.keptCount !== 1 || r.protectedKeptCount !== 1 || repNames(r.keptTips) !== 'A'
+        || r.summary.indexOf('Keeping 1 tip, including 1 selected tip protected') < 0) {
+        return repFail('protection (1): ' + r.summary);
+    }
+    phy = caterpillar();
+    r = sel(phy, {cutoff: 10, protectedTips: [repTip(phy, 'A'), repTip(phy, 'C')]});
+    if (r.groups.length !== 1 || r.keptCount !== 2 || r.protectedKeptCount !== 2 || repNames(r.keptTips) !== 'A,C') {
+        return repFail('protection (2): both protected tips should be kept');
+    }
+    phy = nested();
+    r = sel(phy, {target: 1, protectedTips: [repTip(phy, 'A'), repTip(phy, 'B'), repTip(phy, 'C')]});
+    if (r.groups.length !== 1 || r.keptCount !== 3 || r.protectedKeptCount !== 3) {
+        return repFail('protection (3): protection should win over the target');
+    }
+    phy = twoCherries();
+    r = sel(phy, {cutoff: 0.02, protectedTips: [repTip(phy, 'B')]});
+    if (r.groups.length !== 2 || r.keptCount !== 2 || repNames(r.keptTips) !== 'B,C') {
+        return repFail('protection (4): B should replace A, got ' + repNames(r.keptTips));
+    }
+    phy = nested();
+    if (repNames(sel(phy, {cutoff: 0.52}).keptTips) !== repNames(sel(phy, {cutoff: 0.52, protectedTips: []}).keptTips)
+        || sel(phy, {cutoff: 0.52, protectedTips: []}).protectedKeptCount !== 0) {
+        return repFail('protection (5): nothing protected should change nothing');
+    }
+
+    // edge cases
+    if (sel(repTree('solo;'), {cutoff: 0.5}).groups.length !== 1) {
+        return repFail('a one-tip tree is one group');
+    }
+    phy = repTree('(A:0.1,B:0.1)');
+    if (sel(phy, {cutoff: 0.1}).groups.length !== 2 || sel(phy, {cutoff: 0.2}).groups.length !== 1) {
+        return repFail('a cherry splits below its diameter and joins at it');
+    }
+    var throws = function (fn) {
+        try {
+            fn();
+            return false;
+        } catch {
+            return true;
+        }
+    };
+    if (!throws(function () { sel(null, {cutoff: 0.1}); }) || !throws(function () { sel(phy, {cutoff: -1}); })
+        || !throws(function () { sel(phy, {target: 0}); }) || !throws(function () { sel(phy, {target: 2.5}); })
+        || !throws(function () { sel(phy, {}); }) || !throws(function () { sel(phy, {cutoff: 1, target: 2}); })
+        || !throws(function () { sel(phy, {cutoff: 1, pick: 'random'}); })) {
+        return repFail('bad arguments should throw');
+    }
+    return true;
+}
+
+// The joint contract: the desktop's own selector and extraction, run over
+// every scenario of every fixture tree (test/fixtures/RepContract.java),
+// against ours -- every column, the summary text included.
+function testRepresentativeDesktopContract() {
+    var fs = require('fs');
+    var lines = fs.readFileSync(pth.join(__dirname, 'fixtures', 'rep-contract.tsv'), 'utf8').split('\n')
+        .filter(function (l) { return l.length > 0 && l.charAt(0) !== '#'; });
+    var trees = {};
+    var rows = 0;
+    var bad = [];
+    lines.forEach(function (line) {
+        var f = line.split('\t');
+        if (f[0] === 'tree') {
+            trees[f[1]] = f[2];
+            return;
+        }
+        ++rows;
+        var phy = repTree(trees[f[0]]);
+        var opts = {pick: f[1] === 'MEDOID' ? forester.REPRESENTATIVE_MEDOID : forester.REPRESENTATIVE_LONGEST_BRANCH};
+        var mode = f[2].split('=');
+        if (mode[0] === 'cutoff') {
+            opts.cutoff = Number(mode[1]);
+        } else {
+            opts.target = parseInt(mode[1], 10);
+        }
+        opts.protectedTips = f[3] === '-' ? [] : f[3].split(',').map(function (n) { return repTip(phy, n); });
+        var r = forester.selectRepresentativeTips(phy, opts);
+        var groups = r.groups.map(function (g) { return repNames(g.members) + '>' + repNames(g.kept); }).sort().join(' ');
+        var extraction = r.keptCount === r.tipCount ? '='
+            : repWritten(forester.getTreeRoot(forester.copyTreeKeepingTips(phy, r.keptTips)), true);
+        var differs = [];
+        if (String(r.groups.length) !== f[4]) differs.push('groups ' + r.groups.length + ' vs ' + f[4]);
+        if (String(r.keptCount) !== f[5]) differs.push('kept ' + r.keptCount + ' vs ' + f[5]);
+        if (String(r.protectedKeptCount) !== f[6]) differs.push('protected ' + r.protectedKeptCount + ' vs ' + f[6]);
+        if (r.effectiveCutoff !== Number(f[7])) differs.push('cutoff ' + r.effectiveCutoff + ' vs ' + f[7]);
+        if (String(r.topological) !== f[8]) differs.push('topological');
+        if (groups !== f[9]) differs.push('members');
+        if (r.summary.replace(/\n/g, '|') !== f[10]) differs.push('summary "' + r.summary + '"');
+        if (extraction === '=' || f[11] === '=' ? extraction !== f[11] : !repSameWritten(extraction, f[11])) {
+            differs.push('extraction ' + extraction + ' vs ' + f[11]);
+        }
+        if (differs.length > 0) {
+            bad.push('tree ' + f[0] + ' ' + f[1] + ' ' + f[2] + ' protect ' + f[3] + ': ' + differs.join('; '));
+        }
+    });
+    if (Object.keys(trees).length < 120 || rows < 5000) {
+        return repFail('fixture looks truncated: ' + Object.keys(trees).length + ' trees, ' + rows + ' rows');
+    }
+    if (bad.length > 0) {
+        return repFail(bad.length + ' of ' + rows + ' rows differ from the desktop, first: ' + bad.slice(0, 3).join(' | '));
+    }
+    return true;
+}
+
+// How a tree of representatives is cut out: the desktop's prune, except that
+// the root keeps the original root's own length (Christian, 2026-09-15).
+function testRepresentativeExtraction() {
+    // a parsed tree links every node to its parent
+    var snapshot = function (t) {
+        return JSON.stringify(t, function (key, value) { return key === 'parent' ? undefined : value; });
+    };
+    var check = function (nwk, keep, expected) {
+        var phy = repTree(nwk);
+        var before = snapshot(phy);
+        var copy = forester.copyTreeKeepingTips(phy, keep.map(function (n) { return repTip(phy, n); }));
+        var got = repWritten(forester.getTreeRoot(copy), false);
+        if (got !== expected || snapshot(phy) !== before || copy.children.length !== 1) {
+            console.log('    ' + nwk + ' keeping ' + keep + ': ' + got + ', expected ' + expected
+                + (snapshot(phy) !== before ? ' (and the original changed)' : ''));
+            return false;
+        }
+        return true;
+    };
+    var f9 = function (x) { return x.toFixed(9); };
+    // one tip left: the desktop's root length would be 0.05, 0.25 or 0.45, by node ids
+    if (!check('(A:0.05,(B:0.1,(C:0.05,D:0.1):0.2):0.2)', ['C'], 'C:-')
+        // merged branches add up; a missing length adds nothing
+        || !check('((A:1,(B:2,C:3):4):5,(D,(E,F:6)):7)', ['A', 'C', 'D', 'F'],
+            '((A:' + f9(1) + ',C:' + f9(7) + '):' + f9(5) + ',(D:-,F:' + f9(6) + '):' + f9(7) + '):-')
+        // two missing lengths stay missing, zeros stay zero
+        || !check('((A,B),(C,D))', ['A', 'C'], '(A:-,C:-):-')
+        || !check('((A:0,B:0):0,C:1)', ['A', 'C'], '(A:' + f9(0) + ',C:' + f9(1) + '):-')
+        // a polytomy only loses the tip
+        || !check('(A:1,B:2,C:3)', ['A', 'C'], '(A:' + f9(1) + ',C:' + f9(3) + '):-')) {
+        return false;
+    }
+    // a root with a length of its own keeps it, whichever node becomes the root
+    var phy = repTree('((A:1,B:1):2,(C:1,D:3):2)');
+    forester.getTreeRoot(phy).branch_length = 0.7;
+    var root = forester.getTreeRoot(forester.copyTreeKeepingTips(phy, [repTip(phy, 'C'), repTip(phy, 'D')]));
+    if (root.branch_length !== 0.7 || repWritten(root, true) !== '(C:' + f9(1) + ',D:' + f9(3) + ')') {
+        return repFail('the root should keep its own 0.7, got ' + root.branch_length);
+    }
+    // node data is copied, never shared, and no parent links come along
+    phy = repTree('((A:1,B:2)x:1[80],(C:3,D:4)y:1[90])');
+    var x = forester.getTreeRoot(phy).children[0];
+    if (!x.confidences || x.confidences.length !== 1) {
+        return repFail('the test tree lost its support value: ' + JSON.stringify(x.confidences));
+    }
+    var copy = forester.copyTreeKeepingTips(phy, ['A', 'B', 'C'].map(function (n) { return repTip(phy, n); }));
+    var cx = forester.getTreeRoot(copy).children[0];
+    if (JSON.stringify(cx.confidences) !== JSON.stringify(x.confidences) || cx.confidences === x.confidences
+        || cx.name !== 'x' || forester.getTreeRoot(copy).children[1].branch_length !== 4) {
+        return repFail('copied node data: ' + JSON.stringify(cx));
+    }
+    var linked = false;
+    forester.preOrderTraversal(copy, function (n) {
+        linked = linked || Object.prototype.hasOwnProperty.call(n, 'parent');
+    });
+    if (linked) {
+        return repFail('the copy carries parent links');
+    }
+    try {
+        forester.copyTreeKeepingTips(phy, []);
+        return repFail('keeping no tip should throw');
+    } catch {
+        return true;
+    }
+}
+
+// The desktop's texts, which print numbers the Java way: its
+// RepresentativeTipsToolTest cases, and Double.toString outputs read off the
+// desktop's JVM (1.0E-4, 3.0E-5).
+function testRepresentativeTexts() {
+    var name = forester.representativeTreeName;
+    var strip = forester.stripShortExtension;
+    var desc = forester.representativeTreeDescription;
+    var MED = forester.REPRESENTATIVE_MEDOID;
+    var LONG = forester.REPRESENTATIVE_LONGEST_BRANCH;
+    var summaryOf = function (nwk, cutoff) {
+        return forester.selectRepresentativeTips(repTree(nwk), {cutoff: cutoff}).summary;
+    };
+    var cases = [
+        [name('flaviviridae', 247), 'flaviviridae_247reps'],
+        [name('flaviviridae', 1), 'flaviviridae_1rep'],
+        [name('', 3), 'tree_3reps'],
+        [name(null, 3), 'tree_3reps'],
+        [name('mammals.xml', 233), 'mammals_233reps'],
+        [strip('mammals.xml'), 'mammals'],
+        [strip('mammals.nexus'), 'mammals'],
+        [strip('mammals.h'), 'mammals'],
+        [strip('tree.v2.xml'), 'tree.v2'],
+        [strip('mammals'), 'mammals'],
+        [strip('data.superlong'), 'data.superlong'],
+        [strip(null), null],
+        [desc(true, 0.05, 0, MED, 233, 'mammals', 1000), 'Used the distance-cutoff (maximum distance 0.05, medoid '
+            + 'representative) algorithm to select 233 representative tips from tree named "mammals" with 1000 tips.'],
+        [desc(false, 0, 50, LONG, 1, 'mammals', 1), 'Used the target-count (target 50, longest-branch representative) '
+            + 'algorithm to select 1 representative tip from tree named "mammals" with 1 tip.'],
+        [desc(true, 0.1, 0, MED, 5, null, 20).indexOf('from tree named "tree" with 20 tips.') > 0, true],
+        [desc(true, 1, 0, MED, 2, 'x', 4).indexOf('(maximum distance 1.0, ') > 0, true],
+        [desc(true, 1e-4, 0, MED, 2, 'x', 4).indexOf('(maximum distance 1.0E-4, ') > 0, true],
+        // the summary rounds to five decimals first
+        [summaryOf('(A:1.25e-5,B:1.25e-5)', 2.5e-5).indexOf('within a distance of 3.0E-5 of') > 0, true],
+        [summaryOf('(A:1,B:1)', 9.99e-4).indexOf('within a distance of 0.001 of') > 0, true],
+        [summaryOf('(A:1,B:1)', 100 / 3).indexOf('within a distance of 33.33333 of') > 0, true],
+        [summaryOf('(A:1,B:1)', 1e7).indexOf('within a distance of 10000000 of') > 0, true]
+    ];
+    var bad = cases.filter(function (c) { return c[0] !== c[1]; });
+    if (bad.length > 0) {
+        return repFail(bad.length + ' texts differ, first: ' + JSON.stringify(bad[0][0]) + ' vs ' + JSON.stringify(bad[0][1]));
+    }
+    return true;
+}
 
 // Tips a hair apart (FastTree writes 5e-9 for a zero branch) made MAD's sums
 // cancel catastrophically: re-running it on the Flavivirus prM tree moved the
