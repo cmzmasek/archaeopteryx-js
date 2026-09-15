@@ -42,6 +42,9 @@ consumers only see a change when a version is cut.
   tighter than a box is tall, or overlapping domains -- a box's shadow now
   lies under its neighbour instead of across it, so dense columns look a
   touch lighter.
+- **Exports with domain architectures are smaller.** The same influenza
+  tree's SVG went from 5.5 MB to 4.3 MB and its PDF from 3.8 MB to 2.9 MB;
+  in the circular layout the PDF went from 4.0 MB to 2.8 MB.
 
 ## 3.5.1 — 2026-09-14
 

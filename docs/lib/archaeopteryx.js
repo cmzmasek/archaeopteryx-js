@@ -8313,29 +8313,40 @@ function (root, d3, forester, phyloXml) {
         return Math.max(DOMAIN_BOX_MIN_H, Math.min(DOMAIN_BOX_MAX_H, Math.round(pitch)));
     }
 
-    // A rounded rectangle as path data, placed by m = [cos, sin, tx, ty] -- a
-    // rotation, then a translation, as an SVG transform would -- or unplaced
-    // when m is null. The corners are the quarter circles an SVG rect with
-    // rx = ry = r draws; a rotation leaves a circular arc circular. Returns
-    // '' for a non-finite rectangle, which in a shared path would end the
-    // path data there and lose every rectangle after it.
-    function roundRectPath(x, y, w, h, r, m) {
+    // A rounded rectangle as path data. Returns '' for a non-finite
+    // rectangle, which in a shared path would end the path data there and
+    // lose every rectangle after it.
+    //
+    // Compact on purpose: one absolute point, then relative steps, every
+    // number to a hundredth of a pixel (below what a screen shows at the 10x
+    // zoom limit). Full-precision coordinates made the exported SVG larger
+    // than the rects this replaced: the dense influenza tree's went from
+    // 5.5 MB to 10.6 MB; with this, 3.9 MB.
+    //
+    // Each corner is ONE cubic curve, the usual quarter-circle approximation
+    // (off by 0.03% of the radius, which is at most a few px here), not an
+    // arc: svg2pdf splits an arc into several curves, and a circular export
+    // came out with 5.4 curves per rectangle against 4.0 for rects -- the
+    // circular influenza tree's PDF 4.6 MB against 3.96 MB (2026-09-14).
+    function roundRectPath(x, y, w, h, r) {
         if (!isFinite(x) || !isFinite(y) || !(w > 0) || !isFinite(w) || !(h > 0) || !isFinite(h)) {
             return '';
         }
-        let pt = function (px, py) {
-            return m
-                ? ((px * m[0]) - (py * m[1]) + m[2]) + ',' + ((px * m[1]) + (py * m[0]) + m[3])
-                : px + ',' + py;
+        let num = function (n) {
+            return Math.round(n * 100) / 100;
         };
         if (!(r > 0)) {
-            return 'M' + pt(x, y) + 'L' + pt(x + w, y) + 'L' + pt(x + w, y + h) + 'L' + pt(x, y + h) + 'Z';
+            return 'M' + num(x) + ',' + num(y) + 'h' + num(w) + 'v' + num(h) + 'h' + num(-w) + 'Z';
         }
-        let arc = 'A' + r + ',' + r + ' 0 0 1 ';
-        return 'M' + pt(x + r, y) + 'L' + pt(x + w - r, y) + arc + pt(x + w, y + r)
-            + 'L' + pt(x + w, y + h - r) + arc + pt(x + w - r, y + h)
-            + 'L' + pt(x + r, y + h) + arc + pt(x, y + h - r)
-            + 'L' + pt(x, y + r) + arc + pt(x + r, y) + 'Z';
+        let iw = num(w - (2 * r));
+        let ih = num(h - (2 * r));
+        let a = num(r);
+        let b = num(r * (1 - 0.5522847498));   // the control points sit 0.5523 r along each tangent
+        return 'M' + num(x + r) + ',' + num(y)
+            + 'h' + iw + 'c' + num(a - b) + ',0 ' + a + ',' + b + ' ' + a + ',' + a
+            + 'v' + ih + 'c0,' + num(a - b) + ' ' + (-b) + ',' + a + ' ' + (-a) + ',' + a
+            + 'h' + (-iw) + 'c' + num(b - a) + ',0 ' + (-a) + ',' + (-b) + ' ' + (-a) + ',' + (-a)
+            + 'v' + (-ih) + 'c0,' + num(b - a) + ' ' + b + ',' + (-a) + ' ' + a + ',' + (-a) + 'Z';
     }
 
     // The track, drawn the desktop's way: per architecture a backbone, per
@@ -8346,10 +8357,11 @@ function (root, d3, forester, phyloXml) {
     // shadow rects, two glow rects when on, and a body, in a <g> per tip in
     // the radial layouts: 32,346 elements on a 1,386-node BV-BRC tree with
     // 1,428 architectures, 23,208 of them shadows, and a redraw of 430 ms
-    // against 22 ms with the track off (2026-09-14). Now every backbone is
-    // one path, each shadow level one path and each glow level one path per
-    // colour, all under the bodies; the elements are kept and reused from
-    // redraw to redraw.
+    // against 22 ms with the track off (2026-09-14). Now the backbones are one
+    // path, each shadow level one path and each glow level one path per
+    // colour -- for the whole track in the rectangular layout, per tip in the
+    // radial ones (see "collect" below) -- all under the bodies; the elements
+    // are kept and reused from redraw to redraw.
     //
     // The BODIES stay one rect each: their vertical gradient is sized to the
     // element's own bounding box, so one path per colour would stretch a
@@ -8409,8 +8421,8 @@ function (root, d3, forester, phyloXml) {
         }
 
         // Where each tip's architecture goes: its start along the track, the
-        // top and height of its boxes, and in the radial layouts the rotation
-        // (and for unrooted the translation) that places it.
+        // top and height of its boxes, and in the radial layouts the
+        // transform that turns (and for unrooted moves) it onto its spoke.
         let labelSpace = domainLabelSpace();
         let rows = [];
         if (_state.circularDisplay) {
@@ -8419,7 +8431,7 @@ function (root, d3, forester, phyloXml) {
             let r0 = _radial.maxRad + labelSpace + DOMAIN_RADIAL_GAP;
             let h = domainBoxHeight((r0 * 2 * Math.PI) / tips.length);
             tips.forEach(function (d) {
-                rows.push({d: d, start: r0, y1: -h / 2, h: h, angle: labelAngleDeg(d), tx: 0, ty: 0,
+                rows.push({d: d, start: r0, y1: -h / 2, h: h,
                     transform: 'rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
             });
         } else if (_state.unrootedDisplay) {
@@ -8427,7 +8439,7 @@ function (root, d3, forester, phyloXml) {
             let h = domainBoxHeight((Math.PI * 2 * _unroot.maxRad) / tips.length);
             let start = labelSpace + DOMAIN_RADIAL_GAP;
             tips.forEach(function (d) {
-                rows.push({d: d, start: start, y1: -h / 2, h: h, angle: labelAngleDeg(d), tx: d.ux, ty: d.uy,
+                rows.push({d: d, start: start, y1: -h / 2, h: h,
                     transform: 'translate(' + d.ux + ',' + d.uy + ') rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
             });
         } else {
@@ -8442,18 +8454,48 @@ function (root, d3, forester, phyloXml) {
             let start = _w + _state.nodeLabelGap + labelSpace + DOMAIN_TRACK_START_GAP;
             let labelsOn = _state.domainLabels === 'domains';
             tips.forEach(function (d) {
-                rows.push({d: d, start: start, y1: d.x - (h / 2), h: h, angle: null, transform: null, labelsOn: labelsOn});
+                rows.push({d: d, start: start, y1: d.x - (h / 2), h: h, transform: null, labelsOn: labelsOn});
             });
         }
 
-        // ---- collect: path data for the batched parts, a list for the rest
-        let backbones = [];
-        let shadows = DOMAIN_SHADOWS.map(function () {
-            return [];
-        });
-        let glows = DOMAIN_GLOWS.map(function () {
-            return new Map();   // base colour -> path data
-        });
+        // ---- collect. Backbones, shadows and glows go into shared path
+        // data: one set for the whole track in the rectangular layout, one
+        // set per tip in the radial layouts, drawn in the tip's own turned
+        // frame as its bodies are. One set across a circular track holds
+        // coordinates already turned onto the spokes, every one different,
+        // and svg2pdf writes each of them to sixteen digits: the circular
+        // influenza tree's PDF came out at 9.1 MB against 3.96 MB for the
+        // rects, whose local coordinates repeat and so compress (2026-09-14).
+        let under = [];   // {d, fill, opacity, transform}, bottom to top
+        let pathSet = function () {
+            return {
+                backbones: [],
+                shadows: DOMAIN_SHADOWS.map(function () {
+                    return [];
+                }),
+                glows: DOMAIN_GLOWS.map(function () {
+                    return new Map();   // base colour -> path data
+                })
+            };
+        };
+        let flush = function (set, transform) {
+            let add = function (parts, fill, opacity) {
+                let d = parts.join('');
+                if (d !== '') {
+                    under.push({d: d, fill: fill, opacity: opacity, transform: transform});
+                }
+            };
+            add(set.backbones, DOMAIN_BACKBONE_COLOR, '');
+            DOMAIN_SHADOWS.forEach(function (s, k) {
+                add(set.shadows[k], DOMAIN_SHADOW_COLOR, s[2] / 255);
+            });
+            DOMAIN_GLOWS.forEach(function (gl, k) {
+                set.glows[k].forEach(function (parts, base) {
+                    add(parts, base, gl[1] / 255);
+                });
+            });
+        };
+        let track = pathSet();
         let bodies = [];
         let names = [];
         rows.forEach(function (row) {
@@ -8461,32 +8503,28 @@ function (root, d3, forester, phyloXml) {
             if (!da) {
                 return;
             }
+            let set = row.transform ? pathSet() : track;
             let geo = forester.domainBoxes(da, row.start, f, _state.domainEvalueExponent);
-            let m = null;
-            if (row.angle !== null) {
-                let a = row.angle * Math.PI / 180;
-                m = [Math.cos(a), Math.sin(a), row.tx, row.ty];
-            }
             let h = row.h;
             let y1 = row.y1;
-            backbones.push(roundRectPath(geo.backbone.x, y1 + (h / 2) - 0.5, geo.backbone.w, 1, 0, m));
+            set.backbones.push(roundRectPath(geo.backbone.x, y1 + (h / 2) - 0.5, geo.backbone.w, 1, 0));
             let fs = Math.min(_state.externalNodeFontSize, h - 2);
             let font = fs + 'px ' + FONT_DEFAULTS;
             geo.boxes.forEach(function (b) {
                 let base = domainColor(b.name);
                 let r = Math.min(2, Math.min(b.w, h) / 2);
                 DOMAIN_SHADOWS.forEach(function (s, k) {
-                    shadows[k].push(roundRectPath(b.x + s[0], y1 + s[1], b.w, h, r, m));
+                    set.shadows[k].push(roundRectPath(b.x + s[0], y1 + s[1], b.w, h, r));
                 });
                 if (_state.domainGlow) {
                     DOMAIN_GLOWS.forEach(function (gl, k) {
                         let o = gl[0];
-                        let parts = glows[k].get(base);
+                        let parts = set.glows[k].get(base);
                         if (!parts) {
                             parts = [];
-                            glows[k].set(base, parts);
+                            set.glows[k].set(base, parts);
                         }
-                        parts.push(roundRectPath(b.x - o, y1 - o, b.w + (2 * o), h + (2 * o), r + o, m));
+                        parts.push(roundRectPath(b.x - o, y1 - o, b.w + (2 * o), h + (2 * o), r + o));
                     });
                 }
                 bodies.push({x: b.x, y: y1, w: b.w, h: h, r: r, transform: row.transform,
@@ -8496,28 +8534,21 @@ function (root, d3, forester, phyloXml) {
                         fill: forester.domainLabelInk(base), text: b.name});
                 }
             });
+            if (row.transform) {
+                flush(set, row.transform);
+            }
         });
+        flush(track, null);   // empty in the radial layouts
 
         // ---- draw: bottom to top, reusing the elements already there
-        let under = [];
-        let addUnder = function (parts, fill, opacity) {
-            let d = parts.join('');
-            if (d !== '') {
-                under.push({d: d, fill: fill, opacity: opacity});
-            }
-        };
-        addUnder(backbones, DOMAIN_BACKBONE_COLOR, '');
-        DOMAIN_SHADOWS.forEach(function (s, k) {
-            addUnder(shadows[k], DOMAIN_SHADOW_COLOR, s[2] / 255);
-        });
-        DOMAIN_GLOWS.forEach(function (gl, k) {
-            glows[k].forEach(function (parts, base) {
-                addUnder(parts, base, gl[1] / 255);
-            });
-        });
         let paths = sizeLayer(underLayer, 'path', under.length);
         under.forEach(function (u, k) {
             paths[k].setAttribute('d', u.d);
+            if (u.transform) {
+                paths[k].setAttribute('transform', u.transform);
+            } else {
+                paths[k].removeAttribute('transform');
+            }
             paths[k].style.fill = u.fill;
             paths[k].style.fillOpacity = u.opacity;
         });
