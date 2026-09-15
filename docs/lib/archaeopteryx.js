@@ -1532,77 +1532,102 @@ function (root, d3, forester, phyloXml) {
         document.addEventListener('keydown', onKey);
     }
 
-    // One set of listeners on the tree group instead of five on every node.
+    // Hover and click find their node by POSITION, not by element.
     //
-    // These used to be attached in the node enter: click and contextmenu on
-    // each g.node, and mouseover/mousemove/mouseout on each
-    // circle.nodeCircleOptions. On an 18,512-node tree that is 92,560
-    // registrations on the first draw, and it measured 300-450 ms of one.
-    // Mouse events bubble, so one listener per type on the group does the same
-    // work -- find which node the event came from, and hand the handler its
-    // datum. The handlers never used `this`, which is what makes this a
-    // straight substitution rather than a rewrite.
+    // A node is not an element any more: branches, dots and shapes are a
+    // handful of batched paths (drawTreeGeometry), and a node has a <g> of its
+    // own only when something is drawn for it individually -- a label, a
+    // collapsed clade, a branch value. Every node used to carry an invisible
+    // 5px circle as its hover target; the hit area is that circle's, a radius
+    // of NODE_HIT_RADIUS in tree units (so it scales with the zoom as the
+    // circle did), looked up in a quadtree built on the first pointer event
+    // after each render.
     //
-    // Note it is mouseover/mouseout, NOT mouseenter/mouseleave: only the
-    // former pair bubbles, so only the former pair can be delegated.
+    // One listener per type on the svg rather than the tree group: the group
+    // only receives events over painted content, and a hit area is mostly
+    // empty space. Namespaced, so d3.zoom's own listeners on the same svg
+    // are left alone. A click on a node's own group -- its label, a collapsed
+    // clade's wedge -- takes that node first: a label is a much easier thing
+    // to aim at than a point.
     function attachNodeEventDelegation(group) {
+        let svg = d3.select(group.node().ownerSVGElement);
+        _hoverNode = null;
 
-        // d3 stores a node's datum on the element as __data__, which is all
-        // selection.datum() reads. Going straight to it avoids allocating a
-        // selection on every mousemove.
-        function datumOf(el) {
-            return el ? el.__data__ : null;
-        }
-
-        // The hover target stays the invisible 5px circle rather than the whole
-        // node, or the tooltip would follow the labels too.
-        function hoverDatum(event) {
+        // Over the tree: on the tree group, or on the empty canvas around it --
+        // which is the full-size background rect, not the svg itself. NOT on
+        // the legends, the overview or the floating strips drawn over it.
+        function overTree(event) {
             let t = event.target;
-            if (!t || !t.classList || !t.classList.contains('nodeCircleOptions')) {
-                return null;
-            }
-            return datumOf(t.parentNode);
+            return t === svg.node() || group.node().contains(t)
+                || (t.classList !== undefined && t.classList.contains(BASE_BACKGROUND));
         }
 
-        // Click and the context menu take the whole node group, so the node's
-        // LABEL works as a target too -- a much easier thing to aim at than a
-        // 5px circle.
         function nodeDatum(event) {
             let t = event.target;
-            return datumOf(t && t.closest ? t.closest('g.node') : null);
+            let g = (t && t.closest) ? t.closest('g.node') : null;
+            if (g && g.__data__ && group.node().contains(g)) {
+                return g.__data__;
+            }
+            return overTree(event) ? nodeAtPointer(event) : null;
         }
 
-        group
-            .on('click', function (event) {
+        function hover(event, d) {
+            if (d === _hoverNode) {
+                return;
+            }
+            if (_hoverNode) {
+                mouseout();
+            }
+            _hoverNode = d;
+            svg.style('cursor', d ? 'pointer' : null);
+            if (d) {
+                mouseover(event, d);
+            }
+        }
+
+        svg
+            .on('click.aptxnode', function (event) {
                 let d = nodeDatum(event);
                 if (d && _treeFn.clickEvent) {
                     _treeFn.clickEvent(event, d);
                 }
             })
-            .on('contextmenu', function (event) {
+            .on('contextmenu.aptxnode', function (event) {
                 let d = nodeDatum(event);
                 if (d && _treeFn.clickEvent) {
                     event.preventDefault(); // ours instead of the browser's menu
                     _treeFn.clickEvent(event, d);
                 }
             })
-            .on('mouseover', function (event) {
-                let d = hoverDatum(event);
-                if (d) {
-                    mouseover(event, d);
-                }
-            })
-            .on('mousemove', function (event) {
-                let d = hoverDatum(event);
+            .on('mousemove.aptxnode', function (event) {
+                let d = overTree(event) ? nodeAtPointer(event) : null;
+                hover(event, d);
                 if (d) {
                     mousemove(event, d);
                 }
             })
-            .on('mouseout', function (event) {
-                if (hoverDatum(event)) {
-                    mouseout();
-                }
+            .on('mouseleave.aptxnode', function (event) {
+                hover(event, null);
             });
+    }
+
+    // The node whose hit area holds the pointer, nearest first; null if none.
+    function nodeAtPointer(event) {
+        if (!_svgGroup || _hitNodes.length === 0) {
+            return null;
+        }
+        if (!_nodeIndex) {
+            _nodeIndex = d3.quadtree()
+                .x(function (d) {
+                    return layoutPointXY(d)[0];
+                })
+                .y(function (d) {
+                    return layoutPointXY(d)[1];
+                })
+                .addAll(_hitNodes);
+        }
+        let p = d3.pointer(event, _svgGroup.node());
+        return _nodeIndex.find(p[0], p[1], NODE_HIT_RADIUS) || null;
     }
 
     function mouseout() {
@@ -2891,50 +2916,23 @@ function (root, d3, forester, phyloXml) {
 
         updateButtonEnabledState();
 
+        // Only the nodes with something drawn for them individually get a
+        // <g>: a label, a collapsed clade, a branch value or a support dot
+        // (prepareNodeDrawing). Branches, dots, shapes and halos are batched
+        // paths, drawn below by drawTreeGeometry, which also places these
+        // groups. On a 50,000-node tree with its labels auto-hidden that is
+        // tens of groups, not 50,000.
         let node = _svgGroup.selectAll('g.node')
-            .data(nodes, function (d) {
-                return d.id || (d.id = ++_i);
+            .data(prepareNodeDrawing(nodes), function (d) {
+                return d.id;
             });
 
-        // No listeners here: click, contextmenu and the hover trio are
-        // delegated once to the tree group -- see attachNodeEventDelegation().
+        // No listeners and no children here: hover and click find their node
+        // by position (attachNodeEventDelegation), and the children are
+        // created on demand by drawCollapsedClades and syncOptionalNodeChildren.
         let nodeEnter = node.enter().append('g')
             .attr('class', 'node')
-            .attr('transform', function () {
-                return 'translate(' + source.y0 + ',' + source.x0 + ')';
-            })
             .style('cursor', 'default');
-
-
-        // Only the three elements EVERY node needs are created here. The other
-        // six -- the found halo, the four text labels and the support dot --
-        // are created on demand by syncOptionalNodeChildren() below.
-        //
-        // They used to be appended unconditionally, nine elements per node
-        // whether or not they would ever show anything, and on a real BV-BRC
-        // tree (18,512 nodes) that was 222,197 SVG elements of which HALF were
-        // inert: 74,052 of 74,064 <text> elements empty, 43,413 circles at
-        // r=0. The cost is not creating them -- allocating that many elements
-        // takes about two seconds -- it is that every later redraw walks them
-        // all, setting attributes and running an accessor per element. Dropping
-        // the inert half measured 2.7x faster redraws.
-        nodeEnter.append('path')
-            .attr('d', 'M0,0');
-
-        nodeEnter.append('circle')
-            .attr('class', 'nodeCircle')
-            .attr('r', 0);
-
-        nodeEnter.append('circle')
-            .style('cursor', 'pointer')
-            .style('opacity', '0')
-            .attr('class', 'nodeCircleOptions')
-            .attr('r', function (d) {
-                if (d.parent) {
-                    return 5;
-                }
-                return 0;
-            });
 
         // Grab the exit selection BEFORE merging. In d3 v3 the exit selection
         // survived on the merged result, but in v4+ merge() returns a NEW
@@ -3128,54 +3126,10 @@ function (root, d3, forester, phyloXml) {
                 }
             });
 
-        if (anySearchHits()) {
-        node.select('circle.foundHalo')
-            .attr('class', function (d) {
-                // the animated class ONLY on hits: hundreds of idle infinite
-                // animations otherwise composite on every frame for the life
-                // of the page
-                return isNodeFound(d) ? 'foundHalo aptx-found-halo' : 'foundHalo';
-            })
-            .attr('r', function (d) {
-                // the trough must clear the node dot, or a medium-sized node
-                // buries its own pulse (the halo is UNDER the node); the CSS
-                // 2.5x peak then keeps the desktop's 4->10px pulse ratio
-                return isNodeFound(d) ? Math.max(4, makeNodeSize(d) + 2) : 0;
-            })
-            .style('fill', function (d) {
-                return isNodeFound(d) ? getFoundColor(d) : 'none';
-            });
-        }
-
-        // One pass, and the fill colour computed once.
-        //
-        // This was four chained .attr/.style calls, so d3 walked all 18.5k
-        // circles four times; and makeNodeFillColor() was called TWICE per
-        // node -- once to decide whether the dot collapses to r=0, once for
-        // the fill itself -- which is not a cheap accessor: it checks the
-        // search hits, the node events, the visualization colour and the
-        // node's own style.
-        //
-        // The union of the two conditions that need the colour is just the
-        // fill condition, since (showVisualizations && !showNodeEvents)
-        // implies showVisualizations. So it is computed once when needed and
-        // reused, and left null when neither branch wants it.
-        node.select('circle.nodeCircle').each(function (d) {
-            let fill = (_state.showVisualizations || _state.showNodeEvents
-                || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : null;
-            let r = ((_state.showVisualizations && !_state.showNodeEvents)
-                && (fill === _state.backgroundColorDefault)) ? 0 : makeNodeSize(d);
-            this.setAttribute('r', r);
-            this.style.stroke = makeNodeStrokeColor(d);
-            this.style.strokeWidth = _state.branchWidthDefault;
-            this.style.fill = (fill === null) ? _state.backgroundColorDefault : fill;
-        });
-
-
-        // Dim Non-Matches: one opacity on the node GROUP dims its labels, dot,
-        // shape and branch-data numbers together; the branch lines are separate
-        // path.link elements and keep their full colour, as on the desktop.
-        // Hits and selected nodes (getFoundColor) are never dimmed -- and
+        // Dim Non-Matches: one opacity on the node GROUP dims its labels and
+        // branch-data numbers together, and drawTreeGeometry gives its dot and
+        // shape the same opacity; the branch lines keep their full colour, as
+        // on the desktop. Hits and selected nodes (getFoundColor) are never dimmed -- and
         // neither is a collapsed clade holding one: its wedge and label live in
         // the clade node's group, and the clade node itself is never a hit.
         node.style('opacity', function (d) {
@@ -3185,58 +3139,39 @@ function (root, d3, forester, phyloXml) {
             return DIM_NON_MATCH_OPACITY;
         });
 
-        let nodeUpdate = animateOrSet(node, transitionDuration)
-            .attr('transform', function (d) {
-                return nodeTransform(d);
-            });
-
-        // The same rule for a node's CHILD elements: derive from the transition
-        // when animating, else select straight off the node and interrupt any
-        // animation still on that child.
+        // A node's CHILD elements animate (or are set outright) on their own;
+        // the group itself is moved by drawTreeGeometry, in step with the
+        // branches.
         function nodeChild(selector) {
-            return transitionDuration > 0
-                ? nodeUpdate.select(selector)
-                : node.select(selector).interrupt();
+            return animateOrSet(node.select(selector), transitionDuration);
         }
 
         nodeChild('text')
             .style('fill-opacity', 1);
 
+        // The texts were computed by prepareNodeDrawing, which decided on them
+        // which groups exist. Guarded, not just passed a null accessor:
+        // syncOptionalNodeChildren has already removed these elements when the
+        // switch is off, and a .select() that finds nothing still walks every
+        // group to find out.
         nodeChild('text.extlabel')
             .text(function (d) {
-                return d._extLabelText;   // computed in syncOptionalNodeChildren
+                return d._extLabelText;
             });
-
-        // Guarded, not just passed a null accessor: syncOptionalNodeChildren
-        // has already removed these elements when the switch is off, and a
-        // .select() that finds nothing still walks every node to find out.
         if (_state.showBranchLengthValues) {
-            nodeChild('text.bllabel').text(makeBranchLengthLabel);
+            nodeChild('text.bllabel').text(function (d) {
+                return d._blText;
+            });
         }
         if (_state.showConfidenceValues || _state.showMadValues) {
-            nodeChild('text.conflabel').text(makeConfidenceValuesLabel);
+            nodeChild('text.conflabel').text(function (d) {
+                return d._confText;
+            });
         }
         if (_state.showBranchEvents) {
-            nodeChild('text.brancheventlabel').text(makeBranchEventsLabel);
-        }
-
-        let drawShapes = _state.showVisualizations || stylesActive();
-        nodeChild('path')
-            .style('stroke', drawShapes ? makeNodeStrokeColor : null)
-            .style('stroke-width', _state.branchWidthDefault)
-            .style('fill', drawShapes ? makeNodeFillColor : null)
-            .attr('d', drawShapes ? makeNodeVisShape : null);
-
-        // Collapse the vis shape on internal nodes that no longer have one.
-        // This used to be a node.each() that built a fresh d3 selection AND a
-        // fresh transition per internal node -- 5,265 of them on a big tree,
-        // and a full 18k-node walk even when drawShapes made it a no-op. One
-        // filtered selection with one transition does the same thing.
-        if (!drawShapes) {
-            animateOrSet(node.filter(function (d) {
-                return d.children && makeNodeVisShape(d) === null;
-            }).select('path'), transitionDuration)
-                .attr('d', 'M0,0');
+            nodeChild('text.brancheventlabel').text(function (d) {
+                return d._eventText;
+            });
         }
 
         // Departing nodes are removed OUTRIGHT rather than on the end of a
@@ -3249,70 +3184,7 @@ function (root, d3, forester, phyloXml) {
         // way; nodes now match.
         nodeExitSelection.remove();
 
-        // No .attr('d', elbow) before the join: it ran elbow() for all 18k+
-        // links against the PRE-JOIN data and the transition below overwrote
-        // the result, so every redraw computed the same geometry twice.
-        // stroke-width used to ride along here and is applied on the merged
-        // selection instead -- it is the only place existing links get it.
-        let link = _svgGroup.selectAll('path.link')
-            .data(links, function (d) {
-                return d.target.id;
-            });
-
-        // The reference node for the insert below, resolved ONCE.
-        //
-        // d3's insert(name, before) takes `before` as a SELECTOR STRING and
-        // then runs parent.querySelector(before) for EVERY element it
-        // inserts. With 18.5k links going into a group that already holds
-        // 18.5k node <g>s, that is 18.5k full-subtree queries and it
-        // dominated the first draw: measured 1,883 ms against 66 ms for the
-        // same inserts with the lookup hoisted -- 28x, and about a third of
-        // the time to open the biggest demo tree.
-        //
-        // Passing a function instead makes d3 use its return value as-is. The
-        // result is identical: every link still lands before the first node
-        // group, in the same order, so links stay painted behind nodes. It
-        // must be re-resolved each update because the node join above may
-        // have just created or removed those groups.
-        let linkBefore = _svgGroup.node().querySelector('g');
-
-        let linkEnter = link.enter().insert('path', function () {
-            return linkBefore;
-        })
-            .attr('class', 'link')
-            .attr('fill', 'none')
-            .attr('stroke-width', makeBranchWidth)
-            .attr('stroke', makeBranchColor)
-            .attr('d', function () {
-                let o = {
-                    x: source.x0, y: source.y0,
-                    ux: source.ux, uy: source.uy
-                };
-                return elbow({
-                    source: o, target: o
-                });
-            });
-
-        let linkExitSelection = link.exit(); // before the merge -- see nodeExitSelection
-
-        link = linkEnter.merge(link);
-
-        link.attr('stroke-width', makeBranchWidth);
-
-        animateOrSet(link, transitionDuration)
-            .attr('stroke', makeBranchColor)
-            .attr('d', elbow);
-
-        linkExitSelection
-            .attr('d', function () {
-                let o = {
-                    x: source.x, y: source.y
-                };
-                return elbow({
-                    source: o, target: o
-                });
-            })
-            .remove();
+        drawTreeGeometry(nodes, links, node, source, transitionDuration);
 
 
         // Aligned phylogram: a faint extension from each tip out to the column
@@ -3326,9 +3198,8 @@ function (root, d3, forester, phyloXml) {
         // while these are built from rectangular geometry and would be drawn as
         // straight lines right across the circular tree.
         //
-        // The class is deliberately NOT "link": these paths live under
-        // _svgGroup, so that name put them in the way of selectAll('path.link')
-        // -- the main link data-join, and the overview's miniature.
+        // Inserted before the tree group's first <g>, so they paint under the
+        // batched branches (drawTreeGeometry's layers) and the node groups.
         _svgGroup.selectAll('g.aptx-align-ext').remove();
         let alignedRect = !radialDisplay() && _state.phylogram && _state.alignPhylogram;
         let tipGuides = alignedRect && _state.showExternalLabels
@@ -3576,7 +3447,9 @@ function (root, d3, forester, phyloXml) {
         return _state.labelColorDefault;
     };
 
-    let makeNodeVisShape = function (node) {
+    // The d3 symbol type a node is drawn as, or null for none. Drawn at the
+    // node's position, at nodeSymbolArea(), by drawTreeGeometry.
+    function nodeShapeType(node) {
         if (isNodeFound(node) || isNodeSelected(node)
             || (_state.showNodeEvents && node.events && (node.events.duplications || node.events.speciations))) {
             return null;
@@ -3586,16 +3459,16 @@ function (root, d3, forester, phyloXml) {
             let value = forester.visualizationNodeValue(node, vis);
             if (value !== null) {
                 node.hasVis = true;
-                return d3.symbol().type(d3SymbolType(vis.shapeScale(value))).size(nodeSymbolArea())();
+                return d3SymbolType(vis.shapeScale(value));
             }
         }
         let style = nodeStyle(node);
         if (style && style.shape) {
             node.hasVis = true;
-            return d3.symbol().type(d3SymbolType(style.shape)).size(nodeSymbolArea())();
+            return d3SymbolType(style.shape);
         }
         return null;
-    };
+    }
 
         // ONE colour visualization drives both the label and the node fill -- these
     // were two identical code paths over two identical maps. Returns null when
@@ -3822,6 +3695,40 @@ function (root, d3, forester, phyloXml) {
             || (_foundNodes1 && _foundNodes1.size > 0);
     }
 
+    // What each displayed node draws individually, decided over plain objects
+    // before any DOM is touched: the texts of its labels and whether it wants
+    // a support dot. Returns the nodes that need a <g> -- those with any of
+    // them, and every collapsed clade (its wedge and label). The rest are
+    // drawn entirely by drawTreeGeometry's batched paths.
+    function prepareNodeDrawing(nodes) {
+        let wantBl = _state.showBranchLengthValues === true;
+        let wantConf = _state.showConfidenceValues === true || _state.showMadValues === true;
+        let wantEvent = _state.showBranchEvents === true;
+        let wantDot = _state.showSupportDots === true;
+        let asText = function (v) {
+            return (v === undefined || v === null) ? '' : String(v);
+        };
+        let drawn = [];
+        for (let i = 0, len = nodes.length; i !== len; ++i) {
+            let d = nodes[i];
+            if (!d.id) {
+                d.id = ++_i;
+            }
+            // Empty is the common case on a big tree: Auto-hide Labels blanks
+            // them exactly when there are most nodes to blank.
+            d._extLabelText = (!_state.dynahide || !d.hide) ? (makeNodeLabel(d) || '') : '';
+            d._blText = wantBl ? asText(makeBranchLengthLabel(d)) : '';
+            d._confText = wantConf ? asText(makeConfidenceValuesLabel(d)) : '';
+            d._eventText = wantEvent ? asText(makeBranchEventsLabel(d)) : '';
+            d._suppDot = wantDot && showSupportDot(d);
+            if (d._extLabelText !== '' || d._blText !== '' || d._confText !== ''
+                || d._eventText !== '' || d._suppDot || isCollapsed(d)) {
+                drawn.push(d);
+            }
+        }
+        return drawn;
+    }
+
     function syncOptionalNodeChildren(node) {
         let wantBl = _state.showBranchLengthValues === true;
         let wantConf = _state.showConfidenceValues === true || _state.showMadValues === true;
@@ -3855,83 +3762,59 @@ function (root, d3, forester, phyloXml) {
             dropAll('circle.suppdot');
         }
 
-        // No search running means no halo anywhere -- one pass instead of
-        // 18,512 set lookups plus 18,512 DOM queries.
-        let anyFound = anySearchHits();
-        if (!anyFound) {
-            dropAll('circle.foundHalo');
-        }
-
-        // Raw DOM inside the loop, not d3 selections: this runs once per node
-        // per redraw, and wrapping each node in a d3 selection just to ask
+        // Raw DOM inside the loop, not d3 selections: this runs once per group
+        // per redraw, and wrapping each group in a d3 selection just to ask
         // whether a child exists costs more than the question is worth.
         let font = _state.defaultFont;
+        let sync = function (g, selector, wanted, create) {
+            let el = g.querySelector(selector);
+            if (wanted) {
+                if (!el) {
+                    create(d3.select(g));
+                }
+            } else if (el) {
+                el.remove();
+            }
+        };
         node.each(function (d) {
             let g = this;
-
-            // The label the update is about to draw. Empty is the common case
-            // on a big tree: Auto-hide Labels blanks them exactly when there
-            // are most nodes to blank.
-            d._extLabelText = (!_state.dynahide || !d.hide) ? (makeNodeLabel(d) || '') : '';
-            let ext = g.querySelector('text.extlabel');
-            if (d._extLabelText !== '') {
-                if (!ext) {
-                    d3.select(g).append('text')
-                        .attr('class', 'extlabel')
-                        .attr('text-anchor', d.children ? 'end' : 'start')
-                        .style('font-family', font)
-                        .style('fill-opacity', 0.5);
-                }
-            } else if (ext) {
-                ext.remove();
-            }
-
-            if (anyFound) {
-                // The pulse behind a search hit. It must be FIRST in the group
-                // so everything else draws over it -- appending would put it
-                // on top.
-                let halo = g.querySelector('circle.foundHalo');
-                if (isNodeFound(d)) {
-                    if (!halo) {
-                        d3.select(g).insert('circle', ':first-child')
-                            .attr('class', 'foundHalo aptx-found-halo')
-                            .attr('r', 0)
-                            .style('pointer-events', 'none');
-                    }
-                } else if (halo) {
-                    halo.remove();
-                }
-            }
-
-            if (wantBl && !g.querySelector('text.bllabel')) {
-                d3.select(g).append('text')
-                    .attr('class', 'bllabel')
+            sync(g, 'text.extlabel', d._extLabelText !== '', function (sel) {
+                sel.append('text')
+                    .attr('class', 'extlabel')
+                    .attr('text-anchor', d.children ? 'end' : 'start')
                     .style('font-family', font)
                     .style('fill-opacity', 0.5);
+            });
+            if (wantBl) {
+                sync(g, 'text.bllabel', d._blText !== '', function (sel) {
+                    sel.append('text')
+                        .attr('class', 'bllabel')
+                        .style('font-family', font)
+                        .style('fill-opacity', 0.5);
+                });
             }
-            if (wantConf && !g.querySelector('text.conflabel')) {
-                d3.select(g).append('text')
-                    .attr('class', 'conflabel')
-                    .attr('text-anchor', 'middle')
-                    .style('font-family', font);
+            if (wantConf) {
+                sync(g, 'text.conflabel', d._confText !== '', function (sel) {
+                    sel.append('text')
+                        .attr('class', 'conflabel')
+                        .attr('text-anchor', 'middle')
+                        .style('font-family', font);
+                });
             }
-            if (wantEvent && !g.querySelector('text.brancheventlabel')) {
-                d3.select(g).append('text')
-                    .attr('class', 'brancheventlabel')
-                    .attr('text-anchor', 'middle')
-                    .style('font-family', font);
+            if (wantEvent) {
+                sync(g, 'text.brancheventlabel', d._eventText !== '', function (sel) {
+                    sel.append('text')
+                        .attr('class', 'brancheventlabel')
+                        .attr('text-anchor', 'middle')
+                        .style('font-family', font);
+                });
             }
             if (wantDot) {
-                let dot = g.querySelector('circle.suppdot');
-                if (showSupportDot(d)) {
-                    if (!dot) {
-                        d3.select(g).append('circle')
-                            .attr('class', 'suppdot')
-                            .style('pointer-events', 'none');
-                    }
-                } else if (dot) {
-                    dot.remove();
-                }
+                sync(g, 'circle.suppdot', d._suppDot, function (sel) {
+                    sel.append('circle')
+                        .attr('class', 'suppdot')
+                        .style('pointer-events', 'none');
+                });
             }
         });
     }
@@ -4241,11 +4124,6 @@ function (root, d3, forester, phyloXml) {
         return [d.y, d.x];
     }
 
-    function nodeTransform(d) {
-        let p = layoutPointXY(d);
-        return 'translate(' + p[0] + ',' + p[1] + ')';
-    }
-
     // The screen angle (radians, y down) of the node's spoke: the direction
     // its incoming branch points away from the centre. Circular derives it
     // from the cluster position; unrooted carries it from the equal-angle
@@ -4285,19 +4163,435 @@ function (root, d3, forester, phyloXml) {
         return 'rotate(' + labelAngleDeg(d) + ') translate(' + mid + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
     }
 
-    let elbow = function (d) {
+    // ===================== Batched tree geometry =====================
+    // The branches, node dots, node shapes and search halos are drawn as a
+    // handful of paths, not as elements per node.
+    //
+    // Every node used to own a <g> holding a shape path (usually empty), a
+    // dot circle and an invisible 5px hover circle, and every branch its own
+    // path: 250,374 elements for a 50,000-node tree. Measured 2026-09-14 in
+    // headless Chrome (test_trees/bench.html), dragging that tree ran at about
+    // 12 frames a second -- and it was the node groups, not the branches:
+    // hiding the groups made the same drag nearly smooth, and hiding them
+    // with the branches merged into one path made it 60. The browser pays per
+    // ELEMENT painted, not per segment drawn.
+    //
+    // So: one path per distinct branch style (colour, width), and one per
+    // distinct shape or dot style (fill, stroke, dimmed), in layers under the
+    // node groups -- which exist only for nodes with something drawn
+    // individually (prepareNodeDrawing). Styles, not nodes, set the element
+    // count: an uncoloured tree is ONE branch path however big it is. Where
+    // dots of different styles overlap, the later style now paints on top,
+    // where tree order used to decide.
+    //
+    // Animation moves every node from where it was last drawn to where it
+    // goes, and each frame redraws the paths and places the groups from those
+    // positions, so branches, dots and labels move as one. The circular layout
+    // interpolates angle and radius, so nodes sweep along the circle; d3's
+    // path-string interpolation used to cut straight across it.
+
+    const NODE_HIT_RADIUS = 5;   // tree units: the radius of the hover circle every node used to carry
+    const OUTLINED_DOTS_MAX = 2000;   // outlined dots (hits, selection) drawn one element each up to this many
+    const ANIMATED_HALOS_MAX = 1000;  // search-hit halos pulse up to this many hits; past it they are still
+    const HALO_REST_OPACITY = 0.35;   // a halo's opacity at rest: the pulse's ends, and a still halo
+    let _geomLayers = null;      // {branches, halos, shapes, dots}: the layer <g>s at the bottom of the tree group
+    let _drawnGeom = null;       // the positions last drawn: {mode, nodes, a, b}, for the next animation to start from
+    let _nodeIndex = null;       // quadtree over _hitNodes, built on the first pointer event after a render
+    let _hitNodes = [];          // the nodes hover and click can find: every displayed node but the wrapper
+    let _hoverNode = null;       // the node under the pointer, as hover last saw it
+
+    // A node's position in the current layout's own two coordinates, the
+    // ones an animation interpolates: x and y in the rectangular and unrooted
+    // layouts, angle and radius in the circular one.
+    function geometryMode() {
         if (_state.unrootedDisplay) {
-            return 'M' + d.source.ux + ',' + d.source.uy + 'L' + d.target.ux + ',' + d.target.uy;
+            return 'unrooted';
         }
-        if (_state.circularDisplay) {
-            let sa = radialAngle(d.source.x), ta = radialAngle(d.target.x);
-            let sr = radialRadius(d.source.y), tr = radialRadius(d.target.y);
-            let sp = polarXY(sa, sr), mp = polarXY(ta, sr), tp = polarXY(ta, tr);
+        return _state.circularDisplay ? 'circular' : 'rectangular';
+    }
+
+    function geometryA(d, mode) {
+        if (mode === 'unrooted') {
+            return d.ux;
+        }
+        return mode === 'circular' ? radialAngle(d.x) : d.y;
+    }
+
+    function geometryB(d, mode) {
+        if (mode === 'unrooted') {
+            return d.uy;
+        }
+        return mode === 'circular' ? radialRadius(d.y) : d.x;
+    }
+
+    // One branch, from its parent's position (sa, sb) to its node's (ta, tb).
+    function branchSegment(mode, sa, sb, ta, tb) {
+        if (mode === 'unrooted') {
+            return 'M' + sa + ',' + sb + 'L' + ta + ',' + tb;
+        }
+        if (mode === 'circular') {
+            let sp = polarXY(sa, sb), mp = polarXY(ta, sb), tp = polarXY(ta, tb);
             let large = Math.abs(ta - sa) > Math.PI ? 1 : 0, sweep = ta > sa ? 1 : 0;
-            return 'M' + sp[0] + ',' + sp[1] + 'A' + sr + ',' + sr + ' 0 ' + large + ' ' + sweep + ' ' + mp[0] + ',' + mp[1] + 'L' + tp[0] + ',' + tp[1];
+            return 'M' + sp[0] + ',' + sp[1] + 'A' + sb + ',' + sb + ' 0 ' + large + ' ' + sweep + ' ' + mp[0] + ',' + mp[1] + 'L' + tp[0] + ',' + tp[1];
         }
-        return 'M' + d.source.y + ',' + d.source.x + 'V' + d.target.x + 'H' + d.target.y;
+        return 'M' + sa + ',' + sb + 'V' + tb + 'H' + ta;
+    }
+
+    let elbow = function (d) {
+        let mode = geometryMode();
+        return branchSegment(mode, geometryA(d.source, mode), geometryB(d.source, mode),
+            geometryA(d.target, mode), geometryB(d.target, mode));
     };
+
+    // Clear `layer` down, or fill it up, to `count` children of `tag`.
+    function sizeLayer(layer, tag, count) {
+        while (layer.childElementCount > count) {
+            layer.lastChild.remove();
+        }
+        while (layer.childElementCount < count) {
+            layer.appendChild(document.createElementNS(d3.namespaces.svg, tag));
+        }
+        return layer.children;
+    }
+
+    // nodes: every displayed node, links: their branches, groups: the node
+    // <g>s this render keeps, source: the node an animation grows out of.
+    function drawTreeGeometry(nodes, links, groups, source, duration) {
+        let treeGroup = _svgGroup.node();
+        if (!_geomLayers || _geomLayers.branches.parentNode !== treeGroup) {
+            _geomLayers = {};
+            // inserted topmost first, so they end up bottom to top: branches,
+            // halos (under the node they mark), shapes, dots, outlined dots
+            [['outlined', 'aptx-node-outlined'], ['dots', 'aptx-node-dots'], ['shapes', 'aptx-node-shapes'],
+                ['halos', 'aptx-halos'], ['branches', 'aptx-branches']].forEach(function (layer) {
+                let g = document.createElementNS(d3.namespaces.svg, 'g');
+                g.setAttribute('class', layer[1]);
+                // hover and click find nodes by position; hit-testing a
+                // 50,000-segment path on every mouse move is pure cost
+                g.style.pointerEvents = 'none';
+                treeGroup.insertBefore(g, treeGroup.firstChild);
+                _geomLayers[layer[0]] = g;
+            });
+        }
+        let driver = d3.select(_geomLayers.branches);
+        driver.interrupt('aptx-geometry');
+
+        let mode = geometryMode();
+        let n = nodes.length;
+        let endA = new Float64Array(n);
+        let endB = new Float64Array(n);
+        for (let i = 0; i !== n; ++i) {
+            endA[i] = geometryA(nodes[i], mode);
+            endB[i] = geometryB(nodes[i], mode);
+        }
+
+        // Where each node starts: where it was last drawn -- mid-flight, if
+        // this redraw cut an animation short. A node new to the screen grows
+        // out of the source's last drawn position, as entering elements did.
+        let animate = duration > 0;
+        let startA = null;
+        let startB = null;
+        if (animate) {
+            let prev = (_drawnGeom && _drawnGeom.mode === mode) ? _drawnGeom : null;
+            let prevIndex = function (d) {
+                let j = d._geomIndex;
+                return (prev && j !== undefined && prev.nodes[j] === d) ? j : -1;
+            };
+            let sj = prevIndex(source);
+            let fromA;
+            let fromB;
+            if (sj >= 0) {
+                fromA = prev.a[sj];
+                fromB = prev.b[sj];
+            } else if (mode === 'rectangular' && source.x0 !== undefined) {
+                fromA = source.y0;   // a first draw unfolds from the launch's root point
+                fromB = source.x0;
+            } else {
+                fromA = geometryA(source, mode);
+                fromB = geometryB(source, mode);
+            }
+            let fromKnown = isFinite(fromA) && isFinite(fromB);
+            startA = new Float64Array(n);
+            startB = new Float64Array(n);
+            for (let i = 0; i !== n; ++i) {
+                let j = prevIndex(nodes[i]);
+                if (j >= 0) {
+                    startA[i] = prev.a[j];
+                    startB[i] = prev.b[j];
+                } else {
+                    startA[i] = fromKnown ? fromA : endA[i];
+                    startB[i] = fromKnown ? fromB : endB[i];
+                }
+            }
+        }
+        for (let i = 0; i !== n; ++i) {
+            nodes[i]._geomIndex = i;
+        }
+
+        // ---- the styles: everything that does not move with the nodes ----
+        let branchBatches = new Map();
+        for (let i = 0, len = links.length; i !== len; ++i) {
+            let color = makeBranchColor(links[i]);
+            let width = makeBranchWidth(links[i]);
+            let key = color + '|' + width;
+            let b = branchBatches.get(key);
+            if (!b) {
+                b = {color: color, width: width, items: []};
+                branchBatches.set(key, b);
+            }
+            b.items.push(links[i].source._geomIndex, links[i].target._geomIndex);
+        }
+
+        let halos = [];
+        let outlined = [];   // dots whose outline is not their fill: search hits, selected nodes
+        let shapeBatches = new Map();
+        let dotBatches = new Map();
+        let hitDotBatches = new Map();   // outlined dots past OUTLINED_DOTS_MAX: painted after every other dot
+        let addDot = function (batches, i, fill, stroke, r, dim) {
+            let key = fill + '|' + stroke + '|' + r + '|' + dim;
+            let b = batches.get(key);
+            if (!b) {
+                b = {fill: fill, stroke: stroke, r: r, dim: dim, items: []};
+                batches.set(key, b);
+            }
+            b.items.push(i);
+        };
+        let anyFound = anySearchHits();
+        let drawShapes = _state.showVisualizations || stylesActive();
+        let bg = _state.backgroundColorDefault;
+        for (let i = 0; i !== n; ++i) {
+            let d = nodes[i];
+            if (anyFound && isNodeFound(d)) {
+                // the trough must clear the node dot, or a medium-sized node
+                // buries its own pulse; the CSS 2.5x peak then keeps the
+                // desktop's 4->10px pulse ratio
+                halos.push({i: i, r: Math.max(4, makeNodeSize(d) + 2), fill: getFoundColor(d)});
+            }
+            // Dim Non-Matches, by the rule update() applies to node groups
+            let dim = _dimNonMatches && !getFoundColor(d) && !(isCollapsed(d) && collapsedHoldsHighlight(d));
+
+            // The shape BEFORE the dot: nodeShapeType marks the node hasVis,
+            // which takes its dot away.
+            let type = drawShapes ? nodeShapeType(d) : null;
+            if (type) {
+                let fill = makeNodeFillColor(d);
+                let stroke = makeNodeStrokeColor(d);
+                let key = fill + '|' + stroke + '|' + dim;
+                let b = shapeBatches.get(key);
+                if (!b) {
+                    b = {fill: fill, stroke: stroke, dim: dim, items: [], types: []};
+                    shapeBatches.set(key, b);
+                }
+                b.items.push(i);
+                b.types.push(type);
+            }
+
+            // The dot, with its fill computed once: the union of the two
+            // conditions that need it is just the fill condition, since
+            // (showVisualizations && !showNodeEvents) implies showVisualizations.
+            let fill = (_state.showVisualizations || _state.showNodeEvents
+                || isNodeFound(d) || isNodeSelected(d)) ? makeNodeFillColor(d) : null;
+            let r = ((_state.showVisualizations && !_state.showNodeEvents)
+                && (fill === bg)) ? 0 : makeNodeSize(d);
+            if (r > 0) {
+                let dotFill = (fill === null) ? bg : fill;
+                let stroke = makeNodeStrokeColor(d);
+                if (stroke !== dotFill) {
+                    outlined.push({i: i, fill: dotFill, stroke: stroke, r: r, dim: dim});
+                } else {
+                    addDot(dotBatches, i, dotFill, stroke, r, dim);
+                }
+            }
+        }
+        // A path paints ALL its fills before ANY of its strokes, so a stack of
+        // overlapping outlined dots in one stroked path reads as a mesh of
+        // rings, where one element per dot paints each dot whole over the last.
+        // Those are the search hits and selected nodes, usually few: they keep
+        // an element each, in tree order. Past OUTLINED_DOTS_MAX (a search
+        // hitting thousands of tips) the elements would bring the cost back,
+        // so each outline style becomes two FILLED paths: discs as wide as the
+        // outer edge of the stroke in the outline colour, then discs as wide
+        // as its inner edge in the fill colour. A lone dot comes out exactly
+        // as a stroked circle does; a stack comes out as one outlined blob.
+        if (outlined.length > OUTLINED_DOTS_MAX) {
+            let half = _state.branchWidthDefault / 2;
+            outlined.forEach(function (o) {
+                addDot(hitDotBatches, o.i, o.stroke, 'none', o.r + half, o.dim);
+                if (o.r > half) {
+                    addDot(hitDotBatches, o.i, o.fill, 'none', o.r - half, o.dim);
+                }
+            });
+            outlined = [];
+        }
+
+        // The most common style paints first, so where dots of different
+        // styles overlap the rarer one stays on top: a single sample of a rare
+        // category is not buried in a dense cluster of the common one. (Tree
+        // order decided when every dot was its own element.)
+        let byCount = function (a, b) {
+            return b.items.length - a.items.length;
+        };
+        let branchList = Array.from(branchBatches.values()).sort(byCount);
+        let els = sizeLayer(_geomLayers.branches, 'path', branchList.length);
+        branchList.forEach(function (b, k) {
+            b.el = els[k];
+            b.el.setAttribute('fill', 'none');
+            b.el.setAttribute('stroke', b.color);
+            b.el.setAttribute('stroke-width', b.width);
+        });
+        // `last`: batches painted after the sorted ones, whatever their count
+        let paintLayer = function (batches, layer, last) {
+            let list = Array.from(batches.values()).sort(byCount)
+                .concat(last ? Array.from(last.values()) : []);
+            let paths = sizeLayer(layer, 'path', list.length);
+            list.forEach(function (b, k) {
+                b.el = paths[k];
+                b.el.style.fill = b.fill;
+                b.el.style.stroke = b.stroke;
+                b.el.style.strokeWidth = _state.branchWidthDefault;
+                b.el.style.opacity = b.dim ? DIM_NON_MATCH_OPACITY : '';
+            });
+            return list;
+        };
+        let shapeList = paintLayer(shapeBatches, _geomLayers.shapes);
+        let dotList = paintLayer(dotBatches, _geomLayers.dots, hitDotBatches);
+        // The pulse only while there are few enough hits for it to point at
+        // something. Each pulsing halo is an animation the browser recomposites
+        // on every frame: measured on the 50,000-node tree with 3,571 hits,
+        // the drag ran at ~41 ms a frame with them pulsing and 17 ms with the
+        // same halos still -- the elements were never the cost.
+        let pulse = halos.length <= ANIMATED_HALOS_MAX;
+        let haloEls = sizeLayer(_geomLayers.halos, 'circle', halos.length);
+        halos.forEach(function (h, k) {
+            h.el = haloEls[k];
+            h.el.setAttribute('class', pulse ? 'foundHalo aptx-found-halo' : 'foundHalo');
+            h.el.setAttribute('r', h.r);
+            h.el.style.fill = h.fill;
+            h.el.style.opacity = pulse ? '' : HALO_REST_OPACITY;
+        });
+        let outlinedEls = sizeLayer(_geomLayers.outlined, 'circle', outlined.length);
+        outlined.forEach(function (o, k) {
+            o.el = outlinedEls[k];
+            o.el.setAttribute('r', o.r);
+            o.el.style.fill = o.fill;
+            o.el.style.stroke = o.stroke;
+            o.el.style.strokeWidth = _state.branchWidthDefault;
+            o.el.style.opacity = o.dim ? DIM_NON_MATCH_OPACITY : '';
+        });
+        let groupEls = [];
+        let groupIndex = [];
+        groups.each(function (d) {
+            groupEls.push(this);
+            groupIndex.push(d._geomIndex);
+        });
+
+        // ---- the positions: set once, or on every animation frame ----
+        let curA = new Float64Array(n);
+        let curB = new Float64Array(n);
+        _drawnGeom = {mode: mode, nodes: nodes, a: curA, b: curB};
+        _hitNodes = nodes.filter(function (d) {
+            return !!d.parent;
+        });
+        _nodeIndex = null;
+
+        let circular = mode === 'circular';
+        let area = nodeSymbolArea();
+        let x = 0;
+        let y = 0;
+        let place = function (i) {   // node i's point on screen, into x and y (layoutPointXY)
+            if (circular) {
+                let a = curA[i] - Math.PI / 2;
+                x = curB[i] * Math.cos(a);
+                y = curB[i] * Math.sin(a);
+            } else {
+                x = curA[i];
+                y = curB[i];
+            }
+        };
+        // a d3 symbol draws around the origin; this context moves it to (x, y)
+        let symbolPath = null;
+        let atPoint = {
+            moveTo: function (px, py) {
+                symbolPath.moveTo(px + x, py + y);
+            },
+            lineTo: function (px, py) {
+                symbolPath.lineTo(px + x, py + y);
+            },
+            arc: function (px, py, radius, a0, a1, ccw) {
+                symbolPath.arc(px + x, py + y, radius, a0, a1, ccw);
+            },
+            rect: function (px, py, w, h) {
+                symbolPath.rect(px + x, py + y, w, h);
+            },
+            closePath: function () {
+                symbolPath.closePath();
+            }
+        };
+
+        let frame = function (t) {
+            if (animate && t < 1) {
+                for (let i = 0; i !== n; ++i) {
+                    curA[i] = startA[i] + ((endA[i] - startA[i]) * t);
+                    curB[i] = startB[i] + ((endB[i] - startB[i]) * t);
+                }
+            } else {
+                curA.set(endA);
+                curB.set(endB);
+            }
+            branchList.forEach(function (b) {
+                let items = b.items;
+                let parts = new Array(items.length / 2);
+                for (let k = 0; k < items.length; k += 2) {
+                    let s = items[k];
+                    let e = items[k + 1];
+                    parts[k / 2] = branchSegment(mode, curA[s], curB[s], curA[e], curB[e]);
+                }
+                b.el.setAttribute('d', parts.join(''));
+            });
+            shapeList.forEach(function (b) {
+                symbolPath = d3.path();
+                for (let k = 0; k < b.items.length; ++k) {
+                    place(b.items[k]);
+                    b.types[k].draw(atPoint, area);
+                }
+                b.el.setAttribute('d', symbolPath.toString());
+            });
+            dotList.forEach(function (b) {
+                let r = b.r;
+                let arcs = 'a' + r + ',' + r + ' 0 1,0 ' + (2 * r) + ',0a' + r + ',' + r + ' 0 1,0 ' + (-2 * r) + ',0Z';
+                let parts = new Array(b.items.length);
+                for (let k = 0; k < b.items.length; ++k) {
+                    place(b.items[k]);
+                    parts[k] = 'M' + (x - r) + ',' + y + arcs;
+                }
+                b.el.setAttribute('d', parts.join(''));
+            });
+            halos.forEach(function (h) {
+                place(h.i);
+                h.el.setAttribute('cx', x);
+                h.el.setAttribute('cy', y);
+            });
+            outlined.forEach(function (o) {
+                place(o.i);
+                o.el.setAttribute('cx', x);
+                o.el.setAttribute('cy', y);
+            });
+            for (let k = 0; k < groupEls.length; ++k) {
+                place(groupIndex[k]);
+                groupEls[k].setAttribute('transform', 'translate(' + x + ',' + y + ')');
+            }
+        };
+
+        if (animate) {
+            frame(0);
+            driver.transition('aptx-geometry').duration(duration)
+                .tween('geometry', function () {
+                    return frame;
+                });
+        } else {
+            frame(1);
+        }
+    }
 
     let connection = function (n) {
         if (_state.phylogram) {
@@ -5236,6 +5530,11 @@ function (root, d3, forester, phyloXml) {
         _basicTreeProperties = null;
         _baseSvg = null;
         _svgGroup = null;
+        _geomLayers = null;
+        _drawnGeom = null;
+        _hitNodes = [];
+        _nodeIndex = null;
+        _hoverNode = null;
         _overviewGroup = null;
         _overviewLinks = null;
         _overviewContent = null;
@@ -5382,6 +5681,11 @@ function (root, d3, forester, phyloXml) {
         _in_subtree = false;
         _baseSvg = null;
         _svgGroup = null;
+        _geomLayers = null;
+        _drawnGeom = null;
+        _hitNodes = [];
+        _nodeIndex = null;
+        _hoverNode = null;
         _overviewGroup = null;
         _overviewContent = null;
         _overviewViewport = null;
@@ -10635,8 +10939,8 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-searchnav { align-items:center; gap:4px; margin:2px 0 4px; }'
             + '.aptx-panel .aptx-searchnav span { flex:1 1 auto; text-align:center; font-weight:600; font-size:11px; color:var(--p-ink); }'
             + '.aptx-panel .aptx-searchnav .aptx-gbtn:last-child { margin-right:0; }'
-            + '.aptx-found-halo { opacity:0.35; transform-box:fill-box; transform-origin:center; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
-            + '@keyframes aptx-halo-pulse { 0%,100% { transform:scale(1); opacity:0.35; } 50% { transform:scale(2.5); opacity:0.12; } }'
+            + '.aptx-found-halo { opacity:' + HALO_REST_OPACITY + '; transform-box:fill-box; transform-origin:center; animation:aptx-halo-pulse 1.3s ease-in-out infinite; }'
+            + '@keyframes aptx-halo-pulse { 0%,100% { transform:scale(1); opacity:' + HALO_REST_OPACITY + '; } 50% { transform:scale(2.5); opacity:0.12; } }'
             + '@media (prefers-reduced-motion: reduce) { .aptx-found-halo { animation:none; } }'
             + '.aptx-panel .aptx-zoomgrid { display:flex; flex-direction:column; align-items:stretch; }'
             + '.aptx-panel .aptx-zoomgrid > input[type=button] { width:100%; margin-right:0; }'

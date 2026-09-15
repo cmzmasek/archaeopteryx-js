@@ -31,6 +31,7 @@ export default [
             'test/data/**',
             'test/lib/**',
             'docs/lib/**', // synced copies + vendored third-party libs
+            'test_trees/**', // local, git-excluded: big trees and benchmark scripts
         ],
     },
 

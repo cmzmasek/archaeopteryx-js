@@ -6,6 +6,26 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Changed
+
+- **Big trees open faster and pan smoothly.** Branches, node dots and node
+  shapes are drawn as a handful of paths, one per style, instead of several
+  SVG elements per node, and a node gets an element of its own only when it
+  shows a label, a value or a collapsed clade. A 50,000-node tree went from
+  250,374 SVG elements to about 450: it opens in 0.34 s instead of 1.6 s,
+  dragging it runs at 60 frames a second instead of about 12, and the longest
+  pause of a zoom step fell from 0.55 s to about 0.1 s (headless Chrome, M2 Pro).
+- Hover and click find the node nearest the pointer, within the same radius
+  the invisible hover circles had; clicking a label still picks its node.
+- Animated redraws move branches, dots and labels together. In the circular
+  layout nodes sweep along the circle instead of cutting across it.
+- Where dots of different colours overlap, the rarer colour is drawn on top
+  (it used to depend on tree order).
+- Past 1,000 search hits the halos stop pulsing: thousands of pulses cost more
+  to draw than the whole tree.
+
 ## 3.5.1 — 2026-09-14
 
 A fix to 3.5.0's MAD rooting: on trees with near-zero branches it could pick
