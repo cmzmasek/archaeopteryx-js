@@ -6,7 +6,19 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.6.0 — 2026-09-14
+
+Big trees, drawn a new way: branches, dots, shapes and the domain track
+are a handful of SVG paths per style instead of several elements per node,
+so a 50,000-node tree opens in a third of a second and pans at 60 frames a
+second. The busy cards now appear only when a redraw is actually slow on
+the computer at hand.
+
+**For embedders:** the tree's SVG is structured differently. There is no
+longer a `path.link` per branch or a `circle.nodeCircle` per node, and a
+`g.node` exists only for a node that draws a label, a value or a collapsed
+clade. Redraws triggered by the panel now run one frame later on trees of
+every size; `viewer.ready` still says when the first draw has happened.
 
 ### Changed
 
