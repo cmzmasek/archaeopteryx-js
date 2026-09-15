@@ -25,6 +25,15 @@ consumers only see a change when a version is cut.
   (it used to depend on tree order).
 - Past 1,000 search hits the halos stop pulsing: thousands of pulses cost more
   to draw than the whole tree.
+- **The "Redrawing" card appears only when a redraw is actually slow on
+  your computer**: when the tree's previous redraw took 300 ms or more. A
+  fast computer no longer flashes it on big trees, and a tree that is slow for
+  what it carries (such as many domain architectures) gets it at any size.
+- Redraws of trees of any size merge into one per frame: a mouse-wheel flick
+  on a 3,000-node tree used to redraw once per notch, and on a slow computer
+  (CPU slowed 6x) it now takes 0.24 s instead of 0.77 s.
+- The "Drawing N nodes" card when a tree opens starts at 5,000 nodes (was
+  3,000).
 
 ## 3.5.1 — 2026-09-14
 

@@ -633,17 +633,19 @@ viewer.destroy();          // unmount COMPLETELY: the container DOM, the node
                            // handler; a later launch() works normally
 ```
 
-**Big trees draw on the next frame.** Above 3,000 nodes, `launch()` does all
+**Big trees draw on the next frame.** From 5,000 nodes, `launch()` does all
 its validation, shows a "Drawing N nodes" card over the tree area, and
 returns within milliseconds — the label analysis, visualization candidates,
 control panel and the draw itself all run one frame later, so the browser
 can paint the card instead of appearing frozen for the seconds a large tree
 takes. Every error still throws synchronously from `launch()`
 exactly as before; only the draw is deferred. `viewer.ready` resolves when it
-has run (immediately for a small tree, which stays fully synchronous). Later
-redraws on a big tree — a checkbox, a slider, a search — work the same way:
-they show a "Redrawing" card and run on the next frame, and every redraw
-requested in the same tick collapses into one. Wait on `ready` before reading
+has run (immediately for a smaller tree, which draws synchronously). Later
+redraws — a checkbox, a slider, a search, the mouse wheel — run on the next
+animation frame for a tree of any size, and every redraw requested before
+that frame collapses into one: a wheel flick is one redraw, not one per
+notch. A "Redrawing" card appears only when the tree's previous redraw took
+300 ms or more on the computer it runs on. Wait on `ready` before reading
 the tree's DOM after `launch()`:
 
 ```js

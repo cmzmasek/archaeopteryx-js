@@ -283,16 +283,24 @@ function (root, d3, forester, phyloXml) {
     const SVG_EXPORT_FORMAT = 'SVG';
     const TOP_AND_BOTTOM_BORDER_HEIGHT = 10;
     const TRANSITION_DURATION_DEFAULT = 750;
-    // Above this many nodes the first draw is deferred by one frame behind a
-    // "working" card, so the page shows it is busy instead of appearing frozen,
-    // and later redraws coalesce instead of running synchronously. Below it
-    // everything stays synchronous exactly as before -- the deferral buys
-    // nothing on a tree that draws in a few hundred milliseconds.
+    // A tree of at least this many nodes OPENS behind a "Drawing N nodes"
+    // card: its first draw is deferred by one frame, so the page shows it is
+    // busy instead of appearing frozen. A first draw cannot be timed before
+    // it happens, so this one stays a node count. Measured 2026-09-14 with
+    // Chrome's CPU slowed 6x (DevTools' low-end machine): a bare 5,000-node
+    // tree opens in about half a second there, 20,000 in a second, and a real
+    // annotated tree takes several times longer than a bare one its size.
     //
-    // Raised from 2000 to 3000 on 2026-09-11: a redraw of the 18,512-node tree
-    // went from ~4.2 s to ~1.9 s that day, so the size at which a draw is slow
-    // enough to need announcing moved up with it.
-    const BIG_TREE_NODES = 3000;
+    // This was BIG_TREE_NODES = 3000, which also decided the "Redrawing" card
+    // and whether redraws coalesce. Both are now decided otherwise -- see
+    // scheduleUpdate -- because node count does not predict a redraw: a
+    // 1,386-node tree with 1,428 domain architectures redraws slower than a
+    // 50,000-node tree without.
+    const OPENING_CARD_NODES = 5000;
+    // A redraw shows the "Redrawing" card when this tree's previous redraw
+    // took at least this long on this machine, measured to the frame that
+    // painted it. Below that the card would only flash.
+    const REDRAW_CARD_MS = 300;
     const WARNING = 'ArchaeopteryxJS: WARNING';
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
@@ -581,11 +589,14 @@ function (root, d3, forester, phyloXml) {
     // Bumped by every launch() and destroy(), so a first draw deferred by a
     // launch that was since torn down or replaced knows not to run.
     let _launchSeq = 0;
-    // A redraw waiting for its frame (big trees only): the arguments of every
-    // scheduleUpdate() call made since, merged, so that one update() serves
-    // them all.
+    // A redraw waiting for its frame: the arguments of every scheduleUpdate()
+    // call made since, merged, so that one update() serves them all.
     let _pendingUpdate = null;
-    // Work to run once the pending redraw has happened (big trees only):
+    // How long this tree's last redraw took on this machine, ms, from the
+    // start of update() to the frame that painted it (timeRedraw); decides
+    // whether the next one shows the "Redrawing" card. 0 until timed.
+    let _redrawMs = 0;
+    // Work to run once the pending redraw has happened:
     // the viewport re-centring a zoom needs the new layout for.
     let _afterUpdate = [];
     // The viewport centre captured by the FIRST zoom step of a burst; the
@@ -2581,20 +2592,25 @@ function (root, d3, forester, phyloXml) {
 
     // --------------------------------------------------------------
 
-    // Redraw -- at once on a small tree, coalesced and deferred on a big one.
-    //
-    // Two things this buys on a big tree, both measured on the 18,512-node
-    // BV-BRC tree where one update() costs over a second:
+    // Redraw on the next animation frame, coalescing every request made
+    // before it -- for a tree of any size.
     //
     //   - Coalescing. Several handlers redraw more than once per click:
     //     nine of them run search0(), search1() and update() -- three full
     //     redraws, since runSearches() ends in its own update() -- and the
     //     Visualizations and Auto-hide toggles call update() twice back to
-    //     back. A slider drag fires an update per input event. Every call
-    //     made in the same tick now collapses into ONE update().
-    //   - The yield. The redraw runs behind the "working" card on the next
-    //     frame, so a click is answered by a visible card instead of a page
-    //     that has stopped responding.
+    //     back. A slider drag fires an update per input event, a wheel flick
+    //     one per notch. Every call before the frame collapses into ONE
+    //     update(). This was for trees over 3,000 nodes only, and below that
+    //     every notch redrew on its own: with the CPU slowed 6x, a ten-notch
+    //     flick froze a 3,000-node tree for 0.77 s and a coalesced 5,000-node
+    //     tree for 0.39 s. The wait is one frame, which is not visible.
+    //   - The card. When this tree's previous redraw took REDRAW_CARD_MS or
+    //     more on this machine, the redraw waits for the "Redrawing" card to
+    //     paint first, so a click is answered by a visible card instead of a
+    //     page that has stopped responding. Timed, not counted: a redraw's
+    //     cost depends on the machine and on what the tree carries as much
+    //     as on its size.
     //
     // Only for callers that read nothing back afterwards. zoomToFit() and
     // the layout switches update() and then read the fresh layout in the
@@ -2609,11 +2625,6 @@ function (root, d3, forester, phyloXml) {
             runAfterUpdate();   // nothing pending; anything queued can run now
             return;
         }
-        if (!_basicTreeProperties || _basicTreeProperties.nodeCount < BIG_TREE_NODES) {
-            update(source, transitionDuration, doNotRecalculateWidth);
-            runAfterUpdate();
-            return;
-        }
         let dur = (transitionDuration === undefined) ? TRANSITION_DURATION_DEFAULT : transitionDuration;
         if (_pendingUpdate) {
             _pendingUpdate.source = _pendingUpdate.source || source;
@@ -2623,24 +2634,35 @@ function (root, d3, forester, phyloXml) {
         }
         _pendingUpdate = {source: source, duration: dur, noWidth: doNotRecalculateWidth === true};
         let seq = _launchSeq;
-        showBusy(_container, 'Redrawing ' + _basicTreeProperties.nodeCount.toLocaleString() + ' nodes');
+        let card = _redrawMs >= REDRAW_CARD_MS && _basicTreeProperties !== null;
+        if (card) {
+            showBusy(_container, 'Redrawing ' + _basicTreeProperties.nodeCount.toLocaleString() + ' nodes');
+        }
+        // After the paint even without the card: a redraw run INSIDE the next
+        // frame never merged the wheel notch arriving in that frame, and a
+        // ten-notch flick measured about twice as long on a 50,000-node tree
+        // (0.9 s against 0.47 s). One frame later is not visible.
         afterPaint(function () {
             let p = _pendingUpdate;
             _pendingUpdate = null;
             if (seq !== _launchSeq || !p) {
                 return;   // the view was torn down or replaced meanwhile
             }
+            let start = performance.now();
             try {
                 update(p.source, p.duration, p.noWidth);
                 runAfterUpdate();
             } finally {
-                hideBusy();
+                if (card) {
+                    hideBusy();
+                }
             }
+            timeRedraw(start, seq, 1);
         });
     }
 
-    // Run fn once the redraw has happened: now, if none is pending (a small
-    // tree, or nothing scheduled), else after the deferred update() runs.
+    // Run fn once the redraw has happened: now, if none is pending, else
+    // after the deferred update() runs.
     function afterUpdate(fn) {
         if (_pendingUpdate) {
             _afterUpdate.push(fn);
@@ -5752,8 +5774,14 @@ function (root, d3, forester, phyloXml) {
         // unresolvable container -- so deferring the rest keeps launch()'s
         // synchronous-error contract intact. The handle closes over module
         // state, so it is valid before the draw; viewer.ready says when.
+        //
+        // The first draw is timed too, and stands in for this tree's redraws
+        // until one has been timed -- at a third, since it builds everything
+        // from scratch. Measured 2026-09-14 (bench, CPU 1x to 6x), a redraw
+        // took from 0.1 to 0.9 of a first draw, most often a quarter to a third.
         let nodeCount = _basicTreeProperties ? _basicTreeProperties.nodeCount : 0;
-        if (nodeCount >= BIG_TREE_NODES) {
+        _redrawMs = 0;
+        if (nodeCount >= OPENING_CARD_NODES) {
             showBusy(containerEl, 'Drawing ' + nodeCount.toLocaleString() + ' nodes',
                 'this can take a moment on a tree this size');
             _readyPromise = new Promise(function (resolve) {
@@ -5763,16 +5791,20 @@ function (root, d3, forester, phyloXml) {
                         resolve();
                         return;
                     }
+                    let start = performance.now();
                     try {
                         setupAndDraw();
                     } finally {
                         hideBusy();
                         resolve();
                     }
+                    timeRedraw(start, seq, 1 / 3);
                 });
             });
         } else {
+            let start = performance.now();
             setupAndDraw();
+            timeRedraw(start, seq, 1 / 3);
             _readyPromise = Promise.resolve();
         }
 
@@ -11482,6 +11514,25 @@ function (root, d3, forester, phyloXml) {
             });
         }
         setTimeout(go, 150);
+    }
+
+    // Record how long a redraw that began at `start` took, up to the frame
+    // that painted it: the second animation frame from here runs after that
+    // paint, whether the redraw ran in a frame or just after one. `share`
+    // scales the measurement (a first draw stands in for a redraw at a
+    // third, see launchInto). A hidden tab runs no frames, and the last
+    // estimate stands.
+    function timeRedraw(start, seq, share) {
+        if (typeof requestAnimationFrame !== 'function') {
+            return;
+        }
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                if (seq === _launchSeq) {
+                    _redrawMs = (performance.now() - start) * share;
+                }
+            });
+        });
     }
 
     function makeDialogShell(id, title, width) {
