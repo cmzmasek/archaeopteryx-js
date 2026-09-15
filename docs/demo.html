@@ -93,10 +93,17 @@
             left: 0;
             right: 0;
         }
+        /* No margin: an empty <pre> keeps its default 1em margin, and that
+           pushed the page 13px taller than the window -- a scroll, or a
+           trackpad flick, then slid the tree up over a white band. */
         #errbox {
             color: #a00;
+            margin: 0;
             padding: 10px;
             white-space: pre-wrap;
+        }
+        #errbox:empty {
+            display: none;
         }
     </style>
 </head>

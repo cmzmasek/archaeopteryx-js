@@ -16,6 +16,12 @@ consumers only see a change when a version is cut.
   Times. They now come out in Helvetica Bold. The domain legend's title also
   came out as spaced-out garbage there, because the built-in fonts cannot
   show "≤"; the PDF spells it "<=".
+- **A white band under the tree on a full-window page.** The tree's SVG was
+  laid out inline, on a text baseline, so a container sized to the window
+  came out a few pixels taller than the window, and the page could scroll
+  (a trackpad flick slid the tree up over the page background; on systems
+  with visible scrollbars one appeared). The SVG is now a block. The demo
+  page also dropped an empty error box's 13px margin that did the same.
 
 ## 3.6.0 — 2026-09-14
 

@@ -5724,6 +5724,11 @@ function (root, d3, forester, phyloXml) {
             _baseSvg = d3.select(containerEl).append('svg')
                 .attr('width', _displayWidth)
                 .attr('height', _displayHeight)
+                // an inline svg sits on a text baseline, and the room left
+                // under it for descenders makes a container sized to the
+                // svg a few pixels taller than the svg itself -- enough to
+                // make a full-window page scroll
+                .style('display', 'block')
                 .call(_zoomListener)
                 // d3.zoom binds its own double-click-to-zoom, which scales the
                 // picture -- fonts and all -- and so behaves like the wheel
