@@ -277,6 +277,7 @@ function (root, d3, forester, phyloXml) {
     const PANEL_STYLE_ID = 'aptx-panel-styles';
     // How wide a legend row is treated as, for grabbing it with the mouse.
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and leftPanelClearance() so the two can't drift
+    const PANEL_WIDTH_COMPACT = 196; // the same, at panelDensity 'compact'; panelWidth() picks between them
     const SLIDER_CLASS = 'aptx-slider';
     const SLIDER_STEP = 0.5;
     const SPECIATION_COLOR = '#009E73';
@@ -518,6 +519,9 @@ function (root, d3, forester, phyloXml) {
     let _treeIndex = 0;
     let _launchConfig = null;     // the config as launch() received it, for showTree()
     let _treeViews = null;        // tree object -> the view it was last left in (see viewForTree)
+    let _panelSections = null;    // panel section name -> true when folded; the user's furniture, remembered (see loadPanelSections)
+    let _panelOpenOrder = new Map();  // section name -> when it was opened, so the fit rule folds the oldest first
+    let _panelOpenSeq = 0;
     let _viewOps = {order: null, root: null};   // the tree operations a shared view replays: ladderize direction, midpoint rooting
     let _lastViewEncoded;                        // the view last reported to onViewChange; undefined = not settled yet
     let _viewNotifyPending = false;
@@ -4865,6 +4869,7 @@ function (root, d3, forester, phyloXml) {
         'nhExportWriteConfidences',
         'nodeLabels',
         'onViewChange',
+        'panelDensity',
         'pngExportScale',
         'rootOffset',
         'supportDotMinimum',
@@ -4940,8 +4945,14 @@ function (root, d3, forester, phyloXml) {
     // the visualizations legend need this, and neither may hard-code it: the
     // panel's own geometry is the only honest source, or the two drift apart --
     // which is exactly how the root ended up drawn behind the panel once.
+    // The panel's width for the density in force. The CSS and this function
+    // must agree, or the tree's left margin and the panel drift apart.
+    function panelWidth() {
+        return (_settings && _settings.panelDensity === 'compact') ? PANEL_WIDTH_COMPACT : PANEL_WIDTH;
+    }
+
     function leftPanelClearance() {
-        return CONTROLS_0_LEFT_DEFAULT + PANEL_WIDTH + ROOT_CLEARANCE;
+        return CONTROLS_0_LEFT_DEFAULT + panelWidth() + ROOT_CLEARANCE;
     }
 
     // The only validation initializeState() performs. Hoisted so launch() can
@@ -5283,6 +5294,11 @@ function (root, d3, forester, phyloXml) {
 
         if (_settings.collapseControlPanel === undefined) {
             _settings.collapseControlPanel = false;
+        }
+        if (_settings.panelDensity === undefined) {
+            _settings.panelDensity = 'comfortable';
+        } else if (_settings.panelDensity !== 'comfortable' && _settings.panelDensity !== 'compact') {
+            throw new Error(ERROR + '"panelDensity" must be "comfortable" or "compact"');
         }
         if (_settings.enableDynamicSizing === undefined) {
             _settings.enableDynamicSizing = true;
@@ -5633,6 +5649,12 @@ function (root, d3, forester, phyloXml) {
         }
         if (config && config.onViewChange !== undefined && config.onViewChange !== null && typeof config.onViewChange !== 'function') {
             throw new Error(ERROR + '"onViewChange" must be a function (state, encoded) or null');
+        }
+        // checked up here with the others so an embedder's typo fails at the
+        // call rather than three frames deep, and so Node can test it
+        if (config && config.panelDensity !== undefined
+            && config.panelDensity !== 'comfortable' && config.panelDensity !== 'compact') {
+            throw new Error(ERROR + '"panelDensity" must be "comfortable" or "compact"');
         }
         // a view names the tree it was made on; a fresh launch reports no
         // view until one changes (settleViewNotification)
@@ -7877,6 +7899,9 @@ function (root, d3, forester, phyloXml) {
         setValue(idx === 0 ? SEARCH_VALUE2_0 : SEARCH_VALUE2_1, want.value2 ? String(want.value2) : '');
         updateSearchValue2Visibility(idx);
         updateSearchAutocomplete(idx);
+        if (want.value) {
+            openPanelSection('Search');   // a view carrying a search shows it
+        }
         if (idx === 1 && want.value) {
             showSearchB();
         }
@@ -8199,6 +8224,7 @@ function (root, d3, forester, phyloXml) {
     }
 
     function focusSearch() {
+        openPanelSection('Search');   // jumping to a box inside a folded section has to open it
         let f = byId(SEARCH_FIELD_0);
         if (f) {
             f.focus();
@@ -8898,6 +8924,7 @@ function (root, d3, forester, phyloXml) {
     // Search B is folded away until wanted: the '+ Search B' link (which
     // focuses it) or a view that carries a second search.
     function showSearchB() {
+        openPanelSection('Search');
         let wrap = byId(SEARCH_B_WRAP);
         if (wrap) {
             wrap.style.display = '';
@@ -9759,6 +9786,7 @@ function (root, d3, forester, phyloXml) {
     // found nodes: A's colour, the hit count, the step-through. The next
     // search replaces them, and resetting search A clears them.
     function showRepresentativesAsHits(result) {
+        openPanelSection('Search');   // the tips kept are search A's hits: its navigator has to be visible
         _foundNodes0 = new Set(result.keptTips);
         _searchBox0Empty = false;
         _searchHitIndex = -1;
@@ -10876,6 +10904,119 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
+    // ============ the panel's sections: what is open, and what fits ========
+    // Three rules, deliberately separate, for hosts with little room to give
+    // (BV-BRC embeds the viewer in a page that already has its own chrome):
+    //
+    //  - DEFAULTS. A tree arrives with the sections that DESCRIBE it open --
+    //    what it can be coloured by, what it shows -- and the ones that are
+    //    adjustments for later folded: zoom, sizes, search, domain controls.
+    //    Measured on the 13-property BV-BRC demo: 766px of panel becomes
+    //    about 430px, which fits a 700px window with nothing behind a scroll.
+    //  - MEMORY. What the user opens and closes is theirs, and it outlives
+    //    the tree: kept for the page and in localStorage, like the light/dark
+    //    choice. It is NOT part of a tree's view -- the panel is the user's
+    //    furniture, not a property of the tree -- which is why it is not in
+    //    getViewState, and why a tree switch no longer reopens everything.
+    //  - FIT. Opening a section in a short window folds the section opened
+    //    longest ago, and ONLY while the panel would not otherwise fit. On a
+    //    tall screen it never fires. It is bounded by PIXELS, not by a count
+    //    of open sections: three open sections measure anywhere from 215px to
+    //    562px, so a count would not have bounded the height at all.
+    const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Search', 'Domain Architectures'];
+
+    function loadPanelSections() {
+        if (_panelSections) {
+            return _panelSections;
+        }
+        _panelSections = {};
+        try {
+            let saved = JSON.parse(localStorage.getItem(PANEL_SECTIONS_KEY));
+            if (saved && typeof saved === 'object') {
+                Object.keys(saved).forEach(function (k) {
+                    if (typeof saved[k] === 'boolean') {
+                        _panelSections[k] = saved[k];
+                    }
+                });
+            }
+        } catch {
+            // no storage (private mode), or junk written by something else:
+            // the defaults are a complete answer on their own
+        }
+        return _panelSections;
+    }
+
+    function savePanelSections() {
+        try {
+            localStorage.setItem(PANEL_SECTIONS_KEY, JSON.stringify(_panelSections || {}));
+        } catch {
+            // the choice just won't survive a reload
+        }
+    }
+
+    // Every collapsible section of a panel, in the order they are drawn.
+    function panelSections(panel) {
+        let out = [];
+        panel.querySelectorAll('fieldset').forEach(function (f) {
+            let lg = f.querySelector(':scope > legend.aptx-legend-toggle');
+            if (lg) {
+                out.push({name: lg.textContent.trim(), fieldset: f});
+            }
+        });
+        return out;
+    }
+
+    function sectionFoldedInitially(name) {
+        let remembered = loadPanelSections()[name];
+        return (typeof remembered === 'boolean')
+            ? remembered : PANEL_SECTIONS_CLOSED_BY_DEFAULT.indexOf(name) >= 0;
+    }
+
+    // By how many pixels the panel's body overflows the room it has.
+    function panelOverflow(panel) {
+        let body = panel.querySelector(':scope > .aptx-body');
+        return body ? (body.scrollHeight - body.clientHeight) : 0;
+    }
+
+    // Keeps the panel to one screen: while it overflows, fold the section
+    // opened longest ago. Never the one just opened -- that is the one the
+    // user asked for -- and never the last one standing.
+    function fitPanelSections(panel, justOpened) {
+        let guard = 0;
+        while (panelOverflow(panel) > 0 && ++guard < 20) {
+            let open = panelSections(panel).filter(function (s) {
+                return !s.fieldset.classList.contains('aptx-collapsed') && s.name !== justOpened;
+            });
+            if (open.length === 0) {
+                return;
+            }
+            open.sort(function (a, b) {
+                return (_panelOpenOrder.get(a.name) || 0) - (_panelOpenOrder.get(b.name) || 0);
+            });
+            open[0].fieldset.classList.add('aptx-collapsed');
+            loadPanelSections()[open[0].name] = true;
+        }
+    }
+
+    // Unfolds a section because something the user just did has to be SEEN
+    // inside it: the search box they jumped to, the hits a tool marked.
+    function openPanelSection(name) {
+        let panel = _container && _container.querySelector(':scope > .aptx-panel');
+        if (!panel) {
+            return;
+        }
+        panelSections(panel).forEach(function (s) {
+            if (s.name === name && s.fieldset.classList.contains('aptx-collapsed')) {
+                s.fieldset.classList.remove('aptx-collapsed');
+                loadPanelSections()[name] = false;
+                _panelOpenOrder.set(name, ++_panelOpenSeq);
+                savePanelSections();
+                fitPanelSections(panel, name);
+            }
+        });
+    }
+
     // ===================== Control-panel glyphs =====================
     // Vector glyphs ported from the desktop Archaeopteryx control panel (its
     // DisplayTypeIcon / ControlButtonIcon / LayoutIcon / ThemeToggleIcon /
@@ -11578,7 +11719,28 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-hide-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:15px; line-height:1; }'
             + '.aptx-panel .aptx-hide-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
             + '.aptx-panel.aptx-hidden > .aptx-body { display:none; }'
-            + '.aptx-panel.aptx-hidden > .' + PROG_NAME + ' { border-bottom:0; }';
+            + '.aptx-panel.aptx-hidden > .' + PROG_NAME + ' { border-bottom:0; }'
+            // --- compact density (the panelDensity config key) ---------------
+            // Nothing is removed and nothing is hidden: the same controls,
+            // tighter, for a host with little room to give. The width lives
+            // here as well, and panelWidth() returns the same number so the
+            // tree's left margin follows it (leftPanelClearance).
+            + '.aptx-panel.aptx-compact { width:' + PANEL_WIDTH_COMPACT + 'px; font-size:10.5px; }'
+            + '.aptx-panel.aptx-compact fieldset { padding:4px 9px; }'
+            + '.aptx-panel.aptx-compact legend { margin:0 0 3px; }'
+            + '.aptx-panel.aptx-compact .' + PROG_NAME + ' { padding:6px 9px; }'
+            // the title is a fixed 12px, which wrapped onto a second line once
+            // the panel narrowed: it comes down with everything else
+            + '.aptx-panel.aptx-compact .' + PROGNAMELINK + ' { font-size:10.5px; }'
+            + '.aptx-panel.aptx-compact .aptx-checkgrid { gap:2px 8px; }'
+            + '.aptx-panel.aptx-compact .aptx-field-label { margin:5px 0 2px; }'
+            + '.aptx-panel.aptx-compact .aptx-subhead { margin:4px 0 2px; }'
+            + '.aptx-panel.aptx-compact input[type=range] { margin:1px 0 6px; }'
+            + '.aptx-panel.aptx-compact .aptx-slider-row { margin:2px 0; }'
+            + '.aptx-panel.aptx-compact input[type=button], .aptx-panel.aptx-compact .aptx-gbtn { height:22px; margin:1px 2px 1px 0; }'
+            + '.aptx-panel.aptx-compact .aptx-search-row input[type=text], .aptx-panel.aptx-compact .aptx-search-row input[type=button] { height:24px; }'
+            + '.aptx-panel.aptx-compact .aptx-search-menus select { height:22px; }'
+            + '.aptx-panel.aptx-compact .aptx-toolrow { margin-top:3px; }';
         let style = document.createElement('style');
         style.id = PANEL_STYLE_ID;
         style.textContent = css;
@@ -11684,10 +11846,26 @@ function (root, d3, forester, phyloXml) {
             }
             fieldset.appendChild(fsBody);
             legend.classList.add('aptx-legend-toggle');
+            let name = legend.textContent.trim();
+            if (sectionFoldedInitially(name)) {
+                fieldset.classList.add('aptx-collapsed');
+            } else {
+                _panelOpenOrder.set(name, ++_panelOpenSeq);
+            }
             legend.addEventListener('click', function () {
-                fieldset.classList.toggle('aptx-collapsed');
+                let opened = !fieldset.classList.toggle('aptx-collapsed');
+                loadPanelSections()[name] = !opened;
+                if (opened) {
+                    _panelOpenOrder.set(name, ++_panelOpenSeq);
+                    fitPanelSections(panel, name);
+                }
+                savePanelSections();
             });
         }
+        // A remembered set of open sections can be taller than this window,
+        // so the fit rule runs once on arrival too -- with no section to
+        // spare, since the user opened none of them just now.
+        fitPanelSections(panel, null);
 
         // Apply the current light/dark choice to this (and every) panel.
         applyPanelTheme();
@@ -12354,6 +12532,9 @@ function (root, d3, forester, phyloXml) {
 
         if (c0) {
             c0.classList.add('aptx-panel');
+            if (_settings.panelDensity === 'compact') {
+                c0.classList.add('aptx-compact');
+            }
             setStyles(c0, {
                 'position': 'absolute',
                 'left': CONTROLS_0_LEFT_DEFAULT,

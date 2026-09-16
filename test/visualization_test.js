@@ -2569,6 +2569,33 @@ function testViewConfigKeys() {
     return true;
 }
 
+// panelDensity is checked at the call like the view keys, so an embedder's
+// typo fails where they can see it: a bad value is refused BY NAME, and both
+// good ones reach the container check as any launch does here.
+function testPanelDensityConfig() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = {children: [{}]};
+    function thrown(fn) {
+        try { fn(); return null; } catch (e) { return e.message || String(e); }
+    }
+    var m = thrown(function () { aptx.launch('#x', tree, {panelDensity: 'tiny'}); });
+    if (!m || m.indexOf('"panelDensity"') < 0) {
+        console.log('    a bad density: ' + m);
+        return false;
+    }
+    var plain = thrown(function () { aptx.launch('#x', tree, {}); });
+    var compact = thrown(function () { aptx.launch('#x', tree, {panelDensity: 'compact'}); });
+    var roomy = thrown(function () { aptx.launch('#x', tree, {panelDensity: 'comfortable'}); });
+    if (plain === null || plain !== compact || plain !== roomy) {
+        console.log('    plain: ' + plain + ' / compact: ' + compact + ' / comfortable: ' + roomy);
+        return false;
+    }
+    return true;
+}
+
 console.log("\naudit regressions\n");
 
 runTest("audit: Infinity dates      : ", testAuditInfinityDates);
@@ -2596,6 +2623,7 @@ runTest("parseTrees: every tree     : ", testParseTrees);
 runTest("launch: a list of trees    : ", testLaunchTreeList);
 runTest("view state <-> hash string : ", testViewStateCodec);
 runTest("view config keys           : ", testViewConfigKeys);
+runTest("panelDensity config key    : ", testPanelDensityConfig);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 runTest("versions agree           : ", testVersionsAgree);
 

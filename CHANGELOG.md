@@ -25,6 +25,28 @@ consumers only see a change when a version is cut.
   - Zoom, pan, the legend's position and the node selection stay outside a
     view, as before; the views last for the life of the page, and the URL
     hash still carries the tree on screen.
+- **A more compact control panel**, for hosts with little screen to spare.
+  - **Sections that are adjustments arrive folded** — Zoom, Sizes, Search and
+    the domain controls — while the ones that describe the tree stay open. On
+    the 13-property demo that takes the panel from 766px of content to about
+    430px, which fits a 700px window with nothing behind a scroll.
+  - **What you open and close is remembered**, for the page and across
+    reloads. It used to be thrown away on every tree switch.
+  - **The panel keeps itself to one screen**: opening a section in a short
+    window folds the section opened longest ago, and only while the panel
+    would not otherwise fit. On a tall screen it never fires. The rule is
+    bounded by pixels, not by a count of open sections — three open sections
+    measure anywhere from 215px to 562px.
+  - Jumping to the search box (⌘F / Ctrl+F), revealing Search B, opening a
+    view that carries a search, and the representative-tips result all unfold
+    the Search section, so what they produce is visible.
+
+### Added
+
+- **`panelDensity`** config key. `'compact'` tightens the control panel's
+  spacing and narrows it from 214 to 196px, with the tree's left margin
+  following it. The same controls, nothing hidden. Default `'comfortable'`;
+  a bad value is refused by name at the call.
 
 ## 3.7.0 — 2026-09-15
 

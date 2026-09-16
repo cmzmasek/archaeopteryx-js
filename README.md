@@ -879,6 +879,21 @@ is always a fixed amount wider than the branch itself, so it tracks the
 Branch Width slider instead of sitting at one fixed size. A branch drawn
 shorter than the dot itself stays clean.
 
+The **control panel itself** follows the same idea. It opens showing the
+sections that describe the tree — what it can be coloured by, what it shows —
+and folds the ones that are adjustments to make later: Zoom, Sizes, Search and
+the domain controls. Whatever you open or close is then remembered, for the
+page and across reloads, so a panel you have arranged stays arranged, even
+when you switch to another tree. In a short window it also keeps itself to one
+screen: opening a section folds the one you opened longest ago, but only while
+the panel would not otherwise fit — on a tall screen nothing is ever folded for
+you. Anything that puts something into a folded section opens it, so jumping to
+the search box (⌘F / Ctrl+F), revealing Search B, or a tool reporting its
+result as search hits all unfold Search. A host with little room to give can
+also start the whole panel tighter and narrower with
+[`panelDensity: 'compact'`](#configuration), or collapsed to its header bar
+with `collapseControlPanel`.
+
 ## Configuration
 
 One object, passed as the third argument. It is optional, and the best
@@ -903,6 +918,7 @@ copy-pastable JSON.
 | Key | Default | What it does |
 | --- | --- | --- |
 | `collapseControlPanel` | `false` | Open with the control panel collapsed to just its header bar — the same state its own hide/show button toggles. |
+| `panelDensity` | `'comfortable'` | `'compact'` tightens the control panel's spacing and narrows it from 214 to 196px, with the tree's left margin following. The same controls, nothing hidden — for a host page that has little room to give. |
 | `enableDynamicSizing` | `true` | Size the tree to its container, and follow window resizes. |
 | `displayWidth` | `800` | Width — only when dynamic sizing is off. |
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |

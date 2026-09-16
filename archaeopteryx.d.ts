@@ -76,6 +76,9 @@ export interface ArchaeopteryxConfig {
     /** Called once per settled redraw when the view changed: the state as
      * getViewState() returns it, and its hash-ready string. */
     onViewChange?: ((state: ViewState, encoded: string) => void) | null;
+    /** 'compact' tightens the control panel's spacing and narrows it (the
+     * tree's left margin follows). The same controls, nothing hidden. */
+    panelDensity?: 'comfortable' | 'compact';
     pngExportScale?: number;
     rootOffset?: number;
     searchAinitialValue?: string | null;
