@@ -10909,10 +10909,11 @@ function (root, d3, forester, phyloXml) {
     // (BV-BRC embeds the viewer in a page that already has its own chrome):
     //
     //  - DEFAULTS. A tree arrives with the sections that DESCRIBE it open --
-    //    what it can be coloured by, what it shows -- and the ones that are
-    //    adjustments for later folded: zoom, sizes, search, domain controls.
-    //    Measured on the 13-property BV-BRC demo: 766px of panel becomes
-    //    about 430px, which fits a 700px window with nothing behind a scroll.
+    //    what it can be coloured by, what it shows -- plus Search, which is
+    //    reached for constantly (Christian, 2026-09-16). Folded are the ones
+    //    that are adjustments for later: zoom, sizes, the domain controls.
+    //    Measured on the 13-property BV-BRC demo in a 700px window: 766px of
+    //    panel content becomes 621px, with nothing behind a scroll.
     //  - MEMORY. What the user opens and closes is theirs, and it outlives
     //    the tree: kept for the page and in localStorage, like the light/dark
     //    choice. It is NOT part of a tree's view -- the panel is the user's
@@ -10924,7 +10925,7 @@ function (root, d3, forester, phyloXml) {
     //    of open sections: three open sections measure anywhere from 215px to
     //    562px, so a count would not have bounded the height at all.
     const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
-    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Search', 'Domain Architectures'];
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Domain Architectures'];
 
     function loadPanelSections() {
         if (_panelSections) {
@@ -11829,6 +11830,7 @@ function (root, d3, forester, phyloXml) {
         // Collapsible sections: wrap each titled fieldset's content in a body
         // element (so collapsing hides everything under the legend, including
         // bare text labels like the slider captions) and toggle it via the legend.
+        let initiallyOpen = [];
         let fieldsets = body.querySelectorAll('fieldset');
         for (let i = 0; i < fieldsets.length; ++i) {
             let fieldset = fieldsets[i];
@@ -11850,7 +11852,7 @@ function (root, d3, forester, phyloXml) {
             if (sectionFoldedInitially(name)) {
                 fieldset.classList.add('aptx-collapsed');
             } else {
-                _panelOpenOrder.set(name, ++_panelOpenSeq);
+                initiallyOpen.push(name);
             }
             legend.addEventListener('click', function () {
                 let opened = !fieldset.classList.toggle('aptx-collapsed');
@@ -11861,6 +11863,14 @@ function (root, d3, forester, phyloXml) {
                 }
                 savePanelSections();
             });
+        }
+        // What arrived open counts as opened, oldest at the BOTTOM: a panel is
+        // read top-down, so when a short window forces something to fold on
+        // arrival it should be the last section rather than the one describing
+        // the tree at the top. Anything the user opens later is newer than all
+        // of these, and folds after them.
+        for (let i = initiallyOpen.length - 1; i >= 0; --i) {
+            _panelOpenOrder.set(initiallyOpen[i], ++_panelOpenSeq);
         }
         // A remembered set of open sections can be taller than this window,
         // so the fit rule runs once on arrival too -- with no section to

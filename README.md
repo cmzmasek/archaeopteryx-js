@@ -881,8 +881,8 @@ shorter than the dot itself stays clean.
 
 The **control panel itself** follows the same idea. It opens showing the
 sections that describe the tree — what it can be coloured by, what it shows —
-and folds the ones that are adjustments to make later: Zoom, Sizes, Search and
-the domain controls. Whatever you open or close is then remembered, for the
+plus Search, and folds the ones that are adjustments to make later: Zoom,
+Sizes and the domain controls. Whatever you open or close is then remembered, for the
 page and across reloads, so a panel you have arranged stays arranged, even
 when you switch to another tree. In a short window it also keeps itself to one
 screen: opening a section folds the one you opened longest ago, but only while

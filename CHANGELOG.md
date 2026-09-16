@@ -26,10 +26,10 @@ consumers only see a change when a version is cut.
     view, as before; the views last for the life of the page, and the URL
     hash still carries the tree on screen.
 - **A more compact control panel**, for hosts with little screen to spare.
-  - **Sections that are adjustments arrive folded** — Zoom, Sizes, Search and
-    the domain controls — while the ones that describe the tree stay open. On
-    the 13-property demo that takes the panel from 766px of content to about
-    430px, which fits a 700px window with nothing behind a scroll.
+  - **Sections that are adjustments arrive folded** — Zoom, Sizes and the
+    domain controls — while the ones that describe the tree stay open, as
+    does Search. On the 13-property demo that takes the panel from 766px of
+    content to 621px, fitting a 700px window with nothing behind a scroll.
   - **What you open and close is remembered**, for the page and across
     reloads. It used to be thrown away on every tree switch.
   - **The panel keeps itself to one screen**: opening a section in a short
