@@ -343,8 +343,9 @@ so more tips than the target may stay.
 
 The tips kept show as search A's hits, with its colour, hit count and
 step-through, and a summary offers **Create tree**: a tree of only those tips,
-added to the tree picker and opened drawn as the tree was (phylogram, aligned
-or cladogram). It is named after the tree and the count, as in
+added to the tree picker and opened drawn as the tree was — the same layout
+and display type (phylogram, aligned or cladogram). It is named after the
+tree and the count, as in
 `mammals_233reps`, and its description says how it was made. An internal node
 left with one child is replaced by that child, whose branch gains the node's
 length; the new root keeps the original root's own branch length. The original
@@ -459,6 +460,12 @@ the recipient opens the same tree in the same view. Opening your own file
 keeps the view in the hash too, so the same file reopened at that address
 comes back as you left it. Zoom, pan, the legend's position and the node
 selection are not part of a view; a shared view opens fitted.
+
+In a file holding **several trees** each tree keeps its own view, so moving
+between them with the picker brings each tree back as you had it (see
+**Reading trees** below). The hash holds the view of the tree on screen, so
+a link opens that tree the way it looks; the other trees' views last as long
+as the page does.
 
 Embedders get the same four pieces: the handle's `getViewState()` and
 `applyViewState(state)`, the config's `view` (open straight into one) and
@@ -734,8 +741,15 @@ a name ending in `xml` as phyloXML, anything else as New Hampshire (Newick).
 A file holding **several trees** — a Nexus TREES block, a Newick file with one
 tree per `;`, a phyloXML with several phylogenies — opens on the first, and a
 picker with previous / next buttons at the top of the control panel moves
-between them; each tree opens fresh under the same config, nothing collapsed, the way a new tab
-does on the desktop. A protein/DNA/RNA characters matrix in a Nexus file
+between them (also ⌘⇧< / ⌘⇧>). **Each tree is its own workspace:** you leave
+a tree as you had it — layout, display type, labels, colours, sizes, tracks,
+both searches, the clade you switched to and the ones you collapsed — and it
+comes back that way. A tree you have not opened yet starts on its own
+presets, read from its own content, in the layout and sizes you are already
+using: stepping through ten trees of one file keeps them all circular, while
+each still labels and colours itself its own way. Zoom and pan are not kept
+(a tree opens fitted), and the views last as long as the page.
+A protein/DNA/RNA characters matrix in a Nexus file
 (sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
 alignment track appears just as it does for phyloXML.
 

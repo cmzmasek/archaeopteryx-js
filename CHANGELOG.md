@@ -6,6 +6,26 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Changed
+
+- **Every tree of a multi-tree file keeps its own view.** A Nexus TREES
+  block, a multi-tree Newick or a phyloXML holding several phylogenies now
+  gives each tree its own workspace: leaving a tree remembers its layout,
+  display type, labels, colours, sizes, tracks, both searches, the clade
+  you switched to and the clades you collapsed, and coming back restores
+  them. Every switch used to open the tree fresh.
+  - A tree **not opened yet** inherits only the geometry — layout, display
+    type, font, node and branch sizes, rotation — so stepping through the
+    trees of one file keeps them all circular, while what each tree shows
+    and colours by is still read from that tree's own content.
+  - The tree **Create tree** makes from representative tips opens the same
+    way, so it now follows the layout as well as the display type.
+  - Zoom, pan, the legend's position and the node selection stay outside a
+    view, as before; the views last for the life of the page, and the URL
+    hash still carries the tree on screen.
+
 ## 3.7.0 — 2026-09-15
 
 One new tool, ported from the desktop Archaeopteryx: representative tips,

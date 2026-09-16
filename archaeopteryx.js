@@ -517,6 +517,7 @@ function (root, d3, forester, phyloXml) {
     let _trees = [];              // every tree of the launch (one, or all a file held); _treeData is _trees[_treeIndex]
     let _treeIndex = 0;
     let _launchConfig = null;     // the config as launch() received it, for showTree()
+    let _treeViews = null;        // tree object -> the view it was last left in (see viewForTree)
     let _viewOps = {order: null, root: null};   // the tree operations a shared view replays: ladderize direction, midpoint rooting
     let _lastViewEncoded;                        // the view last reported to onViewChange; undefined = not settled yet
     let _viewNotifyPending = false;
@@ -5549,6 +5550,7 @@ function (root, d3, forester, phyloXml) {
         _trees = [];
         _treeIndex = 0;
         _launchConfig = null;
+        _treeViews = null;
         _lastViewEncoded = undefined;
         _viewOps = {order: null, root: null};
         _basicTreeProperties = null;
@@ -5635,6 +5637,9 @@ function (root, d3, forester, phyloXml) {
         // a view names the tree it was made on; a fresh launch reports no
         // view until one changes (settleViewNotification)
         _lastViewEncoded = undefined;
+        // each tree's own view is remembered for the life of this launch,
+        // and only for it: a new launch starts everything fresh
+        _treeViews = new Map();
         let view = config && config.view;
         let start = (view && Number.isInteger(view.tree) && view.tree > 0 && view.tree < trees.length) ? view.tree : 0;
         return launchInto(container, trees, start, config);
@@ -5818,10 +5823,91 @@ function (root, d3, forester, phyloXml) {
         return makeViewerHandle();
     }
 
+    // ================= each tree keeps its own view =====================
+    // In a file holding several trees, every tree is its own workspace: you
+    // leave one as you had it -- layout, display type, labels, colours,
+    // sizes, tracks, both searches, the clade you switched to and the ones
+    // you collapsed -- and it comes back that way (Christian, 2026-09-16).
+    // This replaces "every tree opens fresh", and with it the rule that a
+    // switch cleared collapsing (Christian, 2026-09-14, made when a switch
+    // discarded everything else too).
+    //
+    // The memory IS the view state, so a remembered tree opens down exactly
+    // the path a shared link opens: launchInto with cfg.view. Nothing here
+    // knows about layouts or checkboxes; whatever getViewState covers is
+    // remembered, and what it leaves out (zoom and pan, the legend's
+    // position, the selection) stays out here too.
+    //
+    // A tree you have NOT opened yet is not handed the whole view -- what a
+    // tree shows and colours by is read from its own content, and imposing
+    // another tree's answer would waste that. It inherits the geometry
+    // alone: the settings that say nothing about what is in the tree. So
+    // stepping through ten trees of one file in the circular layout keeps
+    // the circular layout, while each tree still labels itself its own way.
+    const VIEW_CARRY_KEYS = ['layout', 'display', 'font', 'node', 'branch', 'rotation', 'horizontalLabels'];
+
+    // The tree on screen, as it stands, filed under the tree OBJECT: indices
+    // shift when a tree is appended (representative tips), objects do not.
+    // The `tree` key goes: it names the index this view came from, and
+    // applying it back would read as a switch to itself.
+    function rememberTreeView() {
+        if (!_treeViews || !_trees[_treeIndex] || !_root_const) {
+            return;
+        }
+        let state = getViewState();
+        delete state.tree;
+        _treeViews.set(_trees[_treeIndex], state);
+    }
+
+    // What to open a tree with: the view it was left in, or -- a tree not
+    // opened yet -- the current tree's geometry alone.
+    function viewForTree(tree) {
+        let remembered = _treeViews && _treeViews.get(tree);
+        if (remembered) {
+            return remembered;
+        }
+        let current = _root_const ? getViewState() : {};
+        let carried = {};
+        VIEW_CARRY_KEYS.forEach(function (k) {
+            if (current[k] !== undefined) {
+                carried[k] = current[k];
+            }
+        });
+        return carried;
+    }
+
+    // The one way from one tree of the list to another: the tree being left
+    // is remembered first, and the launch config's own view (a shared link's)
+    // never leaks onto the next tree -- _launchConfig is put back afterwards,
+    // so every later switch still opens each tree its own way. `view` is for
+    // a caller that already has one (a hash naming another tree).
+    function switchToTree(index, view) {
+        rememberTreeView();
+        // The tree being left goes back to the way it was PARSED: its collapsed
+        // clades live in the view just recorded, not on its nodes. Leaving the
+        // flags on the object would change the COLOURS it comes back with --
+        // the palette is dealt once per launch, over the values summarizeView
+        // can see, and a tree whose nodes still carried collapse would deal it
+        // over the reduced set and hand every value a different colour. A
+        // shared link into a collapsed view never does that: it opens a freshly
+        // parsed tree, deals over all of it, and collapses afterwards. A tree
+        // coming back must not either. (Measured on the flavivirus demo: the
+        // legend came back re-coloured until this line went in.)
+        if (_trees[_treeIndex]) {
+            clearCollapsedFlags(_trees[_treeIndex]);
+        }
+        let launchConfig = _launchConfig;
+        let cfg = Object.assign({}, launchConfig || {});
+        cfg.view = view || viewForTree(_trees[index]);
+        let handle = launchInto(_container, _trees, index, cfg);
+        _launchConfig = launchConfig;
+        return handle;
+    }
+
     // Shows another tree of the launched list in the same container under
-    // the same config. The tree opens fresh -- its own presets, a clean
-    // view -- the way a new tab does on the desktop. The panel's picker and
-    // previous / next buttons come here, as does the handle's showTree().
+    // the same config: as you left it, or -- never opened -- on its own
+    // presets in the current geometry. The panel's picker and previous /
+    // next buttons come here, as does the handle's showTree().
     function showTree(index) {
         if (!_container) {
             throw new Error(ERROR + 'showTree(): nothing is launched');
@@ -5832,11 +5918,11 @@ function (root, d3, forester, phyloXml) {
         if (index === _treeIndex) {
             return makeViewerHandle();
         }
-        // collapsing is part of the view, and a switched-to tree opens fresh:
-        // nothing collapsed, now or when you come back (Christian, 2026-09-14)
-        clearCollapsedFlags(_trees[_treeIndex]);
-        clearCollapsedFlags(_trees[index]);
-        return launchInto(_container, _trees, index, _launchConfig);
+        // Neither tree's collapsed flags are carried on the nodes: the tree
+        // being left has them recorded in its view and then cleared
+        // (switchToTree), and the one arriving has applyViewState clear and
+        // re-apply its own -- a view is always passed, so that always runs.
+        return switchToTree(index, null);
     }
 
     archaeopteryx.parsePhyloXML = function (data) {
@@ -7639,9 +7725,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         if (!initial && Number.isInteger(s.tree) && s.tree !== _treeIndex && s.tree >= 0 && s.tree < _trees.length) {
-            let cfg = Object.assign({}, _launchConfig || {});
-            cfg.view = s;
-            launchInto(_container, _trees, s.tree, cfg);
+            switchToTree(s.tree, s);   // the view given names another tree: it wins over what that tree remembers
             return;
         }
         if ((s.root === 'midpoint' || s.root === 'mad') && _viewOps.root !== s.root
@@ -9722,14 +9806,12 @@ function (root, d3, forester, phyloXml) {
             forester.stripShortExtension(parentName), result.tipCount);
         copy.description = copy.description ? copy.description + ' ' + provenance : provenance;
 
-        let display = _state.phylogram ? (_state.alignPhylogram ? 'aligned' : 'phylogram') : 'cladogram';
-        clearCollapsedFlags(_trees[_treeIndex]);
         _trees.push(copy);
-        let launchConfig = _launchConfig;
-        let cfg = Object.assign({}, launchConfig || {});
-        cfg.view = {display: display};
-        launchInto(_container, _trees, _trees.length - 1, cfg);
-        _launchConfig = launchConfig;   // later switches open each tree its own way
+        // a tree nobody has opened: switchToTree gives it this tree's
+        // geometry, which is what "drawn as the tree was" amounts to --
+        // the display type (phylogram, aligned or cladogram) and the
+        // layout. The tree it came from is remembered as it stands.
+        switchToTree(_trees.length - 1, null);
     }
 
     function escPressed() {
@@ -12746,9 +12828,9 @@ function (root, d3, forester, phyloXml) {
 
         // A file with several trees: previous / picker / next in one row,
         // the picker listing every tree by its name (or its number). Each
-        // opens fresh in the same container (showTree). The end buttons are
-        // disabled at the ends: the panel is rebuilt per tree, so the
-        // state set here is always current.
+        // opens in the same container as you left it (showTree). The end
+        // buttons are disabled at the ends: the panel is rebuilt per tree,
+        // so the state set here is always current.
         function makeTreePicker() {
             let n = _trees.length;
             let row = document.createElement('div');

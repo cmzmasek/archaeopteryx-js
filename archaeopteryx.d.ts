@@ -158,7 +158,9 @@ export interface ViewerHandle {
     /** Which of them is shown (0-based). */
     getTreeIndex(): number;
     /** Shows another tree of the launch in the same container under the
-     * same config; it opens fresh. Returns the handle for the new viewer. */
+     * same config: as you left it, or -- a tree not opened yet -- on its own
+     * presets in the current layout and sizes. Returns the handle for the
+     * new viewer. */
     showTree(index: number): ViewerHandle;
     /** The view as the panel left it (see ViewState). */
     getViewState(): ViewState;
