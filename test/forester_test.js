@@ -3455,6 +3455,36 @@ function testTaxlabelColours() {
         console.log("    a refused TAXLABELS colour: " + rp);
         return false;
     }
+    // ... but by the key ONLY when it names exactly one taxlabel. Two labels
+    // that differ in case alone share a key: the unannotated one must not take
+    // its neighbour's colour (it did), two annotated ones keep their own, and
+    // a tip that matches both by key alone is ambiguous and gets none.
+    function coloursOf(taxa, newick) {
+        var tr = forester.parseNexus("#NEXUS\nbegin taxa;\n\ttaxlabels\n" + taxa + "\n;\nend;\nbegin trees;\n\ttree t = "
+            + newick + ";\nend;\n")[0];
+        var o = [];
+        forester.preOrderTraversalAll(tr, function (n) {
+            if (!n.children && n.name) {
+                o.push(n.name + "=" + (fontColour(n) || "none").split("/")[0]);
+            }
+        });
+        return o.sort().join(" ");
+    }
+    var collisions = [
+        ["\tTaxon_A[&!color=#-65536]\n\ttaxon_a", "(Taxon_A:1,taxon_a:1)", "Taxon_A=#ff0000 taxon_a=none"],
+        ["\tTaxon_A[&!color=#ff0000]\n\ttaxon_a[&!color=#0000ff]", "(Taxon_A:1,taxon_a:1)", "Taxon_A=#ff0000 taxon_a=#0000ff"],
+        ["\tTaxon_A[&!color=#ff0000]\n\ttaxon_a[&!color=#0000ff]", "('Taxon a':1,X:1)", "Taxon a=none X=none"],
+        // a quoted label holding a bracket, and an annotation holding spaces:
+        // the taxa stay three, so numbered tips land on the right names
+        ["\t'A'[&!color=#ff0000,note=\"x y  z\"] 'B[1' C", "((1:1,2:1):1,3:1)", "A=#ff0000 B[1=none C=none"]
+    ];
+    for (var ci = 0; ci < collisions.length; ++ci) {
+        if (coloursOf(collisions[ci][0], collisions[ci][1]) !== collisions[ci][2]) {
+            console.log("    " + collisions[ci][1] + " -> " + coloursOf(collisions[ci][0], collisions[ci][1])
+                + ", expected " + collisions[ci][2]);
+            return false;
+        }
+    }
     // ONE TREE, ONE NAMESPACE. The refused colour is hung on its tip after the
     // tree string has been parsed -- and renamed, if it is TreeTime's -- so it
     // used to stay beast: beside treetime:mutations. (The desktop found this on

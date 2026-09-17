@@ -4249,6 +4249,7 @@
         let taxlabelColorsByKey = Object.create(null);   // the same, under the Nexus join key
         let taxlabelRefused = Object.create(null);   // label -> a !color value we could not read, kept as text
         let taxlabelRefusedByKey = Object.create(null);
+        let taxlabelKeyCount = Object.create(null);   // join key -> how many taxlabels share it, annotated or not
         // null-prototype maps: a taxon named "__proto__" must stay data
         let translateMap = Object.create(null);
         let seqs = Object.create(null);
@@ -4453,11 +4454,18 @@
                 // property, which is what Visual Styles already draws and what
                 // phyloXML already carries, so nothing downstream is new.
                 // The taxon is found by its exact name, else by the Nexus join
-                // key (case-insensitive, '_' for ' ') -- the way a matrix row
-                // already finds its tip, and the way the desktop does it.
+                // key (case-insensitive, '_' for ' ') -- but by the key ONLY
+                // when it names exactly ONE taxlabel, counting every taxlabel,
+                // annotated or not. Without that, Taxon_A[&!color=red] beside a
+                // plain taxon_a coloured BOTH tips: taxon_a has no annotation
+                // of its own, so it fell through to a key it shares. And a tip
+                // matching two labels by key alone is ambiguous: no colour,
+                // rather than whichever was written last. (Found by a review on
+                // the desktop, which had the same fallback; its rule.)
+                let loneKey = !!node.name && taxlabelKeyCount[joinKey(node.name)] === 1;
                 let labelColor = !node.name ? undefined
                     : (taxlabelColors[node.name] !== undefined ? taxlabelColors[node.name]
-                        : taxlabelColorsByKey[joinKey(node.name)]);
+                        : (loneKey ? taxlabelColorsByKey[joinKey(node.name)] : undefined));
                 if (labelColor !== undefined) {
                     if (!node.properties) {
                         node.properties = [];
@@ -4467,7 +4475,7 @@
                 }
                 let refusedColor = !node.name ? undefined
                     : (taxlabelRefused[node.name] !== undefined ? taxlabelRefused[node.name]
-                        : taxlabelRefusedByKey[joinKey(node.name)]);
+                        : (loneKey ? taxlabelRefusedByKey[joinKey(node.name)] : undefined));
                 if (refusedColor !== undefined) {
                     if (annotationNs === null) {
                         annotationNs = annotationPrefix(phy);   // once per tree, and only if needed
@@ -4596,6 +4604,7 @@
                     let push = function () {
                         if (tok.length > 0 && tok.toLowerCase() !== 'taxlabels') {
                             taxlabels.push(tok);
+                            taxlabelKeyCount[joinKey(tok)] = (taxlabelKeyCount[joinKey(tok)] || 0) + 1;
                         }
                         tok = '';
                         closed = false;
