@@ -3469,6 +3469,20 @@ function testTaxlabelColours() {
         console.log("    a TreeTime tree with a refused taxlabel colour: " + ttRefs.join(" "));
         return false;
     }
+    // ... and that is decided PER TREE: a BEAST tree sitting between two
+    // TreeTime trees in one file keeps beast:, whatever its neighbours took
+    // (the one place the desktop's review said this could go wrong: scope)
+    var mixed = forester.parseNexus("#NEXUS\nbegin taxa;\n\ttaxlabels\n\tA[&!color=-8381639]\n\tB\n;\nend;\nbegin trees;\n"
+        + '\ttree one = (A:1[&mutations="A1G"],B:1[&mutations="C2T"]);\n'
+        + "\ttree two = (A:1[&rate=0.5,height=0.0],B:1[&height=0.0]);\n"
+        + '\ttree three = (A:1[&mutations="G5T"],B:1);\nend;\n');
+    var took = mixed.map(function (tr) {
+        return (forester.findByNodeName(tr, "A")[0].properties || []).map(function (p) { return p.ref; }).join("+");
+    }).join(" | ");
+    if (took !== "treetime:mutations+treetime:_color | beast:rate+beast:_color | treetime:mutations+treetime:_color") {
+        console.log("    per tree: " + took);
+        return false;
+    }
     // the two colours are different things and do not touch: Paris's BRANCH
     // is red from the tree string, its LABEL green from the TAXLABELS block
     var p1 = forester.findByNodeName(named, "Paris")[0];
