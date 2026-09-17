@@ -3343,7 +3343,8 @@
     //    parseAuspiceJson puts the same dataset, so one Nextstrain build opens
     //    the same way whichever format it was saved in: num_date -> the date
     //    VALUE with unit "year", plus a nextstrain:num_date property;
-    //    num_date_CI={lo,hi} -> that date's minimum/maximum; div -> a
+    //    num_date_CI={lo,hi} -> that date's minimum/maximum on an INTERNAL
+    //    node (a tip's is dropped, as the JSON reader drops it); div -> a
     //    nextstrain:div property. A num_date outranks every height* (it is a
     //    calendar year, a height is an age before present), it alone carries
     //    the unit, and it never borrows the height's HPD as its interval;
@@ -3690,6 +3691,18 @@
             let m = n._numDate;
             delete n._numDate;
             if (!notTimeScaled) {
+                // A TIP is a dated sample: it keeps its point date and loses
+                // the interval, exactly as parseAuspiceJson does it and for
+                // the same reason -- the uncertainty of a divergence time
+                // belongs to the INTERNAL nodes, and a bar on a tip reads as
+                // a fossil-style observed range on a viral tree (Christian,
+                // 2026-09-16: "drop tip intervals in the Nexus reader too,
+                // like JSON"). Only a num_date's interval: a BEAST tip's
+                // height HPD is a sampled tip date and is left as it was.
+                if (!n.children || n.children.length === 0) {
+                    delete n.date.minimum;
+                    delete n.date.maximum;
+                }
                 return;
             }
             delete n.date.value;

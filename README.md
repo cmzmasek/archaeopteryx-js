@@ -774,7 +774,8 @@ field (`rate`, traits, ...) becomes a `beast:<key>` node property for
 Color-by and search. **Auspice's "download Nexus"** annotations land where the
 Auspice JSON reader puts the same dataset, so one Nextstrain build opens the
 same way in either format: `num_date` is the node's date in years (and a
-`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval, `div` a
+`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval on an
+internal node (a tip keeps only its point date, as in the JSON reader), `div` a
 `nextstrain:div` property — but only on a tree that is actually time-scaled,
 since Auspice writes the same annotations on its divergence tree: where the
 year differences do not reproduce the branch lengths the dates stay properties

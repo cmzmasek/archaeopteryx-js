@@ -3047,8 +3047,14 @@ function testAuspiceNexusVocabulary() {
     var cases = [
         ["(A:1[&num_date=2001.5],B:1);", {value: 2001.5, unit: "year"},
             "nextstrain:num_date=2001.5(xsd:decimal)"],
-        ["(A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
+        // the interval belongs to an INTERNAL node ...
+        ["((X:1,Y:1)A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
             {value: 2001.5, unit: "year", minimum: 2000.1, maximum: 2002.9},
+            "nextstrain:num_date=2001.5(xsd:decimal)"],
+        // ... and a TIP keeps its point date and loses the interval, as the
+        // JSON reader does it: a bar on a tip reads as a fossil range
+        ["(A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
+            {value: 2001.5, unit: "year"},
             "nextstrain:num_date=2001.5(xsd:decimal)"],
         // an interval with no date to bracket is kept as text, and is no date
         ["(A:1[&num_date_CI={2000.1,2002.9}],B:1);", undefined,
@@ -3091,21 +3097,11 @@ function testAuspiceNexusVocabulary() {
             {name: "B", node_attrs: {div: 0.02, num_date: {value: 2005.5}}}]}});
     var nex = forester.parseNewHampshire("(A:3.25[&num_date=2003.25,num_date_CI={2003,2003.5},div=0.01],"
         + "B:5.5[&num_date=2005.5,div=0.02])root[&num_date=2000,num_date_CI={1999.5,2000.5},div=0];");
-    // ONE NAMED DIFFERENCE, open (2026-09-16): parseAuspiceJson drops a TIP's
-    // interval on purpose -- on a viral tree it would read as a fossil-style
-    // observed range -- while the Nexus path keeps it, as the desktop's does
-    // (its measles export counts 5388 intervals on 5389 nodes, tips included).
-    // So tips are compared without their interval, and the difference is
-    // asserted rather than hidden: when it is decided either way, this fails.
-    var tipA2 = forester.findByNodeName(nex, "A")[0];
-    var tipJ = forester.findByNodeName(json, "A")[0];
-    if (tipA2.date.minimum !== 2003 || tipA2.date.maximum !== 2003.5 || tipJ.date.minimum !== undefined) {
-        console.log("    the tip-interval difference moved: nexus " + JSON.stringify(tipA2.date)
-            + " json " + JSON.stringify(tipJ.date));
-        return false;
-    }
+    // Tips included: both readers keep a tip's point date and drop its
+    // interval. This was a named difference until Christian closed it
+    // (2026-09-16), and A carries an interval in BOTH inputs so that it shows.
     function dateOf(n) {
-        return n.children ? n.date : {value: n.date.value, unit: n.date.unit};
+        return n.date;
     }
     var names = ["A", "B", "root"];
     for (var k = 0; k < names.length; ++k) {
@@ -3131,7 +3127,7 @@ function testAuspiceNexusVocabulary() {
 function testNumDateOnlyOnTimeScaledTrees() {
     function tree(lengths) {
         return "((A:" + lengths[0] + "[&num_date=2003,num_date_CI={2002.5,2003.5}],B:" + lengths[1]
-            + "[&num_date=2004.5])ab:" + lengths[2] + "[&num_date=2001],C:" + lengths[3]
+            + "[&num_date=2004.5])ab:" + lengths[2] + "[&num_date=2001,num_date_CI={2000.5,2001.5}],C:" + lengths[3]
             + "[&num_date=2006])root[&num_date=2000];";
     }
     function count(phy, fn) {
@@ -3159,9 +3155,12 @@ function testNumDateOnlyOnTimeScaledTrees() {
         console.log("    a time-scaled tree lost its dates: " + count(timed, hasValue) + " of 5");
         return false;
     }
+    // the internal node keeps its interval, the tip only its point date
     var a = forester.findByNodeName(timed, "A")[0];
-    if (a.date.minimum !== 2002.5 || a.date.maximum !== 2003.5 || a.date.unit !== "year") {
-        console.log("    A: " + JSON.stringify(a.date));
+    var ab = forester.findByNodeName(timed, "ab")[0];
+    if (JSON.stringify(a.date) !== JSON.stringify({value: 2003, unit: "year"})
+        || ab.date.minimum !== 2000.5 || ab.date.maximum !== 2001.5 || ab.date.unit !== "year") {
+        console.log("    A: " + JSON.stringify(a.date) + " ab: " + JSON.stringify(ab.date));
         return false;
     }
 
@@ -3173,7 +3172,9 @@ function testNumDateOnlyOnTimeScaledTrees() {
         console.log("    a divergence tree was dated: " + count(div, hasValue) + " values");
         return false;
     }
-    if (count(div, hasRef("nextstrain:num_date")) !== 5 || count(div, hasRef("nextstrain:num_date_CI")) !== 1) {
+    // (every interval is kept there, the tip's too: with no date there is no
+    // bar for it to draw, and it is just a property)
+    if (count(div, hasRef("nextstrain:num_date")) !== 5 || count(div, hasRef("nextstrain:num_date_CI")) !== 2) {
         console.log("    the years were not kept: " + count(div, hasRef("nextstrain:num_date")) + " / "
             + count(div, hasRef("nextstrain:num_date_CI")));
         return false;

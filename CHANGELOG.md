@@ -44,7 +44,10 @@ consumers only see a change when a version is cut.
   JSON.** Auspice's "download Nexus" annotations now land where the Auspice
   JSON reader puts them: `num_date` is the node's date, in years, and also a
   `nextstrain:num_date` property; `num_date_CI={lo,hi}` is that date's
-  interval; `div` is `nextstrain:div`. They used to arrive as opaque
+  interval on an internal node (a tip keeps its point date and loses the
+  interval, as in the JSON reader — a bar on a tip reads as a fossil range);
+  `div` is `nextstrain:div`. Checked on one real build saved both ways: of
+  5,388 nodes matched by name, all 5,388 carry an identical date. They used to arrive as opaque
   `beast:` numbers, so a time-tree export showed no dates, no calendar axis,
   and could be re-rooted. A `num_date` outranks a BEAST `height`, alone
   carries the unit, and never borrows the height's HPD interval; one that does
