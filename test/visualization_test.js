@@ -1650,13 +1650,85 @@ function testTimeAxisDetection() {
     };
     var geo = forester.timeAxisInfo(mk('mya', [250, 0, 66, 100]));
     var cal = forester.timeAxisInfo(mk('year', [2019.9, 2021, 2022, 2020]));
-    var magGeo = forester.timeAxisInfo(mk(null, [250, 1, 66, 3]));       // magnitude fallback
+    // A UNITLESS tree gets NO axis, and that is the point of this test.
+    // Guessing from magnitude read every tip-dated BEAST tree as geologic --
+    // BEAST states a node's age as a unitless `height`, so 12 years of
+    // influenza banded as 12 Ma under tips labelled 1993..2005 -- and the
+    // [1500, 2200] year rule decided nothing any tree we ship relies on.
+    // Both are gone: Christian, 2026-09-17, and the desktop dropped the same
+    // rule in their e9ac62ec. A dated tree with no unit is still `dated`; it
+    // just has no axis to draw.
+    var magGeo = forester.timeAxisInfo(mk(null, [250, 1, 66, 3]));
     var magCal = forester.timeAxisInfo(mk(null, [2019, 2021, 2022]));
     var none = forester.timeAxisInfo({name: 'r', children: [{name: 'a'}, {name: 'b'}]});
     return geo.type === 'geologic' && geo.rootAge === 250 && geo.dated === true
         && cal.type === 'calendar' && cal.presentDate === 2022
-        && magGeo.type === 'geologic' && magCal.type === 'calendar'
+        && magGeo.type === null && magCal.type === null
+        && magGeo.dated === true && magCal.dated === true
+        && magGeo.rootAge === 0 && magCal.presentDate === 0
         && none.type === null && none.dated === false;
+}
+
+// TreeAnnotator prints an exactly dated tip's HPD as {9.0,9.000000000000004}:
+// one number twice, through binary floating point. Read as a width it drew a
+// fossil-range bracket on 686 of influenza.tree's 687 tips. Both programs had
+// the gap, and on two paths each. Christian, 2026-09-17.
+function testDateIntervalNoise() {
+    var cases = [
+        [{minimum: 9.0, maximum: 9.000000000000004}, false, 'TreeAnnotator noise'],
+        [{minimum: 12.059999999999942, maximum: 12.059999999999949}, false, 'influenza.tree tip'],
+        [{minimum: 2000, maximum: 2000}, false, 'dated to the day: one value twice'],
+        [{minimum: 1993, maximum: 1994}, true, 'a year of sampling uncertainty'],
+        [{minimum: 2000, maximum: 2000.0027}, true, 'one day, the narrowest real width'],
+        [{minimum: 66, maximum: 72}, true, 'a fossil range'],
+        // the scale floor: a node AT age 0 (every BEAST tip is height 0) carries
+        // noise too, and without max(..., 1) the tolerance would be a fraction of
+        // nothing and let it through
+        [{minimum: 0, maximum: 4.9e-16}, false, 'noise on a node at age 0'],
+        [{minimum: 0, maximum: 0}, false, 'a node dated exactly at 0'],
+        [{minimum: 0, maximum: 0.5}, true, 'half a unit at age 0 is real'],
+        // bounds in the wrong order still state a width, as on the desktop
+        [{minimum: 5, maximum: 4}, true, 'inverted bounds'],
+        [{minimum: 9.000000000000004, maximum: 9.0}, false, 'inverted noise is still noise'],
+        [{minimum: 1, maximum: Infinity}, false, 'non-finite'],
+        [{minimum: 1}, false, 'no maximum'],
+        [null, false, 'no date at all']
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        if (forester.isGenuineDateInterval(cases[i][0]) !== cases[i][1]) {
+            console.log('    ' + cases[i][2] + ': expected ' + cases[i][1]);
+            return false;
+        }
+    }
+    // and on a real BEAST-shaped tree: noise on the tips, genuine HPDs inside
+    var nex = '#NEXUS\nbegin trees;\n'
+        + 'tree TREE1 = [&R] ((A[&height=9.0,height_95%_HPD={9.0,9.000000000000004}]:1.0,'
+        + 'B[&height=9.0,height_95%_HPD={9.0,9.0}]:1.0)[&height=10.0,height_95%_HPD={9.5,11.25}]:2.0,'
+        + 'C[&height=8.0,height_95%_HPD={8.0,8.000000000000002}]:3.0)'
+        + '[&height=12.0,height_95%_HPD={11.0,13.5}];\nend;\n';
+    var info = forester.timeAxisInfo(forester.getTreeRoot(forester.parseNexus(nex)[0]));
+    if (info.hasExternalIntervals) {
+        console.log('    a tip\'s float noise still counts as an interval');
+        return false;
+    }
+    if (!info.hasInternalIntervals) {
+        console.log('    a genuine internal HPD was thrown away with the noise');
+        return false;
+    }
+    // unitless heights: no axis, and so no geologic bands over a 12-year tree
+    if (info.type !== null) {
+        console.log('    unitless BEAST heights got a ' + info.type + ' axis');
+        return false;
+    }
+    // ... and the same tree with ONE tip widened must report a tip interval,
+    // so this can never pass on a fixture that misses the predicate entirely
+    var widened = nex.replace('height_95%_HPD={9.0,9.000000000000004}', 'height_95%_HPD={8.5,9.5}');
+    var info2 = forester.timeAxisInfo(forester.getTreeRoot(forester.parseNexus(widened)[0]));
+    if (!info2.hasExternalIntervals || !info2.hasInternalIntervals) {
+        console.log('    a genuinely widened tip did not register as an interval');
+        return false;
+    }
+    return true;
 }
 
 function testTimeAxisTicks() {
@@ -1673,6 +1745,7 @@ console.log("\ngeologic time scale\n");
 runTest("time: band rank pairs      : ", testGeoBandRanks);
 runTest("time: interval queries     : ", testGeoQueries);
 runTest("time: axis-type detection  : ", testTimeAxisDetection);
+runTest("time: interval vs noise    : ", testDateIntervalNoise);
 runTest("time: tick mathematics     : ", testTimeAxisTicks);
 
 // --------------------------------------------------------------

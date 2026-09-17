@@ -9122,8 +9122,11 @@ function (root, d3, forester, phyloXml) {
 
         // ---- HPD age bars (internal) + tip bars: fossil ranges, or sampling dates ----
         forEachDisplayed(function (d) {
-            if (!d.date || typeof d.date.minimum !== 'number' || typeof d.date.maximum !== 'number'
-                || d.y === undefined) {
+            // forester.isGenuineDateInterval, not a bare min/max test: the
+            // bars are floored at 1px below, so a bound pair that differs only
+            // by floating-point noise would draw as a visible bracket. This
+            // guard is on EVERY node, tip and internal, geologic and calendar.
+            if (!forester.isGenuineDateInterval(d.date) || d.y === undefined) {
                 return;
             }
             let min = d.date.minimum;
@@ -9144,14 +9147,12 @@ function (root, d3, forester, phyloXml) {
             // as one below. On CALENDAR time it is the uncertainty of a
             // sampling date -- a virus sample dated only to its month or year
             // -- which is the same kind of thing as an internal node's age
-            // interval and is drawn the same way, slimmer, and only when it
-            // HAS a width: a tip dated to the day states {d,d}, and a capped
-            // tick on every such tip is what made the readers throw tip
-            // intervals away until 2026-09-17 (Christian; the desktop alike).
+            // interval and is drawn the same way, slimmer. Either way it is
+            // drawn only when it HAS a width: a tip dated to the day states
+            // {d,d}, and a capped tick on every such tip is what made the
+            // readers throw tip intervals away until 2026-09-17 (Christian;
+            // the desktop alike). The width test is the entry guard above.
             let sampledTip = !d.children && info.type === 'calendar';
-            if (sampledTip && !(max > min)) {
-                return;
-            }
             if (d.children) {
                 g.append('rect').attr('x', left).attr('y', y - 3.5)
                     .attr('width', w).attr('height', 7)
@@ -12191,7 +12192,10 @@ function (root, d3, forester, phyloXml) {
             return null;
         }
         let hasValue = typeof date.value === 'number';
-        let hasRange = typeof date.minimum === 'number' && typeof date.maximum === 'number';
+        // the same predicate the bars use: a bound pair that differs only by
+        // floating-point noise is one number printed twice, and reading it as a
+        // range put "[12.059999999999942 - 12.059999999999949]" in the tooltip
+        let hasRange = forester.isGenuineDateInterval(date);
         let s = hasValue ? String(date.value) : '';
         if (hasRange) {
             s += ' [' + date.minimum + ' - ' + date.maximum + ']';

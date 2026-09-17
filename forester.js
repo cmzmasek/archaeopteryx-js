@@ -6519,9 +6519,17 @@
     // ---- time-tree detection -------------------------------------------
     // Two date conventions: GEOLOGIC ages (Ma before present, decreasing
     // toward the tips) and CALENDAR years (increasing toward the tips).
-    // Decided from the <date> unit attributes, with a magnitude fallback for
-    // unitless dates: values mostly in [1500, 2200] read as years; values
-    // spanning from large down toward ~0 read as ages.
+    // Decided from the <date> unit attributes and NOTHING ELSE. A unitless
+    // tree gets no axis: guessing from magnitude read every tip-dated BEAST
+    // tree as geologic, because BEAST states a node's age as a unitless
+    // `height` and an influenza tree spanning 12 years looks exactly like one
+    // spanning 12 Ma. It drew Miocene/Pliocene bands and a "Ma" ruler under
+    // tips labelled 1993..2005 -- a confident false claim across the whole
+    // figure, which is worse than no axis. Measured over every tree we ship:
+    // the guess decided 3 trees and got all 3 wrong, every other axis comes
+    // from a unit, and none relied on the old [1500, 2200] year rule. The
+    // desktop dropped the same rule on 2026-09-10 (their e9ac62ec) on the
+    // same evidence; Christian, 2026-09-17, both programs.
     const GEO_DATE_UNITS = {
         mya: 1, ma: 1, myr: 1, myrs: 1, my: 1, ga: 1, gya: 1, bya: 1, kya: 1,
         'million years': 1, 'billion years': 1
@@ -6529,6 +6537,40 @@
     const CAL_DATE_UNITS = {
         year: 1, years: 1, yr: 1, yrs: 1, cal: 1, ce: 1, ad: 1, calendar: 1,
         'calendar year': 1, 'calendar years': 1
+    };
+
+    // A date's bounds state a real interval only when they differ by more than
+    // floating-point noise. TreeAnnotator writes
+    // height_95%_HPD={9.0,9.000000000000004} on a tip it dated EXACTLY: one
+    // number printed twice through binary floating point, not a width. Read as
+    // a width it put a fossil-range bracket on 686 of influenza.tree's 687
+    // tips. The tolerance is RELATIVE because the noise is: a bound near 2000
+    // carries more of it than one near 0. Nothing real is this narrow -- a
+    // single day is 0.0027 of a calendar year, while 1e-9 of 2000 is about a
+    // minute. Both programs had this gap, on two paths each (an auto-enable
+    // predicate with no tolerance, and a painter with no width test at all).
+    const DATE_INTERVAL_REL_TOL = 1e-9;
+
+    /**
+     * Whether a date's minimum/maximum are a genuine interval rather than one
+     * value printed twice. Every reader of date bounds must ask this, drawing
+     * included: a bar floored at 1px draws noise as a visible bracket.
+     *
+     * @param date a node's date object
+     * @returns {boolean}
+     */
+    forester.isGenuineDateInterval = function (date) {
+        if (!date || typeof date.minimum !== 'number' || typeof date.maximum !== 'number'
+            || !isFinite(date.minimum) || !isFinite(date.maximum)) {
+            return false;
+        }
+        let scale = Math.max(Math.abs(date.minimum), Math.abs(date.maximum), 1);
+        // the ABSOLUTE difference: bounds handed over in the wrong order still
+        // state a width, and every painter already normalises the order before
+        // drawing. The desktop's AptxUtil.hasDateIntervalWidth reads it the
+        // same way, down to this constant -- the two programs must not draw
+        // different figures from one file (their message, 2026-09-17).
+        return Math.abs(date.maximum - date.minimum) > (scale * DATE_INTERVAL_REL_TOL);
     };
 
     /**
@@ -6563,9 +6605,8 @@
     // presentDate (calendar) are both the LARGEST date value -- the oldest
     // node for ages, the most recent tip for years.
     forester.timeAxisInfo = function (root) {
-        let values = [];
+        let valued = 0;
         let maxVal = -Infinity; // running, not Math.max.apply: 150k dated tips overflow the call stack
-        let minVal = Infinity;
         let geoUnits = 0;
         let calUnits = 0;
         let internal = 0;
@@ -6585,7 +6626,7 @@
             if (!d) {
                 return;
             }
-            let interval = (typeof d.minimum === 'number') && (typeof d.maximum === 'number');
+            let interval = forester.isGenuineDateInterval(d);
             if (interval) {
                 if (isExt) {
                     hasExternalIntervals = true;
@@ -6596,12 +6637,9 @@
             if (typeof d.value !== 'number' || !isFinite(d.value)) {
                 return; // 1e400 parses to Infinity and must never reach the tick loops
             }
-            values.push(d.value);
+            ++valued;
             if (d.value > maxVal) {
                 maxVal = d.value;
-            }
-            if (d.value < minVal) {
-                minVal = d.value;
             }
             if (isExt) {
                 ++datedExternal;
@@ -6618,25 +6656,16 @@
             }
         });
         let type = null;
-        if (values.length > 0) {
+        if (valued > 0) {
             if (geoUnits > 0 && geoUnits >= calUnits) {
                 type = 'geologic';
             } else if (calUnits > 0) {
                 type = 'calendar';
-            } else {
-                let calendarish = values.filter(function (v) {
-                    return v >= 1500 && v <= 2200;
-                }).length;
-                if (calendarish * 2 > values.length) {
-                    type = 'calendar';
-                } else if (maxVal > 10 && minVal <= maxVal * 0.05) {
-                    type = 'geologic';
-                }
             }
         }
         let dated = (datedInternal >= 2 && (datedInternal * 2) > internal)
             || (datedExternal >= 2 && (datedExternal * 2) > external);
-        let maxValue = values.length > 0 ? maxVal : 0;
+        let maxValue = valued > 0 ? maxVal : 0;
         return {
             type: type,
             rootAge: type === 'geologic' ? maxValue : 0,
