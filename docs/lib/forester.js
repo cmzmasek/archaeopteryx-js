@@ -4642,6 +4642,15 @@
                             // out, wrong as soon as it refers to them by number).
                             // A [&...] belongs to the label just read; any other
                             // bracket is an ordinary Nexus comment.
+                            //
+                            // Only !color is read from it, and that is DECIDED
+                            // (Christian, 2026-09-17: "keep it as it is"), a named
+                            // difference from the desktop, which keeps every field
+                            // of a taxon's annotation. No producer we know writes
+                            // anything else here. Widening it is not a small edit:
+                            // a posterior, a height or mutations arriving by this
+                            // road could sway the per-tree pass, which would then
+                            // have to run after the taxlabels (see annotationPrefix).
                             let end = line.indexOf(']', ci);
                             let inside = line.substring(ci + 1, end < 0 ? line.length : end).trim();
                             if (inside.charAt(0) === '&' && tok.length > 0) {
