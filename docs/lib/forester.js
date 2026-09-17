@@ -3077,6 +3077,57 @@
     // starting with '&' (a [95] confidence) is left untouched, as is any
     // bracket inside a quoted label. Quotes and nested brackets inside an
     // annotation are honoured when finding its end.
+    //
+    // A QUOTE CHARACTER INSIDE A BLOB IS DATA unless it opens a quoted VALUE.
+    // Auspice writes values bare -- country=Côte d'Ivoire -- and treating that
+    // apostrophe as the start of a quoted string was a real bug, in both of
+    // its forms: one such tip and the quote never closed, so the file was
+    // refused over its "unbalanced parentheses"; two and the apostrophes
+    // paired up ACROSS the tips, no error at all, the second tip gone and the
+    // first one's country reading "Côte d'Ivoire],B:1[&country=Côte d'Ivoire".
+    // (Real file: nextstrain_chikv_global_timetree.nexus, 16 apostrophes, all
+    // of them that one country.) Matches the desktop's scanner rule.
+    //
+    // So a quote opens a run only where a value can START -- straight after
+    // '=', or after '{', '[' or ',' inside a set -- and only if it is closed
+    // by the same character standing where a value can END: before ',', '}',
+    // ']' or the end. Anything else is a character like any other.
+    function opensBlobQuote(s, p, from) {
+        let m = p - 1;
+        while (m >= from && /\s/.test(s.charAt(m))) {
+            --m;
+        }
+        return m >= from && '={[,'.indexOf(s.charAt(m)) >= 0;
+    }
+
+    // The index of the quote closing the run opened at p, or -1. `bounded` is
+    // for the extraction pass, which does not yet know where the blob ends:
+    // there the search gives up at a ']' that is followed by Newick structure,
+    // so a bare value that merely BEGINS with an apostrophe ('s-Hertogenbosch)
+    // cannot reach into the next node's blob for its partner.
+    function blobQuoteClose(s, p, bounded) {
+        let q = s.charAt(p);
+        for (let k = p + 1; k < s.length; ++k) {
+            let c = s.charAt(k);
+            if (c !== q && !(bounded && c === ']')) {
+                continue;
+            }
+            let m = k + 1;
+            while (m < s.length && /\s/.test(s.charAt(m))) {
+                ++m;
+            }
+            let next = m < s.length ? s.charAt(m) : '';
+            if (c === q) {
+                if (next === '' || ',}]'.indexOf(next) >= 0) {
+                    return k;
+                }
+            } else if (next === '' || ',):;(['.indexOf(next) >= 0) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
     function extractBracketAnnotations(str) {
         if (str.indexOf('[') < 0) {
             return {text: str, blobs: []};
@@ -3102,16 +3153,16 @@
             } else if (c === '[') {
                 let j = i + 1;
                 let depth = 1;
-                let q = null;
                 while (j < str.length && depth > 0) {
                     let cj = str.charAt(j);
-                    if (q) {
-                        if (cj === q) {
-                            q = null;
+                    if ((cj === "'" || cj === '"') && opensBlobQuote(str, j, i + 1)) {
+                        let close = blobQuoteClose(str, j, true);
+                        if (close > -1) {
+                            j = close + 1;   // a quoted value: its brackets are data
+                            continue;
                         }
-                    } else if (cj === "'" || cj === '"') {
-                        q = cj;
-                    } else if (cj === '[') {
+                    }
+                    if (cj === '[') {
                         ++depth;
                     } else if (cj === ']') {
                         --depth;
@@ -3161,21 +3212,37 @@
     }
 
     // Split on TOP-LEVEL commas only: a comma inside {...}/[...] sets or
-    // inside quotes is data, not a separator (height_95%_HPD={1.4,1.5} must
-    // stay one token).
-    function splitTopLevelCommas(s) {
+    // inside a quoted VALUE is data, not a separator (height_95%_HPD={1.4,1.5}
+    // must stay one token). A quote that does not open a value is itself data
+    // (opensBlobQuote): country=Côte d'Ivoire,region=Africa is two fields.
+    //
+    // TWO quoting rules live here, because two grammars do. In a Nexus
+    // TRANSLATE table the things between the commas are LABELS, and a quote
+    // opens one wherever it stands (1 'Korea, Republic of'). In a [&...] blob
+    // they are key=value fields, and a quote opens only a VALUE. Giving the
+    // table the blob's rule split 'Korea, Republic of' in two, which a test
+    // caught the moment it was tried; `blob` says which grammar this is.
+    function splitTopLevelCommas(s, blob) {
         let out = [];
         let depth = 0;
         let q = null;
         let cur = '';
         for (let i = 0; i < s.length; ++i) {
             let c = s.charAt(i);
+            if (blob && (c === "'" || c === '"') && opensBlobQuote(s, i, 0)) {
+                let close = blobQuoteClose(s, i, false);
+                if (close > -1) {
+                    cur += s.substring(i, close + 1);   // a quoted value, its commas data
+                    i = close;
+                    continue;
+                }
+            }
             if (q) {
                 if (c === q) {
                     q = null;
                 }
                 cur += c;
-            } else if (c === "'" || c === '"') {
+            } else if (!blob && (c === "'" || c === '"')) {
                 q = c;
                 cur += c;
             } else if (c === '{' || c === '[') {
@@ -3210,7 +3277,7 @@
         if (s.length < 3 || (s.charAt(0) !== '{' && s.charAt(0) !== '[')) {
             return null;
         }
-        let parts = splitTopLevelCommas(s.substring(1, s.length - 1));
+        let parts = splitTopLevelCommas(s.substring(1, s.length - 1), true);
         if (parts.length !== 2) {
             return null;
         }
@@ -3272,6 +3339,14 @@
     //  - node age height/height_mean/height_median + height_95%_HPD (or
     //    height_range) + date -> node.date value/min/max/desc (the node-age
     //    HPD bars draw the interval);
+    //  - Auspice's "download Nexus" vocabulary lands exactly where
+    //    parseAuspiceJson puts the same dataset, so one Nextstrain build opens
+    //    the same way whichever format it was saved in: num_date -> the date
+    //    VALUE with unit "year", plus a nextstrain:num_date property;
+    //    num_date_CI={lo,hi} -> that date's minimum/maximum; div -> a
+    //    nextstrain:div property. A num_date outranks every height* (it is a
+    //    calendar year, a height is an age before present), it alone carries
+    //    the unit, and it never borrows the height's HPD as its interval;
     //  - FigTree !color=#rrggbb -> the branch color;
     //  - every other field (rate, length_*, traits, location, ...) -> a
     //    beast:<key> node property (numeric -> xsd:decimal, so Color-by
@@ -3285,9 +3360,14 @@
         let hpd = null;
         let range = null;
         let dateDesc = null;
+        let hpdText = null;
+        let rangeText = null;
+        let numDate = null;
+        let numDateCi = null;
+        let numDateCiKey = null;
         let prob = null;
         let probSd = null;
-        splitTopLevelCommas(blob).forEach(function (token) {
+        splitTopLevelCommas(blob, true).forEach(function (token) {
             let eq = token.indexOf('=');
             if (eq <= 0) {
                 return;
@@ -3341,10 +3421,19 @@
                 height = value;
             } else if (kl === 'height_95%_hpd') {
                 hpd = parseBeastInterval(value);
+                hpdText = value;
             } else if (kl === 'height_range') {
                 range = parseBeastInterval(value);
+                rangeText = value;
             } else if (kl === 'date') {
                 dateDesc = value;
+            } else if (kl === 'num_date') {
+                numDate = value;
+            } else if (kl === 'num_date_ci') {
+                numDateCi = value;
+                numDateCiKey = beastRefKey(key);
+            } else if (kl === 'div' && parseBeastNumber(value) !== null) {
+                addNodeProperty(node, NEXTSTRAIN_PREFIX + 'div', value);
             } else {
                 addNodeProperty(node, 'beast:' + beastRefKey(key), value);
             }
@@ -3352,28 +3441,60 @@
         if (prob !== null) {
             pushConfidence(node, prob, 'posterior probability', probSd);
         }
-        // age preference: median, then mean, then height -- and each piece
-        // parsed independently, so an unparseable point value never discards
-        // a valid {lo,hi} interval
-        let v = heightMedian !== null ? heightMedian
-            : (heightMean !== null ? heightMean : height);
-        let dv = (v !== null) ? parseBeastNumber(v) : null;
-        let interval = hpd || range;
-        if (dv === null && !interval && dateDesc === null) {
-            return;
+        // A num_date that parses is the node's date, and nothing about a
+        // height may touch it. One that does not parse is just a field: it and
+        // its interval fall back to plain text, as any unknown key does.
+        let year = (numDate !== null) ? parseBeastNumber(numDate) : null;
+        let yearCi = (numDateCi !== null) ? parseBeastInterval(numDateCi) : null;
+        if (numDate !== null) {
+            addNodeProperty(node, (year !== null ? NEXTSTRAIN_PREFIX : 'beast:') + 'num_date', numDate);
+        }
+        if (numDateCi !== null && (year === null || yearCi === null)) {
+            // an interval with no date to bracket, or not an interval at all
+            addNodeProperty(node, (yearCi !== null ? NEXTSTRAIN_PREFIX : 'beast:') + numDateCiKey, numDateCi);
         }
         let date = {};
-        if (dv !== null) {
-            date.value = dv;
-        }
-        if (interval) {
-            date.minimum = interval[0];
-            date.maximum = interval[1];
+        if (year !== null) {
+            date.value = year;
+            date.unit = 'year';
+            if (yearCi !== null) {
+                date.minimum = yearCi[0];
+                date.maximum = yearCi[1];
+            }
+            // provisional until the whole tree has been read: settleNumDates
+            // decides whether this tree is time-scaled at all
+            node._numDate = {ciKey: numDateCiKey, ciText: yearCi !== null ? numDateCi : null};
+            // the heights it outranked are kept as what they were written as,
+            // rather than dropped: no real file carries both, so nothing here
+            // is lost to a guess
+            [['height_median', heightMedian], ['height_mean', heightMean], ['height', height],
+                ['height_95_HPD', hpdText], ['height_range', rangeText]].forEach(function (h) {
+                if (h[1] !== null) {
+                    addNodeProperty(node, 'beast:' + h[0], h[1]);
+                }
+            });
+        } else {
+            // age preference: median, then mean, then height -- and each piece
+            // parsed independently, so an unparseable point value never
+            // discards a valid {lo,hi} interval
+            let v = heightMedian !== null ? heightMedian
+                : (heightMean !== null ? heightMean : height);
+            let dv = (v !== null) ? parseBeastNumber(v) : null;
+            let interval = hpd || range;
+            if (dv !== null) {
+                date.value = dv;
+            }
+            if (interval) {
+                date.minimum = interval[0];
+                date.maximum = interval[1];
+            }
         }
         if (dateDesc !== null) {
             date.desc = dateDesc;
         }
-        node.date = date;
+        if (Object.keys(date).length > 0) {
+            node.date = date;
+        }
     }
 
     // The classic NHX tag set, as the desktop maps it: S= taxonomy
@@ -3500,6 +3621,86 @@
     }
 
     // ---------------------------------------------------------------
+    // An Auspice num_date is a date VALUE only on a time-scaled tree
+    // ---------------------------------------------------------------
+    //
+    // Auspice's "download Nexus" offers the SAME annotations on two trees: the
+    // time tree (…_timetree.nexus, branch lengths in years) and the divergence
+    // tree (…_tree.nexus, branch lengths in substitutions). A date value is
+    // what makes a tree a time tree here -- isTimeTree counts them -- and the
+    // calendar axis maps one branch-length unit to one year, so dating the
+    // divergence export would hang that axis on a tree measured in
+    // substitutions and refuse its re-rooting. Measured on real exports, the
+    // parent-to-child num_date differences reproduce the branch lengths on
+    //   measles timetree   5388 of 5388 pairs
+    //   chikv timetree     2645 of 2645 pairs
+    //   lassa_gpc tree      169 of 2295 pairs (7.4%)
+    // so this is the question promoteTimeScaledDates already asks of a
+    // TreeTime date=, with the same pinned tolerances, put to the tree rather
+    // than guessed from a file name. The difference is the burden of proof: a
+    // date= may not be a value at all, so it needs evidence FOR; a num_date is
+    // a date by its very name, so it stands unless there is evidence AGAINST
+    // -- two comparable pairs or more, and no strict majority agreeing. A tree
+    // too small to say anything keeps its dates.
+    //
+    // Where the tree is not time-scaled nothing is lost: the year stays on
+    // the node as nextstrain:num_date (numeric, so Color-by and search have
+    // it) and its interval as nextstrain:num_date_CI, exactly what an
+    // interval with no date to bracket becomes anyway.
+    function settleNumDates(phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return;
+        }
+        let marked = [];
+        let agree = 0;
+        let pairs = 0;
+        let stack = [[root, null]];
+        while (stack.length > 0) {
+            let top = stack.pop();
+            let n = top[0];
+            let year = null;
+            if (n._numDate) {
+                marked.push(n);
+                year = n.date.value;
+                let parentYear = top[1];
+                if (parentYear !== null && typeof n.branch_length === 'number'
+                    && isFinite(n.branch_length)) {
+                    ++pairs;
+                    let tol = NUMERIC_DATE_ABS_TOL
+                        + NUMERIC_DATE_REL_TOL * Math.abs(n.branch_length);
+                    if (Math.abs((year - parentYear) - n.branch_length) <= tol) {
+                        ++agree;
+                    }
+                }
+            }
+            if (n.children) {
+                for (let i = 0; i < n.children.length; ++i) {
+                    stack.push([n.children[i], year]);
+                }
+            }
+        }
+        let notTimeScaled = pairs >= 2 && agree * 2 <= pairs;
+        marked.forEach(function (n) {
+            let m = n._numDate;
+            delete n._numDate;
+            if (!notTimeScaled) {
+                return;
+            }
+            delete n.date.value;
+            delete n.date.unit;
+            delete n.date.minimum;
+            delete n.date.maximum;
+            if (Object.keys(n.date).length === 0) {
+                delete n.date;
+            }
+            if (m.ciText !== null) {
+                addNodeProperty(n, NEXTSTRAIN_PREFIX + m.ciKey, m.ciText);
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------
     // TreeTime's own namespace
     // ---------------------------------------------------------------
     //
@@ -3522,8 +3723,8 @@
     const BEAST_PREFIX = 'beast:';
 
     // Must run BEFORE promoteTimeScaledDates: until then a date VALUE can
-    // only have come from a BEAST height field, which is what says this is
-    // not TreeTime.
+    // only have come from a BEAST height field or an Auspice num_date, and
+    // either one says this is not TreeTime's own Nexus.
     function renameTreeTimeProperties(phy) {
         let nodes = forester.getAllNodes(phy);
         let mutations = false;
@@ -3782,7 +3983,8 @@
             moveInternalNodeNamesToConfidenceValues(phy);
         }
 
-        renameTreeTimeProperties(phy);
+        renameTreeTimeProperties(phy);   // first: a provisional num_date still says "not TreeTime's own"
+        settleNumDates(phy);
         promoteTimeScaledDates(phy);
 
         return phy;

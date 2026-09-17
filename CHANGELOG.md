@@ -40,6 +40,40 @@ consumers only see a change when a version is cut.
   - Jumping to the search box (⌘F / Ctrl+F), revealing Search B, opening a
     view that carries a search, and the representative-tips result all unfold
     the Search section, so what they produce is visible.
+- **A Nextstrain build saved as Nexus opens like the same build saved as
+  JSON.** Auspice's "download Nexus" annotations now land where the Auspice
+  JSON reader puts them: `num_date` is the node's date, in years, and also a
+  `nextstrain:num_date` property; `num_date_CI={lo,hi}` is that date's
+  interval; `div` is `nextstrain:div`. They used to arrive as opaque
+  `beast:` numbers, so a time-tree export showed no dates, no calendar axis,
+  and could be re-rooted. A `num_date` outranks a BEAST `height`, alone
+  carries the unit, and never borrows the height's HPD interval; one that does
+  not parse stays a plain `beast:` text property.
+  - **Only on a tree that is actually time-scaled.** Auspice writes the same
+    annotations on its divergence tree, whose branch lengths are
+    substitutions, and dating that would hang a calendar axis on it. So a
+    `num_date` stands unless the tree itself says otherwise: two comparable
+    pairs or more, with no strict majority of parent-to-child year differences
+    reproducing the branch lengths (the tolerances the TreeTime `date=` rule
+    uses). Measured on real exports: measles 5388 of 5388 pairs, chikungunya
+    2645 of 2645, the Lassa divergence tree 169 of 2295. Where it does not
+    stand nothing is lost — the year and its interval stay as
+    `nextstrain:num_date` and `nextstrain:num_date_CI`.
+
+### Fixed
+
+- **An apostrophe inside an annotation value broke the file.** Auspice writes
+  values bare — `country=Côte d'Ivoire` — and the apostrophe was read as the
+  start of a quoted string. With one such tip the file was refused over its
+  "unbalanced parentheses" (they were balanced). With two it was worse: the
+  apostrophes paired up across the tips, nothing was reported, the second tip
+  vanished and the first one's country swallowed the Newick between them. A
+  quote inside a `[&...]` annotation now opens a string only where a value can
+  start, and closes it only where one can end; anywhere else it is a
+  character like any other. Quoted values, quoted set elements and a value
+  that merely begins with an apostrophe (`'s-Hertogenbosch`) all read
+  correctly. Found on a real file, `nextstrain_chikv_global_timetree.nexus`;
+  the desktop had the same bug.
 
 ### Added
 

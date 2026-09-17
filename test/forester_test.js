@@ -77,6 +77,9 @@ runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
 runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
 runTest("TreeTime output            : ", testTreeTimeOutput);
 runTest("Auspice edge cases         : ", testAuspiceMore);
+runTest("quotes inside a [&...] blob: ", testBlobQuotes);
+runTest("Auspice Nexus vocabulary   : ", testAuspiceNexusVocabulary);
+runTest("num_date, time-scaled only : ", testNumDateOnlyOnTimeScaledTrees);
 runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 runTest("Nexus numeric tips         : ", testNexusNumericTips);
@@ -2948,6 +2951,265 @@ function testTreeTimeOutput() {
         }
     });
     return goodPromoted === 4;
+}
+
+// A quote character inside a [&...] blob is DATA unless it opens a quoted
+// VALUE. Auspice writes values bare, so country=Côte d'Ivoire is one field with
+// an apostrophe in it. Both failures this used to cause are pinned, because
+// they are different bugs: ONE such tip and the quote never closed, so the
+// file was refused; TWO and the apostrophes paired across the tips, with no
+// error at all, the second tip gone and the first one's country swallowing the
+// Newick between them. Real file: nextstrain_chikv_global_timetree.nexus.
+function blobProps(nh) {
+    var out = {};
+    var phy = forester.parseNewHampshire(nh);
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (!n.children && n.name) {
+            out[n.name] = (n.properties || []).map(function (p) {
+                return p.ref + "=" + p.value;
+            }).join(" | ") + " :" + n.branch_length;
+        }
+    });
+    return out;
+}
+
+function testBlobQuotes() {
+    var cases = [
+        // the odd count: used to throw
+        ["(A:1[&country=Côte d'Ivoire,region=Africa],B:1);",
+            {A: "beast:country=Côte d'Ivoire | beast:region=Africa :1", B: " :1"}],
+        // the even count: used to read WRONG, silently, and lose tip B
+        ["(A:1[&country=Côte d'Ivoire],B:2[&country=Côte d'Ivoire]);",
+            {A: "beast:country=Côte d'Ivoire :1", B: "beast:country=Côte d'Ivoire :2"}],
+        // a bare value that BEGINS with an apostrophe must not reach into
+        // the next tip's blob for a partner
+        ["(A:1[&division='s-Hertogenbosch,region=Europe],B:2[&division='s-Gravenhage]);",
+            {A: "beast:division='s-Hertogenbosch | beast:region=Europe :1", B: "beast:division='s-Gravenhage :2"}],
+        // The three halves of the rule mask one another on the cases above
+        // (a sabotage run showed each could be removed alone and stay green),
+        // so each gets a case where it is the only thing standing:
+        //  - WHERE a quote may open: the second apostrophe here stands where a
+        //    value can end, so only "not after '='" keeps these two fields apart
+        ["(A:1[&a=rock'n,b=roll'],B:1);", {A: "beast:a=rock'n | beast:b=roll' :1", B: " :1"}],
+        //  - WHERE a quote may close: the inner apostrophe is followed by a
+        //    letter, so it is data and the comma after it still belongs to the value
+        ["(A:1[&note='a'b,c',x=1],B:1);", {A: "beast:note=a'b,c | beast:x=1 :1", B: " :1"}],
+        //  - the BOUND: this value opens legitimately and never closes, and the
+        //    next tip's blob ends in an apostrophe that would make a fine partner
+        ["(A:1[&division='s-Hertogenbosch],B:2[&k=v'],C:3);",
+            {A: "beast:division='s-Hertogenbosch :1", B: "beast:k=v' :2", C: " :3"}],
+        // quoted values still work, either quote, the other one inside
+        ['(A:1[&country="Côte d\'Ivoire"],B:1);', {A: "beast:country=Côte d'Ivoire :1", B: " :1"}],
+        ["(A:1[&country='Côte d'Ivoire',region=Africa],B:1);",
+            {A: "beast:country=Côte d'Ivoire | beast:region=Africa :1", B: " :1"}],
+        // ... and what a quoted value protects is still protected
+        ['(A:1[&k="a,b",x=1],B:1);', {A: "beast:k=a,b | beast:x=1 :1", B: " :1"}],
+        ['(A:1[&note="a]b",x=1],B:1);', {A: "beast:note=a]b | beast:x=1 :1", B: " :1"}],
+        ['(A:1[&loc.set={"Hong Kong","Korea, Republic of"},x=1],B:1);',
+            {A: 'beast:loc_set={"Hong Kong","Korea, Republic of"} | beast:x=1 :1', B: " :1"}]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var got;
+        try {
+            got = blobProps(cases[i][0]);
+        } catch (e) {
+            console.log("    threw on " + cases[i][0] + ": " + (e.message || e));
+            return false;
+        }
+        var sameTips = Object.keys(got).sort().join() === Object.keys(cases[i][1]).sort().join()
+            && Object.keys(got).every(function (k) { return got[k] === cases[i][1][k]; });
+        if (!sameTips) {
+            console.log("    " + cases[i][0] + "\n      got      " + JSON.stringify(got)
+                + "\n      expected " + JSON.stringify(cases[i][1]));
+            return false;
+        }
+    }
+    return true;
+}
+
+// Auspice's "download Nexus" vocabulary lands where parseAuspiceJson puts the
+// same dataset (the desktop's Increment B, Christian 2026-09-16): num_date ->
+// the date value with unit "year" + nextstrain:num_date; num_date_CI -> that
+// date's min/max; div -> nextstrain:div. A num_date outranks every height*,
+// alone carries the unit and never borrows the height's HPD; date= is still
+// only a desc; what does not parse falls back to plain beast: text.
+function tipA(nh) {
+    return forester.findByNodeName(forester.parseNewHampshire(nh), "A")[0];
+}
+
+function refsOf(n) {
+    return (n.properties || []).map(function (p) {
+        return p.ref + "=" + p.value + "(" + p.datatype + ")";
+    }).sort().join(" | ");
+}
+
+function testAuspiceNexusVocabulary() {
+    var cases = [
+        ["(A:1[&num_date=2001.5],B:1);", {value: 2001.5, unit: "year"},
+            "nextstrain:num_date=2001.5(xsd:decimal)"],
+        ["(A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
+            {value: 2001.5, unit: "year", minimum: 2000.1, maximum: 2002.9},
+            "nextstrain:num_date=2001.5(xsd:decimal)"],
+        // an interval with no date to bracket is kept as text, and is no date
+        ["(A:1[&num_date_CI={2000.1,2002.9}],B:1);", undefined,
+            "nextstrain:num_date_CI={2000.1,2002.9}(xsd:string)"],
+        ["(A:1[&div=0.0123],B:1);", undefined, "nextstrain:div=0.0123(xsd:decimal)"],
+        // beside a height: num_date wins, keeps the unit to itself, leaves
+        // the height's HPD alone -- and the height is kept, not dropped
+        ["(A:1[&num_date=2001.5,height=12.3,height_95%_HPD={10,14}],B:1);",
+            {value: 2001.5, unit: "year"},
+            "beast:height=12.3(xsd:decimal) | beast:height_95_HPD={10,14}(xsd:string)"
+            + " | nextstrain:num_date=2001.5(xsd:decimal)"],
+        // no num_date: the height is the date, exactly as before
+        ["(A:1[&height=12.3,height_95%_HPD={10,14}],B:1);",
+            {value: 12.3, minimum: 10, maximum: 14}, ""],
+        ["(A:1[&date=1995.33,height=12.3],B:1);", {value: 12.3, desc: "1995.33"}, ""],
+        // unparseable: plain text, no date, the generic namespace
+        ["(A:1[&num_date=abc,div=xyz],B:1);", undefined,
+            "beast:div=xyz(xsd:string) | beast:num_date=abc(xsd:string)"],
+        ["(A:1[&num_date=2001.5,num_date_CI=wide],B:1);", {value: 2001.5, unit: "year"},
+            "beast:num_date_CI=wide(xsd:string) | nextstrain:num_date=2001.5(xsd:decimal)"]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var a = tipA(cases[i][0]);
+        if (JSON.stringify(a.date) !== JSON.stringify(cases[i][1]) || refsOf(a) !== cases[i][2]) {
+            console.log("    " + cases[i][0] + "\n      date " + JSON.stringify(a.date)
+                + " props " + refsOf(a));
+            return false;
+        }
+        if (a._numDate !== undefined) {
+            console.log("    the provisional marker leaked: " + cases[i][0]);
+            return false;
+        }
+    }
+
+    // THE POINT OF IT: one dataset, saved both ways, opens the same way.
+    var json = forester.parseAuspiceJson({version: "v2", meta: {}, tree: {
+        name: "root", node_attrs: {div: 0, num_date: {value: 2000, confidence: [1999.5, 2000.5]}},
+        children: [
+            {name: "A", node_attrs: {div: 0.01, num_date: {value: 2003.25, confidence: [2003, 2003.5]}}},
+            {name: "B", node_attrs: {div: 0.02, num_date: {value: 2005.5}}}]}});
+    var nex = forester.parseNewHampshire("(A:3.25[&num_date=2003.25,num_date_CI={2003,2003.5},div=0.01],"
+        + "B:5.5[&num_date=2005.5,div=0.02])root[&num_date=2000,num_date_CI={1999.5,2000.5},div=0];");
+    // ONE NAMED DIFFERENCE, open (2026-09-16): parseAuspiceJson drops a TIP's
+    // interval on purpose -- on a viral tree it would read as a fossil-style
+    // observed range -- while the Nexus path keeps it, as the desktop's does
+    // (its measles export counts 5388 intervals on 5389 nodes, tips included).
+    // So tips are compared without their interval, and the difference is
+    // asserted rather than hidden: when it is decided either way, this fails.
+    var tipA2 = forester.findByNodeName(nex, "A")[0];
+    var tipJ = forester.findByNodeName(json, "A")[0];
+    if (tipA2.date.minimum !== 2003 || tipA2.date.maximum !== 2003.5 || tipJ.date.minimum !== undefined) {
+        console.log("    the tip-interval difference moved: nexus " + JSON.stringify(tipA2.date)
+            + " json " + JSON.stringify(tipJ.date));
+        return false;
+    }
+    function dateOf(n) {
+        return n.children ? n.date : {value: n.date.value, unit: n.date.unit};
+    }
+    var names = ["A", "B", "root"];
+    for (var k = 0; k < names.length; ++k) {
+        var j = forester.findByNodeName(json, names[k])[0];
+        var x = forester.findByNodeName(nex, names[k])[0];
+        if (!j || !x || JSON.stringify(dateOf(j)) !== JSON.stringify(dateOf(x)) || refsOf(j) !== refsOf(x)) {
+            console.log("    " + names[k] + ": json " + JSON.stringify(j && j.date) + " " + (j && refsOf(j))
+                + "\n           nexus " + JSON.stringify(x && x.date) + " " + (x && refsOf(x)));
+            return false;
+        }
+    }
+    return forester.isTimeTree(nex) === forester.isTimeTree(json);
+}
+
+// Auspice offers the SAME annotations on its time tree and on its divergence
+// tree, and a date value is what makes a tree a time tree here. So a num_date
+// stands unless the tree itself says it is not time-scaled: two comparable
+// pairs or more, and no strict majority of parent-to-child year differences
+// reproducing the branch lengths (the tolerances promoteTimeScaledDates uses).
+// Measured on real exports: measles timetree 5388/5388 pairs, chikv timetree
+// 2645/2645, lassa_gpc divergence tree 169/2295 -- which, dated, got a
+// calendar axis over substitutions and had its re-rooting refused.
+function testNumDateOnlyOnTimeScaledTrees() {
+    function tree(lengths) {
+        return "((A:" + lengths[0] + "[&num_date=2003,num_date_CI={2002.5,2003.5}],B:" + lengths[1]
+            + "[&num_date=2004.5])ab:" + lengths[2] + "[&num_date=2001],C:" + lengths[3]
+            + "[&num_date=2006])root[&num_date=2000];";
+    }
+    function count(phy, fn) {
+        var c = 0;
+        forester.preOrderTraversalAll(phy, function (n) {
+            if (fn(n)) {
+                ++c;
+            }
+        });
+        return c;
+    }
+    function hasValue(n) {
+        return !!(n.date && typeof n.date.value === "number");
+    }
+    function hasRef(ref) {
+        return function (n) {
+            return (n.properties || []).some(function (p) { return p.ref === ref; });
+        };
+    }
+
+    // 1. lengths in YEARS: every difference reproduces its branch -> dated
+    var timed = forester.parseNewHampshire(tree([2, 3.5, 1, 6]));
+    if (count(timed, hasValue) !== 5 || !forester.isTimeTree(timed)
+        || forester.timeAxisInfo(forester.getTreeRoot(timed)).type !== "calendar") {
+        console.log("    a time-scaled tree lost its dates: " + count(timed, hasValue) + " of 5");
+        return false;
+    }
+    var a = forester.findByNodeName(timed, "A")[0];
+    if (a.date.minimum !== 2002.5 || a.date.maximum !== 2003.5 || a.date.unit !== "year") {
+        console.log("    A: " + JSON.stringify(a.date));
+        return false;
+    }
+
+    // 2. the SAME annotations over lengths in SUBSTITUTIONS -> not dated, not a
+    //    time tree, and nothing lost: the year and its interval stay as properties
+    var div = forester.parseNewHampshire(tree([0.002, 0.0035, 0.001, 0.006]));
+    if (count(div, hasValue) !== 0 || forester.isTimeTree(div)
+        || forester.timeAxisInfo(forester.getTreeRoot(div)).type !== null) {
+        console.log("    a divergence tree was dated: " + count(div, hasValue) + " values");
+        return false;
+    }
+    if (count(div, hasRef("nextstrain:num_date")) !== 5 || count(div, hasRef("nextstrain:num_date_CI")) !== 1) {
+        console.log("    the years were not kept: " + count(div, hasRef("nextstrain:num_date")) + " / "
+            + count(div, hasRef("nextstrain:num_date_CI")));
+        return false;
+    }
+    var da = forester.findByNodeName(div, "A")[0];
+    if (da.date !== undefined || da._numDate !== undefined) {
+        console.log("    A kept " + JSON.stringify(da.date));
+        return false;
+    }
+
+    // 3. a STRICT majority decides, as for date=: 2 of 4 agreeing is not one
+    var half = forester.parseNewHampshire(tree([2, 3.5, 0.001, 0.006]));
+    if (count(half, hasValue) !== 0) {
+        console.log("    2 of 4 pairs counted as a majority");
+        return false;
+    }
+    var most = forester.parseNewHampshire(tree([2, 3.5, 1, 0.006]));
+    if (count(most, hasValue) !== 5) {
+        console.log("    3 of 4 pairs did not count as a majority");
+        return false;
+    }
+
+    // 4. too small to say anything: a num_date is a date by its very name, so
+    //    it stands (a date= would NOT be promoted here -- it needs evidence FOR)
+    var tiny = forester.parseNewHampshire("(A:0.002[&num_date=2003],B:0.004[&num_date=2004])root[&num_date=2000];");
+    if (count(tiny, hasValue) !== 0) {
+        // two pairs, neither agreeing: evidence against
+        console.log("    two disagreeing pairs were not evidence");
+        return false;
+    }
+    var one = forester.parseNewHampshire("(A:0.002[&num_date=2003],B:0.004)root[&num_date=2000];");
+    if (count(one, hasValue) !== 2) {
+        console.log("    one pair was treated as evidence: " + count(one, hasValue));
+        return false;
+    }
+    return true;
 }
 
 // Auspice edge cases: an already-parsed object as input, a tiny divergence

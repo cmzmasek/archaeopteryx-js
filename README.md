@@ -771,7 +771,16 @@ BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
 (median/mean) with its `95%_HPD` (or range) becomes the node date the age
 bars draw, FigTree's `!color` becomes the branch colour, and every other
 field (`rate`, traits, ...) becomes a `beast:<key>` node property for
-Color-by and search. Classic `[&&NHX:...]` tags map to their phyloXML
+Color-by and search. **Auspice's "download Nexus"** annotations land where the
+Auspice JSON reader puts the same dataset, so one Nextstrain build opens the
+same way in either format: `num_date` is the node's date in years (and a
+`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval, `div` a
+`nextstrain:div` property — but only on a tree that is actually time-scaled,
+since Auspice writes the same annotations on its divergence tree: where the
+year differences do not reproduce the branch lengths the dates stay properties
+and no calendar axis is drawn. Inside an annotation a quote opens a string
+only where a value starts, so a bare `country=Côte d'Ivoire` is one field with
+an apostrophe in it. Classic `[&&NHX:...]` tags map to their phyloXML
 equivalents (`S=` taxonomy, `T=` taxonomy id, `B=` support, `D=`
 duplication/speciation event, `GN=`/`AC=` sequence name/accession). Plain
 `[number]` brackets keep their old meaning (confidence values).
