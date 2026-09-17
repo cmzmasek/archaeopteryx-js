@@ -1,0 +1,321 @@
+{
+"meta": {
+"title": "Auspice visualization of TreeTime (v0.12.1) analysis",
+"build_url": "https://github.com/neherlab/treetime",
+"last_updated": "2026-09-16",
+"treetime_version": "0.12.1",
+"genome_annotations": {
+"nuc": {
+"start": 1,
+"end": 600,
+"type": "source",
+"strand": "+:"
+}
+},
+"panels": [
+"tree",
+"entropy"
+],
+"colorings": [
+{
+"title": "Date",
+"type": "continuous",
+"key": "num_date"
+},
+{
+"title": "Genotype",
+"type": "categorical",
+"key": "gt"
+},
+{
+"title": "Excluded",
+"type": "categorical",
+"key": "bad_branch"
+},
+{
+"title": "Branch Support",
+"type": "continuous",
+"key": "confidence"
+}
+],
+"display_defaults": {
+"color_by": "bad_branch"
+},
+"filters": [
+"bad_branch"
+]
+},
+"tree": {
+"name": "NODE_0000001",
+"node_attrs": {
+"num_date": {
+"value": 1972.1705287679945
+},
+"div": 0.001,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 0.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": []
+}
+},
+"children": [
+{
+"name": "NODE_0000004",
+"node_attrs": {
+"num_date": {
+"value": 1994.7298671961448
+},
+"div": 0.014440224631014402,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"T52G",
+"T85C",
+"A88G",
+"T125G",
+"G277A",
+"A439G",
+"T498A",
+"A580G"
+]
+}
+},
+"children": [
+{
+"name": "New_York/182/2000",
+"node_attrs": {
+"num_date": {
+"value": 2000.13415469
+},
+"div": 0.017778976564389298,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"G198A",
+"G468A"
+]
+}
+}
+},
+{
+"name": "Canterbury/58/2000",
+"node_attrs": {
+"num_date": {
+"value": 2000.68172485
+},
+"div": 0.01777459901844408,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"C33T",
+"A76G"
+]
+}
+}
+}
+]
+},
+{
+"name": "NODE_0000002",
+"node_attrs": {
+"num_date": {
+"value": 1995.5879265469314
+},
+"div": 0.014509399700353934,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"C67T",
+"T69C",
+"C319A",
+"G428T",
+"A449G",
+"T505C",
+"A510G",
+"G595A"
+]
+}
+},
+"children": [
+{
+"name": "NODE_0000000",
+"node_attrs": {
+"num_date": {
+"value": 2009.014518218012
+},
+"div": 0.022905434768375282,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 0.993
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"T242C",
+"G267A",
+"A278G",
+"T300C",
+"C471T"
+]
+}
+},
+"children": [
+{
+"name": "Hawaii/02/2013",
+"node_attrs": {
+"num_date": {
+"value": 2013.40520192
+},
+"div": 0.02626132780428073,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"A127G",
+"G315A"
+]
+}
+}
+},
+{
+"name": "Boston/DOA2_107/2012",
+"node_attrs": {
+"num_date": {
+"value": 2012.83778234
+},
+"div": 0.02457767906773097,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"T579C"
+]
+}
+}
+}
+]
+},
+{
+"name": "NODE_0000003",
+"node_attrs": {
+"num_date": {
+"value": 2005.0246049170544
+},
+"div": 0.019538600047162402,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 0.95
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"A288G",
+"G429A",
+"G489A"
+]
+}
+},
+"children": [
+{
+"name": "Oregon/15/2009",
+"node_attrs": {
+"num_date": {
+"value": 2009.48186174
+},
+"div": 0.024575550091071312,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": [
+"C183T",
+"A249G",
+"T375C"
+]
+}
+}
+},
+{
+"name": "Hong_Kong/H090_695_V10/2009",
+"node_attrs": {
+"num_date": {
+"value": 2009.5229295
+},
+"div": 0.019538600047162402,
+"bad_branch": {
+"value": "No"
+},
+"confidence": {
+"value": 1.0
+}
+},
+"branch_attrs": {
+"mutations": {
+"nuc": []
+}
+}
+}
+]
+}
+]
+}
+]
+}
+}

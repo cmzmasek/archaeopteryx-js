@@ -75,6 +75,7 @@ runTest("Nexus dialect variants     : ", testNexusParserVariants);
 runTest("Nexus BEAST MCC file       : ", testNexusBeastMcc);
 runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
 runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
+runTest("TreeTime output            : ", testTreeTimeOutput);
 runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
@@ -2768,6 +2769,129 @@ function testBeastAnnotationsMore() {
     var qa = forester.getAllExternalNodes(q)[0];
     var qn = forester.findByNodeName(q, "ab[&x=1]cd")[0];
     return !!qn && !qn.properties && qa.branch_length !== undefined;
+}
+
+// TreeTime output (real files from treetime 0.12.1, in test/data/treetime).
+//
+// TreeTime writes no BEAST height: the decimal year in "[&...,date=2003.84]"
+// IS the node's place in time, so it has to reach node.date.value or the tree
+// is not a time tree and no calendar axis appears. But it writes that SAME
+// comment on timetree.nexus (branch lengths in YEARS) and on
+// divergence_tree.nexus (branch lengths in SUBSTITUTIONS), so promoting on
+// sight would hang a calendar axis -- which maps one length unit to one year
+// -- on a divergence tree and disable its re-rooting. The promotion is
+// therefore self-validating: it happens only where the parent-to-child date
+// differences reproduce the branch lengths.
+function testTreeTimeOutput() {
+    var fs = require('fs');
+    var pth = require('path');
+    function data(name) {
+        return fs.readFileSync(pth.join(__dirname, 'data', 'treetime', name), 'utf8');
+    }
+
+    // 1. timetree.nexus: dates promoted, and the desc kept alongside
+    var tt = forester.parseNexus(data('timetree.nexus'), true, false)[0];
+    var hawaii = forester.findByNodeName(tt, "Hawaii/02/2013")[0];
+    if (!hawaii || !hawaii.date || hawaii.date.value !== 2013.41
+        || hawaii.date.unit !== "year" || hawaii.date.desc !== "2013.41") {
+        return false;
+    }
+    if (!forester.isTimeTree(tt)
+        || forester.timeAxisInfo(forester.getTreeRoot(tt)).type !== "calendar") {
+        return false;
+    }
+    // the mutations ride along as a property, and branch lengths are years
+    var muts = (hawaii.properties || []).filter(function (p) {
+        return p.ref === "beast:mutations";
+    });
+    if (muts.length !== 1 || muts[0].value !== "A127G,G315A,G451R"
+        || Math.abs(hawaii.branch_length - 4.3906837) > 1e-9) {
+        return false;
+    }
+
+    // 2. divergence_tree.nexus: the SAME date= comments, substitution branch
+    //    lengths -- so NO promotion, and emphatically not a time tree
+    var dv = forester.parseNexus(data('divergence_tree.nexus'), true, false)[0];
+    var promoted = 0;
+    var descs = 0;
+    forester.preOrderTraversal(dv, function (n) {
+        if (n.date && typeof n.date.value === "number") {
+            ++promoted;
+        }
+        if (n.date && typeof n.date.desc === "string") {
+            ++descs;
+        }
+    });
+    if (promoted !== 0 || descs < 6 || forester.isTimeTree(dv)) {
+        return false;
+    }
+
+    // 3. auspice_tree.json: TreeTime never writes "version":"v2", and
+    //    demanding the stamp rejected the one file with full-precision dates
+    var au = forester.parseAuspiceJson(data('auspice_tree.json'));
+    var dated = 0;
+    forester.preOrderTraversal(au, function (n) {
+        if (n.date && typeof n.date.value === "number") {
+            ++dated;
+        }
+    });
+    if (dated < 6 || !forester.isTimeTree(au)) {
+        return false;
+    }
+    // ... while JSON that is not an Auspice dataset is still refused. The
+    // last one carries the v2 stamp but no tree, which only the shape check
+    // catches -- the implied-version branch never runs for it.
+    // -- and refused with a clear message, not a crash further in.
+    var refused = 0;
+    ['{"x":1}', '{"tree":{"name":"a"}}', '{"meta":{},"tree":[]}',
+        '{"version":"v2"}'].forEach(function (s) {
+        try {
+            forester.parseAuspiceJson(s);
+        } catch (e) {
+            if (e.message.indexOf('Auspice') >= 0) {
+                ++refused;
+            }
+        }
+    });
+    if (refused !== 4) {
+        return false;
+    }
+
+    // 4. a BEAST height still wins: date= stays a desc, the age is the height
+    //    and the HPD is its interval (an age interval around a calendar year
+    //    would draw nonsense node-age bars)
+    var beast = forester.parseNewHampshire(
+        '((a:1,b:1)[&height=1.2,height_95%_HPD={0.95,1.5},date=2003.84]:1,c:2);');
+    var anc = forester.findByNodeName(beast, "a")[0].parent;
+    if (anc.date.value !== 1.2 || anc.date.desc !== "2003.84"
+        || anc.date.minimum !== 0.95 || anc.date.unit !== undefined) {
+        return false;
+    }
+
+    // 5. dates that do NOT reproduce the branch lengths are left as descs,
+    //    whatever they look like -- this is the whole guard, in miniature
+    var bogus = forester.parseNewHampshire(
+        '((a[&date=2000.00]:1,b[&date=2001.00]:1)[&date=1990.00]:1,c[&date=2002.00]:1);');
+    var bogusPromoted = 0;
+    forester.preOrderTraversal(bogus, function (n) {
+        if (n.date && typeof n.date.value === "number") {
+            ++bogusPromoted;
+        }
+    });
+    if (bogusPromoted !== 0) {
+        return false;
+    }
+
+    // ... and the same shape WITH consistent lengths is promoted
+    var good = forester.parseNewHampshire(
+        '((a[&date=2000.00]:10,b[&date=2001.00]:11)[&date=1990.00]:1,c[&date=2002.00]:12);');
+    var goodPromoted = 0;
+    forester.preOrderTraversal(good, function (n) {
+        if (n.date && typeof n.date.value === "number") {
+            ++goodPromoted;
+        }
+    });
+    return goodPromoted === 4;
 }
 
 // Auspice edge cases: an already-parsed object as input, a tiny divergence
