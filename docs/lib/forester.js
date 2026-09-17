@@ -3663,11 +3663,31 @@
         return parseBeastNumber(n.date.desc);
     }
 
-    function promoteTimeScaledDates(phy) {
-        let root = forester.getTreeRoot(phy);
-        if (!root) {
-            return;
-        }
+    // THE PAIR COUNT, shared by the date= promotion below and by
+    // settleNumDates, so the two can never drift: a PAIR is a dated node, its
+    // dated DIRECT parent and a branch length between them, and it AGREES
+    // when the year difference reproduces that length within the tolerances.
+    //
+    // A pair must also be INFORMATIVE: max(|dYear|, |length|) > the absolute
+    // tolerance. One that is not cannot tell years from substitutions at all
+    // -- both numbers sit inside the tolerance, so it "agrees" whatever the
+    // tree is measured in -- and it is left out of BOTH counts. That is not a
+    // nicety. The 0.02 tolerance is larger than a dense tree's substitution
+    // lengths, so on a densely sampled DIVERGENCE tree such pairs pile up as
+    // agreement. Measured by rebuilding real Auspice time-tree exports as
+    // their divergence trees (length = the div difference, same num_dates):
+    //                 agreeing, every pair       informative pairs only
+    //   H5N1 (2 y)    3620 of 9205  (39.3%)      1 of 5586
+    //   chikungunya    672 of 2645  (25.4%)      0 of 1973
+    //   measles        915 of 5388  (17.0%)      0 of 4473
+    // while every time tree stays at 100% either way (H5N1 5586 of 5586).
+    // 39% is under the majority, so nothing visible changed on those files;
+    // it is headroom -- a denser build would have crossed it and been dated
+    // on substitutions. Found by a review on the desktop, reproduced here to
+    // the pair, and a JOINT RULE (Christian, 2026-09-17, both sessions). The
+    // burden of proof is untouched: with no informative pair at all a date=
+    // is still not promoted and a num_date still stands.
+    function countDatePairs(root, yearOf) {
         let dated = [];
         let agree = 0;
         let pairs = 0;
@@ -3675,17 +3695,20 @@
         while (stack.length > 0) {
             let top = stack.pop();
             let n = top[0];
-            let year = numericDateDesc(n);
+            let year = yearOf(n);
             if (year !== null) {
                 dated.push([n, year]);
                 let parentYear = top[1];
                 if (parentYear !== null && typeof n.branch_length === 'number'
                     && isFinite(n.branch_length)) {
-                    ++pairs;
-                    let tol = NUMERIC_DATE_ABS_TOL
-                        + NUMERIC_DATE_REL_TOL * Math.abs(n.branch_length);
-                    if (Math.abs((year - parentYear) - n.branch_length) <= tol) {
-                        ++agree;
+                    let dYear = year - parentYear;
+                    if (Math.max(Math.abs(dYear), Math.abs(n.branch_length)) > NUMERIC_DATE_ABS_TOL) {
+                        ++pairs;
+                        let tol = NUMERIC_DATE_ABS_TOL
+                            + NUMERIC_DATE_REL_TOL * Math.abs(n.branch_length);
+                        if (Math.abs(dYear - n.branch_length) <= tol) {
+                            ++agree;
+                        }
                     }
                 }
             }
@@ -3695,6 +3718,18 @@
                 }
             }
         }
+        return {dated: dated, pairs: pairs, agree: agree};
+    }
+
+    function promoteTimeScaledDates(phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return;
+        }
+        let counted = countDatePairs(root, numericDateDesc);
+        let dated = counted.dated;
+        let pairs = counted.pairs;
+        let agree = counted.agree;
         if (pairs < 2 || agree * 2 <= pairs) {
             return;
         }
@@ -3741,34 +3776,14 @@
         if (!root) {
             return;
         }
-        let marked = [];
-        let agree = 0;
-        let pairs = 0;
-        let stack = [[root, null]];
-        while (stack.length > 0) {
-            let top = stack.pop();
-            let n = top[0];
-            let year = null;
-            if (n._numDate) {
-                marked.push(n);
-                year = n.date.value;
-                let parentYear = top[1];
-                if (parentYear !== null && typeof n.branch_length === 'number'
-                    && isFinite(n.branch_length)) {
-                    ++pairs;
-                    let tol = NUMERIC_DATE_ABS_TOL
-                        + NUMERIC_DATE_REL_TOL * Math.abs(n.branch_length);
-                    if (Math.abs((year - parentYear) - n.branch_length) <= tol) {
-                        ++agree;
-                    }
-                }
-            }
-            if (n.children) {
-                for (let i = 0; i < n.children.length; ++i) {
-                    stack.push([n.children[i], year]);
-                }
-            }
-        }
+        let counted = countDatePairs(root, function (n) {
+            return n._numDate ? n.date.value : null;
+        });
+        let marked = counted.dated.map(function (d) {
+            return d[0];
+        });
+        let pairs = counted.pairs;
+        let agree = counted.agree;
         let notTimeScaled = pairs >= 2 && agree * 2 <= pairs;
         marked.forEach(function (n) {
             let m = n._numDate;

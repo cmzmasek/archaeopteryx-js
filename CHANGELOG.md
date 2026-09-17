@@ -72,6 +72,18 @@ consumers only see a change when a version is cut.
     2645 of 2645, the Lassa divergence tree 169 of 2295. Where it does not
     stand nothing is lost — the year and its interval stay as
     `nextstrain:num_date` and `nextstrain:num_date_CI`.
+  - **Only pairs that can tell years from substitutions are counted.** The
+    0.02 tolerance is larger than a densely sampled tree's substitution
+    lengths, so on such a divergence tree a pair whose year difference and
+    branch length both sit inside the tolerance "agrees" whatever the tree is
+    measured in. A pair now counts only if one of the two exceeds it. Measured
+    by rebuilding real time-tree exports as their divergence trees: H5N1 had
+    3,620 of 9,205 pairs agreeing (39%) and now has 1 of 5,586; measles 17% →
+    0; chikungunya 25% → 0; every time tree stays at 100%. No real file opens
+    differently — 39% was still under the majority — but a denser build would
+    have crossed it and been dated on substitutions. The same count serves
+    the TreeTime `date=` rule. Found by a review on the desktop; the rule is
+    shared by both programs.
 
 - **An NHX tag is read the way the desktop reads it**, by its label rule.
   Quote characters are never part of a value — `[&&NHX:S='homo']` is the

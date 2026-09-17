@@ -80,6 +80,7 @@ runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("quotes inside a [&...] blob: ", testBlobQuotes);
 runTest("Auspice Nexus vocabulary   : ", testAuspiceNexusVocabulary);
 runTest("num_date, time-scaled only : ", testNumDateOnlyOnTimeScaledTrees);
+runTest("uninformative date pairs   : ", testUninformativeDatePairs);
 runTest("a number is a plain decimal: ", testNumberGrammar);
 runTest("NHX tag: quotes/space noise: ", testNhxTagNoise);
 runTest("TAXLABELS colour = label   : ", testTaxlabelColours);
@@ -3237,6 +3238,63 @@ function testNumDateOnlyOnTimeScaledTrees() {
         return false;
     }
     return true;
+}
+
+// A pair whose year difference AND branch length both sit inside the 0.02
+// tolerance cannot tell years from substitutions: it "agrees" whatever the
+// tree is measured in. On a densely sampled divergence tree such pairs pile up
+// as agreement (a real H5N1 export rebuilt as its divergence tree: 3620 of 9205
+// pairs, 39%), so they are left out of both counts. The desktop's own cases,
+// verbatim (its testDenseTreesUninformativePairs): four uninformative pairs and
+// two informative ones, and the same dates over two sets of lengths. A joint
+// rule -- Christian, 2026-09-17, in both sessions.
+function testUninformativeDatePairs() {
+    var DIV = "((A[&D=2020.02]:0.00001,B[&D=2020.51]:0.0001)N1[&D=2020.01]:0.00002,"
+        + "(C[&D=2020.52]:0.00011,D[&D=2020.02]:0.00003)N2[&D=2020.01]:0.00004)R[&D=2020.00];";
+    var TIME = "((A[&D=2020.02]:0.01,B[&D=2020.51]:0.5)N1[&D=2020.01]:0.011,"
+        + "(C[&D=2020.52]:0.51,D[&D=2020.02]:0.0105)N2[&D=2020.01]:0.0101)R[&D=2020.00];";
+    var NONE = "((A[&D=2020.02]:0.00001,B[&D=2020.03]:0.00002)N1[&D=2020.01]:0.00003,C[&D=2020.015]:0.00004)R[&D=2020.00];";
+    function values(nh) {
+        var c = 0;
+        forester.preOrderTraversalAll(forester.parseNewHampshire(nh), function (n) {
+            if (n.date && typeof n.date.value === "number") {
+                ++c;
+            }
+        });
+        return c;
+    }
+    function asNumDate(nh) {
+        return nh.replace(/&D=/g, "&num_date=");
+    }
+    function asDate(nh) {   // TreeTime's shape: a date= beside mutations, no height anywhere
+        return nh.replace(/&D=/g, '&mutations="A1G",date=');
+    }
+    var cases = [
+        // num_date: stands unless there is evidence AGAINST
+        ["num_date, divergence lengths", asNumDate(DIV), 0],    // 2 informative pairs, 0 agree. The old rule
+                                                                // counted 4 of 6 agreeing and DATED this tree.
+        ["num_date, time lengths", asNumDate(TIME), 7],
+        ["num_date, no informative pair", asNumDate(NONE), 5],  // no evidence against: stands
+        // date=: promoted only on evidence FOR
+        ["date=, divergence lengths", asDate(DIV), 0],
+        ["date=, time lengths", asDate(TIME), 7],
+        ["date=, no informative pair", asDate(NONE), 0]         // no evidence for: not promoted
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        if (values(cases[i][1]) !== cases[i][2]) {
+            console.log("    " + cases[i][0] + ": " + values(cases[i][1]) + " date values, expected " + cases[i][2]);
+            return false;
+        }
+    }
+    // the dense divergence tree is not a time tree and keeps its years as properties
+    var div = forester.parseNewHampshire(asNumDate(DIV));
+    var kept = 0;
+    forester.preOrderTraversalAll(div, function (n) {
+        if ((n.properties || []).some(function (p) { return p.ref === "nextstrain:num_date"; })) {
+            ++kept;
+        }
+    });
+    return !forester.isTimeTree(div) && kept === 7 && forester.isTimeTree(forester.parseNewHampshire(asNumDate(TIME)));
 }
 
 // A number is a plain decimal with an optional exponent -- the desktop's
