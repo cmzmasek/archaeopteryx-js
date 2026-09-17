@@ -4322,7 +4322,88 @@ function testTipLabelDateGrammar() {
 function testHeightDateConversionAgainstDesktop() {
     var fs = require('fs');
     var path = require('path');
-    var dir = path.join(__dirname, '..', 'test_trees');
+
+    // The committed fixture: the desktop's own forester/demo/beast-tip-dates.nex
+    // (their 0.11.151), 10 tips mixing day, month and bare-year labels, HPD
+    // intervals on the internal nodes, and both height_median and height on
+    // every node so the median preference is exercised too.
+    //
+    // This used to read test_trees/, which is excluded from the repository --
+    // so it passed here and failed in CI on a fresh checkout, where the file
+    // does not exist. A test whose fixture is not in the repository is not a
+    // test. Caught by CI on the 3.9.0 push.
+    var file = path.join(__dirname, 'data', 'beast', 'beast-tip-dates.nex');
+    var phy = forester.parseNexus(fs.readFileSync(file, 'utf8'))[0];
+    var a = forester.inferHeightDateAnchor(phy);
+    if (a === null) {
+        console.log('    the BEAST fixture was refused');
+        return false;
+    }
+    // The tip at height 0 is A/Hong_Kong/4801/2014|2014-02-26, so height 0 IS
+    // that label's date: 2014 + (57 - 0.5) / 365, computed independently.
+    if (a.present !== 2014.15479 || a.agreeing !== 10 || a.compared !== 10) {
+        console.log('    anchor ' + JSON.stringify(a) + ', expected 2014.15479 with 10/10');
+        return false;
+    }
+    forester.convertHeightsToDates(phy, a.present);
+
+    // The self-validating part, which needs no magic numbers: after conversion
+    // every tip must sit inside the span its OWN label states. If the anchor or
+    // the subtraction were wrong, the whole tree would slide off its labels.
+    var bad = null;
+    var tips = 0;
+    var withBounds = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+        if (n.children && n.children.length > 0) {
+            if (typeof n.date.minimum === 'number') {
+                ++withBounds;
+                // the bounds SWAP: a larger height is further back, so the
+                // interval must still read low-to-high as a date
+                if (!(n.date.minimum < n.date.value && n.date.value < n.date.maximum)) {
+                    bad = 'internal node ' + JSON.stringify(n.date) + ' is not an ascending date interval';
+                }
+            }
+            return;
+        }
+        ++tips;
+        var m = forester.parseTipLabelDate(n.name);
+        if (m === null) {
+            bad = 'no label date found in ' + n.name;
+            return;
+        }
+        if (n.date.unit !== 'year') {
+            bad = n.name + ' has unit ' + n.date.unit;
+        }
+        if ((n.date.value < (m.rangeStart - 0.01)) || (n.date.value > (m.rangeEnd + 0.01))) {
+            bad = n.name + ' converted to ' + n.date.value + ', outside its own label span '
+                + m.rangeStart + '..' + m.rangeEnd;
+        }
+    });
+    if (bad !== null) {
+        console.log('    ' + bad);
+        return false;
+    }
+    if (tips !== 10 || withBounds < 5) {
+        console.log('    fixture problem: ' + tips + ' tips, ' + withBounds + ' internal nodes with bounds');
+        return false;
+    }
+    // the provenance sentence the desktop appends
+    var sentence = forester.heightDateDescription(a, 'TREE1', 10);
+    if (sentence.indexOf('10 of 10 tip labels put height 0 at 2014.15479') < 0
+        || sentence.indexOf('each date is 2014.15479 minus the height') < 0) {
+        console.log('    provenance sentence: ' + sentence);
+        return false;
+    }
+
+    // The full acceptance against the desktop -- their anchors and their
+    // per-node dump for influenza.tree -- needs test_trees/, which is local
+    // only. Run it when it is there, and SAY SO when it is not: a check that
+    // vanishes silently is worse than one that never existed.
+    var big = path.join(__dirname, '..', 'test_trees');
+    if (!fs.existsSync(big)) {
+        console.log('    (test_trees/ absent: the large-tree comparison did not run)');
+        return true;
+    }
     var cases = [
         ['influenza.tree', 2005.25, 687, 687],
         ['HA_discrete_MCC.tre', 2005.5, 190, 190],
@@ -4330,62 +4411,33 @@ function testHeightDateConversionAgainstDesktop() {
     ];
     var influenza = null;
     for (var i = 0; i < cases.length; ++i) {
-        var file = path.join(dir, cases[i][0]);
-        if (!fs.existsSync(file)) {
-            console.log('    missing fixture ' + file);
-            return false;
+        var f2 = path.join(big, cases[i][0]);
+        if (!fs.existsSync(f2)) {
+            console.log('    (' + cases[i][0] + ' absent: skipped)');
+            continue;
         }
-        var phy = forester.parseNexus(fs.readFileSync(file, 'utf8'))[0];
-        var a = forester.inferHeightDateAnchor(phy);
-        if (a === null) {
-            console.log('    ' + cases[i][0] + ' was refused; the desktop converts it');
-            return false;
-        }
-        if (a.present !== cases[i][1]) {
-            console.log('    ' + cases[i][0] + ' anchor ' + a.present + ', the desktop says ' + cases[i][1]);
-            return false;
-        }
-        if (a.agreeing !== cases[i][2] || a.compared !== cases[i][3]) {
-            console.log('    ' + cases[i][0] + ' agreement ' + a.agreeing + '/' + a.compared
-                + ', the desktop says ' + cases[i][2] + '/' + cases[i][3]);
+        var t2 = forester.parseNexus(fs.readFileSync(f2, 'utf8'))[0];
+        var a2 = forester.inferHeightDateAnchor(t2);
+        if (a2 === null || a2.present !== cases[i][1] || a2.agreeing !== cases[i][2]
+            || a2.compared !== cases[i][3]) {
+            console.log('    ' + cases[i][0] + ' -> ' + JSON.stringify(a2) + ', the desktop says '
+                + cases[i][1] + ' with ' + cases[i][2] + '/' + cases[i][3]);
             return false;
         }
         if (cases[i][0] === 'influenza.tree') {
-            influenza = {phy: phy, anchor: a};
+            influenza = {phy: t2, anchor: a2};
         }
     }
-    // their per-node dump, for the root and three tips of influenza.tree
-    forester.convertHeightsToDates(influenza.phy, influenza.anchor.present);
-    var root = forester.getTreeRoot(influenza.phy);
-    // height 12.918411201454514 [12.583368821409794, 13.355090926136427]
-    // the LARGER height is the EARLIER date, so the bounds swap sides
-    if (root.date.value !== 1992.33159 || root.date.minimum !== 1991.89491
-        || root.date.maximum !== 1992.66663 || root.date.unit !== 'year') {
-        console.log('    root -> ' + JSON.stringify(root.date)
-            + ', the desktop says value 1992.33159 [1991.89491, 1992.66663] year');
-        return false;
-    }
-    var want = {'NewYork_705_1994.1': 1994.1, 'NewYork_758_1993.11': 1993.11, 'NewYork_577_1997': 1997};
-    var seen = 0;
-    var wrong = null;
-    forester.preOrderTraversalAll(root, function (n) {
-        if (n.name && Object.prototype.hasOwnProperty.call(want, n.name)) {
-            ++seen;
-            if (n.date.value !== want[n.name]) {
-                wrong = n.name + ' -> ' + n.date.value + ', expected ' + want[n.name];
-            }
+    if (influenza !== null) {
+        forester.convertHeightsToDates(influenza.phy, influenza.anchor.present);
+        var root = forester.getTreeRoot(influenza.phy);
+        // their dump: height 12.918411201454514 [12.583368821409794, 13.355090926136427]
+        if (root.date.value !== 1992.33159 || root.date.minimum !== 1991.89491
+            || root.date.maximum !== 1992.66663) {
+            console.log('    influenza root -> ' + JSON.stringify(root.date)
+                + ', the desktop says 1992.33159 [1991.89491, 1992.66663]');
+            return false;
         }
-    });
-    if (seen !== 3 || wrong !== null) {
-        console.log('    ' + (wrong || ('only ' + seen + ' of the 3 named tips found')));
-        return false;
-    }
-    // the provenance sentence the desktop appends
-    var sentence = forester.heightDateDescription(influenza.anchor, 'TREE1', 687);
-    if (sentence.indexOf('687 of 687 tip labels put height 0 at 2005.25') < 0
-        || sentence.indexOf('each date is 2005.25 minus the height') < 0) {
-        console.log('    provenance sentence: ' + sentence);
-        return false;
     }
     return true;
 }
@@ -4467,6 +4519,14 @@ function testHeightDateRefusals() {
     rival.push({name: 'd1_2005-01-15', height: 0});
     rival.push({name: 'd2_2005-11-20', height: 0});
     cases.push(['two rival stretches, anchor undecided', tree(rival), false]);
+    // The tie ISOLATED by construction, the desktop's idea and better than
+    // mine: drop one of the two rival tips and the same tree must CONVERT. The
+    // pair is then the only difference between converting and refusing, so this
+    // cannot drift out of agreement with the code -- it is the code that
+    // answers it. Asserting the other preconditions in the test's own words is
+    // a second implementation of them, and theirs was subtly not the same rule.
+    cases.push(['the same tree with ONE rival tip converts, so the pair is the cause',
+        tree(rival.slice(0, 19)), true]);
 
     for (var c = 0; c < cases.length; ++c) {
         var got = forester.inferHeightDateAnchor(cases[c][1]) !== null;

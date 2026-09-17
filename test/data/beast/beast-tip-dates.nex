@@ -1,0 +1,33 @@
+#NEXUS
+
+Begin taxa;
+	Dimensions ntax=10;
+	Taxlabels
+		'A/Perth/16/2009|2009-07-04'
+		'A/Victoria/208/2009|2009-06-02'
+		'A/Brisbane/10/2010|2010-03'
+		'A/Iowa/19/2010|2010-11-09'
+		'A/Stockholm/18/2011|2011-03-28'
+		'A/Victoria/361/2011|2011-10-24'
+		'A/Texas/50/2012|2012-04-15'
+		'A/Almaty/2958/2013|2013'
+		'A/Switzerland/9715293/2013|2013-12-06'
+		'A/Hong_Kong/4801/2014|2014-02-26'
+		;
+End;
+
+Begin trees;
+	Translate
+		1 'A/Perth/16/2009|2009-07-04',
+		2 'A/Victoria/208/2009|2009-06-02',
+		3 'A/Brisbane/10/2010|2010-03',
+		4 'A/Iowa/19/2010|2010-11-09',
+		5 'A/Stockholm/18/2011|2011-03-28',
+		6 'A/Victoria/361/2011|2011-10-24',
+		7 'A/Texas/50/2012|2012-04-15',
+		8 'A/Almaty/2958/2013|2013',
+		9 'A/Switzerland/9715293/2013|2013-12-06',
+		10 'A/Hong_Kong/4801/2014|2014-02-26'
+;
+tree TREE1 = [&R] ((1[&rate=0.004,height_median=4.649315,height=4.649315]:0.60411,2[&rate=0.004,height_median=4.736986,height=4.736986]:0.516438)[&rate=0.004,height_95%_HPD={4.903425,5.603425},height_median=5.253425,height=5.253425,posterior=1.0]:0.6,((3[&rate=0.004,height_95%_HPD={3.906849,3.991781},height_median=3.956164,height=3.956164]:0.39726,4[&rate=0.004,height_median=3.29863,height=3.29863]:1.054795)[&rate=0.004,height_95%_HPD={4.053425,4.653425},height_median=4.353425,height=4.353425,posterior=0.97]:0.5,((5[&rate=0.004,height_median=2.917808,height=2.917808]:0.335616,6[&rate=0.004,height_median=2.342466,height=2.342466]:0.910959)[&rate=0.004,height_95%_HPD={2.953425,3.553425},height_median=3.253425,height=3.253425,posterior=0.99]:0.5,(7[&rate=0.004,height_median=1.866539,height=1.866539]:0.786885,(8[&rate=0.004,height_95%_HPD={0.183425,1.123425},height_median=0.673425,height=0.673425]:1.18,(9[&rate=0.004,height_median=0.224658,height=0.224658]:0.828767,10[&rate=0.004,height_median=0,height=0]:1.053425)[&rate=0.004,height_95%_HPD={0.803425,1.303425},height_median=1.053425,height=1.053425,posterior=1.0]:0.8)[&rate=0.004,height_95%_HPD={1.553425,2.153425},height_median=1.853425,height=1.853425,posterior=0.94]:0.8)[&rate=0.004,height_95%_HPD={2.303425,3.003425},height_median=2.653425,height=2.653425,posterior=0.88]:1.1)[&rate=0.004,height_95%_HPD={3.403425,4.103425},height_median=3.753425,height=3.753425,posterior=0.91]:1.1)[&rate=0.004,height_95%_HPD={4.453425,5.253425},height_median=4.853425,height=4.853425,posterior=0.99]:1)[&rate=0.004,height_95%_HPD={5.403425,6.353425},height_median=5.853425,height=5.853425,posterior=1.0];
+End;
