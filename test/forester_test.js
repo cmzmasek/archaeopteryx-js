@@ -3455,6 +3455,20 @@ function testTaxlabelColours() {
         console.log("    a refused TAXLABELS colour: " + rp);
         return false;
     }
+    // ONE TREE, ONE NAMESPACE. The refused colour is hung on its tip after the
+    // tree string has been parsed -- and renamed, if it is TreeTime's -- so it
+    // used to stay beast: beside treetime:mutations. (The desktop found this on
+    // its side, by running the question I had only assumed the answer to.)
+    var tt = forester.parseNexus("#NEXUS\nbegin taxa;\n\ttaxlabels\n\tA[&!color=-8381639]\n\tB\n;\nend;\n"
+        + 'begin trees;\n\ttree t = (A:1[&mutations="A1G"],B:1[&mutations="C2T"]);\nend;\n')[0];
+    var ttRefs = [];
+    forester.preOrderTraversalAll(tt, function (n) {
+        (n.properties || []).forEach(function (p) { ttRefs.push(p.ref); });
+    });
+    if (ttRefs.sort().join(" ") !== "treetime:_color treetime:mutations treetime:mutations") {
+        console.log("    a TreeTime tree with a refused taxlabel colour: " + ttRefs.join(" "));
+        return false;
+    }
     // the two colours are different things and do not touch: Paris's BRANCH
     // is red from the tree string, its LABEL green from the TAXLABELS block
     var p1 = forester.findByNodeName(named, "Paris")[0];

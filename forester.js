@@ -3851,6 +3851,32 @@
         });
     }
 
+    // The namespace this tree's bracket annotations ended up in, for anything
+    // added to it AFTER the pass above has run -- the Nexus reader hangs a
+    // taxon's refused colour on its tip once the tree string is parsed, and
+    // filed it under beast: on a tree the pass had just renamed: one tree, two
+    // namespaces. The rename is all-or-nothing, so the tree already says which
+    // it took; and asking it, rather than running the pass a second time, is
+    // deliberate -- after promoteTimeScaledDates a TreeTime tree HAS date
+    // values, and a second run would read that as "not TreeTime's own".
+    // (Sound only while nothing read from a taxon can sway the decision; we
+    // read !color alone there. The desktop reads the whole blob, and so has to
+    // run its pass after the taxlabels instead.)
+    function annotationPrefix(phy) {
+        let nodes = forester.getAllNodes(phy);
+        for (let i = 0; i < nodes.length; ++i) {
+            let props = nodes[i].properties;
+            if (props) {
+                for (let j = 0; j < props.length; ++j) {
+                    if (typeof props[j].ref === 'string' && props[j].ref.indexOf(TREETIME_PREFIX) === 0) {
+                        return TREETIME_PREFIX;
+                    }
+                }
+            }
+        }
+        return BEAST_PREFIX;
+    }
+
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
 
         let NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
@@ -4387,6 +4413,7 @@
                 seqsByKey[joinKey(id)] = seqs[id];
             }
             let externals = forester.getAllExternalNodes(phy);
+            let annotationNs = null;
             // A bare integer tip name counts as a TAXLABELS index only when
             // the WHOLE tree reads as index references: every tip a bare
             // integer AND every one of them in range. All-or-nothing, because
@@ -4442,7 +4469,10 @@
                     : (taxlabelRefused[node.name] !== undefined ? taxlabelRefused[node.name]
                         : taxlabelRefusedByKey[joinKey(node.name)]);
                 if (refusedColor !== undefined) {
-                    addNodeProperty(node, 'beast:_color', refusedColor, 'xsd:string');
+                    if (annotationNs === null) {
+                        annotationNs = annotationPrefix(phy);   // once per tree, and only if needed
+                    }
+                    addNodeProperty(node, annotationNs + '_color', refusedColor, 'xsd:string');
                 }
                 if (node.name) {
                     let s = seqsByKey[joinKey(node.name)];
