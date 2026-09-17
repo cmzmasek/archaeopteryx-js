@@ -6964,18 +6964,22 @@
     // height 0 is, is undecided, and a tree we cannot place we leave alone. A
     // sweep over the tips' allowed intervals, closed at both ends.
     //
-    // The `tied` refusal is REDUNDANT while the agreement floor is 19/20, and
-    // deliberately kept. It cannot be the sole reason a tree is refused: for a
-    // tie to decide, two DISJOINT stretches would each have to be allowed by
-    // 19 tips in 20, so at least 18 in 20 would allow both -- and a tip's
-    // allowed dates are one interval, so those tips also allow everything
-    // between, which makes it one stretch and not two. Checked on the
-    // desktop's own rival fixture (18 tips labelled 2005 plus two day-labelled
-    // ones that disagree): the tie does fire, and with it removed the tree is
-    // still refused, by the "sampled at different times" rule. Kept because it
-    // states the intent, because the desktop has it, and because it would bite
-    // the moment the floor were lowered. No test can pin it; sabotage reports
-    // this one mutation as missed, and that is the honest result, not a hole.
+    // The `tied` refusal is LIVE, and a test pins it. I first argued it was
+    // unreachable -- two disjoint stretches would each need 19 tips in 20, so
+    // 18 in 20 would allow both, and since a tip's allowed dates are one
+    // interval those 18 allow everything between, making it one stretch. That
+    // last step is wrong, and the desktop caught it: the 18 do cover the gap,
+    // but a stretch is the MAXIMUM coverage, which is 19, and 18 < 19, so the
+    // gap joins neither maximum and the two stay separate. The shape is
+    // 19 / 18 / 19.
+    //
+    // It is reached by an ordinary curation error: a mostly year-labelled tree
+    // (a bare year is ~1 year wide, so those tips span both candidates) with
+    // two tips at height 0 whose day labels disagree -- a file cannot have two
+    // different youngest tips. Remove this check and such a tree converts at a
+    // fabricated anchor, silently. My own fixture had all its year tips in ONE
+    // year, which made the different-sampling-times rule fire first and hide
+    // the whole thing.
     function heightDateMostAllowed(ranges) {
         let events = [];
         ranges.forEach(function (r) {

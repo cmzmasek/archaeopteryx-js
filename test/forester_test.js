@@ -4444,12 +4444,25 @@ function testHeightDateRefusals() {
             tree([{name: 'x_2000', height: 5}, {name: 'y_2005', height: 0}, {name: 'z_2002', height: 3},
                 {name: 'strain_B', height: 1}]), true]
     ];
-    // two rival stretches: 18 year-labelled tips at height 0 plus two
-    // day-labelled tips that disagree with each other. 19 tips allow each day,
-    // 18 the time between, so which date height 0 is, is undecided.
+    // Two rival stretches, and the fixture has to be built exactly right or it
+    // refuses for a different reason and pins nothing. 18 year-labelled tips
+    // CYCLING through 1996-2005 -- so their label ranges differ in time and the
+    // different-sampling-times rule passes -- each with a height placing its
+    // ~1.02-year-wide allowed stretch over BOTH candidate dates. Then two tips
+    // at height 0 with day labels that disagree: a file cannot have two
+    // different youngest tips, and one tip-date wrong by months in an otherwise
+    // year-labelled tree is an ordinary curation error.
+    //
+    // Coverage is 19 at each day and 18 between, so the two maxima stay
+    // separate and the anchor is undecided. My first version put all 18 tips in
+    // 2005, which made the sampling-times rule fire and MASK the tie -- the
+    // mutation that removes this refusal then went uncaught, and I wrongly
+    // concluded the rule was unreachable. The desktop caught that: coverage 18
+    // in the gap is below the maximum of 19, so the gap joins neither stretch.
+    var heights = [8.963, 7.963, 6.963, 5.963, 4.963, 3.963, 2.963, 1.963, 0.963, 0];
     var rival = [];
     for (var i = 0; i < 18; ++i) {
-        rival.push({name: 'y' + i + '_2005', height: 0});
+        rival.push({name: 'y' + i + '_' + (1996 + (i % 10)), height: heights[i % 10]});
     }
     rival.push({name: 'd1_2005-01-15', height: 0});
     rival.push({name: 'd2_2005-11-20', height: 0});
