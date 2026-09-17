@@ -20,8 +20,8 @@
  *
  */
 
-// v 3.8.0
-// 2026-09-10
+// v 3.9.0
+// 2026-09-17
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
 // 
@@ -6519,9 +6519,17 @@
     // ---- time-tree detection -------------------------------------------
     // Two date conventions: GEOLOGIC ages (Ma before present, decreasing
     // toward the tips) and CALENDAR years (increasing toward the tips).
-    // Decided from the <date> unit attributes, with a magnitude fallback for
-    // unitless dates: values mostly in [1500, 2200] read as years; values
-    // spanning from large down toward ~0 read as ages.
+    // Decided from the <date> unit attributes and NOTHING ELSE. A unitless
+    // tree gets no axis: guessing from magnitude read every tip-dated BEAST
+    // tree as geologic, because BEAST states a node's age as a unitless
+    // `height` and an influenza tree spanning 12 years looks exactly like one
+    // spanning 12 Ma. It drew Miocene/Pliocene bands and a "Ma" ruler under
+    // tips labelled 1993..2005 -- a confident false claim across the whole
+    // figure, which is worse than no axis. Measured over every tree we ship:
+    // the guess decided 3 trees and got all 3 wrong, every other axis comes
+    // from a unit, and none relied on the old [1500, 2200] year rule. The
+    // desktop dropped the same rule on 2026-09-10 (their e9ac62ec) on the
+    // same evidence; Christian, 2026-09-17, both programs.
     const GEO_DATE_UNITS = {
         mya: 1, ma: 1, myr: 1, myrs: 1, my: 1, ga: 1, gya: 1, bya: 1, kya: 1,
         'million years': 1, 'billion years': 1
@@ -6529,6 +6537,40 @@
     const CAL_DATE_UNITS = {
         year: 1, years: 1, yr: 1, yrs: 1, cal: 1, ce: 1, ad: 1, calendar: 1,
         'calendar year': 1, 'calendar years': 1
+    };
+
+    // A date's bounds state a real interval only when they differ by more than
+    // floating-point noise. TreeAnnotator writes
+    // height_95%_HPD={9.0,9.000000000000004} on a tip it dated EXACTLY: one
+    // number printed twice through binary floating point, not a width. Read as
+    // a width it put a fossil-range bracket on 686 of influenza.tree's 687
+    // tips. The tolerance is RELATIVE because the noise is: a bound near 2000
+    // carries more of it than one near 0. Nothing real is this narrow -- a
+    // single day is 0.0027 of a calendar year, while 1e-9 of 2000 is about a
+    // minute. Both programs had this gap, on two paths each (an auto-enable
+    // predicate with no tolerance, and a painter with no width test at all).
+    const DATE_INTERVAL_REL_TOL = 1e-9;
+
+    /**
+     * Whether a date's minimum/maximum are a genuine interval rather than one
+     * value printed twice. Every reader of date bounds must ask this, drawing
+     * included: a bar floored at 1px draws noise as a visible bracket.
+     *
+     * @param date a node's date object
+     * @returns {boolean}
+     */
+    forester.isGenuineDateInterval = function (date) {
+        if (!date || typeof date.minimum !== 'number' || typeof date.maximum !== 'number'
+            || !isFinite(date.minimum) || !isFinite(date.maximum)) {
+            return false;
+        }
+        let scale = Math.max(Math.abs(date.minimum), Math.abs(date.maximum), 1);
+        // the ABSOLUTE difference: bounds handed over in the wrong order still
+        // state a width, and every painter already normalises the order before
+        // drawing. The desktop's AptxUtil.hasDateIntervalWidth reads it the
+        // same way, down to this constant -- the two programs must not draw
+        // different figures from one file (their message, 2026-09-17).
+        return Math.abs(date.maximum - date.minimum) > (scale * DATE_INTERVAL_REL_TOL);
     };
 
     /**
@@ -6563,9 +6605,8 @@
     // presentDate (calendar) are both the LARGEST date value -- the oldest
     // node for ages, the most recent tip for years.
     forester.timeAxisInfo = function (root) {
-        let values = [];
+        let valued = 0;
         let maxVal = -Infinity; // running, not Math.max.apply: 150k dated tips overflow the call stack
-        let minVal = Infinity;
         let geoUnits = 0;
         let calUnits = 0;
         let internal = 0;
@@ -6585,7 +6626,7 @@
             if (!d) {
                 return;
             }
-            let interval = (typeof d.minimum === 'number') && (typeof d.maximum === 'number');
+            let interval = forester.isGenuineDateInterval(d);
             if (interval) {
                 if (isExt) {
                     hasExternalIntervals = true;
@@ -6596,12 +6637,9 @@
             if (typeof d.value !== 'number' || !isFinite(d.value)) {
                 return; // 1e400 parses to Infinity and must never reach the tick loops
             }
-            values.push(d.value);
+            ++valued;
             if (d.value > maxVal) {
                 maxVal = d.value;
-            }
-            if (d.value < minVal) {
-                minVal = d.value;
             }
             if (isExt) {
                 ++datedExternal;
@@ -6618,25 +6656,16 @@
             }
         });
         let type = null;
-        if (values.length > 0) {
+        if (valued > 0) {
             if (geoUnits > 0 && geoUnits >= calUnits) {
                 type = 'geologic';
             } else if (calUnits > 0) {
                 type = 'calendar';
-            } else {
-                let calendarish = values.filter(function (v) {
-                    return v >= 1500 && v <= 2200;
-                }).length;
-                if (calendarish * 2 > values.length) {
-                    type = 'calendar';
-                } else if (maxVal > 10 && minVal <= maxVal * 0.05) {
-                    type = 'geologic';
-                }
             }
         }
         let dated = (datedInternal >= 2 && (datedInternal * 2) > internal)
             || (datedExternal >= 2 && (datedExternal * 2) > external);
-        let maxValue = values.length > 0 ? maxVal : 0;
+        let maxValue = valued > 0 ? maxVal : 0;
         return {
             type: type,
             rootAge: type === 'geologic' ? maxValue : 0,
@@ -6645,6 +6674,540 @@
             hasInternalIntervals: hasInternalIntervals,
             hasExternalIntervals: hasExternalIntervals
         };
+    };
+
+    // ---- dates in a tip's LABEL, and BEAST heights ----------------------
+    // A tip-dated BEAST tree states a node's age as a unitless `height`: time
+    // before the youngest tip, in whatever unit the run happened to use. The
+    // sampling dates are usually in the tip labels themselves
+    // (A_duck_Guangdong_12_2000, NewYork_705_1994.1, EBOV|KR817226|2014-06-10).
+    // If the heights are YEARS, every tip's label date plus its height is the
+    // same calendar date -- the date of height 0. That agreement is the whole
+    // evidence: heights in months or days, or a strain number mistaken for a
+    // date, break it and the tree is left alone.
+    //
+    // Ported from the desktop's TipDateExtractor and HeightDateConverter
+    // (their 0.11.151, commit 6755ba12), whose rules and constants these are.
+    // Christian, 2026-09-17: port it, after they commit.
+
+    // A BARE year or decimal year has to look like a plausible sampling year or
+    // a 4-digit strain number would date the tip. An explicit ISO / month-name
+    // / slash date is strong evidence and gets a looser window.
+    const TIP_DATE_MIN_BARE_YEAR = 1900;
+    const TIP_DATE_MAX_BARE_YEAR = 2100;
+    const TIP_DATE_MIN_YEAR = 1000;
+    const TIP_DATE_MAX_YEAR = 2999;
+
+    // Global, so each matcher can take the RIGHTMOST match; lastIndex is reset
+    // before every use, because these are shared.
+    const TIP_DATE_ISO_FULL = /(?<![0-9])(\d{4})-(\d{1,2})-(\d{1,2})(?![0-9])/g;
+    const TIP_DATE_MONTH_FULL = /(?<![A-Za-z0-9])(\d{1,2})[-\s]([A-Za-z]{3,9})[-\s](\d{4})(?![0-9])/g;
+    const TIP_DATE_SLASH_FULL = /(?<![0-9])(\d{1,4})[/.](\d{1,2})[/.](\d{1,4})(?![0-9])/g;
+    const TIP_DATE_ISO_PARTIAL = /(?<![0-9])(\d{4})-(\d{1,2})(?![0-9-])/g;
+    const TIP_DATE_MONTH_PARTIAL = /(?<![A-Za-z0-9])([A-Za-z]{3,9})[-\s](\d{4})(?![0-9])/g;
+    const TIP_DATE_DECIMAL_YEAR = /(?<![0-9.])(\d{4}\.\d+)(?![0-9])/g;
+    const TIP_DATE_BARE_YEAR = /(?<![0-9.])(\d{4})(?![0-9.])/g;
+
+    const TIP_DATE_MONTHS_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const TIP_DATE_MONTHS_FULL = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+        'september', 'october', 'november', 'december'];
+
+    function tipDateYearLength(y) {
+        return (((y % 4) === 0 && (y % 100) !== 0) || (y % 400) === 0) ? 366 : 365;
+    }
+
+    function tipDateMonthLength(y, m) {
+        if (m === 2) {
+            return tipDateYearLength(y) === 366 ? 29 : 28;
+        }
+        return ((m === 4) || (m === 6) || (m === 9) || (m === 11)) ? 30 : 31;
+    }
+
+    function tipDateDayOfYear(y, m, d) {
+        let doy = d;
+        for (let i = 1; i < m; ++i) {
+            doy += tipDateMonthLength(y, i);
+        }
+        return doy;
+    }
+
+    // 1-12 for an English month name -- the EXACT 3-letter abbreviation or the
+    // full name, case-insensitively; 0 otherwise. Exact, not a prefix, is what
+    // stops "Marburg", "Junin" or "Decatur" being read as a month.
+    function tipDateMonthNumber(name) {
+        if (!name) {
+            return 0;
+        }
+        let key = String(name).toLowerCase();
+        for (let i = 0; i < 12; ++i) {
+            if (TIP_DATE_MONTHS_ABBR[i] === key || TIP_DATE_MONTHS_FULL[i] === key) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * The decimal year of a (year, month, day): a month or day of 0 means "not
+     * given" and maps to the middle of the interval it leaves open (a year to
+     * .5, a month to mid-month, a day to mid-day). Leap-year aware. The
+     * midpoint convention is BEAST's and TreeTime's.
+     *
+     * @param year
+     * @param month 1-12, or <= 0 for "not given"
+     * @param day 1-31, or <= 0 for "not given"
+     * @returns {number}
+     */
+    forester.tipDateToDecimalYear = function (year, month, day) {
+        if (month <= 0) {
+            return year + 0.5;
+        }
+        let len = tipDateYearLength(year);
+        if (day <= 0) {
+            let firstDoy = tipDateDayOfYear(year, month, 1);
+            return year + (((firstDoy - 1) + (tipDateMonthLength(year, month) / 2)) / len);
+        }
+        return year + ((tipDateDayOfYear(year, month, day) - 0.5) / len);
+    };
+
+    // A full date, validated (an impossible one like 2021-13-40 or Feb 30 is
+    // not a date). The RANGE is the whole day the label names.
+    function tipDateFromYmd(year, month, day, matched, format, ambiguous) {
+        if ((year < TIP_DATE_MIN_YEAR) || (year > TIP_DATE_MAX_YEAR) || (month < 1) || (month > 12)
+            || (day < 1) || (day > tipDateMonthLength(year, month))) {
+            return null;
+        }
+        let len = tipDateYearLength(year);
+        let doy = tipDateDayOfYear(year, month, day);
+        return {
+            decimalYear: forester.tipDateToDecimalYear(year, month, day),
+            matchedText: matched, precision: 'day', formatLabel: format, ambiguous: ambiguous === true,
+            rangeStart: year + ((doy - 1) / len), rangeEnd: year + (doy / len)
+        };
+    }
+
+    // A year-month date: the day is unknown, so the range is the whole month.
+    function tipDateFromYm(year, month, matched, format) {
+        if ((year < TIP_DATE_MIN_YEAR) || (year > TIP_DATE_MAX_YEAR) || (month < 1) || (month > 12)) {
+            return null;
+        }
+        let len = tipDateYearLength(year);
+        let start = year + ((tipDateDayOfYear(year, month, 1) - 1) / len);
+        return {
+            decimalYear: forester.tipDateToDecimalYear(year, month, 0),
+            matchedText: matched, precision: 'month', formatLabel: format, ambiguous: false,
+            rangeStart: start, rangeEnd: start + (tipDateMonthLength(year, month) / len)
+        };
+    }
+
+    // Every matcher keeps the LAST (rightmost) valid match in the label.
+    function tipDateEachMatch(re, s, fn) {
+        let found = null;
+        let m;
+        re.lastIndex = 0;
+        while ((m = re.exec(s)) !== null) {
+            let d = fn(m);
+            if (d) {
+                found = d;
+            }
+            if (m.index === re.lastIndex) {
+                ++re.lastIndex; // a zero-width match would spin forever
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The date a tip label states, or null. The most SPECIFIC format wins
+     * (a full date before a year-month before a bare year), and within one
+     * format the rightmost match does -- a label usually ends with its date.
+     *
+     * The result carries the decimal year (midpoint convention) AND the
+     * calendar RANGE the label actually states: `2021` is all of 2021,
+     * `2021-03` all of March, a day that whole day, and a decimal year its
+     * last written digit (`1993.1` is 1993.05 to 1993.15). The range is what
+     * makes different programs' conventions comparable -- BEAST counts a day
+     * from its start, we read a label at its middle, half a day apart.
+     *
+     * @param label a tip's name
+     * @param monthFirst true to read an ambiguous numeric date (both fields
+     *        <= 12) month-first; the default is day-first, as the desktop's
+     *        converter always asks for
+     * @returns {object|null}
+     */
+    forester.parseTipLabelDate = function (label, monthFirst) {
+        if (!label) {
+            return null;
+        }
+        let s = String(label);
+        let m = tipDateEachMatch(TIP_DATE_ISO_FULL, s, function (g) {
+            return tipDateFromYmd(parseInt(g[1], 10), parseInt(g[2], 10), parseInt(g[3], 10), g[0],
+                'ISO date (YYYY-MM-DD)', false);
+        });
+        if (m) {
+            return m;
+        }
+        m = tipDateEachMatch(TIP_DATE_MONTH_FULL, s, function (g) {
+            let mon = tipDateMonthNumber(g[2]);
+            return mon > 0
+                ? tipDateFromYmd(parseInt(g[3], 10), mon, parseInt(g[1], 10), g[0], 'month-name date', false)
+                : null;
+        });
+        if (m) {
+            return m;
+        }
+        m = tipDateEachMatch(TIP_DATE_SLASH_FULL, s, function (g) {
+            let a = parseInt(g[1], 10);
+            let b = parseInt(g[2], 10);
+            let c = parseInt(g[3], 10);
+            let year = -1;
+            let month = -1;
+            let day = -1;
+            let ambiguous = false;
+            if (g[1].length === 4) {          // YYYY/MM/DD -- unambiguous
+                year = a;
+                month = b;
+                day = c;
+            } else if (g[3].length === 4) {   // D/M/YYYY or M/D/YYYY
+                year = c;
+                if (a > 12) {
+                    day = a;
+                    month = b;
+                } else if (b > 12) {
+                    month = a;
+                    day = b;
+                } else {                      // both <= 12: genuinely ambiguous
+                    ambiguous = true;
+                    if (monthFirst === true) {
+                        month = a;
+                        day = b;
+                    } else {
+                        day = a;
+                        month = b;
+                    }
+                }
+            }
+            return year > 0 ? tipDateFromYmd(year, month, day, g[0], 'numeric date', ambiguous) : null;
+        });
+        if (m) {
+            return m;
+        }
+        m = tipDateEachMatch(TIP_DATE_ISO_PARTIAL, s, function (g) {
+            return tipDateFromYm(parseInt(g[1], 10), parseInt(g[2], 10), g[0], 'ISO year-month (YYYY-MM)');
+        });
+        if (m) {
+            return m;
+        }
+        m = tipDateEachMatch(TIP_DATE_MONTH_PARTIAL, s, function (g) {
+            let mon = tipDateMonthNumber(g[1]);
+            return mon > 0 ? tipDateFromYm(parseInt(g[2], 10), mon, g[0], 'month-name year') : null;
+        });
+        if (m) {
+            return m;
+        }
+        m = tipDateEachMatch(TIP_DATE_DECIMAL_YEAR, s, function (g) {
+            let v = parseFloat(g[1]);
+            let y = Math.floor(v);
+            if ((y < TIP_DATE_MIN_BARE_YEAR) || (y > TIP_DATE_MAX_BARE_YEAR)) {
+                return null;
+            }
+            // the range is the last digit the label actually wrote
+            let half = 0.5 * Math.pow(10, -(g[1].length - g[1].indexOf('.') - 1));
+            return {
+                decimalYear: v, matchedText: g[1], precision: 'day', formatLabel: 'decimal year',
+                ambiguous: false, rangeStart: v - half, rangeEnd: v + half
+            };
+        });
+        if (m) {
+            return m;
+        }
+        return tipDateEachMatch(TIP_DATE_BARE_YEAR, s, function (g) {
+            let y = parseInt(g[1], 10);
+            if ((y < TIP_DATE_MIN_BARE_YEAR) || (y > TIP_DATE_MAX_BARE_YEAR)) {
+                return null;
+            }
+            return {
+                decimalYear: y + 0.5, matchedText: g[1], precision: 'year', formatLabel: 'year',
+                ambiguous: false, rangeStart: y, rangeEnd: y + 1
+            };
+        });
+    };
+
+    // ---- unitless BEAST heights -> calendar dates -----------------------
+    // How far a tip's label date plus its height may miss, in years: enough for
+    // the one-day differences between programs' decimal-year conventions, and
+    // far below the gaps that heights in months or days open up.
+    const HEIGHT_DATE_TOLERANCE_YEARS = 0.01;
+    // at least 19 of every 20 compared tips must agree on the date of height 0
+    const HEIGHT_DATE_MIN_AGREEING_NUM = 19;
+    const HEIGHT_DATE_MIN_AGREEING_DEN = 20;
+
+    // 5 decimals, HALF_UP -- away from zero, which Math.round is not for a
+    // negative half (it takes -0.5 to -0). The desktop rounds with BigDecimal
+    // HALF_UP, and the anchor has to land on the same digits or every date on
+    // the tree shifts.
+    function heightDateRound5(x) {
+        let s = x < 0 ? -1 : 1;
+        return (s * Math.round(Math.abs(x) * 100000)) / 100000;
+    }
+
+    // Whether a compared tip allows height 0 at calendar date x. The tip's
+    // allowed stretch is its LABEL RANGE plus its height, widened by the
+    // tolerance at each end.
+    function heightDateAllows(r, x) {
+        return (x >= ((r[0] + r[2]) - HEIGHT_DATE_TOLERANCE_YEARS))
+            && (x <= (r[1] + r[2] + HEIGHT_DATE_TOLERANCE_YEARS));
+    }
+
+    // The stretch of calendar dates allowed by the MOST tips, as [start, end],
+    // or null when a separate stretch is allowed by as many -- then which date
+    // height 0 is, is undecided, and a tree we cannot place we leave alone. A
+    // sweep over the tips' allowed intervals, closed at both ends.
+    //
+    // The `tied` refusal is LIVE, and a test pins it. I first argued it was
+    // unreachable -- two disjoint stretches would each need 19 tips in 20, so
+    // 18 in 20 would allow both, and since a tip's allowed dates are one
+    // interval those 18 allow everything between, making it one stretch. That
+    // last step is wrong, and the desktop caught it: the 18 do cover the gap,
+    // but a stretch is the MAXIMUM coverage, which is 19, and 18 < 19, so the
+    // gap joins neither maximum and the two stay separate. The shape is
+    // 19 / 18 / 19.
+    //
+    // It is reached by an ordinary curation error: a mostly year-labelled tree
+    // (a bare year is ~1 year wide, so those tips span both candidates) with
+    // two tips at height 0 whose day labels disagree -- a file cannot have two
+    // different youngest tips. Remove this check and such a tree converts at a
+    // fabricated anchor, silently. My own fixture had all its year tips in ONE
+    // year, which made the different-sampling-times rule fire first and hide
+    // the whole thing.
+    function heightDateMostAllowed(ranges) {
+        let events = [];
+        ranges.forEach(function (r) {
+            events.push([(r[0] + r[2]) - HEIGHT_DATE_TOLERANCE_YEARS, 1]);
+            events.push([r[1] + r[2] + HEIGHT_DATE_TOLERANCE_YEARS, -1]);
+        });
+        // a start sorts before an end at the same x, so intervals that merely
+        // touch do overlap
+        events.sort(function (a, b) {
+            return a[0] !== b[0] ? (a[0] - b[0]) : (b[1] - a[1]);
+        });
+        let depth = 0;
+        let best = 0;
+        let start = 0;
+        let end = 0;
+        let open = false;
+        let tied = false;
+        events.forEach(function (e) {
+            if (e[1] > 0) {
+                ++depth;
+                if (depth > best) {
+                    best = depth;
+                    start = e[0];
+                    open = true;
+                    tied = false;
+                } else if ((depth === best) && !open) {
+                    tied = true;
+                }
+            } else {
+                if (open) {
+                    end = e[0];
+                    open = false;
+                }
+                --depth;
+            }
+        });
+        return ((best === 0) || tied) ? null : [start, end];
+    }
+
+    // Where the most precisely dated tips put height 0: the median of
+    // (label date + height) over the tips whose label RANGE is at most twice
+    // the narrowest. The middle of the allowed stretch would be pulled about by
+    // the coarse labels -- influenza.tree mixes `1993.11` with `1997` (meaning
+    // the whole of 1997), and that middle, 2005.2525, showed the tip labelled
+    // 1994.1 as 1994.1025.
+    function heightDatePrecisestMedian(tips) {
+        let narrowest = Infinity;
+        tips.forEach(function (r) {
+            narrowest = Math.min(narrowest, r[1] - r[0]);
+        });
+        let values = [];
+        tips.forEach(function (r) {
+            if ((r[1] - r[0]) <= (2 * narrowest)) {
+                values.push(r[3] + r[2]);
+            }
+        });
+        values.sort(function (a, b) {
+            return a - b;
+        });
+        let n = values.length;
+        return ((n % 2) === 1) ? values[(n - 1) / 2] : ((values[(n / 2) - 1] + values[n / 2]) / 2);
+    }
+
+    /**
+     * The calendar date (decimal year) of height 0 for a tip-dated BEAST tree,
+     * or null when the tree does not qualify and must be left alone. Pure.
+     *
+     * Every condition has to hold: no node's date carries a unit (a unit says
+     * what the numbers already are, and this never overrides one); the tree is
+     * a time tree; a strict majority of tips carry both a height and a date in
+     * the label; the date allowed by the most of those tips is allowed by at
+     * least 19 in 20 of them and no separate stretch of dates is allowed by as
+     * many; and the agreeing tips were sampled at different times -- tips all
+     * from one year agree with heights in ANY unit and so prove nothing.
+     *
+     * @param phy a tree
+     * @returns {{present: number, agreeing: number, compared: number}|null}
+     */
+    forester.inferHeightDateAnchor = function (phy) {
+        if (!phy) {
+            return null;
+        }
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return null;
+        }
+        let united = false;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (n.date && n.date.unit && String(n.date.unit).trim().length > 0) {
+                united = true;
+            }
+        });
+        if (united || !forester.isTimeTree(phy)) {
+            return null;
+        }
+        let tips = 0;
+        let ranges = []; // per compared tip: [label start, label end, height, label date]
+        forester.preOrderTraversalAll(root, function (n) {
+            if (n.children && n.children.length > 0) {
+                return;
+            }
+            ++tips;
+            // not "has a date": a value of 0 -- the youngest tip's height -- is
+            // a height, not an absence
+            if (!n.date || typeof n.date.value !== 'number' || !isFinite(n.date.value)) {
+                return;
+            }
+            let m = forester.parseTipLabelDate(n.name);
+            if (m) {
+                ranges.push([m.rangeStart, m.rangeEnd, n.date.value, m.decimalYear]);
+            }
+        });
+        let compared = ranges.length;
+        if ((compared * 2) <= tips) {
+            return null;
+        }
+        let best = heightDateMostAllowed(ranges);
+        if (best === null) {
+            return null;
+        }
+        let mid = (best[0] + best[1]) / 2;
+        let agreeingTips = [];
+        let latestStart = -Infinity;
+        let earliestEnd = Infinity;
+        ranges.forEach(function (r) {
+            if (heightDateAllows(r, mid)) {
+                agreeingTips.push(r);
+                latestStart = Math.max(latestStart, r[0]);
+                earliestEnd = Math.min(earliestEnd, r[1]);
+            }
+        });
+        let agreeing = agreeingTips.length;
+        if ((agreeing * HEIGHT_DATE_MIN_AGREEING_DEN) < (compared * HEIGHT_DATE_MIN_AGREEING_NUM)) {
+            return null;
+        }
+        if (latestStart <= earliestEnd) {
+            return null; // every agreeing label range overlaps every other
+        }
+        let present = Math.max(best[0], Math.min(best[1], heightDatePrecisestMedian(agreeingTips)));
+        return {present: heightDateRound5(present), agreeing: agreeing, compared: compared};
+    };
+
+    /**
+     * Rewrites every node's date as `present - height`, in years, with the
+     * interval bounds SWAPPED: the older height bound is the earlier date.
+     *
+     * @param phy a tree
+     * @param present the date of height 0, from forester.inferHeightDateAnchor
+     */
+    forester.convertHeightsToDates = function (phy, present) {
+        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+            let d = n.date;
+            if (!d) {
+                return;
+            }
+            let hasValue = typeof d.value === 'number' && isFinite(d.value);
+            let value = hasValue ? heightDateRound5(present - d.value) : undefined;
+            // the swap: a LARGER height is further back, so it becomes the
+            // SMALLER (earlier) date
+            let min = (typeof d.maximum === 'number' && isFinite(d.maximum))
+                ? heightDateRound5(present - d.maximum) : undefined;
+            let max = (typeof d.minimum === 'number' && isFinite(d.minimum))
+                ? heightDateRound5(present - d.minimum) : undefined;
+            let next = {};
+            if (d.desc !== undefined) {
+                next.desc = d.desc;
+            }
+            if (value !== undefined) {
+                next.value = value;
+            }
+            if (min !== undefined) {
+                next.minimum = min;
+            }
+            if (max !== undefined) {
+                next.maximum = max;
+            }
+            // a date with no point value keeps an empty unit, as the reader
+            // writes it
+            next.unit = hasValue ? 'year' : '';
+            n.date = next;
+        });
+    };
+
+    /**
+     * The desktop's provenance sentence for a converted tree, which it appends
+     * to the tree's description.
+     *
+     * @param anchor from forester.inferHeightDateAnchor
+     * @param treeName
+     * @param tipCount
+     * @returns {string}
+     */
+    forester.heightDateDescription = function (anchor, treeName, tipCount) {
+        let phrase = treeName ? ('tree named "' + treeName + '" with ') : 'a tree with ';
+        let present = String(anchor.present);
+        return 'Converted the node heights of ' + phrase + tipCount + (tipCount === 1 ? ' tip' : ' tips')
+            + ' to calendar dates: the sampling dates in ' + anchor.agreeing + ' of ' + anchor.compared
+            + ' tip labels put height 0 at ' + present + ', so each date is ' + present + ' minus the height.';
+    };
+
+    /**
+     * Converts every tree of a load whose unitless heights can be placed in
+     * calendar time, appending the provenance sentence to each converted
+     * tree's description. A tree that does not qualify is left exactly as it
+     * was. Returns the number of trees converted.
+     *
+     * @param phys one tree or an array of them
+     * @returns {number}
+     */
+    forester.convertLoadedHeightsToDates = function (phys) {
+        if (!phys) {
+            return 0;
+        }
+        let list = Array.isArray(phys) ? phys : [phys];
+        let converted = 0;
+        list.forEach(function (phy) {
+            let anchor = forester.inferHeightDateAnchor(phy);
+            if (anchor === null) {
+                return;
+            }
+            forester.convertHeightsToDates(phy, anchor.present);
+            let prov = forester.heightDateDescription(anchor, phy.name,
+                forester.getAllExternalNodes(forester.getTreeRoot(phy)).length);
+            phy.description = (phy.description && String(phy.description).trim().length > 0)
+                ? (phy.description + ' ' + prov) : prov;
+            ++converted;
+        });
+        return converted;
     };
 
     // ---- axis tick mathematics -----------------------------------------

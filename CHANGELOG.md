@@ -6,6 +6,63 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.9.0 — 2026-09-17
+
+Time. A BEAST tree says how far apart its nodes are in time but never when, and
+we were guessing — a human influenza tree spanning twelve years was drawn on a
+geologic axis, banded Miocene to Pleistocene, under tips labelled 1993 to 2005.
+The guess is gone, and in its place the sampling dates in the tip labels are
+used to place the tree in calendar time properly. Separately, a dated tree no
+longer loses its dates when you save it. The rules here are shared with the
+desktop Archaeopteryx (forester 0.11.151) and were checked against it tree for
+tree, node for node.
+
+### Changed
+
+- **A BEAST tree opens on the calendar axis its tip labels imply.**
+  - BEAST states a node's age as a bare `height` — time before the youngest
+    tip, with no unit — so the file never says *when*. Where the tip labels
+    carry sampling dates (`A_duck_Guangdong_12_2000`, `NewYork_705_1994.1`,
+    `EBOV|KR817226|2014-06-10`) and they agree on the date of height 0, the
+    tree is placed in calendar time and the axis, the age bars and Color by
+    all follow.
+  - The agreement is the evidence, and it has to be unanimous enough: a strict
+    majority of tips must carry both a height and a label date, at least
+    nineteen in twenty of those must agree, no rival date may be equally well
+    supported, and the agreeing tips must have been sampled at different times.
+    Tips all from one year agree with heights in any unit and so prove nothing.
+  - Heights in months or substitutions, a strain number mistaken for a date, a
+    tree whose dates already carry a unit, or a tree that is not time-scaled:
+    all left exactly as they were. A converted tree records what happened in
+    its description, including the date height 0 was placed at.
+  - Dates are read from the labels the way the surrounding programs write them:
+    ISO, month-name, numeric, year-month, decimal year and bare year, each read
+    as the *span* it states — `2021` is all of 2021, `2021-03` all of March —
+    which is what makes two programs' conventions comparable.
+- **A time axis now comes from a unit, and nothing else.**
+  - The old rule guessed geologic from magnitude alone: values above ten
+    reaching down toward zero. Every tip-dated BEAST tree fits that, which is
+    how twelve years of influenza became twelve million. A tree whose dates
+    carry no unit gets no axis rather than a wrong one.
+  - Measured over every tree shipped here before removing it: the guess decided
+    three trees and got all three wrong, and nothing relied on the companion
+    rule that read values between 1500 and 2200 as years.
+
+### Fixed
+
+- **A tree saved as phyloXML kept none of its dates.** The writer emitted only
+  the phylogeny's own `<date>` and never a node's, so every value, unit and
+  bound — fossil ranges, HPD intervals, sampling uncertainty — was dropped on
+  save, silently. Fixed in `phyloxml` 1.1.0, which this release requires.
+- **A date's bounds are only an interval when they differ.** TreeAnnotator
+  writes an exactly dated tip's bounds as `{9.0, 9.000000000000004}` — one
+  number printed twice through binary floating point. Read as a width, it drew
+  a fossil-range bracket on 686 of `influenza.tree`'s 687 tips, and printed the
+  pair as a range in the hover card. A bound pair now has to differ by more
+  than floating-point noise before anything calls it a range.
+
+Try it on the demo site: https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flavivirus
+
 ## 3.8.0 — 2026-09-17
 
 Three things. Every tree of a multi-tree file keeps its own view. The control
