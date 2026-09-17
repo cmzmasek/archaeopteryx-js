@@ -63,14 +63,17 @@ consumers only see a change when a version is cut.
     stand nothing is lost — the year and its interval stay as
     `nextstrain:num_date` and `nextstrain:num_date_CI`.
 
-- **Inside an NHX tag, whitespace and quotes are formatting noise**, as they
-  have always been on the desktop: `[&&NHX:S='homo']` is the species `homo`,
-  not `'homo'` with its apostrophes, and a tag written with stray whitespace
-  in its `&&NHX:` is now recognised as one. **This also removes spaces inside
-  an NHX value** — `S=Homo sapiens` reads as `Homosapiens` — which is the
-  desktop's long-standing behaviour and the reason NHX values are written
-  with underscores. A `[&key=value]` annotation is the opposite and is
-  untouched: there, spaces and quotes are data.
+- **An NHX tag is read the way the desktop reads it**, by its label rule.
+  Quote characters are never part of a value — `[&&NHX:S='homo']` is the
+  species `homo`, not `'homo'` with its apostrophes — and a tag written with
+  stray whitespace in its `&&NHX:` is now recognised as one. **Unquoted
+  whitespace is formatting noise**, so `S=Homo sapiens` reads as
+  `Homosapiens`; **a quoted value keeps what is inside it**, so
+  `S="Homo sapiens"` reads as `Homo sapiens` — the way to put a two-word
+  species into an NHX tag — with a run of spaces read as one, and it may even
+  hold the `:` that would otherwise end the tag. Checked case for case against
+  the desktop's own measurements. A `[&key=value]` annotation is the opposite
+  and is untouched: there, spaces and quotes are data.
 - **`mutations` and `mcc` annotations are always text**, as on the desktop. A
   mutation list that happens to hold one number, or a clade label that happens
   to be `3`, is not a measurement, and was being offered to Color-by as a
@@ -108,7 +111,9 @@ consumers only see a change when a version is cut.
   colour). It lands as the desktop's `style:font_color` property, so Visual
   Styles draws it and phyloXML carries it, with nothing new downstream. The
   annotation used to be glued onto the label instead: invisible while a tree
-  spelled its tips out, wrong as soon as it referred to them by number.
+  spelled its tips out, wrong as soon as it referred to them by number. The
+  taxon is found by its exact name, else case-insensitively with `_` for a
+  space, the way a matrix row already finds its tip.
 - **`panelDensity`** config key. `'compact'` tightens the control panel's
   spacing and narrows it from 214 to 196px, with the tree's left margin
   following it. The same controls, nothing hidden. Default `'comfortable'`;

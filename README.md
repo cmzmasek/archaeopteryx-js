@@ -788,9 +788,11 @@ and no calendar axis is drawn. Inside an annotation a quote opens a string
 only where a value starts, so a bare `country=Côte d'Ivoire` is one field with
 an apostrophe in it. Classic `[&&NHX:...]` tags map to their phyloXML
 equivalents (`S=` taxonomy, `T=` taxonomy id, `B=` support, `D=`
-duplication/speciation event, `GN=`/`AC=` sequence name/accession); inside
-such a tag whitespace and quotes are formatting noise, as on the desktop, so
-values are written with underscores (`S=Homo_sapiens`). Plain
+duplication/speciation event, `GN=`/`AC=` sequence name/accession), read as
+the desktop reads them: unquoted whitespace is formatting noise (`S=Homo
+sapiens` is `Homosapiens`), a quoted value keeps its content
+(`S="Homo sapiens"` is `Homo sapiens`), and the quotes themselves are never
+part of the value. Plain
 `[number]` brackets keep their old meaning (confidence values).
 
 Both entry points **throw** on bad input — an undefined or empty tree, an

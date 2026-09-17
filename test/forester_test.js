@@ -3313,11 +3313,20 @@ function testNhxTagNoise() {
         var a = forester.findByNodeName(forester.parseNewHampshire(nh), "A")[0];
         return a.taxonomies ? a.taxonomies[0].scientific_name : undefined;
     }
+    // The desktop's own measurements (2026-09-16), case for case. It reads an
+    // NHX tag by its LABEL rule: unquoted whitespace is noise, a quoted run
+    // keeps its content. My first version squeezed everything, from an
+    // inference off the last case alone, and had homosapiens for the quoted
+    // forms -- the one way to write a two-word species, lost.
     var cases = [
         ["(A:1[&&NHX:S='homo'],B:1);", "homo"],
         ['(A:1[&&NHX:S="homo"],B:1);', "homo"],
-        ['(A:1[&&NHX:S="homo sapiens"],B:1);', "homosapiens"],
         ["(A:1[&&NHX:S=Homo sapiens],B:1);", "Homosapiens"],
+        ['(A:1[&&NHX:S="homo sapiens"],B:1);', "homo sapiens"],
+        ["(A:1[&&NHX:S='homo sapiens'],B:1);", "homo sapiens"],
+        ['(A:1[&&NHX:S="homo  sapiens"],B:1);', "homo sapiens"],      // a run of spaces is one
+        ["(A:1[&&NHX:S=Homo 'sapiens x' y],B:1);", "Homosapiens xy"],
+        ['(A:1[ & & NHX : S = "homo sapiens" ],B:1);', "homo sapiens"],
         // the desktop's own pinned case: noise INSIDE the "&&NHX:" itself. We
         // used not to recognise this as an NHX tag at all.
         ["(A:1[\t&\t&\n N\tH\tX:S=mo\tnkey !],B:1);", "monkey!"]
@@ -3327,6 +3336,13 @@ function testNhxTagNoise() {
             console.log("    " + JSON.stringify(cases[i][0]) + " -> " + sci(cases[i][0]));
             return false;
         }
+    }
+    // a quoted run may carry the ':' that would otherwise end the tag, and the
+    // tag after it is still read
+    var q = forester.findByNodeName(forester.parseNewHampshire('(A:1[&&NHX:S="a:b c":D=Y],B:1);'), "A")[0];
+    if (!q.taxonomies || q.taxonomies[0].scientific_name !== "a:b c" || !q.events || q.events.duplications !== 1) {
+        console.log("    a quoted ':' : " + JSON.stringify(q.taxonomies) + " " + JSON.stringify(q.events));
+        return false;
     }
     var a = forester.findByNodeName(forester.parseNewHampshire(
         '(A:1[&country=Democratic Republic of the Congo,note="it\'s here"],B:1);'), "A")[0];
@@ -3383,6 +3399,14 @@ function testTaxlabelColours() {
             console.log("    Visual Styles does not see it: " + JSON.stringify(forester.nodeVisualStyle(ny)));
             return false;
         }
+    }
+    // the taxon is found by its exact name, else by the Nexus join key
+    // (case-insensitive, '_' for ' ') -- as a matrix row finds its tip
+    var loose = forester.parseNexus("#NEXUS\nbegin taxa;\n\ttaxlabels\n\tNew_York[&!color=#16ce60]\n\tParis\n;\nend;\n"
+        + "begin trees;\n\ttree t = ('new york':1,Paris:1);\nend;\n")[0];
+    if (fontColour(forester.findByNodeName(loose, "new york")[0]) !== "#16ce60/xsd:token/node") {
+        console.log("    join key: " + fontColour(forester.findByNodeName(loose, "new york")[0]));
+        return false;
     }
     // the two colours are different things and do not touch: Paris's BRANCH
     // is red from the tree string, its LABEL green from the TAXLABELS block

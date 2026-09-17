@@ -3525,8 +3525,8 @@
     // duplication (Y/T) / speciation (N/F) / undecided (?) event, GN=
     // sequence name, AC= sequence accession, C= an nh:comment property.
     // Unknown tags (and DS= domain structures) are ignored.
-    function applyNhxTags(node, content) {
-        content.split(':').forEach(function (tag) {
+    function applyNhxTags(node, fields) {
+        fields.forEach(function (tag) {
             let t = tag.trim();
             if (t.length < 3) {
                 return;
@@ -3559,19 +3559,58 @@
         });
     }
 
-    // Inside a legacy [&&NHX:...] tag whitespace and BOTH quote styles are
-    // formatting noise, as they have always been on the desktop (its
-    // Test.testNHXParsingQuotes pins "[\t&\t&\n N\tH\tX:S=mo\tnkey !]" as
-    // S=monkey!): S='homo' is the species homo, not 'homo' with its
-    // apostrophes. We used to keep both, which also meant a tag written with
-    // any space in its "&&NHX:" was not recognised as one at all (Christian,
-    // 2026-09-16: "do what desktop does"). The opposite of a single-& blob,
-    // where quotes and spaces are DATA -- so the squeeze happens only once the
-    // blob has shown itself to be NHX.
+    // Inside a legacy [&&NHX:...] tag the desktop reads by its LABEL rule, and
+    // so do we (Christian, 2026-09-16: "do what desktop does"):
+    //  - UNQUOTED whitespace is formatting noise and is squeezed out -- its
+    //    Test.testNHXParsingQuotes pins "[\t&\t&\n N\tH\tX:S=mo\tnkey !]" as
+    //    S=monkey!, and S=Homo sapiens reads as Homosapiens;
+    //  - a QUOTED run, either style, keeps what is inside it -- S="homo sapiens"
+    //    is homo sapiens, the one way to put a two-word species into an NHX tag
+    //    -- with a run of whitespace collapsed to one space, and may carry the
+    //    ':' that would otherwise end the tag (S="a:b c":D=Y);
+    //  - the quote characters themselves are never part of the value.
+    // My first version squeezed quotes and ALL whitespace out of the blob, from
+    // an inference off that one pinned case; the desktop then MEASURED its own
+    // behaviour and the quoted forms differed (homosapiens here, homo sapiens
+    // there). The opposite of a single-& blob, where quotes and spaces are
+    // data -- so none of this runs until the blob has shown itself to be NHX.
+    function nhxFields(blob) {
+        let out = [];
+        let cur = '';
+        let q = null;
+        let spaced = false;
+        for (let i = 0; i < blob.length; ++i) {
+            let c = blob.charAt(i);
+            if (q) {
+                if (c === q) {
+                    q = null;
+                } else if (/\s/.test(c)) {
+                    if (!spaced) {
+                        cur += ' ';
+                        spaced = true;
+                    }
+                } else {
+                    cur += c;
+                    spaced = false;
+                }
+            } else if (c === "'" || c === '"') {
+                q = c;
+                spaced = false;
+            } else if (c === ':') {
+                out.push(cur);
+                cur = '';
+            } else if (!/\s/.test(c)) {
+                cur += c;
+            }
+        }
+        out.push(cur);
+        return out;
+    }
+
     function applyExtendedAnnotations(node, blob) {
-        let squeezed = blob.replace(/[\s'"]+/g, '');
-        if (/^&&NHX:/i.test(squeezed)) {
-            applyNhxTags(node, squeezed.substring(6));
+        let fields = nhxFields(blob);
+        if (/^&&NHX$/i.test(fields[0])) {
+            applyNhxTags(node, fields.slice(1));
         } else {
             applyBeastAnnotations(node, blob.replace(/^&/, ''));
         }
@@ -4173,6 +4212,7 @@
         let trees = [];
         let taxlabels = [];
         let taxlabelColors = Object.create(null);   // label -> #rrggbb, from 'name'[&!color=...]
+        let taxlabelColorsByKey = Object.create(null);   // the same, under the Nexus join key
         // null-prototype maps: a taxon named "__proto__" must stay data
         let translateMap = Object.create(null);
         let seqs = Object.create(null);
@@ -4375,11 +4415,17 @@
                 // BRANCH's. It lands as the desktop's style:font_color
                 // property, which is what Visual Styles already draws and what
                 // phyloXML already carries, so nothing downstream is new.
-                if (node.name && taxlabelColors[node.name] !== undefined) {
+                // The taxon is found by its exact name, else by the Nexus join
+                // key (case-insensitive, '_' for ' ') -- the way a matrix row
+                // already finds its tip, and the way the desktop does it.
+                let labelColor = !node.name ? undefined
+                    : (taxlabelColors[node.name] !== undefined ? taxlabelColors[node.name]
+                        : taxlabelColorsByKey[joinKey(node.name)]);
+                if (labelColor !== undefined) {
                     if (!node.properties) {
                         node.properties = [];
                     }
-                    node.properties.push({ref: 'style:font_color', value: taxlabelColors[node.name],
+                    node.properties.push({ref: 'style:font_color', value: labelColor,
                         datatype: 'xsd:token', applies_to: 'node'});
                 }
                 if (node.name) {
@@ -4562,6 +4608,7 @@
                                         taxlabelColors[tok] = '#' + [rgb.red, rgb.green, rgb.blue].map(function (c) {
                                             return (c < 16 ? '0' : '') + c.toString(16);
                                         }).join('');
+                                        taxlabelColorsByKey[joinKey(tok)] = taxlabelColors[tok];
                                     }
                                 });
                             }
