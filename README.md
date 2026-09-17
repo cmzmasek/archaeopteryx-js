@@ -776,8 +776,8 @@ BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
 (median/mean) with its `95%_HPD` (or range) becomes the node date the age
 bars draw, FigTree's `!color` becomes the branch colour, and every other
 field (`rate`, traits, ...) becomes a `beast:<key>` node property for
-Color-by and search (`mutations` and `mcc` are always text, never a
-gradient). FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
+Color-by and search (`mutations`, `mcc` and FigTree's `!`-prefixed display
+directives are always text, never a gradient). FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
 TAXLABELS block — is that tip's **label** colour, carried as the desktop's
 `style:font_color` property and drawn by Visual Styles. A number is a plain
 decimal with an optional exponent: `0x1A` and `3f` are text.

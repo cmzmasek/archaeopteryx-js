@@ -3308,6 +3308,27 @@ function testNumberGrammar() {
         return false;
     }
 
+    // A key starting with '!' is a FigTree display DIRECTIVE, never a
+    // measurement: kept, under the same ref, always as text. It matters for the
+    // colour forms we refuse -- !color=-8381639 (no '#') used to become a numeric
+    // trait and Color-by offered FigTree's paint as a gradient. The desktop's
+    // own case, verbatim; a user's trait called "color" stays a trait.
+    var d = forester.findByNodeName(forester.parseNewHampshire("(A:1[&!color=-8381639,!rotate=1,color=3],B:1);"), "A")[0];
+    var dt = (d.properties || []).map(function (p) { return p.ref + "=" + p.value + ":" + p.datatype; }).sort().join(" ");
+    if (dt !== "beast:_color=-8381639:xsd:string beast:_rotate=1:xsd:string beast:color=3:xsd:decimal" || d.color !== undefined) {
+        console.log("    directives: " + dt + " colour " + JSON.stringify(d.color));
+        return false;
+    }
+    // ... and a colour we DO read is the branch colour and leaves no property
+    var ok = forester.findByNodeName(forester.parseNewHampshire("(A:1[&!color=#-8381639],B:1[&!color=80171b]);"), "A")[0];
+    var nb = forester.findByNodeName(forester.parseNewHampshire("(A:1[&!color=#-8381639],B:1[&!color=80171b]);"), "B")[0];
+    if (!ok.color || ok.color.red !== 128 || (ok.properties || []).length !== 0
+        || nb.color !== undefined || nb.properties[0].ref !== "beast:_color" || nb.properties[0].datatype !== "xsd:string") {
+        console.log("    accepted / refused: " + JSON.stringify(ok.color) + " " + JSON.stringify(ok.properties)
+            + " | " + JSON.stringify(nb.color) + " " + JSON.stringify(nb.properties));
+        return false;
+    }
+
     // mutations and mcc are TEXT whatever they look like, as on the desktop: a
     // clade label that happens to be "3" is not a measurement
     var m = forester.findByNodeName(forester.parseNewHampshire('(A:1[&mutations="123",mcc=3,rate=3],B:1);'), "A")[0];
@@ -3421,6 +3442,17 @@ function testTaxlabelColours() {
         + "begin trees;\n\ttree t = ('new york':1,Paris:1);\nend;\n")[0];
     if (fontColour(forester.findByNodeName(loose, "new york")[0]) !== "#16ce60/xsd:token/node") {
         console.log("    join key: " + fontColour(forester.findByNodeName(loose, "new york")[0]));
+        return false;
+    }
+    // a TAXLABELS colour we cannot read (no '#') colours nothing and is kept on
+    // the tip as text, exactly as a refused one in the tree string is
+    var refused = forester.parseNexus("#NEXUS\nbegin taxa;\n\ttaxlabels\n\tA[&!color=-8381639]\n\tB\n;\nend;\n"
+        + "begin trees;\n\ttree t = (A:1,B:1);\nend;\n")[0];
+    var ra = forester.findByNodeName(refused, "A")[0];
+    var rp = (ra.properties || []).map(function (p) { return p.ref + "=" + p.value + ":" + p.datatype; }).join(" ");
+    if (rp !== "beast:_color=-8381639:xsd:string" || fontColour(ra) !== null
+        || (forester.findByNodeName(refused, "B")[0].properties || []).length !== 0) {
+        console.log("    a refused TAXLABELS colour: " + rp);
         return false;
     }
     // the two colours are different things and do not touch: Paris's BRANCH

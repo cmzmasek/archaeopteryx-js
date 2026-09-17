@@ -84,6 +84,14 @@ consumers only see a change when a version is cut.
   hold the `:` that would otherwise end the tag. Checked case for case against
   the desktop's own measurements. A `[&key=value]` annotation is the opposite
   and is untouched: there, spaces and quotes are data.
+- **FigTree's display directives are never numbers.** An annotation key that
+  starts with `!` — `!color`, `!rotate`, `!collapse`, `!hilight`, `!name` — is
+  an instruction to FigTree, not a measurement, so it is kept as text whatever
+  it looks like. This matters for a colour we do not read: `!color=-8381639`
+  (no `#`) used to become the numeric trait `beast:_color`, and Color-by
+  offered FigTree's paint as a gradient. It is still kept, under the same
+  name, as text — in the tree string and on a TAXLABELS taxon alike — and a
+  trait of your own called `color` stays an ordinary trait. As on the desktop.
 - **`mutations` and `mcc` annotations are always text**, as on the desktop. A
   mutation list that happens to hold one number, or a clade label that happens
   to be `3`, is not a measurement, and was being offered to Color-by as a

@@ -3451,6 +3451,18 @@
                 numDateCiKey = beastRefKey(key);
             } else if (kl === 'div' && parseBeastNumber(value) !== null) {
                 addNodeProperty(node, NEXTSTRAIN_PREFIX + 'div', value);
+            } else if (key.charAt(0) === '!') {
+                // A key that starts with '!' is one of FigTree's display
+                // DIRECTIVES -- !color, !rotate, !collapse, !hilight, !name --
+                // never a measurement, so it is never typed numeric. It
+                // matters for the forms we refuse as a colour: !color=-8381639
+                // (no '#') used to land as beast:_color typed xsd:decimal, and
+                // Color-by offered FigTree's paint as a gradient. It is still
+                // KEPT -- nothing in this reader throws data away -- under the
+                // same ref, as text. A user's own trait called "color" has no
+                // '!' and stays an ordinary trait. (The desktop's rule;
+                // Christian, 2026-09-17: "do the same".)
+                addNodeProperty(node, 'beast:' + beastRefKey(key), value, 'xsd:string');
             } else if (kl === 'mutations' || kl === 'mcc') {
                 // TEXT, whatever it looks like (the desktop forces the same):
                 // a list of mutations that happens to hold one number, or a
@@ -4209,6 +4221,8 @@
         let taxlabels = [];
         let taxlabelColors = Object.create(null);   // label -> #rrggbb, from 'name'[&!color=...]
         let taxlabelColorsByKey = Object.create(null);   // the same, under the Nexus join key
+        let taxlabelRefused = Object.create(null);   // label -> a !color value we could not read, kept as text
+        let taxlabelRefusedByKey = Object.create(null);
         // null-prototype maps: a taxon named "__proto__" must stay data
         let translateMap = Object.create(null);
         let seqs = Object.create(null);
@@ -4424,6 +4438,12 @@
                     node.properties.push({ref: 'style:font_color', value: labelColor,
                         datatype: 'xsd:token', applies_to: 'node'});
                 }
+                let refusedColor = !node.name ? undefined
+                    : (taxlabelRefused[node.name] !== undefined ? taxlabelRefused[node.name]
+                        : taxlabelRefusedByKey[joinKey(node.name)]);
+                if (refusedColor !== undefined) {
+                    addNodeProperty(node, 'beast:_color', refusedColor, 'xsd:string');
+                }
                 if (node.name) {
                     let s = seqsByKey[joinKey(node.name)];
                     if (s) {
@@ -4598,8 +4618,15 @@
                                 splitTopLevelCommas(inside.substring(1), true).forEach(function (field) {
                                     let eq = field.indexOf('=');
                                     let key = eq > 0 ? field.substring(0, eq).trim().toLowerCase() : '';
-                                    let rgb = (key === '!color' || key === '!colour')
-                                        ? parseFigTreeColor(stripValueQuotes(field.substring(eq + 1).trim())) : null;
+                                    let isColor = key === '!color' || key === '!colour';
+                                    let raw = isColor ? stripValueQuotes(field.substring(eq + 1).trim()) : '';
+                                    let rgb = isColor ? parseFigTreeColor(raw) : null;
+                                    if (isColor && !rgb && raw.length > 0) {
+                                        // not a colour we read (no '#', say): kept as
+                                        // text on the tip, as in the tree string
+                                        taxlabelRefused[tok] = raw;
+                                        taxlabelRefusedByKey[joinKey(tok)] = raw;
+                                    }
                                     if (rgb) {
                                         taxlabelColors[tok] = '#' + [rgb.red, rgb.green, rgb.blue].map(function (c) {
                                             return (c < 16 ? '0' : '') + c.toString(16);
