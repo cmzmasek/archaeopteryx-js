@@ -2447,8 +2447,11 @@ function testAuspiceJson() {
     }
     var a = forester.findByNodeName(phy, "tipA")[0];
     var b = forester.findByNodeName(phy, "tipB")[0];
-    // a TIP keeps its point date but the interval is dropped
-    if (!a.date || a.date.value !== 2020.5 || a.date.minimum !== undefined) {
+    // a TIP keeps its point date AND its interval: on a Nextstrain build that
+    // is the sampling-date uncertainty of a sample dated only to its month or
+    // year. (It was dropped until 2026-09-17, for a display reason; the time
+    // axis now tells a sampled tip from a fossil instead.)
+    if (!a.date || a.date.value !== 2020.5 || a.date.minimum !== 2020.4 || a.date.maximum !== 2020.6) {
         return false;
     }
     if (Math.abs(a.branch_length - 0.5) > 1e-9 || Math.abs(b.branch_length - 1.0) > 1e-9) {
@@ -3058,14 +3061,19 @@ function testAuspiceNexusVocabulary() {
     var cases = [
         ["(A:1[&num_date=2001.5],B:1);", {value: 2001.5, unit: "year"},
             "nextstrain:num_date=2001.5(xsd:decimal)"],
-        // the interval belongs to an INTERNAL node ...
+        // the interval is kept on an internal node ...
         ["((X:1,Y:1)A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
             {value: 2001.5, unit: "year", minimum: 2000.1, maximum: 2002.9},
             "nextstrain:num_date=2001.5(xsd:decimal)"],
-        // ... and a TIP keeps its point date and loses the interval, as the
-        // JSON reader does it: a bar on a tip reads as a fossil range
+        // ... and on a TIP, where it is the sampling-date uncertainty of a
+        // sample dated only to its month or year (dropped until 2026-09-17,
+        // when the display learnt to tell a sampled tip from a fossil)
         ["(A:1[&num_date=2001.5,num_date_CI={2000.1,2002.9}],B:1);",
-            {value: 2001.5, unit: "year"},
+            {value: 2001.5, unit: "year", minimum: 2000.1, maximum: 2002.9},
+            "nextstrain:num_date=2001.5(xsd:decimal)"],
+        // a tip dated to the day states {d,d}: kept as written
+        ["(A:1[&num_date=2001.5,num_date_CI={2001.5,2001.5}],B:1);",
+            {value: 2001.5, unit: "year", minimum: 2001.5, maximum: 2001.5},
             "nextstrain:num_date=2001.5(xsd:decimal)"],
         // an interval with no date to bracket is kept as text, and is no date
         ["(A:1[&num_date_CI={2000.1,2002.9}],B:1);", undefined,
@@ -3108,11 +3116,18 @@ function testAuspiceNexusVocabulary() {
             {name: "B", node_attrs: {div: 0.02, num_date: {value: 2005.5}}}]}});
     var nex = forester.parseNewHampshire("(A:3.25[&num_date=2003.25,num_date_CI={2003,2003.5},div=0.01],"
         + "B:5.5[&num_date=2005.5,div=0.02])root[&num_date=2000,num_date_CI={1999.5,2000.5},div=0];");
-    // Tips included: both readers keep a tip's point date and drop its
-    // interval. This was a named difference until Christian closed it
-    // (2026-09-16), and A carries an interval in BOTH inputs so that it shows.
+    // Tips included: both readers keep a tip's interval. For a day this was a
+    // named difference (JSON dropped it, Nexus kept it), then both dropped it,
+    // and since 2026-09-17 both KEEP it -- A carries one in BOTH inputs, and it
+    // must survive in both, so neither direction can come back silently.
     function dateOf(n) {
         return n.date;
+    }
+    var keptJ = forester.findByNodeName(json, "A")[0].date;
+    var keptX = forester.findByNodeName(nex, "A")[0].date;
+    if (keptJ.minimum !== 2003 || keptJ.maximum !== 2003.5 || keptX.minimum !== 2003 || keptX.maximum !== 2003.5) {
+        console.log("    tip A's interval: json " + JSON.stringify(keptJ) + " nexus " + JSON.stringify(keptX));
+        return false;
     }
     var names = ["A", "B", "root"];
     for (var k = 0; k < names.length; ++k) {
@@ -3166,10 +3181,10 @@ function testNumDateOnlyOnTimeScaledTrees() {
         console.log("    a time-scaled tree lost its dates: " + count(timed, hasValue) + " of 5");
         return false;
     }
-    // the internal node keeps its interval, the tip only its point date
+    // the internal node keeps its interval, and so does the tip
     var a = forester.findByNodeName(timed, "A")[0];
     var ab = forester.findByNodeName(timed, "ab")[0];
-    if (JSON.stringify(a.date) !== JSON.stringify({value: 2003, unit: "year"})
+    if (JSON.stringify(a.date) !== JSON.stringify({value: 2003, unit: "year", minimum: 2002.5, maximum: 2003.5})
         || ab.date.minimum !== 2000.5 || ab.date.maximum !== 2001.5 || ab.date.unit !== "year") {
         console.log("    A: " + JSON.stringify(a.date) + " ab: " + JSON.stringify(ab.date));
         return false;

@@ -3378,8 +3378,8 @@
     //    parseAuspiceJson puts the same dataset, so one Nextstrain build opens
     //    the same way whichever format it was saved in: num_date -> the date
     //    VALUE with unit "year", plus a nextstrain:num_date property;
-    //    num_date_CI={lo,hi} -> that date's minimum/maximum on an INTERNAL
-    //    node (a tip's is dropped, as the JSON reader drops it); div -> a
+    //    num_date_CI={lo,hi} -> that date's minimum/maximum, on a tip too
+    //    (there it is the sampling-date uncertainty); div -> a
     //    nextstrain:div property. A num_date outranks every height* (it is a
     //    calendar year, a height is an age before present), it alone carries
     //    the unit, and it never borrows the height's HPD as its interval;
@@ -3762,18 +3762,14 @@
             let m = n._numDate;
             delete n._numDate;
             if (!notTimeScaled) {
-                // A TIP is a dated sample: it keeps its point date and loses
-                // the interval, exactly as parseAuspiceJson does it and for
-                // the same reason -- the uncertainty of a divergence time
-                // belongs to the INTERNAL nodes, and a bar on a tip reads as
-                // a fossil-style observed range on a viral tree (Christian,
-                // 2026-09-16: "drop tip intervals in the Nexus reader too,
-                // like JSON"). Only a num_date's interval: a BEAST tip's
-                // height HPD is a sampled tip date and is left as it was.
-                if (!n.children || n.children.length === 0) {
-                    delete n.date.minimum;
-                    delete n.date.maximum;
-                }
+                // A TIP keeps its interval too. It used to be dropped here
+                // and in parseAuspiceJson, for a DISPLAY reason -- a bar on a
+                // tip read as a fossil range -- and that threw real data away:
+                // a sample dated only to its month or year. Counted on real
+                // exports: dengue 2347 of 3863 tips carry a genuine interval
+                // (median 0.78 y), measles 1390 of 2985, enterovirus 715 of
+                // 1600. The display now tells a sampled tip from a fossil
+                // instead (drawTimeAxis); Christian, 2026-09-17, both programs.
                 return;
             }
             delete n.date.value;
@@ -4888,16 +4884,11 @@
             // keep the layout meaningful instead of a cladogram
             setDeltaBranchLengths(root, null, auspiceNodeDiv);
         }
-        // A TIP is a dated sample: keep its point date (the calendar axis)
-        // but drop the date INTERVAL -- the divergence-time uncertainty (the
-        // node-age bars) belongs to the INTERNAL nodes, and a tip interval
-        // would read as a fossil-style observed range on a viral tree.
-        forester.preOrderTraversalAll(root, function (n) {
-            if (!n.children && n.date
-                && (n.date.minimum !== undefined || n.date.maximum !== undefined)) {
-                n.date = {value: n.date.value, unit: n.date.unit};
-            }
-        });
+        // A tip keeps its date INTERVAL: on a Nextstrain build it is the
+        // sampling-date uncertainty of a sample dated only to its month or
+        // year, which is data. (It was dropped here until 2026-09-17 because
+        // the time axis drew every tip interval as a fossil range; the axis
+        // now tells the two apart -- see settleNumDates and drawTimeAxis.)
         forester.addParents(phy);
         return phy;
     };

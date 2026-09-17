@@ -547,7 +547,12 @@ youngest tip and labels that age (the ammonite demo ends at the K-Pg, 66).
 
 Nodes with a date **range** (`minimum`/`maximum` — minimum is the younger
 bound) draw uncertainty bars: translucent blue **HPD age bars** on internal
-nodes, sepia **fossil-range (FAD/LAD) bars with end caps** on tips. Node
+nodes, and on tips whatever the axis says the range means. On **geologic**
+time it is a fossil's observed range: sepia **fossil-range (FAD/LAD) bars with
+end caps**. On **calendar** time it is the uncertainty of a **sampling date**
+— a virus sample dated only to its month or year — drawn like an age bar,
+slimmer, and only when it has a width: a tip dated to the day draws nothing.
+Node
 tooltips show the date. The **Time Axis** checkbox under Display Data toggles
 everything; the axis needs a phylogram (branch lengths carry the time) and
 the rectangular layout. **Time Grid** (off by default, like the desktop's
@@ -779,8 +784,8 @@ decimal with an optional exponent: `0x1A` and `3f` are text.
 **Auspice's "download Nexus"** annotations land where the
 Auspice JSON reader puts the same dataset, so one Nextstrain build opens the
 same way in either format: `num_date` is the node's date in years (and a
-`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval on an
-internal node (a tip keeps only its point date, as in the JSON reader), `div` a
+`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval — on a tip
+too, where it is the sampling-date uncertainty — and `div` a
 `nextstrain:div` property — but only on a tree that is actually time-scaled,
 since Auspice writes the same annotations on its divergence tree: where the
 year differences do not reproduce the branch lengths the dates stay properties

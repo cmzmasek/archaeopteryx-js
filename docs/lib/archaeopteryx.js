@@ -9120,7 +9120,7 @@ function (root, d3, forester, phyloXml) {
 
         let sc = info.type === 'calendar' ? -corr : corr;
 
-        // ---- HPD age bars (internal) + fossil range bars (tips) ----
+        // ---- HPD age bars (internal) + tip bars: fossil ranges, or sampling dates ----
         forEachDisplayed(function (d) {
             if (!d.date || typeof d.date.minimum !== 'number' || typeof d.date.maximum !== 'number'
                 || d.y === undefined) {
@@ -9139,9 +9139,27 @@ function (root, d3, forester, phyloXml) {
             let left = Math.min(xa, xb);
             let w = Math.max(1, Math.abs(xb - xa));
             let y = d.x;
+            // What a TIP's interval means is the axis's to say. On geologic
+            // time it is a fossil's observed range, FAD to LAD, and is drawn
+            // as one below. On CALENDAR time it is the uncertainty of a
+            // sampling date -- a virus sample dated only to its month or year
+            // -- which is the same kind of thing as an internal node's age
+            // interval and is drawn the same way, slimmer, and only when it
+            // HAS a width: a tip dated to the day states {d,d}, and a capped
+            // tick on every such tip is what made the readers throw tip
+            // intervals away until 2026-09-17 (Christian; the desktop alike).
+            let sampledTip = !d.children && info.type === 'calendar';
+            if (sampledTip && !(max > min)) {
+                return;
+            }
             if (d.children) {
                 g.append('rect').attr('x', left).attr('y', y - 3.5)
                     .attr('width', w).attr('height', 7)
+                    .attr('fill', HPD_BAR_COLOR);
+            } else if (sampledTip) {
+                g.append('rect').attr('class', 'aptx-sampling-bar')
+                    .attr('x', left).attr('y', y - 2.5)
+                    .attr('width', w).attr('height', 5)
                     .attr('fill', HPD_BAR_COLOR);
             } else {
                 g.append('rect').attr('x', left).attr('y', y - 2.5)
