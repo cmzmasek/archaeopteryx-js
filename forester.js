@@ -7298,11 +7298,17 @@
         let agreeingTips = [];
         let latestStart = -Infinity;
         let earliestEnd = Infinity;
+        // the dates the agreeing tips actually STATE, un-widened: their labels
+        // plus their heights, with no tolerance added
+        let offerLo = -Infinity;
+        let offerHi = Infinity;
         ranges.forEach(function (r) {
             if (heightDateAllows(r, mid)) {
                 agreeingTips.push(r);
                 latestStart = Math.max(latestStart, r[0]);
                 earliestEnd = Math.min(earliestEnd, r[1]);
+                offerLo = Math.max(offerLo, r[0] + r[2]);
+                offerHi = Math.min(offerHi, r[1] + r[2]);
             }
         });
         let agreeing = agreeingTips.length;
@@ -7312,7 +7318,20 @@
         if (latestStart <= earliestEnd) {
             return null; // every agreeing label range overlaps every other
         }
-        let present = Math.max(best[0], Math.min(best[1], heightDatePrecisestMedian(agreeingTips)));
+        // The anchor is clamped into what the agreeing tips actually STATE,
+        // not into the stretch the tolerance opened up. The tolerance decides
+        // AGREEMENT -- how far a tip may miss and still count -- and must not
+        // then place the date: clamping into the widened stretch let the answer
+        // drift by up to the tolerance, about four days. Found by the desktop
+        // on ground truth: three Nextstrain .nwk trees whose .nexus siblings
+        // carry the real dates were out by 4.15, 3.96 and 2.92 days, and land
+        // within half a day after this (2026-09-17).
+        //
+        // Where the agreeing tips overlap only BECAUSE of the tolerance and
+        // state nothing in common, there is nothing to clamp into and the
+        // precise-label median stands.
+        let median = heightDatePrecisestMedian(agreeingTips);
+        let present = (offerLo <= offerHi) ? Math.max(offerLo, Math.min(offerHi, median)) : median;
         return {present: heightDateRound5(present), agreeing: agreeing, compared: compared};
     };
 

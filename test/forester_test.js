@@ -4603,6 +4603,59 @@ function testHeightDateRefusals() {
         console.log('    the coarse labels dragged the anchor: ' + JSON.stringify(mixedAnchor));
         return false;
     }
+    // The tolerance decides AGREEMENT -- how far a tip may miss and still
+    // count -- and must not then PLACE the anchor. Clamping the median into
+    // the tolerance-widened stretch let the answer drift by up to the
+    // tolerance: the desktop measured three Nextstrain trees against ground
+    // truth and every tip was out by about four days. The clamp is into what
+    // the agreeing tips actually STATE, un-widened.
+    //
+    // Two month-labelled offers that overlap by 0.02 years, with the precise
+    // median outside that overlap -- the only shape where the two rules differ.
+    var mA = forester.parseTipLabelDate('a_2000-01');
+    var mB = forester.parseTipLabelDate('b_2001-06');
+    var hA = 10;
+    var hB = ((mA.rangeEnd + hA) - 0.02) - mB.rangeStart;
+    var overlapHi = Math.min(mA.rangeEnd + hA, mB.rangeEnd + hB);
+    var clampAnchor = forester.inferHeightDateAnchor(tree([
+        {name: 'a_2000-01', height: hA},
+        {name: 'b_2001-06', height: hB},
+        {name: 'c_2001-06', height: hB}
+    ], {rootHeight: 40}));
+    if (clampAnchor === null) {
+        console.log('    the clamp fixture was refused');
+        return false;
+    }
+    // the un-widened overlap ends here; the median sits 7.7 days past it
+    if (Math.abs(clampAnchor.present - overlapHi) > 0.00001) {
+        console.log('    anchor ' + clampAnchor.present + ', expected the edge of what the tips state, '
+            + overlapHi.toFixed(5) + ' -- clamping into the tolerance-widened stretch instead?');
+        return false;
+    }
+
+    // ... and where the agreeing tips overlap ONLY because of the tolerance and
+    // state nothing in common, there is nothing to clamp into and the median
+    // stands. Two day-labelled offers 0.008 apart -- disjoint, but inside twice
+    // the tolerance, so they still agree.
+    var dA = forester.parseTipLabelDate('a_2000-01-01');
+    var dB = forester.parseTipLabelDate('b_2001-06-15');
+    var gA = 10;
+    var gB = ((dA.rangeEnd + gA) + 0.008) - dB.rangeStart;
+    var wantMedian = (((dA.decimalYear + gA) + (dB.decimalYear + gB)) / 2);
+    var emptyAnchor = forester.inferHeightDateAnchor(tree([
+        {name: 'a_2000-01-01', height: gA},
+        {name: 'b_2001-06-15', height: gB}
+    ], {rootHeight: 40}));
+    if (emptyAnchor === null) {
+        console.log('    the empty-intersection fixture was refused');
+        return false;
+    }
+    if (Math.abs(emptyAnchor.present - wantMedian) > 0.00001) {
+        console.log('    anchor ' + emptyAnchor.present + ', expected the median ' + wantMedian.toFixed(5)
+            + ' -- an empty intersection must not place the anchor');
+        return false;
+    }
+
     // The anchor is rounded to 5 decimals, HALF_UP. Two tips whose midpoint
     // runs past five decimals: the raw median is 2005.123458.
     var longd = [{name: 'p0_1990.5000000', height: 2005.1234561 - 1990.5},
