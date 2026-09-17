@@ -3643,6 +3643,11 @@
     // -- two comparable pairs or more, and no strict majority agreeing. A tree
     // too small to say anything keeps its dates.
     //
+    // A JOINT RULE with the desktop (Christian, 2026-09-16), chosen over
+    // keeping it here alone, over dating unconditionally, and over moving the
+    // question up into isTimeTree -- which would have changed that answer for
+    // every dated input, phyloXML and BEAST included. Do not retune it alone.
+    //
     // Where the tree is not time-scaled nothing is lost: the year stays on
     // the node as nextstrain:num_date (numeric, so Color-by and search have
     // it) and its interval as nextstrain:num_date_CI, exactly what an
