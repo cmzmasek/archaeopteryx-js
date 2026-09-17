@@ -2549,6 +2549,15 @@ function testExtendedNewickAnnotations() {
     if (!d.color || d.color.red !== 255 || d.color.green !== 128 || d.color.blue !== 0) {
         return false;
     }
+    // real FigTree writes Java's SIGNED Color.getRGB() int, not hex --
+    // #-8381639 is the exact tag on all 17 coloured tips in the desktop's
+    // own test_trees/influenza.tree, and must decode to no junk property
+    var signed = forester.parseNewHampshire("(e[&!color=#-8381639]:1,f:1);");
+    var e = forester.findByNodeName(signed, "e")[0];
+    if (!e.color || e.color.red !== 128 || e.color.green !== 27 || e.color.blue !== 57
+        || prop(e, "beast:_color") !== null) {
+        return false;
+    }
     // an annotation-free tree with [95] bracket confidences is untouched
     var plain = forester.parseNewHampshire("((a:1,b:2)[95]:3,c:4);");
     var pa = forester.findByNodeName(plain, "a")[0];

@@ -3319,6 +3319,20 @@
                     green: parseInt(value.substring(3, 5), 16),
                     blue: parseInt(value.substring(5, 7), 16)
                 };
+            } else if ((kl === '!color' || kl === '!colour')
+                && /^#-?[0-9]{1,10}$/.test(value)) {
+                // FigTree writes Java's SIGNED Color.getRGB() int rather than
+                // hex when the colour came from AWT (real files: every tag in
+                // test_trees/influenza.tree is #-8381639, never hex). Each
+                // '>>>' below coerces to an unsigned 32-bit value first, so
+                // the low 3 bytes come out as RGB regardless of sign; the
+                // alpha byte is discarded, matching node.color having none.
+                let argb = Number(value.substring(1));
+                node.color = {
+                    red: (argb >>> 16) & 0xff,
+                    green: (argb >>> 8) & 0xff,
+                    blue: argb & 0xff
+                };
             } else if (kl === 'height_median') {
                 heightMedian = value;
             } else if (kl === 'height_mean') {
