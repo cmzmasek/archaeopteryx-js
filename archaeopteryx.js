@@ -5642,6 +5642,16 @@ function (root, d3, forester, phyloXml) {
                     + ' is empty or illegally formatted');
             }
         });
+        // A tip-dated BEAST tree states its node ages as unitless `height`s --
+        // time before the youngest tip -- which say nothing about WHEN. Where
+        // the tip labels carry sampling dates and they agree on the date of
+        // height 0, the tree is placed in calendar time here, before anything
+        // reads a date: the axis, Color-by and the visualization candidates all
+        // depend on it. A tree that does not qualify is left exactly as it was,
+        // and a tree whose dates carry a unit is never touched. The desktop
+        // converts at the same point, next to its internal-label policy
+        // (their HeightDateConverter, 0.11.151).
+        forester.convertLoadedHeightsToDates(trees);
         // the two view keys are checked up here with the other arguments,
         // before anything is touched (and where Node can test it)
         if (config && config.view !== undefined && config.view !== null && typeof config.view !== 'object') {

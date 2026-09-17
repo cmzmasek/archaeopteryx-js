@@ -606,6 +606,9 @@ runTest("MAD values never support  : ", testMadValuesNeverSupport);
 runTest("time tree detection       : ", testIsTimeTree);
 runTest("re-root effect on clades  : ", testCladesChangedByRerooting);
 runTest("phyloXML dates survive    : ", testPhyloXmlDateRoundTrip);
+runTest("tip label date grammar    : ", testTipLabelDateGrammar);
+runTest("heights -> dates (desktop): ", testHeightDateConversionAgainstDesktop);
+runTest("heights -> dates refusals : ", testHeightDateRefusals);
 
 // Which internal-node data a re-root can take the meaning from, and a
 // prediction of what a re-root will do to it: computed on a copy, it leaves
@@ -4215,6 +4218,324 @@ function testPhyloXmlDateRoundTrip() {
     // the part a writer is most likely to drop
     if (!/<minimum>/.test(out) || !/<maximum>/.test(out)) {
         console.log('    fossil range bounds were not written');
+        return false;
+    }
+    return true;
+}
+
+// ---- dates in tip labels, and unitless BEAST heights ----------------------
+// Ported from the desktop's TipDateExtractor / HeightDateConverter (their
+// 0.11.151, commit 6755ba12) on Christian's word, 2026-09-17. The numbers
+// below are THEIRS, generated from that jar, and this is the acceptance test.
+
+function testTipLabelDateGrammar() {
+    var p = forester.parseTipLabelDate;
+    // The decimal years were computed INDEPENDENTLY, from JS Date arithmetic
+    // (day-of-year / year-length), not read off this implementation -- an
+    // expectation copied from the output under test asserts nothing. A day is
+    // its midpoint, a month its middle, a bare year .5, as BEAST and TreeTime
+    // read them.
+    var cases = [
+        // [label, decimal year (6 dp), precision, format]
+        ['EBOV|KR817226|2014-06-10', 2014.439726, 'day', 'ISO date (YYYY-MM-DD)'],
+        ['NewYork_705_1994.1', 1994.1, 'day', 'decimal year'],
+        ['A_duck_Guangdong_12_2000', 2000.5, 'year', 'year'],
+        ['strain/15-Mar-2021', 2021.201370, 'day', 'month-name date'],
+        ['sample_2021-03', 2021.204110, 'month', 'ISO year-month (YYYY-MM)'],
+        ['sample_March-2021', 2021.204110, 'month', 'month-name year'],
+        ['x_25/12/1999', 1999.982192, 'day', 'numeric date'],
+        ['x_1999/12/25', 1999.982192, 'day', 'numeric date'],
+        ['leap_2016-03-01', 2016.165300, 'day', 'ISO date (YYYY-MM-DD)']
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var m = p(cases[i][0]);
+        if (!m) {
+            console.log('    no date found in ' + cases[i][0]);
+            return false;
+        }
+        if (Math.abs(m.decimalYear - cases[i][1]) > 0.000001) {
+            console.log('    ' + cases[i][0] + ' -> ' + m.decimalYear + ', expected ' + cases[i][1]);
+            return false;
+        }
+        if (m.precision !== cases[i][2] || m.formatLabel !== cases[i][3]) {
+            console.log('    ' + cases[i][0] + ' -> ' + m.precision + '/' + m.formatLabel);
+            return false;
+        }
+    }
+    // the RANGE the label states, not just its midpoint: this is what makes two
+    // programs' decimal-year conventions comparable
+    var year = p('t_1997');
+    if (year.rangeStart !== 1997 || year.rangeEnd !== 1998) {
+        console.log('    a bare year is not the whole year: ' + year.rangeStart + '..' + year.rangeEnd);
+        return false;
+    }
+    var dec = p('t_1993.1'); // one written digit -> +/- 0.05
+    if (Math.abs(dec.rangeStart - 1993.05) > 1e-9 || Math.abs(dec.rangeEnd - 1993.15) > 1e-9) {
+        console.log('    1993.1 range is ' + dec.rangeStart + '..' + dec.rangeEnd + ', expected 1993.05..1993.15');
+        return false;
+    }
+    // A month name must match EXACTLY, or a place name becomes a date. The
+    // separator matters: MONTH_PARTIAL wants a space or hyphen, so
+    // "Marburg_virus_1987" never reaches the month test and proves nothing --
+    // sabotage caught that hole. These do reach it.
+    var places = ['Marburg 1987', 'Marburg-1987', 'Junin-2005', 'Decatur 2001'];
+    for (var pl = 0; pl < places.length; ++pl) {
+        var pm = p(places[pl]);
+        if (pm === null || pm.formatLabel !== 'year') {
+            console.log('    "' + places[pl] + '" was read as '
+                + (pm ? pm.formatLabel : 'nothing') + ', expected a bare year');
+            return false;
+        }
+    }
+    if (p('Mar-2021') === null || p('Mar-2021').formatLabel !== 'month-name year') {
+        console.log('    a real month abbreviation stopped being one');
+        return false;
+    }
+    // most specific format first, and the RIGHTMOST match within a format
+    if (Math.abs(p('h5n1_2003_isolate_2009-05-04').decimalYear - 2009.338356) > 0.000001) {
+        console.log('    a full date did not beat a bare year');
+        return false;
+    }
+    if (p('a_2001_b_2003').matchedText !== '2003') {
+        console.log('    the rightmost year did not win: ' + p('a_2001_b_2003').matchedText);
+        return false;
+    }
+    // impossible and implausible dates are not dates
+    if (p('x_2021-02-30') !== null && p('x_2021-02-30').formatLabel === 'ISO date (YYYY-MM-DD)') {
+        console.log('    Feb 30 was accepted');
+        return false;
+    }
+    if (p('clone_1234') !== null || p('id_3001') !== null) {
+        console.log('    a 4-digit number outside 1900-2100 was read as a year');
+        return false;
+    }
+    if (p('') !== null || p(null) !== null || p('no digits here') !== null) {
+        console.log('    a label with no date returned one');
+        return false;
+    }
+    return true;
+}
+
+// The acceptance test against the desktop: their anchors, and for influenza.tree
+// their per-node values. The bound SWAP is the point -- an anchor can match
+// while every interval is mirrored about its node.
+function testHeightDateConversionAgainstDesktop() {
+    var fs = require('fs');
+    var path = require('path');
+    var dir = path.join(__dirname, '..', 'test_trees');
+    var cases = [
+        ['influenza.tree', 2005.25, 687, 687],
+        ['HA_discrete_MCC.tre', 2005.5, 190, 190],
+        ['HA_continuous_MCC.tre', 2005.5, 190, 190]
+    ];
+    var influenza = null;
+    for (var i = 0; i < cases.length; ++i) {
+        var file = path.join(dir, cases[i][0]);
+        if (!fs.existsSync(file)) {
+            console.log('    missing fixture ' + file);
+            return false;
+        }
+        var phy = forester.parseNexus(fs.readFileSync(file, 'utf8'))[0];
+        var a = forester.inferHeightDateAnchor(phy);
+        if (a === null) {
+            console.log('    ' + cases[i][0] + ' was refused; the desktop converts it');
+            return false;
+        }
+        if (a.present !== cases[i][1]) {
+            console.log('    ' + cases[i][0] + ' anchor ' + a.present + ', the desktop says ' + cases[i][1]);
+            return false;
+        }
+        if (a.agreeing !== cases[i][2] || a.compared !== cases[i][3]) {
+            console.log('    ' + cases[i][0] + ' agreement ' + a.agreeing + '/' + a.compared
+                + ', the desktop says ' + cases[i][2] + '/' + cases[i][3]);
+            return false;
+        }
+        if (cases[i][0] === 'influenza.tree') {
+            influenza = {phy: phy, anchor: a};
+        }
+    }
+    // their per-node dump, for the root and three tips of influenza.tree
+    forester.convertHeightsToDates(influenza.phy, influenza.anchor.present);
+    var root = forester.getTreeRoot(influenza.phy);
+    // height 12.918411201454514 [12.583368821409794, 13.355090926136427]
+    // the LARGER height is the EARLIER date, so the bounds swap sides
+    if (root.date.value !== 1992.33159 || root.date.minimum !== 1991.89491
+        || root.date.maximum !== 1992.66663 || root.date.unit !== 'year') {
+        console.log('    root -> ' + JSON.stringify(root.date)
+            + ', the desktop says value 1992.33159 [1991.89491, 1992.66663] year');
+        return false;
+    }
+    var want = {'NewYork_705_1994.1': 1994.1, 'NewYork_758_1993.11': 1993.11, 'NewYork_577_1997': 1997};
+    var seen = 0;
+    var wrong = null;
+    forester.preOrderTraversalAll(root, function (n) {
+        if (n.name && Object.prototype.hasOwnProperty.call(want, n.name)) {
+            ++seen;
+            if (n.date.value !== want[n.name]) {
+                wrong = n.name + ' -> ' + n.date.value + ', expected ' + want[n.name];
+            }
+        }
+    });
+    if (seen !== 3 || wrong !== null) {
+        console.log('    ' + (wrong || ('only ' + seen + ' of the 3 named tips found')));
+        return false;
+    }
+    // the provenance sentence the desktop appends
+    var sentence = forester.heightDateDescription(influenza.anchor, 'TREE1', 687);
+    if (sentence.indexOf('687 of 687 tip labels put height 0 at 2005.25') < 0
+        || sentence.indexOf('each date is 2005.25 minus the height') < 0) {
+        console.log('    provenance sentence: ' + sentence);
+        return false;
+    }
+    return true;
+}
+
+// The refusals matter more than the conversions: a tree we cannot place in
+// calendar time must be left exactly as it was, not guessed at.
+function testHeightDateRefusals() {
+    function tree(tips, opts) {
+        opts = opts || {};
+        var root = {name: 'r', date: {value: opts.rootHeight === undefined ? 30 : opts.rootHeight}, children: []};
+        var inner = {name: '', date: {value: 15}, children: []};
+        tips.forEach(function (t, i) {
+            var n = {name: t.name, date: {}};
+            if (t.height !== undefined) {
+                n.date.value = t.height;
+            }
+            if (t.unit) {
+                n.date.unit = t.unit;
+            }
+            (i % 2 === 0 ? inner.children : root.children).push(n);
+        });
+        root.children.unshift(inner);
+        if (opts.undateInternals) {
+            delete root.date.value;
+            delete inner.date.value;
+        }
+        if (opts.unitOn === 'root') {
+            root.date.unit = 'year';
+        }
+        if (opts.unitOn === 'inner') {
+            inner.date.unit = 'mya';
+        }
+        return {name: 'T', children: [root]};
+    }
+    function spread(scale) {
+        var out = [];
+        for (var y = 2000; y <= 2005; ++y) {
+            out.push({name: 's_' + y, height: (2005 - y) * scale});
+        }
+        return out;
+    }
+    var cases = [
+        ['CONTROL: years 2000-2005, heights in years', tree(spread(1)), true],
+        ['a unit on the root', tree(spread(1), {unitOn: 'root'}), false],
+        ['a unit on an inner node', tree(spread(1), {unitOn: 'inner'}), false],
+        ['internal nodes undated: not a time tree', tree(spread(1), {undateInternals: true}), false],
+        ['heights in MONTHS (x12)', tree(spread(12)), false],
+        ['heights in SUBSTITUTIONS (x0.001)', tree(spread(0.001)), false],
+        ['every tip sampled in one year proves nothing',
+            tree([{name: 'a_2020', height: 0}, {name: 'b_2020', height: 0}, {name: 'c_2020', height: 0},
+                {name: 'd_2020', height: 0}]), false],
+        ['only 2 of 4 tips carry a label date',
+            tree([{name: 'x_2000', height: 5}, {name: 'y_2005', height: 0}, {name: 'strain_A', height: 3},
+                {name: 'strain_B', height: 1}]), false],
+        ['3 of 4 is a strict majority',
+            tree([{name: 'x_2000', height: 5}, {name: 'y_2005', height: 0}, {name: 'z_2002', height: 3},
+                {name: 'strain_B', height: 1}]), true]
+    ];
+    // two rival stretches: 18 year-labelled tips at height 0 plus two
+    // day-labelled tips that disagree with each other. 19 tips allow each day,
+    // 18 the time between, so which date height 0 is, is undecided.
+    var rival = [];
+    for (var i = 0; i < 18; ++i) {
+        rival.push({name: 'y' + i + '_2005', height: 0});
+    }
+    rival.push({name: 'd1_2005-01-15', height: 0});
+    rival.push({name: 'd2_2005-11-20', height: 0});
+    cases.push(['two rival stretches, anchor undecided', tree(rival), false]);
+
+    for (var c = 0; c < cases.length; ++c) {
+        var got = forester.inferHeightDateAnchor(cases[c][1]) !== null;
+        if (got !== cases[c][2]) {
+            console.log('    ' + cases[c][0] + ' -> ' + (got ? 'converted' : 'refused')
+                + ', expected ' + (cases[c][2] ? 'converted' : 'refused'));
+            return false;
+        }
+    }
+    // a refused tree is left EXACTLY as it was -- no dates rewritten, no
+    // description appended
+    var months = tree(spread(12));
+    var before = JSON.stringify(months);
+    if (forester.convertLoadedHeightsToDates([months]) !== 0 || JSON.stringify(months) !== before) {
+        console.log('    a refused tree was modified anyway');
+        return false;
+    }
+    // the tolerance: a tip off by more than 2 x 0.01 stops agreeing. Five
+    // decimals make each label a point, so the tolerance alone decides.
+    function offsetTree(miss) {
+        var tips = [];
+        for (var i = 0; i < 20; ++i) {
+            var y = (1990 + i) + '.50000';
+            tips.push({name: 't' + i + '_' + y, height: (2010.5 - (1990 + i + 0.5)) + (i === 19 ? miss : 0)});
+        }
+        return tree(tips, {rootHeight: 30});
+    }
+    if (forester.inferHeightDateAnchor(offsetTree(0.02)).agreeing !== 20) {
+        console.log('    a tip off by exactly 2 x the tolerance should still agree');
+        return false;
+    }
+    if (forester.inferHeightDateAnchor(offsetTree(0.0201)).agreeing !== 19) {
+        console.log('    a tip off by more than 2 x the tolerance should not agree');
+        return false;
+    }
+    // The 19-in-20 floor, which nothing above reached: 20 point-labelled tips,
+    // outliers pushed to their own separate places so they form no rival
+    // cluster. 19 agreeing converts, 18 does not.
+    function withOutliers(n) {
+        var tips = [];
+        for (var i = 0; i < 20; ++i) {
+            var y = (1990 + i) + '.50000';
+            var h = 2010.5 - (1990 + i + 0.5);
+            if (i >= (20 - n)) {
+                h += 0.05 + (i * 0.013);
+            }
+            tips.push({name: 't' + i + '_' + y, height: h});
+        }
+        return tree(tips, {rootHeight: 40});
+    }
+    var one = forester.inferHeightDateAnchor(withOutliers(1));
+    if (one === null || one.agreeing !== 19 || one.compared !== 20) {
+        console.log('    19 of 20 agreeing should convert, got ' + JSON.stringify(one));
+        return false;
+    }
+    if (forester.inferHeightDateAnchor(withOutliers(2)) !== null) {
+        console.log('    18 of 20 agreeing should be refused');
+        return false;
+    }
+    // The anchor comes from the MOST PRECISELY labelled tips only. Six precise
+    // tips put height 0 at 2005.5 and seven bare-year tips at 2005.9; the year
+    // labels are wide enough to agree, so without the precision filter they
+    // outvote the precise ones and drag the anchor.
+    var mixed = [];
+    for (var m2 = 0; m2 < 6; ++m2) {
+        mixed.push({name: 'p' + m2 + '_' + (1990 + m2) + '.50000', height: 2005.5 - (1990 + m2 + 0.5)});
+    }
+    for (var c2 = 0; c2 < 7; ++c2) {
+        mixed.push({name: 'c' + c2 + '_' + (1996 + c2), height: 2005.9 - (1996 + c2 + 0.5)});
+    }
+    var mixedAnchor = forester.inferHeightDateAnchor(tree(mixed, {rootHeight: 40}));
+    if (mixedAnchor === null || mixedAnchor.present !== 2005.5) {
+        console.log('    the coarse labels dragged the anchor: ' + JSON.stringify(mixedAnchor));
+        return false;
+    }
+    // The anchor is rounded to 5 decimals, HALF_UP. Two tips whose midpoint
+    // runs past five decimals: the raw median is 2005.123458.
+    var longd = [{name: 'p0_1990.5000000', height: 2005.1234561 - 1990.5},
+        {name: 'p1_1991.5000000', height: 2005.1234599 - 1991.5}];
+    var rounded = forester.inferHeightDateAnchor(tree(longd, {rootHeight: 40}));
+    if (rounded === null || rounded.present !== 2005.12346) {
+        console.log('    anchor ' + (rounded && rounded.present) + ', expected 2005.12346 (5 decimals, HALF_UP)');
         return false;
     }
     return true;
