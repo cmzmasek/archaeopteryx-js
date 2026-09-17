@@ -3409,6 +3409,82 @@
         }
     }
 
+    // ---------------------------------------------------------------
+    // A bare numeric date= as a node date VALUE (TreeTime)
+    // ---------------------------------------------------------------
+    //
+    // applyBeastAnnotations files date= as a date DESC and nothing else, which
+    // is what the desktop's BeastAnnotationParser does and stays that way --
+    // in BEAST output the age lives in height*, and date= is a decoration.
+    //
+    // TreeTime has no height at all: it writes "[&mutations=...,date=2003.84]"
+    // and the decimal year IS the node's position in time. Left as a desc the
+    // tree carries no date value, so isTimeTree is false and the calendar axis
+    // never appears -- a time tree that does not look like one.
+    //
+    // The catch is that TreeTime writes that SAME comment on both trees it
+    // emits: timetree.nexus, whose branch lengths are years, and
+    // divergence_tree.nexus, whose branch lengths are substitutions. No single
+    // annotation says which file it came from, and promoting blindly would put
+    // a calendar axis (which maps one branch-length unit to one year) on a
+    // divergence tree and silently disable re-rooting for it.
+    //
+    // So the TREE is asked rather than the annotation sniffed: a numeric date
+    // becomes a value only where the parent-to-child date differences actually
+    // reproduce the branch lengths. That needs no format detection, it is
+    // self-validating on any input, and it separates TreeTime's two files
+    // exactly. The desc is left in place either way, so nothing is lost.
+    const NUMERIC_DATE_ABS_TOL = 0.02;  // date= is written to 2 decimals, so a
+    const NUMERIC_DATE_REL_TOL = 0.01;  // difference of two carries ~0.01 error
+
+    function numericDateDesc(n) {
+        if (!n.date || n.date.value !== undefined || typeof n.date.desc !== 'string') {
+            return null;
+        }
+        return parseBeastNumber(n.date.desc);
+    }
+
+    function promoteTimeScaledDates(phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return;
+        }
+        let dated = [];
+        let agree = 0;
+        let pairs = 0;
+        let stack = [[root, null]];
+        while (stack.length > 0) {
+            let top = stack.pop();
+            let n = top[0];
+            let year = numericDateDesc(n);
+            if (year !== null) {
+                dated.push([n, year]);
+                let parentYear = top[1];
+                if (parentYear !== null && typeof n.branch_length === 'number'
+                    && isFinite(n.branch_length)) {
+                    ++pairs;
+                    let tol = NUMERIC_DATE_ABS_TOL
+                        + NUMERIC_DATE_REL_TOL * Math.abs(n.branch_length);
+                    if (Math.abs((year - parentYear) - n.branch_length) <= tol) {
+                        ++agree;
+                    }
+                }
+            }
+            if (n.children) {
+                for (let i = 0; i < n.children.length; ++i) {
+                    stack.push([n.children[i], year]);
+                }
+            }
+        }
+        if (pairs < 2 || agree * 2 <= pairs) {
+            return;
+        }
+        dated.forEach(function (d) {
+            d[0].date.value = d[1];
+            d[0].date.unit = 'year';
+        });
+    }
+
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
 
         let NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
@@ -3637,6 +3713,8 @@
         if (confidenceValuesAsInternalNames === true) {
             moveInternalNodeNamesToConfidenceValues(phy);
         }
+
+        promoteTimeScaledDates(phy);
 
         return phy;
 
@@ -4259,7 +4337,8 @@
     // Parses an Auspice / Nextstrain v2 dataset.json (string or already-parsed
     // object) into ONE tree object, mapping its per-node data onto the native
     // phyloXML shape so the existing overlays light it up -- ported from the
-    // desktop's AuspiceJsonParser:
+    // desktop's AuspiceJsonParser. TreeTime's own auspice_tree.json is read
+    // here too (see the version check below):
     //  - node_attrs.num_date.value -> node.date value (decimal year) -> the
     //    calendar time axis; its .confidence [lo,hi] -> date minimum/maximum
     //    -> the node-age (HPD) bars;
@@ -4278,8 +4357,21 @@
         if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
             throw new Error('not an Auspice dataset (the JSON root is not an object)');
         }
-        if (doc.version !== 'v2' || !doc.tree || typeof doc.tree !== 'object'
-            || Array.isArray(doc.tree)) {
+        if (!doc.tree || typeof doc.tree !== 'object' || Array.isArray(doc.tree)) {
+            throw new Error('not an Auspice v2 dataset (expected "version":"v2" and a "tree" object)');
+        }
+        // The version stamp is taken as PRESENT-OR-IMPLIED: TreeTime writes a
+        // fully valid v2 dataset ({meta, tree} with node_attrs.num_date,
+        // branch_attrs, children) and simply never writes "version":"v2", so
+        // demanding the stamp rejected the richest file TreeTime produces --
+        // the only one carrying full-precision dates (its .nexus rounds them
+        // to two decimals). The shape is still checked, so arbitrary JSON
+        // keeps getting the clear error rather than a confusing parse.
+        if (doc.version !== 'v2'
+            && !(doc.meta && typeof doc.meta === 'object' && !Array.isArray(doc.meta)
+                && (typeof doc.tree.name === 'string'
+                    || (doc.tree.node_attrs && typeof doc.tree.node_attrs === 'object')
+                    || Array.isArray(doc.tree.children)))) {
             throw new Error('not an Auspice v2 dataset (expected "version":"v2" and a "tree" object)');
         }
 
