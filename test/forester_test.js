@@ -2994,6 +2994,10 @@ function testBlobQuotes() {
         //  - WHERE a quote may close: the inner apostrophe is followed by a
         //    letter, so it is data and the comma after it still belongs to the value
         ["(A:1[&note='a'b,c',x=1],B:1);", {A: "beast:note=a'b,c | beast:x=1 :1", B: " :1"}],
+        //    ... and the same through the EXTRACTION pass, which finds the
+        //    blob's end from the runs: closing at the inner apostrophe would
+        //    let that ']' end the blob (the desktop's case, run verbatim there)
+        ["(A:1[&note='a'b]c',x=1],B:1);", {A: "beast:note=a'b]c | beast:x=1 :1", B: " :1"}],
         //  - the BOUND: this value opens legitimately and never closes, and the
         //    next tip's blob ends in an apostrophe that would make a fine partner
         ["(A:1[&division='s-Hertogenbosch],B:2[&k=v'],C:3);",
