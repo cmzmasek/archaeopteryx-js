@@ -2800,9 +2800,10 @@ function testTreeTimeOutput() {
         || forester.timeAxisInfo(forester.getTreeRoot(tt)).type !== "calendar") {
         return false;
     }
-    // the mutations ride along as a property, and branch lengths are years
+    // the mutations ride along under TreeTime's own namespace, not BEAST's,
+    // and branch lengths are years
     var muts = (hawaii.properties || []).filter(function (p) {
-        return p.ref === "beast:mutations";
+        return p.ref === "treetime:mutations";
     });
     if (muts.length !== 1 || muts[0].value !== "A127G,G315A,G451R"
         || Math.abs(hawaii.branch_length - 4.3906837) > 1e-9) {
@@ -2823,6 +2824,19 @@ function testTreeTimeOutput() {
         }
     });
     if (promoted !== 0 || descs < 6 || forester.isTimeTree(dv)) {
+        return false;
+    }
+    // it is still TreeTime's, so the namespace follows the producer and not
+    // the time-scaling -- both of its trees read the same way
+    var dvMuts = 0;
+    forester.preOrderTraversal(dv, function (n) {
+        (n.properties || []).forEach(function (p) {
+            if (p.ref === "treetime:mutations") {
+                ++dvMuts;
+            }
+        });
+    });
+    if (dvMuts < 5) {
         return false;
     }
 
@@ -2865,6 +2879,39 @@ function testTreeTimeOutput() {
     var anc = forester.findByNodeName(beast, "a")[0].parent;
     if (anc.date.value !== 1.2 || anc.date.desc !== "2003.84"
         || anc.date.minimum !== 0.95 || anc.date.unit !== undefined) {
+        return false;
+    }
+    // ... and a stated age keeps the tree in BEAST's namespace even when it
+    // also carries mutations, so the shared contract cannot be renamed away
+    var dual = forester.parseNewHampshire(
+        '((a[&mutations="A1G"]:1,b:1)[&height=1.2,mutations="T2C"]:1,c:2);');
+    var dualRefs = [];
+    forester.preOrderTraversal(dual, function (n) {
+        (n.properties || []).forEach(function (p) {
+            dualRefs.push(p.ref);
+        });
+    });
+    if (dualRefs.length !== 2
+        || dualRefs.some(function (r) {
+            return r !== "beast:mutations";
+        })) {
+        return false;
+    }
+    // ... and an annotation that names no producer at all stays generic:
+    // this is TreeTime's mugration output, [&<trait>="value"] and nothing
+    // else, which no rule could attribute without guessing at the trait name
+    var mug = forester.parseNewHampshire(
+        '((a[&region="east"]:1,b[&region="west"]:1):1,c:2);');
+    var mugRefs = [];
+    forester.preOrderTraversal(mug, function (n) {
+        (n.properties || []).forEach(function (p) {
+            mugRefs.push(p.ref);
+        });
+    });
+    if (mugRefs.length !== 2
+        || mugRefs.some(function (r) {
+            return r !== "beast:region";
+        })) {
         return false;
     }
 

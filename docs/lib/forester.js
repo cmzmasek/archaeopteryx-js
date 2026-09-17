@@ -3485,6 +3485,60 @@
         });
     }
 
+    // ---------------------------------------------------------------
+    // TreeTime's own namespace
+    // ---------------------------------------------------------------
+    //
+    // TreeTime's annotations arrive through the BEAST path, so they were
+    // landing as beast:<key> -- accurate about the syntax, wrong about the
+    // producer, and confusing next to a real BEAST run. Christian asked for a
+    // namespace of their own (2026-09-16).
+    //
+    // The producer is recognised on the TREE, not the file: a TreeTime tree
+    // carries mutations= and no node age at all, where every BEAST/MrBayes
+    // run states an age (height, height_mean, height_median, and the
+    // height_95%_HPD / height_range intervals). So the test is "mutations
+    // present, age absent", which cannot fire on a BEAST file and leaves that
+    // shared contract with the desktop untouched.
+    //
+    // TreeTime's mugration output is a bare user-named trait -- [&region="x"]
+    // and nothing else -- which no rule could attribute to any producer. It
+    // keeps the generic namespace, correctly.
+    const TREETIME_PREFIX = 'treetime:';
+    const BEAST_PREFIX = 'beast:';
+
+    // Must run BEFORE promoteTimeScaledDates: until then a date VALUE can
+    // only have come from a BEAST height field, which is what says this is
+    // not TreeTime.
+    function renameTreeTimeProperties(phy) {
+        let nodes = forester.getAllNodes(phy);
+        let mutations = false;
+        for (let i = 0; i < nodes.length; ++i) {
+            let d = nodes[i].date;
+            if (d && (d.value !== undefined || d.minimum !== undefined
+                || d.maximum !== undefined)) {
+                return;
+            }
+            if (!mutations && nodes[i].properties) {
+                mutations = nodes[i].properties.some(function (p) {
+                    return p.ref === BEAST_PREFIX + 'mutations';
+                });
+            }
+        }
+        if (!mutations) {
+            return;
+        }
+        nodes.forEach(function (n) {
+            if (n.properties) {
+                n.properties.forEach(function (p) {
+                    if (typeof p.ref === 'string' && p.ref.indexOf(BEAST_PREFIX) === 0) {
+                        p.ref = TREETIME_PREFIX + p.ref.substring(BEAST_PREFIX.length);
+                    }
+                });
+            }
+        });
+    }
+
     forester.parseNewHampshire = function (nhStr, confidenceValuesInBrackets, confidenceValuesAsInternalNames) {
 
         let NH_FORMAT_ERR_OPEN_PARENS = NH_FORMAT_ERR + 'likely cause: number of open parentheses is larger than number of close parentheses';
@@ -3714,6 +3768,7 @@
             moveInternalNodeNamesToConfidenceValues(phy);
         }
 
+        renameTreeTimeProperties(phy);
         promoteTimeScaledDates(phy);
 
         return phy;
