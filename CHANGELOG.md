@@ -6,6 +6,45 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.10.0 — 2026-09-17
+
+One tree can say two different things: where its nodes sit in **time**, and how
+far its branches have **diverged**. Until now we drew whichever the file happened
+to arrive with. Now, where a tree states both, you can switch.
+
+### Added
+
+- **A Time / Div switch, for trees that state both.**
+  - A Nextstrain build carries a sampling date and a divergence measure for
+    every node. The switch redraws the tree from either, and the calendar axis
+    comes and goes with it — an axis of years against a tree measured in
+    substitutions would be a confident lie, so it is shown only in the time
+    view.
+  - Reversible and lossless: the branch lengths the file arrived with are
+    recorded before anything rewrites them, so switching back restores them
+    exactly.
+  - Offered only where the choice is real. The test is whether the two metrics
+    actually draw a different picture — the largest shift in any tip's position,
+    as a fraction of the tree's width — not whether the numbers differ. A BEAST
+    time tree states time in both, and moves its tips by 0.9%; a Nextstrain
+    build moves them by 24.8%. The control stays hidden on the first and appears
+    on the second.
+  - **Shift+X** drives it, and still works the time axis on trees without the
+    switch.
+
+### Fixed
+
+- **A converted BEAST tree's dates could sit a few days off.** The tolerance
+  that decides whether a tip AGREES about the date of height 0 was also being
+  allowed to place that date. It decides agreement only; the date now comes from
+  what the agreeing tips actually state. Measured by the desktop Archaeopteryx
+  against trees whose true dates are known: worst case 4.15 days out before, and
+  within half a day after. No tree shipped with 3.9.0 was affected — every
+  anchor there is unchanged — but a tree with a wider spread of label precision
+  could have been.
+
+Try it on the demo site: https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flavivirus
+
 ## 3.9.0 — 2026-09-17
 
 Time. A BEAST tree says how far apart its nodes are in time but never when, and
