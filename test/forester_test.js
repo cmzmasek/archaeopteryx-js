@@ -609,6 +609,7 @@ runTest("phyloXML dates survive    : ", testPhyloXmlDateRoundTrip);
 runTest("tip label date grammar    : ", testTipLabelDateGrammar);
 runTest("heights -> dates (desktop): ", testHeightDateConversionAgainstDesktop);
 runTest("heights -> dates refusals : ", testHeightDateRefusals);
+runTest("time vs divergence scale : ", testTimeDivergenceScale);
 
 // Which internal-node data a re-root can take the meaning from, and a
 // prediction of what a re-root will do to it: computed on a copy, it leaves
@@ -4609,6 +4610,137 @@ function testHeightDateRefusals() {
     var rounded = forester.inferHeightDateAnchor(tree(longd, {rootHeight: 40}));
     if (rounded === null || rounded.present !== 2005.12346) {
         console.log('    anchor ' + (rounded && rounded.present) + ', expected 2005.12346 (5 decimals, HALF_UP)');
+        return false;
+    }
+    return true;
+}
+
+
+// The time <-> divergence switch. A tree can state two different things: where
+// its nodes sit in TIME, and how far its branches have DIVERGED. The switch is
+// only worth offering when the two draw different pictures, and it must be
+// reversible -- the branch lengths a file arrived with have to come back
+// exactly.
+function testTimeDivergenceScale() {
+    var fs = require('fs');
+    var path = require('path');
+
+    // A real Nextstrain build: divergence is a separate measurement, and it
+    // moves the tips by about a quarter of the tree's width.
+    var ncov = forester.parseAuspiceJson(
+        fs.readFileSync(path.join(__dirname, '..', 'docs', 'data', 'nextstrain-ncov.json'), 'utf8'));
+    if (Array.isArray(ncov)) {
+        ncov = ncov[0];
+    }
+    forester.captureDivergence(ncov);
+    if (!forester.hasTimeAndDivergence(ncov)) {
+        console.log('    a Nextstrain build should offer the switch');
+        return false;
+    }
+    // its parser leaves it in the time view
+    if (forester.branchLengthScale(ncov) !== 'time') {
+        console.log('    a Nextstrain build should arrive in the time view, got '
+            + forester.branchLengthScale(ncov));
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(ncov);
+    if (forester.branchLengthScale(ncov) !== 'divergence') {
+        console.log('    the scale did not follow the switch to divergence');
+        return false;
+    }
+    forester.applyTimeBranchLengths(ncov);
+    if (forester.branchLengthScale(ncov) !== 'time') {
+        console.log('    the scale did not follow the switch back to time');
+        return false;
+    }
+
+    // A BEAST time tree states time TWICE -- its branch lengths already are
+    // the gaps between its dates -- so there is nothing to switch between and
+    // the control must stay hidden. Measured: influenza.tree's branch lengths
+    // differ from the date gaps by a median 7% PER BRANCH, which looks like a
+    // separate measure, but the differences cancel and every tip lands within
+    // 0.3% of where the other metric puts it. Comparing branches pair by pair
+    // is the wrong question; the layout shift is the right one.
+    var beast = forester.parseNexus(
+        fs.readFileSync(path.join(__dirname, 'data', 'beast', 'beast-tip-dates.nex'), 'utf8'))[0];
+    var loaded = [];
+    forester.captureDivergence(beast);
+    forester.preOrderTraversalAll(forester.getTreeRoot(beast), function (n) {
+        loaded.push(n.branch_length);
+    });
+    var anchor2 = forester.inferHeightDateAnchor(beast);
+    forester.convertHeightsToDates(beast, anchor2.present);
+    if (forester.hasTimeAndDivergence(beast)) {
+        console.log('    a BEAST time tree should NOT offer the switch: its branches already are time');
+        return false;
+    }
+    if (forester.branchLengthScale(beast) !== 'divergence') {
+        console.log('    a BEAST tree arrives stating its own branch lengths');
+        return false;
+    }
+
+    // Reversible and lossless: the branch lengths the file arrived with come
+    // back exactly, because the divergence was recorded before the time view
+    // overwrote them.
+    forester.applyTimeBranchLengths(beast);
+    forester.applyDivergenceBranchLengths(beast);
+    var back = [];
+    forester.preOrderTraversalAll(forester.getTreeRoot(beast), function (n) {
+        back.push(n.branch_length);
+    });
+    for (var i = 1; i < loaded.length; ++i) {   // the root's length is not a branch
+        if (typeof loaded[i] === 'number' && Math.abs(loaded[i] - back[i]) > 1e-9) {
+            console.log('    a round trip changed branch ' + i + ': ' + loaded[i] + ' -> ' + back[i]);
+            return false;
+        }
+    }
+
+    // A tree still stating AGES (a height, largest at the root) must not offer
+    // the switch: the time view takes child minus parent and clamps at 0, so
+    // every branch would collapse to nothing.
+    //
+    // Two trees differing ONLY in which way time runs, so the direction is the
+    // single cause -- the desktop's way of isolating a rule, and better than
+    // restating the rule in the test's own words. The real BEAST fixture will
+    // not do here: it refuses for a different reason (its two metrics barely
+    // differ), which would let a broken direction check pass unnoticed.
+    function directed(forward) {
+        var tips = [];
+        for (var k = 0; k < 8; ++k) {
+            tips.push({
+                name: 't' + k,
+                date: {value: forward ? (2000 + k) : (8 - k)},
+                branch_length: (k % 2 === 0) ? 0.1 : 3.0    // divergence, unlike the date gaps
+            });
+        }
+        var inner = {name: '', date: {value: forward ? 1995 : 12}, branch_length: 1, children: tips.slice(0, 4)};
+        return {name: 'T', children: [{name: '', date: {value: forward ? 1990 : 20},
+            children: [inner].concat(tips.slice(4))}]};
+    }
+    var forward = directed(true);
+    forester.captureDivergence(forward);
+    if (!forester.hasTimeAndDivergence(forward)) {
+        console.log('    the control tree runs the calendar way and should offer the switch');
+        return false;
+    }
+    var backward = directed(false);
+    forester.captureDivergence(backward);
+    if (forester.hasTimeAndDivergence(backward)) {
+        console.log('    a tree stating ages must not offer the switch');
+        return false;
+    }
+    // and this is why: applied to it, the time view leaves nothing
+    forester.applyTimeBranchLengths(backward);
+    var flat = 0;
+    var all = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(backward), function (n) {
+        ++all;
+        if (n.branch_length === 0) {
+            ++flat;
+        }
+    });
+    if (flat !== all) {
+        console.log('    expected the age tree to collapse under the time view, got ' + flat + '/' + all);
         return false;
     }
     return true;

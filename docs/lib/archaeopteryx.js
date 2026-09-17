@@ -404,6 +404,9 @@ function (root, d3, forester, phyloXml) {
     const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
     const PHYLOGRAM_BUTTON = 'phy_b';
     const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
+    const BRANCH_SCALE_CONTROLGROUP = 'branch_scale_g';
+    const BRANCH_SCALE_TIME_BUTTON = 'branch_scale_time_b';
+    const BRANCH_SCALE_DIV_BUTTON = 'branch_scale_div_b';
     const ABOUT_DIALOG = 'aptx_about';
     const PROG_NAME = 'progname';
     const PROGNAMELINK = 'prognamelink';
@@ -577,6 +580,7 @@ function (root, d3, forester, phyloXml) {
     const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
     let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
     let _timeTree = false;                // forester.isTimeTree: never re-rooted
+    let _branchScaleAvailable = false;    // the tree states time AND divergence, so the switch is offered
     let _clusterH = 0;                    // the cluster layout's vertical extent, set per render
     let _docListenersBound = false;       // page-level key/wheel handlers bind once, not per launch
     let _docListeners = [];               // ...and destroy() can take every one of them down again
@@ -5111,6 +5115,12 @@ function (root, d3, forester, phyloXml) {
         // showTimeAxis explicitly.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
         _timeTree = _treeData ? forester.isTimeTree(_treeData) : false;
+        // Whether this tree says two different things -- when its nodes sit in
+        // time AND its branches measure something else -- and which of the two
+        // it arrived showing. An Auspice build arrives in the time view; a
+        // BEAST or Newick file arrives stating its own branch lengths.
+        _branchScaleAvailable = _treeData ? forester.hasTimeAndDivergence(_treeData) : false;
+        _state.branchScale = _treeData ? forester.branchLengthScale(_treeData) : 'divergence';
         if (_state.showTimeAxis === undefined) {
             _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
         }
@@ -5651,6 +5661,14 @@ function (root, d3, forester, phyloXml) {
         // and a tree whose dates carry a unit is never touched. The desktop
         // converts at the same point, next to its internal-label policy
         // (their HeightDateConverter, 0.11.151).
+        // Each node's cumulative divergence is recorded from the branch
+        // lengths AS LOADED, before anything rewrites them, so the time <->
+        // divergence switch is reversible rather than one-way. Auspice states
+        // divergence outright (nextstrain:div) and is unaffected; every other
+        // tree states it as its branch lengths, which the time view overwrites.
+        trees.forEach(function (t) {
+            forester.captureDivergence(t);
+        });
         forester.convertLoadedHeightsToDates(trees);
         // the two view keys are checked up here with the other arguments,
         // before anything is touched (and where Node can test it)
@@ -8152,7 +8170,7 @@ function (root, d3, forester, phyloXml) {
         {key: 'e', label: 'E', shift: true, what: 'Expand vertically until the labels fit', run: function () { zoomToExpandY(); }},
         {key: 'l', label: 'L', shift: true, what: 'Next layout: rectangular, circular, unrooted', run: cycleLayout},
         {key: 'd', label: 'D', shift: true, what: 'Next display type: phylogram, aligned, cladogram', run: cycleDisplayType},
-        {key: 'x', label: 'X', shift: true, what: 'Time axis on / off', run: toggleTimeAxis},
+        {key: 'x', label: 'X', shift: true, what: 'Time / divergence scale, or the time axis', run: toggleTimeAxis},
         {key: 'o', label: 'O', shift: true, what: 'Ladderize (order the tree)', run: function () { ladderizeButtonPressed(); }},
         {key: 'u', label: 'U', shift: true, what: 'Uncollapse every clade', run: function () { uncollapseAll(); }},
         {key: 'f', label: 'F', what: 'Go to the search box', run: focusSearch, typing: true},
@@ -8222,9 +8240,45 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // The Time Axis checkbox's toggle; when the distance / time tree switch
-    // arrives it takes over this key.
+    /**
+     * Redraws the tree with its branch lengths taken from the chosen metric:
+     * TIME (the gaps between the nodes' dates) or DIVERGENCE (what the file's
+     * own branch lengths measured, recorded at load). Both metrics stay on the
+     * tree, so this is reversible and lossless -- a round trip restores the
+     * loaded branch lengths exactly.
+     *
+     * @param scale 'time' or 'divergence'
+     */
+    function setBranchScale(scale) {
+        if (!_branchScaleAvailable || !_treeData || _state.branchScale === scale) {
+            return;
+        }
+        _state.branchScale = scale;
+        if (scale === 'time') {
+            forester.applyTimeBranchLengths(_treeData);
+        } else {
+            forester.applyDivergenceBranchLengths(_treeData);
+        }
+        // the branch lengths ARE the layout, so everything measured from them
+        // has to be measured again
+        _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
+        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, scale === 'time');
+        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, scale !== 'time');
+        zoomToFit();
+    }
+
+    function branchScaleButtonClicked() {
+        setBranchScale(getCheckboxValue(BRANCH_SCALE_TIME_BUTTON) ? 'time' : 'divergence');
+    }
+
+    // Shift+X. The switch takes this key over where the tree offers it, as was
+    // always intended; on every other tree it still works the Time Axis
+    // checkbox, so the key never does nothing.
     function toggleTimeAxis() {
+        if (_branchScaleAvailable) {
+            setBranchScale(_state.branchScale === 'time' ? 'divergence' : 'time');
+            return;
+        }
         let cb = byId(TIME_AXIS_CB);
         if (!cb || cb.disabled) {
             return;
@@ -8966,7 +9020,15 @@ function (root, d3, forester, phyloXml) {
         return _state.showTimeAxis === true && !radialDisplay()
             && _state.phylogram === true
             && _timeInfo !== null && _timeInfo.type !== null
-            && _basicTreeProperties.branchLengths === true;
+            && _basicTreeProperties.branchLengths === true
+            // The axis is an overlay calibrated to the tree's own branch scale,
+            // so it must be hidden when the branches are showing DIVERGENCE
+            // and divergence is a different measure -- calendar years against
+            // substitutions reads as a confident lie. Only then: where the two
+            // metrics agree (a BEAST time tree, whose branch lengths ARE time)
+            // there is no switch and the axis is calibrated correctly, which
+            // is what makes a converted BEAST tree show its years at all.
+            && !(_branchScaleAvailable && _state.branchScale === 'divergence');
     }
 
     function timeAxisBottomReserve() {
@@ -12736,6 +12798,8 @@ function (root, d3, forester, phyloXml) {
         on(TIME_GRID_CB, 'click', timeGridCbClicked);
 
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
+        on(BRANCH_SCALE_TIME_BUTTON, 'click', branchScaleButtonClicked);
+        on(BRANCH_SCALE_DIV_BUTTON, 'click', branchScaleButtonClicked);
 
         on(LAYOUT_CIRC_BUTTON, 'click', layoutButtonClicked);
         on(LAYOUT_UNROOTED_BUTTON, 'click', layoutButtonClicked);
@@ -13155,6 +13219,15 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)'));
             h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels'));
             h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)'));
+            h = h.concat('</div>');
+            // The branch SCALE, when the tree states two different things: its
+            // nodes' dates, and its branches' divergence. Hidden otherwise,
+            // which is most trees.
+            h = h.concat('<div class="' + BRANCH_SCALE_CONTROLGROUP + ' aptx-segmented">');
+            h = h.concat(makeSegment('Time', BRANCH_SCALE_TIME_BUTTON, 'branch_scale_radio',
+                'branch lengths measure TIME (the nodes\' dates)'));
+            h = h.concat(makeSegment('Div', BRANCH_SCALE_DIV_BUTTON, 'branch_scale_radio',
+                'branch lengths measure DIVERGENCE (substitutions, as the file states them)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -13630,6 +13703,14 @@ function (root, d3, forester, phyloXml) {
         if (!_basicTreeProperties.branchLengths) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
+        }
+        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, _state.branchScale === 'time');
+        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, _state.branchScale !== 'time');
+        // most trees state only one thing, and a control offering a choice
+        // that does not exist is worse than no control
+        let scaleGroup = document.querySelector('.' + BRANCH_SCALE_CONTROLGROUP);
+        if (scaleGroup) {
+            scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
         }
     }
 

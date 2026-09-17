@@ -4988,6 +4988,11 @@
             ? node.date.value : null;
     }
 
+    // A node's CUMULATIVE divergence from the root. Auspice states it outright
+    // as nextstrain:div; every other tree states it as branch lengths, which
+    // are the same thing in difference form, so it is summed at load and kept
+    // on the node (see forester.captureDivergence). The property wins where it
+    // exists, so an Auspice tree behaves exactly as it always did.
     function auspiceNodeDiv(node) {
         if (node.properties) {
             for (let i = 0; i < node.properties.length; ++i) {
@@ -4997,7 +5002,8 @@
                 }
             }
         }
-        return null;
+        return (typeof node._divergence === 'number' && isFinite(node._divergence))
+            ? node._divergence : null;
     }
 
     function auspiceHasAnyDate(node) {
@@ -5051,12 +5057,200 @@
         setDeltaBranchLengths(forester.getTreeRoot(phy), null, auspiceNodeDiv);
     };
 
-    // True when the tree carries BOTH a time signal (a dated node) AND a
-    // divergence signal (a nextstrain:div property), so the toggle is
-    // meaningful at all.
+    /**
+     * Records each node's cumulative divergence from the root, summed from the
+     * branch lengths AS LOADED, so the divergence view survives the time view
+     * overwriting `branch_length`. Kept in `_divergence`, which is private:
+     * no writer emits it, and a re-read of our own output re-derives it.
+     *
+     * A tree whose branch lengths ARE its dates (an Auspice time tree, say)
+     * gets the snapshot too; it is `hasTimeAndDivergence` that decides whether
+     * the two views differ enough to be worth offering.
+     *
+     * Call once per tree at load, before anything rewrites a branch length.
+     *
+     * @param phy the tree
+     */
+    forester.captureDivergence = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        if (!root) {
+            return;
+        }
+        (function walk(node, cumulative) {
+            node._divergence = cumulative;
+            let children = node.children;
+            if (children) {
+                for (let i = 0; i < children.length; ++i) {
+                    let bl = children[i].branch_length;
+                    let step = (typeof bl === 'number' && isFinite(bl) && bl > 0) ? bl : 0;
+                    walk(children[i], cumulative + step);
+                }
+            }
+        }(root, 0));
+    };
+
+    // How much the tree's SHAPE would change between the two metrics, as a
+    // fraction of its width: each tip's distance from the root under each
+    // metric, normalised by the deepest tip, and the largest disagreement.
+    //
+    // Comparing branch lengths PAIR BY PAIR is the wrong question and gave the
+    // wrong answer: on influenza.tree the branch lengths differ from the date
+    // gaps by a median of 7% per branch, which looks like a separate measure,
+    // but the differences cancel along every path and all 687 tips land within
+    // 0.3% of where the other metric puts them. Its branch lengths ARE time --
+    // a BEAST time tree states time -- so a toggle would redraw one picture
+    // twice. A real Nextstrain build, where divergence is genuinely a
+    // different measurement, moves tips by 24.8% of the tree's width.
+    //
+    // Both metrics are read WITHOUT touching branch_length, so this can be
+    // asked at load without disturbing the tree.
+    function layoutShiftBetweenMetrics(root) {
+        let rootDate = auspiceNodeDate(root);
+        let time = [];
+        let div = [];
+        let ok = true;
+        (function walk(n, t, d) {
+            let nt = auspiceNodeDate(n);
+            let nd = auspiceNodeDiv(n);
+            let tHere = (nt !== null && rootDate !== null) ? Math.abs(nt - rootDate) : t;
+            let dHere = (nd !== null) ? nd : d;
+            if (!n.children || n.children.length === 0) {
+                if (nt === null || nd === null) {
+                    ok = false;
+                }
+                time.push(tHere);
+                div.push(dHere);
+                return;
+            }
+            for (let i = 0; i < n.children.length; ++i) {
+                walk(n.children[i], tHere, dHere);
+            }
+        }(root, 0, 0));
+        if (!ok || time.length === 0) {
+            return 0;
+        }
+        let tMax = Math.max.apply(null, time.length > 50000 ? time.slice(0, 50000) : time);
+        let dMax = Math.max.apply(null, div.length > 50000 ? div.slice(0, 50000) : div);
+        if (!(tMax > 0) || !(dMax > 0)) {
+            return 0;
+        }
+        let worst = 0;
+        for (let i = 0; i < time.length; ++i) {
+            worst = Math.max(worst, Math.abs((time[i] / tMax) - (div[i] / dMax)));
+        }
+        return worst;
+    }
+
+    // Below this the two views are the same picture and the switch is noise.
+    // influenza.tree measures 0.003, nextstrain-ncov.json 0.248.
+    const BRANCH_METRIC_SHIFT_MIN = 0.02;
+
+    function divergenceDiffersFromTime(root) {
+        return layoutShiftBetweenMetrics(root) > BRANCH_METRIC_SHIFT_MIN;
+    }
+
+    // Which metric the CURRENT branch lengths hold -- a different question
+    // from whether the two metrics differ, and it needs the pair-by-pair
+    // comparison: after forester.applyTimeBranchLengths every branch length is
+    // exactly its ends' date gap, and after applyDivergenceBranchLengths it is
+    // not. Asked so a switch starts from what is on screen.
+    function branchLengthsAreTime(root) {
+        let pairs = 0;
+        let same = 0;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!n.children) {
+                return;
+            }
+            let pv = auspiceNodeDate(n);
+            if (pv === null) {
+                return;
+            }
+            for (let i = 0; i < n.children.length; ++i) {
+                let c = n.children[i];
+                let cv = auspiceNodeDate(c);
+                let bl = c.branch_length;
+                if (cv === null || typeof bl !== 'number' || !isFinite(bl)) {
+                    continue;
+                }
+                ++pairs;
+                let scale = Math.max(Math.abs(bl), Math.abs(cv - pv), 1e-9);
+                if (Math.abs(Math.abs(cv - pv) - bl) <= (scale * 1e-6)) {
+                    ++same;
+                }
+            }
+        });
+        return pairs > 0 && (same * 20) >= (pairs * 19);
+    }
+
+    // Whether the dates run the way the time view needs them to: a CALENDAR
+    // date increases toward the tips, and setDeltaBranchLengths takes
+    // child - parent and clamps at 0. A BEAST height runs the other way -- it
+    // is an age, largest at the root -- so a tree still stating heights would
+    // get a branch length of 0 everywhere and collapse to a point. Measured,
+    // not assumed: forester.convertHeightsToDates turns heights into calendar
+    // dates, and a tree it REFUSED still states ages.
+    function timeIncreasesTowardTips(root) {
+        let up = 0;
+        let pairs = 0;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!n.children) {
+                return;
+            }
+            let pv = auspiceNodeDate(n);
+            if (pv === null) {
+                return;
+            }
+            for (let i = 0; i < n.children.length; ++i) {
+                let cv = auspiceNodeDate(n.children[i]);
+                if (cv === null || cv === pv) {
+                    continue;
+                }
+                ++pairs;
+                if (cv > pv) {
+                    ++up;
+                }
+            }
+        });
+        return pairs > 0 && (up * 2) > pairs;
+    }
+
+    /**
+     * Which metric the tree's branch lengths currently state. An Auspice build
+     * arrives in the time view (its parser writes date deltas); a BEAST or
+     * Newick file arrives stating whatever it was written with, which is the
+     * divergence view. Asked rather than assumed, so a toggle starts from
+     * what is actually on screen.
+     *
+     * @param phy the tree
+     * @returns {string} 'time' or 'divergence'
+     */
+    forester.branchLengthScale = function (phy) {
+        let root = forester.getTreeRoot(phy);
+        return (root && branchLengthsAreTime(root)) ? 'time' : 'divergence';
+    };
+
+    /**
+     * True when the tree carries BOTH a time signal (dated nodes, running the
+     * calendar way) and a divergence signal that says something different, so
+     * a time <-> divergence toggle is meaningful. Auspice states divergence as
+     * nextstrain:div; a BEAST tree states it as its branch lengths, which on a
+     * real one differ from the dates on nearly every branch (influenza.tree:
+     * 1344 of 1372).
+     *
+     * @param phy the tree
+     * @returns {boolean}
+     */
     forester.hasTimeAndDivergence = function (phy) {
         let root = forester.getTreeRoot(phy);
-        return auspiceHasAnyDate(root) && auspiceHasAnyDiv(root);
+        if (!root || !auspiceHasAnyDate(root) || !timeIncreasesTowardTips(root)) {
+            return false;
+        }
+        // auspiceHasAnyDiv is true for every tree once the divergence has been
+        // captured, so it cannot decide this on its own -- it only says a
+        // divergence measure EXISTS. Whether it says anything different is the
+        // shift test, and that is the question worth asking of both kinds of
+        // tree.
+        return auspiceHasAnyDiv(root) && divergenceDiffersFromTime(root);
     };
 
     // A number that is not NaN. It used to test only for null, undefined and
