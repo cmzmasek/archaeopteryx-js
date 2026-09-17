@@ -777,7 +777,13 @@ BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
 bars draw, FigTree's `!color` becomes the branch colour, and every other
 field (`rate`, traits, ...) becomes a `beast:<key>` node property for
 Color-by and search (`mutations`, `mcc` and FigTree's `!`-prefixed display
-directives are always text, never a gradient). FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
+directives are always text, never a gradient). **TreeTime**'s trees open as
+what they are: its `timetree.nexus` carries dates only as `date=` annotations,
+and those become node dates — calendar axis and all — where the date
+differences reproduce the branch lengths, which is true of the time tree and
+not of `divergence_tree.nexus`, though both carry the same annotations. Its
+annotations land as `treetime:<key>` rather than `beast:<key>`, and its
+`auspice_tree.json` opens as the Auspice dataset it is. FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
 TAXLABELS block — is that tip's **label** colour, carried as the desktop's
 `style:font_color` property and drawn by Visual Styles. A number is a plain
 decimal with an optional exponent: `0x1A` and `3f` are text.

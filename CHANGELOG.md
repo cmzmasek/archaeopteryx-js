@@ -6,7 +6,14 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.8.0 — 2026-09-17
+
+Three things. Every tree of a multi-tree file keeps its own view. The control
+panel takes less room, for hosts that have little to give. And the
+Newick/Nexus reader understands what the programs around it actually write —
+TreeTime, Auspice's Nexus export, FigTree, BEAST, MrBayes — checked case for
+case against the desktop Archaeopteryx (forester 0.11.150), which shipped the
+same rules.
 
 ### Changed
 
@@ -40,6 +47,23 @@ consumers only see a change when a version is cut.
   - Jumping to the search box (⌘F / Ctrl+F), revealing Search B, opening a
     view that carries a search, and the representative-tips result all unfold
     the Search section, so what they produce is visible.
+- **TreeTime output opens as the time tree it is.** TreeTime writes its dates
+  as annotations only — `[&mutations=...,date=2003.84]` — and a `date=` there
+  is a description, not a value, because in BEAST output the age lives in
+  `height`. So its `timetree.nexus` showed no calendar axis and could be
+  re-rooted. It cannot simply be promoted, because TreeTime writes the same
+  comment on its `divergence_tree.nexus`, measured in substitutions. So the
+  tree is asked: a numeric `date=` becomes the node's date only where the
+  parent-to-child date differences actually reproduce the branch lengths.
+  That needs no file sniffing and separates the two files exactly. TreeTime's
+  `auspice_tree.json` opens too — it is a valid Auspice v2 dataset that simply
+  never stamps `"version":"v2"`, and the only output with full-precision dates.
+- **TreeTime annotations get a namespace of their own**, `treetime:`. They
+  arrived through the BEAST path and landed as `beast:<key>` — right about the
+  syntax, wrong about the producer. The producer is recognised on the tree: a
+  TreeTime tree carries mutations and states no node age, where every BEAST or
+  MrBayes run states one. Its mugration output, a bare user-named trait, keeps
+  the generic namespace, since nothing can attribute it.
 - **A sampled tip keeps its date uncertainty, and the time axis draws it.**
   The Auspice JSON reader used to drop a tip's date interval, for a display
   reason: the time axis drew every tip interval as a sepia fossil range with
@@ -119,6 +143,11 @@ consumers only see a change when a version is cut.
   is now a plain decimal with an optional exponent and nothing else — the
   desktop's grammar — for annotation values and for every property's datatype,
   the Auspice JSON reader's included.
+- **FigTree's colours written as a signed integer were not read.** FigTree
+  writes Java's signed colour value, `!color=#-8381639`, rather than hex
+  whenever the colour came from its palette, and each one silently became a
+  fake `beast:_color` trait instead of a branch colour. Both forms are read
+  now; the alpha byte is dropped.
 - **An apostrophe inside an annotation value broke the file.** Auspice writes
   values bare — `country=Côte d'Ivoire` — and the apostrophe was read as the
   start of a quoted string. With one such tip the file was refused over its
