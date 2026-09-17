@@ -63,8 +63,29 @@ consumers only see a change when a version is cut.
     stand nothing is lost — the year and its interval stay as
     `nextstrain:num_date` and `nextstrain:num_date_CI`.
 
+- **Inside an NHX tag, whitespace and quotes are formatting noise**, as they
+  have always been on the desktop: `[&&NHX:S='homo']` is the species `homo`,
+  not `'homo'` with its apostrophes, and a tag written with stray whitespace
+  in its `&&NHX:` is now recognised as one. **This also removes spaces inside
+  an NHX value** — `S=Homo sapiens` reads as `Homosapiens` — which is the
+  desktop's long-standing behaviour and the reason NHX values are written
+  with underscores. A `[&key=value]` annotation is the opposite and is
+  untouched: there, spaces and quotes are data.
+- **`mutations` and `mcc` annotations are always text**, as on the desktop. A
+  mutation list that happens to hold one number, or a clade label that happens
+  to be `3`, is not a measurement, and was being offered to Color-by as a
+  gradient.
+
 ### Fixed
 
+- **A value that looked like a hex literal was read as the number 0.** A
+  number was "whatever both `parseFloat` and `Number` accept", and the two
+  read different languages: `Number` understands `0x1A`, `0b101` and `0o17`,
+  `parseFloat` stops at the letter and answers `0`. So such a trait was typed
+  numeric, and a node height written that way dated its node at zero. A number
+  is now a plain decimal with an optional exponent and nothing else — the
+  desktop's grammar — for annotation values and for every property's datatype,
+  the Auspice JSON reader's included.
 - **An apostrophe inside an annotation value broke the file.** Auspice writes
   values bare — `country=Côte d'Ivoire` — and the apostrophe was read as the
   start of a quoted string. With one such tip the file was refused over its
@@ -80,6 +101,14 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **FigTree's taxon colours are read, as label colours.** FigTree hangs a
+  colour on a taxon in the Nexus TAXLABELS block —
+  `'NewYork_454_1999.05'[&!color=#-8381639]` — and that is the colour of the
+  tip's **label** (a `!color` in the tree string stays the **branch**
+  colour). It lands as the desktop's `style:font_color` property, so Visual
+  Styles draws it and phyloXML carries it, with nothing new downstream. The
+  annotation used to be glued onto the label instead: invisible while a tree
+  spelled its tips out, wrong as soon as it referred to them by number.
 - **`panelDensity`** config key. `'compact'` tightens the control panel's
   spacing and narrows it from 214 to 196px, with the tree's left margin
   following it. The same controls, nothing hidden. Default `'comfortable'`;

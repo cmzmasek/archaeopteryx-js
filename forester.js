@@ -3266,9 +3266,44 @@
         return out;
     }
 
+    // A NUMBER is a plain decimal with an optional exponent, and nothing else
+    // -- the desktop's grammar (Christian, 2026-09-16). The test used to be
+    // "parseFloat is finite AND Number is finite", and the two read different
+    // languages: Number() understands 0x1A, 0b101 and 0o17, parseFloat() stops
+    // at the letter and answers 0. So a trait that merely LOOKED like a hex
+    // literal was typed numeric, and a height written that way dated its node
+    // at 0 -- a wrong answer where a refusal was due. One pattern now decides,
+    // for a value read as a number and for a property's datatype alike.
+    const PLAIN_DECIMAL_RE = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+
     function parseBeastNumber(v) {
-        let d = parseFloat(v);
-        return (isFinite(d) && isFinite(Number(v))) ? d : null;
+        let t = String(v).trim();
+        if (!PLAIN_DECIMAL_RE.test(t)) {
+            return null;
+        }
+        let d = parseFloat(t);
+        return isFinite(d) ? d : null;   // 1e400 is well-formed and still not a number we can use
+    }
+
+    // FigTree's !color value: #rrggbb, or Java's SIGNED Color.getRGB() int,
+    // which FigTree writes whenever the colour came from AWT (real files: every
+    // tag in test_trees/influenza.tree is #-8381639, never hex). Each '>>>'
+    // coerces to an unsigned 32-bit value first, so the low three bytes come
+    // out as RGB regardless of sign; the alpha byte is discarded. Null when it
+    // is neither.
+    function parseFigTreeColor(value) {
+        if (/^#[0-9a-f]{6}$/i.test(value)) {
+            return {
+                red: parseInt(value.substring(1, 3), 16),
+                green: parseInt(value.substring(3, 5), 16),
+                blue: parseInt(value.substring(5, 7), 16)
+            };
+        }
+        if (/^#-?[0-9]{1,10}$/.test(value)) {
+            let argb = Number(value.substring(1));
+            return {red: (argb >>> 16) & 0xff, green: (argb >>> 8) & 0xff, blue: argb & 0xff};
+        }
+        return null;
     }
 
     // A two-value BEAST set {lo,hi} (or [lo,hi]) as [lo,hi] numbers, or null.
@@ -3393,27 +3428,8 @@
                 if (b !== null) {
                     pushConfidence(node, b, 'bootstrap');
                 }
-            } else if ((kl === '!color' || kl === '!colour')
-                && /^#[0-9a-f]{6}$/i.test(value)) {
-                node.color = {
-                    red: parseInt(value.substring(1, 3), 16),
-                    green: parseInt(value.substring(3, 5), 16),
-                    blue: parseInt(value.substring(5, 7), 16)
-                };
-            } else if ((kl === '!color' || kl === '!colour')
-                && /^#-?[0-9]{1,10}$/.test(value)) {
-                // FigTree writes Java's SIGNED Color.getRGB() int rather than
-                // hex when the colour came from AWT (real files: every tag in
-                // test_trees/influenza.tree is #-8381639, never hex). Each
-                // '>>>' below coerces to an unsigned 32-bit value first, so
-                // the low 3 bytes come out as RGB regardless of sign; the
-                // alpha byte is discarded, matching node.color having none.
-                let argb = Number(value.substring(1));
-                node.color = {
-                    red: (argb >>> 16) & 0xff,
-                    green: (argb >>> 8) & 0xff,
-                    blue: argb & 0xff
-                };
+            } else if ((kl === '!color' || kl === '!colour') && parseFigTreeColor(value) !== null) {
+                node.color = parseFigTreeColor(value);   // in the tree string it is the BRANCH colour
             } else if (kl === 'height_median') {
                 heightMedian = value;
             } else if (kl === 'height_mean') {
@@ -3435,6 +3451,12 @@
                 numDateCiKey = beastRefKey(key);
             } else if (kl === 'div' && parseBeastNumber(value) !== null) {
                 addNodeProperty(node, NEXTSTRAIN_PREFIX + 'div', value);
+            } else if (kl === 'mutations' || kl === 'mcc') {
+                // TEXT, whatever it looks like (the desktop forces the same):
+                // a list of mutations that happens to hold one number, or a
+                // clade label that happens to be "3", is not a measurement,
+                // and typing it decimal offers it to Color-by as a gradient
+                addNodeProperty(node, 'beast:' + beastRefKey(key), value, 'xsd:string');
             } else {
                 addNodeProperty(node, 'beast:' + beastRefKey(key), value);
             }
@@ -3537,9 +3559,19 @@
         });
     }
 
+    // Inside a legacy [&&NHX:...] tag whitespace and BOTH quote styles are
+    // formatting noise, as they have always been on the desktop (its
+    // Test.testNHXParsingQuotes pins "[\t&\t&\n N\tH\tX:S=mo\tnkey !]" as
+    // S=monkey!): S='homo' is the species homo, not 'homo' with its
+    // apostrophes. We used to keep both, which also meant a tag written with
+    // any space in its "&&NHX:" was not recognised as one at all (Christian,
+    // 2026-09-16: "do what desktop does"). The opposite of a single-& blob,
+    // where quotes and spaces are DATA -- so the squeeze happens only once the
+    // blob has shown itself to be NHX.
     function applyExtendedAnnotations(node, blob) {
-        if (/^&&NHX:/i.test(blob)) {
-            applyNhxTags(node, blob.substring(6));
+        let squeezed = blob.replace(/[\s'"]+/g, '');
+        if (/^&&NHX:/i.test(squeezed)) {
+            applyNhxTags(node, squeezed.substring(6));
         } else {
             applyBeastAnnotations(node, blob.replace(/^&/, ''));
         }
@@ -4140,6 +4172,7 @@
 
         let trees = [];
         let taxlabels = [];
+        let taxlabelColors = Object.create(null);   // label -> #rrggbb, from 'name'[&!color=...]
         // null-prototype maps: a taxon named "__proto__" must stay data
         let translateMap = Object.create(null);
         let seqs = Object.create(null);
@@ -4336,6 +4369,19 @@
                     // un-doubling and drop the apostrophe a second time.
                     node.name = taxlabels[parseInt(node.name, 10) - 1];
                 }
+                // A colour FigTree gave the TAXON is the colour of its LABEL
+                // -- FigTree's own meaning, and the desktop's (Christian,
+                // 2026-09-16) -- where a !color in the tree string is the
+                // BRANCH's. It lands as the desktop's style:font_color
+                // property, which is what Visual Styles already draws and what
+                // phyloXML already carries, so nothing downstream is new.
+                if (node.name && taxlabelColors[node.name] !== undefined) {
+                    if (!node.properties) {
+                        node.properties = [];
+                    }
+                    node.properties.push({ref: 'style:font_color', value: taxlabelColors[node.name],
+                        datatype: 'xsd:token', applies_to: 'node'});
+                }
                 if (node.name) {
                     let s = seqsByKey[joinKey(node.name)];
                     if (s) {
@@ -4495,6 +4541,31 @@
                                 // divergence, not a fix.
                                 void ch;
                             }
+                        } else if (ch === '[') {
+                            // A bracket after a label is not part of it. FigTree
+                            // hangs the taxon's colour here --
+                            // 'NewYork_454_1999.05'[&!color=#-8381639] -- and it
+                            // used to be glued onto the label, which then named
+                            // no tip (invisible while a tree spells its tips
+                            // out, wrong as soon as it refers to them by number).
+                            // A [&...] belongs to the label just read; any other
+                            // bracket is an ordinary Nexus comment.
+                            let end = line.indexOf(']', ci);
+                            let inside = line.substring(ci + 1, end < 0 ? line.length : end).trim();
+                            if (inside.charAt(0) === '&' && tok.length > 0) {
+                                splitTopLevelCommas(inside.substring(1), true).forEach(function (field) {
+                                    let eq = field.indexOf('=');
+                                    let key = eq > 0 ? field.substring(0, eq).trim().toLowerCase() : '';
+                                    let rgb = (key === '!color' || key === '!colour')
+                                        ? parseFigTreeColor(stripValueQuotes(field.substring(eq + 1).trim())) : null;
+                                    if (rgb) {
+                                        taxlabelColors[tok] = '#' + [rgb.red, rgb.green, rgb.blue].map(function (c) {
+                                            return (c < 16 ? '0' : '') + c.toString(16);
+                                        }).join('');
+                                    }
+                                });
+                            }
+                            ci = end < 0 ? line.length : end;
                         } else if (ch === ' ') {
                             push();
                         } else if (ch === ';') {
@@ -4607,7 +4678,9 @@
         return d.toFixed(20).replace(/0+$/, '').replace(/\.$/, '');
     }
 
-    function addNodeProperty(node, ref, value) {
+    // `datatype` is for the few values whose type is decided by what they ARE
+    // rather than by what they look like (see mutations / mcc).
+    function addNodeProperty(node, ref, value, datatype) {
         if (value === undefined || value === null || String(value).length === 0) {
             return;
         }
@@ -4618,7 +4691,7 @@
         node.properties.push({
             ref: ref,
             value: v,
-            datatype: isFinite(parseFloat(v)) && isFinite(Number(v)) ? 'xsd:decimal' : 'xsd:string',
+            datatype: datatype || (parseBeastNumber(v) !== null ? 'xsd:decimal' : 'xsd:string'),
             applies_to: 'node'
         });
     }

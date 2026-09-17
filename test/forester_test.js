@@ -80,6 +80,9 @@ runTest("Auspice edge cases         : ", testAuspiceMore);
 runTest("quotes inside a [&...] blob: ", testBlobQuotes);
 runTest("Auspice Nexus vocabulary   : ", testAuspiceNexusVocabulary);
 runTest("num_date, time-scaled only : ", testNumDateOnlyOnTimeScaledTrees);
+runTest("a number is a plain decimal: ", testNumberGrammar);
+runTest("NHX tag: quotes/space noise: ", testNhxTagNoise);
+runTest("TAXLABELS colour = label   : ", testTaxlabelColours);
 runTest("Ladderize (n-ary)          : ", testLadderize);
 runTest("Nexus quoted labels        : ", testNexusQuotedLabels);
 runTest("Nexus numeric tips         : ", testNexusNumericTips);
@@ -2531,7 +2534,11 @@ function testExtendedNewickAnnotations() {
         || prop(a, "beast:rate") !== "1.2E-3" || a.branch_length !== 0.1) {
         return false;
     }
-    if (!b.taxonomies || b.taxonomies[0].scientific_name !== "Homo sapiens"
+    // Inside an NHX tag whitespace is formatting noise, as on the desktop (its
+    // Test.testNHXParsingQuotes pins "S=mo\tnkey !" -> monkey!): the tag is
+    // written "S=Homo sapiens" and reads as Homosapiens. This pinned "Homo
+    // sapiens" until Christian chose the desktop's behaviour (2026-09-16).
+    if (!b.taxonomies || b.taxonomies[0].scientific_name !== "Homosapiens"
         || !b.confidences || b.confidences[0].type !== "bootstrap"
         || b.confidences[0].value !== 95
         || !b.events || b.events.duplications !== 1
@@ -2766,7 +2773,7 @@ function testBeastAnnotationsMore() {
     if (!c.taxonomies || !c.taxonomies[0].id || c.taxonomies[0].id.value !== "9606"
         || c.sequences[0].name !== "HBB"
         || c.sequences[0].accession.value !== "P68871"
-        || prop(c, "nh:comment") !== "a note"
+        || prop(c, "nh:comment") !== "anote"   // NHX whitespace is noise (see testNhxTagNoise)
         || !c.events || c.events.speciations !== 1) {
         return false;
     }
@@ -3212,6 +3219,177 @@ function testNumDateOnlyOnTimeScaledTrees() {
     var one = forester.parseNewHampshire("(A:0.002[&num_date=2003],B:0.004)root[&num_date=2000];");
     if (count(one, hasValue) !== 2) {
         console.log("    one pair was treated as evidence: " + count(one, hasValue));
+        return false;
+    }
+    return true;
+}
+
+// A number is a plain decimal with an optional exponent -- the desktop's
+// grammar. The old test was "parseFloat finite AND Number finite", and those
+// two read different languages: Number() knows 0x1A / 0b101 / 0o17, parseFloat()
+// stops at the letter and says 0. So a hex-looking trait was typed numeric and
+// a hex-looking height dated its node at ZERO.
+function testNumberGrammar() {
+    function readAs(v) {
+        var a = forester.findByNodeName(forester.parseNewHampshire("(A:1[&k=" + v + ",height=" + v + "],B:1);"), "A")[0];
+        var p = (a.properties || []).filter(function (x) { return x.ref === "beast:k"; })[0];
+        return (p ? p.datatype : "none") + "/" + (a.date ? a.date.value : "nodate");
+    }
+    var cases = [
+        // the corner that was wrong: a literal prefix is not a number
+        ["0x1A", "xsd:string/nodate"], ["0b101", "xsd:string/nodate"], ["0o17", "xsd:string/nodate"],
+        // never were numbers, still are not (Java alone took 3f and 1d)
+        ["3f", "xsd:string/nodate"], ["1d", "xsd:string/nodate"], ["12abc", "xsd:string/nodate"],
+        ["1_000", "xsd:string/nodate"], ["Infinity", "xsd:string/nodate"], ["NaN", "xsd:string/nodate"],
+        ["1e400", "xsd:string/nodate"],   // well-formed, and still not a number we can use
+        // numbers, every ordinary spelling of one
+        ["12", "xsd:decimal/12"], ["-2", "xsd:decimal/-2"], ["+2", "xsd:decimal/2"], [".5", "xsd:decimal/0.5"],
+        ["5.", "xsd:decimal/5"], ["1e5", "xsd:decimal/100000"], ["1E-3", "xsd:decimal/0.001"],
+        ["0", "xsd:decimal/0"], ["0.0", "xsd:decimal/0"]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        if (readAs(cases[i][0]) !== cases[i][1]) {
+            console.log("    " + cases[i][0] + " read as " + readAs(cases[i][0]) + ", expected " + cases[i][1]);
+            return false;
+        }
+    }
+    // the same test types the Auspice JSON reader's scalars
+    var j = forester.parseAuspiceJson({version: "v2", meta: {}, tree: {name: "r", node_attrs: {},
+        children: [{name: "A", node_attrs: {batch: {value: "0x1A"}, n: {value: "12"}}}, {name: "B", node_attrs: {}}]}});
+    var ja = forester.findByNodeName(j, "A")[0];
+    var types = (ja.properties || []).map(function (p) { return p.ref + ":" + p.datatype; }).sort().join(" ");
+    if (types !== "nextstrain:batch:xsd:string nextstrain:n:xsd:decimal") {
+        console.log("    JSON scalars typed as " + types);
+        return false;
+    }
+
+    // THE ZERO TRAP (the desktop lost two sabotages to it): every BEAST tip is
+    // height=0, and 0 is a stated age. Read through a truthiness test it would
+    // vanish, and this tree -- mutations present, "no age" -- would be renamed
+    // TreeTime's. It is BEAST's, and its three tips are dated at 0.
+    var z = forester.parseNewHampshire('((A:1[&mutations="A1G",height=0.0],B:1[&height=0.0]):1,C:1[&height=0.0]);');
+    var za = forester.findByNodeName(z, "A")[0];
+    var zeros = 0;
+    forester.preOrderTraversalAll(z, function (n) {
+        if (n.date && n.date.value === 0) {
+            ++zeros;
+        }
+    });
+    if (zeros !== 3 || (za.properties || []).map(function (p) { return p.ref; }).join() !== "beast:mutations") {
+        console.log("    height=0: " + zeros + " tips dated at 0, A has "
+            + (za.properties || []).map(function (p) { return p.ref; }).join());
+        return false;
+    }
+    // ... and a YEAR of exactly 0 is a year: it counts as a pair and is dated
+    var y = forester.parseNewHampshire("((A:2[&num_date=2],B:3[&num_date=3])ab:0[&num_date=0],C:5[&num_date=5])root[&num_date=0];");
+    var dated = 0;
+    forester.preOrderTraversalAll(y, function (n) {
+        if (n.date && typeof n.date.value === "number") {
+            ++dated;
+        }
+    });
+    if (dated !== 5) {
+        console.log("    years of 0: " + dated + " of 5 dated");
+        return false;
+    }
+
+    // mutations and mcc are TEXT whatever they look like, as on the desktop: a
+    // clade label that happens to be "3" is not a measurement
+    var m = forester.findByNodeName(forester.parseNewHampshire('(A:1[&mutations="123",mcc=3,rate=3],B:1);'), "A")[0];
+    var mt = (m.properties || []).map(function (p) { return p.ref + ":" + p.datatype; }).sort().join(" ");
+    if (mt !== "treetime:mcc:xsd:string treetime:mutations:xsd:string treetime:rate:xsd:decimal") {
+        console.log("    mutations / mcc typed as " + mt);
+        return false;
+    }
+    return true;
+}
+
+// Inside a legacy [&&NHX:...] tag whitespace and both quote styles are
+// formatting noise, as they always were on the desktop (Christian, 2026-09-16:
+// "do what desktop does"). The opposite of a single-& blob, where both are
+// DATA -- and the second half of this test is that the squeeze never reaches one.
+function testNhxTagNoise() {
+    function sci(nh) {
+        var a = forester.findByNodeName(forester.parseNewHampshire(nh), "A")[0];
+        return a.taxonomies ? a.taxonomies[0].scientific_name : undefined;
+    }
+    var cases = [
+        ["(A:1[&&NHX:S='homo'],B:1);", "homo"],
+        ['(A:1[&&NHX:S="homo"],B:1);', "homo"],
+        ['(A:1[&&NHX:S="homo sapiens"],B:1);', "homosapiens"],
+        ["(A:1[&&NHX:S=Homo sapiens],B:1);", "Homosapiens"],
+        // the desktop's own pinned case: noise INSIDE the "&&NHX:" itself. We
+        // used not to recognise this as an NHX tag at all.
+        ["(A:1[\t&\t&\n N\tH\tX:S=mo\tnkey !],B:1);", "monkey!"]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        if (sci(cases[i][0]) !== cases[i][1]) {
+            console.log("    " + JSON.stringify(cases[i][0]) + " -> " + sci(cases[i][0]));
+            return false;
+        }
+    }
+    var a = forester.findByNodeName(forester.parseNewHampshire(
+        '(A:1[&country=Democratic Republic of the Congo,note="it\'s here"],B:1);'), "A")[0];
+    var got = (a.properties || []).map(function (p) { return p.ref + "=" + p.value; }).join(" | ");
+    if (got !== "beast:country=Democratic Republic of the Congo | beast:note=it's here") {
+        console.log("    a single-& blob was squeezed: " + got);
+        return false;
+    }
+    return true;
+}
+
+// A colour FigTree gives a TAXON -- 'name'[&!color=...] in the TAXLABELS block
+// -- is the colour of that tip's LABEL (FigTree's own meaning, and the
+// desktop's), where a !color in the tree string is the BRANCH's. It lands as
+// the desktop's style:font_color property, which Visual Styles already draws.
+// The annotation used to be glued onto the label instead, which was invisible
+// while a tree spelled its tips out and wrong the moment it used numbers.
+// Real file: the desktop's test_trees/influenza.tree, 17 tags, all #-8381639.
+function testTaxlabelColours() {
+    function fontColour(n) {
+        var p = (n.properties || []).filter(function (x) { return x.ref === "style:font_color"; })[0];
+        return p ? p.value + "/" + p.datatype + "/" + p.applies_to : null;
+    }
+    var head = "#NEXUS\nbegin taxa;\n\tdimensions ntax=3;\n\ttaxlabels\n"
+        + "\t'New York'[&!color=#-8381639]\n\tParis[&!color=#16ce60]\n\t[a plain comment]Rome[!color=#ff0000]\n;\nend;\n";
+    // (Rome's bracket has no '&': it is an ordinary Nexus comment, however much
+    // it looks like a colour, and must neither colour Rome nor stay on its name)
+    // 1. tips spelled out, one of them also carrying a BRANCH colour
+    var named = forester.parseNexus(head + "begin trees;\n\ttree t = (('New York':1,Paris:1[&!color=#ff0000]):1,Rome:2);\nend;\n")[0];
+    // 2. tips referred to by NUMBER: the labels must come out clean
+    var numbered = forester.parseNexus(head + "begin trees;\n\ttree t = ((1:1,2:1):1,3:2);\nend;\n")[0];
+    var trees = [named, numbered];
+    for (var i = 0; i < trees.length; ++i) {
+        var ny = forester.findByNodeName(trees[i], "New York")[0];
+        var paris = forester.findByNodeName(trees[i], "Paris")[0];
+        var rome = forester.findByNodeName(trees[i], "Rome")[0];
+        if (!ny || !paris || !rome) {
+            var names = [];
+            forester.preOrderTraversalAll(trees[i], function (n) {
+                if (!n.children && n.name) {
+                    names.push(n.name);
+                }
+            });
+            console.log("    tree " + (i + 1) + ": the labels are not clean: " + names.join(" | "));
+            return false;
+        }
+        // -8381639 is 0xFF801B39: alpha dropped, the rest #801b39
+        if (fontColour(ny) !== "#801b39/xsd:token/node" || fontColour(paris) !== "#16ce60/xsd:token/node"
+            || fontColour(rome) !== null) {
+            console.log("    tree " + (i + 1) + ": " + fontColour(ny) + " | " + fontColour(paris) + " | " + fontColour(rome));
+            return false;
+        }
+        if (JSON.stringify(forester.nodeVisualStyle(ny)) !== JSON.stringify({fontColor: "#801b39"})) {
+            console.log("    Visual Styles does not see it: " + JSON.stringify(forester.nodeVisualStyle(ny)));
+            return false;
+        }
+    }
+    // the two colours are different things and do not touch: Paris's BRANCH
+    // is red from the tree string, its LABEL green from the TAXLABELS block
+    var p1 = forester.findByNodeName(named, "Paris")[0];
+    if (!p1.color || p1.color.red !== 255 || p1.color.green !== 0
+        || forester.findByNodeName(named, "New York")[0].color !== undefined) {
+        console.log("    branch colour: " + JSON.stringify(p1.color));
         return false;
     }
     return true;

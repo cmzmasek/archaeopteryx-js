@@ -771,7 +771,12 @@ BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
 (median/mean) with its `95%_HPD` (or range) becomes the node date the age
 bars draw, FigTree's `!color` becomes the branch colour, and every other
 field (`rate`, traits, ...) becomes a `beast:<key>` node property for
-Color-by and search. **Auspice's "download Nexus"** annotations land where the
+Color-by and search (`mutations` and `mcc` are always text, never a
+gradient). FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
+TAXLABELS block — is that tip's **label** colour, carried as the desktop's
+`style:font_color` property and drawn by Visual Styles. A number is a plain
+decimal with an optional exponent: `0x1A` and `3f` are text.
+**Auspice's "download Nexus"** annotations land where the
 Auspice JSON reader puts the same dataset, so one Nextstrain build opens the
 same way in either format: `num_date` is the node's date in years (and a
 `nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval on an
@@ -783,7 +788,9 @@ and no calendar axis is drawn. Inside an annotation a quote opens a string
 only where a value starts, so a bare `country=Côte d'Ivoire` is one field with
 an apostrophe in it. Classic `[&&NHX:...]` tags map to their phyloXML
 equivalents (`S=` taxonomy, `T=` taxonomy id, `B=` support, `D=`
-duplication/speciation event, `GN=`/`AC=` sequence name/accession). Plain
+duplication/speciation event, `GN=`/`AC=` sequence name/accession); inside
+such a tag whitespace and quotes are formatting noise, as on the desktop, so
+values are written with underscores (`S=Homo_sapiens`). Plain
 `[number]` brackets keep their old meaning (confidence values).
 
 Both entry points **throw** on bad input — an undefined or empty tree, an
