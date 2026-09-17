@@ -605,6 +605,7 @@ function madValidate(phy) {
 runTest("MAD values never support  : ", testMadValuesNeverSupport);
 runTest("time tree detection       : ", testIsTimeTree);
 runTest("re-root effect on clades  : ", testCladesChangedByRerooting);
+runTest("phyloXML dates survive    : ", testPhyloXmlDateRoundTrip);
 
 // Which internal-node data a re-root can take the meaning from, and a
 // prediction of what a re-root will do to it: computed on a copy, it leaves
@@ -4151,6 +4152,69 @@ function testSingleNodeTree() {
     }
     if (tipsOf('(a,b);').sort().join(',') !== 'a,b') {
         console.log('    a two-tip tree regressed');
+        return false;
+    }
+    return true;
+}
+
+// A dated phyloXML tree must survive a SAVE. Until 2026-09-17 our writer wrote
+// only the phylogeny-level <date> and no clade-level one, so every node's date
+// -- value, unit, and the minimum/maximum that carry fossil ranges, HPD bounds
+// and sampling uncertainty -- was silently destroyed on write. Found by round
+// trip on docs/data/ammonite-time-tree.xml (9 dated nodes in, 0 back out), on
+// the desktop's prompt: they had been writing them correctly all along, so the
+// same tree saved by the two programs disagreed. Fixed in phyloxml-js.
+//
+// This is a GUARD, not the fix: phyloxml.js is vendored here from that repo, in
+// THREE copies (test/lib, docs/lib, and the npm dependency), and they have
+// drifted before -- test/lib sat at 1.0.0 while the package was at 1.0.2, so
+// the tests were exercising code the product does not ship. Audited by round
+// trip rather than by grep, because grep cannot tell a writer from a reader.
+function testPhyloXmlDateRoundTrip() {
+    var px = require('./lib/phyloxml').phyloXml;
+    var fs = require('fs');
+    var path = require('path');
+    var file = path.join(__dirname, '..', 'docs', 'data', 'ammonite-time-tree.xml');
+    var phy = px.parse(fs.readFileSync(file, 'utf8'), {trim: true, normalize: true})[0];
+
+    function dates(tree) {
+        var acc = [];
+        forester.preOrderTraversalAll(forester.getTreeRoot(tree), function (n) {
+            if (!n.date) {
+                return;
+            }
+            // an absent unit and unit="" mean the same thing, and the writer
+            // always emits the attribute, as the desktop does
+            var d = {};
+            Object.keys(n.date).forEach(function (k) { d[k] = n.date[k]; });
+            if (d.unit === undefined || d.unit === null) {
+                d.unit = '';
+            }
+            acc.push((n.name || '(internal)') + ':' + JSON.stringify(d));
+        });
+        return acc;
+    }
+
+    var before = dates(phy);
+    if (before.length !== 9) {
+        console.log('    fixture problem: ' + before.length + ' dated nodes, expected 9');
+        return false;
+    }
+    var out = px.toPhyloXML(phy, 6);
+    var after = dates(px.parse(out, {trim: true, normalize: true})[0]);
+    if (after.length !== before.length) {
+        console.log('    ' + before.length + ' dated nodes in, ' + after.length + ' out');
+        return false;
+    }
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+        console.log('    a date changed across the round trip:\n     in  '
+            + before.join('\n     in  ') + '\n     out ' + after.join('\n     out '));
+        return false;
+    }
+    // the bounds specifically: this fixture carries fossil ranges, and they are
+    // the part a writer is most likely to drop
+    if (!/<minimum>/.test(out) || !/<maximum>/.test(out)) {
+        console.log('    fossil range bounds were not written');
         return false;
     }
     return true;

@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.0.0
+// v 1.0.2
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -89,8 +89,14 @@
 
     var sax = null;
     if (typeof module !== 'undefined' && module.exports && !global.xmldocAssumeBrowser) {
-        // Being used in a Node-like environment
-        sax = require('./sax');
+        // Being used in a Node-like environment: the sax DEPENDENCY, not a
+        // relative path. './sax' looked for a sax.js beside this file, which
+        // never existed -- the published tarball has no sax in it, and the
+        // repo's own vendored copy sat in lib/ (itself unpublished and
+        // unreferenced, and since removed in favour of this dependency). So
+        // `require('phyloxml')` threw "Cannot find module './sax'" for every
+        // Node consumer, and the test suite in test/ could not run at all.
+        sax = require('sax');
     }
     else if (typeof window !== "undefined") {
         // Attached to the Window object in a browser
@@ -1251,6 +1257,42 @@
                         [CONFIDENCE_TYPE_ATTR, CONFIDENCE_STDDEV_ATTR]);
                 }
                 close(EVENTS);
+            }
+
+            // A clade's <date>. phyloXML's sequence order puts it after
+            // <distribution> and before <property>, and its own children are
+            // fixed as desc, value, minimum, maximum -- another order is
+            // schema-INVALID, not merely different.
+            //
+            // Written whenever the node has a date at all, a desc-only date
+            // included, and deliberately NOT rounded by `dec` the way a branch
+            // length is. A branch length's decimals are display precision; a
+            // date is a position in time, so rounding changes what it SAYS
+            // (2005.25 to two decimals is a season, to none a year). It also
+            // has to survive exactly: TreeAnnotator writes an exactly dated
+            // tip's bounds as {9.0, 9.000000000000004}, and rounding would
+            // quietly "clean" that. Whether a bound pair is a genuine WIDTH is
+            // a question for whoever DRAWS it, never for whoever stores it --
+            // a writer that tidied its input would make two programs' files
+            // diverge. Matches the desktop Archaeopteryx's Date.toPhyloXML
+            // (their spec, 2026-09-17), which preserves the parsed number.
+            //
+            // Until now no clade date was written at all: a dated tree read in
+            // and written back out lost its entire time dimension, silently.
+            if (node[DATE]) {
+                var date = node[DATE];
+                // `unit` is always emitted, empty when the date has none, as
+                // the desktop does; addAttributes would otherwise drop it
+                var dateAttr = {};
+                dateAttr[DATE_UNIT_ATTR] =
+                    (date[DATE_UNIT_ATTR] === undefined || date[DATE_UNIT_ATTR] === null)
+                        ? '' : date[DATE_UNIT_ATTR];
+                open(DATE, dateAttr, [DATE_UNIT_ATTR]);
+                addSingleElement(DATE_DESC, date[DATE_DESC]);
+                addSingleElement(DATE_VALUE, date[DATE_VALUE]);
+                addSingleElement(DATE_MINIMUM, date[DATE_MINIMUM]);
+                addSingleElement(DATE_MAXIMUM, date[DATE_MAXIMUM]);
+                close(DATE);
             }
 
             if (node[PROPERTIES] && node[PROPERTIES].length > 0) {
