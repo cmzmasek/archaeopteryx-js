@@ -3170,9 +3170,16 @@ function testPangenomeJointContract() {
 // fixture cannot speak to any of it: 3831 properties across 40 refs, never
 // twice on a tip.
 //
-// testMultiValuedExcluded above already covers the plain different-values
-// case; this one exists for the two edges it does not reach, and keeps all
-// four in one place so the rule reads as a set.
+// Rows 1 and 2 are deliberately RESTATED here, not re-pinned: row 1 is the
+// control that proves this tree shape offers the field at all, without which
+// "refused" below could be refused for an unrelated reason, and row 2 makes
+// the occurrence-vs-value distinction legible beside row 3. The authority for
+// row 2 is vis-trees/multi_valued.xml with vis-trees.tsv, which is the JOINT
+// pin; testMultiValuedExcluded states it a second time. If this test and that
+// fixture ever disagree, the fixture is right and this one is the bug -- a
+// rule pinned in several places can drift, and saying which one wins is
+// cheaper than discovering later that nobody knew. Rows 3 and 4 are pinned
+// nowhere else, on either side, and are the reason this test exists.
 //
 // Raised with the desktop 2026-09-17: their guard reads "_multi when a node
 // shows more than one VALUE for a ref", which is the looser wording and would
