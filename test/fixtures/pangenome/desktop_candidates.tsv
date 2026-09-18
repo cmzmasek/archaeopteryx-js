@@ -1,0 +1,41 @@
+rank	ref	label	tier	score	numeric
+0	meta:intI1	Int I1	1	0.849251	true
+1	meta:hyp_0417	Hyp 0417	1	0.847820	true
+2	meta:hyp_1132	Hyp 1132	1	0.838024	true
+3	meta:divergent_ompK	Divergent Omp K	1	0.830831	true
+4	meta:pseudo_fimH	Pseudo Fim H	1	0.822212	true
+5	meta:virB4	Vir B4	1	0.813825	true
+6	meta:tnpA	Tnp A	1	0.780486	true
+7	meta:aadA1	Aad A1	1	0.731679	true
+8	meta:mobA	Mob A	1	0.729384	true
+9	meta:repA	Rep A	1	0.712159	true
+10	meta:traJ	Tra J	1	0.710256	true
+11	meta:IS26	IS26	1	0.686692	true
+12	meta:mcr-1	Mcr-1	1	0.685925	true
+13	meta:tra8	Tra8	1	0.644830	true
+14	meta:groEL	Gro EL	1	0.636930	true
+15	meta:dfrA17	Dfr A17	1	0.611167	true
+16	meta:oqxAB	Oqx AB	1	0.610418	true
+17	meta:iroN	Iro N	1	0.590082	true
+18	meta:mecA	Mec A	1	0.581706	true
+19	meta:gyrA	Gyr A	1	0.577409	true
+20	meta:tetM	Tet M	1	0.576744	true
+21	meta:sul1	Sul1	1	0.574190	true
+22	meta:vanA	Van A	1	0.569651	true
+23	meta:infB	Inf B	1	0.563620	true
+24	meta:strA	Str A	1	0.562550	true
+25	meta:ermB	Erm B	1	0.553941	true
+26	meta:qnrS	Qnr S	1	0.553089	true
+27	meta:recA	Rec A	1	0.548273	true
+28	meta:blaTEM	Bla TEM	1	0.546076	true
+29	meta:catA1	Cat A1	1	0.542634	true
+30	meta:aac6-Ib	Aac6-Ib	1	0.536573	true
+31	meta:dnaK	Dna K	1	0.534123	true
+32	meta:atpD	Atp D	1	0.531158	true
+33	meta:clbB	Clb B	1	0.526607	true
+34	meta:rpoB	Rpo B	1	0.510836	true
+35	meta:ftsZ	Fts Z	1	0.506712	true
+36	meta:blaCTX-M	Bla CTX-M	1	0.491600	true
+37	meta:cbaABC	Cba ABC	1	0.484200	true
+38	meta:ybtS	Ybt S	1	0.470512	true
+39	meta:pks_island	Pks Island	1	0.459656	true

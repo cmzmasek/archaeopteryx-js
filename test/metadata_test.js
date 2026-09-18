@@ -233,6 +233,43 @@ function testExternalNodeDataTable() {
     return true;
 }
 
+// phyloXML lets a ref repeat on a node, and the reader and the writer both
+// keep every occurrence in document order. Until 2026-09-17 this table kept
+// only the first, so the second value vanished with nothing to show it had:
+// a 100x40 presence/absence matrix exported as if it were single-valued.
+// Found while answering the desktop's property-order question; repeats now
+// join with '; ' rather than adding columns, so the column set stays the
+// desktop's NodeDataExporter contract and does not vary with the data.
+function testExternalNodeDataTableRepeatedRefs() {
+    var phy = forester.parseNewHampshire('(a:0.1,b:0.2);', true, false);
+    var a = tip(phy, 'a'), b = tip(phy, 'b');
+    a.properties = [{ref: 'meta:zeta', value: 'Z1', applies_to: 'node'},
+        {ref: 'meta:alpha', value: 'A1', applies_to: 'node'},
+        {ref: 'meta:zeta', value: 'Z2', applies_to: 'node'}];
+    b.properties = [{ref: 'meta:zeta', value: 'Z3', applies_to: 'node'},
+        {ref: 'meta:alpha', value: 'A2', applies_to: 'node'}];
+    var t = forester.externalNodeDataTable([a, b]);
+    var zeta = t.columns.indexOf('meta:zeta');
+    var alpha = t.columns.indexOf('meta:alpha');
+    // one column per ref, not one per occurrence
+    if (t.columns.filter(function (c) { return c === 'meta:zeta'; }).length !== 1 || zeta < 0 || alpha < 0) {
+        console.log('    columns: ' + JSON.stringify(t.columns));
+        return false;
+    }
+    if (t.rows[0][zeta] !== 'Z1; Z2' || t.rows[1][zeta] !== 'Z3'
+        || t.rows[0][alpha] !== 'A1' || t.rows[1][alpha] !== 'A2') {
+        console.log('    rows: ' + JSON.stringify(t.rows));
+        return false;
+    }
+    // the repeats are joined in DOCUMENT order, not sorted
+    a.properties[0].value = 'Z9';
+    if (forester.externalNodeDataTable([a, b]).rows[0][zeta] !== 'Z9; Z2') {
+        console.log('    document order: ' + JSON.stringify(forester.externalNodeDataTable([a, b]).rows[0]));
+        return false;
+    }
+    return true;
+}
+
 console.log("\nmetadata tables\n");
 
 runTest("parse TSV / CSV / semicolon : ", testParseDelimited);
@@ -241,6 +278,7 @@ runTest("join and report             : ", testJoin);
 runTest("the table wins              : ", testTableWins);
 runTest("downstream: color-by, search: ", testDownstream);
 runTest("ext. node data table        : ", testExternalNodeDataTable);
+runTest("ext. node data: repeated refs: ", testExternalNodeDataTableRepeatedRefs);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");

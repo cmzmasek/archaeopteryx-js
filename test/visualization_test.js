@@ -2688,6 +2688,7 @@ runTest("in-group offered, never first : ", testInGroupOfferedButNotFirst);
 runTest("sparse ranked, not refused  : ", testSparseFieldsRankedNotRefused);
 runTest("joint contract fixture    : ", testJointContractFixture);
 runTest("joint contract, data half : ", testJointContractTrees);
+runTest("joint contract, pangenome : ", testPangenomeJointContract);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
@@ -3041,6 +3042,109 @@ function testJointContractTrees() {
             }
         });
     });
+    if (bad.length) {
+        bad.slice(0, 6).forEach(function (b) { console.log('    ' + b); });
+        if (bad.length > 6) { console.log('    ... and ' + (bad.length - 6) + ' more'); }
+        return false;
+    }
+    return true;
+}
+
+// The joint contract measured against the desktop's OWN candidate table, on a
+// seeded pangenome: 100 strains x 40 genes, values 0-4 as evidence strength
+// emitted from a hidden binary truth, ~4.2% of cells deliberately missing.
+// Generated on the desktop side 2026-09-17 and pinned here byte-for-byte; the
+// same three files are pinned there, checksums stated in both repos so a drift
+// between the two copies is detectable rather than silent:
+//   pangenome_matrix.tsv    9574 B  sha256 5b1ad1c191830a68...
+//   pangenome_tree.nwk      3431 B  sha256 1069ac2e88be4538...
+//   desktop_candidates.tsv  1518 B  sha256 d05d0defe79c5cd3...
+// The generator is NOT pinned and must not be: it draws random.random() per
+// element while iterating list(set_of_strings), so its output is hash-seed
+// dependent and does not reproduce run to run even on one interpreter -- the
+// desktop cannot regenerate these bytes either. The artifact is authoritative.
+//
+// Why it earns its place beside the vis-trees fixture: that one is synthetic,
+// one field per rule, and every score in it ties. Here 40 fields carry 40
+// DISTINCT scores off non-uniform real-shaped data, so this is the first test
+// where the score itself -- not the alphabetical tiebreak -- decides the order.
+// Entering through the TSV + Newick join rather than phyloXML also exercises
+// the import path a user actually takes.
+//
+// What this fixture CANNOT test, precisely because all 40 scores differ: the
+// alphabetical tiebreak is never reached, so replacing the display-label key
+// with the raw ref passes here. Sabotage confirmed it (9 mutations, 8 caught,
+// that one MISSED by design) and confirmed the bcl2 test catches it instead.
+// Do not "strengthen" this test by introducing ties -- ties are what the
+// vis-trees fixture is for, and score dominance is what this one is for.
+function testPangenomeJointContract() {
+    var dir = pth.join(__dirname, 'fixtures', 'pangenome');
+    var expected = fs.readFileSync(pth.join(dir, 'desktop_candidates.tsv'), 'utf8')
+        .split('\n').filter(function (l) { return l.length > 0 && l.charAt(0) !== '#'; })
+        .slice(1)
+        .map(function (l) {
+            var c = l.split('\t');
+            return {rank: parseInt(c[0], 10), ref: c[1], label: c[2], score: parseFloat(c[4])};
+        });
+
+    var tree = forester.parseNewHampshire(
+        fs.readFileSync(pth.join(dir, 'pangenome_tree.nwk'), 'utf8'), true, false);
+    var report = forester.joinMetadataTable(
+        tree, fs.readFileSync(pth.join(dir, 'pangenome_matrix.tsv'), 'utf8'));
+    var tips = forester.getAllExternalNodes(tree);
+    var joined = tips.reduce(function (s, n) { return s + (n.properties || []).length; }, 0);
+
+    // Preconditions. A fixture that quietly fails one of these reads exactly
+    // like a pass: a truncated table, a join that matched nothing, or an
+    // expected order that is merely alphabetical would all "agree" for the
+    // wrong reason.
+    var pre = [];
+    if (expected.length !== 40) { pre.push('expected table has ' + expected.length + ' rows, want 40'); }
+    if (tips.length !== 100) { pre.push(tips.length + ' tips parsed, want 100'); }
+    if (report.unmatchedRows && report.unmatchedRows.length > 0) {
+        pre.push(report.unmatchedRows.length + ' table rows matched no tip');
+    }
+    if (joined !== 3831) {
+        pre.push(joined + ' properties joined, want 3831 (169 of 4000 cells are missing and must'
+            + ' stay missing, not become zeros)');
+    }
+    var wantRefs = expected.map(function (e) { return e.ref; });
+    var alpha = wantRefs.slice().sort();
+    if (JSON.stringify(wantRefs) === JSON.stringify(alpha)) {
+        pre.push('the expected order is alphabetical, so this fixture cannot tell score from tiebreak');
+    }
+    var scores = {};
+    expected.forEach(function (e) { scores[e.score.toFixed(6)] = true; });
+    if (Object.keys(scores).length !== 40) {
+        pre.push('only ' + Object.keys(scores).length + ' distinct scores among 40, want 40'
+            + ' -- ties would let the alphabetical tiebreak decide instead of the score');
+    }
+    if (pre.length) {
+        pre.forEach(function (p) { console.log('    precondition: ' + p); });
+        return false;
+    }
+
+    var got = forester.visualizationCandidates(tree);
+    var bad = [];
+    var n = Math.max(expected.length, got.length);
+    for (var i = 0; i < n; ++i) {
+        var e = expected[i], c = got[i];
+        if (!e || !c) {
+            bad.push('rank ' + i + ': ' + (e ? 'desktop offers ' + e.ref + ', we do not'
+                : 'we offer ' + (c.ref || c.id) + ', the desktop does not'));
+            continue;
+        }
+        if ((c.ref || c.id) !== e.ref) {
+            bad.push('rank ' + i + ': we offer ' + (c.ref || c.id) + ', the desktop ' + e.ref);
+            continue;
+        }
+        if (c.label !== e.label) {
+            bad.push(e.ref + ': label "' + c.label + '", the desktop "' + e.label + '"');
+        }
+        if (Math.abs(c.score - e.score) >= 1e-6) {
+            bad.push(e.ref + ': score ' + c.score.toFixed(6) + ', the desktop ' + e.score.toFixed(6));
+        }
+    }
     if (bad.length) {
         bad.slice(0, 6).forEach(function (b) { console.log('    ' + b); });
         if (bad.length > 6) { console.log('    ... and ' + (bad.length - 6) + ' more'); }

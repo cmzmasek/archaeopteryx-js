@@ -5863,12 +5863,15 @@
     // so the two programs write the same table: name (always), the first
     // taxonomy's scientific name, common name, code, id and rank, the first
     // sequence's name, gene name, symbol, accession and type, the branch
-    // length, then one column per property ref, sorted, holding its first
-    // value. A column no tip has a value for is left out. When the tip names
-    // cannot key the rows (one blank or repeated), a node_id column comes
-    // first, from idOf(tip, index) or the row number. Tabs and line breaks
-    // inside a value become spaces. A property keeps its ref as the header,
-    // so the table joins back onto a tree with joinMetadataTable.
+    // length, then one column per property ref, sorted, holding its value and
+    // joining repeats of that ref with '; '. A column no tip has a value for
+    // is left out. When the tip names cannot key the rows (one blank or
+    // repeated), a node_id column comes first, from idOf(tip, index) or the
+    // row number. Tabs and line breaks inside a value become spaces. A
+    // property keeps its ref as the header, so the table joins back onto a
+    // tree with joinMetadataTable. The one place the two programs may still
+    // differ is a ref REPEATED on one node: we join the values, and what the
+    // desktop does there is unconfirmed (raised with them 2026-09-17).
     forester.externalNodeDataTable = function (tips, idOf) {
         tips = tips || [];
         if (tips.length === 0) {
@@ -5925,8 +5928,17 @@
         });
         Array.from(refs).sort().forEach(function (ref) {
             add(ref, function (n) {
-                let p = (n.properties || []).filter(function (q) { return q.ref === ref; })[0];
-                return p ? p.value : '';
+                // Every value, not just the first: phyloXML lets a ref repeat
+                // on a node, and until 2026-09-17 this kept only [0], so a tip
+                // carrying meta:zeta twice exported one of them and lost the
+                // other with nothing to show it had happened. Joined in
+                // document order, which is the order the reader and the writer
+                // both preserve.
+                return (n.properties || []).filter(function (q) {
+                    return q.ref === ref;
+                }).map(function (q) {
+                    return q.value;
+                }).join('; ');
             });
         });
         return {
