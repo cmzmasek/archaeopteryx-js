@@ -3158,10 +3158,17 @@ function testPangenomeJointContract() {
 // The multi-value refusal, at its edges. The contract states the rule as "a
 // ref carried more than once by any external node is not a candidate" -- by
 // OCCURRENCE, not by distinct value -- because a node cannot be two colours
-// and picking one silently is worse than not offering the field. Nothing
-// pinned exercised it: vis-trees has no repeated refs and the pangenome
-// fixture has none either (3831 properties, 40 refs, never twice on a tip),
-// so all our cross-program agreement so far says nothing about this path.
+// and picking one silently is worse than not offering the field.
+//
+// The PLAIN case is pinned jointly and always was: vis-trees/multi_valued.xml
+// gives t0 two values for x:F and vis-trees.tsv declares it refused. (An
+// earlier version of this comment claimed no fixture had a repeated ref at
+// all. That was asserted, not measured, and it was wrong -- corrected once
+// the directory was actually counted. The desktop confirmed the same wrong
+// claim from their side, so it went unchallenged in both repos for an hour.)
+// What is genuinely unpinned is the two EDGES below, and the pangenome
+// fixture cannot speak to any of it: 3831 properties across 40 refs, never
+// twice on a tip.
 //
 // testMultiValuedExcluded above already covers the plain different-values
 // case; this one exists for the two edges it does not reach, and keeps all
