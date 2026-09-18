@@ -2689,6 +2689,7 @@ runTest("sparse ranked, not refused  : ", testSparseFieldsRankedNotRefused);
 runTest("joint contract fixture    : ", testJointContractFixture);
 runTest("joint contract, data half : ", testJointContractTrees);
 runTest("joint contract, pangenome : ", testPangenomeJointContract);
+runTest("multi-value refusal edges : ", testMultiValueRefusalEdges);
 runTest("internal labels as conf : ", testInternalLabelsAsConfidence);
 runTest("internal labels wiring  : ", testInternalLabelsWiring);
 runTest("phylogram branch counts : ", testPhylogramBranchCounts);
@@ -3148,6 +3149,67 @@ function testPangenomeJointContract() {
     if (bad.length) {
         bad.slice(0, 6).forEach(function (b) { console.log('    ' + b); });
         if (bad.length > 6) { console.log('    ... and ' + (bad.length - 6) + ' more'); }
+        return false;
+    }
+    return true;
+}
+
+
+// The multi-value refusal, at its edges. The contract states the rule as "a
+// ref carried more than once by any external node is not a candidate" -- by
+// OCCURRENCE, not by distinct value -- because a node cannot be two colours
+// and picking one silently is worse than not offering the field. Nothing
+// pinned exercised it: vis-trees has no repeated refs and the pangenome
+// fixture has none either (3831 properties, 40 refs, never twice on a tip),
+// so all our cross-program agreement so far says nothing about this path.
+//
+// testMultiValuedExcluded above already covers the plain different-values
+// case; this one exists for the two edges it does not reach, and keeps all
+// four in one place so the rule reads as a set.
+//
+// Raised with the desktop 2026-09-17: their guard reads "_multi when a node
+// shows more than one VALUE for a ref", which is the looser wording and would
+// keep the field in the same-value case below. Candidacy is JS-authoritative,
+// so this test states our side of it; if it has to move, it moves on
+// Christian's word and not to make anything pass.
+function testMultiValueRefusalEdges() {
+    function treeWith(firstTipProps) {
+        var xml = '<?xml version="1.0"?><phyloxml xmlns="http://www.phyloxml.org">'
+            + '<phylogeny rooted="true"><clade>';
+        for (var i = 0; i < 6; ++i) {
+            xml += '<clade><name>t' + i + '</name>';
+            var ps = (i === 0) ? firstTipProps : [['meta:g', i % 2 ? 'X' : 'Y']];
+            ps.forEach(function (p) {
+                xml += '<property ref="' + p[0] + '" datatype="xsd:string" applies_to="node">'
+                    + p[1] + '</property>';
+            });
+            xml += '</clade>';
+        }
+        return px.parse(xml + '</clade></phylogeny></phyloxml>', {trim: true, normalize: true})[0];
+    }
+    function offers(props) {
+        return forester.visualizationCandidates(treeWith(props))
+            .some(function (c) { return c.ref === 'meta:g'; });
+    }
+    var cases = [
+        ['one value per tip: offered', [['meta:g', 'X']], true],
+        ['carried twice, different values: refused', [['meta:g', 'X'], ['meta:g', 'Y']], false],
+        // by OCCURRENCE: the duplicate is refused even though it says the same
+        // thing twice. A reader who "fixes" this to compare values is changing
+        // the contract, not tidying the test.
+        ['carried twice, SAME value: refused', [['meta:g', 'X'], ['meta:g', 'X']], false],
+        // an empty value is NO value, so this tip carries the ref once
+        ['carried twice, second empty: offered', [['meta:g', 'X'], ['meta:g', '']], true]
+    ];
+    var bad = [];
+    cases.forEach(function (c) {
+        var got = offers(c[1]);
+        if (got !== c[2]) {
+            bad.push(c[0] + ': ' + (got ? 'offered' : 'refused') + ', want ' + (c[2] ? 'offered' : 'refused'));
+        }
+    });
+    if (bad.length) {
+        bad.forEach(function (b) { console.log('    ' + b); });
         return false;
     }
     return true;
