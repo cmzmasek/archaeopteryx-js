@@ -5869,9 +5869,12 @@
     // repeated), a node_id column comes first, from idOf(tip, index) or the
     // row number. Tabs and line breaks inside a value become spaces. A
     // property keeps its ref as the header, so the table joins back onto a
-    // tree with joinMetadataTable. The one place the two programs may still
-    // differ is a ref REPEATED on one node: we join the values, and what the
-    // desktop does there is unconfirmed (raised with them 2026-09-17).
+    // tree with joinMetadataTable. One KNOWN divergence as of 2026-09-17: a
+    // ref REPEATED on one node. We join every value with '; ' in document
+    // order; the desktop's NodeDataExporter.propertyValue takes ps.get(0) and
+    // drops the rest. Both programs wrote that bug independently, so the shape
+    // of the API invited it rather than either side being careless. They mean
+    // to follow us here (Christian deciding), so this is us ahead, not adrift.
     forester.externalNodeDataTable = function (tips, idOf) {
         tips = tips || [];
         if (tips.length === 0) {
