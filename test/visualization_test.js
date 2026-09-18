@@ -3166,9 +3166,16 @@ function testPangenomeJointContract() {
 // all. That was asserted, not measured, and it was wrong -- corrected once
 // the directory was actually counted. The desktop confirmed the same wrong
 // claim from their side, so it went unchallenged in both repos for an hour.)
-// What is genuinely unpinned is the two EDGES below, and the pangenome
-// fixture cannot speak to any of it: 3831 properties across 40 refs, never
-// twice on a tip.
+// All four rows below are ALSO pinned on the desktop, in
+// PropertyColorSchemeTest -- verified here by reading their source, after
+// three wrong claims in a row about what was pinned where, none of which came
+// from reading any code. Row 3 sits at :1360 under the comment "the SAME value
+// twice is still carried twice", asserting {A,A} refused; row 4 is
+// testFoldToEmptyIsNoValue, x:Beside at coverage 30, failing with '"_" beside
+// "Human" on one tip must not make the ref carried twice'. So these rows were
+// unpinned on OUR side until this test, not on either side. The pangenome
+// fixture speaks to none of it: 3831 properties across 40 refs, never twice on
+// a tip.
 //
 // Rows 1 and 2 are deliberately RESTATED here, not re-pinned: row 1 is the
 // control that proves this tree shape offers the field at all, without which
@@ -3178,14 +3185,16 @@ function testPangenomeJointContract() {
 // pin; testMultiValuedExcluded states it a second time. If this test and that
 // fixture ever disagree, the fixture is right and this one is the bug -- a
 // rule pinned in several places can drift, and saying which one wins is
-// cheaper than discovering later that nobody knew. Rows 3 and 4 are pinned
-// nowhere else, on either side, and are the reason this test exists.
+// cheaper than discovering later that nobody knew. Rows 3 and 4 were pinned
+// nowhere on this side until this test, and that is the reason it exists.
 //
-// Raised with the desktop 2026-09-17: their guard reads "_multi when a node
-// shows more than one VALUE for a ref", which is the looser wording and would
-// keep the field in the same-value case below. Candidacy is JS-authoritative,
-// so this test states our side of it; if it has to move, it moves on
-// Christian's word and not to make anything pass.
+// A wording scare worth remembering: the desktop first described their guard
+// as "_multi when a node shows more than one VALUE for a ref", which would
+// have kept the field in row 3 and split the two programs. Their CODE counts
+// occurrences -- displays is an ArrayList, not a Set -- so the two agree on
+// all four rows. The divergence was in the description, never in the
+// behaviour. Candidacy is JS-authoritative, so this test states our side; if
+// it has to move, it moves on Christian's word and not to make anything pass.
 function testMultiValueRefusalEdges() {
     function treeWith(firstTipProps) {
         var xml = '<?xml version="1.0"?><phyloxml xmlns="http://www.phyloxml.org">'
