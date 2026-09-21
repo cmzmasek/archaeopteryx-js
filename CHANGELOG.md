@@ -456,7 +456,7 @@ download with a proper header.
 
 - **A collapsed clade's wedge** is drawn from its node to the clade's
   nearest tip along one edge and its farthest tip along the other, so the
-  shape shows how uneven its branch lengths are, as iTOL draws it. 3.4.0
+  shape shows how uneven its branch lengths are. 3.4.0
   drew the desktop's symmetric triangle on a base at the average tip
   distance instead. The label clears the farthest tip. The circular-layout
   fix from 3.4.0, which keeps the wedge on its node, stays.

@@ -576,7 +576,7 @@ function (root, d3, forester, phyloXml) {
     const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
     const TIME_CAL_RESERVE = 26;          // the calendar year ruler
     const TIME_BAND_ROW_H = 13;
-    const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, FigTree-like
+    const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, the usual HPD tint
     const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
     let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
     let _timeTree = false;                // forester.isTimeTree: never re-rooted
@@ -3270,7 +3270,7 @@ function (root, d3, forester, phyloXml) {
         }
 
         // circular: a thin dashed connector from each external node out to the
-        // common label ring (so labels line up like iTOL's aligned display).
+        // common label ring, so every label lines up at the same radius.
         _svgGroup.selectAll('g.aptx-radial-conn').remove();
         if (_state.circularDisplay) {
             // tips while their labels show; a collapsed clade always (its label
@@ -7486,7 +7486,7 @@ function (root, d3, forester, phyloXml) {
     // The wedge's reach: the clade's nearest and farthest tips, in the
     // layout's x. One edge runs to the nearest tip and the other to the
     // farthest, so the shape itself shows how uneven the clade's branch
-    // lengths are (as iTOL draws it). Christian chose this over the
+    // lengths are. Christian chose this over the
     // desktop's symmetric triangle on an average base (2026-09-14). A
     // phylogram measures the tips; a cladogram, where every leaf sits on
     // the tip column, gives the wedge one depth step.

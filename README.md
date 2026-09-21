@@ -220,7 +220,7 @@ Subtree** opens everything below a node; the tool row's uncollapse-all button
 (the desktop's glyph, lit only while something is collapsed) opens the whole
 tree, and so does **Esc**. The wedge has its apex at the node, one edge
 reaching the clade's nearest tip and the other its farthest, so the shape
-shows how uneven the clade's branch lengths are, as iTOL draws it (one depth
+shows how uneven the clade's branch lengths are (one depth
 step in a cladogram). Its label stands where a tip's would: on the label
 column in the aligned phylogram and on the outer ring in circular, with the
 same guide line; it is filled in the colour most of its tips wear under the current
