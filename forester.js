@@ -2775,6 +2775,119 @@
         return candidates;
     };
 
+    /**
+     * The HEAT-MAP columns of a tree: every per-tip NUMERIC property ref, and the
+     * one shared scale their values are drawn on.
+     *
+     * Candidacy is not decided here. A column is a ref that
+     * `forester.visualizationCandidates` already calls a numeric property, so the
+     * heat map offers exactly what Color-by offers and inherits the refusal rules
+     * with it -- a ref carried twice by one node, a ref no tip has, an internal
+     * `aptx:` ref. Two features disagreeing about what counts as a numeric field
+     * would be worse than either rule.
+     *
+     * The ORDER is this function's own, and it is not first-appearance. The
+     * candidate list is sorted by the selection ranking, which is right for a menu
+     * and wrong for a matrix: a producer writes the columns in the order it means
+     * them to be read -- gene classes together, say -- and that grouping is
+     * information a matrix should keep.
+     *
+     * But a tip may be MISSING a column, and first-appearance then breaks on the
+     * very thing it is for. Measured on the pan-genome demo: 7 of its 100 tips
+     * carry no `dnaK`, the first tip is one of them, and first-appearance put a
+     * core gene at column 40 of 40, splitting the core block it belongs to. So each
+     * column sits at its MEAN position among the tips that do carry it -- every
+     * tip's own property order is intact, and averaging merges those orders without
+     * one gap being able to move a column. `dnaK` is at index 2 in the tips that
+     * have it, `recA` at 2.93 across tips with and without, so the core block
+     * survives. First appearance breaks a tie, so the result is deterministic.
+     *
+     * ONE scale spans every column, so a value means the same thing across the
+     * matrix: a 4 in one gene is the colour a 4 is in every other. Per-column
+     * scaling would make each column use the whole range and a colour mean
+     * something different in each.
+     *
+     * Returns `{ refs: [{ref, label}], min, max }`, or refs: [] when the tree has
+     * no numeric per-tip property. `min`/`max` are over every value of every
+     * column and are `null` when there is nothing to scale.
+     */
+    forester.heatmapColumns = function (tree) {
+        let numeric = Object.create(null);
+        let label = Object.create(null);
+        forester.visualizationCandidates(tree).forEach(function (c) {
+            if (c && c.kind === 'property' && c.numeric === true && c.ref) {
+                numeric[c.ref] = true;
+                label[c.ref] = c.label || c.ref;
+            }
+        });
+        let stat = Object.create(null);   // ref -> {sum, n, first, label}
+        let order = 0;
+        let min = null;
+        let max = null;
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children && n.children.length > 0) {
+                return;                      // per-TIP columns: an internal node has no row
+            }
+            let at = 0;                      // this tip's own column positions, gaps closed up
+            (n.properties || []).forEach(function (p) {
+                if (!p || !numeric[p.ref]) {
+                    return;
+                }
+                let st = stat[p.ref];
+                if (!st) {
+                    st = stat[p.ref] = {sum: 0, n: 0, first: order++, label: label[p.ref]};
+                }
+                st.sum += at;
+                st.n++;
+                at++;
+                let v = forester.heatmapValue(n, p.ref);
+                if (v !== null) {
+                    min = (min === null || v < min) ? v : min;
+                    max = (max === null || v > max) ? v : max;
+                }
+            });
+        });
+        let refs = Object.keys(stat).map(function (ref) {
+            return {ref: ref, label: stat[ref].label, mean: stat[ref].sum / stat[ref].n, first: stat[ref].first};
+        });
+        refs.sort(function (a, b) {
+            return (a.mean - b.mean) || (a.first - b.first);
+        });
+        return {
+            refs: refs.map(function (r) {
+                return {ref: r.ref, label: r.label};
+            }),
+            min: min,
+            max: max
+        };
+    };
+
+    /**
+     * The number in `node`'s heat-map cell for `ref`, or `null` when there is none.
+     *
+     * `null` is NOT zero and must never be drawn as one: a missing property is a
+     * cell nobody filled in -- absence of evidence -- and on a presence/absence
+     * matrix reading it as 0 would state the opposite of what the file says. An
+     * empty, blank or non-numeric value is the same case. Only the FIRST value of
+     * a repeated ref can be shown, there being one cell to show it in; such refs
+     * are refused upstream as candidates, so this is a backstop, not the path.
+     */
+    forester.heatmapValue = function (node, ref) {
+        let ps = (node && node.properties) || [];
+        for (let i = 0; i < ps.length; i++) {
+            if (ps[i] && ps[i].ref === ref) {
+                let v = ps[i].value;
+                if (v === null || v === undefined || String(v).trim() === '') {
+                    return null;
+                }
+                let n = Number(String(v).trim());
+                return isFinite(n) ? n : null;
+            }
+        }
+        return null;
+    };
+
+
     forester.collectBasicTreeProperties = function (tree) {
         let properties = {};
         properties.internalNodeData = false;

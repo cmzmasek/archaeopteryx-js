@@ -83,6 +83,10 @@ export interface ArchaeopteryxConfig {
     rootOffset?: number;
     searchAinitialValue?: string | null;
     searchBinitialValue?: string | null;
+    /** Open with the heat map shown. Default false: it is offered whenever
+     * the tree has two or more numeric per-tip fields, which is most annotated
+     * trees, so it waits to be asked for. */
+    showHeatmap?: boolean;
     showMsa?: boolean;
     showSupportDots?: boolean;
     showTimeAxis?: boolean;
@@ -136,6 +140,7 @@ export interface ViewState {
     rotation?: number;
     horizontalLabels?: boolean;
     msa?: boolean;
+    heatmap?: boolean;
     domains?: boolean;
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;

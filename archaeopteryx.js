@@ -363,6 +363,7 @@ function (root, d3, forester, phyloXml) {
     const DOWNLOAD_BUTTON = 'dl_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
+    const HEATMAP_CB = 'heatmap_cb';
     const DOMAINS_CB = 'domains_cb';
     const DOMAIN_CONTROLS = 'domain_controls';
     const DOMAIN_WIDTH_DEC = 'domain_width_dec';
@@ -572,6 +573,27 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_LABEL_MODES = ['none', 'domains', 'legend'];
     let _domain = null;                   // {width, palette, next, legendFrac}, set per launch
     let _domainReserve = 0;               // horizontal px reserved for the tracks, set with _w
+    // ------ heat map (the desktop's MATRIX annotation columns) ------
+    const HEATMAP_TRACK_GAP = 8;          // px between what is left of the tree and the matrix
+    const HEATMAP_PREF_COL_W = 14;        // a column never grows past this
+    const HEATMAP_MIN_COL_W = 3;          // ... nor shrinks below it: past that the matrix is windowed
+    const HEATMAP_MIN_BAND_PX = 60;       // the window never shrinks below this
+    const HEATMAP_MAX_VIEWPORT_FRACTION = 0.45;  // nor grows past this share of the display
+    const HEATMAP_MIN_TREE_PX = 220;      // the tree itself never shrinks below this
+    const HEATMAP_MIN_COLUMNS = 2;        // one column is a stripe, not a matrix: the toggle is not offered
+    const HEATMAP_LABEL_MAX_PX = 96;      // a turned column label is clipped to this
+    const HEATMAP_LABEL_MIN_COL_W = 7;    // ... and dropped where the columns are thinner than this
+    const HEATMAP_SCALE_BAR_W = 148;      // the gradient in the legend
+    const HEATMAP_SCALE_BAR_H = 8;
+    const HEATMAP_SCALE_RESERVE = 30;     // vertical room for that legend and its numbers
+    const HEATMAP_HEAD_GAP = 5;           // between the last row and the turned labels
+    const HEATMAP_NOT_ASSESSED = 'not assessed';   // what a blank cell says -- it does NOT say zero
+    const HEATMAP_BLANK = 'blank';        // the run-merger's stand-in for a cell nobody filled in
+    let _heatmapReserve = 0;              // horizontal px reserved for the matrix, set with _w
+    let _heatmapModel = null;             // forester.heatmapColumns of the WHOLE tree, cached per launch
+    let _heatmapColor = null;             // the one scale every column is painted on
+    let _heatmapColOffset = 0;            // first shown column, while the matrix is windowed
+    let _heatmapGeom = null;              // the last draw's geometry, for the hover readout
     // ------ time axis (the desktop's geologic / calendar overlays) ------
     const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
     const TIME_CAL_RESERVE = 26;          // the calendar year ruler
@@ -2731,6 +2753,22 @@ function (root, d3, forester, phyloXml) {
             _msaReserve = 0;
             // and the domain tracks reserve their column past the labels
             _domainReserve = domainReserve();
+            // The heat map is budgeted FIRST of the two right-hand tracks: it
+            // wants a fixed, finite width (its columns at their preferred size
+            // and no more), while the alignment's band is a WINDOW that scrolls
+            // and so can give way without losing anything. Budgeting the
+            // alignment first left an 18-column matrix a 60px sliver.
+            _heatmapReserve = 0;
+            if (heatmapShown()) {
+                let cols = heatmapModel().refs.length;
+                let vp0 = svgSize();
+                let vw0 = Math.min(_displayWidth, (vp0 && vp0.w) ? vp0.w : _displayWidth);
+                let hband = Math.max(HEATMAP_MIN_BAND_PX, Math.round(vw0 * HEATMAP_MAX_VIEWPORT_FRACTION));
+                let hmax = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve
+                    - HEATMAP_TRACK_GAP - HEATMAP_MIN_TREE_PX;
+                hband = Math.max(HEATMAP_MIN_BAND_PX, Math.min(hband, hmax));
+                _heatmapReserve = HEATMAP_TRACK_GAP + Math.min(cols * HEATMAP_PREF_COL_W, hband);
+            }
             if (msaShown()) {
                 let fullPx = _basicTreeProperties.maxMolSeqLength * MSA_COL_WIDTH;
                 // budgeted from the VIEWPORT: sizing it from the zoomed layout
@@ -2741,11 +2779,12 @@ function (root, d3, forester, phyloXml) {
                 let band = Math.max(MSA_MIN_BAND_PX, Math.round(vw * MSA_MAX_VIEWPORT_FRACTION));
                 // a wide alignment must not squeeze the tree itself away: the
                 // band yields until the tree keeps its minimum share
-                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
+                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve
+                    - _heatmapReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
                 band = Math.max(MSA_MIN_BAND_PX, Math.min(band, maxBand));
                 _msaReserve = MSA_TRACK_GAP + Math.min(fullPx, band);
             }
-            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve;
+            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve - _heatmapReserve;
             if (_w < 1) {
                 _w = 1;
             }
@@ -3316,6 +3355,7 @@ function (root, d3, forester, phyloXml) {
         drawDomainArchitectures();
         drawDomainLegend();
         drawMsaTrack();
+        drawHeatmapTrack();
         drawTimeOverlays();
         rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
         updateSearchHitNavigation();
@@ -4844,6 +4884,7 @@ function (root, d3, forester, phyloXml) {
     const STATE_KEYS = [
         'layout',
         'showMsa',
+        'showHeatmap',
         'showDomainArchitectures',
         'domainLabels',
         'domainGlow',
@@ -5075,6 +5116,13 @@ function (root, d3, forester, phyloXml) {
         if (_state.showMsa === undefined) {
             _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
                 && _basicTreeProperties.maxMolSeqLength > 0;
+        }
+        // The heat map is offered whenever the tree carries two or more
+        // numeric per-tip fields, which is common enough that turning it on
+        // by itself would be an opinion about the tree rather than a service
+        // -- the alignment track, by contrast, is on when there IS one.
+        if (_state.showHeatmap === undefined) {
+            _state.showHeatmap = false;
         }
         // A tree with protein domain architectures on its tips draws them
         // from the start (the desktop switches its toggle on at load), again
@@ -5729,6 +5777,10 @@ function (root, d3, forester, phyloXml) {
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
+        _heatmapColOffset = 0;
+        _heatmapModel = null;   // the columns and the scale belong to THIS tree
+        _heatmapColor = null;
+        _heatmapGeom = null;
         // ---- synchronous: everything that can throw, and the cheap setup --
         //
         // initializeSettings validates values and throws on a bad one, so it
@@ -6463,6 +6515,10 @@ function (root, d3, forester, phyloXml) {
         if (edited && _domain) {
             _domain.palette = null;   // the tree changed: the domain names are dealt their colours again
         }
+        if (edited) {
+            _heatmapModel = null;     // ... and the heat map's columns and scale are derived from it again
+            _heatmapColor = null;
+        }
         if (!_vis) {
             return;
         }
@@ -6501,7 +6557,8 @@ function (root, d3, forester, phyloXml) {
         // part of the real spans (an anchor ratio taken from anything else
         // once flung the whole tree off-screen after three X+ presses).
         return {
-            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve),
+            horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve
+                - _domainReserve - _heatmapReserve),
             vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT) - bottomOverlayReserve())
         };
     }
@@ -7233,6 +7290,461 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
+    // ===================== Heat map =====================
+    // The desktop's MATRIX annotation columns: one cell per (tip, numeric
+    // per-tip property) to the right of the labels, every column painted on
+    // ONE colour scale so that a cell can be read across columns -- the
+    // matrix half of a clustergram.
+    //
+    // Which refs are columns, the order they take and what the scale spans
+    // are forester.heatmapColumns, derived once over the WHOLE tree:
+    // candidacy is decided on the tree, never per view, so diving into a
+    // subtree narrows the rows and leaves the columns and the scale alone.
+    // A colour therefore means the same number in every view.
+    //
+    // A cell nobody filled in is never painted as the scale's low end: on a
+    // presence/absence matrix that would state the opposite of what the file
+    // says. It is drawn as an OUTLINED empty box, with a key beside the scale
+    // -- leaving it bare is not enough, see the measurement at the draw.
+    //
+    // Rectangular layouts only, as the alignment track is: the columns stand
+    // on the tips' common edge, which a radial layout does not have.
+
+    function heatmapModel() {
+        if (!_heatmapModel && _treeData) {
+            _heatmapModel = forester.heatmapColumns(_treeData);
+        }
+        return _heatmapModel;
+    }
+
+    // Offered when the tree holds at least two numeric per-tip refs that
+    // actually carry values: one column is a stripe rather than a matrix,
+    // and a scale needs something to span.
+    function heatmapAvailable() {
+        let m = heatmapModel();
+        return !!m && m.refs.length >= HEATMAP_MIN_COLUMNS && m.min !== null && m.max !== null;
+    }
+
+    function heatmapShown() {
+        return _state.showHeatmap === true && !radialDisplay() && heatmapAvailable();
+    }
+
+    // The one scale, spanning the whole tree's values. Built lazily and kept
+    // with the model, so every redraw and every view paints the same colours.
+    function heatmapColorOf(v) {
+        let m = heatmapModel();
+        if (!m || v === null) {
+            return null;
+        }
+        if (!_heatmapColor) {
+            _heatmapColor = (m.max > m.min)
+                ? d3.scaleLinear().range(VIS_COLOR_RAMP).domain([m.min, (m.min + m.max) / 2, m.max])
+                : function () {
+                    // one value everywhere: a flat matrix, not a gradient
+                    // over a zero-width domain (which d3 maps to its last stop)
+                    return VIS_COLOR_RAMP[1];
+                };
+        }
+        return _heatmapColor(v);
+    }
+
+    // Enough digits to tell two cells apart, without a tail of noise on data
+    // that is plainly integral.
+    function heatmapNum(v) {
+        if (v === null || v === undefined) {
+            return '';
+        }
+        if (v !== 0 && (Math.abs(v) >= 100000 || Math.abs(v) < 0.001)) {
+            return v.toExponential(2);
+        }
+        return String(Math.round(v * 1000) / 1000);
+    }
+
+    // A column is as wide as the band allows, never wider than is useful and
+    // never thinner than is legible -- past that the matrix is windowed and
+    // scrolled, as a long alignment is.
+    function heatmapColWidth() {
+        let m = heatmapModel();
+        if (!m || m.refs.length < 1) {
+            return HEATMAP_PREF_COL_W;
+        }
+        let band = Math.max(1, _heatmapReserve - HEATMAP_TRACK_GAP);
+        return Math.max(HEATMAP_MIN_COL_W, Math.min(HEATMAP_PREF_COL_W, band / m.refs.length));
+    }
+
+    function heatmapLabelsFit() {
+        return heatmapColWidth() >= HEATMAP_LABEL_MIN_COL_W;
+    }
+
+    function heatmapLabelFont() {
+        return Math.max(7, Math.min(11, Math.round(heatmapColWidth()))) + 'px ' + FONT_DEFAULTS;
+    }
+
+    // The turned column labels' band: the longest label, clipped. Asked for
+    // before the draw (bottomOverlayReserve sizes the layout with it), so it
+    // is derived from the model and the reserve, never from the drawing.
+    function heatmapHeadHeight() {
+        if (!heatmapLabelsFit()) {
+            return 0;
+        }
+        let font = heatmapLabelFont();
+        let w = 0;
+        heatmapModel().refs.forEach(function (r) {
+            w = Math.max(w, legendTextWidth(r.label, font));
+        });
+        return Math.ceil(Math.min(w, HEATMAP_LABEL_MAX_PX));
+    }
+
+    // What the strip actually paints: the turned names and the scale.
+    function heatmapStripHeight() {
+        return HEATMAP_HEAD_GAP + heatmapHeadHeight() + HEATMAP_SCALE_RESERVE;
+    }
+
+    // What the layout keeps clear for it. The alignment's navigation bar is
+    // fixed at the viewport bottom and would cover whatever ends under it, so
+    // when that bar is out the strip has to end above it -- as the alignment's
+    // own strip does (MSA_NAV_RESERVE).
+    function heatmapBottomReserve() {
+        if (!heatmapShown()) {
+            return 0;
+        }
+        return heatmapStripHeight() + (msaShown() ? MSA_NAV_RESERVE : 0);
+    }
+
+    function drawHeatmapTrack() {
+        if (!_svgGroup) {
+            return;
+        }
+        _svgGroup.selectAll('g.aptx-heatmap').remove();
+        if (_floatGroup) {
+            _floatGroup.selectAll('g.aptx-heatmap-strip').remove();
+            delete _floatStrips['aptx-heatmap-strip'];
+        }
+        if (!heatmapShown() || !_root) {
+            _heatmapGeom = null;
+            return;
+        }
+        let model = heatmapModel();
+        let tips = displayedTips().filter(function (d) {
+            return d.x !== undefined;
+        }).sort(function (p, q) {
+            return p.x - q.x;
+        });
+        let total = model.refs.length;
+        if (tips.length < 1 || total < 1) {
+            _heatmapGeom = null;
+            return;
+        }
+        let cw = heatmapColWidth();
+        let bandPx = Math.max(1, _heatmapReserve - HEATMAP_TRACK_GAP);
+        let visible = Math.max(1, Math.min(total, Math.floor(bandPx / cw)));
+        if (!isFinite(visible)) {
+            // half-initialized globals (mid-launch) can make the window NaN;
+            // draw nothing rather than feeding it downstream
+            _heatmapGeom = null;
+            return;
+        }
+        let maxOffset = Math.max(0, total - visible);
+        if (_heatmapColOffset > maxOffset) {
+            _heatmapColOffset = maxOffset;
+        }
+        if (_heatmapColOffset < 0) {
+            _heatmapColOffset = 0;
+        }
+        let offset = _heatmapColOffset;
+        // The matrix ends where the alignment track begins, or at the canvas
+        // edge when there is none: the fitted view has shifted the layout
+        // right by rootOffset, and both reserves were taken off _w already.
+        let originX = _displayWidth - _settings.rootOffset - _msaReserve - _heatmapReserve + HEATMAP_TRACK_GAP;
+        let g = _svgGroup.append('g').attr('class', 'aptx-heatmap');
+        let ink = _state.branchColorDefault;
+
+        // Row bands: each shared boundary derived ONCE, as the midpoint
+        // between adjacent tip rows -- deriving it per row from y +- half a
+        // row height rounds a pixel apart and paints a seam across the grid.
+        let n = tips.length;
+        let pad = n > 1 ? ((tips[n - 1].x - tips[0].x) / (n - 1)) / 2
+            : Math.max(4, _state.externalNodeFontSize / 2);
+        let bounds = new Array(n + 1);
+        bounds[0] = Math.max(0, tips[0].x - pad);
+        for (let r = 1; r < n; ++r) {
+            bounds[r] = (tips[r - 1].x + tips[r].x) / 2;
+        }
+        bounds[n] = Math.min(_clusterH, tips[n - 1].x + pad);
+
+        // A cell nobody filled in is drawn in the background colour and OUTLINED.
+        // Leaving it bare is not enough: measured on the sparse demo, a bare
+        // blank stands at a contrast ratio of 13.4 against the scale's low end
+        // in the light theme but 1.08 in the dark one -- that is to say, in the
+        // dark theme "not assessed" and "zero" were the same picture, which is
+        // the one confusion this whole design exists to prevent.
+        let blanks = 0;
+        // Blanks merge into one outlined band only where a cell is too narrow
+        // to outline anyway: at a readable column width a run of them must stay
+        // a run of CELLS, or its top and bottom edges read as a drawn rule
+        // across the matrix rather than as missing data.
+        let mergeBlanks = cw < HEATMAP_LABEL_MIN_COL_W;
+        for (let r = 0; r < n; ++r) {
+            let d = tips[r];
+            let cy = Math.round(bounds[r]);
+            let rh = Math.max(1, Math.round(bounds[r + 1]) - cy);
+            // consecutive cells of the SAME colour merge into one rect: on a
+            // presence/absence matrix that is most of them, and it is what
+            // keeps a wide matrix drawable
+            let runStart = -1;
+            let runFill = null;
+            let flush = function (endI) {
+                if (runStart < 0) {
+                    return;
+                }
+                let x0 = Math.round(originX + (runStart * cw));
+                let x1 = Math.round(originX + (endI * cw));
+                let rect = g.append('rect').attr('x', x0).attr('y', cy)
+                    .attr('width', Math.max(1, x1 - x0)).attr('height', rh);
+                if (runFill === HEATMAP_BLANK) {
+                    rect.attr('fill', _state.backgroundColorDefault)
+                        .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
+                } else {
+                    rect.attr('fill', runFill);
+                }
+                runStart = -1;
+                runFill = null;
+            };
+            for (let i = 0; i < visible; ++i) {
+                let v = forester.heatmapValue(d, model.refs[offset + i].ref);
+                let fill = (v === null) ? HEATMAP_BLANK : heatmapColorOf(v);
+                if (fill === HEATMAP_BLANK) {
+                    blanks++;
+                }
+                if (runFill === fill && (mergeBlanks || fill !== HEATMAP_BLANK)) {
+                    continue;   // the run extends
+                }
+                flush(i);
+                runStart = i;
+                runFill = fill;
+            }
+            flush(visible);
+        }
+
+        let rowsTop = Math.round(bounds[0]);
+        let rowsBottom = Math.round(bounds[n]);
+        let trackW = Math.round(originX + (visible * cw)) - Math.round(originX);
+        // The frame: without it a blank cell is indistinguishable from the
+        // space beside the matrix, and "not assessed" stops being visible.
+        g.append('rect')
+            .attr('x', Math.round(originX)).attr('y', rowsTop)
+            .attr('width', trackW).attr('height', Math.max(1, rowsBottom - rowsTop))
+            .attr('fill', 'none')
+            .attr('stroke', ink).attr('stroke-opacity', 0.55).attr('stroke-width', 1);
+
+        // A faint dashed guide from each tip across to its row, as the
+        // alignment track draws -- skipped when the domain tracks are in
+        // between, where it would run straight through their boxes.
+        if (_domainReserve === 0) {
+            let guideFont = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
+            let guideGap = _state.nodeLabelGap;
+            let guideEnd = originX - 3;
+            for (let r = 0; r < n; ++r) {
+                let d = tips[r];
+                let label = d._extLabelText || '';
+                let from;
+                if (label) {
+                    let labelX = (_state.phylogram && _state.alignPhylogram && _yScale)
+                        ? d.y - _yScale(d.distToRoot) + _w + guideGap
+                        : d.y + guideGap;
+                    from = labelX + legendTextWidth(label, guideFont) + 5;
+                } else {
+                    from = d.y + makeNodeSize(d) + 4;
+                }
+                if (guideEnd - from < 6) {
+                    continue;
+                }
+                g.append('line')
+                    .attr('x1', from).attr('x2', guideEnd)
+                    .attr('y1', d.x).attr('y2', d.x)
+                    .attr('stroke', ink)
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '2,3')
+                    .style('stroke-opacity', 0.35)
+                    .style('pointer-events', 'none');
+            }
+        }
+
+        // ---- column names and the shared scale: a FLOATING strip ----
+        // the strip is placed against its FULL reserve, so that a stuck strip
+        // clears the alignment's navigation bar, but paints only its content
+        let strip = floatStripGroup('aptx-heatmap-strip', _clusterH, heatmapBottomReserve());
+        strip.append('rect').attr('x', Math.round(originX) - 2).attr('y', _clusterH)
+            .attr('width', trackW + 4).attr('height', heatmapStripHeight())
+            .attr('fill', _state.backgroundColorDefault);
+        let labelTop = _clusterH + HEATMAP_HEAD_GAP;
+        let headH = heatmapHeadHeight();
+        if (headH > 0) {
+            let font = heatmapLabelFont();
+            for (let i = 0; i < visible; ++i) {
+                let col = model.refs[offset + i];
+                strip.append('text')
+                    .attr('transform', 'translate(' + (originX + (i * cw) + (cw / 2)) + ','
+                        + labelTop + ') rotate(-90)')
+                    .attr('dy', '0.32em')
+                    .attr('text-anchor', 'end')
+                    .style('font', font)
+                    .style('fill', _state.labelColorDefault)
+                    .text(clipTextToWidth(col.label, font, HEATMAP_LABEL_MAX_PX));
+            }
+        }
+
+        // the scale itself: the ramp the cells were painted from, its two
+        // ends named, and the blank cell shown for what it is
+        let scaleTop = labelTop + headH + 6;
+        let barW = Math.round(Math.max(40, Math.min(HEATMAP_SCALE_BAR_W, trackW * 0.45)));
+        let gradId = 'aptx-heatmap-ramp';
+        let grad = strip.append('defs').append('linearGradient').attr('id', gradId)
+            .attr('x1', 0).attr('y1', 0).attr('x2', 1).attr('y2', 0);
+        VIS_COLOR_RAMP.forEach(function (c, i) {
+            grad.append('stop')
+                .attr('offset', ((i * 100) / (VIS_COLOR_RAMP.length - 1)) + '%')
+                .attr('stop-color', c);
+        });
+        strip.append('rect')
+            .attr('x', Math.round(originX)).attr('y', scaleTop)
+            .attr('width', barW).attr('height', HEATMAP_SCALE_BAR_H)
+            .attr('fill', 'url(#' + gradId + ')')
+            .attr('stroke', ink).attr('stroke-opacity', 0.5).attr('stroke-width', 1);
+        let numY = scaleTop + HEATMAP_SCALE_BAR_H + 10;
+        strip.append('text').attr('x', Math.round(originX)).attr('y', numY)
+            .attr('text-anchor', 'start')
+            .style('font-size', '9px').style('fill', ink)
+            .text(heatmapNum(model.min));
+        strip.append('text').attr('x', Math.round(originX) + barW).attr('y', numY)
+            .attr('text-anchor', 'end')
+            .style('font-size', '9px').style('fill', ink)
+            .text(heatmapNum(model.max));
+        // the caption: what the matrix is showing, and -- when it is windowed
+        // -- that there is more of it than this
+        let caption = (visible < total)
+            ? 'Columns ' + (offset + 1) + '–' + (offset + visible) + ' of ' + total + ', one scale (scroll over the matrix)'
+            : total + ' columns, one scale';
+        let capFont = '9px ' + FONT_DEFAULTS;
+        let cursor = Math.round(originX) + barW + 10;
+        let rightEdge = Math.round(originX) + trackW;
+        // the blank's own key comes FIRST: it names a convention the reader
+        // cannot guess, where the caption only repeats what is on screen
+        if (blanks > 0) {
+            let keyW = HEATMAP_SCALE_BAR_H + 4 + legendTextWidth(HEATMAP_NOT_ASSESSED, capFont);
+            if ((rightEdge - cursor) >= keyW) {
+                strip.append('rect').attr('x', cursor).attr('y', scaleTop)
+                    .attr('width', HEATMAP_SCALE_BAR_H).attr('height', HEATMAP_SCALE_BAR_H)
+                    .attr('fill', _state.backgroundColorDefault)
+                    .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
+                strip.append('text').attr('x', cursor + HEATMAP_SCALE_BAR_H + 4)
+                    .attr('y', scaleTop + HEATMAP_SCALE_BAR_H)
+                    .attr('text-anchor', 'start')
+                    .style('font', capFont).style('fill', ink).style('fill-opacity', 0.85)
+                    .text(HEATMAP_NOT_ASSESSED);
+                cursor += keyW + 10;
+            }
+        }
+        if ((rightEdge - cursor) > 60) {
+            strip.append('text').attr('x', cursor).attr('y', scaleTop + HEATMAP_SCALE_BAR_H)
+                .attr('text-anchor', 'start')
+                .style('font', capFont).style('fill', ink).style('fill-opacity', 0.85)
+                .text(clipTextToWidth(caption, capFont, rightEdge - cursor));
+        }
+
+        // hover + wheel surface over the rows
+        g.append('rect').attr('class', 'aptx-heatmap-hover')
+            .attr('x', Math.round(originX)).attr('y', rowsTop)
+            .attr('width', trackW).attr('height', Math.max(1, rowsBottom - rowsTop))
+            .attr('fill', 'transparent')
+            .on('mousemove', heatmapHoverMove)
+            .on('mouseout', heatmapHoverOut)
+            .on('wheel', function (event) {
+                if (visible >= total) {
+                    return;   // nothing to scroll: leave the wheel to the page
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                let delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+                if (delta === 0) {
+                    return;
+                }
+                let step = Math.max(1, Math.round(visible / 10));
+                heatmapScrollTo(_heatmapColOffset + (delta > 0 ? step : -step));
+            });
+        _heatmapGeom = {
+            originX: originX, cw: cw, offset: offset, visible: visible, total: total,
+            bounds: bounds, tips: tips, refs: model.refs, min: model.min, max: model.max
+        };
+        placeFloatingOverlays();
+    }
+
+    function heatmapScrollTo(offset) {
+        if (!_heatmapGeom) {
+            return;
+        }
+        let max = Math.max(0, _heatmapGeom.total - _heatmapGeom.visible);
+        let next = Math.max(0, Math.min(max, Math.round(offset)));
+        if (next !== _heatmapColOffset) {
+            _heatmapColOffset = next;
+            drawHeatmapTrack();
+        }
+    }
+
+    // The hover readout, as on the desktop: the tip, the column and its
+    // value, and the scale the colour was taken from -- so a colour can be
+    // turned back into a number without reading the legend off the bottom.
+    function heatmapHoverMove(event) {
+        if (!_heatmapGeom) {
+            return;
+        }
+        let p = d3.pointer(event, _svgGroup.node());
+        let i = Math.floor((p[0] - _heatmapGeom.originX) / _heatmapGeom.cw);
+        if (i < 0 || i >= _heatmapGeom.visible) {
+            heatmapHoverOut();
+            return;
+        }
+        let r = -1;
+        for (let k = 0; k < _heatmapGeom.tips.length; ++k) {
+            if (p[1] >= _heatmapGeom.bounds[k] && p[1] < _heatmapGeom.bounds[k + 1]) {
+                r = k;
+                break;
+            }
+        }
+        if (r < 0) {
+            heatmapHoverOut();
+            return;
+        }
+        let tip = _heatmapGeom.tips[r];
+        let col = _heatmapGeom.refs[_heatmapGeom.offset + i];
+        let v = forester.heatmapValue(tip, col.ref);
+        let txt = 'Tip: ' + (displayNodeName(tip) || '?') + '<br>'
+            + col.label + ': ' + (v === null ? HEATMAP_NOT_ASSESSED : heatmapNum(v)) + '<br>'
+            + 'Scale: ' + heatmapNum(_heatmapGeom.min) + ' – ' + heatmapNum(_heatmapGeom.max);
+        let tip_el = _node_mouseover_div.node();
+        tip_el.classList.remove('aptx-light', 'aptx-dark');
+        if (_panelTheme) {
+            tip_el.classList.add('aptx-' + _panelTheme);
+        }
+        // the matrix hugs the right edge, so the readout flips to the left of
+        // the pointer when it would otherwise run off the window
+        let left = (event.pageX + 290) > window.innerWidth ? (event.pageX - 280) : (event.pageX + 14);
+        _node_mouseover_div
+            .html(markUpDataLabels(escapeHtmlKeepBreaks(txt)))
+            .style('left', left + 'px')
+            .style('top', (event.pageY + 14) + 'px');
+        _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
+    }
+
+    function heatmapHoverOut() {
+        _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
+    }
+
+    function heatmapCbClicked() {
+        _state.showHeatmap = getCheckboxValue(HEATMAP_CB);
+        scheduleUpdate(null, 0);
+    }
+
     // ===================== Collapsed clades =====================
     // Collapsing is DISPLAY state on the node (d.collapsed) and nothing
     // else: forester never sees it, the writers never see it, and the data
@@ -7729,6 +8241,9 @@ function (root, d3, forester, phyloXml) {
         if (_basicTreeProperties.alignedMolSeqs === true && _basicTreeProperties.maxMolSeqLength > 0) {
             s.msa = _state.showMsa === true;
         }
+        if (heatmapAvailable()) {
+            s.heatmap = _state.showHeatmap === true;
+        }
         if (_basicTreeProperties.domainArchitectures === true) {
             s.domains = _state.showDomainArchitectures === true;
             s.domainLabels = _state.domainLabels;
@@ -7849,6 +8364,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.msa === 'boolean') {
             _state.showMsa = s.msa;
         }
+        if (typeof s.heatmap === 'boolean') {
+            _state.showHeatmap = s.heatmap;
+        }
         if (typeof s.domains === 'boolean') {
             _state.showDomainArchitectures = s.domains;
         }
@@ -7948,6 +8466,7 @@ function (root, d3, forester, phyloXml) {
             }
         });
         setCheckboxValue(MSA_CB, _state.showMsa === true);
+        setCheckboxValue(HEATMAP_CB, _state.showHeatmap === true);
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis === true);
         setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid === true);
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
@@ -9047,6 +9566,7 @@ function (root, d3, forester, phyloXml) {
         // or the bar covers them -- the old bare slider did exactly that.
         // The scale bar sits in the same band, under the tree's last row.
         return Math.max(msaShown() ? MSA_BOTTOM_RESERVE + MSA_NAV_RESERVE : 0, timeAxisBottomReserve(),
+            heatmapBottomReserve(),
             scaleBarShown() && !radialDisplay() ? SCALE_BAR_RESERVE : 0);
     }
 
@@ -9947,6 +10467,7 @@ function (root, d3, forester, phyloXml) {
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
+        _heatmapColOffset = 0;
         syncZoomRowButtons();
         refreshVisualizations(false);
         // Esc resets to the launch state -- the auto-applied colour, when its
@@ -10512,6 +11033,10 @@ function (root, d3, forester, phyloXml) {
         let msaCb = byId(MSA_CB);
         if (msaCb) {
             msaCb.disabled = radialDisplay();
+        }
+        let heatCb = byId(HEATMAP_CB);
+        if (heatCb) {
+            heatCb.disabled = radialDisplay();
         }
         let timeCb = byId(TIME_AXIS_CB);
         if (timeCb) {
@@ -12777,6 +13302,7 @@ function (root, d3, forester, phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
+        on(HEATMAP_CB, 'click', heatmapCbClicked);
         on(DOMAINS_CB, 'click', domainsCbClicked);
         on(UNCOLLAPSE_ALL_BUTTON, 'click', uncollapseAll);
         on(TREE_PREV_BUTTON, 'click', function () {
@@ -13322,6 +13848,9 @@ function (root, d3, forester, phyloXml) {
             if (_basicTreeProperties.domainArchitectures) {
                 opts.push(makeCheckboxItem('Domain Architectures', DOMAINS_CB, 'to show/hide the protein domain architectures beside the tips', true));
             }
+            if (heatmapAvailable()) {
+                opts.push(makeCheckboxItem('Heat Map', HEATMAP_CB, 'to show/hide a cell per tip and numeric field beside the tree, every column on one color scale (rectangular layout only)'));
+            }
             if (_timeInfo && _timeInfo.type) {
                 opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
                     + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
@@ -13610,6 +14139,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(MSA_CB, _state.showMsa);
+        setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
         setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid);

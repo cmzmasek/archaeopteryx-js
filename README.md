@@ -370,8 +370,9 @@ Date" comes back as `Collection Date` in every menu; a header that already
 reads as `namespace:name` is kept as it is). From there nothing is special:
 the columns are offered for **Color-by** and **Shape** by the same rules as
 any property, with the same legends; they are **search** fields, typed
-numeric when every filled cell is a number; they appear in the **node data**;
-and they are written into a phyloXML export, so a saved tree keeps them.
+numeric when every filled cell is a number; the numeric ones become **heat
+map** columns; they appear in the **node data**; and they are written into a
+phyloXML export, so a saved tree keeps them.
 Tip names are matched exactly, then case-insensitively; empty cells add
 nothing; a column the tree already carries under the same ref is replaced by
 the table's values. Quoted cells, `#` comment lines and Windows line ends are
@@ -532,6 +533,39 @@ Alignments arrive with the tree: as phyloXML `<mol_seq is_aligned="true">`
 elements, or in a **Nexus** file whose characters matrix accompanies its tree.
 The **Nexus** entry in the Download menu writes the current tree *and* its
 alignment back into one Nexus file (Taxa, Characters and Trees blocks).
+
+## Heat maps
+
+A tree whose tips carry numeric fields shows them as a **heat map** beside the
+tree: one row per tip, one column per field, each cell coloured by its value
+(rectangular layout only — the columns stand on the tips' common edge, which a
+radial layout has not got). Turn it on with the **Heat Map** checkbox under
+Display Data; it is offered whenever the tree has two or more numeric per-tip
+fields.
+
+Every column is painted on **one shared scale**, so a colour means the same
+number wherever it appears — that is what makes a block of related columns
+readable as a block, and it is the point of a heat map rather than a row of
+independent stripes. The scale spans the whole tree, so entering a subtree
+narrows the rows and leaves the colours where they were. The columns that
+appear are exactly the numeric fields the **Color by** menu offers, so the two
+agree about what the tree holds; their left-to-right order follows the order
+the file lists them in, which keeps a producer's grouping (core genes, then
+resistance, then prophages) intact even where some tips are missing a field.
+
+A cell **nobody filled in** is drawn as an outlined empty box, never as the
+scale's low end: on a presence/absence matrix, reading a missing field as zero
+states the opposite of what the file says. The key beside the scale names it.
+
+**Hover any cell** for its tip, the column and its value — or `not assessed` —
+and the scale it was coloured against. The column names stand under the matrix,
+turned; a matrix with more columns than will fit shows a window and says so
+(`Columns 1–240 of 400`), which the mouse wheel over the matrix scrolls.
+
+Heat-map data arrives with the tree, as phyloXML `<property>` elements on the
+tips (`<property ref="meta:recA" datatype="xsd:integer" applies_to="node">2
+</property>`), or from a **metadata table** joined to it on the open page — a
+table's numeric columns become heat-map columns like any others.
 
 ## Time trees
 
@@ -957,6 +991,7 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
 | `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
@@ -1505,7 +1540,7 @@ Legend fieldset (Show / Dir / four arrows / R) is gone; so is the shift- or
 alt-click placement it documented. `visualizationsLegendXpos` and
 `visualizationsLegendYpos` still set where they start out.
 
-## The layouts, alignment track and time axes (developer spec)
+## The layouts, tracks and time axes (developer spec)
 
 The 2026 additions beyond the visualization system, specified tightly enough
 to rebuild. All pure logic lives in forester.js under `npm test`; the viewer
@@ -1631,6 +1666,61 @@ tip's row, so a row reads back to its sequence without counting.
 
 The conservation bar, consensus row and column ruler are a **floating strip**
 (see the time axes below); the residue rows stay with their tips.
+
+### The heat map
+
+Model (`forester.heatmapColumns(tree)` → `{refs:[{ref,label}], min, max}`,
+pure, in `test/heatmap_test.js`): a column is any candidate that
+`forester.visualizationCandidates` already calls a **numeric property** — so
+candidacy is not re-invented here and the refusal rules are inherited — carried
+by at least one **tip**; an internal node has no row, so a ref only internal
+nodes hold is not a column and its values never reach the scale. `min`/`max`
+span every drawn cell of the whole tree. `forester.heatmapValue(node, ref)`
+returns the number or **null**: null for absent, blank and non-numeric alike,
+and for a ref a node carries twice, the first.
+
+Column order is each ref's **mean position** among the tips that carry it,
+ties by first appearance. First-appearance order alone is wrong and visibly so:
+on the pan-genome demo 7 of 100 tips carry no `dnaK`, the first tip is one of
+them, and that core gene landed at column 40 of 40. Averaging means every tip's
+own order contributes and one gap cannot move a column.
+
+Gate: `showHeatmap` state (default **false**) AND rectangular layout AND at
+least `HEATMAP_MIN_COLUMNS` (2) columns with values — one column is a stripe,
+not a matrix.
+
+Geometry: the matrix reserves `HEATMAP_TRACK_GAP(8) + band` from `_w`, where
+`band = min(columns × 14 px, clamp(viewportWidth × 0.45, 60 px, whatever leaves
+the tree ≥ 220 px))`. It is budgeted **before** the alignment, and the
+alignment's own band then yields to it: the matrix wants a fixed, finite width
+while the alignment's band is a window that scrolls and so loses nothing by
+giving way. (Budgeted the other way round, an 18-column matrix got a 60 px
+sliver.) It sits between the domain tracks and the alignment, its right edge at
+`displayWidth − rootOffset − msaReserve`. Rows tile the cluster height by the
+same once-derived midpoints the alignment uses. Column width is
+`clamp(band / columns, 3, 14)`; past `band / 3` columns the matrix shows a
+window, scrolled by the wheel and stated in the caption.
+
+Colour: `d3.scaleLinear().range(VIS_COLOR_RAMP).domain([min, mid, max])` — the
+same 3-stop viridis the numeric visualizations use — built once and kept with
+the model, so every redraw and every view paints the same colours. A degenerate
+range (one value everywhere) takes the ramp's middle stop rather than mapping a
+zero-width domain. Same-colour runs merge into single rects.
+
+A blank cell is the background **with an outline**, and a run of them stays a
+run of cells wherever a column is at least 7 px wide. Leaving a blank bare is
+not enough: measured on the sparse demo, a bare blank stands at a contrast
+ratio of 13.4 against the scale's low end in the light theme but **1.08** in
+the dark one — that is to say, in the dark theme "not assessed" and "zero" were
+the same picture.
+
+The turned column names, the gradient, its two numbers, the blank key and the
+caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the
+alignment is shown, or the alignment's navigation bar (fixed at the viewport
+bottom) covers the scale.
+
+Everything is plain rects, lines, text and one `<linearGradient>`, so the SVG,
+PDF and PNG exports match the screen.
 
 ### The time axes
 
