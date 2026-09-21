@@ -364,6 +364,8 @@ function (root, d3, forester, phyloXml) {
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
     const HEATMAP_CB = 'heatmap_cb';
+    const HEATMAP_CONTROLS = 'heatmap_controls';
+    const HEATMAP_ORDER_SELECT = 'heatmap_order';
     const DOMAINS_CB = 'domains_cb';
     const DOMAIN_CONTROLS = 'domain_controls';
     const DOMAIN_WIDTH_DEC = 'domain_width_dec';
@@ -589,6 +591,9 @@ function (root, d3, forester, phyloXml) {
     const HEATMAP_HEAD_GAP = 5;           // between the last row and the turned labels
     const HEATMAP_NOT_ASSESSED = 'not assessed';   // what a blank cell says -- it does NOT say zero
     const HEATMAP_BLANK = 'blank';        // the run-merger's stand-in for a cell nobody filled in
+    const HEATMAP_DENDRO_GAP = 5;         // px between the dendrogram's leaves and the first row
+    const HEATMAP_DENDRO_MIN_BAND = 24;   // the band it is drawn in, from the label font
+    const HEATMAP_DENDRO_MAX_BAND = 72;
     let _heatmapReserve = 0;              // horizontal px reserved for the matrix, set with _w
     let _heatmapModel = null;             // forester.heatmapColumns of the WHOLE tree, cached per launch
     let _heatmapColor = null;             // the one scale every column is painted on
@@ -1124,6 +1129,7 @@ function (root, d3, forester, phyloXml) {
         // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
         // no by precisely 254px and the overview appeared after every Fit.
         maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve;
+        minY -= heatmapTopReserve();   // the dendrogram band stands above the first row
         if (scaleBarShown()) {
             maxY += SCALE_BAR_RESERVE;   // the bar sits under the last row
         }
@@ -2796,7 +2802,8 @@ function (root, d3, forester, phyloXml) {
 
         _clusterH = Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
             - bottomOverlayReserve());
-        _treeFn = _treeFn.size([_clusterH, _w]);
+        let _topReserve = topOverlayReserve();
+        _treeFn = _treeFn.size([Math.max(20, _clusterH - _topReserve), _w]);
 
         // A collapsed clade is a leaf that asks for more than one row: the
         // separation between neighbouring leaves is the mean of their
@@ -2819,7 +2826,7 @@ function (root, d3, forester, phyloXml) {
         });
         _treeFn(hierarchy);
         hierarchy.each(function (hn) {
-            hn.data.x = hn.x;
+            hn.data.x = hn.x + _topReserve;
             hn.data.y = hn.y;
             hn.data.depth = hn.depth;
         });
@@ -4885,6 +4892,7 @@ function (root, d3, forester, phyloXml) {
         'layout',
         'showMsa',
         'showHeatmap',
+        'heatmapColumnOrder',
         'showDomainArchitectures',
         'domainLabels',
         'domainGlow',
@@ -5123,6 +5131,17 @@ function (root, d3, forester, phyloXml) {
         // -- the alignment track, by contrast, is on when there IS one.
         if (_state.showHeatmap === undefined) {
             _state.showHeatmap = false;
+        }
+        // The columns' order. The default is the file's own, not a clustering:
+        // the order a producer wrote the fields in carries their grouping
+        // (core genes, then resistance, then prophages), and re-arranging that
+        // unasked would throw away information the file is giving us. The
+        // desktop defaults to Clustered instead -- a NAMED divergence.
+        if (_state.heatmapColumnOrder === undefined) {
+            _state.heatmapColumnOrder = 'document';
+        } else if (forester.HEATMAP_ORDER_MODES.indexOf(_state.heatmapColumnOrder) < 0) {
+            throw new Error(ERROR + '"heatmapColumnOrder" must be one of '
+                + forester.HEATMAP_ORDER_MODES.join(', '));
         }
         // A tree with protein domain architectures on its tips draws them
         // from the start (the desktop switches its toggle on at load), again
@@ -6559,7 +6578,8 @@ function (root, d3, forester, phyloXml) {
         return {
             horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve
                 - _domainReserve - _heatmapReserve),
-            vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT) - bottomOverlayReserve())
+            vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
+                - bottomOverlayReserve() - topOverlayReserve())
         };
     }
 
@@ -7411,6 +7431,76 @@ function (root, d3, forester, phyloXml) {
         return heatmapStripHeight() + (msaShown() ? MSA_NAV_RESERVE : 0);
     }
 
+    // The columns in the order the reader asked for, with the dendrogram
+    // behind that order when the order came from a clustering.
+    function heatmapOrdered() {
+        let m = heatmapModel();
+        if (!m) {
+            return null;
+        }
+        let mode = _state.heatmapColumnOrder || 'document';
+        // The order is kept ON the model, not in a cache beside it. The
+        // desktop's equivalent was keyed on (refs, mode) and a subtree, an
+        // edit or a re-import changes the VALUES while leaving both alone, so
+        // a hit handed back an order of the old data and a dendrogram drawn
+        // over the new -- found by code review, fixed there by invalidating at
+        // the one place every such path goes through. Hanging it on the model
+        // makes that structural instead: whatever drops the model drops this
+        // with it, and there is no second thing to remember to clear.
+        if (!m._order || m._order.mode !== mode) {
+            let o = forester.heatmapOrder(_treeData, m.refs, mode);
+            m._order = {mode: mode, columns: o.columns, dendrogram: o.dendrogram};
+        }
+        return m._order;
+    }
+
+    // How many columns the band can hold: every column when they fit, a window
+    // otherwise. Derived from the reserve, which update() sets before it asks
+    // for either overlay reserve, so the draw and the layout agree.
+    function heatmapVisibleColumns() {
+        let m = heatmapModel();
+        if (!m || m.refs.length < 1) {
+            return 0;
+        }
+        let bandPx = Math.max(1, _heatmapReserve - HEATMAP_TRACK_GAP);
+        let visible = Math.max(1, Math.min(m.refs.length, Math.floor(bandPx / heatmapColWidth())));
+        return isFinite(visible) ? visible : 0;
+    }
+
+    // The dendrogram to draw, or null. A WINDOWED matrix gets none: the tree
+    // describes every column, and drawn over some of them its merges would
+    // reach columns that are not on screen -- a picture asserting a grouping
+    // the reader cannot see.
+    function heatmapDendrogram() {
+        if (!heatmapShown()) {
+            return null;
+        }
+        let o = heatmapOrdered();
+        if (!o || !o.dendrogram || o.columns.length < 3) {
+            return null;
+        }
+        return (heatmapVisibleColumns() === o.columns.length) ? o.dendrogram : null;
+    }
+
+    // Deliberately short: a shape to read a grouping off, not a scale anyone
+    // reads a number from.
+    function heatmapDendroBand() {
+        return Math.max(HEATMAP_DENDRO_MIN_BAND,
+            Math.min(HEATMAP_DENDRO_MAX_BAND, 3 * (_state.externalNodeFontSize + 2)));
+    }
+
+    // Vertical room kept ABOVE the first row for the dendrogram. The band is
+    // drawn at negative y, with the tree's own group, so it zooms and pans
+    // with the cells it belongs to; the layout just has to leave it the space
+    // and the fit has to start below it.
+    function heatmapTopReserve() {
+        return heatmapDendrogram() ? (heatmapDendroBand() + HEATMAP_DENDRO_GAP) : 0;
+    }
+
+    function topOverlayReserve() {
+        return heatmapTopReserve();
+    }
+
     function drawHeatmapTrack() {
         if (!_svgGroup) {
             return;
@@ -7425,12 +7515,14 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let model = heatmapModel();
+        let ordered = heatmapOrdered();
+        let columns = ordered ? ordered.columns : model.refs;
         let tips = displayedTips().filter(function (d) {
             return d.x !== undefined;
         }).sort(function (p, q) {
             return p.x - q.x;
         });
-        let total = model.refs.length;
+        let total = columns.length;
         if (tips.length < 1 || total < 1) {
             _heatmapGeom = null;
             return;
@@ -7511,7 +7603,7 @@ function (root, d3, forester, phyloXml) {
                 runFill = null;
             };
             for (let i = 0; i < visible; ++i) {
-                let v = forester.heatmapValue(d, model.refs[offset + i].ref);
+                let v = forester.heatmapValue(d, columns[offset + i].ref);
                 let fill = (v === null) ? HEATMAP_BLANK : heatmapColorOf(v);
                 if (fill === HEATMAP_BLANK) {
                     blanks++;
@@ -7536,6 +7628,63 @@ function (root, d3, forester, phyloXml) {
             .attr('width', trackW).attr('height', Math.max(1, rowsBottom - rowsTop))
             .attr('fill', 'none')
             .attr('stroke', ink).attr('stroke-opacity', 0.55).attr('stroke-width', 1);
+
+        // ---- the clustering behind the column order, above the grid ----
+        // Drawn with the cells, in the tree's own group, so it zooms, pans and
+        // exports with them. Heights are LINEAR in the merge distance, so a
+        // block that joins low really is drawn tighter than one that joins
+        // high; spacing merges evenly by rank would read more clearly and
+        // would say something false.
+        let dendro = heatmapDendrogram();
+        if (dendro && dendro.height.length >= 1 && dendro.order.length === visible && offset === 0) {
+            let band = heatmapDendroBand();
+            let baseline = rowsTop - HEATMAP_DENDRO_GAP;
+            let maxH = 0;
+            dendro.height.forEach(function (h) {
+                if (isFinite(h) && h > maxH) {
+                    maxH = h;
+                }
+            });
+            let slot = new Array(dendro.order.length);
+            dendro.order.forEach(function (leaf, k) {
+                slot[leaf] = k;
+            });
+            let clusterX = new Array(dendro.height.length);
+            let clusterY = new Array(dendro.height.length);
+            // R's node-id convention: negative = the singleton of that index,
+            // positive = the cluster formed at that stage
+            let nodeX = function (id) {
+                return (id < 0) ? (originX + ((slot[-id - 1] + 0.5) * cw)) : clusterX[id - 1];
+            };
+            let nodeY = function (id) {
+                return (id < 0) ? baseline : clusterY[id - 1];
+            };
+            let path = '';
+            for (let s = 0; s < dendro.height.length; ++s) {
+                let h = dendro.height[s];
+                // a merge with no finite height -- two columns that share no
+                // assessed tip, so no distance was ever computed -- goes to the
+                // top of the band, above every measurable merge, which is where
+                // it belongs: it joined last
+                let ym = (!isFinite(h) || !(maxH > 0)) ? (baseline - band) : (baseline - ((h / maxH) * band));
+                let x1 = nodeX(dendro.left[s]);
+                let y1 = nodeY(dendro.left[s]);
+                let x2 = nodeX(dendro.right[s]);
+                let y2 = nodeY(dendro.right[s]);
+                path += 'M' + x1.toFixed(1) + ',' + y1.toFixed(1)
+                    + 'L' + x1.toFixed(1) + ',' + ym.toFixed(1)
+                    + 'L' + x2.toFixed(1) + ',' + ym.toFixed(1)
+                    + 'L' + x2.toFixed(1) + ',' + y2.toFixed(1);
+                clusterX[s] = (x1 + x2) / 2;
+                clusterY[s] = ym;
+            }
+            g.append('path').attr('class', 'aptx-heatmap-dendro')
+                .attr('d', path)
+                .attr('fill', 'none')
+                .attr('stroke', ink)
+                .attr('stroke-width', Math.max(1, _state.branchWidthDefault))
+                .style('pointer-events', 'none');
+        }
 
         // A faint dashed guide from each tip across to its row, as the
         // alignment track draws -- skipped when the domain tracks are in
@@ -7582,7 +7731,7 @@ function (root, d3, forester, phyloXml) {
         if (headH > 0) {
             let font = heatmapLabelFont();
             for (let i = 0; i < visible; ++i) {
-                let col = model.refs[offset + i];
+                let col = columns[offset + i];
                 strip.append('text')
                     .attr('transform', 'translate(' + (originX + (i * cw) + (cw / 2)) + ','
                         + labelTop + ') rotate(-90)')
@@ -7674,7 +7823,7 @@ function (root, d3, forester, phyloXml) {
             });
         _heatmapGeom = {
             originX: originX, cw: cw, offset: offset, visible: visible, total: total,
-            bounds: bounds, tips: tips, refs: model.refs, min: model.min, max: model.max
+            bounds: bounds, tips: tips, refs: columns, min: model.min, max: model.max
         };
         placeFloatingOverlays();
     }
@@ -7742,6 +7891,7 @@ function (root, d3, forester, phyloXml) {
 
     function heatmapCbClicked() {
         _state.showHeatmap = getCheckboxValue(HEATMAP_CB);
+        syncHeatmapControls();
         scheduleUpdate(null, 0);
     }
 
@@ -8243,6 +8393,7 @@ function (root, d3, forester, phyloXml) {
         }
         if (heatmapAvailable()) {
             s.heatmap = _state.showHeatmap === true;
+            s.heatmapOrder = _state.heatmapColumnOrder;
         }
         if (_basicTreeProperties.domainArchitectures === true) {
             s.domains = _state.showDomainArchitectures === true;
@@ -8367,6 +8518,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.heatmap === 'boolean') {
             _state.showHeatmap = s.heatmap;
         }
+        if (forester.HEATMAP_ORDER_MODES.indexOf(s.heatmapOrder) >= 0) {
+            _state.heatmapColumnOrder = s.heatmapOrder;
+        }
         if (typeof s.domains === 'boolean') {
             _state.showDomainArchitectures = s.domains;
         }
@@ -8467,6 +8621,7 @@ function (root, d3, forester, phyloXml) {
         });
         setCheckboxValue(MSA_CB, _state.showMsa === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap === true);
+        syncHeatmapControls();
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis === true);
         setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid === true);
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
@@ -9427,6 +9582,27 @@ function (root, d3, forester, phyloXml) {
         (_state.domainEvalueExponent < forester.DOMAIN_EVALUE_EXPONENT_MAX ? enableButton : disableButton)(byId(DOMAIN_EVALUE_INC));
         setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
+    }
+
+    // The control follows the toggle: hidden without it, and hidden in the
+    // radial layouts, where no matrix is drawn to order.
+    function syncHeatmapControls() {
+        let fs = byId(HEATMAP_CONTROLS);
+        if (!fs) {
+            return;
+        }
+        fs.style.display = heatmapShown() ? '' : 'none';
+        setValue(HEATMAP_ORDER_SELECT, _state.heatmapColumnOrder);
+    }
+
+    function heatmapOrderChanged() {
+        let v = getValue(HEATMAP_ORDER_SELECT);
+        if (forester.HEATMAP_ORDER_MODES.indexOf(v) < 0 || v === _state.heatmapColumnOrder) {
+            return;
+        }
+        _state.heatmapColumnOrder = v;
+        _heatmapColOffset = 0;   // a different order: the old window means nothing
+        scheduleUpdate(null, 0);
     }
 
     function domainsCbClicked() {
@@ -11038,6 +11214,7 @@ function (root, d3, forester, phyloXml) {
         if (heatCb) {
             heatCb.disabled = radialDisplay();
         }
+        syncHeatmapControls();
         let timeCb = byId(TIME_AXIS_CB);
         if (timeCb) {
             timeCb.disabled = radialDisplay();
@@ -13189,6 +13366,8 @@ function (root, d3, forester, phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeDomainControls());
 
+            c0.insertAdjacentHTML('beforeend',makeHeatmapControls());
+
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
 
 
@@ -13303,6 +13482,7 @@ function (root, d3, forester, phyloXml) {
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
         on(HEATMAP_CB, 'click', heatmapCbClicked);
+        on(HEATMAP_ORDER_SELECT, 'change', heatmapOrderChanged);
         on(DOMAINS_CB, 'click', domainsCbClicked);
         on(UNCOLLAPSE_ALL_BUTTON, 'click', uncollapseAll);
         on(TREE_PREV_BUTTON, 'click', function () {
@@ -13959,6 +14139,34 @@ function (root, d3, forester, phyloXml) {
             return h;
         }
 
+        // Shown only while the Heat Map toggle is on (syncHeatmapControls).
+        // The desktop's View > Order Matrix Columns, minus its Manual mode --
+        // that one means "the order you dragged the rows into", and there is
+        // no drag-to-reorder dialog here to drag them in.
+        function makeHeatmapControls() {
+            let h = '<fieldset id="' + HEATMAP_CONTROLS + '" style="display:none">';
+            h = h.concat('<legend>Heat Map</legend>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + HEATMAP_ORDER_SELECT
+                + '">Order columns</label>');
+            h = h.concat('<select name="' + HEATMAP_ORDER_SELECT + '" id="' + HEATMAP_ORDER_SELECT
+                + '" title="how the matrix columns are ordered; a clustered order also draws the clustering above the matrix">');
+            h = h.concat('<option value="document" title="the order the file, or the imported table, lists the columns in">'
+                + 'As in the file</option>');
+            h = h.concat('<option value="clustered" title="columns whose values agree across the tips sit together:'
+                + ' complete-linkage clustering on Euclidean distance, the default of R\'s heat maps. A tip missing'
+                + ' either value is left out of that pair, never read as 0.">Clustered (co-occurrence)</option>');
+            h = h.concat('<option value="clustered-presence" title="columns found in the same tips sit together: a tip'
+                + ' where BOTH columns are 0 is left out of that pair, so two rare genes no longer look alike merely'
+                + ' for being rare. Complete-linkage clustering on the Bray-Curtis dissimilarity. For values that are'
+                + ' 0 or more.">Clustered (ignoring shared absence)</option>');
+            h = h.concat('<option value="alphabetical" title="by column name, ignoring case">Alphabetical</option>');
+            h = h.concat('<option value="frequency" title="highest mean value first, over the tips that have a value'
+                + ' -- on 0/1 data, the fraction of tips carrying it">Frequency</option>');
+            h = h.concat('</select></div>');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
         function makeSliders() {
             let h = "";
             h = h.concat('<fieldset>');
@@ -14141,6 +14349,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(MSA_CB, _state.showMsa);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
+        syncHeatmapControls();
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
         setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);

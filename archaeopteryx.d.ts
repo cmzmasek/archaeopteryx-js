@@ -86,6 +86,9 @@ export interface ArchaeopteryxConfig {
     /** Open with the heat map shown. Default false: it is offered whenever
      * the tree has two or more numeric per-tip fields, which is most annotated
      * trees, so it waits to be asked for. */
+    /** How the heat map's columns are ordered. The clustered modes also draw
+     * the dendrogram above the matrix. Default 'document'. */
+    heatmapColumnOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency';
     showHeatmap?: boolean;
     showMsa?: boolean;
     showSupportDots?: boolean;
@@ -141,6 +144,7 @@ export interface ViewState {
     horizontalLabels?: boolean;
     msa?: boolean;
     heatmap?: boolean;
+    heatmapOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency';
     domains?: boolean;
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;

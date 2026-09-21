@@ -2887,6 +2887,382 @@
         return null;
     };
 
+    // ---- heat-map column ORDER -------------------------------------------
+    //
+    // The desktop's View > Order Matrix Columns, minus its Manual mode (which
+    // needs a drag-to-reorder dialog we have not got). Every data-driven mode
+    // starts from the columns in DOCUMENT order, so a result never depends on
+    // the order they happened to be in: switching Alphabetical -> Clustered
+    // and Document -> Clustered must give the same clustering.
+    //
+    // A cell that is not assessed never counts as 0, in any mode: blank is
+    // absence of evidence, not evidence of absence.
+
+    forester.HEATMAP_ORDER_MODES = ['document', 'clustered', 'clustered-presence', 'alphabetical', 'frequency'];
+
+    /**
+     * The value of every column at every tip, [column][tip], null where the
+     * tip has no value -- the same number the cell is drawn from. EVERY tip
+     * counts, collapsed or not, as the shared colour scale does: an order that
+     * changed when a clade is collapsed would make the columns jump under the
+     * reader.
+     */
+    forester.heatmapValueMatrix = function (tree, refs) {
+        let tips = forester.getAllExternalNodes(tree);
+        return refs.map(function (ref) {
+            return tips.map(function (t) {
+                return forester.heatmapValue(t, ref);
+            });
+        });
+    };
+
+    /**
+     * Euclidean distance between every two columns, R's dist(method =
+     * "euclidean") convention for missing values: only the tips where BOTH
+     * columns have a value are used, and the squared sum is scaled up by
+     * tips / used, so a pair assessed on fewer tips is not made to look closer
+     * for it. A pair that shares no assessed tip at all has no distance; it is
+     * +Infinity here (R returns NA and its hclust then refuses), so it joins
+     * last.
+     */
+    forester.heatmapEuclideanDistances = function (v) {
+        let n = v.length;
+        let d = v.map(function () {
+            return new Array(n).fill(0);
+        });
+        for (let a = 0; a < n; ++a) {
+            for (let b = a + 1; b < n; ++b) {
+                let sum = 0;
+                let used = 0;
+                let tips = v[a].length;
+                for (let t = 0; t < tips; ++t) {
+                    if (v[a][t] !== null && v[b][t] !== null) {
+                        let dev = v[a][t] - v[b][t];
+                        sum += dev * dev;
+                        ++used;
+                    }
+                }
+                let dist = (used === 0) ? Infinity
+                    : Math.sqrt((used === tips) ? sum : (sum / (used / tips)));
+                d[a][b] = dist;
+                d[b][a] = dist;
+            }
+        }
+        return d;
+    };
+
+    /**
+     * Bray-Curtis dissimilarity between every two columns: sum|x - y| /
+     * sum(x + y) over the tips where BOTH have a value (pairwise deletion, R
+     * vegan's vegdist(method = "bray", na.rm = TRUE)). Being a ratio it
+     * normalizes itself, so -- unlike Euclidean -- it needs no scale-up for
+     * the tips it dropped.
+     *
+     * A tip where both columns are 0 adds nothing to either sum, so it drops
+     * out: the DOUBLE ZERO, which Euclidean reads as agreement, is simply not
+     * evidence here. Two genes that are each rare and never in the same tip
+     * are maximally distant (1) rather than nearly identical. On 0/1 data this
+     * is exactly the Sorensen-Dice dissimilarity 1 - 2|A and B| / (|A| + |B|).
+     *
+     * Two divergences from vegdist, both forced: a pair sharing no assessed
+     * tip is +Infinity (vegdist gives NA, and hclust then refuses), and a pair
+     * that is 0 at every tip it shares -- the undefined 0/0 -- is 0, because
+     * those columns are identical wherever they can be compared (vegdist gives
+     * NaN). The same rule covers the only other way the denominator can fail,
+     * negative values cancelling: a pair that cannot be told apart is 0, one
+     * that differs over a non-positive total is +Infinity rather than a
+     * negative or NaN distance. Bray-Curtis is meant for values 0 or more.
+     *
+     * The result is a DISSIMILARITY, not a metric -- it does not obey the
+     * triangle inequality, which complete linkage does not require.
+     */
+    forester.heatmapBrayCurtisDistances = function (v) {
+        let n = v.length;
+        let d = v.map(function () {
+            return new Array(n).fill(0);
+        });
+        for (let a = 0; a < n; ++a) {
+            for (let b = a + 1; b < n; ++b) {
+                let num = 0;
+                let den = 0;
+                let used = 0;
+                let tips = v[a].length;
+                for (let t = 0; t < tips; ++t) {
+                    if (v[a][t] !== null && v[b][t] !== null) {
+                        num += Math.abs(v[a][t] - v[b][t]);
+                        den += v[a][t] + v[b][t];
+                        ++used;
+                    }
+                }
+                let dist;
+                if (used === 0) {
+                    dist = Infinity;
+                } else if (den <= 0) {
+                    dist = (num === 0) ? 0 : Infinity;
+                } else {
+                    dist = num / den;
+                }
+                d[a][b] = dist;
+                d[b][a] = dist;
+            }
+        }
+        return d;
+    };
+
+    /**
+     * The complete-linkage dendrogram of a symmetric distance matrix, the same
+     * structure R's hclust returns, so it can be pinned against R wholesale:
+     *
+     *   left / right  one merge per stage, in R's $merge node-id convention --
+     *                 a NEGATIVE value is the singleton of that index
+     *                 (-1 = column 0), a POSITIVE value the cluster formed at
+     *                 that earlier stage. Oriented by R's hcass2 rule
+     *                 (singleton before cluster, lower index between
+     *                 singletons, earlier stage between clusters), which is
+     *                 what makes the leaf order reproducible.
+     *   height        the distance each merge happened AT ($height) -- what a
+     *                 drawn dendrogram's bar heights are. It can be +Infinity
+     *                 for a pair sharing no assessed tip, so anything drawing
+     *                 it has to decide what to do with a merge that has no
+     *                 finite height.
+     *   order         the leaves as $order reads them out, which is the column
+     *                 order itself.
+     *
+     * Each step merges the closest two clusters; a cluster is labelled by its
+     * lowest member index and a tie goes to the first pair the (i, j) scan
+     * finds, which is what R's nearest-neighbour scan does. The merged
+     * cluster's distance to every other is the LARGER of the two (complete
+     * linkage, the Lance-Williams update R uses).
+     */
+    forester.heatmapCompleteLinkage = function (d) {
+        let n = d.length;
+        if (n === 0) {
+            return {left: [], right: [], height: [], order: []};
+        }
+        if (n === 1) {
+            return {left: [], right: [], height: [], order: [0]};
+        }
+        let dist = d.map(function (row) {
+            return row.slice();
+        });
+        let active = new Array(n).fill(true);
+        // node id of the cluster currently labelled i: -(i+1) for a singleton,
+        // (stage+1) for a merged cluster
+        let node = new Array(n);
+        for (let i = 0; i < n; ++i) {
+            node[i] = -(i + 1);
+        }
+        let left = new Array(n - 1);
+        let right = new Array(n - 1);
+        let height = new Array(n - 1);
+        for (let stage = 0; stage < (n - 1); ++stage) {
+            let bi = -1;
+            let bj = -1;
+            let best = NaN;
+            for (let i = 0; i < n; ++i) {
+                if (!active[i]) {
+                    continue;
+                }
+                for (let j = i + 1; j < n; ++j) {
+                    if (!active[j]) {
+                        continue;
+                    }
+                    // strictly smaller only: the FIRST pair in (i, j) order
+                    // wins a tie, as in R's scan
+                    if ((bi < 0) || (dist[i][j] < best)) {
+                        best = dist[i][j];
+                        bi = i;
+                        bj = j;
+                    }
+                }
+            }
+            // hcass2's orientation, as one rule: singletons are negative,
+            // clusters positive by stage
+            let a = node[bi];
+            let b = node[bj];
+            let l;
+            let r;
+            if ((a < 0) && (b < 0)) {
+                l = (-a < -b) ? a : b;
+                r = (-a < -b) ? b : a;
+            } else if ((a < 0) || (b < 0)) {
+                l = (a < 0) ? a : b;
+                r = (a < 0) ? b : a;
+            } else {
+                l = Math.min(a, b);
+                r = Math.max(a, b);
+            }
+            left[stage] = l;
+            right[stage] = r;
+            height[stage] = best;
+            // complete linkage: the merged cluster (kept under the lower
+            // label, bi) is as far as its farther half
+            for (let k = 0; k < n; ++k) {
+                if (active[k] && (k !== bi) && (k !== bj)) {
+                    let m = Math.max(dist[bi][k], dist[bj][k]);
+                    dist[bi][k] = m;
+                    dist[k][bi] = m;
+                }
+            }
+            active[bj] = false;
+            node[bi] = stage + 1;
+        }
+        // expand from the root, in place, left child before right -- hcass2's IORDER
+        let order = [left[n - 2], right[n - 2]];
+        for (let stage = n - 2; stage >= 1; --stage) {
+            let pos = order.indexOf(stage);   // the cluster formed at this stage (1-based node id)
+            if (pos >= 0) {
+                order[pos] = left[stage - 1];
+                order.splice(pos + 1, 0, right[stage - 1]);
+            }
+        }
+        return {
+            left: left, right: right, height: height,
+            order: order.map(function (v) {
+                return -v - 1;
+            })
+        };
+    };
+
+    /**
+     * `columns` (the {ref, label} objects forester.heatmapColumns returned, in
+     * DOCUMENT order) re-ordered for `mode`, with the dendrogram behind that
+     * order when there is one.
+     *
+     * The dendrogram is returned only for a clustered mode with at least three
+     * columns -- fewer than three have one order up to a flip and are left
+     * alone, so there is no clustering behind them -- and only when its leaves
+     * ARE the order being returned. A dendrogram drawn over a matrix it does
+     * not describe would have connectors that cross: a picture asserting a
+     * grouping the columns do not have. Checking the answer beats enumerating
+     * the ways to get there.
+     */
+    /**
+     * `columns` put back into DOCUMENT order -- the order forester.heatmapColumns
+     * derives for this tree. A column that order does not name cannot be placed,
+     * so it must not be dropped: it goes at the end, and the unplaceable ones
+     * are sorted among themselves.
+     *
+     * The tail is SORTED rather than left in its incoming order so that this
+     * depends only on its inputs as a SET. Every data-driven mode normalises
+     * through here precisely so a result cannot depend on the order the columns
+     * happened to be in, and an incoming-order tail would break that promise
+     * exactly when it mattered.
+     */
+    forester.heatmapInDocumentOrder = function (tree, columns) {
+        let cols = (columns || []).slice();
+        let want = Object.create(null);
+        cols.forEach(function (c, i) {
+            want[c.ref] = {sum: 0, n: 0, first: i, col: c};
+        });
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children && n.children.length > 0) {
+                return;
+            }
+            let at = 0;
+            (n.properties || []).forEach(function (p) {
+                let st = p && want[p.ref];
+                if (!st) {
+                    return;
+                }
+                st.sum += at;
+                st.n++;
+                at++;
+            });
+        });
+        // the same rule forester.heatmapColumns orders by -- mean position
+        // among the tips that carry the column, ties by first appearance --
+        // but over exactly the columns GIVEN, so it cannot be moved by a
+        // candidacy rule that has nothing to do with ordering. A column no tip
+        // carries has no position; it sorts last, by ref, so the result
+        // depends only on its inputs as a SET.
+        return cols.slice().sort(function (a, b) {
+            let x = want[a.ref];
+            let y = want[b.ref];
+            let mx = (x.n > 0) ? (x.sum / x.n) : Infinity;
+            let my = (y.n > 0) ? (y.sum / y.n) : Infinity;
+            if (mx !== my) {
+                return mx - my;
+            }
+            if (!isFinite(mx)) {
+                return (a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0);
+            }
+            return x.first - y.first;
+        });
+    };
+
+    forester.heatmapOrder = function (tree, columns, mode) {
+        let out = {columns: (columns || []).slice(), dendrogram: null};
+        if (!tree || out.columns.length < 1 || !mode || mode === 'document') {
+            return out;
+        }
+        // Every data-driven mode starts from document order, so switching
+        // Alphabetical -> Clustered and Document -> Clustered must give the
+        // same clustering. Measured: without this the 6x6 linkage fixture fed
+        // in reverse clustered to h6,h5,h3,h4,h2,h1 instead of R's
+        // h6,h3,h5,h4,h1,h2 -- the index order drives the tie-break and the
+        // hcass2 leaf order, so the incoming order really does leak through.
+        let cols = forester.heatmapInDocumentOrder(tree, out.columns);
+        out.columns = cols;
+        if (mode === 'alphabetical') {
+            out.columns = cols.slice().sort(function (a, b) {
+                let la = String(a.label || a.ref).toLowerCase();
+                let lb = String(b.label || b.ref).toLowerCase();
+                // the raw ref breaks a tie, as the desktop's chooser sorts
+                return (la < lb) ? -1 : ((la > lb) ? 1
+                    : ((a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0)));
+            });
+            return out;
+        }
+        let v = forester.heatmapValueMatrix(tree, cols.map(function (c) {
+            return c.ref;
+        }));
+        if (mode === 'frequency') {
+            // by the mean over the tips that HAVE a value, highest first -- on
+            // 0/1 data exactly the fraction of tips carrying it. A blank is
+            // left out, never averaged in as 0; a column with no value at all
+            // goes last; ties keep document order (the sort is stable).
+            let mean = v.map(function (row) {
+                let sum = 0;
+                let n = 0;
+                row.forEach(function (x) {
+                    if (x !== null) {
+                        sum += x;
+                        ++n;
+                    }
+                });
+                return (n > 0) ? (sum / n) : -Infinity;
+            });
+            out.columns = cols.map(function (c, i) {
+                return {c: c, i: i};
+            }).sort(function (a, b) {
+                return (mean[b.i] - mean[a.i]) || (a.i - b.i);
+            }).map(function (e) {
+                return e.c;
+            });
+            return out;
+        }
+        if (mode !== 'clustered' && mode !== 'clustered-presence') {
+            return out;
+        }
+        if (cols.length < 3) {
+            return out;   // one order up to a flip, and R puts index 1 first
+        }
+        let d = (mode === 'clustered')
+            ? forester.heatmapEuclideanDistances(v)
+            : forester.heatmapBrayCurtisDistances(v);
+        let dendro = forester.heatmapCompleteLinkage(d);
+        let ordered = dendro.order.map(function (g) {
+            return cols[g];
+        });
+        out.columns = ordered;
+        // the self-check: the picture is offered only if it describes the order
+        if (dendro.order.length === cols.length) {
+            out.dendrogram = dendro;
+        }
+        return out;
+    };
+
 
     forester.collectBasicTreeProperties = function (tree) {
         let properties = {};

@@ -549,9 +549,10 @@ readable as a block, and it is the point of a heat map rather than a row of
 independent stripes. The scale spans the whole tree, so entering a subtree
 narrows the rows and leaves the colours where they were. The columns that
 appear are exactly the numeric fields the **Color by** menu offers, so the two
-agree about what the tree holds; their left-to-right order follows the order
-the file lists them in, which keeps a producer's grouping (core genes, then
-resistance, then prophages) intact even where some tips are missing a field.
+agree about what the tree holds; by default their left-to-right order follows
+the order the file lists them in, which keeps a producer's grouping (core genes,
+then resistance, then prophages) intact even where some tips are missing a
+field — see **Order columns** below for the alternatives.
 
 A cell **nobody filled in** is drawn as an outlined empty box, never as the
 scale's low end: on a presence/absence matrix, reading a missing field as zero
@@ -561,6 +562,32 @@ states the opposite of what the file says. The key beside the scale names it.
 and the scale it was coloured against. The column names stand under the matrix,
 turned; a matrix with more columns than will fit shows a window and says so
 (`Columns 1–240 of 400`), which the mouse wheel over the matrix scrolls.
+
+**Order columns** (in the Heat Map section of the panel) decides where the
+columns go. *As in the file* is the default and keeps the producer's grouping.
+The two **clustered** orders put columns that behave alike side by side and draw
+the clustering itself as a **dendrogram above the matrix** — a clustergram. Both
+are complete-linkage hierarchical clustering, written to give the same answer as
+R's `hclust(dist(t(m)), method = "complete")`; they differ in what "alike" means:
+
+* **Clustered (co-occurrence)** uses Euclidean distance, the default of R's
+  `pheatmap`, `heatmap.2` and `ComplexHeatmap`.
+* **Clustered (ignoring shared absence)** uses the **Bray–Curtis** dissimilarity
+  (R `vegan`'s `vegdist` default). Euclidean distance has the *double-zero
+  problem*: two genes both **absent** from the same strains are counted as
+  agreeing there, so on a sparse pan-genome the rare genes cluster together
+  merely for being rare. Bray–Curtis drops a tip where both columns are 0
+  instead of scoring it as agreement. On 0/1 data it is exactly the
+  Sørensen–Dice dissimilarity.
+
+*Alphabetical* and *Frequency* (highest mean value first, over the tips that
+have a value) are there too. Whatever the mode, a blank is never read as 0, and
+the dendrogram is drawn only when it describes the columns actually on screen —
+never over a scrolled window, and never over an order that did not come from a
+clustering.
+
+Sørensen, T. (1948) *Biol. Skr.* 5, 1–34 · Bray, J.R., Curtis, J.T. (1957)
+*Ecol. Monogr.* 27, 325–349 · Eisen, M.B. *et al.* (1998) *PNAS* 95, 14863–8.
 
 Heat-map data arrives with the tree, as phyloXML `<property>` elements on the
 tips (`<property ref="meta:recA" datatype="xsd:integer" applies_to="node">2
@@ -992,6 +1019,7 @@ copy-pastable JSON.
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
 | `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
+| `heatmapColumnOrder` | `'document'` | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. The desktop defaults to clustered instead — a named divergence: the file's own order carries the producer's grouping, and re-arranging it unasked throws that away. |
 | `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
@@ -1713,6 +1741,52 @@ not enough: measured on the sparse demo, a bare blank stands at a contrast
 ratio of 13.4 against the scale's low end in the light theme but **1.08** in
 the dark one — that is to say, in the dark theme "not assessed" and "zero" were
 the same picture.
+
+**Column order** (`forester.heatmapOrder(tree, columns, mode)` →
+`{columns, dendrogram}`, pure, in `test/clustering_test.js`): the desktop's
+*View → Order Matrix Columns*, minus its Manual mode, which means "the order you
+dragged the rows into" and there is no drag-to-reorder dialog here. Every
+data-driven mode first normalises to **document order**
+(`forester.heatmapInDocumentOrder`, mean position among the tips carrying the
+column, unplaceable columns sorted at the end) so a result cannot depend on the
+order the columns happened to be in. Measured: without it, the 6×6 linkage
+fixture fed in reverse clustered to `h6,h5,h3,h4,h2,h1` instead of R's
+`h6,h3,h5,h4,h1,h2` — the index order drives the tie-break and the leaf order,
+so the incoming order really does leak through. The normaliser deliberately does
+**not** go through `heatmapColumns`: that applies candidacy rules (a constant
+column is refused), and ordering must not move with them.
+
+Distances are `forester.heatmapEuclideanDistances` (R's `dist` convention for
+missing values: pairwise deletion, the squared sum scaled up by `tips / used`;
+a pair sharing no assessed tip is `+Infinity`, where R returns `NA` and its
+`hclust` then refuses) and `forester.heatmapBrayCurtisDistances`
+(`sum|x−y| / sum(x+y)` over the jointly assessed tips — being a ratio it needs
+no scale-up; three cases `vegdist` cannot answer are decided so clustering never
+sees a `NaN`: no shared tip → `+Infinity`, 0 at every shared tip → 0, a
+non-positive total with columns that differ → `+Infinity`).
+`forester.heatmapCompleteLinkage` returns R's `hclust` object — `$merge` node
+ids (negative = singleton, positive = the cluster formed at that stage), the
+`$height` each merge happened at, and `$order` — reproducing R's tie-break
+(first pair the `(i, j)` scan finds) and `hcass2` leaf order.
+
+**The expectations are R's own output**, R 4.5.3 and vegan 2.7-2, carried over
+from the desktop's `MatrixColumnOrderTest`, which generated them. Pinning to R
+pins the JS and the desktop to each other, which is the point: the two must
+cluster a matrix identically.
+
+The dendrogram is drawn above the grid in the tree's own group, so it zooms,
+pans and exports with the cells. Heights are **linear in the merge distance**,
+so a block that joins low really is drawn tighter than one that joins high;
+spacing merges evenly by rank would read more clearly and would say something
+false. A merge with no finite height goes to the top of the band, above every
+measurable merge, which is where it belongs: it joined last. It is drawn only
+when the dendrogram's leaves ARE the columns on screen — never over a scrolled
+**window**, whose merges would reach columns the reader cannot see.
+
+Its band is reserved **inside** the layout (the rows are laid out in a span
+shorter by the band and every node moves down by it), not taken off the canvas
+and made up for by the fit: a fit happens once, and switching the order is a
+redraw, so the fit route left the dendrogram 34 px above the top of the window.
 
 The turned column names, the gradient, its two numbers, the blank key and the
 caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the

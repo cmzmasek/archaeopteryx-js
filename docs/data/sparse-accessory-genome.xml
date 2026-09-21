@@ -1,0 +1,1227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Sparse accessory genome (demo)</name>
+  <description>50 synthetic strains in six lineages, each carrying 18 accessory-genome genes as &lt;property&gt; elements: an ordinal certainty 0..4 that the gene is present (0 definitely absent .. 4 definitely present), with a blank cell meaning NOT ASSESSED rather than absent. Turn on Heat Map under Display Data, then compare the two clustered orders under Order columns: the eight rare genes (six prophages and two hypotheticals, each in under 15% of the strains) sit in eight adjoining columns under &quot;Clustered (co-occurrence)&quot;, which counts the strains they are jointly ABSENT from as agreement, and scatter to the capsule types they actually occur with under &quot;Clustered (ignoring shared absence)&quot;. No real organism is represented.</description>
+  <clade>
+    <property ref="aptx:figure" datatype="xsd:string" applies_to="phylogeny">v1;layout=RECTANGULAR;orientation=ROOT_LEFT;displaytype=ALIGNED_PHYLOGRAM;show.SHOW_NODE_NAMES=true;show.SHOW_TAX_CODE=true;show.WRITE_CONFIDENCE_VALUES=false;show.WRITE_EVENTS=false;show.USE_STYLE=true;show.WIDTH_BRANCHES=false;show.SHOW_DOMAIN_ARCHITECTURES=false;show.SHOW_SEQ_NAMES=false;show.SHOW_SEQUENCE_ACC=false;show.DISPLAY_INTERNAL_DATA=true;show.DYNAMICALLY_HIDE_DATA=true;show.SHOW_TAXONOMY_SCIENTIFIC_NAMES=true;show.SHOW_TAXONOMY_COMMON_NAMES=false;show.SHOW_SEQ_SYMBOLS=false;show.NODE_DATA_POPUP=true;show.SHOW_PROPERTIES=false;show.SHOW_GENE_NAMES=false;show.WRITE_BRANCH_LENGTH_VALUES=false;show.SHOW_TAX_RANK=false;show.DISPLAY_EXTERNAL_DATA=true;show.SHORTEN_LABELS=true;colorby=;sizeby=;pietrait=;clademode=BOXES;cladeskip=true;cladelevels=;labelprops=;columns=meta:dnaK\sMATRIX\sCIRCLE\sfalse\pmeta:gyrA\sMATRIX\sCIRCLE\sfalse\pmeta:rpoB\sMATRIX\sCIRCLE\sfalse\pmeta:recA\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K2\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K64\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K1\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K5\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K20\sMATRIX\sCIRCLE\sfalse\pmeta:cps_K54\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_Sf6\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_P2\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_T1\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_Mu\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_HK97\sMATRIX\sCIRCLE\sfalse\pmeta:orf_hypo_2\sMATRIX\sCIRCLE\sfalse\pmeta:prophage_lambda\sMATRIX\sCIRCLE\sfalse\pmeta:orf_hypo_1\sMATRIX\sCIRCLE\sfalse</property>
+    <clade>
+      <branch_length>0.115518</branch_length>
+      <clade>
+        <branch_length>0.017704</branch_length>
+        <clade>
+          <branch_length>0.005567</branch_length>
+          <clade>
+            <branch_length>0.015846</branch_length>
+            <clade>
+              <name>Kpn_L1_08</name>
+              <branch_length>0.025307</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <name>Kpn_L1_09</name>
+              <branch_length>0.022349</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+          <clade>
+            <branch_length>0.011297</branch_length>
+            <clade>
+              <name>Kpn_L1_04</name>
+              <branch_length>0.004204</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <name>Kpn_L1_05</name>
+              <branch_length>0.0156</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.019289</branch_length>
+          <clade>
+            <name>Kpn_L1_01</name>
+            <branch_length>0.023539</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <branch_length>0.016975</branch_length>
+            <clade>
+              <name>Kpn_L1_06</name>
+              <branch_length>0.024586</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <branch_length>0.011766</branch_length>
+              <clade>
+                <name>Kpn_L1_10</name>
+                <branch_length>0.00958</branch_length>
+                <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">2</property>
+                <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">1</property>
+              </clade>
+              <clade>
+                <name>Kpn_L1_03</name>
+                <branch_length>0.00473</branch_length>
+                <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">2</property>
+                <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">1</property>
+                <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">2</property>
+                <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.004372</branch_length>
+        <clade>
+          <name>Kpn_L1_07</name>
+          <branch_length>0.020255</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">1</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+        <clade>
+          <name>Kpn_L1_02</name>
+          <branch_length>0.018331</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.145857</branch_length>
+      <clade>
+        <branch_length>0.003523</branch_length>
+        <clade>
+          <name>Eco_L2_06</name>
+          <branch_length>0.008229</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+        <clade>
+          <branch_length>0.019121</branch_length>
+          <clade>
+            <name>Eco_L2_09</name>
+            <branch_length>0.02373</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <branch_length>0.009968</branch_length>
+            <clade>
+              <branch_length>0.00622</branch_length>
+              <clade>
+                <name>Eco_L2_02</name>
+                <branch_length>0.016529</branch_length>
+                <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+              </clade>
+              <clade>
+                <branch_length>0.009727</branch_length>
+                <clade>
+                  <name>Eco_L2_04</name>
+                  <branch_length>0.009479</branch_length>
+                  <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+                  <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                  <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+                  <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+                  <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+                  <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                  <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+                </clade>
+                <clade>
+                  <branch_length>0.008982</branch_length>
+                  <clade>
+                    <name>Eco_L2_07</name>
+                    <branch_length>0.011499</branch_length>
+                    <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+                    <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">1</property>
+                    <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+                  </clade>
+                  <clade>
+                    <name>Eco_L2_01</name>
+                    <branch_length>0.006608</branch_length>
+                    <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+                    <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">4</property>
+                    <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                    <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+                  </clade>
+                </clade>
+              </clade>
+            </clade>
+            <clade>
+              <branch_length>0.010197</branch_length>
+              <clade>
+                <name>Eco_L2_08</name>
+                <branch_length>0.005383</branch_length>
+                <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+              </clade>
+              <clade>
+                <name>Eco_L2_03</name>
+                <branch_length>0.028917</branch_length>
+                <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+                <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+                <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">2</property>
+                <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">2</property>
+                <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">1</property>
+                <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">1</property>
+                <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+                <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <name>Eco_L2_05</name>
+        <branch_length>0.019791</branch_length>
+        <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">2</property>
+        <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+        <property ref="meta:recA" datatype="xsd:integer" applies_to="node">2</property>
+        <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+        <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">4</property>
+        <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+        <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">1</property>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.136787</branch_length>
+      <clade>
+        <branch_length>0.003894</branch_length>
+        <clade>
+          <branch_length>0.004171</branch_length>
+          <clade>
+            <branch_length>0.008065</branch_length>
+            <clade>
+              <name>Ecl_L3_07</name>
+              <branch_length>0.017011</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <name>Ecl_L3_04</name>
+              <branch_length>0.019459</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+          <clade>
+            <name>Ecl_L3_02</name>
+            <branch_length>0.018309</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.004441</branch_length>
+          <clade>
+            <branch_length>0.00729</branch_length>
+            <clade>
+              <name>Ecl_L3_03</name>
+              <branch_length>0.020183</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <name>Ecl_L3_06</name>
+              <branch_length>0.012734</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+          <clade>
+            <name>Ecl_L3_01</name>
+            <branch_length>0.006258</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.014858</branch_length>
+        <clade>
+          <name>Ecl_L3_09</name>
+          <branch_length>0.0177</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+        <clade>
+          <branch_length>0.01212</branch_length>
+          <clade>
+            <name>Ecl_L3_05</name>
+            <branch_length>0.006219</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Ecl_L3_08</name>
+            <branch_length>0.004097</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.124842</branch_length>
+      <clade>
+        <branch_length>0.003265</branch_length>
+        <clade>
+          <branch_length>0.018639</branch_length>
+          <clade>
+            <name>Cfr_L4_01</name>
+            <branch_length>0.013822</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Cfr_L4_06</name>
+            <branch_length>0.027826</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">1</property>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.010073</branch_length>
+          <clade>
+            <name>Cfr_L4_07</name>
+            <branch_length>0.029295</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <branch_length>0.015469</branch_length>
+            <clade>
+              <name>Cfr_L4_03</name>
+              <branch_length>0.014074</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+            <clade>
+              <name>Cfr_L4_02</name>
+              <branch_length>0.022122</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.003296</branch_length>
+        <clade>
+          <name>Cfr_L4_05</name>
+          <branch_length>0.015789</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+        <clade>
+          <branch_length>0.011921</branch_length>
+          <clade>
+            <name>Cfr_L4_04</name>
+            <branch_length>0.01753</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Cfr_L4_08</name>
+            <branch_length>0.017101</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.139695</branch_length>
+      <clade>
+        <branch_length>0.012626</branch_length>
+        <clade>
+          <branch_length>0.017523</branch_length>
+          <clade>
+            <name>Sen_L5_03</name>
+            <branch_length>0.004878</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Sen_L5_07</name>
+            <branch_length>0.014571</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.004401</branch_length>
+          <clade>
+            <name>Sen_L5_06</name>
+            <branch_length>0.029662</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Sen_L5_04</name>
+            <branch_length>0.00531</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.010617</branch_length>
+        <clade>
+          <branch_length>0.01405</branch_length>
+          <clade>
+            <name>Sen_L5_05</name>
+            <branch_length>0.009018</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Sen_L5_01</name>
+            <branch_length>0.015657</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+        <clade>
+          <name>Sen_L5_02</name>
+          <branch_length>0.006329</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">3</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">1</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.099254</branch_length>
+      <clade>
+        <branch_length>0.003283</branch_length>
+        <clade>
+          <branch_length>0.008648</branch_length>
+          <clade>
+            <branch_length>0.012581</branch_length>
+            <clade>
+              <name>Sma_L6_07</name>
+              <branch_length>0.010949</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">3</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">4</property>
+            </clade>
+            <clade>
+              <name>Sma_L6_02</name>
+              <branch_length>0.023339</branch_length>
+              <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:recA" datatype="xsd:integer" applies_to="node">2</property>
+              <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">1</property>
+              <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">4</property>
+              <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+              <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+            </clade>
+          </clade>
+          <clade>
+            <name>Sma_L6_04</name>
+            <branch_length>0.029683</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">1</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.01335</branch_length>
+          <clade>
+            <name>Sma_L6_03</name>
+            <branch_length>0.014957</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+          <clade>
+            <name>Sma_L6_06</name>
+            <branch_length>0.00913</branch_length>
+            <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+            <property ref="meta:recA" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">3</property>
+            <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+            <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+            <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.003053</branch_length>
+        <clade>
+          <name>Sma_L6_01</name>
+          <branch_length>0.012977</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">2</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+        <clade>
+          <name>Sma_L6_05</name>
+          <branch_length>0.014015</branch_length>
+          <property ref="meta:rpoB" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:gyrA" datatype="xsd:integer" applies_to="node">2</property>
+          <property ref="meta:recA" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:dnaK" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:cps_K1" datatype="xsd:integer" applies_to="node">1</property>
+          <property ref="meta:cps_K2" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K5" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K20" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K54" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:cps_K64" datatype="xsd:integer" applies_to="node">4</property>
+          <property ref="meta:prophage_Mu" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_P2" datatype="xsd:integer" applies_to="node">1</property>
+          <property ref="meta:prophage_lambda" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_HK97" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_Sf6" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:prophage_T1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_1" datatype="xsd:integer" applies_to="node">0</property>
+          <property ref="meta:orf_hypo_2" datatype="xsd:integer" applies_to="node">0</property>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>
