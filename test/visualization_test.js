@@ -1558,6 +1558,93 @@ function testMsaConservationInformation() {
     return Math.abs(r.scores[0] - 1) < eps && Math.abs(r.scores[1] - 0) < eps;
 }
 
+function testMsaLogoStackHeights() {
+    // The two anchors of the measure, on nucleotides where log2(4) = 2 bits:
+    // a fully conserved column carries the maximum, an even split over all
+    // four bases carries none. The letters of a flat column still come back --
+    // at zero height each -- so a caller can say "four bases, equally" rather
+    // than "nothing here".
+    var r = forester.msaLogo(['AAAA', 'ACAA', 'AGAA', 'ATAA'], 4, true);
+    var eps = 1e-9;
+    var flat = r.columns[1];
+    return Math.abs(r.maxBits - 2) < eps
+        && Math.abs(r.columns[0].bits - 2) < eps
+        && r.columns[0].letters.length === 1 && r.columns[0].letters[0].ch === 'A'
+        && Math.abs(r.columns[0].letters[0].h - 2) < eps
+        && Math.abs(flat.bits - 0) < eps
+        && flat.letters.length === 4
+        && flat.letters.every(function (l) { return Math.abs(l.h) < eps; });
+}
+
+function testMsaLogoHalfAndHalf() {
+    // Two bases at 50/50 out of four possible: H = 1 bit, so the stack is
+    // 2 - 1 = 1 bit, split equally between them. Checked by hand rather than
+    // against our own formula, because a stack height that is merely
+    // self-consistent is what a wrong constant looks like.
+    var r = forester.msaLogo(['A', 'A', 'C', 'C'], 1, true);
+    var eps = 1e-9;
+    var col = r.columns[0];
+    return Math.abs(col.bits - 1) < eps
+        && col.letters.length === 2
+        && Math.abs(col.letters[0].h - 0.5) < eps
+        && Math.abs(col.letters[1].h - 0.5) < eps
+        && Math.abs(col.letters[0].p - 0.5) < eps;
+}
+
+function testMsaLogoGapsAreNotALetter() {
+    // A column two thirds gap, its residues unanimous: the frequencies are
+    // taken over the residues (so it is "conserved"), and the stack is then
+    // scaled by occupancy, so it draws a third as tall. Reading the gap as a
+    // letter instead would make the column look VARIABLE, which is the
+    // opposite of what the data says.
+    var r = forester.msaLogo(['A', '-', '-'], 1, true);
+    var eps = 1e-9;
+    var col = r.columns[0];
+    // a row that simply ends counts as a gap too, the same way it does
+    // everywhere else in the track
+    var short = forester.msaLogo(['AA', 'A', 'A'], 2, true).columns[1];
+    return Math.abs(col.bits - 2) < eps
+        && Math.abs(col.occupancy - (1 / 3)) < eps
+        && Math.abs(col.height - (2 / 3)) < eps
+        && col.letters.length === 1 && Math.abs(col.letters[0].h - (2 / 3)) < eps
+        && Math.abs(short.occupancy - (1 / 3)) < eps
+        && Math.abs(forester.msaLogo(['-', '-'], 1, true).columns[0].height) < eps;
+}
+
+function testMsaLogoOrderIsReproducible() {
+    // Most frequent first, and a tie broken alphabetically rather than by
+    // whatever order the counts happened to be keyed in -- a logo whose
+    // letters swap places between two runs of the same data is not a figure.
+    var r = forester.msaLogo(['TTGCA', 'TTGCA', 'TAGCA', 'TACCA'], 5, true);
+    var col1 = r.columns[1].letters.map(function (l) { return l.ch; }).join('');
+    // four bases once each: nothing to choose between them but the alphabet
+    var tie = forester.msaLogo(['T', 'G', 'C', 'A'], 1, true).columns[0].letters
+        .map(function (l) { return l.ch; }).join('');
+    // and the stack is ordered by height, tallest first, in every column
+    var ordered = r.columns.every(function (c) {
+        for (var i = 1; i < c.letters.length; ++i) {
+            if (c.letters[i].h > c.letters[i - 1].h + 1e-12) {
+                return false;
+            }
+        }
+        return true;
+    });
+    return col1 === 'AT' && tie === 'ACGT' && ordered;
+}
+
+function testMsaLogoSmallSampleIsNotCorrected() {
+    // The decision this display rests on: three tips that agree draw a
+    // full-height letter. Schneider's small-sample correction would subtract
+    // (K-1)/(2 ln2 n) = 4.57 bits from a protein maximum of 4.32 and leave
+    // nothing on screen for a three-tip clade, which is exactly the view a
+    // reader entered a clade to get.
+    var prot = forester.msaLogo(['W', 'W', 'W'], 1, false);
+    var eps = 1e-9;
+    return Math.abs(prot.maxBits - (Math.log(20) / Math.LN2)) < eps
+        && Math.abs(prot.columns[0].bits - prot.maxBits) < eps
+        && Math.abs(prot.columns[0].letters[0].h - prot.maxBits) < eps;
+}
+
 function testMsaUngappedPosition() {
     return forester.msaUngappedPosition('MK-TA', 0) === 1
         && forester.msaUngappedPosition('MK-TA', 2) === null   // the gap itself
@@ -1578,6 +1665,11 @@ runTest("msa: colors and gaps       : ", testMsaColorsAndGaps);
 runTest("msa: nucleotide guess      : ", testMsaNucleotideGuess);
 runTest("msa: identity conservation : ", testMsaConservationIdentity);
 runTest("msa: information content   : ", testMsaConservationInformation);
+runTest("msa: logo stack heights    : ", testMsaLogoStackHeights);
+runTest("msa: logo half and half    : ", testMsaLogoHalfAndHalf);
+runTest("msa: logo gaps not a letter: ", testMsaLogoGapsAreNotALetter);
+runTest("msa: logo order reproduces : ", testMsaLogoOrderIsReproducible);
+runTest("msa: logo, small n uncorrec: ", testMsaLogoSmallSampleIsNotCorrected);
 runTest("msa: ungapped position     : ", testMsaUngappedPosition);
 runTest("msa: residue info          : ", testMsaResidueInfo);
 

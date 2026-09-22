@@ -8440,6 +8440,70 @@
         return {scores: scores, consensus: consensus};
     };
 
+    // Per-column sequence logo over the given rows -- the stack of letters
+    // whose total height is the column's information content in BITS and whose
+    // shares are the residue frequencies (Schneider & Stephens 1990), which is
+    // the display the MEME Suite and WebLogo draw.
+    //
+    // No small-sample correction. Schneider's e_n = (K-1)/(2 ln2 n) is meant
+    // for a motif sampled from many sequences; here the rows are the tips
+    // currently on screen, so n is routinely 3 or 4 -- and for protein at n=3
+    // the correction (4.57 bits) EXCEEDS the maximum (4.32), so a perfectly
+    // conserved column of a small clade would draw nothing at all, exactly
+    // when the reader has asked about that clade. The caller names n instead.
+    //
+    // Gaps are not a letter: frequencies are taken over the non-gap residues,
+    // and the stack is then scaled by the column's occupancy, so a column held
+    // up by two residues out of fifty is short rather than perfectly conserved.
+    // `bits` and `occupancy` are returned separately so a caller can say which
+    // of the two made a column short.
+    //
+    // Letters come back most frequent FIRST, ties broken alphabetically, so a
+    // figure is reproducible rather than at the mercy of key order.
+    forester.msaLogo = function (rows, length, nucleotide) {
+        let maxBits = Math.log(nucleotide ? 4 : 20) / Math.LN2;
+        if (!(length >= 0) || !isFinite(length)) {
+            return {columns: [], maxBits: maxBits};
+        }
+        length = Math.floor(length);
+        let n = rows.length;
+        let columns = new Array(length);
+        for (let c = 0; c < length; ++c) {
+            let counts = {};
+            let nonGap = 0;
+            for (let r = 0; r < n; ++r) {
+                let row = rows[r];
+                let ch = (row && c < row.length) ? row.charAt(c) : '-';
+                if (forester.isMsaGap(ch)) {
+                    continue;
+                }
+                ch = ch.toUpperCase();
+                ++nonGap;
+                counts[ch] = (counts[ch] || 0) + 1;
+            }
+            if (n < 1 || nonGap < 1) {
+                columns[c] = {bits: 0, occupancy: 0, height: 0, letters: []};
+                continue;
+            }
+            let H = 0;
+            Object.keys(counts).forEach(function (ch) {
+                let p = counts[ch] / nonGap;
+                H -= p * (Math.log(p) / Math.LN2);
+            });
+            let bits = Math.max(0, maxBits - H);
+            let occupancy = nonGap / n;
+            let height = bits * occupancy;
+            let letters = Object.keys(counts).sort().sort(function (a, b) {
+                return counts[b] - counts[a];   // count first, alphabetical within a tie
+            }).map(function (ch) {
+                let p = counts[ch] / nonGap;
+                return {ch: ch, p: p, h: p * height};
+            });
+            columns[c] = {bits: bits, occupancy: occupancy, height: height, letters: letters};
+        }
+        return {columns: columns, maxBits: maxBits};
+    };
+
     // The hover readout's description of one residue: full name, class (amino
     // acids), Kyte-Doolittle hydropathy. Returns null for a gap.
     forester.msaResidueInfo = function (ch, nucleotide) {

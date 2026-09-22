@@ -98,6 +98,10 @@ export interface ArchaeopteryxConfig {
     heatmapManualOrder?: string[] | null;
     showHeatmap?: boolean;
     showMsa?: boolean;
+    /** Summarize the alignment as a sequence logo instead of a conservation
+     * bar: each column a stack of letters as tall as its information content,
+     * over the tips currently on screen. Only drawn with the track shown. */
+    showMsaLogo?: boolean;
     showSupportDots?: boolean;
     showTimeAxis?: boolean;
     supportDotMinimum?: number;
@@ -150,6 +154,8 @@ export interface ViewState {
     rotation?: number;
     horizontalLabels?: boolean;
     msa?: boolean;
+    /** The alignment summarized as a sequence logo. */
+    msaLogo?: boolean;
     heatmap?: boolean;
     heatmapOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency' | 'manual';
     heatmapManual?: string[];

@@ -530,6 +530,23 @@ checkbox under Display Data toggles the whole track.
 To find a motif, pick **Molecular Sequence** in a search box: it matches the
 residues as written, gap characters included, as the desktop does.
 
+**Sequence Logo** (the checkbox under **Alignment**) replaces the conservation
+bar with a **logo**: every column a stack of letters, as tall as that column's
+information content in bits and shared out by residue frequency, most frequent
+on top — the display the MEME Suite and WebLogo draw. A conserved column is one
+tall letter, a variable one a short pile, and the caption gives the scale
+(0 to 2 bits for nucleotides, 0 to 4.3 for amino acids).
+
+It summarises **the tips currently on screen**, so entering a clade gives that
+clade's motif rather than the file's, and the caption names how many tips that
+is (`n = 12`). Two consequences worth knowing: gaps are not a letter —
+frequencies are taken over the residues present, and the stack is then scaled
+by the column's occupancy, so a column held up by two sequences out of fifty
+draws short rather than perfectly conserved; and there is **no small-sample
+correction**, because entering a three-tip clade is a normal thing to do and
+Schneider's correction would subtract more than the maximum and leave the
+column blank. Read `n` and judge.
+
 Alignments arrive with the tree: as phyloXML `<mol_seq is_aligned="true">`
 elements, or in a **Nexus** file whose characters matrix accompanies its tree.
 The **Nexus** entry in the Download menu writes the current tree *and* its
@@ -1041,6 +1058,7 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: each column a stack of letters as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
 | `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
 | `heatmapManualOrder` | `null` | The heat map's columns in your own order, as an array of property refs (`['meta:recA', 'meta:gyrA', …]`). Only read while `heatmapColumnOrder` is `'manual'`. A ref the tree has not got is ignored, and a column the list does not name follows the ones it does. |
@@ -1716,8 +1734,32 @@ which clamps and redraws; the tree never moves. A faint dashed guide runs
 from each tip's label (or its node, when labels are hidden) across to that
 tip's row, so a row reads back to its sequence without counting.
 
-The conservation bar, consensus row and column ruler are a **floating strip**
-(see the time axes below); the residue rows stay with their tips.
+**The sequence logo** (`showMsaLogo`, `forester.msaLogo`) replaces the
+conservation bar and the consensus row rather than joining them: a stack's
+height *is* the column's conservation and its top letter *is* the consensus,
+so all three would say one thing three times. Per column the model returns
+`bits` = `log₂K − H` over the non-gap residues, `occupancy` = non-gap / rows,
+`height` = `bits × occupancy`, and the letters most frequent first (ties
+alphabetical, so a figure reproduces). Rows are the **displayed** tips over
+the visible window, which is what makes entering a clade re-read the summary.
+**No small-sample correction**: Schneider's `e_n = (K−1)/(2 ln2 · n)` is for a
+motif sampled from many sequences, and at n = 3 for protein it exceeds the
+4.32-bit maximum, so a perfectly conserved column of a small clade would draw
+nothing — the caption names `n` instead.
+
+Each letter is scaled to fill its slice: `sy = hpx / (ascent + descent)` of
+**that glyph's** ink box, measured once per character off a canvas, with the
+baseline placed at `y − descent × sy` so the ink lands inside the slice.
+Measured off one glyph instead, Q and G hung their descenders through the
+ruler. Note that an SVG `<text>`'s `getBoundingClientRect` is the *font's*
+layout box, not the ink, so it cannot check this — `test_trees/msa_logo.html`
+compares letters and order through the DOM and the ink itself is measured from
+rendered pixels.
+
+The conservation bar or logo, the consensus row and the column ruler are a
+**floating strip** (see the time axes below); the residue rows stay with their
+tips. The strip's height follows what it holds (`msaBottomReserve()`), and the
+bottom reserve the fit allows for follows that.
 
 ### The heat map
 

@@ -363,6 +363,7 @@ function (root, d3, forester, phyloXml) {
     const DOWNLOAD_BUTTON = 'dl_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
+    const MSA_LOGO_CB = 'msa_logo_cb';
     const HEATMAP_CB = 'heatmap_cb';
     const HEATMAP_CONTROLS = 'heatmap_controls';
     const HEATMAP_ORDER_SELECT = 'heatmap_order';
@@ -547,7 +548,11 @@ function (root, d3, forester, phyloXml) {
     const MSA_MAX_VIEWPORT_FRACTION = 0.6;// nor grows past this share of the display
     const MSA_CONS_BAR_H = 22;            // conservation bar band height
     const MSA_CONS_TOP_GAP = 4;
-    const MSA_BOTTOM_RESERVE = 56;        // vertical room under the rows (conservation + ruler)
+    const MSA_CONS_ROW_H = 13;            // the consensus letter row
+    const MSA_RULER_H = 17;               // the column ruler under it
+    const MSA_LOGO_H = 46;                // the sequence logo's stack, full height
+    const MSA_LOGO_CAP_H = 11;            // ... and the caption line above it
+    const MSA_LOGO_FONT_PX = 24;          // the size logo glyphs are measured at, then scaled
     const MSA_NAV_RESERVE = 46;           // ... plus the navigation bar floating at the viewport bottom
     const MSA_MIN_TREE_PX = 220;          // the tree itself never shrinks below this
     let _msaColOffset = 0;                // first shown alignment column (0-based)
@@ -4927,6 +4932,7 @@ function (root, d3, forester, phyloXml) {
     const STATE_KEYS = [
         'layout',
         'showMsa',
+        'showMsaLogo',
         'showHeatmap',
         'heatmapColumnOrder',
         'heatmapManualOrder',
@@ -5168,6 +5174,12 @@ function (root, d3, forester, phyloXml) {
         // -- the alignment track, by contrast, is on when there IS one.
         if (_state.showHeatmap === undefined) {
             _state.showHeatmap = false;
+        }
+        // The logo is a summary of the alignment, not a second view of the
+        // tree, so it waits to be asked for: an alignment opens showing its
+        // residues, which is what a reader came for.
+        if (_state.showMsaLogo === undefined) {
+            _state.showMsaLogo = false;
         }
         // The columns' order. Left unset it is resolved from the data on first
         // use (heatmapMode / forester.heatmapDefaultOrder): a clustered order,
@@ -6824,6 +6836,64 @@ function (root, d3, forester, phyloXml) {
             && _basicTreeProperties.maxMolSeqLength > 0;
     }
 
+    // The logo replaces the conservation bar and the consensus row rather
+    // than joining them: a stack's height IS the column's conservation and its
+    // top letter IS the consensus, so drawing all three would say the same
+    // thing three times and take three times the room.
+    function msaLogoShown() {
+        return _state.showMsaLogo === true && msaShown();
+    }
+
+    // What the strip under the alignment needs. The conservation form is the
+    // 56 px this was a constant for; the logo form is taller and drops the
+    // consensus row it subsumes.
+    function msaBottomReserve() {
+        return MSA_CONS_TOP_GAP
+            + (msaLogoShown() ? MSA_LOGO_CAP_H + MSA_LOGO_H : MSA_CONS_BAR_H + MSA_CONS_ROW_H)
+            + MSA_RULER_H;
+    }
+
+    // Logo letters are drawn at a fixed size and then scaled to their cell and
+    // to their share of the stack, so what is needed is how much ink this face
+    // actually puts on the page for THIS letter -- measured, not assumed: a
+    // 0.6 advance and a 0.72 cap height are true of some monospace faces and
+    // not others, and a letter scaled by the wrong constant overflows its
+    // column.
+    //
+    // Per letter, because a logo's letters must each fill their slice exactly:
+    // measured off one glyph, Q and G hung their descenders through the
+    // baseline and across the ruler, and every letter without a descender sat
+    // a little short. What is scaled to the slice is the glyph's INK BOX
+    // (ascent + descent), and the baseline is then placed so that box lands
+    // inside the slice.
+    let _logoGlyphs = {};
+
+    function logoGlyphMetrics(ch) {
+        if (_logoGlyphs[ch]) {
+            return _logoGlyphs[ch];
+        }
+        if (!_legendMeasureCtx) {
+            _legendMeasureCtx = document.createElement('canvas').getContext('2d');
+        }
+        _legendMeasureCtx.font = MSA_LOGO_FONT_PX + 'px monospace';
+        let m = _legendMeasureCtx.measureText(ch);
+        let ascent = m.actualBoundingBoxAscent;
+        let descent = m.actualBoundingBoxDescent;
+        if (!(ascent > 0)) {
+            ascent = MSA_LOGO_FONT_PX * 0.72;   // a face that will not say
+            descent = 0;
+        }
+        if (!(descent > 0)) {
+            descent = 0;                        // no descender, or none reported
+        }
+        _logoGlyphs[ch] = {
+            width: m.width || (MSA_LOGO_FONT_PX * 0.6),
+            ascent: ascent,
+            descent: descent
+        };
+        return _logoGlyphs[ch];
+    }
+
     function msaRowSeq(d) {
         if (d.sequences && d.sequences.length > 0) {
             let s = d.sequences[0];
@@ -7014,12 +7084,15 @@ function (root, d3, forester, phyloXml) {
                 .attr('stroke', ink).attr('stroke-opacity', 0.7).attr('stroke-width', 1);
         }
 
-        // conservation band (consensus identity) + consensus letters
-        // scored over the visible WINDOW only -- the whole alignment would
-        // cost rows x total per redraw; indices below are window-relative
-        let cons = forester.msaConservation(tips.map(function (t) {
+        // Scored over the visible WINDOW only -- the whole alignment would
+        // cost rows x total per redraw; indices below are window-relative.
+        // The rows are the tips ON SCREEN: enter a clade and the summary is
+        // that clade's, which is the whole point of putting it next to a tree.
+        let windowRows = tips.map(function (t) {
             return msaRowSeq(t).slice(offset, offset + visible);
-        }), visible, 'identity', isNuc);
+        });
+        let logo = msaLogoShown() ? forester.msaLogo(windowRows, visible, isNuc) : null;
+        let cons = logo ? null : forester.msaConservation(windowRows, visible, 'identity', isNuc);
         // A faint dashed guide from each tip -- from the end of its label, or
         // from the node itself when the label is hidden -- across to its row
         // in the track, so a row can be read back to its sequence without
@@ -7055,34 +7128,91 @@ function (root, d3, forester, phyloXml) {
         }
 
         // ---- conservation, consensus, ruler: a FLOATING strip ----
-        let strip = floatStripGroup('aptx-msa-strip', _clusterH, MSA_BOTTOM_RESERVE);
+        let stripH = msaBottomReserve();
+        let strip = floatStripGroup('aptx-msa-strip', _clusterH, stripH);
         strip.append('rect').attr('x', Math.round(originX) - 2).attr('y', _clusterH)
-            .attr('width', trackW + 4).attr('height', MSA_BOTTOM_RESERVE)
+            .attr('width', trackW + 4).attr('height', stripH)
             .attr('fill', _state.backgroundColorDefault);
         let consTop = _clusterH + MSA_CONS_TOP_GAP;
-        strip.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
-            .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
-            .attr('fill', ink).attr('fill-opacity', 0.08);
-        for (let i = 0; i < visible; ++i) {
-            let score = cons.scores[i] || 0;
-            if (score <= 0) {
-                continue;
+        // A caption on the panel's own background, so it stays readable over
+        // whatever the band happens to draw underneath it.
+        let caption = function (txt, y) {
+            if (trackW <= 170) {
+                return;
             }
-            let bh = Math.max(1, Math.round(score * MSA_CONS_BAR_H));
-            let x0 = Math.round(originX + (i * cw));
-            let x1 = Math.round(originX + ((i + 1) * cw));
-            strip.append('rect').attr('x', x0).attr('y', (consTop + MSA_CONS_BAR_H) - bh)
-                .attr('width', Math.max(1, x1 - x0)).attr('height', bh)
-                .attr('fill', ink).attr('fill-opacity', 0.7);
-        }
-        if (trackW > 170) {
-            strip.append('text').attr('x', Math.round(originX) + trackW - 3).attr('y', consTop + 9)
+            let font = '8px ' + FONT_DEFAULTS;
+            let w = legendTextWidth(txt, font) + 6;
+            let xe = Math.round(originX) + trackW - 3;
+            strip.append('rect').attr('x', xe - w).attr('y', y - 8)
+                .attr('width', w).attr('height', 11)
+                .attr('fill', _state.backgroundColorDefault).attr('fill-opacity', 0.85);
+            strip.append('text').attr('x', xe - 3).attr('y', y)
                 .attr('text-anchor', 'end')
                 .style('font-size', '8px').style('fill', ink).style('fill-opacity', 0.9)
-                .text('Consensus identity (n = ' + n + ')');
-        }
-        let consensusRow = cw >= 7;
-        if (consensusRow) {
+                .text(txt);
+        };
+        if (logo) {
+            // Each column a stack of letters: total height the column's
+            // information content in bits, each letter's share its frequency.
+            // Least frequent at the BOTTOM, so the eye reads the consensus
+            // off the top of the stack.
+            //
+            // The caption gets a line of its own above the stacks (hence the
+            // CAP_H here). Laid over them it washed out the very letters it
+            // was labelling, which is a poor trade for eleven pixels.
+            let floor = consTop + MSA_LOGO_CAP_H + MSA_LOGO_H;
+            strip.append('line')
+                .attr('x1', Math.round(originX)).attr('x2', Math.round(originX) + trackW)
+                .attr('y1', floor).attr('y2', floor)
+                .attr('stroke', ink).attr('stroke-opacity', 0.5).attr('stroke-width', 1);
+            for (let i = 0; i < visible; ++i) {
+                let col = logo.columns[i];
+                if (!col || !(col.height > 0)) {
+                    continue;
+                }
+                let x0 = Math.round(originX + (i * cw));
+                let x1 = Math.round(originX + ((i + 1) * cw));
+                let y = floor;
+                for (let k = col.letters.length - 1; k >= 0; --k) {
+                    let letter = col.letters[k];
+                    let hpx = (letter.h / logo.maxBits) * MSA_LOGO_H;
+                    if (hpx < 0.5) {
+                        continue;   // under half a pixel of ink: nothing to draw
+                    }
+                    let glyph = logoGlyphMetrics(letter.ch);
+                    let sy = hpx / (glyph.ascent + glyph.descent);
+                    let rgb = forester.msaResidueRgb(letter.ch, isNuc);
+                    strip.append('text')
+                        .attr('transform', 'translate(' + (x0 + ((x1 - x0) / 2)) + ','
+                            + (y - (glyph.descent * sy)) + ')'
+                            + ' scale(' + (Math.max(1, x1 - x0) / glyph.width) + ',' + sy + ')')
+                        .attr('text-anchor', 'middle')
+                        .style('font-family', 'monospace')
+                        .style('font-size', MSA_LOGO_FONT_PX + 'px')
+                        .style('fill', rgb === null ? ink : 'rgb(' + rgb.join(',') + ')')
+                        .text(letter.ch);
+                    y -= hpx;
+                }
+            }
+            caption('Sequence logo \u2014 0 to ' + logo.maxBits.toFixed(1)
+                + ' bits (n = ' + n + ')', consTop + 8);
+        } else {
+            strip.append('rect').attr('x', Math.round(originX)).attr('y', consTop)
+                .attr('width', trackW).attr('height', MSA_CONS_BAR_H)
+                .attr('fill', ink).attr('fill-opacity', 0.08);
+            for (let i = 0; i < visible; ++i) {
+                let score = cons.scores[i] || 0;
+                if (score <= 0) {
+                    continue;
+                }
+                let bh = Math.max(1, Math.round(score * MSA_CONS_BAR_H));
+                let x0 = Math.round(originX + (i * cw));
+                let x1 = Math.round(originX + ((i + 1) * cw));
+                strip.append('rect').attr('x', x0).attr('y', (consTop + MSA_CONS_BAR_H) - bh)
+                    .attr('width', Math.max(1, x1 - x0)).attr('height', bh)
+                    .attr('fill', ink).attr('fill-opacity', 0.7);
+            }
+            caption('Consensus identity (n = ' + n + ')', consTop + 9);
             for (let i = 0; i < visible; ++i) {
                 let cc = cons.consensus[i];
                 if (!cc) {
@@ -7099,7 +7229,7 @@ function (root, d3, forester, phyloXml) {
 
         // the 1-based column ruler: absolute column numbers at nice steps,
         // and always the first and last column when their edge is in view
-        let rulerY = consTop + MSA_CONS_BAR_H + (consensusRow ? 13 : 3);
+        let rulerY = consTop + (logo ? MSA_LOGO_CAP_H + MSA_LOGO_H : MSA_CONS_BAR_H + MSA_CONS_ROW_H);
         strip.append('line').attr('x1', Math.round(originX)).attr('x2', Math.round(originX) + trackW)
             .attr('y1', rulerY).attr('y2', rulerY)
             .attr('stroke', ink).attr('stroke-opacity', 0.8).attr('stroke-width', 1);
@@ -7354,6 +7484,11 @@ function (root, d3, forester, phyloXml) {
 
     function msaCbClicked() {
         _state.showMsa = getCheckboxValue(MSA_CB);
+        scheduleUpdate(null, 0);
+    }
+
+    function msaLogoCbClicked() {
+        _state.showMsaLogo = getCheckboxValue(MSA_LOGO_CB);
         scheduleUpdate(null, 0);
     }
 
@@ -8930,6 +9065,9 @@ function (root, d3, forester, phyloXml) {
         }
         if (_basicTreeProperties.alignedMolSeqs === true && _basicTreeProperties.maxMolSeqLength > 0) {
             s.msa = _state.showMsa === true;
+            if (_state.showMsaLogo === true) {
+                s.msaLogo = true;
+            }
         }
         if (heatmapAvailable()) {
             s.heatmap = _state.showHeatmap === true;
@@ -9058,6 +9196,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.msa === 'boolean') {
             _state.showMsa = s.msa;
         }
+        if (typeof s.msaLogo === 'boolean') {
+            _state.showMsaLogo = s.msaLogo;
+        }
         if (typeof s.heatmap === 'boolean') {
             _state.showHeatmap = s.heatmap;
         }
@@ -9168,6 +9309,7 @@ function (root, d3, forester, phyloXml) {
             }
         });
         setCheckboxValue(MSA_CB, _state.showMsa === true);
+        setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap === true);
         syncHeatmapControls();
         setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis === true);
@@ -10324,7 +10466,7 @@ function (root, d3, forester, phyloXml) {
         // own bottom rows (conservation, consensus, ruler) must end above it
         // or the bar covers them -- the old bare slider did exactly that.
         // The scale bar sits in the same band, under the tree's last row.
-        return Math.max(msaShown() ? MSA_BOTTOM_RESERVE + MSA_NAV_RESERVE : 0, timeAxisBottomReserve(),
+        return Math.max(msaShown() ? msaBottomReserve() + MSA_NAV_RESERVE : 0, timeAxisBottomReserve(),
             heatmapBottomReserve(),
             scaleBarShown() && !radialDisplay() ? SCALE_BAR_RESERVE : 0);
     }
@@ -11792,6 +11934,11 @@ function (root, d3, forester, phyloXml) {
         let msaCb = byId(MSA_CB);
         if (msaCb) {
             msaCb.disabled = radialDisplay();
+        }
+        let msaLogoCb = byId(MSA_LOGO_CB);
+        if (msaLogoCb) {
+            // nothing to summarize while the alignment itself is not drawn
+            msaLogoCb.disabled = radialDisplay() || _state.showMsa !== true;
         }
         let heatCb = byId(HEATMAP_CB);
         if (heatCb) {
@@ -14093,6 +14240,7 @@ function (root, d3, forester, phyloXml) {
 
         on(DYNAHIDE_CB, 'click', dynaHideCbClicked);
         on(MSA_CB, 'click', msaCbClicked);
+        on(MSA_LOGO_CB, 'click', msaLogoCbClicked);
         on(HEATMAP_CB, 'click', heatmapCbClicked);
         on(HEATMAP_ORDER_SELECT, 'change', heatmapOrderChanged);
         on(HEATMAP_REORDER_BUTTON, 'click', showHeatmapReorderDialog);
@@ -14637,6 +14785,7 @@ function (root, d3, forester, phyloXml) {
             // labels -- they live here
             if (_basicTreeProperties.alignedMolSeqs && _basicTreeProperties.maxMolSeqLength > 0) {
                 opts.push(makeCheckboxItem('Alignment', MSA_CB, 'to show/hide the sequence alignment beside the tree (rectangular layout only)'));
+                opts.push(makeCheckboxItem('Sequence Logo', MSA_LOGO_CB, 'to summarize the alignment under it as a sequence logo: each column a stack of letters, as tall as that column\'s information content and shared out by residue frequency. Over the tips currently on screen, so entering a clade summarizes that clade'));
             }
             if (_basicTreeProperties.domainArchitectures) {
                 opts.push(makeCheckboxItem('Domain Architectures', DOMAINS_CB, 'to show/hide the protein domain architectures beside the tips', true));
@@ -14971,6 +15120,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
         setCheckboxValue(MSA_CB, _state.showMsa);
+        setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
         syncHeatmapControls();

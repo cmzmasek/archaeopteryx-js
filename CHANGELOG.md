@@ -6,6 +6,27 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **A sequence logo under the alignment.** The **Sequence Logo** checkbox
+  replaces the conservation bar with the display the MEME Suite and WebLogo
+  draw: every column a stack of letters, as tall as that column's information
+  content in bits and shared out by residue frequency, most frequent on top. A
+  conserved column is one tall letter; a variable one a short pile. The caption
+  gives the scale — 0 to 2 bits for nucleotides, 0 to 4.3 for amino acids.
+  - It summarises **the tips currently on screen**, so entering a clade gives
+    that clade's motif rather than the file's, and the caption names how many
+    tips that is.
+  - Gaps are not a letter: frequencies are taken over the residues present and
+    the stack is then scaled by the column's occupancy, so a column held up by
+    two sequences out of fifty draws short rather than perfectly conserved.
+  - No small-sample correction. Entering a three-tip clade is a normal thing to
+    do, and Schneider's correction would subtract more than the maximum and
+    leave the column blank exactly then; the caption names `n` instead.
+  - `showMsaLogo` opens on it, and it rides in a shared view.
+
 ## 3.11.0 — 2026-09-22
 
 A tree's tips often carry numbers as well as names — gene presence, evidence
