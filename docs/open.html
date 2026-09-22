@@ -729,8 +729,8 @@
     // ---- Expert options: every launch config key, live ----------------
     // Keep this table in sync with STATE_KEYS + SETTING_KEYS in
     // archaeopteryx.js (documented in the README's "Still used" table).
-    // nodeLabels, the one object-valued key, has no control -- it goes
-    // through the raw JSON box.
+    // nodeLabels and heatmapManualOrder, the two keys whose value is an object
+    // or an array, have no control -- they go through the raw JSON box.
     var CONFIG_SPEC = [
         {group: 'Layout & display'},
         {key: 'layout', type: 'enum', values: ['rectangular', 'circular', 'unrooted']},
@@ -745,7 +745,7 @@
         {key: 'showMsa', type: 'bool', hint: 'default: on when the tree has an alignment'},
         {key: 'showHeatmap', type: 'bool', hint: 'default: off; offered when the tree has two or more numeric per-tip fields'},
         {key: 'heatmapColumnOrder', type: 'enum',
-            values: ['document', 'clustered', 'clustered-presence', 'alphabetical', 'frequency'],
+            values: ['document', 'clustered', 'clustered-presence', 'alphabetical', 'frequency', 'manual'],
             hint: 'how the heat map orders its columns; the clustered modes also draw the dendrogram. Default: clustered, Bray–Curtis when the matrix has zeros and no negatives, Euclidean otherwise'},
         {key: 'showDomainArchitectures', type: 'bool', hint: 'default: on when the tree has domain architectures'},
         {key: 'domainLabels', type: 'enum', values: ['domains', 'legend', 'none'], hint: 'domain names on the boxes, in a legend, or nowhere'},

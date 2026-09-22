@@ -91,7 +91,11 @@ export interface ArchaeopteryxConfig {
      * distance chosen from the values — Bray–Curtis where the matrix has zeros
      * to ignore and nothing negative, Euclidean otherwise. An explicit value
      * always wins and is never re-derived. */
-    heatmapColumnOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency';
+    heatmapColumnOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency' | 'manual';
+    /** The heat map's columns in your own order, as property refs. Only read
+     * while heatmapColumnOrder is 'manual'. A ref the tree has not got is
+     * ignored; a column this does not name follows the ones it does. */
+    heatmapManualOrder?: string[] | null;
     showHeatmap?: boolean;
     showMsa?: boolean;
     showSupportDots?: boolean;
@@ -147,7 +151,8 @@ export interface ViewState {
     horizontalLabels?: boolean;
     msa?: boolean;
     heatmap?: boolean;
-    heatmapOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency';
+    heatmapOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency' | 'manual';
+    heatmapManual?: string[];
     domains?: boolean;
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;

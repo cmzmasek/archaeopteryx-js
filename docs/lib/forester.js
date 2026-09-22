@@ -2897,7 +2897,8 @@
     // A cell that is not assessed never counts as 0, in any mode: blank is
     // absence of evidence, not evidence of absence.
 
-    forester.HEATMAP_ORDER_MODES = ['document', 'clustered', 'clustered-presence', 'alphabetical', 'frequency'];
+    forester.HEATMAP_ORDER_MODES = ['document', 'clustered', 'clustered-presence', 'alphabetical',
+        'frequency', 'manual'];
 
     /**
      * The value of every column at every tip, [column][tip], null where the
@@ -3437,9 +3438,47 @@
         return (zero && !negative) ? 'clustered-presence' : 'clustered';
     };
 
-    forester.heatmapOrder = function (tree, columns, mode) {
+    /**
+     * `columns` in the order `wanted` names them, which is a reader's own
+     * arrangement and is never second-guessed.
+     *
+     * A column `wanted` does not name is NEW to it -- the tree was edited, a
+     * table was joined since, the order came from a shared link made against a
+     * different file. It cannot be placed by a list that has never heard of it,
+     * so it goes after the ones that can, in the order the tips themselves give
+     * (heatmapInDocumentOrder). A name for a column that is gone is ignored
+     * rather than treated as an error: an order outliving one of its columns is
+     * ordinary, not a fault.
+     */
+    forester.heatmapManualOrder = function (tree, columns, wanted) {
+        let cols = (columns || []).slice();
+        let by = Object.create(null);
+        cols.forEach(function (c) {
+            by[c.ref] = c;
+        });
+        let taken = Object.create(null);
+        let out = [];
+        (wanted || []).forEach(function (ref) {
+            if (by[ref] && !taken[ref]) {
+                taken[ref] = true;
+                out.push(by[ref]);
+            }
+        });
+        let rest = cols.filter(function (c) {
+            return !taken[c.ref];
+        });
+        return (rest.length > 0) ? out.concat(forester.heatmapInDocumentOrder(tree, rest)) : out;
+    };
+
+    forester.heatmapOrder = function (tree, columns, mode, wanted) {
         let out = {columns: (columns || []).slice(), dendrogram: null};
         if (!tree || out.columns.length < 1 || !mode || mode === 'document') {
+            return out;
+        }
+        if (mode === 'manual') {
+            // a reader's own order: nothing re-sorts it, and nothing clustered
+            // it, so there is no tree behind it to draw
+            out.columns = forester.heatmapManualOrder(tree, out.columns, wanted);
             return out;
         }
         // Every data-driven mode starts from document order, so switching

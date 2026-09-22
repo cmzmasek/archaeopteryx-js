@@ -593,7 +593,15 @@ distance at all. Set `heatmapColumnOrder` to override; an explicit choice is
 never re-derived.
 
 *Alphabetical* and *Frequency* (highest mean value first, over the tips that
-have a value) are there too. Whatever the mode, a blank is never read as 0, and
+have a value) are there too, and **Reorder columns…** opens a list you can drag
+(or move with the arrow keys) into any order you like. Doing so sets **Manual**,
+and nothing re-sorts a manual order — a sorting mode that quietly undid your
+arrangement would make the arrangement pointless. *Automatic* in that dialog
+hands the order back to the data. A manual order rides in a shared view, so a
+link reproduces the figure exactly; a column it does not name — one added by an
+edit, or a table joined since — follows the ones it does.
+
+Whatever the mode, a blank is never read as 0, and
 the dendrogram is drawn only when it describes the columns actually on screen —
 never over a scrolled window, and never over an order that did not come from a
 clustering.
@@ -1032,6 +1040,7 @@ copy-pastable JSON.
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
 | `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
+| `heatmapManualOrder` | `null` | The heat map's columns in your own order, as an array of property refs (`['meta:recA', 'meta:gyrA', …]`). Only read while `heatmapColumnOrder` is `'manual'`. A ref the tree has not got is ignored, and a column the list does not name follows the ones it does. |
 | `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
@@ -1748,6 +1757,18 @@ better-attested column, then the ref. None of it depends on the order the tips
 were reached in, which matters because that order follows the tree's current
 child arrangement and `ladderizeTree` rewrites it — measured, one file once gave
 `B A` ladderized and `A B` not.
+
+`'manual'` is the reader's own order (`forester.heatmapManualOrder`), and the
+only mode that is **not** normalised first — being left alone is the whole point
+of it. It is set by the **Reorder columns…** dialog, which drags or arrow-keys a
+list of the columns as drawn; applying it writes `heatmapManualOrder` and sets
+the mode, exactly as the desktop's Annotation Fields arrows switch a tab to
+Manual. (Theirs also chooses which fields are columns and of what type; ours
+takes every numeric field automatically, so the dialog is about order alone.)
+Choosing Manual from the menu with nothing arranged yet freezes the order on
+screen — an empty list would mean "no opinion" and silently re-derive the very
+order the reader asked to keep. A manual order offers no dendrogram, because
+nothing clustered it.
 
 The mode a tree opens on, when the caller did not say, is
 `forester.heatmapDefaultOrder`: `'clustered-presence'` when some value is 0 and

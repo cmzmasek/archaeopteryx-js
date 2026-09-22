@@ -641,6 +641,54 @@ function testDefaultOrderFollowsTheData() {
     return true;
 }
 
+// A reader's own order: nothing re-sorts it, and a column it does not name
+// still has to be drawn somewhere.
+function testManualOrder() {
+    var genes = ['a', 'b', 'c', 'd'];
+    var phy = tree(genes, columns([1, 4, 2, 3], [3, 2, 4, 1], [0, 1, 3, 4], [4, 0, 1, 2]));
+    var all = cols(genes);
+    function manual(wanted) {
+        return names(forester.heatmapOrder(phy, all, 'manual', wanted).columns);
+    }
+    if (manual(['meta:d', 'meta:c', 'meta:b', 'meta:a']) !== 'd,c,b,a') {
+        console.log('    an order naming every column is that order: ' + manual(['meta:d', 'meta:c', 'meta:b', 'meta:a']));
+        return false;
+    }
+    // a column the order has never heard of -- added by an edit, or a table
+    // joined since -- cannot be placed by it, so it follows the ones that can
+    if (manual(['meta:c', 'meta:a']) !== 'c,a,b,d') {
+        console.log('    unnamed columns must follow, in the tips\' own order: ' + manual(['meta:c', 'meta:a']));
+        return false;
+    }
+    // a name for a column that is gone is ordinary, not an error
+    if (manual(['meta:GONE', 'meta:b']) !== 'b,a,c,d') {
+        console.log('    a stale name must be ignored: ' + manual(['meta:GONE', 'meta:b']));
+        return false;
+    }
+    // ... and a repeated name places the column once
+    if (manual(['meta:b', 'meta:b', 'meta:a']) !== 'b,a,c,d') {
+        console.log('    a repeated name must not duplicate a column: ' + manual(['meta:b', 'meta:b', 'meta:a']));
+        return false;
+    }
+    if (manual([]) !== names(all) || manual(null) !== names(all)) {
+        console.log('    an empty order is no opinion, so the columns stand: ' + manual([]));
+        return false;
+    }
+    // nothing clustered it, so there is no tree behind it to draw
+    if (forester.heatmapOrder(phy, all, 'manual', ['meta:d']).dendrogram !== null) {
+        console.log('    a manual order must offer no dendrogram');
+        return false;
+    }
+    // and it is NOT normalised first: that is the whole point of it
+    var reversed = all.slice().reverse();
+    if (names(forester.heatmapOrder(phy, reversed, 'manual', ['meta:d', 'meta:c']).columns) !== 'd,c,a,b') {
+        console.log('    the named columns must lead whatever order they arrive in: '
+            + names(forester.heatmapOrder(phy, reversed, 'manual', ['meta:d', 'meta:c']).columns));
+        return false;
+    }
+    return true;
+}
+
 console.log();
 console.log("heat-map column order (pinned to R 4.5.3 / vegan 2.7-2)");
 console.log();
@@ -658,6 +706,7 @@ runTest("order in, order out            : ", testClusteredIgnoresIncomingOrder);
 runTest("a dendrogram only where it fits: ", testDendrogramOnlyWhereItDescribesTheOrder);
 runTest("alphabetical and frequency     : ", testAlphabeticalAndFrequency);
 runTest("the default follows the data   : ", testDefaultOrderFollowsTheData);
+runTest("a manual order is left alone   : ", testManualOrder);
 console.log();
 
 if (_testFailures > 0) {

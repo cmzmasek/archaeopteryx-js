@@ -366,6 +366,8 @@ function (root, d3, forester, phyloXml) {
     const HEATMAP_CB = 'heatmap_cb';
     const HEATMAP_CONTROLS = 'heatmap_controls';
     const HEATMAP_ORDER_SELECT = 'heatmap_order';
+    const HEATMAP_REORDER_BUTTON = 'heatmap_reorder';
+    const HEATMAP_REORDER_DIALOG = 'heatmap_reorder_dialog';
     const DOMAINS_CB = 'domains_cb';
     const DOMAIN_CONTROLS = 'domain_controls';
     const DOMAIN_WIDTH_DEC = 'domain_width_dec';
@@ -4893,6 +4895,7 @@ function (root, d3, forester, phyloXml) {
         'showMsa',
         'showHeatmap',
         'heatmapColumnOrder',
+        'heatmapManualOrder',
         'showDomainArchitectures',
         'domainLabels',
         'domainGlow',
@@ -5144,6 +5147,19 @@ function (root, d3, forester, phyloXml) {
             && forester.HEATMAP_ORDER_MODES.indexOf(_state.heatmapColumnOrder) < 0) {
             throw new Error(ERROR + '"heatmapColumnOrder" must be one of '
                 + forester.HEATMAP_ORDER_MODES.join(', '));
+        }
+        // The reader's own arrangement, as a list of refs. It is only read
+        // while the order is 'manual', and a ref it names that the tree has
+        // not got is ignored rather than fatal -- an order outliving one of
+        // its columns is ordinary (see forester.heatmapManualOrder).
+        if (_state.heatmapManualOrder === undefined) {
+            _state.heatmapManualOrder = null;
+        } else if (_state.heatmapManualOrder !== null
+            && !(Array.isArray(_state.heatmapManualOrder)
+                && _state.heatmapManualOrder.every(function (r) {
+                    return typeof r === 'string';
+                }))) {
+            throw new Error(ERROR + '"heatmapManualOrder" must be an array of property refs');
         }
         // A tree with protein domain architectures on its tips draws them
         // from the start (the desktop switches its toggle on at load), again
@@ -7486,9 +7502,13 @@ function (root, d3, forester, phyloXml) {
         // the one place every such path goes through. Hanging it on the model
         // makes that structural instead: whatever drops the model drops this
         // with it, and there is no second thing to remember to clear.
-        if (!m._order || m._order.mode !== mode) {
-            let o = forester.heatmapOrder(_treeData, m.refs, mode);
-            m._order = {mode: mode, columns: o.columns, dendrogram: o.dendrogram};
+        // the manual list is part of the key: it changes while the mode
+        // stays 'manual', and a cache blind to that would redraw the old
+        // arrangement after every move
+        let manual = _state.heatmapManualOrder;
+        if (!m._order || m._order.mode !== mode || m._order.manual !== manual) {
+            let o = forester.heatmapOrder(_treeData, m.refs, mode, manual);
+            m._order = {mode: mode, manual: manual, columns: o.columns, dendrogram: o.dendrogram};
         }
         return m._order;
     }
@@ -7926,6 +7946,163 @@ function (root, d3, forester, phyloXml) {
 
     function heatmapHoverOut() {
         _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
+    }
+
+
+    // The reader's own column order, as the desktop's Annotation Fields arrows
+    // set it. Theirs also chooses WHICH fields are columns and of what type;
+    // ours takes every numeric field automatically, so this dialog is about
+    // order and nothing else.
+    //
+    // Moving anything here makes the order Manual, and Manual never re-sorts --
+    // a sorting mode that quietly undid a move would make the move pointless.
+    // The same rule as the desktop's resolveEdited, minus its "did the order
+    // actually change" test, which it needs only because its dialog does other
+    // things too.
+    function showHeatmapReorderDialog() {
+        let ordered = heatmapOrdered();
+        if (!ordered || ordered.columns.length < 2) {
+            return;
+        }
+        let shell = makeDialogShell(HEATMAP_REORDER_DIALOG, 'Order columns', 320);
+        let body = shell.body;
+        repsElement(body, 'div', 'aptx-reps-lead',
+            'Drag a column, or use the arrows. Your order is kept until you choose another.');
+        let list = repsElement(body, 'div', 'aptx-reorder');
+        let working = ordered.columns.slice();
+
+        function rowAt(y) {
+            let rows = Array.prototype.slice.call(list.children);
+            for (let i = 0; i < rows.length; ++i) {
+                let b = rows[i].getBoundingClientRect();
+                if (y < b.top + (b.height / 2)) {
+                    return i;
+                }
+            }
+            return rows.length;
+        }
+
+        function move(from, to) {
+            if (to < 0 || to >= working.length || from === to) {
+                return false;
+            }
+            working.splice(to, 0, working.splice(from, 1)[0]);
+            draw();
+            return true;
+        }
+
+        function draw() {
+            list.textContent = '';
+            working.forEach(function (col, i) {
+                let row = repsElement(list, 'div', 'aptx-reorder-row');
+                row.tabIndex = 0;
+                repsElement(row, 'span', 'aptx-reorder-grip', '≡');
+                repsElement(row, 'span', 'aptx-reorder-name', col.label || col.ref).title = col.ref;
+                let up = repsElement(row, 'button', 'aptx-reorder-move', '↑');
+                let down = repsElement(row, 'button', 'aptx-reorder-move', '↓');
+                up.type = 'button';
+                down.type = 'button';
+                up.title = 'Move up';
+                down.title = 'Move down';
+                up.disabled = (i === 0);
+                down.disabled = (i === working.length - 1);
+                up.addEventListener('click', function () {
+                    if (move(i, i - 1)) {
+                        list.children[i - 1].focus();
+                    }
+                });
+                down.addEventListener('click', function () {
+                    if (move(i, i + 1)) {
+                        list.children[i + 1].focus();
+                    }
+                });
+                // the arrows reach the same places from the keyboard, so a row
+                // can be moved without a pointer at all
+                row.addEventListener('keydown', function (event) {
+                    let d = (event.key === 'ArrowUp') ? -1 : ((event.key === 'ArrowDown') ? 1 : 0);
+                    if (d === 0) {
+                        return;
+                    }
+                    event.preventDefault();
+                    if (move(i, i + d)) {
+                        list.children[i + d].focus();
+                    }
+                });
+                row.addEventListener('pointerdown', function (event) {
+                    if (event.target.classList.contains('aptx-reorder-move')) {
+                        return;   // the arrows are not a drag handle
+                    }
+                    event.preventDefault();
+                    row.classList.add('aptx-reorder-dragging');
+                    // The LIVE node is moved rather than the list redrawn: a
+                    // redraw would replace the element this drag is following.
+                    // Its position is read back from the DOM each time instead
+                    // of being tracked in a variable -- the first cut kept an
+                    // index, updated it, and then used it to work out where to
+                    // insert, by which point it no longer meant what the
+                    // calculation assumed.
+                    let onMove = function (ev) {
+                        let kids = Array.prototype.slice.call(list.children);
+                        let from = kids.indexOf(row);
+                        let to = rowAt(ev.clientY);
+                        if (to > from) {
+                            to -= 1;   // taking the row out shifts everything after it up one
+                        }
+                        if (to === from || to < 0 || to >= kids.length) {
+                            return;
+                        }
+                        working.splice(to, 0, working.splice(from, 1)[0]);
+                        let others = kids.filter(function (k) {
+                            return k !== row;
+                        });
+                        list.insertBefore(row, others[to] || null);
+                        Array.prototype.slice.call(list.children).forEach(function (r, k) {
+                            let btns = r.querySelectorAll('.aptx-reorder-move');
+                            btns[0].disabled = (k === 0);
+                            btns[1].disabled = (k === list.children.length - 1);
+                        });
+                    };
+                    let onUp = function () {
+                        row.classList.remove('aptx-reorder-dragging');
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onUp);
+                        draw();
+                    };
+                    window.addEventListener('pointermove', onMove);
+                    window.addEventListener('pointerup', onUp);
+                });
+            });
+        }
+        draw();
+
+        let actions = repsElement(body, 'div', 'aptx-reps-actions');
+        repsButton(actions, 'Automatic', false, function () {
+            // back to whatever the data asks for: the arrangement is dropped,
+            // not merely overridden
+            _state.heatmapManualOrder = null;
+            _state.heatmapColumnOrder = null;
+            shell.dialog.close();
+            syncHeatmapControls();
+            scheduleUpdate(null, 0);
+        });
+        repsButton(actions, 'Cancel', false, function () {
+            shell.dialog.close();
+        });
+        repsButton(actions, 'Apply', true, function () {
+            _state.heatmapManualOrder = working.map(function (c) {
+                return c.ref;
+            });
+            _state.heatmapColumnOrder = 'manual';
+            shell.dialog.close();
+            syncHeatmapControls();
+            scheduleUpdate(null, 0);
+        });
+        shell.dialog.showModal();
+        // showModal() would otherwise land on the close button: focus belongs
+        // on the list, where the arrow keys already move a row
+        if (list.firstChild) {
+            list.firstChild.focus();
+        }
     }
 
     function heatmapCbClicked() {
@@ -8433,6 +8610,9 @@ function (root, d3, forester, phyloXml) {
         if (heatmapAvailable()) {
             s.heatmap = _state.showHeatmap === true;
             s.heatmapOrder = heatmapMode();
+            if (_state.heatmapManualOrder) {
+                s.heatmapManual = _state.heatmapManualOrder.slice();
+            }
         }
         if (_basicTreeProperties.domainArchitectures === true) {
             s.domains = _state.showDomainArchitectures === true;
@@ -8556,6 +8736,11 @@ function (root, d3, forester, phyloXml) {
         }
         if (typeof s.heatmap === 'boolean') {
             _state.showHeatmap = s.heatmap;
+        }
+        if (Array.isArray(s.heatmapManual) && s.heatmapManual.every(function (r) {
+            return typeof r === 'string';
+        })) {
+            _state.heatmapManualOrder = s.heatmapManual.slice();
         }
         if (forester.HEATMAP_ORDER_MODES.indexOf(s.heatmapOrder) >= 0) {
             _state.heatmapColumnOrder = s.heatmapOrder;
@@ -9635,6 +9820,12 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         setValue(HEATMAP_ORDER_SELECT, heatmapMode());
+        let reorder = byId(HEATMAP_REORDER_BUTTON);
+        if (reorder) {
+            // two columns can only be in one order up to a flip, which the
+            // arrows would make look like a choice
+            reorder.disabled = !heatmapShown() || heatmapModel().refs.length < 2;
+        }
         // phyloXML gives every node its own property list, so tips CAN list the
         // same columns in different orders -- and then "as in the input" is a
         // consensus rather than a transcription. Say which, for THIS tree:
@@ -9656,6 +9847,15 @@ function (root, d3, forester, phyloXml) {
         let v = getValue(HEATMAP_ORDER_SELECT);
         if (forester.HEATMAP_ORDER_MODES.indexOf(v) < 0 || v === heatmapMode()) {
             return;
+        }
+        if (v === 'manual' && !_state.heatmapManualOrder) {
+            // Manual with nothing arranged yet freezes what is on screen. The
+            // alternative -- an empty list, which means "no opinion" -- would
+            // silently re-derive the order the reader just asked to keep.
+            let o = heatmapOrdered();
+            _state.heatmapManualOrder = o ? o.columns.map(function (c) {
+                return c.ref;
+            }) : null;
         }
         _state.heatmapColumnOrder = v;
         _heatmapColOffset = 0;   // a different order: the old window means nothing
@@ -12378,6 +12578,30 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-reps-error:empty { display:none; }'
             + '.aptx-reps-line { padding:1px 0; }'
             + '.aptx-reps-question { margin-top:9px; font-weight:600; }'
+            + '.aptx-reorder { margin-top:8px; max-height:300px; overflow:auto; border:1px solid var(--p-line);'
+            + '  border-radius:7px; padding:3px; background:var(--p-surface2); touch-action:none; }'
+            // the panel's own scrollbar treatment: a native one comes out bright
+            // white inside a dark dialog
+            + '.aptx-reorder::-webkit-scrollbar { width:9px; }'
+            + '.aptx-reorder::-webkit-scrollbar-thumb { background:var(--p-line-strong); border-radius:9px;'
+            + '  border:2px solid var(--p-surface2); }'
+            + '.aptx-reorder::-webkit-scrollbar-track { background:transparent; }'
+            + '.aptx-reorder-row { display:flex; align-items:center; gap:7px; padding:3px 5px; border-radius:5px;'
+            + '  cursor:grab; user-select:none; border:1px solid transparent; }'
+            + '.aptx-reorder-row:hover { background:var(--p-accent-weak); }'
+            + '.aptx-reorder-row:focus-visible { outline:none; border-color:var(--p-accent);'
+            + '  box-shadow:0 0 0 2px var(--p-accent-weak); }'
+            + '.aptx-reorder-dragging { cursor:grabbing; background:var(--p-accent-weak);'
+            + '  border-color:var(--p-accent); opacity:0.9; }'
+            + '.aptx-reorder-grip { flex:none; color:var(--p-faint); font-size:12px; line-height:1; }'
+            + '.aptx-reorder-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;'
+            + '  white-space:nowrap; font-size:11px; color:var(--p-ink); }'
+            + '.aptx-reorder-move { flex:none; width:20px; height:20px; padding:0; line-height:1; font:inherit;'
+            + '  font-size:11px; color:var(--p-muted); background:transparent; border:1px solid transparent;'
+            + '  border-radius:5px; cursor:pointer; }'
+            + '.aptx-reorder-move:hover:not(:disabled) { background:var(--p-surface); color:var(--p-accent-ink);'
+            + '  border-color:var(--p-accent); }'
+            + '.aptx-reorder-move:disabled { opacity:0.3; cursor:default; }'
             + '.aptx-reps-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }'
             + '.aptx-reps-button { font:inherit; font-size:11px; height:26px; padding:0 12px; color:var(--p-ink);'
             + '  background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; cursor:pointer;'
@@ -12541,6 +12765,10 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-domrow { display:flex; align-items:center; gap:4px; margin:3px 0; }'
             + '.aptx-panel .aptx-domrow .aptx-domlabel { flex:0 0 64px; font-size:10px; color:var(--p-muted); }'
             + '.aptx-panel .aptx-domrow input[type=button] { width:30px; padding:0; margin:0; }'
+            // ... except one that has a WORD on it: the rule above sizes the
+            // domain track's tiny plus and minus, and it clipped this to "Reorc"
+            + '.aptx-panel .aptx-domrow input[type=button].aptx-widebtn { width:auto; flex:1 1 auto;'
+            + '  min-width:0; padding:0 8px; }'
             + '.aptx-panel .aptx-domrow select { flex:1 1 auto; min-width:0; }'
             + '.aptx-panel .aptx-domreadout { flex:1 1 auto; text-align:center; font-size:12px; font-variant-numeric:tabular-nums; color:var(--p-ink); }'
             + '.aptx-panel .aptx-glyph { height:14px; width:auto; display:block; overflow:visible; }'
@@ -13540,6 +13768,7 @@ function (root, d3, forester, phyloXml) {
         on(MSA_CB, 'click', msaCbClicked);
         on(HEATMAP_CB, 'click', heatmapCbClicked);
         on(HEATMAP_ORDER_SELECT, 'change', heatmapOrderChanged);
+        on(HEATMAP_REORDER_BUTTON, 'click', showHeatmapReorderDialog);
         on(DOMAINS_CB, 'click', domainsCbClicked);
         on(UNCOLLAPSE_ALL_BUTTON, 'click', uncollapseAll);
         on(TREE_PREV_BUTTON, 'click', function () {
@@ -14223,7 +14452,14 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<option value="alphabetical" title="by column name, ignoring case">Alphabetical</option>');
             h = h.concat('<option value="frequency" title="highest mean value first, over the tips that have a value'
                 + ' -- on 0/1 data, the fraction of tips carrying it">Frequency</option>');
+            h = h.concat('<option value="manual" title="your own order, set with Reorder columns below. Nothing'
+                + ' re-sorts it.">Manual</option>');
             h = h.concat('</select></div>');
+            h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel"></span>');
+            h = h.concat('<input type="button" class="aptx-widebtn" value="Reorder columns…" name="'
+                + HEATMAP_REORDER_BUTTON + '" id="' + HEATMAP_REORDER_BUTTON
+                + '" title="drag the columns into the order you want; doing so sets Manual">');
+            h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
         }
