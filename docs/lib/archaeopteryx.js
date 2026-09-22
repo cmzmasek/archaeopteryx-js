@@ -592,6 +592,11 @@ function (root, d3, forester, phyloXml) {
     const HEATMAP_SCALE_RESERVE = 30;     // vertical room for that legend and its numbers
     const HEATMAP_HEAD_GAP = 5;           // between the last row and the turned labels
     const HEATMAP_NOT_ASSESSED = 'not assessed';   // what a blank cell says -- it does NOT say zero
+    const HEATMAP_RADIAL_GAP = 7;         // px from the label ring to the first column ring
+    const HEATMAP_RADIAL_END_GAP = 8;     // ... and kept free past the last one
+    const HEATMAP_RADIAL_MAX_FRACTION = 1.2;      // the ring stack, against the tree's own radius
+    const HEATMAP_RADIAL_MIN_RING = 1;            // a ring never thinner than this
+    const HEATMAP_RADIAL_MIN_NAMED_RING = 7;      // ... nor named when it is thinner than this
     const HEATMAP_BLANK = 'blank';        // the run-merger's stand-in for a cell nobody filled in
     const HEATMAP_DENDRO_GAP = 5;         // px between the dendrogram's leaves and the first row
     const HEATMAP_DENDRO_MIN_BAND = 24;   // the band it is drawn in, from the label font
@@ -2767,7 +2772,7 @@ function (root, d3, forester, phyloXml) {
             // and so can give way without losing anything. Budgeting the
             // alignment first left an 18-column matrix a 60px sliver.
             _heatmapReserve = 0;
-            if (heatmapShown()) {
+            if (heatmapShown() && !radialDisplay()) {
                 let cols = heatmapModel().refs.length;
                 let vp0 = svgSize();
                 let vw0 = Math.min(_displayWidth, (vp0 && vp0.w) ? vp0.w : _displayWidth);
@@ -7345,8 +7350,9 @@ function (root, d3, forester, phyloXml) {
     // says. It is drawn as an OUTLINED empty box, with a key beside the scale
     // -- leaving it bare is not enough, see the measurement at the draw.
     //
-    // Rectangular layouts only, as the alignment track is: the columns stand
-    // on the tips' common edge, which a radial layout does not have.
+    // Rectangular and CIRCULAR: the columns stand on the tips' common edge,
+    // which a circular fan has as a ring (drawHeatmapRings) and an unrooted one
+    // has not got at all -- every tip there ends at its own radius.
 
     function heatmapModel() {
         if (!_heatmapModel && _treeData) {
@@ -7363,8 +7369,10 @@ function (root, d3, forester, phyloXml) {
         return !!m && m.refs.length >= HEATMAP_MIN_COLUMNS && m.min !== null && m.max !== null;
     }
 
+    // Circular draws the columns as RINGS (drawHeatmapRings); unrooted cannot,
+    // because its tips end at different radii so a column has no ring to be.
     function heatmapShown() {
-        return _state.showHeatmap === true && !radialDisplay() && heatmapAvailable();
+        return _state.showHeatmap === true && _state.unrootedDisplay !== true && heatmapAvailable();
     }
 
     // The one scale, spanning the whole tree's values. Built lazily and kept
@@ -7443,8 +7451,8 @@ function (root, d3, forester, phyloXml) {
     // when that bar is out the strip has to end above it -- as the alignment's
     // own strip does (MSA_NAV_RESERVE).
     function heatmapBottomReserve() {
-        if (!heatmapShown()) {
-            return 0;
+        if (!heatmapShown() || radialDisplay()) {
+            return 0;   // the rings carry their own names and legend
         }
         return heatmapStripHeight() + (msaShown() ? MSA_NAV_RESERVE : 0);
     }
@@ -7531,8 +7539,8 @@ function (root, d3, forester, phyloXml) {
     // reach columns that are not on screen -- a picture asserting a grouping
     // the reader cannot see.
     function heatmapDendrogram() {
-        if (!heatmapShown()) {
-            return null;
+        if (!heatmapShown() || radialDisplay()) {
+            return null;   // a dendrogram over a ring would have to bend; it earns nothing
         }
         let o = heatmapOrdered();
         if (!o || !o.dendrogram || o.columns.length < 3) {
@@ -7565,12 +7573,20 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         _svgGroup.selectAll('g.aptx-heatmap').remove();
+        if (_baseSvg) {
+            _baseSvg.selectAll('g.aptx-heatmap-ringlegend').remove();
+        }
         if (_floatGroup) {
             _floatGroup.selectAll('g.aptx-heatmap-strip').remove();
             delete _floatStrips['aptx-heatmap-strip'];
         }
         if (!heatmapShown() || !_root) {
             _heatmapGeom = null;
+            return;
+        }
+        if (heatmapCircular()) {
+            drawHeatmapRings();
+            drawHeatmapRingLegend();
             return;
         }
         let model = heatmapModel();
@@ -7887,6 +7903,258 @@ function (root, d3, forester, phyloXml) {
         placeFloatingOverlays();
     }
 
+
+    // ===================== the matrix, as rings =====================
+    // The circular layout's analogue of the track: one concentric RING per
+    // column, just past the tips and their labels, each tip's cell an arc over
+    // that tip's own angular slice. The desktop's paintAnnotationColumnsCircular,
+    // in polar coordinates rather than along an axis.
+    //
+    // Circular only, never unrooted: a column has to be a ring, and an unrooted
+    // fan ends every tip at a different radius, so there is no ring for one to
+    // sit on. (The domain tracks ride each tip's own spoke there, which works
+    // for a bar and not for a matrix.)
+
+    // _radial is set by the circular layout and nulled by every other, so it
+    // IS the test; heatmapShown() has already refused the unrooted one. A
+    // separate circularDisplay check here looked like a third lock and could
+    // not fire -- sabotaging it away changed nothing anywhere.
+    function heatmapCircular() {
+        return heatmapShown() && !!_radial;
+    }
+
+    // A ring is as thick as the others, and the stack is capped against the
+    // tree's own radius: a wide matrix must not turn the tree into a dot at
+    // the middle of a dartboard.
+    function heatmapRingWidth() {
+        let m = heatmapModel();
+        if (!m || m.refs.length < 1 || !_radial) {
+            return HEATMAP_PREF_COL_W;
+        }
+        let budget = _radial.maxRad * HEATMAP_RADIAL_MAX_FRACTION;
+        return Math.max(HEATMAP_RADIAL_MIN_RING,
+            Math.min(HEATMAP_PREF_COL_W, budget / m.refs.length));
+    }
+
+    // How far past the tip ring the matrix reaches, for the fit to allow for.
+    function heatmapRadialExtent() {
+        if (!heatmapCircular()) {
+            return 0;
+        }
+        return HEATMAP_RADIAL_GAP + (heatmapModel().refs.length * heatmapRingWidth())
+            + HEATMAP_RADIAL_END_GAP;
+    }
+
+    // one cell: the ring between r0 and r1, over the angles a0 to a1
+    function heatmapSector(a0, a1, r0, r1) {
+        let p = function (a, r) {
+            let xy = polarXY(a, r);
+            return xy[0].toFixed(1) + ',' + xy[1].toFixed(1);
+        };
+        let large = (a1 - a0) > Math.PI ? 1 : 0;
+        return 'M' + p(a0, r0)
+            + 'A' + r0.toFixed(1) + ',' + r0.toFixed(1) + ' 0 ' + large + ' 1 ' + p(a1, r0)
+            + 'L' + p(a1, r1)
+            + 'A' + r1.toFixed(1) + ',' + r1.toFixed(1) + ' 0 ' + large + ' 0 ' + p(a0, r1)
+            + 'Z';
+    }
+
+    function drawHeatmapRings() {
+        let model = heatmapModel();
+        let ordered = heatmapOrdered();
+        let columns = ordered ? ordered.columns : model.refs;
+        let tips = displayedTips().filter(function (d) {
+            return d.x !== undefined;
+        }).sort(function (p, q) {
+            return p.x - q.x;
+        });
+        let n = tips.length;
+        if (n < 1 || columns.length < 1) {
+            _heatmapGeom = null;
+            return;
+        }
+        let g = _svgGroup.append('g').attr('class', 'aptx-heatmap');
+        let ink = _state.branchColorDefault;
+        let ringW = heatmapRingWidth();
+        let start = _radial.maxRad + tipLabelSpace() + HEATMAP_RADIAL_GAP;
+
+        // Angular boundaries, derived ONCE between neighbours, exactly as the
+        // rectangular rows are: a per-tip half-step would round apart and leave
+        // hairline seams all round the ring.
+        let ang = tips.map(function (d) {
+            return radialAngle(d.x);
+        });
+        let pad = n > 1 ? (ang[n - 1] - ang[0]) / (n - 1) / 2 : Math.PI / 8;
+        let edge = new Array(n + 1);
+        edge[0] = ang[0] - pad;
+        for (let i = 1; i < n; ++i) {
+            edge[i] = (ang[i - 1] + ang[i]) / 2;
+        }
+        edge[n] = ang[n - 1] + pad;
+
+        let blanks = 0;
+        for (let c = 0; c < columns.length; ++c) {
+            let r0 = start + (c * ringW);
+            let r1 = r0 + ringW;
+            let ref = columns[c].ref;
+            // consecutive tips of the same colour merge into one sector, which
+            // is what keeps a big circular tree drawable
+            let runStart = -1;
+            let runFill = null;
+            let flush = function (endI) {
+                if (runStart < 0) {
+                    return;
+                }
+                let path = g.append('path').attr('d', heatmapSector(edge[runStart], edge[endI], r0, r1));
+                if (runFill === HEATMAP_BLANK) {
+                    path.attr('fill', _state.backgroundColorDefault)
+                        .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
+                } else {
+                    path.attr('fill', runFill);
+                }
+                runStart = -1;
+                runFill = null;
+            };
+            for (let i = 0; i < n; ++i) {
+                let v = forester.heatmapValue(tips[i], ref);
+                let fill = (v === null) ? HEATMAP_BLANK : heatmapColorOf(v);
+                if (fill === HEATMAP_BLANK) {
+                    blanks++;
+                }
+                if (runFill === fill && (ringW < HEATMAP_LABEL_MIN_COL_W || fill !== HEATMAP_BLANK)) {
+                    continue;
+                }
+                flush(i);
+                runStart = i;
+                runFill = fill;
+            }
+            flush(n);
+        }
+
+        // the stack's own edges, so a blank reads as a hole in a grid rather
+        // than as a gap in the drawing
+        [start, start + (columns.length * ringW)].forEach(function (r) {
+            g.append('path')
+                .attr('d', heatmapSector(edge[0], edge[n], r - 0.5, r + 0.5))
+                .attr('fill', ink).attr('fill-opacity', 0.5);
+        });
+
+        // Each ring's name, laid along the ring at the fan's seam -- the gap
+        // the layout already leaves between the last tip and the first. It is
+        // the one place a label can sit without covering a cell.
+        if (ringW >= HEATMAP_RADIAL_MIN_NAMED_RING) {
+            let seam = edge[n] + ((2 * Math.PI) - (edge[n] - edge[0])) / 2;
+            let font = Math.max(7, Math.min(10, Math.round(ringW))) + 'px ' + FONT_DEFAULTS;
+            columns.forEach(function (col, c) {
+                let r = start + (c * ringW) + (ringW / 2);
+                let xy = polarXY(seam, r);
+                // TANGENTIAL: along the ring, not out along the spoke. polarXY
+                // puts angle a at screen direction a - 90, so the tangent is a
+                // itself -- rotating by a - 90 instead laid every name out
+                // along the seam, where rings are one ring-width apart and the
+                // names are several times that: measured, 44 overlapping pairs
+                // out of 18 names. Flipped where it would otherwise read
+                // upside down.
+                let deg = ((seam * 180 / Math.PI) % 360 + 360) % 360;
+                let flip = (deg > 90 && deg < 270);
+                g.append('text')
+                    .attr('transform', 'translate(' + xy[0].toFixed(1) + ',' + xy[1].toFixed(1) + ') '
+                        + 'rotate(' + (deg + (flip ? 180 : 0)).toFixed(1) + ')')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.32em')
+                    .style('font', font)
+                    .style('fill', _state.labelColorDefault)
+                    .text(clipTextToWidth(col.label, font, HEATMAP_LABEL_MAX_PX));
+            });
+        }
+
+        // the hover surface: the whole annulus, hit-tested in polar coordinates
+        g.append('path')
+            .attr('class', 'aptx-heatmap-hover')
+            .attr('d', heatmapSector(edge[0], edge[n], start, start + (columns.length * ringW)))
+            .attr('fill', 'transparent')
+            .on('mousemove', heatmapHoverMove)
+            .on('mouseout', heatmapHoverOut);
+
+        _heatmapGeom = {
+            circular: true, start: start, ringW: ringW, edge: edge, tips: tips,
+            refs: columns, min: model.min, max: model.max, blanks: blanks
+        };
+    }
+
+
+    // The scale, for the circular layout. The rectangular track hangs its
+    // legend under the matrix, which a ring has no "under": this is the same
+    // content -- the ramp, its two ends, the blank key, the column count -- as
+    // a card in the corner the tree leaves free. Drawn in screen coordinates
+    // like the domain legend, so it neither turns nor scales with the fan.
+    function drawHeatmapRingLegend() {
+        if (!_baseSvg) {
+            return;
+        }
+        _baseSvg.selectAll('g.aptx-heatmap-ringlegend').remove();
+        let size = svgSize();
+        let m = heatmapModel();
+        if (!heatmapCircular() || !size || !m) {
+            return;
+        }
+        const PAD = 9;
+        const BAR_W = 128;
+        const FS = 9;
+        let ink = _state.labelColorDefault;
+        let frame = _state.branchColorDefault;
+        let capFont = FS + 'px ' + FONT_DEFAULTS;
+        let blanks = _heatmapGeom && _heatmapGeom.blanks > 0;
+        let caption = m.refs.length + ' columns, one scale';
+        let width = (2 * PAD) + Math.max(BAR_W, legendTextWidth(caption, capFont),
+            blanks ? (HEATMAP_SCALE_BAR_H + 4 + legendTextWidth(HEATMAP_NOT_ASSESSED, capFont)) : 0);
+        let rows = 2 + (blanks ? 1 : 0);
+        let height = (2 * PAD) + HEATMAP_SCALE_BAR_H + (rows * (FS + 4));
+        let x = PAD;
+        let y = size.h - height - PAD;   // bottom-left: the overview box lives bottom-right
+
+        let g = _baseSvg.append('g').attr('class', 'aptx-heatmap-ringlegend')
+            .style('pointer-events', 'none');
+        g.append('rect').attr('x', x).attr('y', y).attr('width', width).attr('height', height)
+            .attr('rx', 5)
+            .style('fill', _state.backgroundColorDefault).style('fill-opacity', 0.92)
+            .style('stroke', frame).style('stroke-opacity', 0.5);
+
+        let gradId = 'aptx-heatmap-ringramp';
+        let grad = g.append('defs').append('linearGradient').attr('id', gradId)
+            .attr('x1', 0).attr('y1', 0).attr('x2', 1).attr('y2', 0);
+        VIS_COLOR_RAMP.forEach(function (c, i) {
+            grad.append('stop')
+                .attr('offset', ((i * 100) / (VIS_COLOR_RAMP.length - 1)) + '%')
+                .attr('stop-color', c);
+        });
+        let barY = y + PAD;
+        g.append('rect').attr('x', x + PAD).attr('y', barY)
+            .attr('width', BAR_W).attr('height', HEATMAP_SCALE_BAR_H)
+            .attr('fill', 'url(#' + gradId + ')')
+            .attr('stroke', frame).attr('stroke-opacity', 0.5).attr('stroke-width', 1);
+        let line = barY + HEATMAP_SCALE_BAR_H + FS + 2;
+        g.append('text').attr('x', x + PAD).attr('y', line).attr('text-anchor', 'start')
+            .style('font', capFont).style('fill', ink).text(heatmapNum(m.min));
+        g.append('text').attr('x', x + PAD + BAR_W).attr('y', line).attr('text-anchor', 'end')
+            .style('font', capFont).style('fill', ink).text(heatmapNum(m.max));
+        if (blanks) {
+            line += FS + 4;
+            g.append('rect').attr('x', x + PAD).attr('y', line - HEATMAP_SCALE_BAR_H)
+                .attr('width', HEATMAP_SCALE_BAR_H).attr('height', HEATMAP_SCALE_BAR_H)
+                .attr('fill', _state.backgroundColorDefault)
+                .attr('stroke', frame).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
+            g.append('text').attr('x', x + PAD + HEATMAP_SCALE_BAR_H + 4).attr('y', line)
+                .attr('text-anchor', 'start')
+                .style('font', capFont).style('fill', ink).style('fill-opacity', 0.85)
+                .text(HEATMAP_NOT_ASSESSED);
+        }
+        line += FS + 4;
+        g.append('text').attr('x', x + PAD).attr('y', line).attr('text-anchor', 'start')
+            .style('font', capFont).style('fill', ink).style('fill-opacity', 0.85)
+            .text(caption);
+    }
+
     function heatmapScrollTo(offset) {
         if (!_heatmapGeom) {
             return;
@@ -7907,16 +8175,44 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let p = d3.pointer(event, _svgGroup.node());
-        let i = Math.floor((p[0] - _heatmapGeom.originX) / _heatmapGeom.cw);
-        if (i < 0 || i >= _heatmapGeom.visible) {
-            heatmapHoverOut();
-            return;
-        }
+        let i;
         let r = -1;
-        for (let k = 0; k < _heatmapGeom.tips.length; ++k) {
-            if (p[1] >= _heatmapGeom.bounds[k] && p[1] < _heatmapGeom.bounds[k + 1]) {
-                r = k;
-                break;
+        if (_heatmapGeom.circular) {
+            // the same two questions in polar form: which ring, and which slice
+            let rad = Math.sqrt((p[0] * p[0]) + (p[1] * p[1]));
+            i = Math.floor((rad - _heatmapGeom.start) / _heatmapGeom.ringW);
+            if (i < 0 || i >= _heatmapGeom.refs.length) {
+                heatmapHoverOut();
+                return;
+            }
+            // polarXY turns an angle a into (cos(a - pi/2), sin(a - pi/2)),
+            // so the angle comes back the same way round
+            let a = Math.atan2(p[1], p[0]) + (Math.PI / 2);
+            let edge = _heatmapGeom.edge;
+            let n = _heatmapGeom.tips.length;
+            for (let k = 0; k < n; ++k) {
+                // the fan can be laid anywhere on the circle (it rotates), so
+                // the comparison is made modulo a full turn rather than on the
+                // raw angle, which need not lie in the same period
+                let lo = edge[k];
+                let hi = edge[k + 1];
+                let d = ((a - lo) % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI);
+                if (d < (hi - lo)) {
+                    r = k;
+                    break;
+                }
+            }
+        } else {
+            i = Math.floor((p[0] - _heatmapGeom.originX) / _heatmapGeom.cw);
+            if (i < 0 || i >= _heatmapGeom.visible) {
+                heatmapHoverOut();
+                return;
+            }
+            for (let k = 0; k < _heatmapGeom.tips.length; ++k) {
+                if (p[1] >= _heatmapGeom.bounds[k] && p[1] < _heatmapGeom.bounds[k + 1]) {
+                    r = k;
+                    break;
+                }
             }
         }
         if (r < 0) {
@@ -7924,7 +8220,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let tip = _heatmapGeom.tips[r];
-        let col = _heatmapGeom.refs[_heatmapGeom.offset + i];
+        let col = _heatmapGeom.refs[(_heatmapGeom.offset || 0) + i];
         let v = forester.heatmapValue(tip, col.ref);
         let txt = 'Tip: ' + (displayNodeName(tip) || '?') + '<br>'
             + col.label + ': ' + (v === null ? HEATMAP_NOT_ASSESSED : heatmapNum(v)) + '<br>'
@@ -9337,8 +9633,10 @@ function (root, d3, forester, phyloXml) {
     }
 
     // The room the longest tip label takes: the same estimate the layout is
-    // sized against (there are no font metrics in the model).
-    function domainLabelSpace() {
+    // sized against (there are no font metrics in the model). Used by the
+    // domain tracks and by the heat map's rings, which both start past it --
+    // hence the name, which used to say "domain".
+    function tipLabelSpace() {
         return (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
     }
 
@@ -9502,7 +9800,7 @@ function (root, d3, forester, phyloXml) {
         // Where each tip's architecture goes: its start along the track, the
         // top and height of its boxes, and in the radial layouts the
         // transform that turns (and for unrooted moves) it onto its spoke.
-        let labelSpace = domainLabelSpace();
+        let labelSpace = tipLabelSpace();
         let rows = [];
         if (_state.circularDisplay) {
             // every bar starts on one ring past the labels and rides its
@@ -10383,7 +10681,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
-        let outer = maxRad + labelSpace + domainRadialExtent();
+        let outer = maxRad + labelSpace + domainRadialExtent() + heatmapRadialExtent();
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
         if (!isFinite(scale) || scale <= 0) {
@@ -11469,7 +11767,8 @@ function (root, d3, forester, phyloXml) {
         }
         let heatCb = byId(HEATMAP_CB);
         if (heatCb) {
-            heatCb.disabled = radialDisplay();
+            // circular draws the columns as rings; only unrooted cannot
+            heatCb.disabled = _state.unrootedDisplay === true;
         }
         syncHeatmapControls();
         let timeCb = byId(TIME_AXIS_CB);
@@ -14315,7 +14614,7 @@ function (root, d3, forester, phyloXml) {
                 opts.push(makeCheckboxItem('Domain Architectures', DOMAINS_CB, 'to show/hide the protein domain architectures beside the tips', true));
             }
             if (heatmapAvailable()) {
-                opts.push(makeCheckboxItem('Heat Map', HEATMAP_CB, 'to show/hide a cell per tip and numeric field beside the tree, every column on one color scale (rectangular layout only)'));
+                opts.push(makeCheckboxItem('Heat Map', HEATMAP_CB, 'to show/hide a cell per tip and numeric field beside the tree, every column on one color scale; concentric rings in the circular layout (not in the unrooted one, where a column has no ring to be)'));
             }
             if (_timeInfo && _timeInfo.type) {
                 opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '

@@ -538,8 +538,9 @@ alignment back into one Nexus file (Taxa, Characters and Trees blocks).
 
 A tree whose tips carry numeric fields shows them as a **heat map** beside the
 tree: one row per tip, one column per field, each cell coloured by its value
-(rectangular layout only — the columns stand on the tips' common edge, which a
-radial layout has not got). Turn it on with the **Heat Map** checkbox under
+(the columns stand on the tips' common edge; in the **circular** layout that
+edge is a ring, so each column becomes a concentric ring past the labels). Turn
+it on with the **Heat Map** checkbox under
 Display Data; it is offered whenever the tree has two or more numeric per-tip
 fields.
 
@@ -1858,8 +1859,34 @@ shorter by the band and every node moves down by it), not taken off the canvas
 and made up for by the fit: a fit happens once, and switching the order is a
 redraw, so the fit route left the dendrogram 34 px above the top of the window.
 
-The turned column names, the gradient, its two numbers, the blank key and the
-caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the
+**Circular** (`drawHeatmapRings`) is the same matrix in polar form: each column
+a concentric **ring** starting at `maxRad + tipLabelSpace + 7`, each cell an arc
+over that tip's own angular slice, with the slice boundaries derived once
+between neighbours exactly as the rows are. Ring thickness is
+`clamp(maxRad × 1.2 / columns, 1, 14)` — capped against the tree's own radius,
+so a wide matrix cannot turn the tree into a dot at the middle of a dartboard —
+and `fitRadialExtent` allows for the stack. Same-colour neighbours merge into
+one sector, which is what keeps a big fan drawable (281 paths for 18 × 50
+cells on the sparse demo).
+
+Each ring carries its name **tangentially at the fan's seam**, the gap the
+layout already leaves between the last tip and the first: the one place a label
+can sit without covering a cell. Tangentially means rotated by the angle
+itself — `polarXY` puts angle *a* at screen direction *a* − 90°, so rotating by
+*a* − 90 instead lays every name out along the seam, where the rings are one
+ring-width apart and the names several times that. Measured before the fix: 44
+overlapping pairs out of 18 names.
+
+The scale becomes a **corner card** (`drawHeatmapRingLegend`, bottom-left,
+screen coordinates so it neither turns nor scales with the fan), because a ring
+has no "under" to hang a strip from. There is no dendrogram: it would have to
+bend, and the desktop makes the same call. **Unrooted gets no heat map at all** —
+every tip there ends at its own radius, so a column has no ring to be. Hover is
+the same two questions in polar form: which ring, and which slice, the slice
+compared modulo a full turn because the fan rotates.
+
+In the rectangular layout the turned column names, the gradient, its two
+numbers, the blank key and the caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the
 alignment is shown, or the alignment's navigation bar (fixed at the viewport
 bottom) covers the scale.
 
