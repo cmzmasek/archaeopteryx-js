@@ -597,6 +597,13 @@ function (root, d3, forester, phyloXml) {
     const HEATMAP_RADIAL_MAX_FRACTION = 1.2;      // the ring stack, against the tree's own radius
     const HEATMAP_RADIAL_MIN_RING = 1;            // a ring never thinner than this
     const HEATMAP_RADIAL_MIN_NAMED_RING = 7;      // ... nor named when it is thinner than this
+    // Neighbouring sectors OVERLAP by this much rather than meeting exactly.
+    // Two antialiased edges that share a coordinate each cover about half the
+    // boundary pixel, and a half over a half does not composite back to a
+    // solid edge -- it leaves the background showing through as a dotted
+    // line all round the rings. Measured on the sparse demo: 6987 pixels
+    // within 1.2px of a ring boundary came out background-coloured.
+    const HEATMAP_RING_BLEED = 1.2;
     const HEATMAP_BLANK = 'blank';        // the run-merger's stand-in for a cell nobody filled in
     const HEATMAP_DENDRO_GAP = 5;         // px between the dendrogram's leaves and the first row
     const HEATMAP_DENDRO_MIN_BAND = 24;   // the band it is drawn in, from the label font
@@ -8005,7 +8012,16 @@ function (root, d3, forester, phyloXml) {
                 if (runStart < 0) {
                     return;
                 }
-                let path = g.append('path').attr('d', heatmapSector(edge[runStart], edge[endI], r0, r1));
+                // Bled outward and clockwise only: the rings are drawn inner to
+                // outer and each ring's cells in tip order, so the neighbour
+                // that covers the overlap is always the one drawn next.
+                // A BLANK is not bled -- it is background-coloured, so a seam
+                // beside it shows nothing, and bleeding it would push its
+                // outward OUTLINE under the next ring and cost it an edge.
+                let bleed = (runFill === HEATMAP_BLANK) ? 0 : HEATMAP_RING_BLEED;
+                let a1 = edge[endI] + (bleed / Math.max(1, r1));
+                let path = g.append('path')
+                    .attr('d', heatmapSector(edge[runStart], a1, r0, r1 + bleed));
                 if (runFill === HEATMAP_BLANK) {
                     path.attr('fill', _state.backgroundColorDefault)
                         .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
