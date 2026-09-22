@@ -456,7 +456,9 @@ desktop's Unicode entry: it stays with the text field there, as it should.
 A view is what you made of a tree with the panel: the layout and display
 type, which labels show, the colour and shape fields, both searches, the
 clade you switched to, the clades you collapsed, the font, node and branch
-sizes, the rotation, the tracks. On the demo pages it rides in the URL's
+sizes, the rotation, and the tracks — which track is shown, the heat map's
+column order (including one you arranged by hand) and whether the alignment
+is summarised as a logo. On the demo pages it rides in the URL's
 `#` hash and follows every change, so the address bar is always a link to
 what is on screen: copy it (**Copy link to this view** in the toolbar) and
 the recipient opens the same tree in the same view. Opening your own file
@@ -473,7 +475,9 @@ as the page does.
 Embedders get the same four pieces: the handle's `getViewState()` and
 `applyViewState(state)`, the config's `view` (open straight into one) and
 `onViewChange(state, encoded)` (called when it changes), and
-`archaeopteryx.encodeViewState()` / `decodeViewState()` for the hash form,
+`archaeopteryx.encodeViewState()` / `decodeViewState()` for the hash form
+(every key the state can hold survives the hash — a test reads `getViewState`
+and fails on any key the codec does not know),
 which reads like
 `layout=circular&colorBy=tax:common_name&show=name,external&font=9&collapsed=12,44&a=HUMAN&af=Any+Text&am=contains`.
 Nodes are named by their launch-time preorder index, so a view belongs to

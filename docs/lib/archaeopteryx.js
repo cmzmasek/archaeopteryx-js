@@ -9383,10 +9383,20 @@ function (root, d3, forester, phyloXml) {
     // Lists are comma-joined, booleans 1 / 0, the two searches flattened
     // to a / af / am / a2 and b / bf / bm / b2. Made for a URL hash, where
     // none of these characters needs escaping.
-    const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine'];
+    // Every key getViewState writes has to be here, or a view survives
+    // getViewState/applyViewState (what an embedder uses) and is silently
+    // dropped from the URL hash (what "Copy link to this view" produces).
+    // The heat map's four keys and the alignment logo went in exactly that
+    // way, while the README promised a link reproduced the figure.
+    const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine',
+        'heatmapOrder'];
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
-    const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'domains', 'domainGlow', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+    const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow',
+        'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+    // Lists of strings, comma-joined. A property ref carries ':' but never a
+    // comma, and encodeViewValue leaves both readable in a hash.
+    const VIEW_LIST_KEYS = ['heatmapManual'];
     const VIEW_SEARCH_KEYS = [['searchA', 'a'], ['searchB', 'b']];
 
     function encodeViewValue(v) {
@@ -9420,6 +9430,12 @@ function (root, d3, forester, phyloXml) {
         if (Array.isArray(state.collapsed) && state.collapsed.length > 0) {
             put('collapsed', state.collapsed.join(','));
         }
+        VIEW_LIST_KEYS.forEach(function (k) {
+            let v = state[k];
+            if (Array.isArray(v) && v.length > 0) {
+                parts.push(k + '=' + v.map(encodeViewValue).join(','));
+            }
+        });
         VIEW_BOOL_KEYS.forEach(function (k) {
             if (typeof state[k] === 'boolean') {
                 put(k, state[k] ? 1 : 0);
@@ -9486,6 +9502,16 @@ function (root, d3, forester, phyloXml) {
                 return parseInt(x, 10);
             });
         }
+        VIEW_LIST_KEYS.forEach(function (k) {
+            if (raw[k] !== undefined) {
+                let list = raw[k].split(',').filter(function (x) {
+                    return x.length > 0;
+                });
+                if (list.length > 0) {
+                    state[k] = list;
+                }
+            }
+        });
         VIEW_SEARCH_KEYS.forEach(function (sk) {
             let p = sk[1];
             if (raw[p]) {

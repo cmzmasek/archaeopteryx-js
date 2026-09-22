@@ -2642,6 +2642,53 @@ function testLaunchTreeList() {
 // refs keep their ':' and lists their ',' readable; junk decodes to
 // nothing rather than to garbage, and a key the decoder does not know is
 // dropped.
+// Every key getViewState can write has to be one the hash codec knows. The
+// two halves drifted apart in silence: the heat map's four keys and the
+// alignment logo survived getViewState/applyViewState -- what an embedder
+// uses -- and were dropped from the URL hash, which is what "Copy link to
+// this view" produces and what the README promised reproduced the figure.
+// A round trip cannot catch that on its own, because the test's own sample
+// state goes stale the same way; this reads the writer and asks the codec.
+function testEveryViewKeyIsInTheCodec() {
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var start = src.indexOf('function getViewState()');
+    if (start < 0) {
+        console.log('    getViewState not found -- has it been renamed?');
+        return false;
+    }
+    // to the next top-level function declaration at the same indent
+    var end = src.indexOf('\n    function ', start + 10);
+    var body = src.substring(start, end > 0 ? end : src.length);
+    var written = {};
+    var re = /\bs\.([A-Za-z][A-Za-z0-9]*)\s*=[^=]/g;
+    var m;
+    while ((m = re.exec(body)) !== null) {
+        written[m[1]] = true;
+    }
+    if (Object.keys(written).length < 10) {
+        console.log('    only found ' + Object.keys(written).length + ' keys -- the scan is broken, not the code');
+        return false;
+    }
+    var lists = ['VIEW_TEXT_KEYS', 'VIEW_INT_KEYS', 'VIEW_NUMBER_KEYS', 'VIEW_BOOL_KEYS', 'VIEW_LIST_KEYS'];
+    var known = {show: true, collapsed: true, searchA: true, searchB: true};   // handled by name
+    lists.forEach(function (name) {
+        var i = src.indexOf('const ' + name + ' =');
+        if (i < 0) {
+            return;
+        }
+        var decl = src.substring(i, src.indexOf(';', i));
+        (decl.match(/'[^']+'/g) || []).forEach(function (q) {
+            known[q.replace(/'/g, '')] = true;
+        });
+    });
+    var missing = Object.keys(written).filter(function (k) { return !known[k]; });
+    if (missing.length > 0) {
+        console.log('    getViewState writes keys the hash codec drops: ' + missing.join(', '));
+        return false;
+    }
+    return true;
+}
+
 function testViewStateCodec() {
     global.d3 = global.d3 || {};
     global.forester = global.forester || forester;
@@ -2662,13 +2709,16 @@ function testViewStateCodec() {
         show: ['name', 'external', 'custom:x'], font: 9.5, node: 3, branch: 1.5, rotation: -3,
         horizontalLabels: true, msa: false, domains: true, domainLabels: 'legend', domainGlow: false,
         domainEvalue: -3, timeAxis: true, timeGrid: false,
+        msaLogo: true, heatmap: true, heatmapOrder: 'clustered-presence',
+        heatmapManual: ['meta:recA', 'meta:gyrA'],
         searchA: {field: 'Any Text', mode: 'regex', value: 'a b&c=d \u00e9'},
         searchB: {field: 'meta:Score', mode: 'range', value: '1', value2: '2.5'},
         combine: 'and', matchCase: true, inverse: false};
     var enc = aptx.encodeViewState(state);
     if (enc.indexOf('#') >= 0 || enc.indexOf(' ') >= 0 || enc.indexOf('colorBy=tax:common_name') < 0
         || enc.indexOf('collapsed=3,44,128') < 0 || enc.indexOf('a=a+b%26c%3Dd+%C3%A9') < 0
-        || enc.indexOf('af=Any+Text') < 0 || enc.indexOf('msa=0') < 0) {
+        || enc.indexOf('af=Any+Text') < 0 || enc.indexOf('msa=0') < 0
+        || enc.indexOf('heatmapManual=meta:recA,meta:gyrA') < 0) {
         console.log('    encoded: ' + enc);
         return false;
     }
@@ -2789,6 +2839,7 @@ runTest("parseTree content sniff    : ", testParseTreeContentSniffing);
 runTest("parseTrees: every tree     : ", testParseTrees);
 runTest("launch: a list of trees    : ", testLaunchTreeList);
 runTest("view state <-> hash string : ", testViewStateCodec);
+runTest("every view key in the codec: ", testEveryViewKeyIsInTheCodec);
 runTest("view config keys           : ", testViewConfigKeys);
 runTest("panelDensity config key    : ", testPanelDensityConfig);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
