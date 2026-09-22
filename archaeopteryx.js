@@ -7457,6 +7457,19 @@ function (root, d3, forester, phyloXml) {
         return m._autoMode;
     }
 
+    // How far this tree's own tips agree about the column order (cached with
+    // the model, since it is a fact about the same values).
+    function heatmapInputAgreement() {
+        let m = heatmapModel();
+        if (!m) {
+            return null;
+        }
+        if (!m._agreement) {
+            m._agreement = forester.heatmapInputOrderAgreement(_treeData, m.refs);
+        }
+        return m._agreement;
+    }
+
     // The columns in the order the reader asked for, with the dendrogram
     // behind that order when the order came from a clustering.
     function heatmapOrdered() {
@@ -9618,8 +9631,24 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         fs.style.display = heatmapShown() ? '' : 'none';
-        if (heatmapAvailable()) {
-            setValue(HEATMAP_ORDER_SELECT, heatmapMode());
+        if (!heatmapAvailable()) {
+            return;
+        }
+        setValue(HEATMAP_ORDER_SELECT, heatmapMode());
+        // phyloXML gives every node its own property list, so tips CAN list the
+        // same columns in different orders -- and then "as in the input" is a
+        // consensus rather than a transcription. Say which, for THIS tree:
+        // nobody can tell by looking at the matrix.
+        let sel = byId(HEATMAP_ORDER_SELECT);
+        let opt = sel ? sel.querySelector('option[value="document"]') : null;
+        if (opt) {
+            let a = heatmapInputAgreement();
+            opt.title = 'the order the input lists the columns in'
+                + ((!a || a.tips < 1) ? ''
+                    : (a.conflicting === 0)
+                        ? ' \u2014 every tip here lists them the same way, so this is exactly that order'
+                        : ' \u2014 ' + a.conflicting + ' of ' + a.tips
+                            + ' tips here list them in a different order, so this is the order most of them agree on');
         }
     }
 
@@ -14178,8 +14207,12 @@ function (root, d3, forester, phyloXml) {
                 + '">Order columns</label>');
             h = h.concat('<select name="' + HEATMAP_ORDER_SELECT + '" id="' + HEATMAP_ORDER_SELECT
                 + '" title="how the matrix columns are ordered; a clustered order also draws the clustering above the matrix">');
-            h = h.concat('<option value="document" title="the order the file, or the imported table, lists the columns in">'
-                + 'As in the file</option>');
+            // "input", not "file": the columns can come from a pasted tree or
+            // a joined table as easily as from a file, and a reader looking at
+            // a tree they dropped in would fairly ask "what file?". The title
+            // is filled in per tree by syncHeatmapControls, because whether
+            // this really IS the input's order depends on the input.
+            h = h.concat('<option value="document">As in the input</option>');
             h = h.concat('<option value="clustered" title="columns whose values agree across the tips sit together:'
                 + ' complete-linkage clustering on Euclidean distance, the default of R\'s heat maps. A tip missing'
                 + ' either value is left out of that pair, never read as 0.">Clustered (co-occurrence)</option>');

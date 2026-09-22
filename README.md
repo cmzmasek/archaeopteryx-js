@@ -567,8 +567,10 @@ turned; a matrix with more columns than will fit shows a window and says so
 columns go. The two **clustered** orders put columns that behave alike side by
 side and draw the clustering itself as a **dendrogram above the matrix** — a
 clustergram — and one of them is what a heat map opens on, because reading block
-structure is what a matrix beside a tree is for. *As in the file* is there when
-you want the producer's own grouping back. Both clustered orders are
+structure is what a matrix beside a tree is for. *As in the input* is there when
+you want the producer's own grouping back — and, because phyloXML gives every
+node its own property list, its tooltip says whether that really is the input's
+order or only the order most tips agree on. Both clustered orders are
 complete-linkage hierarchical clustering, written to give the same answer as
 R's `hclust(dist(t(m)), method = "complete")`; they differ in what "alike" means:
 

@@ -257,6 +257,104 @@ function testNothingToDraw() {
     return true;
 }
 
+// A tree of `perTip` (name -> list of gene names, in that tip's OWN order),
+// shaped so that ladderizing really does rearrange it.
+function nested(perTip) {
+    var names = Object.keys(perTip);
+    var left = names.slice(0, 2).map(function (n) { return n + ':1'; }).join(',');
+    var right = names.slice(2).map(function (n) { return n + ':1'; }).join(',');
+    var phy = forester.parseNewHampshire('((' + left + '):1,(' + right + '):1);', true, false);
+    forester.getAllExternalNodes(phy).forEach(function (n, i) {
+        n.properties = (perTip[n.name] || []).map(function (g, j) {
+            return {ref: 'meta:' + g, value: String((i * 3 + j * 7) % 5),
+                datatype: 'xsd:integer', applies_to: 'node'};
+        });
+    });
+    return phy;
+}
+
+function tipsReached(phy) {
+    var out = [];
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (!(n.children && n.children.length > 0)) {
+            out.push(n.name);
+        }
+    });
+    return out.join(',');
+}
+
+function columnOrder(phy) {
+    return forester.heatmapColumns(phy).refs.map(function (r) {
+        return r.label;
+    }).join(' ');
+}
+
+// THE COLUMN ORDER IS A FACT ABOUT THE VALUES, not about how the tree is
+// arranged for display. The traversal follows the tree's current child order,
+// which ladderizing rewrites -- so a tie-break on "first seen" made the same
+// file give "B A" ladderized and "A B" not. The fixture is built so half the
+// tips say A,B and half say B,A: a genuine tie, which is the only case where
+// a tie-break can be seen at all.
+function testOrderDoesNotMoveWithTheTree() {
+    var perTip = {a: ['A', 'B'], b: ['A', 'B'], c: ['B', 'A'], d: ['B', 'A'], e: []};
+    var plain = nested(perTip);
+    var laddered = nested(perTip);
+    forester.ladderize(laddered, true);
+    // the precondition, asserted: if ladderizing did not rearrange the tips,
+    // this proves nothing at all
+    if (tipsReached(plain) === tipsReached(laddered)) {
+        console.log('    fixture: ladderizing did not rearrange this tree, so the claim is untested');
+        return false;
+    }
+    if (columnOrder(plain) !== columnOrder(laddered)) {
+        console.log('    ladderizing changed the column order: ' + columnOrder(plain)
+            + ' vs ' + columnOrder(laddered));
+        return false;
+    }
+    // ... and the same the other way round: reversing every tip's own list
+    // must not move the answer either
+    var mirrored = {a: ['B', 'A'], b: ['B', 'A'], c: ['A', 'B'], d: ['A', 'B'], e: []};
+    if (columnOrder(nested(mirrored)) !== columnOrder(plain)) {
+        console.log('    swapping which tips dissent changed the order: '
+            + columnOrder(nested(mirrored)) + ' vs ' + columnOrder(plain));
+        return false;
+    }
+    return true;
+}
+
+// How far the input agrees with itself about the order -- what the "As in the
+// input" control reports, because a reader cannot tell by looking.
+function testInputOrderAgreement() {
+    function agree(perTip) {
+        var phy = nested(perTip);
+        return forester.heatmapInputOrderAgreement(phy, forester.heatmapColumns(phy).refs);
+    }
+    var same = agree({a: ['A', 'B', 'C'], b: ['A', 'B', 'C'], c: ['A', 'B', 'C'], d: ['A', 'B', 'C']});
+    if (same.tips !== 4 || same.conflicting !== 0) {
+        console.log('    a well-formed input: ' + JSON.stringify(same));
+        return false;
+    }
+    // a GAP is not a disagreement: that tip simply has no value for B
+    var gapped = agree({a: ['A', 'C'], b: ['A', 'B', 'C'], c: ['A', 'B', 'C'], d: ['A', 'B', 'C']});
+    if (gapped.tips !== 4 || gapped.conflicting !== 0) {
+        console.log('    a gap must not count as a disagreement: ' + JSON.stringify(gapped));
+        return false;
+    }
+    // one tip genuinely out of order
+    var odd = agree({a: ['A', 'B', 'C'], b: ['A', 'B', 'C'], c: ['C', 'A', 'B'], d: ['A', 'B', 'C']});
+    if (odd.tips !== 4 || odd.conflicting !== 1) {
+        console.log('    one dissenting tip: ' + JSON.stringify(odd));
+        return false;
+    }
+    // a tip carrying nothing is not counted either way
+    var empty = agree({a: ['A', 'B'], b: ['A', 'B'], c: ['A', 'B'], d: []});
+    if (empty.tips !== 3 || empty.conflicting !== 0) {
+        console.log('    a tip with no columns must not be counted: ' + JSON.stringify(empty));
+        return false;
+    }
+    return true;
+}
+
 console.log();
 console.log("heat-map model");
 console.log();
@@ -265,6 +363,8 @@ runTest("a gap does not move a column : ", testAGapDoesNotMoveAColumn);
 runTest("missing is not zero          : ", testMissingIsNotZero);
 runTest("numeric per-tip refs only    : ", testOnlyNumericTipProperties);
 runTest("nothing to draw              : ", testNothingToDraw);
+runTest("the order is the data's, not the tree's: ", testOrderDoesNotMoveWithTheTree);
+runTest("how far the input agrees with itself   : ", testInputOrderAgreement);
 console.log();
 
 if (_testFailures > 0) {

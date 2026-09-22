@@ -2820,8 +2820,7 @@
                 label[c.ref] = c.label || c.ref;
             }
         });
-        let stat = Object.create(null);   // ref -> {sum, n, first, label}
-        let order = 0;
+        let stat = Object.create(null);   // ref -> {sum, n, label}
         let min = null;
         let max = null;
         forester.preOrderTraversalAll(tree, function (n) {
@@ -2835,7 +2834,7 @@
                 }
                 let st = stat[p.ref];
                 if (!st) {
-                    st = stat[p.ref] = {sum: 0, n: 0, first: order++, label: label[p.ref]};
+                    st = stat[p.ref] = {sum: 0, n: 0, label: label[p.ref]};
                 }
                 st.sum += at;
                 st.n++;
@@ -2848,10 +2847,19 @@
             });
         });
         let refs = Object.keys(stat).map(function (ref) {
-            return {ref: ref, label: stat[ref].label, mean: stat[ref].sum / stat[ref].n, first: stat[ref].first};
+            return {ref: ref, label: stat[ref].label, mean: stat[ref].sum / stat[ref].n, tips: stat[ref].n};
         });
+        // Mean position first; then, for a genuine tie, the better-attested
+        // column; then the ref, which is only there to make the answer
+        // DEFINITE. None of these depends on the order the tips were reached
+        // in, and that matters: the traversal follows the tree's current child
+        // order, which ladderizing rewrites. Measured before this went in --
+        // the same file, the same data, ladderized and not, gave "B A" and
+        // "A B". A column order is a fact about the values; it must not move
+        // because the tree was arranged differently for display.
         refs.sort(function (a, b) {
-            return (a.mean - b.mean) || (a.first - b.first);
+            return (a.mean - b.mean) || (b.tips - a.tips)
+                || ((a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0));
         });
         return {
             refs: refs.map(function (r) {
@@ -3152,8 +3160,8 @@
     forester.heatmapInDocumentOrder = function (tree, columns) {
         let cols = (columns || []).slice();
         let want = Object.create(null);
-        cols.forEach(function (c, i) {
-            want[c.ref] = {sum: 0, n: 0, first: i, col: c};
+        cols.forEach(function (c) {
+            want[c.ref] = {sum: 0, n: 0, col: c};
         });
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.children && n.children.length > 0) {
@@ -3181,13 +3189,11 @@
             let y = want[b.ref];
             let mx = (x.n > 0) ? (x.sum / x.n) : Infinity;
             let my = (y.n > 0) ? (y.sum / y.n) : Infinity;
-            if (mx !== my) {
-                return mx - my;
-            }
-            if (!isFinite(mx)) {
-                return (a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0);
-            }
-            return x.first - y.first;
+            // the same tie-break as heatmapColumns, and for the same reason:
+            // the incoming index would make this depend on the order it was
+            // handed, which the comment above promises it does not
+            return (mx - my) || (y.n - x.n)
+                || ((a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0));
         });
     };
 
@@ -3210,6 +3216,58 @@
      * zero to exist -- without one there is nothing for Bray-Curtis to drop,
      * and a matrix of years or coordinates is the safer read on Euclidean.
      */
+    /**
+     * How far the INPUT agrees with itself about the column order: {tips,
+     * conflicting}, where a tip conflicts when its own property list is not in
+     * the order `columns` gives (gaps are fine -- a tip that simply lacks a
+     * column is not a disagreement).
+     *
+     * This is what lets the "As in the input" control say whether that order is
+     * the file's or only a consensus. phyloXML gives every node its OWN
+     * property list, unlike a table, so tips CAN list the same columns in
+     * different orders, and a reader has no way of knowing without being told.
+     * Measured on the shipped demos: 0 of 50 and 0 of 100 tips conflict, while
+     * influenza.xml has 2 of 6.
+     */
+    forester.heatmapInputOrderAgreement = function (tree, columns) {
+        let out = {tips: 0, conflicting: 0};
+        if (!tree || !columns || columns.length < 1) {
+            return out;
+        }
+        let rank = Object.create(null);
+        columns.forEach(function (c, i) {
+            rank[c.ref] = i;
+        });
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children && n.children.length > 0) {
+                return;
+            }
+            let highest = -1;
+            let ordered = true;
+            let carries = false;
+            (n.properties || []).forEach(function (p) {
+                if (!p || !(p.ref in rank)) {
+                    return;
+                }
+                carries = true;
+                let r = rank[p.ref];
+                if (r < highest) {
+                    ordered = false;
+                } else {
+                    highest = r;
+                }
+            });
+            if (!carries) {
+                return;
+            }
+            out.tips++;
+            if (!ordered) {
+                out.conflicting++;
+            }
+        });
+        return out;
+    };
+
     forester.heatmapDefaultOrder = function (tree, columns) {
         if (!tree || !columns || columns.length < 1) {
             return 'document';

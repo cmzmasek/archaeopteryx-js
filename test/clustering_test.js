@@ -487,7 +487,7 @@ function testLinkageIsComplete() {
 }
 
 // A data-driven mode must not depend on the order the columns arrived in (the
-// previous mode's). Fed alphabetically and reversed, the same clustering.
+// previous mode's). Fed straight and reversed, the same clustering.
 function testClusteredIgnoresIncomingOrder() {
     var phy = tree(L6_GENES, L6);
     var straight = names(forester.heatmapOrder(phy, cols(L6_GENES), 'clustered').columns);
@@ -495,6 +495,30 @@ function testClusteredIgnoresIncomingOrder() {
     var reversed = names(forester.heatmapOrder(phy, shuffled, 'clustered').columns);
     if (straight !== reversed) {
         console.log('    clustering must not depend on the incoming order: ' + straight + ' vs ' + reversed);
+        return false;
+    }
+    // The normaliser every mode runs through must be order-independent where
+    // it can actually be SEEN -- that is, on a genuine TIE. Every tip of the
+    // 6x6 above lists all six genes in the same order, so its means are
+    // 0,1,2,3,4,5 and the tie-break never fires: fed a reversed list, a
+    // normaliser that merely leaned on sort stability passed it. Here half the
+    // tips say A,B and half say B,A, so the two means are equal and the
+    // tie-break is the only thing deciding.
+    var tied = ['A', 'B'];
+    var tiedTree = tree(tied, columns([1, 4, 2, 3], [3, 2, 4, 1]));
+    forester.getAllExternalNodes(tiedTree).forEach(function (n, i) {
+        if (i % 2 === 1) {
+            n.properties.reverse();   // this tip lists them the other way round
+        }
+    });
+    var meanA = forester.heatmapInDocumentOrder(tiedTree, cols(tied)).map(function (c) {
+        return c.ref;
+    }).join(',');
+    var meanB = forester.heatmapInDocumentOrder(tiedTree, cols(tied).slice().reverse()).map(function (c) {
+        return c.ref;
+    }).join(',');
+    if (meanA !== meanB) {
+        console.log('    a TIE must resolve the same whichever order it was handed: ' + meanA + ' vs ' + meanB);
         return false;
     }
     return true;
