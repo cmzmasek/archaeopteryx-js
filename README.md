@@ -33,6 +33,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
 * [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
 * [Apaf-1 gene family (domain architectures)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=apaf)
+* [Clustergram (heat map + column clustering)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=clustergram)
 * [Nucleotide alignment (600 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment_nt)
 * [Genome alignment (150 × 30,000 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=genome_alignment)
 * [Sequence alignment](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment)
@@ -539,7 +540,8 @@ alignment back into one Nexus file (Taxa, Characters and Trees blocks).
 A tree whose tips carry numeric fields shows them as a **heat map** beside the
 tree: one row per tip, one column per field, each cell coloured by its value
 (the columns stand on the tips' common edge; in the **circular** layout that
-edge is a ring, so each column becomes a concentric ring past the labels). Turn
+edge is a ring, so each column becomes a concentric ring past the labels — the
+unrooted layout has no such edge, and so no heat map). Turn
 it on with the **Heat Map** checkbox under
 Display Data; it is offered whenever the tree has two or more numeric per-tip
 fields.
@@ -604,8 +606,8 @@ edit, or a table joined since — follows the ones it does.
 
 Whatever the mode, a blank is never read as 0, and
 the dendrogram is drawn only when it describes the columns actually on screen —
-never over a scrolled window, and never over an order that did not come from a
-clustering.
+never over a scrolled window, never over an order that did not come from a
+clustering, and never over the rings, where it would have to bend.
 
 Sørensen, T. (1948) *Biol. Skr.* 5, 1–34 · Bray, J.R., Curtis, J.T. (1957)
 *Ecol. Monogr.* 27, 325–349 · Eisen, M.B. *et al.* (1998) *PNAS* 95, 14863–8.
@@ -1784,9 +1786,10 @@ with its columns being hand-picked where ours are every numeric field the tree
 carries. The resolved choice is cached on the model, never written back into the
 state, so the next tree in a multi-tree file does not inherit this one's answer.
 
-Gate: `showHeatmap` state (default **false**) AND rectangular layout AND at
-least `HEATMAP_MIN_COLUMNS` (2) columns with values — one column is a stripe,
-not a matrix.
+Gate (`heatmapShown`): `showHeatmap` state (default **false**) AND **not** the
+unrooted layout AND at least `HEATMAP_MIN_COLUMNS` (2) columns with values —
+one column is a stripe, not a matrix. Rectangular draws the track, circular the
+rings (`heatmapCircular`).
 
 Geometry: the matrix reserves `HEATMAP_TRACK_GAP(8) + band` from `_w`, where
 `band = min(columns × 14 px, clamp(viewportWidth × 0.45, 60 px, whatever leaves
@@ -1884,6 +1887,18 @@ bend, and the desktop makes the same call. **Unrooted gets no heat map at all** 
 every tip there ends at its own radius, so a column has no ring to be. Hover is
 the same two questions in polar form: which ring, and which slice, the slice
 compared modulo a full turn because the fan rotates.
+
+**Where the readout lands** is one function, `placeHoverReadout(el, event)`,
+shared by the heat map, the alignment track and the node tooltip. It sets the
+text, then measures the element — `.aptx-tip` is `width:max-content`, so its
+size is whatever it is currently saying — and offers it at `pageX + 14`,
+`pageY + 14`, flipping to the other side of the pointer on either axis only
+where that would leave the window (clamped to the edge if neither side fits).
+The heat map and the alignment both used to guess instead, shifting left by a
+hard-coded 280 px against a readout 181 px wide: since both tracks hug the right
+edge, every cell flipped and every readout floated ~95 px clear of the cell it
+described. `test_trees/heatmap_tip.html` pins it, in both layouts, and fails
+unless all four placements were exercised.
 
 In the rectangular layout the turned column names, the gradient, its two
 numbers, the blank key and the caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the
