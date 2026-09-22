@@ -1468,6 +1468,30 @@ function (root, d3, forester, phyloXml) {
             .style('opacity', 0.95); // only the fade -- the rest is set at creation
     }
 
+    // Puts a hover readout beside the pointer -- to its right and below --
+    // flipping to the other side when that would leave the window. The readout's
+    // OWN measured size decides, because .aptx-tip is width:max-content and so
+    // is as wide as whatever it happens to be saying. Guessing instead, with a
+    // fixed shift, left a 181px readout floating a hundred pixels clear of the
+    // cell it described; a matrix that hugs the right edge flips on every cell,
+    // so the guess was what the reader saw every time.
+    const HOVER_READOUT_GAP = 14;
+
+    function placeHoverReadout(el, event) {
+        let w = el.offsetWidth;
+        let h = el.offsetHeight;
+        let left = event.pageX + HOVER_READOUT_GAP;
+        if ((left + w) > (window.scrollX + window.innerWidth)) {
+            left = Math.max(window.scrollX + 2, event.pageX - HOVER_READOUT_GAP - w);
+        }
+        let top = event.pageY + HOVER_READOUT_GAP;
+        if ((top + h) > (window.scrollY + window.innerHeight)) {
+            top = Math.max(window.scrollY + 2, event.pageY - HOVER_READOUT_GAP - h);
+        }
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+    }
+
     function mousemove(event, d) {
 
         let mo_text = nodeDataText(d);
@@ -1478,10 +1502,8 @@ function (root, d3, forester, phyloXml) {
         if (_panelTheme) {
             tip.classList.add('aptx-' + _panelTheme);
         }
-        _node_mouseover_div
-            .html(markUpDataLabels(escapeHtmlKeepBreaks(mo_text)))
-            .style('left', (event.pageX + 14) + 'px')
-            .style('top', (event.pageY + 14) + 'px');
+        _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(mo_text)));
+        placeHoverReadout(tip, event);   // this one used to run off the edge instead
     }
 
     // ----------------------------
@@ -7321,13 +7343,8 @@ function (root, d3, forester, phyloXml) {
         if (_panelTheme) {
             tip_el.classList.add('aptx-' + _panelTheme);
         }
-        // the track hugs the right edge, so the readout flips to the left
-        // of the pointer when it would otherwise run off the window
-        let left = (event.pageX + 290) > window.innerWidth ? (event.pageX - 280) : (event.pageX + 14);
-        _node_mouseover_div
-            .html(markUpDataLabels(escapeHtmlKeepBreaks(txt)))
-            .style('left', left + 'px')
-            .style('top', (event.pageY + 14) + 'px');
+        _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(txt)));
+        placeHoverReadout(tip_el, event);
         _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
     }
 
@@ -8246,13 +8263,8 @@ function (root, d3, forester, phyloXml) {
         if (_panelTheme) {
             tip_el.classList.add('aptx-' + _panelTheme);
         }
-        // the matrix hugs the right edge, so the readout flips to the left of
-        // the pointer when it would otherwise run off the window
-        let left = (event.pageX + 290) > window.innerWidth ? (event.pageX - 280) : (event.pageX + 14);
-        _node_mouseover_div
-            .html(markUpDataLabels(escapeHtmlKeepBreaks(txt)))
-            .style('left', left + 'px')
-            .style('top', (event.pageY + 14) + 'px');
+        _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(txt)));
+        placeHoverReadout(tip_el, event);
         _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
     }
 
