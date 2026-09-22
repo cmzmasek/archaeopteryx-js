@@ -6,6 +6,102 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## 3.11.0 — 2026-09-22
+
+A tree's tips often carry numbers as well as names — gene presence, evidence
+scores, a pan-genome matrix. This release draws them as a **heat map** beside
+the tree, clusters its columns, and lets you arrange them yourself.
+
+### Added
+
+- **A heat map beside the tree.** One row per tip, one column per numeric
+  per-tip field, every column painted on **one shared scale** — a colour means
+  the same number wherever it appears, which is what makes a block of related
+  columns readable as a block rather than a row of independent stripes. Turn it
+  on with the **Heat Map** checkbox under Display Data, or open on it with
+  `showHeatmap: true`. Offered whenever the tree has two or more numeric fields;
+  the columns are exactly what the **Color by** menu offers, so the two agree
+  about what the tree holds. The scale spans the whole tree, so entering a
+  subtree narrows the rows and leaves the colours where they were.
+  - A cell **nobody filled in** is an outlined empty box, never the scale's low
+    end: on a presence/absence matrix, reading a missing field as zero states
+    the opposite of what the file says. A key beside the scale names it.
+  - Hover any cell for its tip, the column, the value — or `not assessed` — and
+    the scale it was coloured against. Column names stand turned under the
+    matrix; more columns than will fit shows a window that says so
+    (`Columns 1–240 of 400`) and scrolls to the wheel.
+  - Data arrives with the tree as phyloXML `<property>` elements on the tips, or
+    from a **metadata table** joined on the open page — a table's numeric columns
+    become heat-map columns like any others.
+
+- **Column clustering, drawn as a dendrogram above the matrix** — a clustergram.
+  Complete-linkage hierarchical clustering, written to give the same answer as
+  R's `hclust(dist(t(m)), method = "complete")`, pinned against R 4.5.3 output.
+  Two senses of "alike":
+  - **Clustered (co-occurrence)** — Euclidean distance, the default of R's
+    `pheatmap`, `heatmap.2` and `ComplexHeatmap`.
+  - **Clustered (ignoring shared absence)** — the **Bray–Curtis** dissimilarity
+    (R `vegan`'s `vegdist` default), pinned against vegan 2.7-2. Euclidean
+    distance has the *double-zero problem*: two genes both **absent** from the
+    same strains count as agreeing there, so on a sparse pan-genome the rare
+    genes cluster together merely for being rare. Bray–Curtis drops a tip where
+    both columns are 0 instead of scoring it as agreement.
+  - Which one a tree **opens on** is decided by its values: Bray–Curtis where
+    the matrix has zeros to ignore and nothing negative, Euclidean otherwise. A
+    zero is precisely the precondition for a double zero to exist, and
+    Bray–Curtis is meant for values 0 or more. `heatmapColumnOrder` overrides,
+    and an explicit choice is never re-derived.
+
+- **Order columns**, with **Reorder columns…** for your own arrangement. *As in
+  the input*, *Alphabetical*, *Frequency*, the two clustered orders, and a
+  **Manual** order you drag (or move with the arrow keys) into place. Nothing
+  re-sorts a manual order — a sorting mode that quietly undid your arrangement
+  would make the arrangement pointless — and *Automatic* hands the order back to
+  the data. A manual order rides in a shared view (`heatmapManualOrder`), so a
+  link reproduces the figure exactly; a column the list does not name follows
+  the ones it does.
+  - phyloXML gives every node its own property list, so "the input's order" is
+    not one thing. *As in the input* takes the order the tips agree on — a
+    consensus over which column precedes which, not an average position — and
+    its tooltip says whether that really is the input's order or only the order
+    most tips agree on. Columns that appear together stay together.
+
+- **The heat map in the circular layout**: each column a concentric **ring** past
+  the tips and their labels, each cell an arc over that tip's own angular slice.
+  Ring names run tangentially at the fan's seam — the one place a label can sit
+  without covering a cell — and the scale becomes a corner card, because a ring
+  has no "under" to hang a strip from. No dendrogram there: it would have to
+  bend. The unrooted layout gets no heat map at all, since every tip ends at its
+  own radius and a column has no ring to be.
+
+- **A clustergram demo**: 50 synthetic strains and 18 accessory-genome genes,
+  opening deliberately on the Euclidean answer so switching to *ignoring shared
+  absence* shows the double-zero problem scatter.
+
+### Fixed
+
+- **The hover readout landed away from the cell it described.** The heat map and
+  the alignment track placed it by guessing its width — a hard-coded 280 px
+  shift against a readout 181 px wide — and since both tracks hug the right edge,
+  every cell took that shift and every readout floated ~95 px clear of the
+  pointer. It is now placed by its own measured size, flipping on either axis
+  only where it would leave the window. The node tooltip, which never flipped at
+  all and so ran off the right edge, goes through the same function.
+- **Seams between the rings.** Adjacent sectors met at exactly the same
+  coordinate, so two antialiased edges each covered about half the boundary
+  pixel and the background showed through as a dotted line all round every ring.
+  Neighbouring cells now overlap instead of abutting.
+- **A property ref repeated on one node exported only its first value**, so a
+  presence/absence matrix left the node-data table as if it were single-valued.
+  Repeats now join with `; ` in document order, one column per ref.
+
+### Changed
+
+- The joint pan-genome contract with desktop Archaeopteryx is pinned on a real
+  matrix — 100 strains × 40 genes, 40 distinct scores — rather than on synthetic
+  trees where every score tied and "we agree" only meant we agreed on the
+  alphabetical tiebreak.
+
 ## 3.10.0 — 2026-09-17
 
 One tree can say two different things: where its nodes sit in **time**, and how
