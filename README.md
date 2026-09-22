@@ -1719,11 +1719,35 @@ span every drawn cell of the whole tree. `forester.heatmapValue(node, ref)`
 returns the number or **null**: null for absent, blank and non-numeric alike,
 and for a ref a node carries twice, the first.
 
-Column order is each ref's **mean position** among the tips that carry it,
-ties by first appearance. First-appearance order alone is wrong and visibly so:
-on the pan-genome demo 7 of 100 tips carry no `dnaK`, the first tip is one of
-them, and that core gene landed at column 40 of 40. Averaging means every tip's
-own order contributes and one gap cannot move a column.
+Column order is a **consensus** (`forester.heatmapConsensusOrder`), because
+phyloXML gives every node its own property list: tips can list the same columns
+in different orders, and on `docs/data/influenza.xml` 2 of 6 do. Each tip votes
+on the pairs it lists next to each other, the majority direction of each pair
+becomes an edge, and the columns are read off a topological sort of that graph.
+
+Two rules this replaced, both wrong in ways that showed:
+
+* **First appearance** put a core gene at column 40 of 40 — 7 of 100 tips in the
+  pan-genome demo carry no `dnaK` and the first tip is one of them. (Worse, the
+  traversal reaches a flat tree's tips *last*-first, so "first" meant the file's
+  last tip.)
+* **Mean position** fixed that, and then interleaved blocks no tip carries
+  together: tips holding `A,B` and tips holding `X,Y` put A and X both at
+  position 0, giving `X A Y B` instead of `A B X Y`. No tie-break can mend it —
+  the average is what is wrong, because it compares positions measured on tips
+  that share no frame of reference.
+
+Only **adjacent** pairs vote, which keeps this linear in the data; every pair
+would be quadratic in the column count, which is exactly where a wide matrix
+hurts. Transitivity comes from the sort instead. The cost is that adjacency can
+manufacture a cycle where all pairs would not (tips `A,B,C` and `C,A` give
+A→B→C→A), so cycles are broken at the column fewest others wait on rather than
+assumed away — a column is never dropped because the votes disagreed. Where the
+graph is silent the old rule still decides: mean position, then the
+better-attested column, then the ref. None of it depends on the order the tips
+were reached in, which matters because that order follows the tree's current
+child arrangement and `ladderizeTree` rewrites it — measured, one file once gave
+`B A` ladderized and `A B` not.
 
 The mode a tree opens on, when the caller did not say, is
 `forester.heatmapDefaultOrder`: `'clustered-presence'` when some value is 0 and
@@ -1772,8 +1796,8 @@ the same picture.
 *View → Order Matrix Columns*, minus its Manual mode, which means "the order you
 dragged the rows into" and there is no drag-to-reorder dialog here. Every
 data-driven mode first normalises to **document order**
-(`forester.heatmapInDocumentOrder`, mean position among the tips carrying the
-column, unplaceable columns sorted at the end) so a result cannot depend on the
+(`forester.heatmapInDocumentOrder`, the same consensus over exactly the columns
+given, with columns no tip carries at the end) so a result cannot depend on the
 order the columns happened to be in. Measured: without it, the 6×6 linkage
 fixture fed in reverse clustered to `h6,h5,h3,h4,h2,h1` instead of R's
 `h6,h3,h5,h4,h1,h2` — the index order drives the tie-break and the leaf order,

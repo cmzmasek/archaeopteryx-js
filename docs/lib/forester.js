@@ -2820,50 +2820,41 @@
                 label[c.ref] = c.label || c.ref;
             }
         });
-        let stat = Object.create(null);   // ref -> {sum, n, label}
+        let seen = Object.create(null);    // ref -> its label, for the refs any tip carries
+        let sequences = [];                // one per tip: the columns IT lists, in ITS order
         let min = null;
         let max = null;
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.children && n.children.length > 0) {
                 return;                      // per-TIP columns: an internal node has no row
             }
-            let at = 0;                      // this tip's own column positions, gaps closed up
+            let seq = [];
             (n.properties || []).forEach(function (p) {
                 if (!p || !numeric[p.ref]) {
                     return;
                 }
-                let st = stat[p.ref];
-                if (!st) {
-                    st = stat[p.ref] = {sum: 0, n: 0, label: label[p.ref]};
-                }
-                st.sum += at;
-                st.n++;
-                at++;
+                seen[p.ref] = label[p.ref];
+                seq.push(p.ref);
                 let v = forester.heatmapValue(n, p.ref);
                 if (v !== null) {
                     min = (min === null || v < min) ? v : min;
                     max = (max === null || v > max) ? v : max;
                 }
             });
+            if (seq.length > 0) {
+                sequences.push(seq);
+            }
         });
-        let refs = Object.keys(stat).map(function (ref) {
-            return {ref: ref, label: stat[ref].label, mean: stat[ref].sum / stat[ref].n, tips: stat[ref].n};
-        });
-        // Mean position first; then, for a genuine tie, the better-attested
-        // column; then the ref, which is only there to make the answer
-        // DEFINITE. None of these depends on the order the tips were reached
-        // in, and that matters: the traversal follows the tree's current child
-        // order, which ladderizing rewrites. Measured before this went in --
-        // the same file, the same data, ladderized and not, gave "B A" and
-        // "A B". A column order is a fact about the values; it must not move
-        // because the tree was arranged differently for display.
-        refs.sort(function (a, b) {
-            return (a.mean - b.mean) || (b.tips - a.tips)
-                || ((a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0));
-        });
+        // The consensus of what the tips actually said (see
+        // heatmapConsensusOrder). Nothing here depends on the order the tips
+        // were REACHED in, and that matters: the traversal follows the tree's
+        // current child order, which ladderizing rewrites -- measured, the same
+        // file once gave "B A" ladderized and "A B" not. A column order is a
+        // fact about the values.
+        let refs = forester.heatmapConsensusOrder(sequences, Object.keys(seen));
         return {
-            refs: refs.map(function (r) {
-                return {ref: r.ref, label: r.label};
+            refs: refs.map(function (ref) {
+                return {ref: ref, label: seen[ref]};
             }),
             min: min,
             max: max
@@ -3146,54 +3137,48 @@
      * the ways to get there.
      */
     /**
-     * `columns` put back into DOCUMENT order -- the order forester.heatmapColumns
-     * derives for this tree. A column that order does not name cannot be placed,
-     * so it must not be dropped: it goes at the end, and the unplaceable ones
-     * are sorted among themselves.
+     * `columns` put back into DOCUMENT order -- the consensus of what this
+     * tree's tips actually said, read by heatmapConsensusOrder over exactly the
+     * columns GIVEN. A column no tip carries casts no votes and cannot be
+     * placed by them; it must not be dropped for that, so it lands at the end,
+     * by ref.
      *
-     * The tail is SORTED rather than left in its incoming order so that this
-     * depends only on its inputs as a SET. Every data-driven mode normalises
-     * through here precisely so a result cannot depend on the order the columns
-     * happened to be in, and an incoming-order tail would break that promise
-     * exactly when it mattered.
+     * Every data-driven mode normalises through here precisely so a result
+     * cannot depend on the order the columns happened to be in -- the previous
+     * mode's, say. Going through heatmapColumns instead would drag in its
+     * CANDIDACY rules (a constant column is refused as a visualization), and an
+     * order must not move for a reason that has nothing to do with ordering.
      */
     forester.heatmapInDocumentOrder = function (tree, columns) {
         let cols = (columns || []).slice();
         let want = Object.create(null);
         cols.forEach(function (c) {
-            want[c.ref] = {sum: 0, n: 0, col: c};
+            want[c.ref] = c;
         });
+        let sequences = [];
         forester.preOrderTraversalAll(tree, function (n) {
             if (n.children && n.children.length > 0) {
                 return;
             }
-            let at = 0;
+            let seq = [];
             (n.properties || []).forEach(function (p) {
-                let st = p && want[p.ref];
-                if (!st) {
-                    return;
+                if (p && want[p.ref]) {
+                    seq.push(p.ref);
                 }
-                st.sum += at;
-                st.n++;
-                at++;
             });
+            if (seq.length > 0) {
+                sequences.push(seq);
+            }
         });
-        // the same rule forester.heatmapColumns orders by -- mean position
-        // among the tips that carry the column, ties by first appearance --
-        // but over exactly the columns GIVEN, so it cannot be moved by a
-        // candidacy rule that has nothing to do with ordering. A column no tip
-        // carries has no position; it sorts last, by ref, so the result
-        // depends only on its inputs as a SET.
-        return cols.slice().sort(function (a, b) {
-            let x = want[a.ref];
-            let y = want[b.ref];
-            let mx = (x.n > 0) ? (x.sum / x.n) : Infinity;
-            let my = (y.n > 0) ? (y.sum / y.n) : Infinity;
-            // the same tie-break as heatmapColumns, and for the same reason:
-            // the incoming index would make this depend on the order it was
-            // handed, which the comment above promises it does not
-            return (mx - my) || (y.n - x.n)
-                || ((a.ref < b.ref) ? -1 : ((a.ref > b.ref) ? 1 : 0));
+        // The same consensus forester.heatmapColumns reads, over exactly the
+        // columns GIVEN, so it cannot be moved by a candidacy rule that has
+        // nothing to do with ordering. A column no tip carries casts no votes
+        // and has no position; it lands last, by ref, so the result depends
+        // only on its inputs as a SET.
+        return forester.heatmapConsensusOrder(sequences, cols.map(function (c) {
+            return c.ref;
+        })).map(function (ref) {
+            return want[ref];
         });
     };
 
@@ -3229,6 +3214,161 @@
      * Measured on the shipped demos: 0 of 50 and 0 of 100 tips conflict, while
      * influenza.xml has 2 of 6.
      */
+
+    /**
+     * ONE column order out of many tips that each list their own columns in
+     * their own order. `sequences` is one array of refs per tip -- that tip's
+     * own order, gaps and all -- and `refs` is the set to place.
+     *
+     * Averaging each column's position was the obvious rule and it fails on a
+     * shape that is not at all exotic: two groups of columns that no tip ever
+     * carries TOGETHER. Tips holding A,B and tips holding X,Y put A and X both
+     * at position 0, so the average interleaves them into X A Y B instead of
+     * leaving the two blocks whole. No tie-break can mend that -- the average
+     * itself is what is wrong, because it compares positions measured on tips
+     * that share no frame of reference.
+     *
+     * So the order is read off a PRECEDENCE GRAPH instead. Each tip votes on
+     * the pairs it actually lists next to each other, the majority direction
+     * of each pair becomes an edge, and the columns come out of a topological
+     * sort of that graph. Two blocks with no tip in common cast no votes about
+     * each other, so nothing forces them apart, and the sort emits one and then
+     * the other.
+     *
+     * Only ADJACENT pairs are looked at -- both the votes and the neighbour
+     * sets the block rule reads -- which keeps this linear in the data. Every
+     * pair would be quadratic in the column count, and a wide matrix is exactly
+     * where that hurts: measured at 42 seconds on 2000 columns across 200 tips,
+     * against 0.2 for adjacency. Transitivity comes from the sort rather than
+     * from the votes, and a block stays whole through its chain of neighbours. The cost is that adjacency can manufacture a cycle where all
+     * pairs would not -- tips A,B,C and C,A give A->B->C->A -- so cycles are
+     * broken rather than assumed away.
+     *
+     * Where the graph says nothing, the old rule decides, so every case it
+     * already got right is unchanged: mean position, then the better-attested
+     * column, then the ref. What is new is that a column is preferred while it
+     * still shares a tip with the one just placed, which is what keeps a block
+     * together once it has been started.
+     */
+    forester.heatmapConsensusOrder = function (sequences, refs) {
+        let all = (refs || []).slice();
+        let n = all.length;
+        if (n < 2) {
+            return all;
+        }
+        let idx = Object.create(null);
+        all.forEach(function (r, i) {
+            idx[r] = i;
+        });
+        let sum = new Array(n).fill(0);
+        let tips = new Array(n).fill(0);
+        let votes = new Map();          // i*n + j -> tips putting i just before j
+        let near = [];                  // i -> Set of columns some tip lists NEXT to i
+        for (let i = 0; i < n; ++i) {
+            near.push(new Set());
+        }
+        (sequences || []).forEach(function (seq) {
+            let at = 0;
+            let prev = -1;
+            for (let k = 0; k < seq.length; ++k) {
+                let j = idx[seq[k]];
+                if (j === undefined) {
+                    continue;
+                }
+                sum[j] += at;
+                tips[j]++;
+                at++;
+                if (prev >= 0 && prev !== j) {
+                    let key = (prev * n) + j;
+                    votes.set(key, (votes.get(key) || 0) + 1);
+                    // neighbours, for the block rule below. Adjacency again,
+                    // not every pair on the tip: every pair is quadratic in the
+                    // column count, and measured, it was 42 SECONDS on 2000
+                    // columns across 200 tips. A block stays whole through its
+                    // chain of neighbours, so adjacency is all it needs.
+                    near[prev].add(j);
+                    near[j].add(prev);
+                }
+                prev = j;
+            }
+        });
+        let mean = new Array(n);
+        for (let i = 0; i < n; ++i) {
+            mean[i] = (tips[i] > 0) ? (sum[i] / tips[i]) : Infinity;
+        }
+        // the majority direction of each voted pair becomes an edge; a pair its
+        // tips split evenly says nothing and gets none
+        let out = [];
+        let indeg = new Array(n).fill(0);
+        for (let i = 0; i < n; ++i) {
+            out.push([]);
+        }
+        votes.forEach(function (count, key) {
+            let i = Math.floor(key / n);
+            let j = key % n;
+            if (count > (votes.get((j * n) + i) || 0)) {
+                out[i].push(j);
+                indeg[j]++;
+            }
+        });
+        // the static key, used wherever the graph is silent: the rule this
+        // replaced, so nothing it already ordered correctly moves
+        function better(a, b, last) {
+            if (last >= 0) {
+                let na = near[last].has(a);
+                let nb = near[last].has(b);
+                if (na !== nb) {
+                    return na;   // keep the block that is already open
+                }
+            }
+            if (mean[a] !== mean[b]) {
+                return mean[a] < mean[b];
+            }
+            if (tips[a] !== tips[b]) {
+                return tips[a] > tips[b];
+            }
+            return all[a] < all[b];
+        }
+        let placed = new Array(n).fill(false);
+        let order = [];
+        let last = -1;
+        for (let step = 0; step < n; ++step) {
+            let pick = -1;
+            for (let i = 0; i < n; ++i) {
+                if (placed[i] || indeg[i] > 0) {
+                    continue;
+                }
+                if (pick < 0 || better(i, pick, last)) {
+                    pick = i;
+                }
+            }
+            if (pick < 0) {
+                // a cycle: no column is free. Break it at the column the fewest
+                // others are waiting on, then by the same static key -- never
+                // leave a column undrawn because its votes disagreed.
+                for (let i = 0; i < n; ++i) {
+                    if (placed[i]) {
+                        continue;
+                    }
+                    if (pick < 0 || indeg[i] < indeg[pick]
+                        || (indeg[i] === indeg[pick] && better(i, pick, last))) {
+                        pick = i;
+                    }
+                }
+            }
+            placed[pick] = true;
+            indeg[pick] = 0;
+            order.push(all[pick]);
+            out[pick].forEach(function (j) {
+                if (!placed[j] && indeg[j] > 0) {
+                    indeg[j]--;
+                }
+            });
+            last = pick;
+        }
+        return order;
+    };
+
     forester.heatmapInputOrderAgreement = function (tree, columns) {
         let out = {tips: 0, conflicting: 0};
         if (!tree || !columns || columns.length < 1) {

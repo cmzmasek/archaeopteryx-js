@@ -355,6 +355,152 @@ function testInputOrderAgreement() {
     return true;
 }
 
+// A tree of `perTip` as a flat polytomy, with enough tips that every ref is a
+// candidate (a field only two or three tips carry is refused upstream, which
+// would silently shrink the fixture).
+function flat(perTip) {
+    var names = Object.keys(perTip);
+    var phy = forester.parseNewHampshire('(' + names.map(function (n) {
+        return n + ':0.1';
+    }).join(',') + ');', true, false);
+    forester.getAllExternalNodes(phy).forEach(function (n, i) {
+        n.properties = (perTip[n.name] || []).map(function (g, j) {
+            return {ref: 'meta:' + g, value: String((i * 3 + j * 7) % 5),
+                datatype: 'xsd:integer', applies_to: 'node'};
+        });
+    });
+    return phy;
+}
+
+function orderOf(perTip) {
+    return forester.heatmapColumns(flat(perTip)).refs.map(function (r) {
+        return r.label;
+    }).join(' ');
+}
+
+// COLUMNS NO TIP CARRIES TOGETHER MUST STAY IN THEIR BLOCKS. Averaging each
+// column's position put A and X both at "column 0" and interleaved two
+// unrelated blocks into X A Y B; a precedence graph has no vote at all between
+// them, so nothing forces them apart.
+function testBlocksStayWhole() {
+    var two = orderOf({a: ['A', 'B'], b: ['A', 'B'], c: ['A', 'B'],
+        x: ['X', 'Y'], y: ['X', 'Y'], z: ['X', 'Y']});
+    if (two !== 'A B X Y') {
+        console.log('    two disjoint blocks came out as: ' + two);
+        return false;
+    }
+    // three of them, and a block that shares one column with the next
+    var three = orderOf({a: ['A', 'B'], b: ['A', 'B'], c: ['A', 'B'],
+        d: ['X', 'Y'], e: ['X', 'Y'], f: ['X', 'Y'],
+        g: ['P', 'Q'], h: ['P', 'Q'], i: ['P', 'Q']});
+    if (!/^(A B|P Q|X Y)( (A B|P Q|X Y)){2}$/.test(three)) {
+        console.log('    three disjoint blocks were broken up: ' + three);
+        return false;
+    }
+    var joined = orderOf({a: ['A', 'B', 'M'], b: ['A', 'B', 'M'], c: ['A', 'B', 'M'],
+        d: ['M', 'X', 'Y'], e: ['M', 'X', 'Y'], f: ['M', 'X', 'Y']});
+    if (joined !== 'A B M X Y') {
+        console.log('    blocks sharing one column should chain through it: ' + joined);
+        return false;
+    }
+    return true;
+}
+
+// The graph can disagree with itself -- tips saying A,B then B,C then C,A vote
+// a loop -- and a column must never be dropped because of it.
+function testTheOrderSurvivesADisagreement() {
+    var perTip = {};
+    ['a', 'b', 'c'].forEach(function (s, k) {
+        perTip[s + '1'] = [['A', 'B'], ['B', 'C'], ['C', 'A']][k];
+        perTip[s + '2'] = [['A', 'B'], ['B', 'C'], ['C', 'A']][k];
+        perTip[s + '3'] = [['A', 'B'], ['B', 'C'], ['C', 'A']][k];
+    });
+    var cyc = orderOf(perTip);
+    if (cyc.split(' ').sort().join(' ') !== 'A B C') {
+        console.log('    a loop in the votes lost a column: ' + cyc);
+        return false;
+    }
+    // the pure function, on the shapes a tree cannot easily produce
+    var f = forester.heatmapConsensusOrder;
+    if (f([['A', 'B'], ['B', 'C'], ['C', 'A']], ['A', 'B', 'C']).join(' ') !== 'A B C') {
+        console.log('    the loop must still come out in a definite order');
+        return false;
+    }
+    if (f([], ['B', 'A']).join(' ') !== 'A B') {
+        console.log('    with no votes at all the static key decides: ' + f([], ['B', 'A']).join(' '));
+        return false;
+    }
+    if (f([['A', 'B']], ['A', 'B', 'Z']).join(' ') !== 'A B Z') {
+        console.log('    a column no tip carries belongs last');
+        return false;
+    }
+    if (f([['A']], ['A']).join(' ') !== 'A' || f([], []).length !== 0) {
+        console.log('    one column, and none, must not throw');
+        return false;
+    }
+    return true;
+}
+
+// The two rules the graph rests on, each on a fixture where it can be SEEN.
+// Both were sabotaged out and survived at first, because every other fixture
+// here happens to give the same answer either way.
+function testTheRulesTheGraphRestsOn() {
+    var f = forester.heatmapConsensusOrder;
+    // A MINORITY vote must not make an edge. Three tips say A then B, one says
+    // B then A. If every vote counted, A and B would each wait on the other,
+    // the sort would fall through to breaking a loop, and B -- which appears
+    // earlier on average, being on nine tips -- would be placed first.
+    var majority = [['Z', 'A', 'B'], ['Z', 'A', 'B'], ['Z', 'A', 'B'], ['B', 'A'],
+        ['B'], ['B'], ['B'], ['B'], ['B']];
+    var got = f(majority, ['Z', 'A', 'B']).join(' ');
+    if (got !== 'Z A B') {
+        console.log('    the majority direction must win, not merely a vote: ' + got);
+        return false;
+    }
+    // Where the graph is SILENT, mean position decides -- the rule this
+    // replaced, kept for exactly the cases the votes cannot settle. Here A and
+    // B tie three votes each way, so there is no edge between them at all, and
+    // C (always alone, so always at position 0) must come first even though it
+    // is on the fewest tips and sorts last by name.
+    var silent = [['A', 'B'], ['A', 'B'], ['A', 'B'], ['B', 'A'], ['B', 'A'], ['B', 'A'],
+        ['C'], ['C'], ['C']];
+    got = f(silent, ['A', 'B', 'C']).join(' ');
+    if (got !== 'C A B') {
+        console.log('    with no votes to go on, the earliest mean position comes first: ' + got);
+        return false;
+    }
+    // The two smallest cases where the PRECEDENCE GRAPH and the SYMMETRIC
+    // neighbour set each decide the answer by themselves. Both were found by
+    // searching random tip sets for a disagreement rather than reasoned out:
+    // every fixture written by hand above happens to come out the same with
+    // those rules removed, and sabotaging either one survived the whole suite.
+    // Over 4000 random sets, dropping the graph changed 1963 answers and
+    // dropping the reverse neighbour link changed 231 -- they are not
+    // decoration, the hand-made cases were simply too tame to show it.
+    got = f([['C', 'B', 'D', 'A'], ['B', 'A']], ['A', 'B', 'C', 'D']).join('');
+    if (got !== 'CBDA') {
+        console.log('    the precedence graph must place D before A here (CBDA, not CBAD): ' + got);
+        return false;
+    }
+    got = f([['C', 'A'], ['C', 'A', 'B', 'D'], ['C', 'D'], ['B', 'C', 'D', 'A']],
+        ['A', 'B', 'C', 'D']).join('');
+    if (got !== 'CBDA') {
+        console.log('    a neighbour link runs BOTH ways (CBDA, not CABD): ' + got);
+        return false;
+    }
+    // An evenly split pair must produce NO edge, not two. One tip says A then
+    // C and one says C then A; B is carried by neither. Counting both votes
+    // leaves A and C each waiting on the other, so the only free column is the
+    // one nobody mentioned, and B -- which has no position at all -- is drawn
+    // FIRST. (Over 300000 random sets this rule changed 43793 answers.)
+    got = f([['A', 'C'], ['C', 'A']], ['A', 'B', 'C']).join('');
+    if (got !== 'ACB') {
+        console.log('    an evenly split pair must cast no edge at all (ACB, not BAC): ' + got);
+        return false;
+    }
+    return true;
+}
+
 console.log();
 console.log("heat-map model");
 console.log();
@@ -365,6 +511,9 @@ runTest("numeric per-tip refs only    : ", testOnlyNumericTipProperties);
 runTest("nothing to draw              : ", testNothingToDraw);
 runTest("the order is the data's, not the tree's: ", testOrderDoesNotMoveWithTheTree);
 runTest("how far the input agrees with itself   : ", testInputOrderAgreement);
+runTest("blocks no tip shares stay whole        : ", testBlocksStayWhole);
+runTest("a loop in the votes loses no column    : ", testTheOrderSurvivesADisagreement);
+runTest("majority wins; where it is silent, mean: ", testTheRulesTheGraphRestsOn);
 console.log();
 
 if (_testFailures > 0) {
