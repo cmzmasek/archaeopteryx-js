@@ -3191,6 +3191,54 @@
         });
     };
 
+    /**
+     * The order a heat map opens in when nobody said: a CLUSTERED one, with the
+     * distance picked from the data.
+     *
+     * Bray-Curtis is the better read on presence/absence and abundance data --
+     * it is what the double-zero problem calls for -- but it is meant for
+     * values 0 or more, and these columns are every numeric field the tree
+     * happens to carry rather than a hand-picked matrix. Measured: on a
+     * latitude/longitude matrix 2 of 6 pairs come out with no distance at all
+     * (+Infinity, so they join last arbitrarily), and a year column among small
+     * ones sits at 0.9995 from every one of them -- maximally distant for being
+     * LARGE rather than for any pattern. Within a block of comparable magnitude
+     * it is exactly right; across magnitudes it measures magnitude.
+     *
+     * So: Bray-Curtis where there are zeros to ignore and nothing negative,
+     * Euclidean otherwise. A zero is precisely the precondition for a double
+     * zero to exist -- without one there is nothing for Bray-Curtis to drop,
+     * and a matrix of years or coordinates is the safer read on Euclidean.
+     */
+    forester.heatmapDefaultOrder = function (tree, columns) {
+        if (!tree || !columns || columns.length < 1) {
+            return 'document';
+        }
+        let v = forester.heatmapValueMatrix(tree, columns.map(function (c) {
+            return c.ref;
+        }));
+        let any = false;
+        let zero = false;
+        let negative = false;
+        v.forEach(function (row) {
+            row.forEach(function (x) {
+                if (x === null) {
+                    return;
+                }
+                any = true;
+                if (x === 0) {
+                    zero = true;
+                } else if (x < 0) {
+                    negative = true;
+                }
+            });
+        });
+        if (!any) {
+            return 'document';   // nothing to cluster on
+        }
+        return (zero && !negative) ? 'clustered-presence' : 'clustered';
+    };
+
     forester.heatmapOrder = function (tree, columns, mode) {
         let out = {columns: (columns || []).slice(), dendrogram: null};
         if (!tree || out.columns.length < 1 || !mode || mode === 'document') {

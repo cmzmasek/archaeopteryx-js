@@ -568,6 +568,55 @@ function testAlphabeticalAndFrequency() {
     return true;
 }
 
+// The order a heat map opens in when nobody said. A CLUSTERED one either way;
+// which distance is decided by the values, because these columns are every
+// numeric field a tree carries and Bray-Curtis is meant for values 0 or more.
+function testDefaultOrderFollowsTheData() {
+    function mode(genes, rows) {
+        return forester.heatmapDefaultOrder(tree(genes, rows), cols(genes));
+    }
+    // presence/absence and abundance: zeros to ignore, nothing negative
+    if (mode(DZ_GENES, DZ) !== 'clustered-presence') {
+        console.log('    a matrix with zeros must open on Bray-Curtis, got ' + mode(DZ_GENES, DZ));
+        return false;
+    }
+    // years: no zero anywhere, so there is no double zero to ignore -- and
+    // Bray-Curtis would read magnitude instead of pattern
+    var years = ['y1', 'y2', 'y3'];
+    var ym = mode(years, columns([2001, 2002, 2003], [2010, 2011, 2012], [1998, 1999, 2000]));
+    if (ym !== 'clustered') {
+        console.log('    a matrix with no zeros must open on Euclidean, got ' + ym);
+        return false;
+    }
+    // coordinates: negative values have no Bray-Curtis distance at all
+    var geo = ['lat', 'lon'];
+    var gm = mode(geo, columns([45, -30, 45], [10, -120, -120]));
+    if (gm !== 'clustered') {
+        console.log('    a matrix with negatives must open on Euclidean, got ' + gm);
+        return false;
+    }
+    // ... and the reason, asserted rather than assumed: Bray-Curtis really
+    // does leave those pairs without a distance, so this is not a style choice
+    var v = values(geo, columns([45, -30, 45], [10, -120, -120]));
+    if (isFinite(forester.heatmapBrayCurtisDistances(v)[0][1])) {
+        console.log('    fixture: this negative matrix no longer breaks Bray-Curtis, so the rule is untested here');
+        return false;
+    }
+    // nothing to cluster on at all
+    var bare = ['a', 'b'];
+    if (forester.heatmapDefaultOrder(tree(bare, columns([null, null], [null, null])), cols(bare)) !== 'document') {
+        console.log('    a matrix with no values at all must not claim a clustering');
+        return false;
+    }
+    // a single zero is enough: that IS a double zero waiting to happen
+    var one = ['p', 'q'];
+    if (mode(one, columns([0, 5, 7], [3, 4, 5])) !== 'clustered-presence') {
+        console.log('    one zero and no negatives must still choose Bray-Curtis');
+        return false;
+    }
+    return true;
+}
+
 console.log();
 console.log("heat-map column order (pinned to R 4.5.3 / vegan 2.7-2)");
 console.log();
@@ -584,6 +633,7 @@ runTest("the linkage is complete linkage: ", testLinkageIsComplete);
 runTest("order in, order out            : ", testClusteredIgnoresIncomingOrder);
 runTest("a dendrogram only where it fits: ", testDendrogramOnlyWhereItDescribesTheOrder);
 runTest("alphabetical and frequency     : ", testAlphabeticalAndFrequency);
+runTest("the default follows the data   : ", testDefaultOrderFollowsTheData);
 console.log();
 
 if (_testFailures > 0) {

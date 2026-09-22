@@ -87,7 +87,10 @@ export interface ArchaeopteryxConfig {
      * the tree has two or more numeric per-tip fields, which is most annotated
      * trees, so it waits to be asked for. */
     /** How the heat map's columns are ordered. The clustered modes also draw
-     * the dendrogram above the matrix. Default 'document'. */
+     * the dendrogram above the matrix. Default: a clustered order with the
+     * distance chosen from the values — Bray–Curtis where the matrix has zeros
+     * to ignore and nothing negative, Euclidean otherwise. An explicit value
+     * always wins and is never re-derived. */
     heatmapColumnOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency';
     showHeatmap?: boolean;
     showMsa?: boolean;

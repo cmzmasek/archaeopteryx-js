@@ -564,10 +564,12 @@ turned; a matrix with more columns than will fit shows a window and says so
 (`Columns 1–240 of 400`), which the mouse wheel over the matrix scrolls.
 
 **Order columns** (in the Heat Map section of the panel) decides where the
-columns go. *As in the file* is the default and keeps the producer's grouping.
-The two **clustered** orders put columns that behave alike side by side and draw
-the clustering itself as a **dendrogram above the matrix** — a clustergram. Both
-are complete-linkage hierarchical clustering, written to give the same answer as
+columns go. The two **clustered** orders put columns that behave alike side by
+side and draw the clustering itself as a **dendrogram above the matrix** — a
+clustergram — and one of them is what a heat map opens on, because reading block
+structure is what a matrix beside a tree is for. *As in the file* is there when
+you want the producer's own grouping back. Both clustered orders are
+complete-linkage hierarchical clustering, written to give the same answer as
 R's `hclust(dist(t(m)), method = "complete")`; they differ in what "alike" means:
 
 * **Clustered (co-occurrence)** uses Euclidean distance, the default of R's
@@ -579,6 +581,14 @@ R's `hclust(dist(t(m)), method = "complete")`; they differ in what "alike" means
   merely for being rare. Bray–Curtis drops a tip where both columns are 0
   instead of scoring it as agreement. On 0/1 data it is exactly the
   Sørensen–Dice dissimilarity.
+
+Which of the two a tree opens on is decided by its values: **Bray–Curtis where
+the matrix has zeros to ignore and nothing negative, Euclidean otherwise**. A
+zero is precisely the precondition for a double zero to exist, and Bray–Curtis is
+meant for values 0 or more — on a matrix of years or coordinates it reads
+magnitude instead of pattern, and negative values leave some pairs with no
+distance at all. Set `heatmapColumnOrder` to override; an explicit choice is
+never re-derived.
 
 *Alphabetical* and *Frequency* (highest mean value first, over the tips that
 have a value) are there too. Whatever the mode, a blank is never read as 0, and
@@ -1019,7 +1029,7 @@ copy-pastable JSON.
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
 | `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
-| `heatmapColumnOrder` | `'document'` | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. The desktop defaults to clustered instead — a named divergence: the file's own order carries the producer's grouping, and re-arranging it unasked throws that away. |
+| `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
 | `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
@@ -1712,6 +1722,19 @@ ties by first appearance. First-appearance order alone is wrong and visibly so:
 on the pan-genome demo 7 of 100 tips carry no `dnaK`, the first tip is one of
 them, and that core gene landed at column 40 of 40. Averaging means every tip's
 own order contributes and one gap cannot move a column.
+
+The mode a tree opens on, when the caller did not say, is
+`forester.heatmapDefaultOrder`: `'clustered-presence'` when some value is 0 and
+none is negative, `'clustered'` otherwise, `'document'` when there are no values
+at all. Measured, which is why the rule is not simply "always Bray–Curtis": on a
+latitude/longitude matrix 2 of 6 pairs come out `+Infinity` (no distance, so
+they join last arbitrarily), and a year column among small ones sits at 0.9995
+from every one of them — maximally distant for being large rather than for any
+pattern, while *within* a block of comparable magnitude Bray–Curtis is exactly
+right. The desktop fixes its default at Euclidean instead, which is consistent
+with its columns being hand-picked where ours are every numeric field the tree
+carries. The resolved choice is cached on the model, never written back into the
+state, so the next tree in a multi-tree file does not inherit this one's answer.
 
 Gate: `showHeatmap` state (default **false**) AND rectangular layout AND at
 least `HEATMAP_MIN_COLUMNS` (2) columns with values — one column is a stripe,

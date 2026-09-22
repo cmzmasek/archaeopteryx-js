@@ -5132,14 +5132,16 @@ function (root, d3, forester, phyloXml) {
         if (_state.showHeatmap === undefined) {
             _state.showHeatmap = false;
         }
-        // The columns' order. The default is the file's own, not a clustering:
-        // the order a producer wrote the fields in carries their grouping
-        // (core genes, then resistance, then prophages), and re-arranging that
-        // unasked would throw away information the file is giving us. The
-        // desktop defaults to Clustered instead -- a NAMED divergence.
+        // The columns' order. Left unset it is resolved from the data on first
+        // use (heatmapMode / forester.heatmapDefaultOrder): a clustered order,
+        // because reading block structure is what a heat map beside a tree is
+        // FOR, with the distance chosen by what the values are. An explicit
+        // value always wins and is never re-derived -- including 'document',
+        // which keeps the order the producer wrote the fields in.
         if (_state.heatmapColumnOrder === undefined) {
-            _state.heatmapColumnOrder = 'document';
-        } else if (forester.HEATMAP_ORDER_MODES.indexOf(_state.heatmapColumnOrder) < 0) {
+            _state.heatmapColumnOrder = null;
+        } else if (_state.heatmapColumnOrder !== null
+            && forester.HEATMAP_ORDER_MODES.indexOf(_state.heatmapColumnOrder) < 0) {
             throw new Error(ERROR + '"heatmapColumnOrder" must be one of '
                 + forester.HEATMAP_ORDER_MODES.join(', '));
         }
@@ -7431,6 +7433,30 @@ function (root, d3, forester, phyloXml) {
         return heatmapStripHeight() + (msaShown() ? MSA_NAV_RESERVE : 0);
     }
 
+    // The mode in force: what the caller or the reader chose, else the one the
+    // data asks for.
+    //
+    // The resolved choice is cached on the MODEL, which is where it belongs --
+    // it is a fact about this tree's values and it dies with them. It is not
+    // written back into _state, but not because _state would leak it: every
+    // launch AND every tree switch rebuilds _state from the original config
+    // (switchToTree -> launchInto -> initializeState), so a write-back could
+    // not reach the next tree. Checked, because the comment that used to sit
+    // here claimed exactly that protection and it would have been fiction.
+    function heatmapMode() {
+        if (_state.heatmapColumnOrder) {
+            return _state.heatmapColumnOrder;
+        }
+        let m = heatmapModel();
+        if (!m) {
+            return 'document';
+        }
+        if (!m._autoMode) {
+            m._autoMode = forester.heatmapDefaultOrder(_treeData, m.refs);
+        }
+        return m._autoMode;
+    }
+
     // The columns in the order the reader asked for, with the dendrogram
     // behind that order when the order came from a clustering.
     function heatmapOrdered() {
@@ -7438,7 +7464,7 @@ function (root, d3, forester, phyloXml) {
         if (!m) {
             return null;
         }
-        let mode = _state.heatmapColumnOrder || 'document';
+        let mode = heatmapMode();
         // The order is kept ON the model, not in a cache beside it. The
         // desktop's equivalent was keyed on (refs, mode) and a subtree, an
         // edit or a re-import changes the VALUES while leaving both alone, so
@@ -8393,7 +8419,7 @@ function (root, d3, forester, phyloXml) {
         }
         if (heatmapAvailable()) {
             s.heatmap = _state.showHeatmap === true;
-            s.heatmapOrder = _state.heatmapColumnOrder;
+            s.heatmapOrder = heatmapMode();
         }
         if (_basicTreeProperties.domainArchitectures === true) {
             s.domains = _state.showDomainArchitectures === true;
@@ -9592,12 +9618,14 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         fs.style.display = heatmapShown() ? '' : 'none';
-        setValue(HEATMAP_ORDER_SELECT, _state.heatmapColumnOrder);
+        if (heatmapAvailable()) {
+            setValue(HEATMAP_ORDER_SELECT, heatmapMode());
+        }
     }
 
     function heatmapOrderChanged() {
         let v = getValue(HEATMAP_ORDER_SELECT);
-        if (forester.HEATMAP_ORDER_MODES.indexOf(v) < 0 || v === _state.heatmapColumnOrder) {
+        if (forester.HEATMAP_ORDER_MODES.indexOf(v) < 0 || v === heatmapMode()) {
             return;
         }
         _state.heatmapColumnOrder = v;
