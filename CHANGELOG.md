@@ -6,7 +6,11 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.12.0 — 2026-09-22
+
+An alignment beside a tree says what each sequence has; a logo says what the
+sequences *agree on* — and next to a tree, which sequences those are is a
+question the tree answers.
 
 ### Added
 
@@ -30,6 +34,16 @@ consumers only see a change when a version is cut.
   the same frame, each lineage with its own reading of it. Over the whole file
   the logo shows the frame the three share and little else; switch to a lineage
   and its operator resolves into a crisp twelve-letter motif.
+
+### Fixed
+
+- **A shared link now carries the heat map and the logo.** `getViewState()`
+  knew the heat map's four keys and the alignment logo; the URL-hash codec did
+  not, so an embedder calling the handle got them while **Copy link to this
+  view** silently dropped them — and the heat map's hand-arranged column order
+  was documented as surviving a link. It does now, and a test reads
+  `getViewState` and fails on any key the codec does not know, so the two
+  halves cannot drift apart again in silence.
 
 ## 3.11.0 — 2026-09-22
 
