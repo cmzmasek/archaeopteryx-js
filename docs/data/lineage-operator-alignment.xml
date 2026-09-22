@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Lineage operator</name>
+  <description>Synthetic 72-column nucleotide alignment over 30 strains in three lineages, built so that the SEQUENCE LOGO under the alignment says something different depending on what is on screen. Every strain shares the same 18-base core (columns 1-18) and a 6-base tail, and every strain carries a 12-base operator at columns 31-42 -- but each lineage carries its OWN reading of it. Three of the operator&apos;s positions (GAC at 33-35) and two more (AT at 39-40) are the same in all three lineages; the other seven differ in all three. So the logo over the whole file shows the frame the lineages share and little else: two short stacks where the reading differs, because a base that is A in one lineage, T in the next and G in the third carries almost no information about the file as a whole. CLICK ANY OF THE THREE LINEAGE NODES AND CHOOSE &quot;Switch to Subtree&quot;: the logo is re-read over the tips now on screen and that lineage&apos;s operator resolves into a crisp twelve-letter motif. Columns 55-66 show the other half of the rule -- lineage C has a gap there, so over the whole file that block cannot rise above two thirds height however well the bases present agree: a gap is not a letter, but it does not count as agreement either, and the stack is scaled by how many sequences have a base there at all. Turn the logo off with the Sequence Logo checkbox to get the conservation bar and consensus row back. No real organism is represented.</description>
+  <clade>
+    <branch_length>0.0</branch_length>
+    <clade>
+      <branch_length>0.0300</branch_length>
+      <clade>
+        <branch_length>0.0180</branch_length>
+        <clade>
+          <branch_length>0.0108</branch_length>
+          <clade>
+            <name>LinA_01</name>
+            <branch_length>0.0083</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCATAAGGCTTACGAACTCGGGATGAAATTGACACGATCACCCCAGATGGAACCATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+          <clade>
+            <name>LinA_02</name>
+            <branch_length>0.0057</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAACAGCTAAATTTTTGACACGATCATTCTGGAGTAACCCATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.0108</branch_length>
+          <clade>
+            <name>LinA_03</name>
+            <branch_length>0.0075</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAATTGGGGTGGGGCTTGACACGATCAATATTCGGGCGCACATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+          <clade>
+            <branch_length>0.0065</branch_length>
+            <clade>
+              <name>LinA_04</name>
+              <branch_length>0.0089</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACCAACCATGACGTGAATTGACACGATCAAGTACAGTGGTGCCATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinA_05</name>
+              <branch_length>0.0083</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAGTCATGAACGCGTTGACACGATCACGGCGTAGATCACCATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.0180</branch_length>
+        <clade>
+          <branch_length>0.0108</branch_length>
+          <clade>
+            <name>LinA_06</name>
+            <branch_length>0.0040</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAGAGTTTGAGCTATTGACACGATCATCTCTAGTAACCCCATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+          <clade>
+            <name>LinA_07</name>
+            <branch_length>0.0059</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACGACCTAGCCACTTGACACGATCAGTGTGGCGGTCACCATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.0108</branch_length>
+          <clade>
+            <name>LinA_08</name>
+            <branch_length>0.0147</branch_length>
+            <sequence>
+              <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAATTAGCAGCGAACTTGACACGATCAAGACATTTGTCGCAATTGGCAAGTTAGCAT</mol_seq>
+            </sequence>
+          </clade>
+          <clade>
+            <branch_length>0.0065</branch_length>
+            <clade>
+              <name>LinA_09</name>
+              <branch_length>0.0051</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAAGCCCGCCGGCATTGACACGATCAAATTTTGCATGTCCATTGGCAAGTTAGCCT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinA_10</name>
+              <branch_length>0.0073</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAACGCTTACGAAAGCTGGGTCGCGTTGACACGATCACCCTGTGTACCCCCATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.04</branch_length>
+      <clade>
+        <branch_length>0.0300</branch_length>
+        <clade>
+          <branch_length>0.0180</branch_length>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinB_01</name>
+              <branch_length>0.0122</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGCAAGGCTTACGAATAACGGGTCTCACAGACTGTATGGAGCAACCACTCGCCATTGGCTAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinB_02</name>
+              <branch_length>0.0118</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAACTGATAGGAAACAGACTGTATGGATACGACGTTTCCCATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinB_03</name>
+              <branch_length>0.0107</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAACGCATATTCGTCAGACTGTATGGTTTGCAATCAGACAATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <branch_length>0.0065</branch_length>
+              <clade>
+                <name>LinB_04</name>
+                <branch_length>0.0110</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACACACATTGCTGCAAAGTGTATGGATATCAACAAGACCATTGGCAAGTTAGCAT</mol_seq>
+                </sequence>
+              </clade>
+              <clade>
+                <name>LinB_05</name>
+                <branch_length>0.0140</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACTAGAGGTCGTTCATACTGTATGGAAGTCCTCGCGCCCATTGGCAAGTTAGCAT</mol_seq>
+                </sequence>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.0180</branch_length>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinB_06</name>
+              <branch_length>0.0123</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCCTACGAAGCTTCAGGATCCCAGACTGTATGGTACCGCGAGAACCCATTGGCAAATTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinB_07</name>
+              <branch_length>0.0121</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCCTAAGGCTTACGAATATCCATCCGCACAGACTGTATGCCGGGTTCAAGTACCATTGGCAAGTTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinB_08</name>
+              <branch_length>0.0138</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAGGACTTATTAGGCCAGACTGTATGGTAGCTAATGCGACCAGTGGCAAATTAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <branch_length>0.0065</branch_length>
+              <clade>
+                <name>LinB_09</name>
+                <branch_length>0.0128</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATCCGTAAGGCTTACGAACTTAAAATCGCGCAGACTGTATGGATTAAGCTAAAGCCATTGGCAAGGTAGCAT</mol_seq>
+                </sequence>
+              </clade>
+              <clade>
+                <name>LinB_10</name>
+                <branch_length>0.0105</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAATAACAGACTATCATACTGTTTGGTCCGAATGTATCCCATTGGCAAGATAGCAT</mol_seq>
+                </sequence>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.0300</branch_length>
+        <clade>
+          <branch_length>0.0180</branch_length>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinC_01</name>
+              <branch_length>0.0105</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAGCATTTCTCCCCGCGACCAAATTTGACTGTATTTCA------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinC_02</name>
+              <branch_length>0.0117</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAAGGTTAACGGCTGCGACCAAATCTTCAAATAAATCC------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinC_03</name>
+              <branch_length>0.0091</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACCCCAAGAATTCGCTACAAATTTTTAAGTACATTTG------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <branch_length>0.0065</branch_length>
+              <clade>
+                <name>LinC_04</name>
+                <branch_length>0.0104</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAGGTACATGAGACGCGACCAAATTTAGTTGTACCCCA------------TAGCAT</mol_seq>
+                </sequence>
+              </clade>
+              <clade>
+                <name>LinC_05</name>
+                <branch_length>0.0126</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAATGGTAACAGTGAGCGACCAAATTTGGGACTAATGTA------------TAGCAT</mol_seq>
+                </sequence>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.0180</branch_length>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinC_06</name>
+              <branch_length>0.0045</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACTAACAAGTGATGCGACCAAATTTTTCTCTCGCGCC------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <name>LinC_07</name>
+              <branch_length>0.0064</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACGACAGATAGCGGCGACCAAATTTCCCAATAGATAG------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+          </clade>
+          <clade>
+            <branch_length>0.0108</branch_length>
+            <clade>
+              <name>LinC_08</name>
+              <branch_length>0.0127</branch_length>
+              <sequence>
+                <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAACGCCCCGATGCTGCGACCAAATTTAAAACGGACCAC------------TAGCAT</mol_seq>
+              </sequence>
+            </clade>
+            <clade>
+              <branch_length>0.0065</branch_length>
+              <clade>
+                <name>LinC_09</name>
+                <branch_length>0.0154</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGTGTAAGGCTTACGAAATTTAAGTTAGAGCGAACAAATTTGTTATCAAGCCC------------TAGCAT</mol_seq>
+                </sequence>
+              </clade>
+              <clade>
+                <name>LinC_10</name>
+                <branch_length>0.0041</branch_length>
+                <sequence>
+                  <mol_seq is_aligned="true">ATGCGTAAGGCTTACGAAGGGCTAAGGCTGGCGACCAAATTTGGTGGATAGTAC------------TAGCAT</mol_seq>
+                </sequence>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

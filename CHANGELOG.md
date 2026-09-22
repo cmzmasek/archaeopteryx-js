@@ -26,6 +26,10 @@ consumers only see a change when a version is cut.
     do, and Schneider's correction would subtract more than the maximum and
     leave the column blank exactly then; the caption names `n` instead.
   - `showMsaLogo` opens on it, and it rides in a shared view.
+- **A demo for it**: 30 strains in three lineages carrying the same operator in
+  the same frame, each lineage with its own reading of it. Over the whole file
+  the logo shows the frame the three share and little else; switch to a lineage
+  and its operator resolves into a crisp twelve-letter motif.
 
 ## 3.11.0 — 2026-09-22
 
