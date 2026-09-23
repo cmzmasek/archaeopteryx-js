@@ -1733,7 +1733,7 @@ readout (`forester.msaResidueInfo`, `msaUngappedPosition`) names the residue
 
 Navigation: a lazily-created bar fixed at the viewport bottom — first / page
 back / slider / page forward / last, a jump-to-column box (1-based, matching
-the hover readout) and a live "column N – M of total" — plus wheel-over-track
+the hover readout) and a live "column N M of total" — plus wheel-over-track
 at a tenth of a screen per notch. Every route lands in one `msaScrollTo()`,
 which clamps and redraws; the tree never moves. A faint dashed guide runs
 from each tip's label (or its node, when labels are hidden) across to that

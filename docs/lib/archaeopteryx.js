@@ -7358,8 +7358,11 @@ function (root, d3, forester, phyloXml) {
                 msaScrollTo(Infinity);
             });
 
-            // "column [ 1234 ] - 1357 of 30,000": the box is the left edge of
-            // the window and takes a column to jump to; the rest reads back
+            // "column [ 1234 ] 1357 of 30,000": the box is the left edge of
+            // the window and takes a column to jump to; the rest reads back.
+            // No dash between them -- the box's own border already separates
+            // the two numbers, and a dash sitting against it read as a minus
+            // sign on the number after it.
             let read = document.createElement('span');
             read.className = 'aptx-msa-nav-read';
             let lbl = document.createElement('span');
@@ -7409,7 +7412,7 @@ function (root, d3, forester, phyloXml) {
                 _msaNav._jump.value = String(offset + 1);
             }
             _msaNav._jump.max = String(total);
-            _msaNav._tail.textContent = '\u2013 ' + (offset + visible).toLocaleString()
+            _msaNav._tail.textContent = (offset + visible).toLocaleString()
                 + ' of ' + total.toLocaleString();
             let atStart = offset <= 0;
             let atEnd = offset >= total - visible;
