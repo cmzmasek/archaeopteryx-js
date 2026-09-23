@@ -32,8 +32,8 @@
     "url": "git+https://github.com/cmzmasek/archaeopteryx-js.git"
   },
   "dependencies": {
-    "phyloxml": "^1.1.0",
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "phyloxml": "^1.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

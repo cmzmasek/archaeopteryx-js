@@ -5058,6 +5058,16 @@
         let isRooted = false;
         let matchchar = null;
         let matrixReferenceId = null;
+        // Matrix ids whose row carried at least one real residue. A row of
+        // nothing but the missing and gap symbols states that the taxon has NO
+        // data, and must not become a sequence: our own writer emits exactly
+        // such rows to keep the matrix rectangular, so without this a save and
+        // reopen invents a sequence of question marks for every tip that never
+        // had one. Tracked here rather than tested on the finished sequence
+        // because the desktop turns '?' into 'X' when it builds an AA
+        // sequence, after which a missing row is indistinguishable from a
+        // genuinely ambiguous one.
+        let seqIdsWithResidues = Object.create(null);
 
         // Nexus treats '_' and ' ' as equivalent, labels may be quoted, and a
         // matrix often capitalizes taxon names differently from the tree -- so
@@ -5168,6 +5178,13 @@
                 }
                 block = resolved;
             }
+            for (let j = 0; j < block.length; ++j) {
+                let c = block.charAt(j);
+                if (c !== '?' && c !== '-' && c !== '.' && c !== '*') {
+                    seqIdsWithResidues[id] = true;
+                    break;
+                }
+            }
             seqs[id] = {
                 value: seqs[id] ? (seqs[id].value + block) : block,
                 type: datatype
@@ -5200,7 +5217,9 @@
             }
             let seqsByKey = Object.create(null);
             for (let id in seqs) {
-                seqsByKey[joinKey(id)] = seqs[id];
+                if (seqIdsWithResidues[id]) {
+                    seqsByKey[joinKey(id)] = seqs[id];
+                }
             }
             let externals = forester.getAllExternalNodes(phy);
             let annotationNs = null;
@@ -5331,6 +5350,7 @@
                 // scope the rows to THIS matrix block, so a later block
                 // cannot cross-contaminate an earlier one
                 seqs = Object.create(null);
+                seqIdsWithResidues = Object.create(null);
             } else if (inTreesBlock) {
                 if (lc.startsWith('title')) {
                     let tm = TITLE_RE.exec(line);
@@ -6120,10 +6140,21 @@
             // the support slot holds support: a MAD value (madRoot) never goes
             // there -- it would read as support, and would crowd out the
             // bootstrap on a branch carrying both. phyloXML keeps it, typed.
+            //
+            // Newick has ONE slot and phyloXML allows many, so a node carrying
+            // both a bootstrap and a posterior has to lose one of them. It
+            // writes the FIRST that is not MAD, which is what the desktop's
+            // BranchData.getSupportConfidence returns and therefore what its
+            // writer emits -- verified by running it: a node with
+            // bootstrap=95 and posterior=0.99 comes out as "ab:0.3[95]".
+            // This used to require EXACTLY one and so wrote nothing at all,
+            // which lost the bootstrap too, on real files: the repo's own
+            // phyloWithConfidences.xml has a node carrying bootstrap and
+            // likelihood together.
             let support = writeConfidences && node.confidences
                 ? node.confidences.filter(function (c) { return c.type !== forester.MAD_CONFIDENCE_TYPE; })
                 : [];
-            if (support.length === 1 && support[0].value !== undefined && support[0].value !== null) {
+            if (support.length > 0 && support[0].value !== undefined && support[0].value !== null) {
                 if (decPointsMax && decPointsMax > 0) {
                     nh += "[" + forester.roundNumber(support[0].value, decPointsMax) + "]";
                 } else {
@@ -6136,6 +6167,46 @@
         }
 
     };
+
+    // A node's molecular sequence for the Nexus matrix: the first one carrying
+    // residues, or null. is_aligned is deliberately NOT consulted -- the
+    // desktop's writer does not have that flag and decides on the lengths
+    // instead, and equal lengths are what a character matrix actually
+    // requires. (A JS node may hold several sequences where a desktop node
+    // holds one; the first with residues is the one written.)
+    function molSeqOfNode(node) {
+        if (!node.sequences) {
+            return null;
+        }
+        for (let j = 0; j < node.sequences.length; ++j) {
+            let q = node.sequences[j];
+            if (q.mol_seq && q.mol_seq.value) {
+                return q.mol_seq.value;
+            }
+        }
+        return null;
+    }
+
+    // ForesterUtil.guessMolecularSequenceType, ported verbatim so that the two
+    // programs declare the same DataType for the same residues: six letters
+    // that only proteins have, then T for DNA and U for RNA, and null when the
+    // sequence says nothing either way (all gaps, or A/C/G alone). Note that
+    // it reads the residues and ignores any DECLARED type, which is the
+    // desktop's rule and therefore ours.
+    function guessMolSeqType(v) {
+        let s = v.toUpperCase();
+        if (s.indexOf('L') >= 0 || s.indexOf('I') >= 0 || s.indexOf('E') >= 0
+            || s.indexOf('H') >= 0 || s.indexOf('D') >= 0 || s.indexOf('Q') >= 0) {
+            return 'Protein';
+        }
+        if (s.indexOf('T') >= 0) {
+            return 'DNA';
+        }
+        if (s.indexOf('U') >= 0) {
+            return 'RNA';
+        }
+        return null;
+    }
 
     // Writes a phylogeny as a Nexus-formatted string, ported from the
     // desktop's PhylogenyWriter: a TAXA block (Dimensions, TaxLabels) and a
@@ -6198,48 +6269,75 @@
         s += ';\n';
         s += 'End;\n';
 
-        let rows = [];
-        let nchar = 0;
-        let datatype = null;
+        // Every tip's label and, where there is one, its molecular sequence.
+        // Written to the desktop's rules (PhylogenyWriter.writeNexusCharactersBlock),
+        // because a Nexus file is a joint artifact: whichever program wrote it,
+        // the other has to read the same bytes back.
+        let labels = ext.map(function (node, i) {
+            return sanitizeLabelForNH(nexusLabel(node, i));
+        });
+        let withSeq = [];
         ext.forEach(function (node, i) {
-            if (!node.sequences) {
-                return;
-            }
-            for (let j = 0; j < node.sequences.length; ++j) {
-                let q = node.sequences[j];
-                if (q.mol_seq && q.mol_seq.is_aligned && q.mol_seq.value) {
-                    rows.push({label: sanitizeLabelForNH(nexusLabel(node, i)), value: q.mol_seq.value});
-                    nchar = Math.max(nchar, q.mol_seq.value.length);
-                    if (!datatype && (q.type === 'protein' || q.type === 'dna' || q.type === 'rna')) {
-                        datatype = q.type;
-                    }
-                    return;
-                }
+            let v = molSeqOfNode(node);
+            if (v !== null) {
+                withSeq.push({i: i, value: v});
             }
         });
-        if (rows.length > 0) {
-            if (!datatype) {
-                // no declared type (e.g. the tree came from Newick plus a
-                // fasta): judge on the residues themselves
-                datatype = forester.msaIsNucleotide(rows[0].value) ? 'dna' : 'protein';
+        if (withSeq.length > 0) {
+            let nchar = withSeq[0].value.length;
+            let ragged = -1;
+            for (let k = 1; k < withSeq.length; ++k) {
+                if (withSeq[k].value.length !== nchar) {
+                    ragged = withSeq[k].value.length;
+                    break;
+                }
             }
-            let width = 0;
-            rows.forEach(function (r) {
-                width = Math.max(width, r.label.length);
-            });
-            s += 'Begin Characters;\n';
-            // NChar ONLY: the Nexus standard allows NTax in a CHARACTERS
-            // block's DIMENSIONS solely alongside NEWTAXA (the taxa are the
-            // TAXA block's), and strict readers -- jebl, and so AliView --
-            // reject the file over it
-            s += ' Dimensions NChar=' + nchar + ';\n';
-            s += ' Format DataType=' + datatype + ' Missing=? Gap=-;\n';
-            s += ' Matrix\n';
-            rows.forEach(function (r) {
-                s += '  ' + r.label + ' '.repeat(width - r.label.length + 1) + r.value + '\n';
-            });
-            s += ' ;\n';
-            s += 'End;\n';
+            if (ragged >= 0) {
+                // A Nexus matrix is rectangular, so sequences of unequal length
+                // cannot be one: padding them would state an alignment that
+                // does not exist. Say so in the file rather than leaving the
+                // reader to wonder where the data went.
+                s += '[ Molecular sequences were not written: they are of unequal length ('
+                    + nchar + ' vs ' + ragged + '), so they are not an alignment and cannot'
+                    + ' form a Nexus character matrix. ]\n';
+            } else {
+                let datatype = 'Protein';
+                for (let k = 0; k < withSeq.length; ++k) {
+                    let t = guessMolSeqType(withSeq[k].value);
+                    if (t !== null) {
+                        datatype = t;
+                        break;
+                    }
+                }
+                let width = 0;
+                labels.forEach(function (l) {
+                    width = Math.max(width, l.length);
+                });
+                ++width;
+                let missing = '?'.repeat(nchar);
+                let byTip = Object.create(null);
+                withSeq.forEach(function (r) {
+                    byTip[r.i] = r.value;
+                });
+                s += 'Begin Characters;\n';
+                // NChar ONLY: the Nexus standard allows NTax in a CHARACTERS
+                // block's DIMENSIONS solely alongside NEWTAXA (the taxa are the
+                // TAXA block's), and strict readers -- jebl, and so AliView --
+                // reject the file over it
+                s += ' Dimensions NChar=' + nchar + ';\n';
+                s += ' Format DataType=' + datatype + ' Interleave=No Gap=- Missing=?;\n';
+                s += ' Matrix\n';
+                // A row per TAXON, not per sequence: a tip carrying none gets a
+                // row of the missing symbol, so the matrix covers every taxon
+                // the Taxa block declares. parseNexus reads such a row back as
+                // absence of data, never as a sequence of question marks.
+                labels.forEach(function (label, i) {
+                    s += '  ' + label + ' '.repeat(width - label.length) + ' '
+                        + (byTip[i] === undefined ? missing : byTip[i]) + '\n';
+                });
+                s += ' ;\n';
+                s += 'End;\n';
+            }
         }
 
         s += 'Begin Trees;\n';

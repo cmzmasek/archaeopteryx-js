@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.0.2
+// v 1.1.1
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -1165,7 +1165,13 @@
 
             addSingleElement(CLADE_NAME, node.name);
 
-            if (node[CLADE_BRANCH_LENGTH]) {
+            // A branch length of 0 is a LENGTH, not a missing value: zero-length
+            // branches are ordinary in a tree whose sequences are identical, and
+            // a multifurcation written out as a series of them. A truthiness
+            // test dropped every one of them, so a tree read in and written back
+            // out came back with those branches undefined -- silently, and on
+            // real files (bunya_glyco.xml has dozens).
+            if ((node[CLADE_BRANCH_LENGTH] !== undefined) && (node[CLADE_BRANCH_LENGTH] !== null)) {
                 addSingleElement(CLADE_BRANCH_LENGTH, (dec && dec > 0) ? roundNumber(node[CLADE_BRANCH_LENGTH], dec) : node[CLADE_BRANCH_LENGTH]);
             }
 

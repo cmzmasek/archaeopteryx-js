@@ -74,6 +74,11 @@ runTest("BEAST/NHX annotations      : ", testExtendedNewickAnnotations);
 runTest("Nexus dialect variants     : ", testNexusParserVariants);
 runTest("Nexus BEAST MCC file       : ", testNexusBeastMcc);
 runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
+runTest("Nexus sequences, joint      : ", testNexusMolecularSequences);
+runTest("Nexus missing rows          : ", testNexusMissingRows);
+runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
+runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
+runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
 runTest("BEAST/NHX annotations 2    : ", testBeastAnnotationsMore);
 runTest("TreeTime output            : ", testTreeTimeOutput);
 runTest("Auspice edge cases         : ", testAuspiceMore);
@@ -2728,7 +2733,7 @@ function testNexusWriterFallbacks() {
     var nex = forester.toNexus(phy);
     if (nex.indexOf("HUMAN9") < 0 || nex.indexOf("seqX9") < 0 || !/node\d/.test(nex)
         || nex.indexOf("[&U]") < 0 || nex.indexOf(" Tree tree1=") < 0
-        || nex.indexOf("DataType=dna") < 0) {  // ACGT-ACG, no declared type
+        || nex.indexOf("DataType=DNA") < 0) {  // ACGT-ACG; the type is read off the residues
         return false;
     }
     var back = forester.parseNexus(nex)[0];
@@ -2739,12 +2744,15 @@ function testNexusWriterFallbacks() {
     if (!bx || bx.sequences[0].mol_seq.value !== "ACGT-ACG") {
         return false;
     }
-    // protein residues without a declared type judge as protein
+    // protein residues judge as Protein. The capitalization is the desktop's
+    // (PhylogenyWriter writes Protein / DNA / RNA / Standard) and the two
+    // programs have to write the same bytes; the READER is case-insensitive,
+    // which the lowercase fixtures above pin.
     var p2 = forester.parseNewHampshire("(x:1,y:1);");
     forester.getAllExternalNodes(p2).forEach(function (n) {
         n.sequences = [{mol_seq: {is_aligned: true, value: "MKVLEQW-"}}];
     });
-    return forester.toNexus(p2).indexOf("DataType=protein") > -1;
+    return forester.toNexus(p2).indexOf("DataType=Protein") > -1;
 }
 
 // The rest of the annotation surface: bootstrap= and date= and height_range,
@@ -4794,6 +4802,621 @@ function testTimeDivergenceScale() {
     });
     if (flat !== all) {
         console.log('    expected the age tree to collapse under the time view, got ' + flat + '/' + all);
+        return false;
+    }
+    return true;
+}
+
+
+// The molecular-sequence half of a Nexus file, case for case against the
+// desktop's NexusSequenceExportTest (PhylogenyWriter.writeNexusCharactersBlock,
+// 2026-09-23). The two programs write the SAME BYTES for the same tree, so the
+// expectations here are the desktop's own: capitalized DataType, the Format
+// line's token order, a row per TAXON with '?' where a tip has no sequence,
+// and no block at all when the sequences are not an alignment.
+function testNexusMolecularSequences() {
+    function tree(nh) {
+        var p = forester.parseNewHampshire(nh, true, false);
+        p.rooted = false;   // as the desktop's NH parser leaves a plain Newick
+        return p;
+    }
+    function tips(p) {
+        return forester.getAllExternalNodes(p).reverse();
+    }
+    function setSeq(p, i, mol, extra) {
+        var n = tips(p)[i];
+        var q = {mol_seq: {is_aligned: true, value: mol}};
+        if (extra) {
+            Object.keys(extra).forEach(function (k) { q[k] = extra[k]; });
+        }
+        n.sequences = [q];
+    }
+    function charactersBlock(nex) {
+        var i = nex.indexOf("Begin Characters;");
+        return i < 0 ? null : nex.substring(i, nex.indexOf("Begin Trees;"));
+    }
+    function fail(msg, detail) {
+        console.log('    ' + msg + (detail === undefined ? '' : ': ' + detail));
+        return false;
+    }
+
+    // (1) an alignment becomes a Characters block, in the desktop's exact shape
+    var p1 = tree("((A,B),C)");
+    setSeq(p1, 0, "MKAL-IV");
+    setSeq(p1, 1, "MKAL-IW");
+    setSeq(p1, 2, "MKAL-IY");
+    var n1 = forester.toNexus(p1, 9, true);
+    var expected1 = "Begin Characters;\n"
+        + " Dimensions NChar=7;\n"
+        + " Format DataType=Protein Interleave=No Gap=- Missing=?;\n"
+        + " Matrix\n"
+        + "  A  MKAL-IV\n"
+        + "  B  MKAL-IW\n"
+        + "  C  MKAL-IY\n"
+        + " ;\n"
+        + "End;\n";
+    if (n1.indexOf(expected1) < 0) {
+        return fail("the Characters block is not byte-identical to the desktop's", "\n" + n1);
+    }
+    // blocks in the order Taxa, Characters, Trees
+    if (!(n1.indexOf("Begin Taxa;") < n1.indexOf("Begin Characters;")
+        && n1.indexOf("Begin Characters;") < n1.indexOf("Begin Trees;"))) {
+        return fail("the Nexus blocks are out of order");
+    }
+    // NTax is illegal in a Characters block without NEWTAXA
+    if (/Characters;\n[^\n]*NTax/.test(n1)) {
+        return fail("NTax must not appear in a Characters block");
+    }
+
+    // (2) no sequences, no block
+    if (charactersBlock(forester.toNexus(tree("((A,B),C)"), 9, true)) !== null) {
+        return fail("a tree without sequences must not get a Characters block");
+    }
+
+    // (3) sequences of unequal length are not a character matrix. Nothing is
+    // written, and a bracketed Nexus comment says why -- a reader who opens
+    // the file should not have to guess where the data went.
+    var p3 = tree("((A,B),C)");
+    setSeq(p3, 0, "MKAL");
+    setSeq(p3, 1, "MKALIVGD");
+    var n3 = forester.toNexus(p3, 9, true);
+    if (charactersBlock(n3) !== null) {
+        return fail("unequal-length sequences must not be written as a matrix", n3);
+    }
+    if (n3.indexOf("[ Molecular sequences were not written: they are of unequal length (4 vs 8),") < 0
+        || n3.indexOf("]") < 0) {
+        return fail("no bracketed comment explaining the drop", n3);
+    }
+    // and the file with that comment in it must still read back as a tree
+    if (forester.getAllExternalNodes(forester.parseNexus(n3, true, false)[0]).length !== 3) {
+        return fail("the explanatory comment broke the file");
+    }
+
+    // (4) a tip with no sequence gets a row of the missing symbol, so the
+    // matrix covers every taxon the Taxa block declares
+    var p4 = tree("((A,B),C)");
+    setSeq(p4, 0, "MKAL");
+    setSeq(p4, 2, "MKIV");
+    var b4 = charactersBlock(forester.toNexus(p4, 9, true));
+    if (b4 === null || b4.indexOf("  A  MKAL\n  B  ????\n  C  MKIV\n") < 0) {
+        return fail("partial coverage should still give one row per taxon", b4);
+    }
+
+    // (5) the DataType is read off the residues, by the desktop's rule
+    // (ForesterUtil.guessMolecularSequenceType): L/I/E/H/D/Q say protein
+    // first, then T says DNA and U says RNA
+    function typeOf(mol) {
+        var p = tree("(x,y)");
+        setSeq(p, 0, mol);
+        setSeq(p, 1, mol);
+        var m = / Format DataType=(\S+) /.exec(forester.toNexus(p, 9, true));
+        return m ? m[1] : null;
+    }
+    if (typeOf("ACGTACGTACGTACGTACGT") !== "DNA") {
+        return fail("nucleotides not typed DNA", typeOf("ACGTACGTACGTACGTACGT"));
+    }
+    if (typeOf("ACGUACGUACGUACGUACGU") !== "RNA") {
+        return fail("RNA not typed RNA", typeOf("ACGUACGUACGUACGUACGU"));
+    }
+    if (typeOf("MKVLEQW-") !== "Protein") {
+        return fail("protein not typed Protein", typeOf("MKVLEQW-"));
+    }
+    // The guesser's protein test looks for L/I/E/H/D/Q ONLY, so a protein made
+    // of other residues and a T reads as DNA. Verified against the desktop by
+    // running ForesterUtil.guessMolecularSequenceType on this very string
+    // (-> DNA), not assumed: the point of pinning it is that the two programs
+    // are wrong in the SAME way, so a file written by one is typed the same by
+    // the other. Changing the rule is a joint decision, and this test is what
+    // would notice one side doing it alone.
+    if (typeOf("MKTTTTTT") !== "DNA") {
+        return fail("the shared guesser's rule drifted", typeOf("MKTTTTTT"));
+    }
+    // nothing decisive (all gaps, or A/C/G alone) falls back to Protein
+    if (typeOf("ACGACG--") !== "Protein") {
+        return fail("an undecidable sequence should fall back to Protein", typeOf("ACGACG--"));
+    }
+    // and a DECLARED type does not override the residues -- the desktop reads
+    // the letters and has no declared type to consult
+    var pd = tree("(x,y)");
+    setSeq(pd, 0, "ACGTACGT", {type: "protein"});
+    setSeq(pd, 1, "ACGTACGT", {type: "protein"});
+    if (forester.toNexus(pd, 9, true).indexOf("DataType=DNA") < 0) {
+        return fail("a declared type must not override the residues");
+    }
+
+    // (6) a label needing quotes is the SAME token in TaxLabels, the matrix and
+    // the tree -- a matrix row naming a taxon the file does not declare is
+    // unreadable -- and it survives a round trip
+    var p6 = tree("(X,Y)");
+    tips(p6)[0].name = "Seba's bat";
+    tips(p6)[1].name = "a b";
+    setSeq(p6, 0, "MKAL");
+    setSeq(p6, 1, "MKIV");
+    var n6 = forester.toNexus(p6, 9, true);
+    if (n6.indexOf(' TaxLabels "Seba\'s bat" \'a b\';') < 0
+        || n6.indexOf('  "Seba\'s bat"  MKAL\n') < 0
+        || n6.indexOf('  \'a b\'         MKIV\n') < 0) {
+        return fail("the quoted label is not identical in both blocks", n6);
+    }
+    var back6 = forester.getAllExternalNodes(forester.parseNexus(n6, true, false)[0]).reverse();
+    if (back6[0].name !== "Seba's bat" || back6[0].sequences[0].mol_seq.value !== "MKAL") {
+        return fail("a quoted name lost its sequence on the way back",
+            JSON.stringify(back6.map(function (n) { return n.name; })));
+    }
+
+    // (7) an internal node's sequence is not a taxon's and is never written
+    var p8 = tree("((A,B)INNER,C)");
+    setSeq(p8, 0, "MKAL");
+    setSeq(p8, 1, "MKIV");
+    setSeq(p8, 2, "MKLL");
+    forester.preOrderTraversalAll(p8, function (n) {
+        if (n.name === "INNER") {
+            n.sequences = [{mol_seq: {is_aligned: true, value: "WWWW"}}];
+        }
+    });
+    var b8 = charactersBlock(forester.toNexus(p8, 9, true));
+    if (b8.indexOf("WWWW") > -1 || b8.indexOf("NChar=4") < 0) {
+        return fail("an internal node reached the matrix", b8);
+    }
+
+    // (8) the whole point: the tree AND its alignment come back, marked aligned
+    var back1 = forester.parseNexus(n1, true, false);
+    if (back1.length !== 1) {
+        return fail("wrong number of trees back", back1.length);
+    }
+    var got = forester.getAllExternalNodes(back1[0]).reverse();
+    var want = {A: "MKAL-IV", B: "MKAL-IW", C: "MKAL-IY"};
+    if (got.length !== 3) {
+        return fail("wrong number of tips back", got.length);
+    }
+    for (var i = 0; i < got.length; ++i) {
+        var q = got[i].sequences && got[i].sequences[0];
+        if (!q || !q.mol_seq || q.mol_seq.value !== want[got[i].name]
+            || q.mol_seq.is_aligned !== true) {
+            return fail("a sequence did not survive the round trip",
+                got[i].name + " -> " + JSON.stringify(q));
+        }
+    }
+
+    // (9) an unaligned tree read from, say, phyloXML is written whenever its
+    // sequences are of one length: the desktop has no is_aligned flag and
+    // decides on the lengths, so neither may we, or the two disagree
+    var p9 = tree("(A,B)");
+    p9.rooted = false;
+    tips(p9)[0].sequences = [{mol_seq: {is_aligned: false, value: "MKAL"}}];
+    tips(p9)[1].sequences = [{mol_seq: {is_aligned: false, value: "MKIV"}}];
+    if (charactersBlock(forester.toNexus(p9, 9, true)) === null) {
+        return fail("equal-length sequences must be written whatever is_aligned says");
+    }
+    return true;
+}
+
+// A matrix row of nothing but the missing and gap symbols states that the
+// taxon has NO data. It must not come back as a sequence -- our own writer
+// emits such rows to keep the matrix rectangular, so reading them as data
+// would invent a sequence of question marks for every tip that never had one.
+function testNexusMissingRows() {
+    function read(matrix, nchar) {
+        var nex = "#NEXUS\nBegin Taxa;\n Dimensions NTax=2;\n TaxLabels A B;\nEnd;\n"
+            + "Begin Characters;\n Dimensions NChar=" + nchar + ";\n"
+            + " Format DataType=Protein Interleave=No Gap=- Missing=?;\n Matrix\n"
+            + matrix + " ;\nEnd;\nBegin Trees;\n Tree tree1=[&R](A:1,B:1);\nEnd;\n";
+        var out = {};
+        forester.getAllExternalNodes(forester.parseNexus(nex, true, false)[0]).forEach(function (n) {
+            var q = n.sequences && n.sequences[0];
+            out[n.name] = (q && q.mol_seq && q.mol_seq.value) ? q.mol_seq.value : null;
+        });
+        return out;
+    }
+    function fail(msg, detail) {
+        console.log('    ' + msg + (detail === undefined ? '' : ': ' + detail));
+        return false;
+    }
+    // all '?' is absence of data ...
+    var a = read("  A  MKAL\n  B  ????\n", 4);
+    if (a.A !== "MKAL") {
+        return fail("the real sequence was lost", JSON.stringify(a));
+    }
+    if (a.B !== null) {
+        return fail("an all-missing row came back as a sequence", JSON.stringify(a));
+    }
+    // ... and so are all gaps, all dots and all asterisks, alone or mixed
+    var b = read("  A  MKAL\n  B  ----\n", 4);
+    if (b.B !== null) {
+        return fail("an all-gap row came back as a sequence", JSON.stringify(b));
+    }
+    var c = read("  A  MKAL\n  B  ?-.*\n", 4);
+    if (c.B !== null) {
+        return fail("a row of mixed non-residues came back as a sequence", JSON.stringify(c));
+    }
+    // but ONE residue is data, and the row is kept whole, padding and all
+    var d = read("  A  MKAL\n  B  ???L\n", 4);
+    if (d.B !== "???L") {
+        return fail("a row with a residue must be kept as written", JSON.stringify(d));
+    }
+    // and a row of dots under MatchChar=. is data: it resolves to the
+    // reference row, so the test has to run on the RESOLVED residues
+    var mc = "#NEXUS\nBegin Taxa;\n Dimensions NTax=2;\n TaxLabels A B;\nEnd;\n"
+        + "Begin Characters;\n Dimensions NChar=4;\n"
+        + " Format DataType=Protein Missing=? Gap=- MatchChar=.;\n Matrix\n"
+        + "  A  MKAL\n  B  ....\n ;\nEnd;\nBegin Trees;\n Tree tree1=[&R](A:1,B:1);\nEnd;\n";
+    var got = {};
+    forester.getAllExternalNodes(forester.parseNexus(mc, true, false)[0]).forEach(function (n) {
+        var q = n.sequences && n.sequences[0];
+        got[n.name] = (q && q.mol_seq && q.mol_seq.value) ? q.mol_seq.value : null;
+    });
+    if (got.B !== "MKAL") {
+        return fail("a MatchChar row must resolve to the reference, not vanish", JSON.stringify(got));
+    }
+    // A second CHARACTERS block replaces the first, so what the LAST one says
+    // about a taxon is what holds -- including that it has no data. Both the
+    // rows and the record of which ids carried residues are scoped to their
+    // block; leaving the latter standing would let data in block one keep an
+    // all-missing row in block two alive. Checked against the desktop reader
+    // on this very file: it answers WWWW / no sequence too.
+    var two = "#NEXUS\nBegin Taxa;\n Dimensions NTax=2;\n TaxLabels A B;\nEnd;\n"
+        + "Begin Characters;\n Dimensions NChar=4;\n"
+        + " Format DataType=Protein Interleave=No Gap=- Missing=?;\n Matrix\n"
+        + "  A  MKAL\n  B  MKIV\n ;\nEnd;\n"
+        + "Begin Characters;\n Dimensions NChar=4;\n"
+        + " Format DataType=Protein Interleave=No Gap=- Missing=?;\n Matrix\n"
+        + "  A  WWWW\n  B  ????\n ;\nEnd;\n"
+        + "Begin Trees;\n Tree tree1=[&R](A:1,B:1);\nEnd;\n";
+    var last = {};
+    forester.getAllExternalNodes(forester.parseNexus(two, true, false)[0]).forEach(function (n) {
+        var q = n.sequences && n.sequences[0];
+        last[n.name] = (q && q.mol_seq && q.mol_seq.value) ? q.mol_seq.value : null;
+    });
+    if (last.A !== "WWWW") {
+        return fail("the later block should replace the earlier one", JSON.stringify(last));
+    }
+    if (last.B !== null) {
+        return fail("residues in an earlier block kept a later all-missing row alive",
+            JSON.stringify(last));
+    }
+    return true;
+}
+
+
+// ==========================================================================
+// The two format round trips, for trees carrying node names, branch lengths,
+// support values and molecular sequences:
+//
+//   (1) read phyloXML -> write Nexus -> read Nexus -> write phyloXML
+//   (2) read Nexus -> write phyloXML -> read phyloXML -> write Nexus
+//
+// Both must come back with the same tree and the same sequences. Christian
+// asked for these as standing regression tests, 2026-09-23, and writing them
+// found two real defects: the phyloXML writer dropped every branch length of
+// ZERO (a truthiness test -- 33 of them in the repo's own bunya_glyco.xml),
+// and a node carrying more than one confidence lost ALL of its support in
+// Newick/Nexus where the desktop keeps the first.
+//
+// TWO LOSSES ARE THE FORMAT, not defects, and are pinned below so that a
+// change to either is noticed rather than discovered:
+//   - a support value's TYPE. Nexus writes "[95]" with nowhere to say
+//     "bootstrap", so it comes back typed 'unknown'. The desktop is the same.
+//   - the SECOND support on a node. One Newick slot, one value; the first
+//     non-MAD confidence goes in it, as the desktop's
+//     BranchData.getSupportConfidence does.
+// ==========================================================================
+
+// Everything the round trips are about, as one comparable string: topology,
+// names, branch lengths, support, sequences. Numbers are normalized first,
+// so 1 and 1.0 and 0.30000000000000004 compare as they should.
+function rtDigest(phy) {
+    function num(v) {
+        return (v === undefined || v === null) ? null : Number(Number(v).toPrecision(12));
+    }
+    function walk(n) {
+        var kids = (n.children || []).map(walk);
+        kids.sort();
+        var conf = (n.confidences || []).map(function (c) {
+            return (c.type || '?') + '=' + num(c.value);
+        }).sort().join(',');
+        var seq = (n.sequences || []).map(function (q) {
+            return q.mol_seq ? ((q.mol_seq.is_aligned ? 'A:' : 'U:') + q.mol_seq.value) : '';
+        }).filter(Boolean).join('|');
+        return '(' + kids.join(',') + ')' + (n.name || '') + ':' + num(n.branch_length)
+            + (conf ? '[' + conf + ']' : '') + (seq ? '{' + seq + '}' : '');
+    }
+    return walk(forester.getTreeRoot(phy));
+}
+
+function rtFirstDiff(a, b) {
+    var i = 0;
+    while ((i < a.length) && (i < b.length) && (a[i] === b[i])) {
+        ++i;
+    }
+    return '\n      in  ...' + a.substring(Math.max(0, i - 60), i + 80)
+        + '\n      out ...' + b.substring(Math.max(0, i - 60), i + 80);
+}
+
+// The precision archaeopteryx.js asks its writers for (see the Nexus and
+// phyloXML download paths). Passed to BOTH writers so the comparison is about
+// the round trip and not about one of them rounding differently.
+//
+// A FUNCTION, not a `var`, and the reason matters: the runTest calls at the
+// top of this file execute before any assignment further down. As a `var`
+// this read as undefined at test time, both writers then took their
+// no-rounding path, and the tests quietly measured something other than what
+// the application does -- which is how a mutant that rounded branch lengths
+// to three decimals walked straight past them. Function declarations hoist;
+// assignments do not.
+function rtDecimals() {
+    return 9;
+}
+
+function testPhyloXmlNexusPhyloXmlRoundTrip() {
+    var px = require('./lib/phyloxml').phyloXml;
+    var fs = require('fs');
+    var readPx = function (xml) { return px.parse(xml, {trim: true, normalize: true})[0]; };
+
+    function chain(file) {
+        var src = readPx(fs.readFileSync(pth.join(__dirname, file), 'utf8'));
+        var viaNexus = forester.parseNexus(forester.toNexus(src, rtDecimals(), true), true, false)[0];
+        var back = readPx(px.toPhyloXML(viaNexus, rtDecimals()));
+        return {src: src, back: back};
+    }
+
+    // --- the purpose-built fixture ---------------------------------------
+    var r = chain('./data/roundtrip_seqs.xml');
+    // the fixture has to actually contain what it claims, or a pass means
+    // nothing: zero-length branches, a negative one, support, sequences, and
+    // one tip without a sequence
+    var zeros = 0, negatives = 0, confs = 0, seqs = 0, tipsNoSeq = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(r.src), function (n) {
+        if (n.branch_length === 0) { ++zeros; }
+        if (n.branch_length < 0) { ++negatives; }
+        if (n.confidences && n.confidences.length > 0) { ++confs; }
+        var hasSeq = n.sequences && n.sequences[0] && n.sequences[0].mol_seq;
+        if (hasSeq) { ++seqs; }
+        if (!n.children && !hasSeq) { ++tipsNoSeq; }
+    });
+    if ((zeros !== 3) || (negatives !== 1) || (confs !== 2) || (seqs !== 4) || (tipsNoSeq !== 1)) {
+        console.log('    fixture problem: ' + zeros + ' zero-length, ' + negatives + ' negative, '
+            + confs + ' with support, ' + seqs + ' with a sequence, ' + tipsNoSeq + ' tips without one');
+        return false;
+    }
+    // ... and the digest has to notice a change, or "SAME" means nothing
+    var poked = readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8'));
+    var carrier = forester.getAllExternalNodes(poked).filter(function (n) {
+        return n.sequences && n.sequences[0] && n.sequences[0].mol_seq;
+    })[0];
+    carrier.sequences[0].mol_seq.value = 'MKAL-IVQY';
+    if (rtDigest(poked) === rtDigest(r.src)) {
+        console.log('    the digest does not notice a changed residue');
+        return false;
+    }
+    poked = readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8'));
+    forester.getAllExternalNodes(poked)[0].branch_length = 0.99;
+    if (rtDigest(poked) === rtDigest(r.src)) {
+        console.log('    the digest does not notice a changed branch length');
+        return false;
+    }
+    // and specifically a branch length going to ZERO, which is the shape the
+    // phyloXML writer used to lose: a digest blind to it would pass forever
+    poked = readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8'));
+    forester.getAllExternalNodes(poked).filter(function (n) {
+        return n.branch_length !== 0;
+    })[0].branch_length = 0;
+    if (rtDigest(poked) === rtDigest(r.src)) {
+        console.log('    the digest does not notice a branch length becoming zero');
+        return false;
+    }
+
+    // the round trip itself, minus the two things Nexus cannot carry: the
+    // fixture's support is typed 'bootstrap' and comes back 'unknown'
+    var want = rtDigest(r.src).replace(/bootstrap=/g, 'unknown=');
+    var got = rtDigest(r.back);
+    if (want !== got) {
+        console.log('    the fixture did not survive phyloXML -> Nexus -> phyloXML'
+            + rtFirstDiff(want, got));
+        return false;
+    }
+
+    // --- and a real file: 121 tips, 33 zero-length branches, one negative,
+    // an aligned sequence on every tip. This is the one that caught the
+    // phyloXML writer dropping zeros.
+    var big = chain('./data/phyloxml_trees/bunya_glyco.xml');
+    if (rtDigest(big.src) !== rtDigest(big.back)) {
+        console.log('    bunya_glyco.xml did not survive the round trip'
+            + rtFirstDiff(rtDigest(big.src), rtDigest(big.back)));
+        return false;
+    }
+    var zerosBack = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(big.back), function (n) {
+        if (n.branch_length === 0) { ++zerosBack; }
+    });
+    if (zerosBack !== 33) {
+        console.log('    expected 33 zero-length branches back, got ' + zerosBack);
+        return false;
+    }
+
+    // --- the two documented losses, stated explicitly --------------------
+    var typed = readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8'));
+    var viaNexus = forester.parseNexus(forester.toNexus(typed, rtDecimals(), true), true, false)[0];
+    var types = [];
+    forester.preOrderTraversalAll(forester.getTreeRoot(viaNexus), function (n) {
+        (n.confidences || []).forEach(function (c) { types.push(c.type + '=' + c.value); });
+    });
+    types.sort();
+    if (types.join(' ') !== 'unknown=80 unknown=95') {
+        console.log('    support through Nexus is no longer untyped-but-intact: ' + types.join(' '));
+        return false;
+    }
+    // a node with TWO confidences keeps the FIRST, as the desktop does
+    var two = readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8'));
+    forester.preOrderTraversalAll(forester.getTreeRoot(two), function (n) {
+        if (n.name === 'mammals') {
+            n.confidences = [{type: 'bootstrap', value: 95}, {type: 'posterior', value: 0.99}];
+        }
+    });
+    var nexTwo = forester.toNexus(two, rtDecimals(), true);
+    if (nexTwo.indexOf('mammals:0.123456789[95]') < 0) {
+        console.log('    a node with two confidences should keep the first: '
+            + nexTwo.split('Begin Trees;')[1]);
+        return false;
+    }
+    return true;
+}
+
+function testNexusPhyloXmlNexusRoundTrip() {
+    var px = require('./lib/phyloxml').phyloXml;
+    var fs = require('fs');
+    var readPx = function (xml) { return px.parse(xml, {trim: true, normalize: true})[0]; };
+
+    // Starting FROM Nexus, the comparison can be the bytes themselves: write
+    // the file, take it through phyloXML and back, and the two Nexus files
+    // must be identical. Anything the middle format lost would show up as a
+    // different line.
+    function chain(nexus) {
+        var first = forester.parseNexus(nexus, true, false)[0];
+        var viaPx = readPx(px.toPhyloXML(first, rtDecimals()));
+        return {first: first, second: forester.toNexus(viaPx, rtDecimals(), true)};
+    }
+
+    // the fixture's own Nexus form: quoted names, a missing-data row, support,
+    // zero-length and negative branches
+    var start = forester.toNexus(
+        readPx(fs.readFileSync(pth.join(__dirname, './data/roundtrip_seqs.xml'), 'utf8')),
+        rtDecimals(), true);
+    // the starting file has to contain the awkward parts, or this proves little
+    if ((start.indexOf('?????????') < 0) || (start.indexOf('"Seba\'s bat"') < 0)
+        || (start.indexOf(':-0.001') < 0) || (start.indexOf('[95]') < 0)
+        || (start.indexOf('Anas:0,') < 0)) {
+        console.log('    the starting Nexus lost an awkward part before the test began:\n' + start);
+        return false;
+    }
+    var r = chain(start);
+    if (start !== r.second) {
+        var la = start.split('\n');
+        var lb = r.second.split('\n');
+        for (var i = 0; i < Math.max(la.length, lb.length); ++i) {
+            if (la[i] !== lb[i]) {
+                console.log('    line ' + i + ' changed:\n      in  ' + la[i] + '\n      out ' + lb[i]);
+            }
+        }
+        return false;
+    }
+    // the tree and its sequences, not just the bytes
+    var again = forester.parseNexus(r.second, true, false)[0];
+    if (rtDigest(r.first) !== rtDigest(again)) {
+        console.log('    the tree changed although the bytes matched'
+            + rtFirstDiff(rtDigest(r.first), rtDigest(again)));
+        return false;
+    }
+    // and the sequences specifically: four tips carry one, the fifth does not
+    // and must NOT have acquired a row of question marks as data
+    var withSeq = forester.getAllExternalNodes(again).filter(function (n) {
+        return n.sequences && n.sequences[0] && n.sequences[0].mol_seq
+            && n.sequences[0].mol_seq.value;
+    });
+    if (withSeq.length !== 4) {
+        console.log('    expected 4 sequences after the round trip, got ' + withSeq.length);
+        return false;
+    }
+    if (!withSeq.every(function (n) { return n.sequences[0].mol_seq.value.length === 9; })) {
+        console.log('    a sequence changed length across the round trip');
+        return false;
+    }
+
+    // a real Nexus file with a real alignment, straight off the demo data
+    var swh1 = fs.readFileSync(pth.join(__dirname, '../docs/data/swH1-HA1.nexus'), 'utf8');
+    var startBig = forester.toNexus(forester.parseNexus(swh1, true, false)[0], rtDecimals(), true);
+    var rBig = chain(startBig);
+    if (startBig !== rBig.second) {
+        console.log('    swH1-HA1.nexus did not survive Nexus -> phyloXML -> Nexus');
+        var xa = startBig.split('\n');
+        var xb = rBig.second.split('\n');
+        for (var j = 0; j < Math.max(xa.length, xb.length); ++j) {
+            if (xa[j] !== xb[j]) {
+                console.log('      line ' + j + '\n      in  ' + String(xa[j]).substring(0, 160)
+                    + '\n      out ' + String(xb[j]).substring(0, 160));
+                break;
+            }
+        }
+        return false;
+    }
+    return true;
+}
+
+
+// phyloxml.js is vendored here from phyloxml-js, in two copies inside the
+// repo: test/lib (what the suite runs) and docs/lib (what the demo site and
+// every browser loads). They have drifted before -- test/lib sat at 1.0.0
+// while the package was at 1.0.2, and both sat at a 1.0.2 banner over 1.1.0
+// code -- and when they do, the tests certify something the product does not
+// ship. Nothing copies them automatically (npm run docs:sync handles only
+// archaeopteryx.js and forester.js), so this is the only thing standing
+// between a hand copy and a silent divergence.
+function testVendoredPhyloXmlCopiesAgree() {
+    var fs = require('fs');
+    var a = pth.join(__dirname, 'lib', 'phyloxml.js');
+    var b = pth.join(__dirname, '..', 'docs', 'lib', 'phyloxml.js');
+    var sa = fs.readFileSync(a, 'utf8');
+    var sb = fs.readFileSync(b, 'utf8');
+    if (sa !== sb) {
+        var la = sa.split('\n');
+        var lb = sb.split('\n');
+        for (var i = 0; i < Math.max(la.length, lb.length); ++i) {
+            if (la[i] !== lb[i]) {
+                console.log('    test/lib and docs/lib differ from line ' + (i + 1)
+                    + ':\n      test/lib: ' + String(la[i]).substring(0, 120)
+                    + '\n      docs/lib: ' + String(lb[i]).substring(0, 120));
+                return false;
+            }
+        }
+        console.log('    test/lib and docs/lib differ in length');
+        return false;
+    }
+    // and the banner has to be a version, so a drift is legible when it happens
+    var m = sa.match(/^\/\/ v (\d+\.\d+\.\d+)\s*$/m);
+    if (!m) {
+        console.log('    no "// v X.Y.Z" banner in the vendored phyloxml.js');
+        return false;
+    }
+    // The third copy: the npm dependency, which is what a consumer of
+    // archaeopteryx actually gets. It sat one release behind the vendored
+    // copies while this repo's suite certified the fixed code -- exactly the
+    // gap that lets a bug ship green.
+    var dep = pth.join(__dirname, '..', 'node_modules', 'phyloxml', 'phyloxml.js');
+    if (!fs.existsSync(dep)) {
+        console.log('    node_modules/phyloxml is missing; run npm install');
+        return false;
+    }
+    if (fs.readFileSync(dep, 'utf8') !== sa) {
+        var dm = fs.readFileSync(dep, 'utf8').match(/^\/\/ v (\d+\.\d+\.\d+)\s*$/m);
+        console.log('    the vendored copies (' + m[1] + ') and the npm dependency ('
+            + (dm ? dm[1] : 'unknown') + ') are not the same file');
+        return false;
+    }
+    // ... and the range in package.json has to admit that version, or the next
+    // npm install quietly undoes this
+    var range = JSON.parse(fs.readFileSync(pth.join(__dirname, '..', 'package.json'), 'utf8'))
+        .dependencies.phyloxml;
+    if (range.replace(/^[^0-9]*/, '') !== m[1]) {
+        console.log('    package.json asks for phyloxml ' + range + ', vendored is ' + m[1]);
         return false;
     }
     return true;

@@ -8,6 +8,46 @@ consumers only see a change when a version is cut.
 
 ## Unreleased
 
+### Added
+
+- **Molecular sequences travel in Nexus, both ways, byte-identically with the
+  desktop.** The desktop Archaeopteryx gained a Nexus `CHARACTERS` writer
+  (`PhylogenyWriter.writeNexusCharactersBlock`), and the two programs have to
+  write the same file: `DataType` is capitalised and read off the residues by
+  the shared guesser, the `Format` line is `DataType=… Interleave=No Gap=-
+  Missing=?`, and the matrix has **a row per taxon** — a tip with no sequence
+  gets a row of `?`, so the matrix covers every taxon the Taxa block declares.
+  Sequences of unequal length are not an alignment: nothing is written, and a
+  bracketed Nexus comment says why instead of padding them. Verified by
+  running both programs on the same trees — the files are identical byte for
+  byte, and each reads the other's.
+- **Two standing round-trip tests**, on Christian's request: phyloXML → Nexus →
+  phyloXML, and Nexus → phyloXML → Nexus, over a purpose-built fixture (zero
+  and negative branch lengths, quoted names, a tip without a sequence) and two
+  real files. They compare the tree, its branch lengths, its support and its
+  sequences, and the second compares the Nexus bytes themselves. Writing them
+  is what turned up the two fixes below.
+
+### Fixed
+
+- **A branch length of zero survives a phyloXML write.** The writer tested the
+  number for truthiness, so every `0` was dropped and came back undefined —
+  silently, and on real files: the repo's own `bunya_glyco.xml` has 33 of
+  them, and a zero-length branch is ordinary wherever sequences are identical.
+  Fixed in [phyloxml 1.1.1](https://github.com/cmzmasek/phyloxml-js/releases/tag/v1.1.1),
+  which this release depends on; the two vendored copies (`test/lib`,
+  `docs/lib`) and the dependency are now one file, and a test says so.
+- **A branch carrying more than one confidence keeps its support.** Newick and
+  Nexus have one support slot, and this wrote nothing at all unless there was
+  exactly one confidence — so a node with a bootstrap *and* a posterior lost
+  both. It now writes the first that is not a MAD value, which is what the
+  desktop's `BranchData.getSupportConfidence` returns, verified by running it.
+- **A matrix row of nothing but `?`, `-`, `.` or `*` is absence of data, not a
+  sequence.** Without this, saving a tree where only some tips carry sequences
+  and reopening it invented a sequence of question marks for every tip that
+  never had one — reachable through our own writer, now that it emits those
+  rows to keep the matrix rectangular.
+
 ### Changed
 
 - **Search B is simply there.** The second search box used to sit behind a

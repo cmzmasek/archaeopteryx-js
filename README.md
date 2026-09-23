@@ -316,6 +316,15 @@ describe the MAD rooting only. A shared view remembers a MAD root. A phyloXML
 download keeps them as `<confidence type="MAD">`, as the desktop writes them;
 a Newick or Nexus download never puts one where a support value goes.
 
+Newick and Nexus have **one** support slot per branch and no place to name
+what kind of support it is, so a branch carrying several confidences is
+written with the first that is not a MAD value, exactly as the desktop writes
+it, and a `bootstrap` read back from such a file is typed `unknown`. phyloXML
+keeps every one of them, typed. Everything else survives a trip through
+either format unchanged — names, branch lengths (including zero-length and
+negative branches) and aligned sequences — in both directions, which the test
+suite pins as two standing round trips.
+
 1. Tria, F.D.K., Landan, G., Dagan, T. (2017). Phylogenetic rooting using
    minimal ancestor deviation. *Nature Ecology & Evolution*, 1, 0193.
    <https://www.nature.com/articles/s41559-017-0193>
@@ -555,7 +564,14 @@ column blank. Read `n` and judge.
 Alignments arrive with the tree: as phyloXML `<mol_seq is_aligned="true">`
 elements, or in a **Nexus** file whose characters matrix accompanies its tree.
 The **Nexus** entry in the Download menu writes the current tree *and* its
-alignment back into one Nexus file (Taxa, Characters and Trees blocks).
+alignment back into one Nexus file (Taxa, Characters and Trees blocks), in the
+same bytes the desktop Archaeopteryx writes: a row per taxon rather than per
+sequence, so a tip carrying no sequence gets a row of the missing symbol `?`
+and the matrix still covers every taxon the file declares. Reading it back,
+such a row is absence of data and not a sequence of question marks. Sequences
+of *unequal* length are not an alignment and cannot form a character matrix,
+so they are not written at all — the file says so in a bracketed comment
+rather than padding them into an alignment that does not exist.
 
 ## Heat maps
 
