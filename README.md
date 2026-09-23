@@ -1021,11 +1021,14 @@ plus Search, and folds the ones that are adjustments to make later: Zoom,
 Sizes and the domain controls. Whatever you open or close is then remembered, for the
 page and across reloads, so a panel you have arranged stays arranged, even
 when you switch to another tree. In a short window it also keeps itself to one
-screen: opening a section folds the one you opened longest ago, but only while
-the panel would not otherwise fit — on a tall screen nothing is ever folded for
-you. Anything that puts something into a folded section opens it, so jumping to
-the search box (⌘F / Ctrl+F), revealing Search B, or a tool reporting its
-result as search hits all unfold Search. A host with little room to give can
+screen: opening a section folds the one you opened longest ago, and dragging
+the window (or the element it sits in) shorter does the same — but only while
+the panel would not otherwise fit, never past the last section left open, and
+never at all on a tall screen. Growing the window back leaves the folds where
+they are: what is open is your choice, and only running out of room overrules
+it. Anything that puts something into a folded section opens it, so jumping to
+the search box (⌘F / Ctrl+F) or a tool reporting its result as search hits
+unfolds Search. A host with little room to give can
 also start the whole panel tighter and narrower with
 [`panelDensity: 'compact'`](#configuration), or collapsed to its header bar
 with `collapseControlPanel`.

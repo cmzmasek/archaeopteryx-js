@@ -423,8 +423,6 @@ function (root, d3, forester, phyloXml) {
     const RETURN_TO_SUPERTREE_BUTTON_BY_ONE = 'ret1_b';
     const SEARCH_FIELD_0 = 'sf0';
     const SEARCH_FIELD_1 = 'sf1';
-    const SEARCH_B_WRAP = 'search_b_wrap';
-    const SEARCH_B_TOGGLE = 'search_b_tgl';
     const SEARCH_NAV_ROW = 'searchnavrow';
     const SEARCH_NAV_PREV = 'searchnavprev';
     const SEARCH_NAV_NEXT = 'searchnavnext';
@@ -9294,9 +9292,6 @@ function (root, d3, forester, phyloXml) {
         if (want.value) {
             openPanelSection('Search');   // a view carrying a search shows it
         }
-        if (idx === 1 && want.value) {
-            showSearchB();
-        }
     }
 
     // The panel's controls from the state, after applyViewState
@@ -10432,30 +10427,6 @@ function (root, d3, forester, phyloXml) {
         });
     }
 
-    // Search B starts hidden to keep the panel compact; one click (or a
-    // configured initial value) reveals it, and it stays revealed.
-    // Search B is folded away until wanted: the '+ Search B' link (which
-    // focuses it) or a view that carries a second search.
-    function showSearchB() {
-        openPanelSection('Search');
-        let wrap = byId(SEARCH_B_WRAP);
-        if (wrap) {
-            wrap.style.display = '';
-        }
-        let tgl = byId(SEARCH_B_TOGGLE);
-        if (tgl) {
-            tgl.style.display = 'none';
-        }
-    }
-
-    function revealSearchB() {
-        showSearchB();
-        let f = byId(SEARCH_FIELD_1);
-        if (f) {
-            f.focus();
-        }
-    }
-
     // ===================== Time axis =====================
     // The desktop's time overlays, drawn beneath a rectangular PHYLOGRAM of
     // a dated tree: the two-band ICS geologic axis with a "Ma before
@@ -11444,8 +11415,6 @@ function (root, d3, forester, phyloXml) {
         }
         if (_state.searchBinitialValue) {
             setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
-            revealSearchB();
-
         } else {
             setValue(SEARCH_FIELD_1, '');
         }
@@ -12542,7 +12511,13 @@ function (root, d3, forester, phyloXml) {
             let open = panelSections(panel).filter(function (s) {
                 return !s.fieldset.classList.contains('aptx-collapsed') && s.name !== justOpened;
             });
-            if (open.length === 0) {
+            // Never the one just opened -- that is the one the user asked
+            // for -- and never the last one standing. Without the second
+            // clause a container dragged short enough empties the panel down
+            // to a stack of legends, taking away the section being worked in.
+            // (justOpened is itself open and excluded from this list, so when
+            // it is set the last one standing is already protected above.)
+            if (open.length === 0 || (!justOpened && open.length === 1)) {
                 return;
             }
             open.sort(function (a, b) {
@@ -13249,8 +13224,6 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-slider-row { display:flex; align-items:center; gap:7px; margin:3px 0; }'
             + '.aptx-panel .aptx-slider-row label { flex:0 0 42px; font-size:10px; color:var(--p-muted); }'
             + '.aptx-panel .aptx-slider-row input[type=range] { flex:1 1 auto; min-width:0; margin:0; }'
-            + '.aptx-panel .aptx-linkbtn { background:none; border:0; padding:1px 0 2px; margin:0; font:inherit; font-size:10px; color:var(--p-accent); cursor:pointer; display:block; }'
-            + '.aptx-panel .aptx-linkbtn:hover { text-decoration:underline; }'
             // one row, its buttons sharing it evenly, its edges on the zoom rows'
             + '.aptx-panel .aptx-toolrow { margin-top:5px; display:flex; gap:3px; }'
             + '.aptx-panel .aptx-toolrow .aptx-gbtn { flex:1 1 0; min-width:0; padding:0; margin:2px 0; }'
@@ -13457,6 +13430,20 @@ function (root, d3, forester, phyloXml) {
         // so the fit rule runs once on arrival too -- with no section to
         // spare, since the user opened none of them just now.
         fitPanelSections(panel, null);
+
+        // ... and again whenever the room changes. The panel is held to its
+        // container's height, so a window dragged shorter (or a host resizing
+        // the div around us) can push an arrangement that fitted a moment ago
+        // into a scrollbar. Watching the CONTAINER, not the panel: folding a
+        // section changes the panel's height and would re-enter the observer.
+        // One-way on purpose -- growing the window back does NOT reopen what
+        // was folded. What is open is the user's choice; only running out of
+        // room may overrule it, and then only far enough to fit.
+        if (typeof ResizeObserver !== 'undefined' && panel.parentElement) {
+            new ResizeObserver(function () {
+                fitPanelSections(panel, null);
+            }).observe(panel.parentElement);
+        }
 
         // Apply the current light/dark choice to this (and every) panel.
         applyPanelTheme();
@@ -14244,7 +14231,6 @@ function (root, d3, forester, phyloXml) {
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
         on(SUPPORT_DOTS_CB, 'click', supportDotsCbClicked);
         on(MAD_VALUES_CB, 'click', madValuesCbClicked);
-        on(SEARCH_B_TOGGLE, 'click', revealSearchB);
         on(SEARCH_NAV_PREV, 'click', function () {
             stepToFoundNode(-1);
         });
@@ -14988,14 +14974,14 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Search</legend>');
             h = h.concat(makeSearchBox('Search A', 0));
-            // Search B starts hidden, one click away: the second box (and the
-            // Combine control it brings) is rarely needed, and the panel is
-            // long enough without it
-            h = h.concat('<button type="button" class="aptx-linkbtn" id="' + SEARCH_B_TOGGLE
-                + '" title="add a second search box, combinable with the first">+ Search B</button>');
-            h = h.concat('<div id="' + SEARCH_B_WRAP + '" style="display:none">');
+            // Search B used to sit behind a '+ Search B' link, to keep 45px out
+            // of the panel. That link was a second, weaker disclosure mechanism
+            // nested inside the section fold: it was forgotten on every reload
+            // (the fold is remembered), it was one-way -- nothing put B back --
+            // and it defeated the fit rule, since revealing B grew a section
+            // that had just been fitted without it, leaving the panel to
+            // scroll. The fold IS the disclosure. B is simply here.
             h = h.concat(makeSearchBox('Search B', 1));
-            h = h.concat('</div>');
             h = h.concat('<div class="aptx-searchnav" id="' + SEARCH_NAV_ROW + '" style="display:none">');
             h = h.concat('<button type="button" class="aptx-gbtn" id="' + SEARCH_NAV_PREV
                 + '" title="center the previous search hit">&#9664;</button>');
@@ -15210,7 +15196,6 @@ function (root, d3, forester, phyloXml) {
         }
         if (_state.searchBinitialValue) {
             setValue(SEARCH_FIELD_1, _state.searchBinitialValue);
-            revealSearchB();
         }
     }
 

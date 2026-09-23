@@ -6,6 +6,31 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Changed
+
+- **Search B is simply there.** The second search box used to sit behind a
+  `+ Search B` link. That link was a second, weaker way of hiding things
+  nested inside the section fold: it saved 45px, it was forgotten on every
+  reload (the fold is remembered), nothing put B back once revealed, and
+  revealing it grew a section that the fit rule had just measured without it,
+  so the panel was left scrolling. Both boxes are now always in the Search
+  section, and the fold is the only place where sections are hidden.
+
+### Fixed
+
+- **The panel refits when the window changes size**, not only when you open a
+  section. An arrangement that fitted a moment ago used to be left scrolling
+  after the window was dragged shorter. Growing the window back does not
+  reopen what was folded — what is open is the user's choice, and only running
+  out of room overrules it.
+- **The fit rule keeps the last section open.** It folds the section opened
+  longest ago until the panel fits, and it now stops at the final one rather
+  than emptying the panel down to a stack of legends — which the comment
+  describing it had claimed all along, and which a short enough window made
+  reachable.
+
 ## 3.12.0 — 2026-09-22
 
 An alignment beside a tree says what each sequence has; a logo says what the
