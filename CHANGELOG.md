@@ -6,7 +6,11 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.14.0 — 2026-09-23
+
+What is actually in this file? Nothing in the viewer answered that. Now the
+ⓘ button does, with the facts the desktop Archaeopteryx lists and the
+spreads — n, minimum, median, maximum, mean — in place of its histogram.
 
 ### Added
 
