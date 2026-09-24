@@ -526,8 +526,8 @@ section holds the controls:
   the tree), or `None`.
 * **Glow** — a soft glow in each domain's own colour around its box.
 
-**Hovering a domain** reads it out: the domain's name, its E-value as the
-scan reported it, the residues it spans with its own length and the protein's,
+**Hovering a domain** reads it out: the domain's name, its E-value (small
+ones keep their exponent, 7.20e-117), the residues it spans with its own length and the protein's,
 the tree tip it belongs to, and its accession where the file carries one.
 **Clicking the box** looks the domain up: straight to the Pfam entry when
 there is an accession, and an InterPro search by name when there is not —

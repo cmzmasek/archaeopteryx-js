@@ -11,7 +11,7 @@ consumers only see a change when a version is cut.
 ### Added
 
 - **A hover readout on every protein domain**, which the boxes never had: the
-  domain's name, its E-value as the scan reported it, the residues it spans
+  domain's name, its E-value (small ones keep their exponent), the residues it spans
   with its own length and the protein's, the tree tip it belongs to, and its
   accession where the file carries one. **Clicking a domain looks it up** —
   the Pfam entry directly when there is an accession, an InterPro search by
@@ -21,6 +21,10 @@ consumers only see a change when a version is cut.
   both 200), so the search is the honest fallback rather than a guessed URL.
   Only the domain boxes take the mouse, so the tree behind the track stays
   clickable.
+- `forester.domainReference(domain)` and `forester.domainEvalueText(e)`: the
+  link and the formatting, in the half of the codebase the test suite can
+  reach. A wrong URL fails silently in someone else's browser, which is the
+  worst place to find out.
 
 ## 3.14.0 — 2026-09-23
 

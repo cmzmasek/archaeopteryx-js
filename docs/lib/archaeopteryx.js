@@ -413,11 +413,6 @@ function (root, d3, forester, phyloXml) {
     const BRANCH_SCALE_CONTROLGROUP = 'branch_scale_g';
     const BRANCH_SCALE_TIME_BUTTON = 'branch_scale_time_b';
     const BRANCH_SCALE_DIV_BUTTON = 'branch_scale_div_b';
-    // Pfam lives inside InterPro now. An entry is addressed by ACCESSION;
-    // an identifier (CARD, NB-ARC) has to be searched for.
-    const INTERPRO_ENTRY = 'https://www.ebi.ac.uk/interpro/entry/pfam/';
-    const INTERPRO_SEARCH = 'https://www.ebi.ac.uk/interpro/search/text/';
-
     const ABOUT_DIALOG = 'aptx_about';
     const TREE_PROPERTIES_DIALOG = 'aptx_tree_props';
     const PROG_NAME = 'progname';
@@ -1485,6 +1480,26 @@ function (root, d3, forester, phyloXml) {
     // cell it described; a matrix that hugs the right edge flips on every cell,
     // so the guess was what the reader saw every time.
     const HOVER_READOUT_GAP = 14;
+
+    // One way to open an external page. There were three: window.open + a
+    // win.focus() that throws when a popup blocker hands back null and which
+    // passed no noopener, an <a target="_blank" rel="noopener noreferrer">,
+    // and a third for the domain link. Three security postures for one job,
+    // and a change to the policy would have had to find all of them.
+    //
+    // noopener: the opened page must not get a handle on this window.
+    // noreferrer with it, since a tree can come from anywhere and its URL is
+    // not the external site's business.
+    function openExternal(url) {
+        if (!url) {
+            return null;
+        }
+        let win = window.open(url, '_blank', 'noopener,noreferrer');
+        if (win) {
+            win.focus();   // a blocked popup hands back null; that is not an error
+        }
+        return win;
+    }
 
     function placeHoverReadout(el, event) {
         let w = el.offsetWidth;
@@ -6384,8 +6399,7 @@ function (root, d3, forester, phyloXml) {
                 }
 
                 if (url) {
-                    let win = window.open(url, '_blank');
-                    win.focus();
+                    openExternal(url);
                 } else {
                     // Not a programming error -- the user clicked and there is
                     // simply nowhere to go -- so this one gets told in the same
@@ -9971,43 +9985,12 @@ function (root, d3, forester, phyloXml) {
     // placed by placeHoverReadout, which measures the box rather than assuming
     // a size.
 
-    // Where a domain can be read about. phyloXML's optional domain `id` is the
-    // accession for a Pfam scan, and an accession addresses an entry directly;
-    // without one there is only the Pfam IDENTIFIER (CARD, NB-ARC, WD40 --
-    // what our own apaf.xml carries), which InterPro finds by search. Guessing
-    // an entry URL from an identifier would 404 for anything but the lucky
-    // cases, and a dead link is worse than a search that works.
-    const PFAM_ACCESSION = /^PF\d{5,}$/i;
-
-    function domainReference(info) {
-        if (!info) {
-            return null;
-        }
-        if (info.id && PFAM_ACCESSION.test(info.id.trim())) {
-            return {url: INTERPRO_ENTRY + info.id.trim().toUpperCase() + '/', exact: true};
-        }
-        let q = (info.id || info.name || '').trim();
-        return q ? {url: INTERPRO_SEARCH + encodeURIComponent(q) + '/', exact: false} : null;
-    }
-
     function domainInfoAt(event) {
         let t = event.target;
         return (t && t.__aptxDomain) ? t.__aptxDomain : null;
     }
 
-    // An E-value spans many orders of magnitude, so it is written the way a
-    // scan reports it rather than rounded into uselessness: 4.7e-12 stays
-    // 4.7e-12, and a plain 0.3 stays 0.3.
-    function domainEvalueText(e) {
-        if (typeof e !== 'number' || !isFinite(e)) {
-            return null;
-        }
-        if (e === 0) {
-            return '0';
-        }
-        return (Math.abs(e) >= 0.001 && Math.abs(e) < 1e7)
-            ? String(forester.roundNumber(e, 6)) : e.toExponential(2);
-    }
+    let _domainHovered = null;
 
     function domainHover(event) {
         let info = domainInfoAt(event);
@@ -10015,9 +9998,22 @@ function (root, d3, forester, phyloXml) {
             domainHoverOut();
             return;
         }
-        let ref = domainReference(info);
+        // mousemove fires all the way across a box, and a wide domain is
+        // hundreds of pixels. The TEXT only changes when the box does, so
+        // re-escaping it, reparsing it as HTML and restarting the fade sixty
+        // times a second would be work for a byte-identical result -- and the
+        // restarted transition would keep opacity approaching 0.95 without
+        // ever arriving. The readout must still FOLLOW the pointer, so the
+        // placement runs either way.
+        let tip_el = _node_mouseover_div.node();
+        if (info === _domainHovered) {
+            placeHoverReadout(tip_el, event);
+            return;
+        }
+        _domainHovered = info;
+        let ref = forester.domainReference(info);
         let txt = 'Domain: ' + (info.name || '(unnamed)') + '<br>';
-        let ev = domainEvalueText(info.evalue);
+        let ev = forester.domainEvalueText(info.evalue);
         if (ev !== null) {
             txt += 'E-value: ' + ev + '<br>';
         }
@@ -10032,10 +10028,12 @@ function (root, d3, forester, phyloXml) {
         }
         if (ref) {
             // A readout that follows the pointer cannot hold a link you could
-            // reach, so the BOX is the link and the readout says so.
-            txt += (ref.exact ? 'Click for the Pfam entry' : 'Click to look the domain up at InterPro');
+            // reach, so the BOX is the link and the readout says so. Written
+            // as a "label: value" row on purpose: markUpDataLabels renders a
+            // line WITHOUT a colon as a section divider (9px bold uppercase
+            // faint), which is the wrong voice entirely for a call to action.
+            txt += ref.exact ? 'Click: the Pfam entry' : 'Click: to look this domain up at InterPro';
         }
-        let tip_el = _node_mouseover_div.node();
         tip_el.classList.remove('aptx-light', 'aptx-dark');
         if (_panelTheme) {
             tip_el.classList.add('aptx-' + _panelTheme);
@@ -10046,17 +10044,42 @@ function (root, d3, forester, phyloXml) {
     }
 
     function domainHoverOut() {
+        _domainHovered = null;
         _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
     }
 
+    let _domainOpenedAt = 0;
+
     function domainClicked(event) {
-        let ref = domainReference(domainInfoAt(event));
+        let info = domainInfoAt(event);
+        if (!info) {
+            return;
+        }
+        // A click that LANDED on a box is the box's, whether or not it has
+        // somewhere to send you; letting an unlinkable domain fall through
+        // would open the node menu for whatever node is within five units.
+        event.stopPropagation();
+        let ref = forester.domainReference(info);
         if (!ref) {
             return;
         }
-        event.stopPropagation();   // not a click on the tree behind it
-        // noopener: the opened page must not get a handle on this window
-        window.open(ref.url, '_blank', 'noopener,noreferrer');
+        // Double-clicking is the natural gesture for "open this", and it
+        // arrives as two clicks: without this it opens two identical tabs.
+        let now = Date.now();
+        if ((now - _domainOpenedAt) < 500) {
+            return;
+        }
+        _domainOpenedAt = now;
+        openExternal(ref.url);
+    }
+
+    // The tree zooms on double click. Over a domain box the gesture means the
+    // box, so the zoom must not also happen behind the tabs that just opened.
+    function domainDblClicked(event) {
+        if (domainInfoAt(event)) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
     }
 
     function drawDomainArchitectures() {
@@ -10070,6 +10093,7 @@ function (root, d3, forester, phyloXml) {
         let f = tips.length > 0 ? domainScale() : 0;
         if (tips.length === 0 || !(f > 0) || !isFinite(f)) {
             existing.remove();
+            domainHoverOut();   // the box under the pointer just stopped existing
             return;
         }
         // [defs, the batched paths, the bodies, the names], kept between
@@ -10093,13 +10117,15 @@ function (root, d3, forester, phyloXml) {
         // the BODIES alone take it back, so a hover lands on a domain and not
         // on its shadow, its glow or its label.
         bodyLayer.style.pointerEvents = 'auto';
-        bodyLayer.style.cursor = 'pointer';
         if (!bodyLayer.__aptxWired) {
             bodyLayer.__aptxWired = true;
-            bodyLayer.addEventListener('mouseover', domainHover);
+            // mousemove alone, as the heat map and the alignment do it: a
+            // mouseover is always followed by a mousemove, so binding both
+            // only built the readout twice on entry.
             bodyLayer.addEventListener('mousemove', domainHover);
             bodyLayer.addEventListener('mouseout', domainHoverOut);
             bodyLayer.addEventListener('click', domainClicked);
+            bodyLayer.addEventListener('dblclick', domainDblClicked);
         }
 
         // one vertical gradient per base colour, lighter at the top; the
@@ -10203,6 +10229,10 @@ function (root, d3, forester, phyloXml) {
             }
             let set = row.transform ? pathSet() : track;
             let geo = forester.domainBoxes(da, row.start, f, _state.domainEvalueExponent);
+            // once per ROW: displayNodeName walks the node's properties when a
+            // label-ref visualization is on, and a row can hold dozens of boxes
+            let rowTip = displayNodeName(row.d) || '';
+            let rowLength = Number(da.length) || 0;
             let h = row.h;
             let y1 = row.y1;
             set.backbones.push(roundRectPath(geo.backbone.x, y1 + (h / 2) - 0.5, geo.backbone.w, 1, 0));
@@ -10232,7 +10262,7 @@ function (root, d3, forester, phyloXml) {
                     // reused between redraws, so an index into the tree would
                     // go stale the moment the tips on screen change.
                     info: {name: b.name, from: b.from, to: b.to, evalue: b.evalue, id: b.id,
-                        tip: displayNodeName(row.d) || '', proteinLength: Number(da.length) || 0}});
+                        tip: rowTip, proteinLength: rowLength}});
                 if (row.labelsOn && b.name && fs > 4 && legendTextWidth(b.name, font) <= b.w - 4) {
                     names.push({x: b.x + (b.w / 2), y: y1 + (h / 2), font: font,
                         fill: forester.domainLabelInk(base), text: b.name});
@@ -10256,6 +10286,11 @@ function (root, d3, forester, phyloXml) {
             paths[k].style.fill = u.fill;
             paths[k].style.fillOpacity = u.opacity;
         });
+        // A redraw can take the hovered box away without the pointer moving
+        // -- a keyboard zoom, a panel change applied with Enter, a collapse --
+        // and a removed element fires no mouseout, so the readout would stay
+        // painted over a domain that is no longer there.
+        domainHoverOut();
         let rects = sizeLayer(bodyLayer, 'rect', bodies.length);
         bodies.forEach(function (b, k) {
             let el = rects[k];
@@ -10274,6 +10309,10 @@ function (root, d3, forester, phyloXml) {
             el.style.stroke = b.stroke;
             el.style.strokeWidth = 1;
             el.__aptxDomain = b.info;
+            // only where there is somewhere to go: an unnamed domain with no
+            // accession has no reference, and a hand cursor over it would
+            // promise a link that the click cannot deliver
+            el.style.cursor = forester.domainReference(b.info) ? 'pointer' : 'default';
         });
         let texts = sizeLayer(labelLayer, 'text', names.length);
         names.forEach(function (t, k) {

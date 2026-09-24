@@ -331,10 +331,124 @@ runTest("residue coverage           : ", testResidueCoverage);
 runTest("malformed domains skipped  : ", testMalformedSkipped);
 runTest("summary order              : ", testSummaryOrder);
 runTest("colour math and readout    : ", testColourMathAndReadout);
+runTest("domain id and reference   : ", testDomainIdAndReference);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
     process.exit(1);
 } else {
     console.log("\nAll tests passed");
+}
+
+// phyloXML's optional domain `id` is the accession for a Pfam scan, and the
+// hover readout links to the entry with it -- an accession addresses an entry,
+// a bare identifier does not (checked against InterPro: /entry/pfam/NB-ARC/ is
+// a 404 while /entry/pfam/PF00931/ and /search/text/NB-ARC/ are both 200). So
+// it has to reach the drawing code, and it was being dropped between the two.
+function testDomainIdAndReference() {
+    var da = {length: 1248, domains: [
+        {name: 'NB-ARC', from: 109, to: 414, confidence: 7.2e-117, id: 'PF00931'},
+        {name: 'WD40', from: 1168, to: 1204, confidence: 0.3}
+    ]};
+    var parsed = forester.domainArchitectureDomains(da).domains;
+    if (parsed.length !== 2) {
+        console.log('    expected two drawable domains, got ' + parsed.length);
+        return false;
+    }
+    var nb = parsed.filter(function (d) { return d.name === 'NB-ARC'; })[0];
+    var wd = parsed.filter(function (d) { return d.name === 'WD40'; })[0];
+    if (nb.id !== 'PF00931') {
+        console.log('    the accession was dropped: ' + JSON.stringify(nb));
+        return false;
+    }
+    // absent is an empty string rather than undefined, so the readout can test
+    // it without reaching for a type check
+    if (wd.id !== '') {
+        console.log('    a domain without an id should carry an empty one: ' + JSON.stringify(wd));
+        return false;
+    }
+    // ... and through the geometry, which is what the drawn box is built from
+    var boxes = forester.domainBoxes(da, 0, 1, 0).boxes;
+    var drawn = boxes.filter(function (b) { return b.name === 'NB-ARC'; })[0];
+    if (!drawn || drawn.id !== 'PF00931') {
+        console.log('    the accession did not reach the drawn box: ' + JSON.stringify(boxes));
+        return false;
+    }
+    // the rest of what the readout needs must be there too
+    if (drawn.from !== 109 || drawn.to !== 414 || drawn.evalue !== 7.2e-117) {
+        console.log('    a drawn box is missing its facts: ' + JSON.stringify(drawn));
+        return false;
+    }
+    // --- and the URL the readout links to -------------------------------
+    // An InterPro ENTRY is addressed by ACCESSION and nothing else. Measured
+    // against the service, not assumed: /api/entry/pfam/PF00931/ answers 200
+    // and names NB-ARC, while /NB-ARC/, /CARD/ and /Death/ are 404.
+    function ref(id, name) {
+        return forester.domainReference({id: id, name: name});
+    }
+    var entry = ref('PF00931', 'NB-ARC');
+    if (!entry || entry.exact !== true
+        || entry.url !== 'https://www.ebi.ac.uk/interpro/entry/pfam/PF00931/') {
+        console.log('    an accession should address the entry: ' + JSON.stringify(entry));
+        return false;
+    }
+    // a versioned accession is the same accession: an hmmscan writes PF00931.24
+    var versioned = ref('PF00931.24', 'NB-ARC');
+    if (!versioned || versioned.exact !== true || versioned.url !== entry.url) {
+        console.log('    a versioned accession should reach the same entry: '
+            + JSON.stringify(versioned));
+        return false;
+    }
+    // lower case is still an accession
+    if (ref('pf00931', 'NB-ARC').url !== entry.url) {
+        console.log('    an accession should not be case-sensitive');
+        return false;
+    }
+    // without one, search by NAME -- never by the id. A SMART or CDD
+    // accession searches to nothing, while the name is what a text search is
+    // for, and the name is what the box is painted with.
+    var named = ref('', 'NB-ARC');
+    if (!named || named.exact !== false
+        || named.url !== 'https://www.ebi.ac.uk/interpro/search/text/NB-ARC/') {
+        console.log('    a bare identifier should be searched for: ' + JSON.stringify(named));
+        return false;
+    }
+    var smart = ref('SM00184', 'RING');
+    if (!smart || smart.exact !== false || smart.url.indexOf('/text/RING/') < 0) {
+        console.log('    a non-Pfam id should search the NAME, not the id: ' + JSON.stringify(smart));
+        return false;
+    }
+    // an id and no name: the id is all there is, so it is the query
+    if (ref('cd00204', '').url.indexOf('/text/cd00204/') < 0) {
+        console.log('    with no name the id is the only query left');
+        return false;
+    }
+    // nothing to go on at all
+    if (ref('', '') !== null || forester.domainReference(null) !== null) {
+        console.log('    an unnamed domain with no id has nowhere to link');
+        return false;
+    }
+    // a name needing escaping must not break the URL
+    if (ref('', 'a/b c').url.indexOf(encodeURIComponent('a/b c')) < 0) {
+        console.log('    the query is not escaped');
+        return false;
+    }
+
+    // --- the E-value, which spans many orders of magnitude ----------------
+    var ev = forester.domainEvalueText;
+    if (ev(0) !== '0' || ev(0.3) !== '0.3' || ev(2) !== '2') {
+        console.log('    an ordinary value should read plainly: '
+            + [ev(0), ev(0.3), ev(2)].join(' '));
+        return false;
+    }
+    if (ev(7.2e-117) !== '7.20e-117' || ev(4.7e-12) !== '4.70e-12') {
+        console.log('    a small value should keep its exponent: '
+            + [ev(7.2e-117), ev(4.7e-12)].join(' '));
+        return false;
+    }
+    if (ev(undefined) !== null || ev(NaN) !== null || ev(Infinity) !== null) {
+        console.log('    a non-number has no text');
+        return false;
+    }
+    return true;
 }

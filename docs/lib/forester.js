@@ -3814,6 +3814,56 @@
     };
 
 
+    // Where a protein domain can be read about, as {url, exact} or null.
+    //
+    // An InterPro ENTRY is addressed by ACCESSION and by nothing else --
+    // measured, not assumed: /api/entry/pfam/PF00931/ answers 200 and names
+    // NB-ARC, while /api/entry/pfam/NB-ARC/, /CARD/ and /Death/ are all 404.
+    // phyloXML's <domain id="..."> carries the accession when the annotation
+    // had one, and most files have none (our own apaf.xml names all 166 of its
+    // boxes and gives not one an id), so the fallback is an InterPro text
+    // search.
+    //
+    // The search goes by NAME, never by the id. An id that is not a bare Pfam
+    // accession -- a versioned one from an hmmscan (PF00931.24), or a SMART or
+    // CDD accession -- searches to nothing, while the name is exactly what a
+    // text search is for. A version suffix is stripped for the entry URL
+    // rather than disqualifying it: PF00931.24 IS PF00931.
+    //
+    // Lives here rather than in the viewer so it can be tested: a wrong URL
+    // fails silently in someone else's browser, which is the worst place to
+    // find out.
+    const INTERPRO_ENTRY = 'https://www.ebi.ac.uk/interpro/entry/pfam/';
+    const INTERPRO_SEARCH = 'https://www.ebi.ac.uk/interpro/search/text/';
+
+    forester.domainReference = function (domain) {
+        if (!domain) {
+            return null;
+        }
+        let id = (domain.id || '').trim();
+        let acc = /^(PF\d{5,})(?:\.\d+)?$/i.exec(id);
+        if (acc) {
+            return {url: INTERPRO_ENTRY + acc[1].toUpperCase() + '/', exact: true};
+        }
+        let q = (domain.name || '').trim() || id;
+        return q ? {url: INTERPRO_SEARCH + encodeURIComponent(q) + '/', exact: false} : null;
+    };
+
+    // A domain's E-value for display. It spans many orders of magnitude, so a
+    // small one keeps its exponent; the count of significant digits is the
+    // only thing normalized, because a scan writes 7.2E-117 and 1E-6 and a
+    // readout that mixed those forms would read as two different measures.
+    forester.domainEvalueText = function (e) {
+        if (typeof e !== 'number' || !isFinite(e)) {
+            return null;
+        }
+        if (e === 0) {
+            return '0';
+        }
+        return (Math.abs(e) >= 0.001 && Math.abs(e) < 1e7)
+            ? String(forester.roundNumber(e, 6)) : e.toExponential(2);
+    };
+
     // Everything the Tree Properties dialog reports, gathered in ONE pass:
     // the desktop's TreeFacts.scan, minus its histogram (Christian, 2026-09-23:
     // "we don't need a histogram ... but a more detailed stats would be
