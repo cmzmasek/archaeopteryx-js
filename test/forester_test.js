@@ -79,6 +79,8 @@ runTest("Nexus sequences, joint      : ", testNexusMolecularSequences);
 runTest("Nexus missing rows          : ", testNexusMissingRows);
 runTest("Nexus label collisions      : ", testNexusLabelCollisions);
 runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
+runTest("describeValues              : ", testDescribeValues);
+runTest("tree statistics             : ", testTreeStatistics);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
 runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
@@ -5738,6 +5740,155 @@ function testNexusMatrixDatatype() {
         console.log('    the guesser\'s alphabet drifted from the desktop\'s:\n      got  '
             + perLetter.join(' ') + '\n      want ' + expected);
         return false;
+    }
+    return true;
+}
+
+
+// n / min / median / max / mean / sum. Every expectation below is worked out
+// by hand, not read off the implementation.
+function testDescribeValues() {
+    function fail(msg, got) {
+        console.log('    ' + msg + ': ' + JSON.stringify(got));
+        return false;
+    }
+    if (forester.describeValues([]) !== null || forester.describeValues(null) !== null) {
+        return fail('an empty list should describe as null', forester.describeValues([]));
+    }
+    // odd count: the median is the middle value of 1,2,3,4,10 -> 3
+    var odd = forester.describeValues([3, 1, 10, 2, 4]);
+    if (odd.n !== 5 || odd.min !== 1 || odd.max !== 10 || odd.median !== 3
+        || odd.sum !== 20 || odd.mean !== 4) {
+        return fail('odd-length', odd);
+    }
+    // even count: the mean of the two middle values of 1,2,4,10 -> 3
+    var even = forester.describeValues([10, 1, 4, 2]);
+    if (even.n !== 4 || even.median !== 3 || even.sum !== 17 || even.mean !== 17 / 4) {
+        return fail('even-length', even);
+    }
+    // a single value is its own everything
+    var one = forester.describeValues([7]);
+    if (one.n !== 1 || one.min !== 7 || one.max !== 7 || one.median !== 7 || one.mean !== 7) {
+        return fail('single value', one);
+    }
+    // negatives and zero take part
+    var mixed = forester.describeValues([0, -2, 2]);
+    if (mixed.min !== -2 || mixed.median !== 0 || mixed.max !== 2 || mixed.sum !== 0) {
+        return fail('negatives and zero', mixed);
+    }
+    // and the caller's array is NOT reordered: it is sorted on a copy
+    var given = [3, 1, 2];
+    forester.describeValues(given);
+    if (given.join(',') !== '3,1,2') {
+        return fail('the input was sorted in place', given);
+    }
+    return true;
+}
+
+// The tree-level statistics behind the Tree Properties dialog. The tree is
+// built by hand so every count can be checked by reading it:
+//
+//        root
+//         +-- inner "A"  (bootstrap 90, posterior 0.95, MAD 0.4)
+//         |     +-- t1   :1
+//         |     +-- t2   :0
+//         |     +-- t3   :-0.5       <- a polytomy of three, a zero, a negative
+//         +-- t4         :2
+//
+// tips 4, internal 2 (root + A), nodes 6, branches 5 (every node but the root),
+// one polytomy, depth 2.
+function testTreeStatistics() {
+    function fail(msg, got) {
+        console.log('    ' + msg + ': ' + JSON.stringify(got));
+        return false;
+    }
+    var t1 = {name: 't1', branch_length: 1,
+        taxonomies: [{scientific_name: 'Homo sapiens', id: {value: '9606'}}],
+        sequences: [{mol_seq: {is_aligned: true, value: 'MKAL'}}],
+        properties: [{ref: 'x:a', value: '1'}, {ref: 'x:a', value: '2'}, {ref: 'x:b', value: '3'}]};
+    var t2 = {name: 't2', branch_length: 0,
+        taxonomies: [{scientific_name: 'Homo sapiens'}],
+        distributions: [{desc: 'here'}],
+        date: {value: 1999}};
+    var t3 = {name: 't3', branch_length: -0.5, properties: [{ref: 'x:b', value: '4'}]};
+    var inner = {name: 'A', branch_length: 0.5, children: [t1, t2, t3],
+        confidences: [{type: 'bootstrap', value: 90}, {type: 'posterior', value: 0.95},
+            {type: forester.MAD_CONFIDENCE_TYPE, value: 0.4}],
+        events: {duplications: 1}};
+    var t4 = {name: 't4', branch_length: 2};
+    var root = {children: [inner, t4]};
+
+    var st = forester.treeStatistics(root);
+    if (st.tips !== 4 || st.internal !== 2 || st.nodes !== 6 || st.branches !== 5) {
+        return fail('counts', {tips: st.tips, internal: st.internal, nodes: st.nodes, branches: st.branches});
+    }
+    // NOTE on mutating the depth logic: `maxDepth = depth + 1` and
+    // `depth + 1 > maxDepth` are both EQUIVALENT MUTANTS here and in any tree.
+    // Depth grows by one along the first path down, so the overshoot is always
+    // corrected by the next comparison, and no fixture can separate them.
+    // `maxDepth = depth - 1` IS caught, which is what shows depth is tested.
+    if (st.polytomies !== 1 || st.maxChildren !== 3 || st.depth !== 2) {
+        return fail('shape', {polytomies: st.polytomies, maxChildren: st.maxChildren, depth: st.depth});
+    }
+    // branch lengths: 0.5, 1, 0, -0.5, 2 -> sorted -0.5, 0, 0.5, 1, 2
+    var bl = st.branchLengths;
+    if (bl.n !== 5 || bl.min !== -0.5 || bl.max !== 2 || bl.median !== 0.5 || bl.sum !== 3) {
+        return fail('branch lengths', bl);
+    }
+    if (bl.zero !== 1 || bl.negative !== 1) {
+        return fail('zero / negative counts', bl);
+    }
+    // support: grouped BY TYPE, and the MAD value is not support
+    if (st.support.length !== 2) {
+        return fail('expected one group per support type', st.support);
+    }
+    var boot = st.support.filter(function (g) { return g.type === 'bootstrap'; })[0];
+    var post = st.support.filter(function (g) { return g.type === 'posterior'; })[0];
+    if (!boot || !post || boot.n !== 1 || boot.median !== 90 || post.median !== 0.95) {
+        return fail('support by type', st.support);
+    }
+    if (st.support.some(function (g) { return g.type === forester.MAD_CONFIDENCE_TYPE; })) {
+        return fail('a MAD value was counted as support', st.support);
+    }
+    // coverage
+    if (st.tipsWithTaxonomy !== 2 || st.distinctTaxonomies !== 1 || st.tipsWithTaxonomyId !== 1) {
+        return fail('taxonomy coverage', {t: st.tipsWithTaxonomy, d: st.distinctTaxonomies,
+            id: st.tipsWithTaxonomyId});
+    }
+    if (st.tipsWithSequence !== 1 || st.tipsWithMolSeq !== 1 || st.tipsWithDomains !== 0) {
+        return fail('sequence coverage', st);
+    }
+    if (st.nodesWithDate !== 1 || st.tipsWithDistribution !== 1) {
+        return fail('dates / distributions', {d: st.nodesWithDate, dist: st.tipsWithDistribution});
+    }
+    if (st.namedInternal !== 1 || st.nodesWithEvents !== 1 || st.duplications !== 1) {
+        return fail('internal nodes and events', {n: st.namedInternal, e: st.nodesWithEvents,
+            d: st.duplications});
+    }
+    // properties: per ref, and a node carrying one ref TWICE counts once
+    var refs = {};
+    st.propertyRefs.forEach(function (r) { refs[r.ref] = r.nodes; });
+    if (refs['x:a'] !== 1 || refs['x:b'] !== 2 || st.propertyRefs.length !== 2) {
+        return fail('property refs', st.propertyRefs);
+    }
+    // ultrametric: this tree is not (tip distances 1.5, 0.5, 0, 2)
+    if (st.ultrametric) {
+        return fail('a ragged tree should not read as ultrametric', st.ultrametric);
+    }
+    if (st.height !== 2) {
+        return fail('height is the farthest tip from the root', st.height);
+    }
+    // ... and one that IS: every tip two steps of 1 from the root
+    var even = forester.treeStatistics(forester.getTreeRoot(
+        forester.parseNewHampshire('((a:1,b:1):1,(c:1,d:1):1);', true, false)));
+    if (!even.ultrametric || even.height !== 2) {
+        return fail('a balanced tree should read as ultrametric', even);
+    }
+    // a tree with no lengths has none of this rather than zeros
+    var bare = forester.treeStatistics(forester.getTreeRoot(
+        forester.parseNewHampshire('((a,b),c);', true, false)));
+    if (bare.branchLengths !== null || bare.ultrametric || bare.tips !== 3) {
+        return fail('a tree without lengths', bare);
     }
     return true;
 }

@@ -3814,6 +3814,230 @@
     };
 
 
+    // Everything the Tree Properties dialog reports, gathered in ONE pass:
+    // the desktop's TreeFacts.scan, minus its histogram (Christian, 2026-09-23:
+    // "we don't need a histogram ... but a more detailed stats would be
+    // useful, min, median, max, n, also type ... also need to include the
+    // properties").
+    //
+    // Side-effect free and DOM-free, so it can be tested in Node -- the whole
+    // reason it lives here rather than in the dialog that renders it, which is
+    // the same split the desktop makes between TreeFacts and
+    // TreePropertiesForm.
+    //
+    // Support values are grouped BY TYPE, because a tree can carry a bootstrap
+    // and a posterior on the same branch and their ranges are not comparable
+    // (0-100 against 0-1); averaging them together would produce a number that
+    // describes neither. MAD values are excluded for the same reason they are
+    // excluded from the Newick support slot: they rate a root position, not a
+    // clade.
+    forester.treeStatistics = function (phyOrNode) {
+        // Callers hand this either a phylogeny wrapper or the root node, and
+        // the difference is one extra internal node, one extra branch and one
+        // more of depth -- small enough to read as plausible. getTreeRoot
+        // normalizes both, as collectBasicTreeProperties does.
+        let root = phyOrNode ? forester.getTreeRoot(phyOrNode) : null;
+        let stats = {
+            tips: 0, internal: 0, nodes: 0, branches: 0,
+            polytomies: 0, maxChildren: 0,
+            depth: 0, height: 0, heightKnown: false,
+            collapsed: 0,
+            branchLengths: null,
+            support: [],
+            ultrametric: false,
+            tipsWithTaxonomy: 0, distinctTaxonomies: 0, tipsWithTaxonomyId: 0,
+            tipsWithSequence: 0, tipsWithMolSeq: 0, tipsWithDomains: 0,
+            nodesWithDate: 0, tipsWithDistribution: 0, namedInternal: 0,
+            duplications: 0, speciations: 0, nodesWithEvents: 0,
+            propertyRefs: []
+        };
+        if (!root) {
+            return stats;
+        }
+        let lengths = [];
+        let zeroLengths = 0;
+        let negativeLengths = 0;
+        let byType = Object.create(null);
+        let taxa = Object.create(null);
+        let refs = Object.create(null);
+        let refOrder = [];
+        let tipDepths = [];
+        let maxDepth = 0;
+
+        (function walk(n, depth, distance) {
+            ++stats.nodes;
+            let kids = n.children || [];
+            if (depth > maxDepth) {
+                maxDepth = depth;
+            }
+            if (n !== root) {
+                ++stats.branches;
+                let b = n.branch_length;
+                if (typeof b === 'number' && isFinite(b)) {
+                    lengths.push(b);
+                    if (b === 0) {
+                        ++zeroLengths;
+                    } else if (b < 0) {
+                        ++negativeLengths;
+                    }
+                    distance += b;
+                }
+            }
+            // support, by type, MAD left out
+            if (n.confidences) {
+                for (let i = 0; i < n.confidences.length; ++i) {
+                    let c = n.confidences[i];
+                    if (c.type === forester.MAD_CONFIDENCE_TYPE) {
+                        continue;
+                    }
+                    if (typeof c.value !== 'number' || !isFinite(c.value)) {
+                        continue;
+                    }
+                    let key = c.type || '';
+                    if (!byType[key]) {
+                        byType[key] = [];
+                        stats.support.push({type: key, values: byType[key]});
+                    }
+                    byType[key].push(c.value);
+                }
+            }
+            if (n.date && typeof n.date.value === 'number' && isFinite(n.date.value)) {
+                ++stats.nodesWithDate;
+            }
+            if (n.properties) {
+                let seen = Object.create(null);
+                for (let i = 0; i < n.properties.length; ++i) {
+                    let ref = n.properties[i] && n.properties[i].ref;
+                    if (!ref || seen[ref]) {
+                        continue;   // a node carrying a ref twice counts once
+                    }
+                    seen[ref] = true;
+                    if (refs[ref] === undefined) {
+                        refs[ref] = 0;
+                        refOrder.push(ref);
+                    }
+                    ++refs[ref];
+                }
+            }
+            if (n.events) {
+                ++stats.nodesWithEvents;
+                if (n.events.duplications > 0) {
+                    stats.duplications += n.events.duplications;
+                }
+                if (n.events.speciations > 0) {
+                    stats.speciations += n.events.speciations;
+                }
+            }
+            if (kids.length > 0) {
+                ++stats.internal;
+                if (kids.length > stats.maxChildren) {
+                    stats.maxChildren = kids.length;
+                }
+                if (kids.length > 2) {
+                    ++stats.polytomies;
+                }
+                if (n !== root && n.name) {
+                    ++stats.namedInternal;
+                }
+                for (let i = 0; i < kids.length; ++i) {
+                    walk(kids[i], depth + 1, distance);
+                }
+                return;
+            }
+            ++stats.tips;
+            tipDepths.push(distance);
+            if (n.taxonomies && n.taxonomies.length > 0) {
+                ++stats.tipsWithTaxonomy;
+                let t = n.taxonomies[0];
+                let label = t.scientific_name || t.code || t.common_name || '';
+                if (label) {
+                    taxa[label] = true;
+                }
+                if (t.id && t.id.value) {
+                    ++stats.tipsWithTaxonomyId;
+                }
+            }
+            if (n.sequences && n.sequences.length > 0) {
+                ++stats.tipsWithSequence;
+                let q = n.sequences[0];
+                if (q.mol_seq && q.mol_seq.value) {
+                    ++stats.tipsWithMolSeq;
+                }
+                if (forester.domainArchitectureOf(n)) {
+                    ++stats.tipsWithDomains;
+                }
+            }
+            if (n.distributions && n.distributions.length > 0) {
+                ++stats.tipsWithDistribution;
+            }
+        })(root, 0, 0);
+
+        stats.depth = maxDepth;
+        stats.distinctTaxonomies = Object.keys(taxa).length;
+        stats.propertyRefs = refOrder.map(function (r) {
+            return {ref: r, nodes: refs[r]};
+        });
+        stats.branchLengths = forester.describeValues(lengths);
+        if (stats.branchLengths) {
+            stats.branchLengths.zero = zeroLengths;
+            stats.branchLengths.negative = negativeLengths;
+        }
+        stats.support = stats.support.map(function (g) {
+            let d = forester.describeValues(g.values);
+            d.type = g.type;
+            return d;
+        }).filter(function (d) {
+            return d.n > 0;
+        });
+        if (tipDepths.length > 0) {
+            // running, not Math.min.apply: the spread of 150k tip depths
+            // overflows the call stack, as timeAxisInfo found before this
+            let lo = Infinity;
+            let hi = -Infinity;
+            for (let i = 0; i < tipDepths.length; ++i) {
+                if (tipDepths[i] < lo) {
+                    lo = tipDepths[i];
+                }
+                if (tipDepths[i] > hi) {
+                    hi = tipDepths[i];
+                }
+            }
+            stats.height = hi;
+            stats.heightKnown = lengths.length > 0;
+            // ultrametric: every tip the same distance from the root, to a
+            // tolerance scaled to the tree, since branch lengths are floats
+            stats.ultrametric = stats.heightKnown && (hi - lo) <= (Math.max(hi, 1e-12) * 1e-6);
+        }
+        return stats;
+    };
+
+    // n, minimum, median, maximum, mean and sum of a list of numbers, or null
+    // when there are none. The median is the middle value of the sorted list,
+    // or the mean of the two middle ones -- taken on a COPY, because sorting
+    // the caller's array would reorder data it still owns.
+    forester.describeValues = function (values) {
+        if (!values || values.length === 0) {
+            return null;
+        }
+        let v = values.slice().sort(function (a, b) {
+            return a - b;
+        });
+        let n = v.length;
+        let sum = 0;
+        for (let i = 0; i < n; ++i) {
+            sum += v[i];
+        }
+        let mid = Math.floor(n / 2);
+        return {
+            n: n,
+            min: v[0],
+            max: v[n - 1],
+            median: (n % 2 === 1) ? v[mid] : ((v[mid - 1] + v[mid]) / 2),
+            mean: sum / n,
+            sum: sum
+        };
+    };
+
     forester.calcMaxBranchLength = function (node) {
         let max = 0;
         forester.preOrderTraversalAll(node, function (n) {

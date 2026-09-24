@@ -1060,15 +1060,35 @@ they are: what is open is your choice, and only running out of room overrules
 it. Anything that puts something into a folded section opens it, so jumping to
 the search box (⌘F / Ctrl+F) or a tool reporting its result as search hits
 unfolds Search. The **ⓘ** button in the panel header (or ⌘I / Ctrl+I) opens **Tree
-properties**: what the tree says it is — name, description, identifier, type,
-branch-length unit, rootedness, and which tree of the file it is when the file
-held several — and what it actually contains: tips and internal nodes, how
-many branches carry a length and their mean, whether it has support values,
-taxonomies, sequences, an alignment, domain architectures, node events or
-branch colours, and whether it is dated. It describes what is on screen, so
-inside a subtree it describes the subtree and says so, and it is recomputed
-each time it opens rather than cached (the whole of it costs 7 ms on the
-13,246-tip demo). It is read-only.
+properties**, modelled on the desktop Archaeopteryx's *View › Tree
+Properties* and read-only:
+
+* **Tree** — name, description, identifier, type, branch-length unit,
+  rootedness and rerootability (each shown only where the file actually says
+  so), and "tree 2 of 3" when the file held several.
+* **Structure** — tips, internal nodes, total nodes, branches, whether the
+  tree is fully binary or how many polytomies it has and the widest of them,
+  depth from root to deepest tip, the longest tip label, and how many internal
+  nodes are named.
+* **Branch lengths** — how many branches carry one, then **minimum, median,
+  maximum and mean**, the sum as total tree length, the height from root to
+  farthest tip, any zero-length or negative branches, and whether the tree is
+  ultrametric.
+* **Support** — the same n / minimum / median / maximum / mean, **one section
+  per kind**. A bootstrap and a posterior on the same branch are not on one
+  scale, so they are never pooled; MAD values are not support and are counted
+  with the annotations instead.
+* **The tree carries** — taxonomies (and how many are distinct), taxonomy
+  identifiers, sequences, molecular sequences with the alignment width, domain
+  architectures, dates, distributions, events, branch colours, and **every
+  phyloXML property `ref` with the number of nodes carrying it** — each as
+  "n of m tips" or "n of m nodes".
+* **Time** — geologic ages or calendar years, dated nodes, the oldest node or
+  most recent tip, and whether there are confidence intervals.
+
+It describes what is on screen, so inside a subtree it describes the subtree
+and says so, and it is recomputed each time it opens rather than cached (24 ms
+on the 13,246-tip demo). There is no histogram.
 
 A host with little room to give can
 also start the whole panel tighter and narrower with

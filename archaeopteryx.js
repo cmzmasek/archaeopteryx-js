@@ -14013,22 +14013,48 @@ function (root, d3, forester, phyloXml) {
         return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : null;
     }
 
-    // "1,234 of 5,678" -- a share, written the way a reader checks it.
-    function treePropShare(part, whole) {
-        return countNumber(part) + ' of ' + countNumber(whole);
+    // A number for a fact row: thousands separators for counts, and enough
+    // significant digits for a branch length, which can be 5e-9.
+    function statNumber(v, digits) {
+        if (typeof v !== 'number' || !isFinite(v)) {
+            return null;
+        }
+        if (v === 0 || (Math.abs(v) >= 0.001 && Math.abs(v) < 1e7)) {
+            return String(forester.roundNumber(v, digits === undefined ? 6 : digits));
+        }
+        return v.toExponential(3);
+    }
+
+    // "1,234 of 5,678 tips", the desktop's coverage phrasing.
+    function statOf(part, whole, noun) {
+        if (!(whole > 0)) {
+            return null;
+        }
+        return countNumber(part) + ' of ' + countNumber(whole) + (noun ? (' ' + noun) : '');
+    }
+
+    // n / minimum / median / maximum / mean, the block Christian asked for in
+    // place of a histogram. One shape, used for branch lengths and for each
+    // kind of support, so the two read the same way.
+    function statSpread(box, d, digits) {
+        treePropRow(box, 'Minimum', statNumber(d.min, digits));
+        treePropRow(box, 'Median', statNumber(d.median, digits));
+        treePropRow(box, 'Maximum', statNumber(d.max, digits));
+        treePropRow(box, 'Mean', statNumber(d.mean, digits));
     }
 
     function showTreePropertiesDialog() {
         if (!_root) {
             return;
         }
-        let shell = makeDialogShell(TREE_PROPERTIES_DIALOG, 'Tree properties', 400);
+        let shell = makeDialogShell(TREE_PROPERTIES_DIALOG, 'Tree properties', 420);
         shell.body.classList.add('aptx-props');
-        // A description is free text and can be a paragraph (the alignment
-        // demo's runs to 400 characters), so the body scrolls rather than
-        // growing the dialog off the screen.
-        shell.body.style.maxHeight = '62vh';
+        // A description is free text and can be a paragraph, and the coverage
+        // section grows with the annotations, so the body scrolls rather than
+        // running off the screen.
+        shell.body.style.maxHeight = '66vh';
         shell.body.style.overflowY = 'auto';
+        let st = forester.treeStatistics(_root);
         let bp = forester.collectBasicTreeProperties(_root);
         let time = forester.timeAxisInfo(_root);
         let phy = _treeData || {};
@@ -14050,6 +14076,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof phy.rooted === 'boolean') {
             treePropRow(box, 'Rooted', phy.rooted ? 'yes' : 'no');
         }
+        if (typeof phy.rerootable === 'boolean') {
+            treePropRow(box, 'Rerootable', phy.rerootable ? 'yes' : 'no');
+        }
         if (_trees && _trees.length > 1) {
             treePropRow(box, 'In this file', 'tree ' + (_treeIndex + 1) + ' of ' + _trees.length);
         }
@@ -14062,33 +14091,59 @@ function (root, d3, forester, phyloXml) {
 
         // --- shape ----------------------------------------------------
         box = treePropSection(shell.body, 'Structure');
-        treePropRow(box, 'Tips', countNumber(bp.externalNodesCount));
-        treePropRow(box, 'Internal nodes',
-            countNumber(bp.nodeCount - bp.externalNodesCount));
-        treePropRow(box, 'Nodes, total', countNumber(bp.nodeCount));
+        treePropRow(box, 'Tips', countNumber(st.tips));
+        treePropRow(box, 'Internal nodes', countNumber(st.internal));
+        treePropRow(box, 'Nodes, total', countNumber(st.nodes));
+        treePropRow(box, 'Branches', countNumber(st.branches));
+        treePropRow(box, 'Branching', st.polytomies === 0 ? 'fully binary'
+            : (countNumber(st.polytomies) + (st.polytomies === 1 ? ' polytomy' : ' polytomies')
+                + ', widest ' + countNumber(st.maxChildren) + ' children'));
+        treePropRow(box, 'Depth', countNumber(st.depth) + ' (root to deepest tip)');
+        // ours, not the desktop's, and worth keeping: the label width is what
+        // decides how much room the tree needs, and whether internal nodes are
+        // named decides whether their labels are worth turning on
         treePropRow(box, 'Longest tip label', bp.longestNodeName > 0
             ? (countNumber(bp.longestNodeName)
                 + (bp.longestNodeName === 1 ? ' character' : ' characters')) : null);
-        treePropRow(box, 'Internal nodes named', bp.internalNodeData ? 'yes' : 'no');
+        treePropRow(box, 'Internal nodes named', st.internal > 0
+            ? (st.namedInternal > 0 ? statOf(st.namedInternal, st.internal) : 'none') : null);
 
         // --- branch lengths -------------------------------------------
-        // branchesWithLength counts an explicit ZERO as the measurement it is
-        // (forester.collectBasicTreeProperties says so in a comment); the mean
-        // is taken over positive lengths only, which is a different population
-        // on purpose, so the two are never printed as if they were one.
         box = treePropSection(shell.body, 'Branch lengths');
-        if (bp.branchesWithLength > 0) {
+        if (st.branchLengths) {
             treePropRow(box, 'Branches with a length',
-                treePropShare(bp.branchesWithLength, bp.branchCount));
-            treePropRow(box, 'Internal ones',
-                treePropShare(bp.internalBranchesWithLength, bp.internalBranchCount));
-            if (bp.averageBranchLength > 0) {
-                treePropRow(box, 'Mean length, where positive',
-                    forester.roundNumber(bp.averageBranchLength, 6));
+                statOf(st.branchLengths.n, st.branches));
+            statSpread(box, st.branchLengths);
+            treePropRow(box, 'Sum', statNumber(st.branchLengths.sum) + ' (total tree length)');
+            treePropRow(box, 'Height', statNumber(st.height) + ' (root to farthest tip)');
+            if (st.branchLengths.zero > 0) {
+                treePropRow(box, 'Zero-length', countNumber(st.branchLengths.zero));
             }
+            if (st.branchLengths.negative > 0) {
+                treePropRow(box, 'Negative', countNumber(st.branchLengths.negative)
+                    + ' (not drawn to scale)');
+            }
+            treePropRow(box, 'Ultrametric', st.ultrametric
+                ? 'yes (every tip the same distance from the root)' : 'no');
         } else {
             treePropRow(box, 'Branches with a length', 'none, the tree has no lengths');
         }
+
+        // --- support, one section per kind ----------------------------
+        // A bootstrap and a posterior on the same branch are not on one scale,
+        // so they are never pooled: each type gets its own n and spread.
+        st.support.forEach(function (d) {
+            // 'unknown' is what the Newick and Nexus readers put on a bare
+            // [95]: those formats have one support slot and nowhere to name
+            // what it is, so it is an absence of type rather than a type
+            // called unknown, and it should not head a section as one.
+            let untyped = !d.type || d.type === 'unknown';
+            let title = (st.support.length === 1 && untyped)
+                ? 'Support values' : ('Support: ' + (untyped ? 'untyped' : d.type));
+            let sbox = treePropSection(shell.body, title);
+            treePropRow(sbox, 'Branches with support', statOf(d.n, st.branches));
+            statSpread(sbox, d);
+        });
 
         // --- what came with it ----------------------------------------
         box = treePropSection(shell.body, 'The tree carries');
@@ -14100,23 +14155,45 @@ function (root, d3, forester, phyloXml) {
             ++carried;
             treePropRow(box, label, detail || 'yes');
         }
-        carries('Support values', bp.confidences,
-            bp.maxConfidence > 0 ? ('yes, up to ' + forester.roundNumber(bp.maxConfidence, 4)) : 'yes');
-        carries('MAD values', bp.madValues);
-        carries('Taxonomies', bp.taxonomies);
-        carries('Sequences', bp.sequences);
+        carries('Taxonomies', st.tipsWithTaxonomy > 0, statOf(st.tipsWithTaxonomy, st.tips, 'tips')
+            + (st.distinctTaxonomies > 0 ? (', ' + countNumber(st.distinctTaxonomies) + ' distinct') : ''));
+        carries('Taxonomy identifiers', st.tipsWithTaxonomyId > 0,
+            statOf(st.tipsWithTaxonomyId, st.tips, 'tips'));
+        carries('Sequences', st.tipsWithSequence > 0, statOf(st.tipsWithSequence, st.tips, 'tips'));
         // alignedMolSeqs starts TRUE and is only ever set false, so it means
         // "no UNALIGNED sequence was seen" -- a tree carrying no sequences at
         // all reports true. Read alone it told the flu and ammonite demos they
         // had an alignment. Every other reader in this file pairs it with a
         // length for the same reason.
-        carries('Aligned sequences', bp.alignedMolSeqs && bp.maxMolSeqLength > 0,
-            countNumber(bp.maxMolSeqLength) + ' columns');
-        carries('Domain architectures', bp.domainArchitectures,
-            bp.maxDomainArchitectureLength > 0
-                ? ('yes, up to ' + countNumber(bp.maxDomainArchitectureLength) + ' residues') : 'yes');
-        carries('Node events', bp.nodeEvents);
+        carries('Molecular sequences', st.tipsWithMolSeq > 0,
+            statOf(st.tipsWithMolSeq, st.tips, 'tips')
+            + (bp.alignedMolSeqs && bp.maxMolSeqLength > 0
+                ? (', aligned, ' + countNumber(bp.maxMolSeqLength) + ' columns') : ''));
+        carries('Domain architectures', st.tipsWithDomains > 0,
+            statOf(st.tipsWithDomains, st.tips, 'tips')
+            + (bp.maxDomainArchitectureLength > 0
+                ? (', up to ' + countNumber(bp.maxDomainArchitectureLength) + ' residues') : ''));
+        carries('Dates', st.nodesWithDate > 0, statOf(st.nodesWithDate, st.nodes, 'nodes'));
+        carries('Distributions', st.tipsWithDistribution > 0,
+            statOf(st.tipsWithDistribution, st.tips, 'tips'));
+        carries('MAD values', bp.madValues);
         carries('Branch colours', bp.branchColors);
+        if (st.nodesWithEvents > 0) {
+            let parts = [];
+            if (st.duplications > 0) {
+                parts.push(countNumber(st.duplications)
+                    + (st.duplications === 1 ? ' duplication' : ' duplications'));
+            }
+            if (st.speciations > 0) {
+                parts.push(countNumber(st.speciations)
+                    + (st.speciations === 1 ? ' speciation' : ' speciations'));
+            }
+            parts.push(statOf(st.nodesWithEvents, st.nodes, 'nodes'));
+            carries('Events', true, parts.join(', '));
+        }
+        st.propertyRefs.forEach(function (r) {
+            carries('Property ' + r.ref, true, statOf(r.nodes, st.nodes, 'nodes'));
+        });
         if (carried === 0) {
             treePropRow(box, 'Annotations', 'none, names and topology only');
         }
@@ -14126,11 +14203,13 @@ function (root, d3, forester, phyloXml) {
             box = treePropSection(shell.body, 'Time');
             treePropRow(box, 'Dates', time.type === 'geologic'
                 ? 'geologic ages' : (time.type === 'calendar' ? 'calendar years' : 'yes'));
+            treePropRow(box, 'Dated nodes', statOf(st.nodesWithDate, st.nodes, 'nodes')
+                + (time.dated ? ' (a dated tree)' : ''));
             if (time.type === 'geologic' && time.rootAge > 0) {
-                treePropRow(box, 'Oldest node', forester.roundNumber(time.rootAge, 4) + ' Ma');
+                treePropRow(box, 'Oldest node', statNumber(time.rootAge, 4) + ' Ma');
             }
             if (time.type === 'calendar' && time.presentDate > 0) {
-                treePropRow(box, 'Most recent tip', forester.roundNumber(time.presentDate, 4));
+                treePropRow(box, 'Most recent tip', statNumber(time.presentDate, 4));
             }
             treePropRow(box, 'Confidence intervals',
                 (time.hasInternalIntervals || time.hasExternalIntervals) ? 'yes' : null);

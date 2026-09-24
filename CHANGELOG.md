@@ -11,15 +11,23 @@ consumers only see a change when a version is cut.
 ### Added
 
 - **Tree properties.** An **ⓘ** button in the control panel's header, and
-  ⌘I / Ctrl+I, open a read-only summary of the tree: what it says it is
-  (name, description, identifier, type, branch-length unit, rootedness, which
-  tree of the file), and what it carries (tips and internal nodes, branches
-  with a length and their mean, support values, taxonomies, sequences and
-  their alignment width, domain architectures, node events, branch colours,
-  dates). Nothing else in the viewer answered "what is actually in this file".
-  The desktop's View › Tree Properties, minus the editable half.
-  Recomputed on every open rather than cached, so it follows a re-root, a tree
-  switch or entering a subtree — 7 ms on the 13,246-tip demo.
+  ⌘I / Ctrl+I, open a read-only summary of the tree, modelled on the
+  desktop's *View › Tree Properties* and carrying what it carries, minus the
+  editable half and minus the histogram:
+  what the tree says it is; its structure, including whether it is fully
+  binary or how many polytomies it has, its depth, the longest tip label and
+  how many internal nodes are named; **minimum, median, maximum and mean** for
+  the branch lengths, with the total tree length, the height, any zero-length
+  or negative branches and whether it is ultrametric; the same spread for
+  **support, one section per kind**, since a bootstrap and a posterior are not
+  on one scale and must not be pooled; what it carries as "n of m tips",
+  including **every phyloXML property `ref` and the nodes carrying it**; and
+  its dates. Nothing else in the viewer answered "what is actually in this
+  file". Recomputed on every open rather than cached, so it follows a re-root,
+  a tree switch or entering a subtree — 24 ms on the 13,246-tip demo.
+- `forester.treeStatistics(tree)` and `forester.describeValues(numbers)`: the
+  gatherer behind it, side-effect free and DOM-free, mirroring the split the
+  desktop makes between `TreeFacts` and `TreePropertiesForm`.
 
 ### Fixed
 
