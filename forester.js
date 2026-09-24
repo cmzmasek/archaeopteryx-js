@@ -5010,6 +5010,40 @@
         });
     };
 
+    // Residue normalization for a Nexus character matrix, ported from the
+    // desktop's BasicSequence.createAaSequence / createDnaSequence /
+    // createRnaSequence, which is what its Nexus reader builds a sequence
+    // with. Three steps, in this order:
+    //   1. uppercase;
+    //   2. '.' becomes the gap '-'  (before step 3, or it would become X/N);
+    //   3. anything outside the type's alphabet becomes the unspecified
+    //      residue, 'X' for protein and 'N' for nucleotides.
+    // So the Nexus missing symbol '?' arrives as X or N, which is what
+    // Christian decided on 2026-09-23 ("normalize to X, same as desktop").
+    // '?' is simply one character outside the alphabet; doing it alone would
+    // have left us differing on '.' and on stray letters instead.
+    //
+    // This is the NEXUS MATRIX reader only. A phyloXML <mol_seq> is kept
+    // exactly as written by both programs -- measured, not assumed: the
+    // desktop reads "MK??AL.N" out of phyloXML unchanged.
+    const AA_NOT_ALPHABET = /[^ARNDBCQEZGHILKMFPSTWYVXUO\-*]/g;
+    const DNA_NOT_ALPHABET = /[^ACGTRYMKWSN\-*]/g;
+    const RNA_NOT_ALPHABET = /[^ACGURYMKWSN\-*]/g;
+
+    function normalizeMatrixResidues(block, datatype) {
+        let out = block.toUpperCase().replace(/\./g, '-');
+        if (datatype === 'protein') {
+            return out.replace(AA_NOT_ALPHABET, 'X');
+        }
+        if (datatype === 'dna') {
+            return out.replace(DNA_NOT_ALPHABET, 'N');
+        }
+        if (datatype === 'rna') {
+            return out.replace(RNA_NOT_ALPHABET, 'N');
+        }
+        return out;
+    }
+
     // Parses a Nexus-formatted string and returns an ARRAY of tree objects,
     // each in the same shape parseNewHampshire produces (a Nexus file can
     // hold any number of trees). Ported from the desktop's
@@ -5031,6 +5065,10 @@
         const RESIDUES_RE = /^[A-Za-z\-_*?.]+$/;
         const DATATYPE_RE = /datatype\s*=\s*([a-z]+)/;
         const MATCHCHAR_RE = /matchchar\s*=\s*['"]?(\S)/;
+        // the desktop's patterns, character for character: one optional space
+        // either side of the '=', then the first non-space as the symbol
+        const MISSING_RE = /missing\s?.\s?(\S)/;
+        const GAP_RE = /gap\s?.\s?(\S)/;
 
         let trees = [];
         let taxlabels = [];
@@ -5058,6 +5096,12 @@
         let isRooted = false;
         let matchchar = null;
         let matrixReferenceId = null;
+        // The symbols a block DECLARES for missing data and for a gap. Nexus
+        // lets a file choose them, so assuming '?' and '-' reads an all-missing
+        // row of a "Missing=N" file as real residues -- the invented-sequence
+        // bug the residue scan exists to prevent. Defaults are the conventions.
+        let missingChar = '?';
+        let gapChar = '-';
         // Matrix ids whose row carried at least one real residue. A row of
         // nothing but the missing and gap symbols states that the taxon has NO
         // data, and must not become a sequence: our own writer emits exactly
@@ -5178,13 +5222,19 @@
                 }
                 block = resolved;
             }
+            // '*' is NOT absence: it is a residue, the stop codon of a
+            // translated alignment. What counts as absence is what the block
+            // DECLARED, plus '.', which is the matchchar and gap convention.
             for (let j = 0; j < block.length; ++j) {
-                let c = block.charAt(j);
-                if (c !== '?' && c !== '-' && c !== '.' && c !== '*') {
+                let c = block.charAt(j).toLowerCase();
+                if (c !== missingChar.toLowerCase() && c !== gapChar.toLowerCase() && c !== '.') {
                     seqIdsWithResidues[id] = true;
                     break;
                 }
             }
+            // ... and only THEN normalize: afterwards '?' has become X or N
+            // and a row of nothing but missing data would read as residues.
+            block = normalizeMatrixResidues(block, datatype);
             seqs[id] = {
                 value: seqs[id] ? (seqs[id].value + block) : block,
                 type: datatype
@@ -5351,6 +5401,8 @@
                 // cannot cross-contaminate an earlier one
                 seqs = Object.create(null);
                 seqIdsWithResidues = Object.create(null);
+                missingChar = '?';
+                gapChar = '-';
             } else if (inTreesBlock) {
                 if (lc.startsWith('title')) {
                     let tm = TITLE_RE.exec(line);
@@ -5541,6 +5593,14 @@
                     let mm = MATCHCHAR_RE.exec(dlc);
                     if (mm) {
                         matchchar = mm[1];
+                    }
+                    let miss = MISSING_RE.exec(dlc);
+                    if (miss) {
+                        missingChar = miss[1];
+                    }
+                    let gp = GAP_RE.exec(dlc);
+                    if (gp) {
+                        gapChar = gp[1];
                     }
                     if (dlc === 'matrix' || dlc.startsWith('matrix ')) {
                         inMatrix = true;
@@ -6107,9 +6167,90 @@
      * @param writeConfidences - to write confidence values in brackets
      * @returns {*} - a New Hampshire (Newick) formatted string.
      */
+    // The label a node is written under, in New Hampshire and in Nexus alike:
+    // name, then taxonomy (code / scientific / common), then the sequence's
+    // name / symbol / gene name, then its ACCESSION -- each step tried in turn,
+    // so a taxonomy element that is present but empty does not stop the search.
+    // An EXTERNAL node left with nothing gets a 'node<N>' placeholder, N being
+    // its 1-based position in tip order; an empty label would not parse back
+    // out of TaxLabels, and in Newick it names nothing at all. An INTERNAL node
+    // does NOT get one: a placeholder there would invent a name for an
+    // ancestor, and an unlabeled internal node is perfectly ordinary.
+    //
+    // ONE chain for both writers. A Nexus file whose TaxLabels, matrix rows and
+    // trees block disagree about a taxon cannot be joined back up, and a tree
+    // saved as Newick and as Nexus should name its tips the same way -- ours
+    // did not, until 2026-09-23: toNexus applied this chain and toNewHampshire
+    // wrote node.name and nothing else, so a nameless tip was HUMAN in one file
+    // and empty in the other. It is the desktop's chain
+    // (PhylogenyNode.toNewHampshire), adopted on Christian's word, and the two
+    // programs' output is compared byte for byte in the tests.
+    function nhNodeLabel(node, placeholder) {
+        let s = node.name || '';
+        if (!s && node.taxonomies && node.taxonomies.length > 0) {
+            let t = node.taxonomies[0];
+            s = t.code || t.scientific_name || t.common_name || '';
+        }
+        if (!s && node.sequences && node.sequences.length > 0) {
+            let q = node.sequences[0];
+            s = q.name || q.symbol || q.gene_name || '';
+        }
+        if (!s && node.sequences && node.sequences.length > 0) {
+            let a = node.sequences[0].accession;
+            s = (a && a.value) ? a.value : '';
+        }
+        if (!s && placeholder) {
+            s = placeholder;
+        }
+        return s;
+    }
+
+    // A placeholder label for every external node, by tip index, in the order
+    // the tips are written (getAllExternalNodes collects them in pre-order from
+    // the far side, so reversing it gives left-to-right). Used only for a node
+    // that nothing else names.
+    //
+    // A tip may literally be CALLED "node2". Minting that same token for a
+    // different tip gives two taxa one label: illegal Nexus, and our own reader
+    // takes the repeated row for an interleaved continuation and hands both
+    // tips the two sequences joined together. So the labels the tree already
+    // produces are collected first and stepped over.
+    function tipPlaceholders(phy) {
+        let m = new Map();
+        // An EMPTY tree has no tips to number. Its single top node looks like
+        // an external node -- no children -- and numbering it would turn the
+        // empty string, which parseNewHampshire accepts and toNewHampshire has
+        // always written back as the empty string, into "node1;". (The desktop
+        // throws on an empty string rather than parsing it, so there is no
+        // joint behaviour to match here, only ours to keep.)
+        if (!phy.children || phy.children.length !== 1 || !phy.children[0].children) {
+            return m;
+        }
+        let ext = forester.getAllExternalNodes(phy).reverse();
+        let taken = Object.create(null);
+        ext.forEach(function (n) {
+            let label = nhNodeLabel(n, null);
+            if (label.length > 0) {
+                taken[label] = true;
+            }
+        });
+        let i = 1;
+        let spare = ext.length + 1;
+        ext.forEach(function (n) {
+            let candidate = 'node' + (i++);
+            while (taken[candidate]) {
+                candidate = 'node' + (spare++);
+            }
+            taken[candidate] = true;
+            m.set(n, candidate);
+        });
+        return m;
+    }
+
     forester.toNewHampshire = function (phy, decPointsMax, replaceChars, writeConfidences) {
         void replaceChars; // retired: see the note above; labels are always quoted now
         let nh = "";
+        let tips = tipPlaceholders(phy);
         if (phy.children && phy.children.length === 1) {
             toNewHampshireHelper(phy.children[0], true);
         }
@@ -6127,8 +6268,9 @@
                 }
                 nh += ")";
             }
-            if (node.name && node.name.length > 0) {
-                nh += sanitizeLabelForNH(node.name);
+            let label = nhNodeLabel(node, tips.get(node));
+            if (label.length > 0) {
+                nh += sanitizeLabelForNH(label);
             }
             if (node.branch_length !== undefined && node.branch_length !== null) {
                 if (decPointsMax && decPointsMax > 0) {
@@ -6188,15 +6330,39 @@
     }
 
     // ForesterUtil.guessMolecularSequenceType, ported verbatim so that the two
-    // programs declare the same DataType for the same residues: six letters
-    // that only proteins have, then T for DNA and U for RNA, and null when the
-    // sequence says nothing either way (all gaps, or A/C/G alone). Note that
-    // it reads the residues and ignores any DECLARED type, which is the
-    // desktop's rule and therefore ours.
+    // programs declare the same DataType for the same residues: the letters a
+    // nucleotide sequence cannot contain, then T for DNA and U for RNA, and
+    // null when the sequence says nothing either way (all gaps, or A/C/G
+    // alone). Note that it reads the residues and ignores any DECLARED type,
+    // which is the desktop's rule and therefore ours -- and the right one:
+    // bunya_glyco.xml declares type="protein" over 121 sequences of pure ACGT.
+    //
+    // F, P and V were added 2026-09-23 on Christian's word, jointly with the
+    // desktop, because the test was missing most of the protein-exclusive
+    // alphabet: under forester's own alphabets that is BDEFHILOPQVXZ and only
+    // DEHILQ were tested. A protein built solely from nucleotide letters
+    // therefore guessed DNA -- MKATSWNP has exactly one protein-exclusive
+    // residue and it was P -- and a matrix wrongly declared DNA comes back
+    // with every non-nucleotide residue replaced by N. Measured against
+    // UniProt residue frequencies, the chance a protein carries none of the
+    // tested letters falls from 12.5% to 3.3% at length 5 and from 1.6% to
+    // 0.11% at length 10; a real alignment of a hundred columns was never at
+    // risk either way. O, X and Z are protein-exclusive too and deliberately
+    // left out: rare enough to buy almost nothing, and every letter added is
+    // one both programs must add.
+    //
+    // V (and B, D, H) are nucleotide ambiguity codes in full IUPAC but not in
+    // forester's DNA alphabet, which maps them to N, so they cannot survive in
+    // a DNA sequence here and testing them for protein is consistent.
+    //
+    // NEITHER PROGRAM RETUNES THIS ALONE. A letter added on one side types the
+    // same file two ways, which is worse than a blind spot they share;
+    // testNexusMatrixDatatype pins the alphabet letter for letter.
     function guessMolSeqType(v) {
         let s = v.toUpperCase();
         if (s.indexOf('L') >= 0 || s.indexOf('I') >= 0 || s.indexOf('E') >= 0
-            || s.indexOf('H') >= 0 || s.indexOf('D') >= 0 || s.indexOf('Q') >= 0) {
+            || s.indexOf('H') >= 0 || s.indexOf('D') >= 0 || s.indexOf('Q') >= 0
+            || s.indexOf('F') >= 0 || s.indexOf('P') >= 0 || s.indexOf('V') >= 0) {
             return 'Protein';
         }
         if (s.indexOf('T') >= 0) {
@@ -6222,49 +6388,28 @@
         // all three go through sanitizeLabelForNH -- the same helper
         // toNewHampshire writes the tree with.
         //
-        // nexusLabel returns the label UNQUOTED, because it is also assigned
-        // to node.name for a nameless tip and toNewHampshire quotes it again
-        // on the way out. The old '_' substitution was idempotent so applying
-        // it twice was harmless; quoting is not, and would emit "'a b'"
-        // wrapped in quotes a second time.
+        // The chain lives in nhNodeLabel, shared with toNewHampshire, and it
+        // returns the label UNQUOTED because every use here quotes it through
+        // sanitizeLabelForNH -- the same helper the tree string goes through.
+        //
+        // No tip is renamed on the way past any more. This used to assign the
+        // computed label to node.name for nameless tips so that toNewHampshire,
+        // which knew only node.name, would write the same token; the caller's
+        // tree was mutated and restored around the call. Now both writers ask
+        // the same function, so there is nothing to patch up.
+        let ext = forester.getAllExternalNodes(phy).reverse();
+        let tips = tipPlaceholders(phy);
 
-        // label preference as on the desktop: name, then taxonomy
-        // (code/scientific/common), then sequence (name/symbol/gene)
-        function nexusLabel(node, i) {
-            let s = '';
-            if (node.name) {
-                s = node.name;
-            } else if (node.taxonomies && node.taxonomies.length > 0) {
-                let t = node.taxonomies[0];
-                s = t.code || t.scientific_name || t.common_name || '';
-            } else if (node.sequences && node.sequences.length > 0) {
-                let q = node.sequences[0];
-                s = q.name || q.symbol || q.gene_name || '';
-            }
-            if (!s) {
-                s = 'node' + (i + 1); // an empty TaxLabels token would not parse back
-            }
-            return s;
+        function nexusLabel(node) {
+            return nhNodeLabel(node, tips.get(node));
         }
 
-        let ext = forester.getAllExternalNodes(phy).reverse();
-        // a nameless tip gets its taxa-block label in the TREE as well --
-        // TaxLabels, the Matrix and the Newick must agree on every taxon or
-        // nothing can join them back up (restored before returning, so the
-        // caller's tree is never mutated)
-        let renamed = [];
-        ext.forEach(function (node, i) {
-            if (!node.name) {
-                node.name = nexusLabel(node, i);
-                renamed.push(node);
-            }
-        });
         let s = '#NEXUS\n';
         s += 'Begin Taxa;\n';
         s += ' Dimensions NTax=' + ext.length + ';\n';
         s += ' TaxLabels';
-        ext.forEach(function (node, i) {
-            s += ' ' + sanitizeLabelForNH(nexusLabel(node, i));
+        ext.forEach(function (node) {
+            s += ' ' + sanitizeLabelForNH(nexusLabel(node));
         });
         s += ';\n';
         s += 'End;\n';
@@ -6273,8 +6418,8 @@
         // Written to the desktop's rules (PhylogenyWriter.writeNexusCharactersBlock),
         // because a Nexus file is a joint artifact: whichever program wrote it,
         // the other has to read the same bytes back.
-        let labels = ext.map(function (node, i) {
-            return sanitizeLabelForNH(nexusLabel(node, i));
+        let labels = ext.map(function (node) {
+            return sanitizeLabelForNH(nexusLabel(node));
         });
         let withSeq = [];
         ext.forEach(function (node, i) {
@@ -6283,6 +6428,29 @@
                 withSeq.push({i: i, value: v});
             }
         });
+        if (withSeq.length > 0) {
+            // A matrix is keyed on the taxon label, so two tips sharing one
+            // cannot be told apart: our reader takes the second row for an
+            // interleaved continuation and hands BOTH tips the two sequences
+            // joined together. The Taxa and Trees blocks have always written
+            // such a tree -- invalid Nexus, but only cosmetically; a matrix
+            // would make it corrupting, so it is not written.
+            let seen = Object.create(null);
+            let duplicate = null;
+            for (let k = 0; k < labels.length; ++k) {
+                if (seen[labels[k]]) {
+                    duplicate = labels[k];
+                    break;
+                }
+                seen[labels[k]] = true;
+            }
+            if (duplicate !== null) {
+                s += '[ Molecular sequences were not written: two or more tips share the taxon label '
+                    + duplicate + ', and a character matrix keyed on an ambiguous label cannot be'
+                    + ' read back. ]\n';
+                withSeq = [];
+            }
+        }
         if (withSeq.length > 0) {
             let nchar = withSeq[0].value.length;
             let ragged = -1;
@@ -6301,13 +6469,37 @@
                     + nchar + ' vs ' + ragged + '), so they are not an alignment and cannot'
                     + ' form a Nexus character matrix. ]\n';
             } else {
+                // The datatype is a property of the whole MATRIX, so every
+                // sequence decides it, not the first one that guesses non-null.
+                // guessMolSeqType looks for residues only protein has, so a
+                // short protein made of nucleotide letters guesses DNA -- and a
+                // matrix wrongly declared DNA is read back with every
+                // non-nucleotide residue replaced by N (MKATSWNP came back
+                // MKATSWNN). Protein therefore wins any disagreement: calling a
+                // nucleotide alignment protein leaves the residues readable,
+                // the reverse destroys them. Gaps and missing symbols are
+                // stripped first so they cannot sway the guess.
                 let datatype = 'Protein';
+                let sawAa = false;
+                let sawNt = false;
+                let isRna = false;
                 for (let k = 0; k < withSeq.length; ++k) {
-                    let t = guessMolSeqType(withSeq[k].value);
-                    if (t !== null) {
-                        datatype = t;
-                        break;
+                    let bare = withSeq[k].value.replace(/[-.?*]/g, '');
+                    if (bare.length < 1) {
+                        continue;
                     }
+                    let t = guessMolSeqType(bare);
+                    if (t === 'DNA') {
+                        sawNt = true;
+                    } else if (t === 'RNA') {
+                        sawNt = true;
+                        isRna = true;
+                    } else if (t !== null) {
+                        sawAa = true;
+                    }
+                }
+                if (sawNt && !sawAa) {
+                    datatype = isRna ? 'RNA' : 'DNA';
                 }
                 let width = 0;
                 labels.forEach(function (l) {
@@ -6347,9 +6539,6 @@
         s += ' Tree ' + (treeName ? sanitizeLabelForNH(treeName) : 'tree1') + '=';
         s += (phy.rooted === false) ? '[&U]' : '[&R]';
         let nh = forester.toNewHampshire(phy, decPointsMax, true, writeConfidences);
-        renamed.forEach(function (node) {
-            delete node.name;
-        });
         if (nh.length === 0) {
             // an empty tree would otherwise write "Tree tree1=[&R]" with no
             // tree and no terminating ';' -- a syntactically invalid file

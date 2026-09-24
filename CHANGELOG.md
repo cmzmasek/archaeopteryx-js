@@ -28,8 +28,79 @@ consumers only see a change when a version is cut.
   sequences, and the second compares the Nexus bytes themselves. Writing them
   is what turned up the two fixes below.
 
+### Changed
+
+- **One label chain for Newick and Nexus alike**: name, then taxonomy, then
+  the sequence's name/symbol/gene name, then its **accession**, then a
+  `node<N>` placeholder numbered by tip position — each step tried in turn
+  rather than as an `else if`, and the placeholder for external nodes only.
+  Until now the Nexus writer applied a chain and the Newick writer wrote
+  `node.name` and nothing else, so the same tree saved in the two formats
+  named its tips differently: a nameless tip with a taxonomy was `HUMAN` in
+  one file and empty in the other. Tips that used to be written `node1` now
+  carry a real identifier where they have one — an accession-only tip, or a
+  tip whose taxonomy element is present but empty beside a sequence that could
+  name it. A node name still wins over everything, and an accession never
+  displaces its own sequence's name. **A Newick file with unlabeled tips no
+  longer round-trips to itself**: `(,)` is now written `(node1,node2)`, as the
+  desktop writes it. Agreed with the desktop and verified byte for byte
+  against their build, in both formats.
+- **A Newick or Nexus download carries support values by default, and a test
+  now says so.** Nothing pinned it before, in either program: the desktop
+  shipped with its support style defaulting to `NONE`, so the same tree saved
+  by the two differed and its Save As Nexus dropped support silently. They
+  changed theirs to match on 2026-09-23; this pins ours — the default, both
+  download paths honouring it, the README agreeing, and the writer obeying it.
+- `forester.toNexus` **no longer mutates the tree it is given.** It used to
+  assign its computed label to a nameless tip's `name` so the Newick writer
+  would agree with it, and undo that afterwards; both writers now ask the same
+  function.
+- **Residues read from a Nexus matrix are normalised the desktop's way**
+  (Christian's decision, 2026-09-23): upper case, `.` read as a gap, and
+  anything outside the declared alphabet read as the unspecified residue —
+  `X` for protein, `N` for DNA/RNA. So the missing symbol `?` now arrives as
+  `X` or `N` rather than as itself, and `A?GCTA` reads as `ANGCTA`.
+  `BasicSequence.createAaSequence` / `createDnaSequence` / `createRnaSequence`
+  ported in full, in their order, with the alphabets copied character for
+  character; verified by running both readers on the same matrices. A phyloXML
+  `<mol_seq>` is untouched, by both programs.
+
 ### Fixed
 
+- **Two tips can no longer share a taxon label in a Nexus file.** A matrix is
+  keyed on that label, so the reader took the repeated row for an interleaved
+  continuation and handed *both* tips the two sequences joined together —
+  corruption, not merely an invalid file. Two ways in, both closed: the
+  `node<N>` placeholder now steps over labels the tree already uses (a tip
+  literally called `node2` used to collide with a minted one), and a tree with
+  genuinely duplicate tip names gets no matrix at all, with a bracketed
+  comment saying why.
+- **The sequence-type guess tests F, P and V as well.** It looked only for
+  L/I/E/H/D/Q, six of the thirteen letters a nucleotide sequence cannot
+  contain, so a protein built from nucleotide letters guessed DNA — and a
+  matrix wrongly declared DNA is read back with every non-nucleotide residue
+  replaced by `N` (`MKATSWNP` returned `MKATSWNN`). By UniProt residue
+  frequencies the chance a protein carries none of the tested letters falls
+  from 12.5% to 3.3% at length 5 and from 1.6% to 0.11% at length 10; a real
+  alignment of a hundred columns was never at risk. Changed on both sides in
+  the same move, and a test pins the alphabet letter for letter, because one
+  program adding a letter alone would type the same file two ways.
+- **The matrix `DataType` is decided by every sequence, not by the first one
+  that guesses.** A matrix wrongly declared DNA is read back with every
+  non-nucleotide residue replaced by `N`, so protein now wins any
+  disagreement: calling a nucleotide alignment protein leaves the residues
+  readable, the reverse destroys them.
+- **What counts as missing data is what the block declares.** The residue scan
+  assumed `?` and `-`, so an all-missing row of a `Missing=N` file read as real
+  residues; it now reads the `Missing=` and `Gap=` symbols off the `Format`
+  line. And **`*` is a residue**, the stop codon of a translated alignment, not
+  absence.
+- **Zero is drawn as a value, not as nothing.** Three display paths tested a
+  number for truthiness and so read `0` as absent: the **Branch Lengths**
+  label skipped every zero-length branch — the one branch whose length is
+  worth pointing out — the **Confidence Values** label never drew a support of
+  `0`, and the node data box omitted `Distance to parent: 0`. The MAD branch
+  beside the confidence one had always tested the number properly.
 - **A branch length of zero survives a phyloXML write.** The writer tested the
   number for truthiness, so every `0` was dropped and came back undefined —
   silently, and on real files: the repo's own `bunya_glyco.xml` has 33 of

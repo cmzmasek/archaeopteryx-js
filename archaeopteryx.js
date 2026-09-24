@@ -4086,8 +4086,15 @@ function (root, d3, forester, phyloXml) {
     };
 
 
+    // A branch length of ZERO is a length and gets a label. Testing the
+    // number for truthiness read 0 as "no branch length", so the one branch
+    // whose length is worth pointing out -- two identical sequences, a
+    // multifurcation written out as a run of zero-length branches -- was the
+    // one drawn bare. Same mistake the phyloXML writer was making until
+    // phyloxml 1.1.1; the desktop cannot make it at all, because it marks an
+    // absent length with a sentinel (-1024) rather than with zero.
     let makeBranchLengthLabel = function (phynode) {
-        if (phynode.branch_length) {
+        if (phynode.branch_length !== undefined && phynode.branch_length !== null) {
             if (_state.phylogram && _state.minBranchLengthValueToShow && phynode.branch_length < _state.minBranchLengthValueToShow) {
                 return;
             }
@@ -4115,7 +4122,9 @@ function (root, d3, forester, phyloXml) {
         if (_state.showConfidenceValues && support.length > 0
             && (!_state.minConfidenceValueToShow || support.some(function (c) { return c.value >= _state.minConfidenceValueToShow; }))) {
             support.forEach(function (c) {
-                if (c.value) {
+                // a support of 0 is a support value, and a telling one: the
+                // MAD branch above already tested it this way
+                if (typeof c.value === 'number' && isFinite(c.value)) {
                     parts.push(+c.value.toFixed(CONFIDENCE_VALUE_DIGITS_DEFAULT));
                 }
             });
@@ -13589,7 +13598,8 @@ function (root, d3, forester, phyloXml) {
         if (d.name) {
             text += 'Name: ' + d.name + '<br>';
         }
-        if (d.branch_length && !(unrooted && d.children)) {
+        if (d.branch_length !== undefined && d.branch_length !== null
+            && !(unrooted && d.children)) {
             text += (unrooted ? 'Branch length: ' : 'Distance to parent: ') + d.branch_length + '<br>';
         }
         let date = dateText(d.date);

@@ -74,8 +74,11 @@ runTest("BEAST/NHX annotations      : ", testExtendedNewickAnnotations);
 runTest("Nexus dialect variants     : ", testNexusParserVariants);
 runTest("Nexus BEAST MCC file       : ", testNexusBeastMcc);
 runTest("Nexus writer fallbacks     : ", testNexusWriterFallbacks);
+runTest("one label chain, both forms: ", testOneLabelChainForBothWriters);
 runTest("Nexus sequences, joint      : ", testNexusMolecularSequences);
 runTest("Nexus missing rows          : ", testNexusMissingRows);
+runTest("Nexus label collisions      : ", testNexusLabelCollisions);
+runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
 runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
@@ -1797,17 +1800,35 @@ function testReRoot3() {
 
 function testNewHampshire() {
     var nh0 = "";
+    // An unlabeled EXTERNAL node is written under a "node<N>" placeholder now,
+    // N being its 1-based position in tip order -- the joint label chain
+    // adopted on 2026-09-23 (Christian: "adopt the same chain and placeholder
+    // in toNewHampshire"). An empty label names nothing and cannot be read
+    // back out of a Nexus TaxLabels, so both programs fill it in. These
+    // expectations are the DESKTOP's, taken by running theirs on the same
+    // strings: "(,)" -> "(node1,node2);", "((()))" -> "(((node1)));",
+    // "(((,),),)" -> "(((node1,node2),node3),node4);", "(a,)" -> "(a,node2);".
+    // An unlabeled INTERNAL node stays unlabeled on both sides.
     var nh1 = "();";
+    var nh1out = "(node1);";
     var nh2 = "(a);";
     var nh3 = "(a:0.000001);";
     var nh4 = "(,);";
+    var nh4out = "(node1,node2);";
     var nh5 = "((a));";
     var nh6 = "(a,b);";
     var nh7 = "((a:0.001,b:0.000001),c:0.1);";
     var nh8 = "((a:0.001,b:0.000001,c:1)abc:0.1,d:0.1);";
     var nh9 = "(((a,b,c),(d,e)),f)r;";
     var nh10 = "((()));";
+    var nh10out = "(((node1)));";
     var nh11 = "(((,),),);";
+    var nh11out = "(((node1,node2),node3),node4);";
+    // the case that separates "number the tips" from "number the placeholders":
+    // one named tip, one nameless, and the nameless one is node2 because it is
+    // the SECOND TIP, not the first placeholder. The desktop answers the same.
+    var nh19 = "(a,);";
+    var nh19out = "(a,node2);";
     var nh12 = "(((((((((22_MOUSE:0.05998,Apaf-1_HUMAN:0.01825)Euarchontoglires:0.09825,11_CHICK:0.15226):0.02309,16_XENLA:0.4409):0.06584,15_TETNG:0.37438)Euteleostomi:0.28901,((1_BRAFL:0.26131,18_NEMVE:0.38014):0.10709,23_STRPU:0.48179):0.01594):0.22058,(26_STRPU:0.36374,25_STRPU:0.33137)\"Strongylocentrotus purpuratus\":0.34475):0.26168,(CED4_CAEEL:0.13241,31_CAEBR:0.04777)Caenorhabditis:1.31498):0.07466,(((28_DROPS:0.1732,Dark_DROME:0.18863)Sophophora:0.76898,29_AEDAE:0.86398)Diptera:0.24915,30_TRICA:0.97698)Endopterygota:0.13172):0.18105,((((((34_BRAFL:0.093,35_BRAFL:0.08226):0.93134,8_BRAFL:0.58563)\"Branchiostoma floridae\":0.21648,(20_NEMVE:0.71946,21_NEMVE:0.9571)\"Nematostella vectensis\":0.28437):0.09305,9_BRAFL:1.09612):0.54836,((3_BRAFL:0.48766,2_BRAFL:0.65293)\"Branchiostoma floridae\":0.22189,19_NEMVE:0.57144):0.34914):0.15891,((37_BRAFL:0.21133,36_BRAFL:0.16225):0.92214,33_BRAFL:0.8363)\"Branchiostoma floridae\":0.43438):0.18105)Metazoa;";
     var nh13 = "(a,b,c);";
     var nh14 = "((1,2,3)a,(4,5,6)b,(7,8,9)c);";
@@ -1831,6 +1852,7 @@ function testNewHampshire() {
     var phy9 = forester.parseNewHampshire(nh9);
     var phy10 = forester.parseNewHampshire(nh10);
     var phy11 = forester.parseNewHampshire(nh11);
+    var phy19 = forester.parseNewHampshire(nh19);
     var phy12 = forester.parseNewHampshire(nh12);
     var phy13 = forester.parseNewHampshire(nh13);
     var phy14 = forester.parseNewHampshire(nh14);
@@ -1845,7 +1867,7 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy0) !== nh0) {
         return false;
     }
-    if (forester.toNewHampshire(phy1) !== nh1) {
+    if (forester.toNewHampshire(phy1) !== nh1out) {
         return false;
     }
     if (forester.toNewHampshire(phy2) !== nh2) {
@@ -1854,7 +1876,7 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy3) !== nh3) {
         return false;
     }
-    if (forester.toNewHampshire(phy4) !== nh4) {
+    if (forester.toNewHampshire(phy4) !== nh4out) {
         return false;
     }
     if (forester.toNewHampshire(phy5) !== nh5) {
@@ -1872,10 +1894,15 @@ function testNewHampshire() {
     if (forester.toNewHampshire(phy9) !== nh9) {
         return false;
     }
-    if (forester.toNewHampshire(phy10) !== nh10) {
+    if (forester.toNewHampshire(phy10) !== nh10out) {
         return false;
     }
-    if (forester.toNewHampshire(phy11) !== nh11) {
+    if (forester.toNewHampshire(phy11) !== nh11out) {
+        return false;
+    }
+    if (forester.toNewHampshire(phy19) !== nh19out) {
+        console.log('    ' + nh19 + ' -> ' + forester.toNewHampshire(phy19)
+            + ', expected ' + nh19out);
         return false;
     }
     // read with double-quoted labels, written with single-quoted ones: the
@@ -2637,7 +2664,10 @@ function testNexusParserVariants() {
     if (!alpha || !gamma
         || alpha.sequences[0].mol_seq.value !== "ACG-TA"
         || alpha.sequences[0].type !== "dna"
-        || gamma.sequences[0].mol_seq.value !== "A?GCTA") {
+        // '?' is normalized to the unspecified nucleotide, as the desktop's
+        // BasicSequence.createDnaSequence does -- Christian, 2026-09-23. Run
+        // against their reader on this very matrix: it answers ANGCTA too.
+        || gamma.sequences[0].mol_seq.value !== "ANGCTA") {
         return false;
     }
     if (trees[1].name !== "My Trees (t2)") {
@@ -2744,6 +2774,66 @@ function testNexusWriterFallbacks() {
     if (!bx || bx.sequences[0].mol_seq.value !== "ACGT-ACG") {
         return false;
     }
+    // The label chain, in full and in order: name, then taxonomy, then the
+    // sequence's name/symbol/gene, then its ACCESSION, then a placeholder.
+    // The expectation is the desktop's, taken by RUNNING their writer on this
+    // very tree (2026-09-23): "TaxLabels P12345 recA node3 plain" and
+    // "(P12345,recA,node3,plain)", byte for byte.
+    var chain = forester.parseNewHampshire("(,,,);", true, false);
+    var ct = forester.getAllExternalNodes(chain).reverse();
+    // a tip whose ONLY identifier is an accession: it must not become "node1",
+    // or the export loses the one thing that named it
+    ct[0].sequences = [{accession: {value: "P12345", source: "UniProt"},
+        mol_seq: {is_aligned: true, value: "MKAL"}}];
+    // a taxonomy carrying nothing, beside a sequence that CAN name the tip:
+    // the steps are tried in turn, so the empty taxonomy does not stop the
+    // search the way an else-if chain did
+    ct[1].taxonomies = [{}];
+    // this one carries an accession TOO, which pins the order between the two:
+    // the sequence's name wins and the accession stays a late fallback. Run
+    // against the desktop with both present: it answers recA as well.
+    ct[1].sequences = [{name: "recA", accession: {value: "Q00001", source: "UniProt"},
+        mol_seq: {is_aligned: true, value: "MKIV"}}];
+    // nothing identifying at all: the placeholder, by 1-based tip order
+    ct[2].sequences = [{mol_seq: {is_aligned: true, value: "MKLL"}}];
+    ct[3].name = "plain";
+    ct[3].sequences = [{mol_seq: {is_aligned: true, value: "MKWW"}}];
+    chain.rooted = false;
+    var cnex = forester.toNexus(chain, 9, true);
+    if (cnex.indexOf(" TaxLabels P12345 recA node3 plain;") < 0) {
+        console.log("    label chain, TaxLabels: "
+            + cnex.split("\n").filter(function (l) { return l.indexOf("TaxLabels") > -1; })[0]);
+        return false;
+    }
+    if (cnex.indexOf("(P12345,recA,node3,plain)") < 0) {
+        console.log("    label chain, trees block: "
+            + cnex.split("Begin Trees;")[1]);
+        return false;
+    }
+    // the matrix has to use the same tokens, or nothing joins back up
+    if ((cnex.indexOf("  P12345  MKAL") < 0) || (cnex.indexOf("  recA    MKIV") < 0)
+        || (cnex.indexOf("  node3   MKLL") < 0)) {
+        console.log("    label chain, matrix rows:\n" + cnex);
+        return false;
+    }
+    // and a NAME still beats an accession, which is the whole point of the
+    // order: the accession is a late fallback, not a preference
+    var named = forester.parseNewHampshire("(,);", true, false);
+    var nt = forester.getAllExternalNodes(named).reverse();
+    nt[0].name = "A";
+    nt[0].sequences = [{accession: {value: "P99999", source: "UniProt"},
+        mol_seq: {is_aligned: true, value: "MKAL"}}];
+    nt[1].name = "B";
+    nt[1].sequences = [{mol_seq: {is_aligned: true, value: "MKIV"}}];
+    if (forester.toNexus(named, 9, true).indexOf("P99999") > -1) {
+        console.log("    an accession displaced a node name");
+        return false;
+    }
+    if (cnex.indexOf("Q00001") > -1) {
+        console.log("    an accession displaced its own sequence's name");
+        return false;
+    }
+
     // protein residues judge as Protein. The capitalization is the desktop's
     // (PhylogenyWriter writes Protein / DNA / RNA / Standard) and the two
     // programs have to write the same bytes; the READER is case-insensitive,
@@ -5045,14 +5135,54 @@ function testNexusMissingRows() {
     if (b.B !== null) {
         return fail("an all-gap row came back as a sequence", JSON.stringify(b));
     }
-    var c = read("  A  MKAL\n  B  ?-.*\n", 4);
+    var c = read("  A  MKAL\n  B  ?-.\n", 3);
     if (c.B !== null) {
         return fail("a row of mixed non-residues came back as a sequence", JSON.stringify(c));
     }
-    // but ONE residue is data, and the row is kept whole, padding and all
+    // '*' is NOT absence: it is a residue, the stop codon of a translated
+    // alignment. A row carrying one is data, and so is a row of nothing else.
+    // Their reader answers the same on both, asked directly.
+    var star = read("  A  MKAL\n  B  ****\n", 4);
+    if (star.B !== "****") {
+        return fail("a row of stop codons is data, not absence", JSON.stringify(star));
+    }
+    var mixed = read("  A  MKAL\n  B  ?-.*\n", 4);
+    if (mixed.B !== "X--*") {
+        return fail("a row with one stop codon should survive, normalized", JSON.stringify(mixed));
+    }
+    // and what counts as absence is what the block DECLARES, not '?' and '-'
+    // assumed: a "Missing=N" file's all-N row is an absent taxon
+    var declared = "#NEXUS\nBegin Taxa;\n Dimensions NTax=2;\n TaxLabels A B;\nEnd;\n"
+        + "Begin Characters;\n Dimensions NChar=4;\n"
+        + " Format DataType=Protein Interleave=No Gap=~ Missing=N;\n Matrix\n"
+        + "  A  MKAL\n  B  NNNN\n  ;\nEnd;\n"
+        + "Begin Trees;\n Tree tree1=[&R](A:1,B:1);\nEnd;\n";
+    var dec = {};
+    forester.getAllExternalNodes(forester.parseNexus(declared, true, false)[0]).forEach(function (n) {
+        var q = n.sequences && n.sequences[0];
+        dec[n.name] = (q && q.mol_seq && q.mol_seq.value) ? q.mol_seq.value : null;
+    });
+    if (dec.B !== null) {
+        return fail("a declared Missing= symbol was not honoured", JSON.stringify(dec));
+    }
+    if (dec.A !== "MKAL") {
+        return fail("the real sequence was lost with a declared Missing=", JSON.stringify(dec));
+    }
+    // but ONE residue is data, and the row is kept whole, its missing
+    // positions normalized to the unspecified residue rather than dropped:
+    // '?' outside the alphabet becomes 'X' for protein, as the desktop's
+    // BasicSequence.createAaSequence does. Measured against their reader on
+    // this matrix, not assumed.
     var d = read("  A  MKAL\n  B  ???L\n", 4);
-    if (d.B !== "???L") {
-        return fail("a row with a residue must be kept as written", JSON.stringify(d));
+    if (d.B !== "XXXL") {
+        return fail("a row with a residue must be kept, normalized", JSON.stringify(d));
+    }
+    // the rest of that same normalization, which '?' is only one case of:
+    // lowercase is raised, '.' becomes the gap, and a letter outside the
+    // alphabet becomes X. Their answers, run on this matrix: MK-L and MXZL.
+    var e = read("  A  mk.l\n  B  MJZL\n", 4);
+    if ((e.A !== "MK-L") || (e.B !== "MXZL")) {
+        return fail("matrix residues are not normalized the desktop's way", JSON.stringify(e));
     }
     // and a row of dots under MatchChar=. is data: it resolves to the
     // reference row, so the test has to run on the RESOLVED residues
@@ -5417,6 +5547,196 @@ function testVendoredPhyloXmlCopiesAgree() {
         .dependencies.phyloxml;
     if (range.replace(/^[^0-9]*/, '') !== m[1]) {
         console.log('    package.json asks for phyloxml ' + range + ', vendored is ' + m[1]);
+        return false;
+    }
+    return true;
+}
+
+
+// The SAME label chain in New Hampshire and in Nexus. Before 2026-09-23 the
+// Nexus writer applied it and toNewHampshire wrote node.name and nothing
+// else, so a tree saved in the two formats named its tips differently -- a
+// nameless tip with a taxonomy came out HUMAN in the Nexus file and empty in
+// the Newick one. Christian: "adopt the same chain and placeholder in
+// toNewHampshire".
+//
+// The expected Newick is the DESKTOP's, taken by running their build on this
+// tree: "((P12345,recA)HUMAN,(node3,plain));". Note what it says: the chain
+// reaches INTERNAL nodes too (HUMAN), the placeholder does NOT (the second
+// internal node and the root stay unlabeled), and the placeholder counts tip
+// positions rather than placeholders (node3, not node1).
+function testOneLabelChainForBothWriters() {
+    var phy = forester.parseNewHampshire("((,),(,));", true, false);
+    var t = forester.getAllExternalNodes(phy).reverse();
+    t[0].sequences = [{accession: {value: "P12345", source: "UniProt"}}];
+    t[1].taxonomies = [{}];
+    t[1].sequences = [{name: "recA"}];
+    t[3].name = "plain";
+    forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+        if (n.children && n.children.indexOf(t[0]) > -1) {
+            n.taxonomies = [{code: "HUMAN"}];
+        }
+    });
+    var nh = forester.toNewHampshire(phy, 9, true, false);
+    if (nh !== "((P12345,recA)HUMAN,(node3,plain));") {
+        console.log("    Newick: " + nh);
+        return false;
+    }
+    // and the Nexus form has to name the same tips the same way, in all three
+    // places, or the file cannot be joined back up
+    phy.rooted = false;
+    var nex = forester.toNexus(phy, 9, true);
+    if (nex.indexOf(" TaxLabels P12345 recA node3 plain;") < 0
+        || nex.indexOf("((P12345,recA)HUMAN,(node3,plain))") < 0) {
+        console.log("    Nexus:\n" + nex);
+        return false;
+    }
+    // writing must not mutate the caller's tree: toNexus used to rename
+    // nameless tips in place and undo it afterwards, and an exception in
+    // between would have left the caller holding a renamed tree
+    if (t[0].name !== undefined || t[2].name !== undefined) {
+        console.log("    toNexus renamed the caller's nodes: "
+            + JSON.stringify([t[0].name, t[2].name]));
+        return false;
+    }
+    return true;
+}
+
+
+// Two tips must not share a taxon label. A matrix is keyed on that label, so
+// the reader takes the repeat for an interleaved continuation and hands BOTH
+// tips the two sequences joined together -- corruption, not just an invalid
+// file. Two ways in, found on the desktop side and confirmed here before
+// touching anything:
+//   - a tip literally named "node2" colliding with the placeholder we mint;
+//   - genuinely duplicate tip names, which is nobody's bug and ours to refuse.
+// Expectations taken by running their build on the same two trees, whose
+// whole Nexus output is identical to ours byte for byte.
+function testNexusLabelCollisions() {
+    function tree(nh, a, b) {
+        var p = forester.parseNewHampshire(nh, true, false);
+        var t = forester.getAllExternalNodes(p).reverse();
+        t[0].sequences = [{mol_seq: {is_aligned: true, value: a}}];
+        t[1].sequences = [{mol_seq: {is_aligned: true, value: b}}];
+        p.rooted = false;
+        return p;
+    }
+    function fail(msg, detail) {
+        console.log('    ' + msg + (detail === undefined ? '' : ':\n' + detail));
+        return false;
+    }
+    // a real tip called "node2", and a nameless tip that would be minted one
+    var nex = forester.toNexus(tree("(node2,);", "MKAL", "MKIV"), 9, true);
+    if (nex.indexOf(" TaxLabels node2 node3;") < 0) {
+        return fail("the placeholder collided with a real tip name", nex);
+    }
+    if (nex.indexOf("(node2,node3)") < 0) {
+        return fail("the trees block disagrees with TaxLabels", nex);
+    }
+    // it must round trip with BOTH sequences intact, which is the point
+    var back = forester.getAllExternalNodes(forester.parseNexus(nex, true, false)[0]).reverse();
+    var got = back.map(function (n) {
+        var q = n.sequences && n.sequences[0];
+        return n.name + '=' + ((q && q.mol_seq) ? q.mol_seq.value : 'none');
+    }).join(' ');
+    if (got !== "node2=MKAL node3=MKIV") {
+        return fail("sequences were mixed up across the collision", got);
+    }
+    // and genuinely duplicate names: no matrix at all, and a comment saying why
+    var dup = forester.toNexus(tree("(dup,dup);", "MKAL", "MKIV"), 9, true);
+    if (dup.indexOf("Begin Characters;") > -1) {
+        return fail("a matrix was written for duplicate taxon labels", dup);
+    }
+    if (dup.indexOf("[ Molecular sequences were not written: two or more tips share the taxon"
+        + " label dup,") < 0) {
+        return fail("no comment explaining the refusal", dup);
+    }
+    // the file still has to be readable as a tree
+    if (forester.getAllExternalNodes(forester.parseNexus(dup, true, false)[0]).length !== 2) {
+        return fail("the refusal comment broke the file", dup);
+    }
+    return true;
+}
+
+// The matrix DataType is a property of the WHOLE matrix, so every sequence
+// decides it -- not the first one that guesses non-null. A matrix wrongly
+// declared DNA is read back with every non-nucleotide residue replaced by N,
+// so protein wins any disagreement: calling a nucleotide alignment protein
+// leaves the residues readable, the reverse destroys them.
+//
+// Every expectation below was taken by RUNNING the desktop writer on the same
+// pair, including the last one, where both programs are wrong in the same way
+// and deliberately so.
+function testNexusMatrixDatatype() {
+    function typeOf(a, b) {
+        var p = forester.parseNewHampshire("(A,B);", true, false);
+        var t = forester.getAllExternalNodes(p).reverse();
+        t[0].sequences = [{mol_seq: {is_aligned: true, value: a}}];
+        t[1].sequences = [{mol_seq: {is_aligned: true, value: b}}];
+        p.rooted = false;
+        var m = / Format DataType=(\S+) /.exec(forester.toNexus(p, 9, true));
+        return m ? m[1] : null;
+    }
+    var cases = [
+        ["ACGTACGT", "MKALIVQW", "Protein"],   // one protein anywhere wins ...
+        ["MKALIVQW", "ACGTACGT", "Protein"],   // ... whichever side it is on
+        ["ACGUACGU", "ACGUACGU", "RNA"],
+        // Gaps and missing symbols are stripped before the guess, matching
+        // the desktop. NOTE for anyone mutating that line: it cannot change
+        // an answer, and no fixture will ever catch its removal. The guesser
+        // tests membership of L/I/E/H/D/Q/T/U and the stripped characters are
+        // -.?*, disjoint sets; a sequence that empties under the strip is made
+        // only of those, and guesses null either way. Checked over a million
+        // pairs as well as argued: zero differences. It stays because the
+        // desktop has it and because the next guesser may test a character
+        // that is not a letter -- but a survivor there is an EQUIVALENT
+        // MUTANT, not a hole to plug.
+        ["--------", "ACGTACGT", "DNA"],
+        // The case that motivated adding F, P and V on 2026-09-23. Its only
+        // protein-exclusive residue is P: before that MKATSWNP guessed DNA,
+        // this pair agreed on DNA, and the matrix went out declared DNA --
+        // which read back as MKATSWNN, every non-nucleotide residue replaced.
+        ["ACGTACGT", "MKATSWNP", "Protein"]
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var got = typeOf(cases[i][0], cases[i][1]);
+        if (got !== cases[i][2]) {
+            console.log('    ' + cases[i][0] + ' + ' + cases[i][1] + ' -> ' + got
+                + ', expected ' + cases[i][2]);
+            return false;
+        }
+    }
+
+    // The guesser's alphabet, letter for letter, so that NEITHER PROGRAM CAN
+    // RETUNE IT ALONE. Both write the same DataType only because both test the
+    // same six letters; a letter added on one side and not the other types the
+    // same file two ways, which is worse than the shared blind spot below.
+    //
+    // "<letter>T" is what makes this discriminate: a letter the guesser calls
+    // protein gives Protein, and one it does not falls through to the T and
+    // gives DNA. Testing the bare letter cannot tell "read as protein" from
+    // "no verdict, defaulted to Protein" — they both come out Protein.
+    //
+    // The expected string was produced by RUNNING the desktop writer over the
+    // same 26 constructions; ours is identical letter for letter.
+    //
+    // Under forester's own alphabets the protein-exclusive letters are
+    // BDEFHILOPQVXZ. DEHILQFPV are tested; B, O, X and Z are not, deliberately
+    // — rare enough to buy almost nothing, and every letter added is one both
+    // programs must add. F, P and V went in on 2026-09-23 on Christian's word,
+    // on both sides in the same move; the string below was taken by running
+    // the desktop's build after its change.
+    var perLetter = [];
+    for (var c = 65; c <= 90; ++c) {
+        var letter = String.fromCharCode(c);
+        perLetter.push(letter + '=' + typeOf(letter + 'T', letter + 'T'));
+    }
+    var expected = 'A=DNA B=DNA C=DNA D=Protein E=Protein F=Protein G=DNA H=Protein'
+        + ' I=Protein J=DNA K=DNA L=Protein M=DNA N=DNA O=DNA P=Protein Q=Protein'
+        + ' R=DNA S=DNA T=DNA U=DNA V=Protein W=DNA X=DNA Y=DNA Z=DNA';
+    if (perLetter.join(' ') !== expected) {
+        console.log('    the guesser\'s alphabet drifted from the desktop\'s:\n      got  '
+            + perLetter.join(' ') + '\n      want ' + expected);
         return false;
     }
     return true;

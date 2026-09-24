@@ -2843,6 +2843,8 @@ runTest("every view key in the codec: ", testEveryViewKeyIsInTheCodec);
 runTest("view config keys           : ", testViewConfigKeys);
 runTest("panelDensity config key    : ", testPanelDensityConfig);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
+runTest("a download carries support: ", testDownloadsCarrySupportByDefault);
+runTest("zero is a value, not absent: ", testZeroIsAValueNotAbsence);
 runTest("versions agree           : ", testVersionsAgree);
 
 if (_testFailures > 0) {
@@ -3376,6 +3378,152 @@ function testMultiValueRefusalEdges() {
     });
     if (bad.length) {
         bad.forEach(function (b) { console.log('    ' + b); });
+        return false;
+    }
+    return true;
+}
+
+
+// A Newick or Nexus DOWNLOAD carries support values unless the host turns
+// them off. This is a joint-contract default, not a preference: the desktop
+// Archaeopteryx shipped with its support style defaulting to NONE, so the same
+// tree saved by the two programs differed, and its Save As Nexus dropped the
+// support silently. They changed theirs to match ours on 2026-09-23. Nothing
+// here pinned OURS, so a flip in either direction would have passed unnoticed
+// — which is the hole their session found on their side and sent over.
+//
+// Read out of the source, in the manner of testEveryViewKeyIsInTheCodec: the
+// default lives inside a closure in archaeopteryx.js with no accessor, and a
+// test that cannot see it is worth less than one that reads it and says so.
+// It refuses to pass when it cannot find what it is looking for, so a rename
+// reads as a failure rather than as a clean bill of health.
+function testDownloadsCarrySupportByDefault() {
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var key = 'nhExportWriteConfidences';
+
+    // 1. the default itself
+    var decl = new RegExp('if \\(_settings\\.' + key + ' === undefined\\) \\{\\s*'
+        + '_settings\\.' + key + ' = (true|false);');
+    var m = decl.exec(src);
+    if (!m) {
+        console.log('    the ' + key + ' default block was not found -- renamed?');
+        return false;
+    }
+    if (m[1] !== 'true') {
+        console.log('    ' + key + ' defaults to ' + m[1] + ': a default download would '
+            + 'drop support values, and the desktop would no longer agree with us');
+        return false;
+    }
+
+    // 2. both download paths have to HONOUR it. A literal, or an omitted
+    // argument, would leave the default above true and meaningless.
+    var paths = [['downloadAsNH', 'forester.toNewHampshire'],
+        ['downloadAsNexus', 'forester.toNexus']];
+    for (var i = 0; i < paths.length; ++i) {
+        var fnStart = src.indexOf('function ' + paths[i][0] + '(');
+        if (fnStart < 0) {
+            console.log('    ' + paths[i][0] + ' not found -- renamed?');
+            return false;
+        }
+        var body = src.substring(fnStart, src.indexOf('\n    }', fnStart));
+        var call = body.indexOf(paths[i][1] + '(');
+        if (call < 0) {
+            console.log('    ' + paths[i][0] + ' no longer calls ' + paths[i][1]);
+            return false;
+        }
+        var args = body.substring(call, body.indexOf(')', call));
+        if (args.indexOf('_settings.' + key) < 0) {
+            console.log('    ' + paths[i][0] + ' does not pass ' + key + ': ' + args);
+            return false;
+        }
+    }
+
+    // 3. and the README has to say the same thing, since that is where a host
+    // reads it before deciding whether to set it
+    var readme = fs.readFileSync(pth.join(__dirname, '..', 'README.md'), 'utf8');
+    var row = new RegExp('\\|\\s*`' + key + '`\\s*\\|\\s*`(true|false)`\\s*\\|').exec(readme);
+    if (!row) {
+        console.log('    the README has no ' + key + ' row');
+        return false;
+    }
+    if (row[1] !== 'true') {
+        console.log('    the README documents a default of ' + row[1] + ', the code uses true');
+        return false;
+    }
+
+    // 4. the library honours the flag at all -- the source scan above says
+    // what is PASSED, this says what happens when it is
+    var phy = forester.parseNewHampshire('((a:1,b:1)x:1[95],c:1);', true, false);
+    if (forester.toNexus(phy, 9, true).indexOf('[95]') < 0) {
+        console.log('    toNexus(..., true) did not write the support value');
+        return false;
+    }
+    if (forester.toNexus(phy, 9, false).indexOf('[95]') > -1) {
+        console.log('    toNexus(..., false) wrote a support value anyway');
+        return false;
+    }
+    return true;
+}
+
+
+// Zero is a VALUE. A branch length of 0 is a zero-length branch, not a
+// missing one; a support of 0 is a support value, and the most telling one a
+// branch can carry. Testing such a number for truthiness reads it as absent,
+// and this codebase made that mistake in four places at once, found in one
+// afternoon: the phyloXML writer dropped every branch length of 0 (fixed in
+// phyloxml 1.1.1 — 33 of them in bunya_glyco.xml), the branch-length label
+// skipped them, the confidence label skipped a support of 0, and the node
+// data box omitted "Distance to parent: 0".
+//
+// The desktop cannot make this mistake: it marks an absent branch length with
+// a sentinel (-1024) rather than with zero, so 0 is ordinary there. We mark it
+// with undefined/null, which is better — a sentinel loses a real -1024 — but
+// only as long as nobody reaches for truthiness again. Hence this guard.
+//
+// Source-read, like testDownloadsCarrySupportByDefault: these are closures in
+// archaeopteryx.js with no accessor. The rendered behaviour is checked in the
+// browser (test_trees/zero_labels.html); this is what CI can see.
+function testZeroIsAValueNotAbsence() {
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var sites = [
+        ['makeBranchLengthLabel', /let makeBranchLengthLabel = function \(phynode\) \{\s*if \(([^)]*)\)/],
+        ['nodeDataText', /function nodeDataText\(d\) \{[\s\S]{0,400}?if \(d\.branch_length([^)]*)\)/]
+    ];
+    for (var i = 0; i < sites.length; ++i) {
+        var m = sites[i][1].exec(src);
+        if (!m) {
+            console.log('    ' + sites[i][0] + ' not found in the shape expected -- renamed?');
+            return false;
+        }
+        if (m[1].indexOf('!== undefined') < 0 || m[1].indexOf('!== null') < 0) {
+            console.log('    ' + sites[i][0] + ' tests a branch length for truthiness, so a'
+                + ' zero-length branch reads as having none: if (' + m[1].trim() + ')');
+            return false;
+        }
+    }
+    // the support label: the MAD branch has always tested the number properly,
+    // and the support branch beside it must do the same
+    var conf = src.indexOf('let makeConfidenceValuesLabel');
+    if (conf < 0) {
+        console.log('    makeConfidenceValuesLabel not found -- renamed?');
+        return false;
+    }
+    var body = src.substring(conf, src.indexOf('\n    };', conf));
+    if (/if \(c\.value\)/.test(body)) {
+        console.log('    makeConfidenceValuesLabel tests a support value for truthiness,'
+            + ' so a support of 0 is never drawn');
+        return false;
+    }
+    if ((body.match(/typeof c\.value === 'number' && isFinite\(c\.value\)/g) || []).length < 2) {
+        console.log('    expected both the MAD and the support branch to test the number itself');
+        return false;
+    }
+    // and the library half of the same rule, run rather than read: a branch
+    // length of 0 and a support of 0 both reach the written file
+    var phy = forester.parseNewHampshire('((a:0,b:0.2)x:0[0],c:0.3);', true, false);
+    var nh = forester.toNewHampshire(phy, 9, true, true);
+    if (nh !== '((a:0,b:0.2)x:0[0],c:0.3);') {
+        console.log('    a zero branch length or support was lost on the way out: ' + nh);
         return false;
     }
     return true;

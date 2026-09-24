@@ -316,6 +316,16 @@ describe the MAD rooting only. A shared view remembers a MAD root. A phyloXML
 download keeps them as `<confidence type="MAD">`, as the desktop writes them;
 a Newick or Nexus download never puts one where a support value goes.
 
+A tip is written under its **name**; where it has none, under its taxonomy
+(code, then scientific, then common name), then its sequence's name, symbol or
+gene name, then its sequence **accession**, and only if it has none of those
+under a `node<N>` placeholder numbering it by position among the tips. Each
+step is tried in turn, so a taxonomy element that is present but empty does
+not stop the search. An unlabeled *internal* node stays unlabeled — a
+placeholder there would invent a name for an ancestor. Newick and Nexus use
+the one chain, so a tree saved in both formats names its tips identically, and
+it is the desktop Archaeopteryx's chain, compared byte for byte.
+
 Newick and Nexus have **one** support slot per branch and no place to name
 what kind of support it is, so a branch carrying several confidences is
 written with the first that is not a MAD value, exactly as the desktop writes
@@ -568,7 +578,12 @@ alignment back into one Nexus file (Taxa, Characters and Trees blocks), in the
 same bytes the desktop Archaeopteryx writes: a row per taxon rather than per
 sequence, so a tip carrying no sequence gets a row of the missing symbol `?`
 and the matrix still covers every taxon the file declares. Reading it back,
-such a row is absence of data and not a sequence of question marks. Sequences
+such a row is absence of data and not a sequence of question marks. Residues
+from a Nexus matrix are normalised as the desktop normalises them — raised to
+upper case, `.` read as a gap, and anything outside the declared alphabet read
+as the unspecified residue, `X` for protein and `N` for nucleotides, so the
+missing symbol `?` arrives as `X` or `N`. A phyloXML `<mol_seq>` is kept
+exactly as written, by both programs. Sequences
 of *unequal* length are not an alignment and cannot form a character matrix,
 so they are not written at all — the file says so in a bracketed comment
 rather than padding them into an alignment that does not exist.
