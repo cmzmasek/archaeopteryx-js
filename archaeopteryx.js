@@ -11740,7 +11740,7 @@ function (root, d3, forester, phyloXml) {
         if (matches.length > SUGGEST_MAX_ROWS) {
             let more = document.createElement('div');
             more.className = 'aptx-suggest-more';
-            more.textContent = (matches.length - SUGGEST_MAX_ROWS) + ' more — keep typing';
+            more.textContent = (matches.length - SUGGEST_MAX_ROWS) + ' more, keep typing';
             box.appendChild(more);
         }
         document.body.appendChild(box);
@@ -12167,7 +12167,7 @@ function (root, d3, forester, phyloXml) {
         }
         item.classList.toggle('aptx-check-active', !!active);
         item.title = active
-            ? item.dataset.baseTitle + ' — hiding now: 1 in ' + _dynahide_factor + ' labels shown'
+            ? item.dataset.baseTitle + ', hiding now: 1 in ' + _dynahide_factor + ' labels shown'
             : item.dataset.baseTitle;
     }
 
@@ -13221,7 +13221,7 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-seg:has(> input:checked) { background:var(--p-accent); color:#fff; }'
             + '.aptx-panel .aptx-seg:has(> input:disabled) { opacity:0.4; cursor:default; }'
             + '.aptx-panel .aptx-actions { margin-left:auto; display:flex; align-items:center; gap:5px; }'
-            + '.aptx-panel .aptx-theme-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:12px; line-height:1; }'
+            + '.aptx-panel .aptx-theme-btn, .aptx-panel .aptx-info-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:12px; line-height:1; }'
             + '.aptx-panel .aptx-theme-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
             + '.aptx-panel input[type=range] { -webkit-appearance:none; appearance:none; display:block; width:100%; height:15px; margin:2px 0 9px; padding:0; background:transparent; cursor:pointer; }'
             + '.aptx-panel input[type=range]::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--p-line-strong); }'
@@ -13378,7 +13378,12 @@ function (root, d3, forester, phyloXml) {
 
             let infoBtn = document.createElement('button');
             infoBtn.type = 'button';
-            infoBtn.className = 'aptx-theme-btn aptx-info-btn';
+            // NOT aptx-theme-btn: applyPanelTheme repaints the innerHTML of
+            // every element carrying that class with the sun/moon, so
+            // borrowing it for the chrome replaced this glyph the instant a
+            // theme was applied. The two share their styling through the CSS
+            // selector instead, which is all the class was wanted for.
+            infoBtn.className = 'aptx-info-btn';
             infoBtn.title = 'Tree properties and statistics ('
                 + (IS_MAC ? '\u2318I' : 'Ctrl+I') + ')';
             infoBtn.setAttribute('aria-label', 'Tree properties and statistics');
@@ -14038,7 +14043,13 @@ function (root, d3, forester, phyloXml) {
         }
         treePropRow(box, 'Type', phy.type);
         treePropRow(box, 'Branch-length unit', phy.branch_length_unit);
-        treePropRow(box, 'Rooted', phy.rooted === false ? 'no' : 'yes');
+        // Only when the FILE said so. phyloXML has a rooted attribute and a
+        // Nexus tree statement has [&R]/[&U]; plain Newick says nothing, and a
+        // properties dialog that answered "yes" there would be reporting our
+        // writing default as though the file had stated it.
+        if (typeof phy.rooted === 'boolean') {
+            treePropRow(box, 'Rooted', phy.rooted ? 'yes' : 'no');
+        }
         if (_trees && _trees.length > 1) {
             treePropRow(box, 'In this file', 'tree ' + (_treeIndex + 1) + ' of ' + _trees.length);
         }
@@ -14054,9 +14065,10 @@ function (root, d3, forester, phyloXml) {
         treePropRow(box, 'Tips', countNumber(bp.externalNodesCount));
         treePropRow(box, 'Internal nodes',
             countNumber(bp.nodeCount - bp.externalNodesCount));
-        treePropRow(box, 'Nodes, in all', countNumber(bp.nodeCount));
-        treePropRow(box, 'Longest tip label',
-            bp.longestNodeName > 0 ? (countNumber(bp.longestNodeName) + ' characters') : null);
+        treePropRow(box, 'Nodes, total', countNumber(bp.nodeCount));
+        treePropRow(box, 'Longest tip label', bp.longestNodeName > 0
+            ? (countNumber(bp.longestNodeName)
+                + (bp.longestNodeName === 1 ? ' character' : ' characters')) : null);
         treePropRow(box, 'Internal nodes named', bp.internalNodeData ? 'yes' : 'no');
 
         // --- branch lengths -------------------------------------------
@@ -14075,7 +14087,7 @@ function (root, d3, forester, phyloXml) {
                     forester.roundNumber(bp.averageBranchLength, 6));
             }
         } else {
-            treePropRow(box, 'Branches with a length', 'none — the tree has no lengths');
+            treePropRow(box, 'Branches with a length', 'none, the tree has no lengths');
         }
 
         // --- what came with it ----------------------------------------
@@ -14106,7 +14118,7 @@ function (root, d3, forester, phyloXml) {
         carries('Node events', bp.nodeEvents);
         carries('Branch colours', bp.branchColors);
         if (carried === 0) {
-            treePropRow(box, 'Annotations', 'none — names and topology only');
+            treePropRow(box, 'Annotations', 'none, names and topology only');
         }
 
         // --- time -----------------------------------------------------

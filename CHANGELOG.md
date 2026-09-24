@@ -23,6 +23,10 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
+- **The tree-properties button drew the wrong glyph.** It carried the theme
+  switch's class for its styling, and `applyPanelTheme` repaints the innerHTML
+  of everything with that class, so the sun/moon replaced the circled `i` as
+  soon as a theme was applied. The two now share only a CSS selector.
 - **Dialogs no longer put their text straight on top of the tree.** They take
   the same frosted-glass blur the node menu and the search suggestions have
   always had; the panel background is deliberately translucent, and without
