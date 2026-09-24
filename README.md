@@ -526,6 +526,16 @@ section holds the controls:
   the tree), or `None`.
 * **Glow** — a soft glow in each domain's own colour around its box.
 
+**Hovering a domain** reads it out: the domain's name, its E-value as the
+scan reported it, the residues it spans with its own length and the protein's,
+the tree tip it belongs to, and its accession where the file carries one.
+**Clicking the box** looks the domain up: straight to the Pfam entry when
+there is an accession, and an InterPro search by name when there is not —
+phyloXML's domain `id` is optional, and a file with names alone (our own
+`apaf.xml` among them) cannot address an entry, since InterPro resolves
+accessions and not Pfam identifiers. Only the domain boxes take the mouse, so
+the tree behind the track stays clickable.
+
 In the circular and unrooted layouts the tracks ride each tip's spoke
 outward and carry no names (the legend still works); they need radial
 labels, which switching layouts turns on. A malformed domain — a missing or

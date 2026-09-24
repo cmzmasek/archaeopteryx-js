@@ -413,6 +413,11 @@ function (root, d3, forester, phyloXml) {
     const BRANCH_SCALE_CONTROLGROUP = 'branch_scale_g';
     const BRANCH_SCALE_TIME_BUTTON = 'branch_scale_time_b';
     const BRANCH_SCALE_DIV_BUTTON = 'branch_scale_div_b';
+    // Pfam lives inside InterPro now. An entry is addressed by ACCESSION;
+    // an identifier (CARD, NB-ARC) has to be searched for.
+    const INTERPRO_ENTRY = 'https://www.ebi.ac.uk/interpro/entry/pfam/';
+    const INTERPRO_SEARCH = 'https://www.ebi.ac.uk/interpro/search/text/';
+
     const ABOUT_DIALOG = 'aptx_about';
     const TREE_PROPERTIES_DIALOG = 'aptx_tree_props';
     const PROG_NAME = 'progname';
@@ -9955,6 +9960,105 @@ function (root, d3, forester, phyloXml) {
     // the later one's shadow and glow used to fall across the earlier body,
     // and now lie under it; overlapping shadows of one level no longer
     // darken each other.
+    // ===================== Domain hover =====================
+    // Domain architectures are what Archaeopteryx has always been best at, and
+    // until now the boxes said nothing: you could see a domain but not read
+    // its name, its E-value or where it sits, short of opening the node's data
+    // dialog and finding it in a list. Christian, 2026-09-23.
+    //
+    // The readout is the one the heat map and the alignment already use, so a
+    // hover anywhere in the viewer looks and behaves the same, and it is
+    // placed by placeHoverReadout, which measures the box rather than assuming
+    // a size.
+
+    // Where a domain can be read about. phyloXML's optional domain `id` is the
+    // accession for a Pfam scan, and an accession addresses an entry directly;
+    // without one there is only the Pfam IDENTIFIER (CARD, NB-ARC, WD40 --
+    // what our own apaf.xml carries), which InterPro finds by search. Guessing
+    // an entry URL from an identifier would 404 for anything but the lucky
+    // cases, and a dead link is worse than a search that works.
+    const PFAM_ACCESSION = /^PF\d{5,}$/i;
+
+    function domainReference(info) {
+        if (!info) {
+            return null;
+        }
+        if (info.id && PFAM_ACCESSION.test(info.id.trim())) {
+            return {url: INTERPRO_ENTRY + info.id.trim().toUpperCase() + '/', exact: true};
+        }
+        let q = (info.id || info.name || '').trim();
+        return q ? {url: INTERPRO_SEARCH + encodeURIComponent(q) + '/', exact: false} : null;
+    }
+
+    function domainInfoAt(event) {
+        let t = event.target;
+        return (t && t.__aptxDomain) ? t.__aptxDomain : null;
+    }
+
+    // An E-value spans many orders of magnitude, so it is written the way a
+    // scan reports it rather than rounded into uselessness: 4.7e-12 stays
+    // 4.7e-12, and a plain 0.3 stays 0.3.
+    function domainEvalueText(e) {
+        if (typeof e !== 'number' || !isFinite(e)) {
+            return null;
+        }
+        if (e === 0) {
+            return '0';
+        }
+        return (Math.abs(e) >= 0.001 && Math.abs(e) < 1e7)
+            ? String(forester.roundNumber(e, 6)) : e.toExponential(2);
+    }
+
+    function domainHover(event) {
+        let info = domainInfoAt(event);
+        if (!info) {
+            domainHoverOut();
+            return;
+        }
+        let ref = domainReference(info);
+        let txt = 'Domain: ' + (info.name || '(unnamed)') + '<br>';
+        let ev = domainEvalueText(info.evalue);
+        if (ev !== null) {
+            txt += 'E-value: ' + ev + '<br>';
+        }
+        txt += 'Residues: ' + info.from + '–' + info.to
+            + ' (' + ((info.to - info.from) + 1) + ' aa'
+            + (info.proteinLength > 0 ? (' of ' + info.proteinLength) : '') + ')<br>';
+        if (info.tip) {
+            txt += 'Tip: ' + info.tip + '<br>';
+        }
+        if (info.id) {
+            txt += 'Accession: ' + info.id + '<br>';
+        }
+        if (ref) {
+            // A readout that follows the pointer cannot hold a link you could
+            // reach, so the BOX is the link and the readout says so.
+            txt += (ref.exact ? 'Click for the Pfam entry' : 'Click to look the domain up at InterPro');
+        }
+        let tip_el = _node_mouseover_div.node();
+        tip_el.classList.remove('aptx-light', 'aptx-dark');
+        if (_panelTheme) {
+            tip_el.classList.add('aptx-' + _panelTheme);
+        }
+        _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(txt)));
+        placeHoverReadout(tip_el, event);
+        _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
+    }
+
+    function domainHoverOut() {
+        _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
+    }
+
+    function domainClicked(event) {
+        let ref = domainReference(domainInfoAt(event));
+        if (!ref) {
+            return;
+        }
+        event.stopPropagation();   // not a click on the tree behind it
+        // noopener: the opened page must not get a handle on this window
+        window.open(ref.url, '_blank', 'noopener,noreferrer');
+    }
+
     function drawDomainArchitectures() {
         if (!_svgGroup) {
             return;
@@ -9985,6 +10089,18 @@ function (root, d3, forester, phyloXml) {
         let underLayer = g.children[1];
         let bodyLayer = g.children[2];
         let labelLayer = g.children[3];
+        // The group ignores the mouse so the tree underneath stays clickable;
+        // the BODIES alone take it back, so a hover lands on a domain and not
+        // on its shadow, its glow or its label.
+        bodyLayer.style.pointerEvents = 'auto';
+        bodyLayer.style.cursor = 'pointer';
+        if (!bodyLayer.__aptxWired) {
+            bodyLayer.__aptxWired = true;
+            bodyLayer.addEventListener('mouseover', domainHover);
+            bodyLayer.addEventListener('mousemove', domainHover);
+            bodyLayer.addEventListener('mouseout', domainHoverOut);
+            bodyLayer.addEventListener('click', domainClicked);
+        }
 
         // one vertical gradient per base colour, lighter at the top; the
         // defs ride into the SVG / PDF / PNG exports with the boxes
@@ -10110,7 +10226,13 @@ function (root, d3, forester, phyloXml) {
                     });
                 }
                 bodies.push({x: b.x, y: y1, w: b.w, h: h, r: r, transform: row.transform,
-                    fill: gradientFor(base), stroke: forester.domainDarken(base, 0.24)});
+                    fill: gradientFor(base), stroke: forester.domainDarken(base, 0.24),
+                    // what the hover readout says. Carried per BOX rather than
+                    // looked up again on hover: the boxes are pooled and
+                    // reused between redraws, so an index into the tree would
+                    // go stale the moment the tips on screen change.
+                    info: {name: b.name, from: b.from, to: b.to, evalue: b.evalue, id: b.id,
+                        tip: displayNodeName(row.d) || '', proteinLength: Number(da.length) || 0}});
                 if (row.labelsOn && b.name && fs > 4 && legendTextWidth(b.name, font) <= b.w - 4) {
                     names.push({x: b.x + (b.w / 2), y: y1 + (h / 2), font: font,
                         fill: forester.domainLabelInk(base), text: b.name});
@@ -10151,6 +10273,7 @@ function (root, d3, forester, phyloXml) {
             el.style.fill = b.fill;
             el.style.stroke = b.stroke;
             el.style.strokeWidth = 1;
+            el.__aptxDomain = b.info;
         });
         let texts = sizeLayer(labelLayer, 'text', names.length);
         names.forEach(function (t, k) {

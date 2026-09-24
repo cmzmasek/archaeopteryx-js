@@ -81,6 +81,7 @@ runTest("Nexus label collisions      : ", testNexusLabelCollisions);
 runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
 runTest("describeValues              : ", testDescribeValues);
 runTest("tree statistics             : ", testTreeStatistics);
+runTest("domain id survives          : ", testDomainIdSurvives);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
 runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
@@ -5889,6 +5890,49 @@ function testTreeStatistics() {
         forester.parseNewHampshire('((a,b),c);', true, false)));
     if (bare.branchLengths !== null || bare.ultrametric || bare.tips !== 3) {
         return fail('a tree without lengths', bare);
+    }
+    return true;
+}
+
+
+// phyloXML's optional domain `id` is the accession for a Pfam scan, and the
+// hover readout links to the entry with it -- an accession addresses an entry,
+// a bare identifier does not (checked against InterPro: /entry/pfam/NB-ARC/ is
+// a 404 while /entry/pfam/PF00931/ and /search/text/NB-ARC/ are both 200). So
+// it has to reach the drawing code, and it was being dropped between the two.
+function testDomainIdSurvives() {
+    var da = {length: 1248, domains: [
+        {name: 'NB-ARC', from: 109, to: 414, confidence: 7.2e-117, id: 'PF00931'},
+        {name: 'WD40', from: 1168, to: 1204, confidence: 0.3}
+    ]};
+    var parsed = forester.domainArchitectureDomains(da).domains;
+    if (parsed.length !== 2) {
+        console.log('    expected two drawable domains, got ' + parsed.length);
+        return false;
+    }
+    var nb = parsed.filter(function (d) { return d.name === 'NB-ARC'; })[0];
+    var wd = parsed.filter(function (d) { return d.name === 'WD40'; })[0];
+    if (nb.id !== 'PF00931') {
+        console.log('    the accession was dropped: ' + JSON.stringify(nb));
+        return false;
+    }
+    // absent is an empty string rather than undefined, so the readout can test
+    // it without reaching for a type check
+    if (wd.id !== '') {
+        console.log('    a domain without an id should carry an empty one: ' + JSON.stringify(wd));
+        return false;
+    }
+    // ... and through the geometry, which is what the drawn box is built from
+    var boxes = forester.domainBoxes(da, 0, 1, 0).boxes;
+    var drawn = boxes.filter(function (b) { return b.name === 'NB-ARC'; })[0];
+    if (!drawn || drawn.id !== 'PF00931') {
+        console.log('    the accession did not reach the drawn box: ' + JSON.stringify(boxes));
+        return false;
+    }
+    // the rest of what the readout needs must be there too
+    if (drawn.from !== 109 || drawn.to !== 414 || drawn.evalue !== 7.2e-117) {
+        console.log('    a drawn box is missing its facts: ' + JSON.stringify(drawn));
+        return false;
     }
     return true;
 }

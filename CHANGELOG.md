@@ -6,6 +6,22 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **A hover readout on every protein domain**, which the boxes never had: the
+  domain's name, its E-value as the scan reported it, the residues it spans
+  with its own length and the protein's, the tree tip it belongs to, and its
+  accession where the file carries one. **Clicking a domain looks it up** —
+  the Pfam entry directly when there is an accession, an InterPro search by
+  name when there is not. phyloXML's domain `id` is optional and most files
+  carry names alone; InterPro resolves accessions but not Pfam identifiers
+  (`/entry/pfam/NB-ARC/` is a 404 while the accession and the search are
+  both 200), so the search is the honest fallback rather than a guessed URL.
+  Only the domain boxes take the mouse, so the tree behind the track stays
+  clickable.
+
 ## 3.14.0 — 2026-09-23
 
 What is actually in this file? Nothing in the viewer answered that. Now the

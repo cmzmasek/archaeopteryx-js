@@ -6933,7 +6933,13 @@
                 ignored++;
                 return;
             }
-            domains.push({name: d.name ? String(d.name) : '', from: from, to: to, length: to - from + 1, evalue: e});
+            // `id` is phyloXML's optional domain identifier, which for a Pfam
+            // scan is the accession (PF00931). Carried through because the
+            // hover readout links to the entry with it when it is there, and
+            // has to search by name when it is not -- apaf.xml, our own domain
+            // demo, has names and no ids at all.
+            domains.push({name: d.name ? String(d.name) : '', from: from, to: to,
+                length: to - from + 1, evalue: e, id: d.id ? String(d.id) : ''});
         });
         domains.sort(function (a, b) {
             return a.from - b.from;
@@ -7035,7 +7041,8 @@
             if (!(w > 0) || !isFinite(w)) {
                 return;
             }
-            boxes.push({name: d.name, x: start + ((d.from - 1) * f), w: w, from: d.from, to: d.to, evalue: d.evalue});
+            boxes.push({name: d.name, x: start + ((d.from - 1) * f), w: w, from: d.from, to: d.to,
+                evalue: d.evalue, id: d.id});
         });
         return {backbone: {x: start, w: Number(da.length) * f}, boxes: boxes};
     };
