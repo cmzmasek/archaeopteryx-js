@@ -6,7 +6,11 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.13.0 — 2026-09-23
+
+A file is a promise between two programs. Most of this release is the desktop
+Archaeopteryx and Archaeopteryx.js agreeing, byte for byte, about what a Nexus
+file says — and about zero, which both of them had been reading as nothing.
 
 ### Added
 
