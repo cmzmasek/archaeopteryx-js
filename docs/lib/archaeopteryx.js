@@ -414,6 +414,7 @@ function (root, d3, forester, phyloXml) {
     const BRANCH_SCALE_TIME_BUTTON = 'branch_scale_time_b';
     const BRANCH_SCALE_DIV_BUTTON = 'branch_scale_div_b';
     const ABOUT_DIALOG = 'aptx_about';
+    const TREE_PROPERTIES_DIALOG = 'aptx_tree_props';
     const PROG_NAME = 'progname';
     const PROGNAMELINK = 'prognamelink';
     const TREE_DESC = 'tree_desc';
@@ -9575,6 +9576,7 @@ function (root, d3, forester, phyloXml) {
         {key: 'g', label: 'G', shift: true, what: 'Previous search hit', run: function () { stepToFoundNode(-1); }, typing: true},
         {key: ',', label: '<', aliases: ['<'], shift: true, what: 'Previous tree of the file', run: function () { stepTree(-1); }},
         {key: '.', label: '>', aliases: ['>'], shift: true, what: 'Next tree of the file', run: function () { stepTree(1); }},
+        {key: 'i', label: 'I', what: 'Tree properties and statistics', run: showTreePropertiesDialog},
         {key: '/', label: '/', aliases: ['?'], what: 'This list', run: showShortcutsDialog, typing: true}
     ];
 
@@ -12795,6 +12797,15 @@ function (root, d3, forester, phyloXml) {
     }
 
     // The theme toggle, showing the theme it will switch TO.
+    // A circled "i": the tree-properties button. The stem is a stroke and the
+    // tittle a filled dot, so both keep their shape at the 20px the header
+    // button draws them at.
+    function glyphInfo() {
+        return '<circle cx="50" cy="50" r="40"/>'
+            + glyphLine(50, 45, 50, 71)
+            + glyphDot(50, 29, 5.5);
+    }
+
     function glyphSun() {
         let s = glyphDot(50, 50, 20);
         for (let i = 0; i < 8; ++i) {
@@ -12862,6 +12873,7 @@ function (root, d3, forester, phyloXml) {
             case 'uncollapse_all': sw = 8.5; cap = 'round'; body = glyphUncollapseAll(); break;
             case 'tree_prev': sw = 9; cap = 'round'; body = glyphChevron(false); break;
             case 'tree_next': sw = 9; cap = 'round'; body = glyphChevron(true); break;
+            case 'info': sw = 7; cap = 'round'; body = glyphInfo(); break;
             case 'sun': body = glyphSun(); break;
             case 'moon': body = glyphMoon(); break;
             default: throw new Error('unknown control-panel glyph: ' + kind);
@@ -13000,7 +13012,14 @@ function (root, d3, forester, phyloXml) {
             + '@media (prefers-reduced-motion:reduce){ .aptx-busy-dot { animation:none;'
             + '  border-color:var(--p-accent); } }'
             + '.aptx-busy-sub { color:var(--p-muted); }'
+            // The same frosted glass as the node menu and the suggestion list:
+            // --p-bg is deliberately translucent (0.86) so panels float over
+            // the tree, but without the blur a dialog puts dense text straight
+            // on top of whatever is behind it -- and over an alignment or a
+            // heat map that is a rainbow. The menus had the blur from the
+            // start; the dialogs were simply missed.
             + '.aptx-dialog { padding:0; border:1px solid var(--p-line-strong); border-radius:12px;'
+            + '  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);'
             + '  background:var(--p-bg); color:var(--p-ink); max-width:92vw;'
             + '  box-shadow:0 24px 48px -16px rgba(23,34,46,0.45),0 4px 12px -4px rgba(23,34,46,0.22);'
             + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
@@ -13045,6 +13064,9 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-key { flex:0 0 42%; color:var(--p-muted); }'
             + '.aptx-dialog-val { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }'
             // the shortcuts cheat sheet: key chips in the key column
+            + '.aptx-props .aptx-props-head { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--p-muted); margin:12px 0 3px; }'
+            + '.aptx-props > div:first-child { margin-top:0; }'
+            + '.aptx-props .aptx-dialog-key { flex-basis:46%; }'
             + '.aptx-shortcuts .aptx-dialog-key { flex-basis:38%; display:flex; align-items:center; }'
             + '.aptx-shortcuts .aptx-dialog-val { align-self:center; }'
             + '.aptx-keys { display:inline-flex; gap:3px; flex-wrap:wrap; }'
@@ -13353,6 +13375,19 @@ function (root, d3, forester, phyloXml) {
         if (header) {
             let actions = document.createElement('div');
             actions.className = 'aptx-actions';
+
+            let infoBtn = document.createElement('button');
+            infoBtn.type = 'button';
+            infoBtn.className = 'aptx-theme-btn aptx-info-btn';
+            infoBtn.title = 'Tree properties and statistics ('
+                + (IS_MAC ? '\u2318I' : 'Ctrl+I') + ')';
+            infoBtn.setAttribute('aria-label', 'Tree properties and statistics');
+            infoBtn.innerHTML = makeGlyph('info');
+            infoBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                showTreePropertiesDialog();
+            });
+            actions.appendChild(infoBtn);
 
             let progName = header.querySelector('.' + PROGNAMELINK);
             if (progName) {
@@ -13924,6 +13959,171 @@ function (root, d3, forester, phyloXml) {
         let escaped = escapeHtmlKeepBreaks(htmlContent);
         shell.body.innerHTML = mono ? escaped : markUpDataLabels(escaped);
         shell.body.style.maxHeight = height + 'px';
+        shell.dialog.showModal();
+    }
+
+    // ===================== Tree properties =====================
+    // What the tree IS and what it carries: the desktop's View > Tree
+    // Properties, read-only (Christian, 2026-09-23 -- the editable half waits
+    // for demand). Nothing else in the viewer answers "what is actually in
+    // this file", which is the first question a tree raises.
+    //
+    // Computed FRESH every time it opens rather than cached: the whole of
+    // collectBasicTreeProperties costs 7ms on the 13,246-tip H5N1 demo, and a
+    // cache would go stale the moment the user re-roots or enters a subtree.
+    // It describes what is ON SCREEN, so in a subtree it describes the
+    // subtree, and says so.
+    //
+    // Every value goes in through textContent. Tree names, descriptions and
+    // identifiers are file data, and file data never becomes markup.
+
+    function treePropRow(parent, label, value) {
+        if (value === null || value === undefined || value === '') {
+            return;
+        }
+        let line = document.createElement('div');
+        line.className = 'aptx-dialog-line';
+        let k = document.createElement('span');
+        k.className = 'aptx-dialog-key';
+        k.textContent = label;
+        let v = document.createElement('span');
+        v.className = 'aptx-dialog-val';
+        v.textContent = String(value);
+        line.appendChild(k);
+        line.appendChild(v);
+        parent.appendChild(line);
+    }
+
+    function treePropSection(body, title) {
+        let h = document.createElement('div');
+        h.className = 'aptx-props-head';
+        h.textContent = title;
+        body.appendChild(h);
+        let box = document.createElement('div');
+        body.appendChild(box);
+        return box;
+    }
+
+    function countNumber(n) {
+        return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : null;
+    }
+
+    // "1,234 of 5,678" -- a share, written the way a reader checks it.
+    function treePropShare(part, whole) {
+        return countNumber(part) + ' of ' + countNumber(whole);
+    }
+
+    function showTreePropertiesDialog() {
+        if (!_root) {
+            return;
+        }
+        let shell = makeDialogShell(TREE_PROPERTIES_DIALOG, 'Tree properties', 400);
+        shell.body.classList.add('aptx-props');
+        // A description is free text and can be a paragraph (the alignment
+        // demo's runs to 400 characters), so the body scrolls rather than
+        // growing the dialog off the screen.
+        shell.body.style.maxHeight = '62vh';
+        shell.body.style.overflowY = 'auto';
+        let bp = forester.collectBasicTreeProperties(_root);
+        let time = forester.timeAxisInfo(_root);
+        let phy = _treeData || {};
+
+        // --- what the tree says it is ---------------------------------
+        let box = treePropSection(shell.body, 'Tree');
+        treePropRow(box, 'Name', phy.name);
+        treePropRow(box, 'Description', phy.description);
+        if (phy.id && phy.id.value) {
+            treePropRow(box, 'Identifier', phy.id.provider
+                ? (phy.id.value + '  (' + phy.id.provider + ')') : phy.id.value);
+        }
+        treePropRow(box, 'Type', phy.type);
+        treePropRow(box, 'Branch-length unit', phy.branch_length_unit);
+        treePropRow(box, 'Rooted', phy.rooted === false ? 'no' : 'yes');
+        if (_trees && _trees.length > 1) {
+            treePropRow(box, 'In this file', 'tree ' + (_treeIndex + 1) + ' of ' + _trees.length);
+        }
+        if (_in_subtree) {
+            treePropRow(box, 'Showing', 'a subtree, not the whole tree');
+        }
+        if (!box.firstChild) {
+            treePropRow(box, 'Name', '(the tree carries no name or metadata)');
+        }
+
+        // --- shape ----------------------------------------------------
+        box = treePropSection(shell.body, 'Structure');
+        treePropRow(box, 'Tips', countNumber(bp.externalNodesCount));
+        treePropRow(box, 'Internal nodes',
+            countNumber(bp.nodeCount - bp.externalNodesCount));
+        treePropRow(box, 'Nodes, in all', countNumber(bp.nodeCount));
+        treePropRow(box, 'Longest tip label',
+            bp.longestNodeName > 0 ? (countNumber(bp.longestNodeName) + ' characters') : null);
+        treePropRow(box, 'Internal nodes named', bp.internalNodeData ? 'yes' : 'no');
+
+        // --- branch lengths -------------------------------------------
+        // branchesWithLength counts an explicit ZERO as the measurement it is
+        // (forester.collectBasicTreeProperties says so in a comment); the mean
+        // is taken over positive lengths only, which is a different population
+        // on purpose, so the two are never printed as if they were one.
+        box = treePropSection(shell.body, 'Branch lengths');
+        if (bp.branchesWithLength > 0) {
+            treePropRow(box, 'Branches with a length',
+                treePropShare(bp.branchesWithLength, bp.branchCount));
+            treePropRow(box, 'Internal ones',
+                treePropShare(bp.internalBranchesWithLength, bp.internalBranchCount));
+            if (bp.averageBranchLength > 0) {
+                treePropRow(box, 'Mean length, where positive',
+                    forester.roundNumber(bp.averageBranchLength, 6));
+            }
+        } else {
+            treePropRow(box, 'Branches with a length', 'none — the tree has no lengths');
+        }
+
+        // --- what came with it ----------------------------------------
+        box = treePropSection(shell.body, 'The tree carries');
+        let carried = 0;
+        function carries(label, present, detail) {
+            if (!present) {
+                return;
+            }
+            ++carried;
+            treePropRow(box, label, detail || 'yes');
+        }
+        carries('Support values', bp.confidences,
+            bp.maxConfidence > 0 ? ('yes, up to ' + forester.roundNumber(bp.maxConfidence, 4)) : 'yes');
+        carries('MAD values', bp.madValues);
+        carries('Taxonomies', bp.taxonomies);
+        carries('Sequences', bp.sequences);
+        // alignedMolSeqs starts TRUE and is only ever set false, so it means
+        // "no UNALIGNED sequence was seen" -- a tree carrying no sequences at
+        // all reports true. Read alone it told the flu and ammonite demos they
+        // had an alignment. Every other reader in this file pairs it with a
+        // length for the same reason.
+        carries('Aligned sequences', bp.alignedMolSeqs && bp.maxMolSeqLength > 0,
+            countNumber(bp.maxMolSeqLength) + ' columns');
+        carries('Domain architectures', bp.domainArchitectures,
+            bp.maxDomainArchitectureLength > 0
+                ? ('yes, up to ' + countNumber(bp.maxDomainArchitectureLength) + ' residues') : 'yes');
+        carries('Node events', bp.nodeEvents);
+        carries('Branch colours', bp.branchColors);
+        if (carried === 0) {
+            treePropRow(box, 'Annotations', 'none — names and topology only');
+        }
+
+        // --- time -----------------------------------------------------
+        if (time && (time.type || time.dated)) {
+            box = treePropSection(shell.body, 'Time');
+            treePropRow(box, 'Dates', time.type === 'geologic'
+                ? 'geologic ages' : (time.type === 'calendar' ? 'calendar years' : 'yes'));
+            if (time.type === 'geologic' && time.rootAge > 0) {
+                treePropRow(box, 'Oldest node', forester.roundNumber(time.rootAge, 4) + ' Ma');
+            }
+            if (time.type === 'calendar' && time.presentDate > 0) {
+                treePropRow(box, 'Most recent tip', forester.roundNumber(time.presentDate, 4));
+            }
+            treePropRow(box, 'Confidence intervals',
+                (time.hasInternalIntervals || time.hasExternalIntervals) ? 'yes' : null);
+        }
+
         shell.dialog.showModal();
     }
 

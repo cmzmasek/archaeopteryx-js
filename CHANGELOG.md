@@ -6,6 +6,29 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **Tree properties.** An **ⓘ** button in the control panel's header, and
+  ⌘I / Ctrl+I, open a read-only summary of the tree: what it says it is
+  (name, description, identifier, type, branch-length unit, rootedness, which
+  tree of the file), and what it carries (tips and internal nodes, branches
+  with a length and their mean, support values, taxonomies, sequences and
+  their alignment width, domain architectures, node events, branch colours,
+  dates). Nothing else in the viewer answered "what is actually in this file".
+  The desktop's View › Tree Properties, minus the editable half.
+  Recomputed on every open rather than cached, so it follows a re-root, a tree
+  switch or entering a subtree — 7 ms on the 13,246-tip demo.
+
+### Fixed
+
+- **Dialogs no longer put their text straight on top of the tree.** They take
+  the same frosted-glass blur the node menu and the search suggestions have
+  always had; the panel background is deliberately translucent, and without
+  the blur a dialog over an alignment or a heat map was dense text on a
+  rainbow. Affects About, Keyboard shortcuts, node data and the rest.
+
 ## 3.13.0 — 2026-09-23
 
 A file is a promise between two programs. Most of this release is the desktop

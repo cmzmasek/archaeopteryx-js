@@ -2845,6 +2845,7 @@ runTest("panelDensity config key    : ", testPanelDensityConfig);
 runTest("audit: proto-named values  : ", testAuditPrototypeValueNames);
 runTest("a download carries support: ", testDownloadsCarrySupportByDefault);
 runTest("zero is a value, not absent: ", testZeroIsAValueNotAbsence);
+runTest("alignedMolSeqs needs a length: ", testAlignedFlagIsNeverReadAlone);
 runTest("versions agree           : ", testVersionsAgree);
 
 if (_testFailures > 0) {
@@ -3524,6 +3525,57 @@ function testZeroIsAValueNotAbsence() {
     var nh = forester.toNewHampshire(phy, 9, true, true);
     if (nh !== '((a:0,b:0.2)x:0[0],c:0.3);') {
         console.log('    a zero branch length or support was lost on the way out: ' + nh);
+        return false;
+    }
+    return true;
+}
+
+
+// `alignedMolSeqs` starts TRUE and is only ever set false, so it does not mean
+// "this tree has an alignment" -- it means "no UNALIGNED sequence was seen",
+// and a tree carrying no sequences at all reports true. Read alone it told the
+// flu and ammonite demos they had an alignment, in the very dialog built to
+// report what a tree carries.
+//
+// Every reader must pair it with maxMolSeqLength, which is 0 when there are no
+// sequences. This is a naming trap rather than a logic error, so the guard is a
+// source read: the flag's name will keep inviting the same mistake.
+function testAlignedFlagIsNeverReadAlone() {
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var lines = src.split('\n');
+    var bad = [];
+    for (var i = 0; i < lines.length; ++i) {
+        if (lines[i].indexOf('alignedMolSeqs') < 0) {
+            continue;
+        }
+        if (lines[i].trim().indexOf('//') === 0) {
+            continue;   // a comment naming the flag is not a read of it
+        }
+        // The pairing must be part of the same CONDITION. It may wrap onto the
+        // next line, but only when that line continues the condition with &&
+        // or || -- a maxMolSeqLength sitting on the following line as a VALUE
+        // argument is not a guard, and an earlier version of this test counted
+        // it as one, so removing the real guard walked straight past it.
+        var cond = lines[i];
+        var next = (lines[i + 1] || '').trim();
+        if (next.indexOf('&&') === 0 || next.indexOf('||') === 0) {
+            cond += ' ' + next;
+        }
+        if (cond.indexOf('maxMolSeqLength') < 0) {
+            bad.push((i + 1) + ': ' + lines[i].trim());
+        }
+    }
+    if (bad.length > 0) {
+        console.log('    alignedMolSeqs read without a length beside it, so a tree with NO\n'
+            + '    sequences would be reported as having an alignment:\n      ' + bad.join('\n      '));
+        return false;
+    }
+    // ... and the scan has to have found something, or it proves nothing
+    var reads = lines.filter(function (l) {
+        return l.indexOf('alignedMolSeqs') > -1 && l.trim().indexOf('//') !== 0;
+    }).length;
+    if (reads < 3) {
+        console.log('    only found ' + reads + ' reads -- the scan is broken, not the code');
         return false;
     }
     return true;

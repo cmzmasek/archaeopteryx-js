@@ -1059,7 +1059,18 @@ never at all on a tall screen. Growing the window back leaves the folds where
 they are: what is open is your choice, and only running out of room overrules
 it. Anything that puts something into a folded section opens it, so jumping to
 the search box (⌘F / Ctrl+F) or a tool reporting its result as search hits
-unfolds Search. A host with little room to give can
+unfolds Search. The **ⓘ** button in the panel header (or ⌘I / Ctrl+I) opens **Tree
+properties**: what the tree says it is — name, description, identifier, type,
+branch-length unit, rootedness, and which tree of the file it is when the file
+held several — and what it actually contains: tips and internal nodes, how
+many branches carry a length and their mean, whether it has support values,
+taxonomies, sequences, an alignment, domain architectures, node events or
+branch colours, and whether it is dated. It describes what is on screen, so
+inside a subtree it describes the subtree and says so, and it is recomputed
+each time it opens rather than cached (the whole of it costs 7 ms on the
+13,246-tip demo). It is read-only.
+
+A host with little room to give can
 also start the whole panel tighter and narrower with
 [`panelDensity: 'compact'`](#configuration), or collapsed to its header bar
 with `collapseControlPanel`.
