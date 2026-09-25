@@ -3814,6 +3814,53 @@
     };
 
 
+    // The nodes of `list` in PREORDER -- root first, then each subtree -- which
+    // is the claim order the crowded-data rule needs and is NOT the order the
+    // layout hands out. d3's descendants() is BREADTH-first (r,a,b,a1,a2,b1),
+    // and the viewer reverses it for drawing, which puts the root LAST. Taking
+    // that order for preorder inverts the whole rule: the leaf-most mark wins
+    // and the one nearer the root is dropped, which is the opposite of what
+    // the desktop does. Measured, after a review caught it: "descendants()
+    // r,a,b,a1,a2,b1" and "reversed b1,a2,a1,b,a,r".
+    //
+    // Derived from the node objects rather than from any layout, so it cannot
+    // drift with one: the root is the member whose parent is not itself in the
+    // list, and children are visited in their own order. A node whose parent
+    // is absent (a subtree view) roots its own walk, and anything unreachable
+    // is appended so no mark is silently skipped.
+    forester.preorderOf = function (list) {
+        let present = new Set(list);
+        let out = [];
+        let seen = new Set();
+        function walk(n) {
+            if (seen.has(n)) {
+                return;
+            }
+            seen.add(n);
+            out.push(n);
+            let kids = n.children;
+            if (kids) {
+                for (let i = 0; i < kids.length; ++i) {
+                    if (present.has(kids[i])) {
+                        walk(kids[i]);
+                    }
+                }
+            }
+        }
+        for (let i = 0; i < list.length; ++i) {
+            let n = list[i];
+            if (!n.parent || !present.has(n.parent)) {
+                walk(n);
+            }
+        }
+        for (let i = 0; i < list.length; ++i) {
+            if (!seen.has(list[i])) {
+                out.push(list[i]);   // a cycle or a detached node: never dropped
+            }
+        }
+        return out;
+    };
+
     // The occupancy map behind "auto-hide crowded branch data": a mark is
     // drawn only when its box overlaps nothing already granted in the same
     // pass. Ported from the desktop's LabelOccupancy (0.11.161) as a JOINT

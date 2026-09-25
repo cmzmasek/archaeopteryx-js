@@ -41,8 +41,13 @@ consumers only see a change when a version is cut.
   of 262 on `Adenoviridae`, 13 of 119 on `bcl2` — our auto-hide decimated tip
   labels and had never touched branch data. After: **zero overlapping marks on
   all three.**
-- `forester.labelOccupancy(cell)`: the map behind it, where the suite can
-  reach the parts that must match the desktop.
+  Rectangular layout only for now: the circular and unrooted views place
+  their marks by angle, and rectangular boxes would drop the wrong ones.
+- `forester.labelOccupancy(cell)` and `forester.preorderOf(nodes)`: the map and
+  the claim order, where the suite can reach the parts that must match the
+  desktop. The order is not the one the layout hands out — d3's
+  `descendants()` is breadth-first and the viewer reverses it — and taking it
+  for preorder inverts the whole tie-break.
 
 ## 3.14.0 — 2026-09-23
 

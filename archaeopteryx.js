@@ -2339,12 +2339,23 @@ function (root, d3, forester, phyloXml) {
 
     let _legendMeasureCtx = null;
 
-    function legendTextWidth(text, font) {
+    // One lazily made canvas for every text measurement: the legend's widths,
+    // the branch-data line metrics and the sequence logo's glyph boxes each
+    // used to make their own.
+    function measureCtx() {
         if (!_legendMeasureCtx) {
             _legendMeasureCtx = document.createElement('canvas').getContext('2d');
         }
-        _legendMeasureCtx.font = font;
-        return _legendMeasureCtx.measureText(text).width;
+        return _legendMeasureCtx;
+    }
+
+    function legendTextWidth(text, font) {
+        let ctx = measureCtx();
+        if (!ctx) {
+            return 0;
+        }
+        ctx.font = font;
+        return ctx.measureText(text).width;
     }
 
     // The card's row order and cap, the desktop's way: rank by count first
@@ -3894,15 +3905,19 @@ function (root, d3, forester, phyloXml) {
         if (_branchFontCache && _branchFontCache.px === fontPx) {
             return _branchFontCache;
         }
-        if (!_legendMeasureCtx) {
-            _legendMeasureCtx = document.createElement('canvas').getContext('2d');
-        }
-        _legendMeasureCtx.font = fontPx + 'px ' + FONT_DEFAULTS;
-        let m = _legendMeasureCtx.measureText('0');
+        let ctx = measureCtx();
+        ctx.font = fontPx + 'px ' + FONT_DEFAULTS;
+        let m = ctx.measureText('0');
         let ascent = m.fontBoundingBoxAscent;
         let descent = m.fontBoundingBoxDescent;
+        // Both, separately: a canvas that reports an ascent and no descent
+        // would give height = ascent + undefined = NaN, every box would be
+        // refused a claim as zero-sized, and the feature would turn itself off
+        // with no error and a green suite.
         if (!(ascent > 0)) {
             ascent = fontPx;
+        }
+        if (!(descent >= 0)) {
             descent = fontPx * (2 / 9);
         }
         _branchFontCache = {px: fontPx, ascent: ascent, descent: descent,
@@ -3911,9 +3926,6 @@ function (root, d3, forester, phyloXml) {
     }
 
     function branchMarkBox(d, kind, text, fontPx) {
-        if (!d.parent) {
-            return null;   // the root's branch has no span to write on
-        }
         let w = legendTextWidth(text, fontPx + 'px ' + FONT_DEFAULTS);
         let fm = branchFontMetrics(fontPx);
         let h = fm.height;
@@ -3931,10 +3943,15 @@ function (root, d3, forester, phyloXml) {
         // below it. Getting the anchor wrong is not a rounding error -- a
         // middle-anchored box modelled as left-anchored is half its own width
         // out, which let 44% of the granted numbers still overlap.
+        // The ROOT's numbers are drawn too, at x=0 in its own group, and they
+        // used to claim nothing -- so the first child's number, landing in
+        // almost the same place, was granted and painted over them. The one
+        // place the pass could not keep its promise.
+        let span = d.parent ? (d.parent.y - d.y) : 0;
         let baseline = (kind === 'bl') ? (d.x - (0.25 * fontPx)) : (d.x + fontPx);
         let x = (kind === 'bl')
-            ? (d.y + (d.parent.y - d.y + 1))                    // start-anchored
-            : (d.y + (0.5 * (d.parent.y - d.y)) - (w / 2));     // middle-anchored
+            ? (d.y + span + 1)                        // start-anchored
+            : (d.y + (0.5 * span) - (w / 2));         // middle-anchored
         return [x, baseline - fm.ascent, w, h];
     }
 
@@ -3959,25 +3976,49 @@ function (root, d3, forester, phyloXml) {
             d._confText = wantConf ? asText(makeConfidenceValuesLabel(d)) : '';
             d._eventText = wantEvent ? asText(makeBranchEventsLabel(d)) : '';
             d._suppDot = wantDot && showSupportDot(d);
+        }
+        // Before `drawn` is built, not after: a refused mark used to leave a
+        // childless <g class="node"> behind, and those are transformed on
+        // every animation frame. On the big tree that was ~18,000 empty groups
+        // per redraw, defeating the very thing the `drawn` filter is for.
+        hideCrowdedBranchData(nodes);
+        for (let i = 0, len = nodes.length; i !== len; ++i) {
+            let d = nodes[i];
             if (d._extLabelText !== '' || d._blText !== '' || d._confText !== ''
                 || d._eventText !== '' || d._suppDot || isCollapsed(d)) {
                 drawn.push(d);
             }
         }
-        hideCrowdedBranchData(nodes);
         return drawn;
     }
 
-    // The occupancy pass, over the nodes in the order d3 hands them, which is
-    // PREORDER -- so the mark nearer the root claims its space first and keeps
-    // it. Runs before anything is drawn, so the decision does not depend on
-    // the order the DOM happens to be updated in.
+    // The occupancy pass, in PREORDER -- so the mark nearer the root claims
+    // its space first and keeps it. NOT the order the layout hands out: d3's
+    // descendants() is breadth-first and the viewer reverses it for drawing,
+    // which puts the root LAST and inverts the entire tie-break. That shipped,
+    // and a review caught it; forester.preorderOf derives the right order from
+    // the nodes themselves.
     //
-    // Rides the existing Auto-hide Labels toggle, as on the desktop: switch it
-    // off and everything is drawn. The claims still run either way, so the two
-    // programs agree about what WOULD have been hidden.
+    // Runs before anything is drawn, so the decision cannot depend on the
+    // order the DOM happens to be updated in.
+    //
+    // Rides the existing Auto-hide Labels toggle: switch it off and everything
+    // is drawn. Not attempted in the UNROOTED view, where update() already
+    // turns label auto-hiding off ("no even row spacing to decimate against")
+    // and where a node's drawn position is d.ux/d.uy, which bear no relation
+    // to the d.x/d.y these boxes are built from.
     function hideCrowdedBranchData(nodes) {
-        if (!_state.dynahide) {
+        // Rectangular only, for now. The boxes below are built from d.x/d.y,
+        // which are the cluster's coordinates: in the CIRCULAR view a mark is
+        // drawn at the polar point of those, where equal cluster spacing means
+        // shrinking arc length near the centre, and in the UNROOTED view at
+        // d.ux/d.uy, which bear no relation to them at all. Hiding marks by
+        // boxes in the wrong space is worse than not hiding: it drops marks
+        // that do not overlap and keeps ones that do. update() already turns
+        // label auto-hiding off in unrooted for its own reasons. A KNOWN
+        // DIVERGENCE -- the desktop hides in every layout -- and the desktop
+        // session has been told.
+        if (!_state.dynahide || radialDisplay()) {
             return;
         }
         let fontPx = _state.branchDataFontSize;
@@ -3990,8 +4031,9 @@ function (root, d3, forester, phyloXml) {
         let cell = Math.max(fontPx, dotCell);
         let numbers = forester.labelOccupancy(cell);
         let symbols = forester.labelOccupancy(cell);
-        for (let i = 0, len = nodes.length; i !== len; ++i) {
-            let d = nodes[i];
+        let ordered = forester.preorderOf(nodes);
+        for (let i = 0, len = ordered.length; i !== len; ++i) {
+            let d = ordered[i];
             // Branch length first, then confidence: they sit on opposite sides
             // of the branch, so they rarely contend, but the order decides
             // which survives when they do.
@@ -4007,11 +4049,22 @@ function (root, d3, forester, phyloXml) {
                     d._confText = '';
                 }
             }
+            // Branch EVENTS are branch-anchored too, half a branch from the
+            // branch length and on the same side of it, so they can land on
+            // the same pixels. Left out of the map, they neither refused a
+            // number nor were refused by one, and the pass reported "no
+            // overlapping marks" while the user could see two.
+            if (d._eventText !== '') {
+                let b = branchMarkBox(d, 'conf', d._eventText, fontPx);
+                if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
+                    d._eventText = '';
+                }
+            }
             if (d._suppDot) {
                 // never shrunk to fit: in a size-scaled mode the diameter IS
                 // the support value, and a smaller dot reports weaker support
                 let r = supportDotRadius(d);
-                let cx = d.parent ? (d.y + (0.5 * (d.parent.y - d.y))) : d.y;
+                let cx = d.y + (0.5 * (d.parent.y - d.y));   // showSupportDot already required a parent
                 if (!symbols.claim(cx - r, d.x - r, 2 * r, 2 * r)) {
                     d._suppDot = false;
                 }
@@ -7049,11 +7102,9 @@ function (root, d3, forester, phyloXml) {
         if (_logoGlyphs[ch]) {
             return _logoGlyphs[ch];
         }
-        if (!_legendMeasureCtx) {
-            _legendMeasureCtx = document.createElement('canvas').getContext('2d');
-        }
-        _legendMeasureCtx.font = MSA_LOGO_FONT_PX + 'px monospace';
-        let m = _legendMeasureCtx.measureText(ch);
+        let ctx = measureCtx();
+        ctx.font = MSA_LOGO_FONT_PX + 'px monospace';
+        let m = ctx.measureText(ch);
         let ascent = m.actualBoundingBoxAscent;
         let descent = m.actualBoundingBoxDescent;
         if (!(ascent > 0)) {
@@ -12479,7 +12530,8 @@ function (root, d3, forester, phyloXml) {
         }
         item.classList.toggle('aptx-check-active', !!active);
         item.title = active
-            ? item.dataset.baseTitle + ', hiding now: 1 in ' + _dynahide_factor + ' labels shown'
+            ? item.dataset.baseTitle + ', hiding now: 1 in ' + _dynahide_factor
+                + ' labels shown, and branch data that would overlap'
             : item.dataset.baseTitle;
     }
 

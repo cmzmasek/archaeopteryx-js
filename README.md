@@ -1111,9 +1111,12 @@ branch and the numbers just above and below it. Symbols are never shrunk to
 fit: where a symbol's size means something, a smaller one would report
 something else. Switch the toggle off and everything is drawn. Zero needs no
 special case — a lone zero-length branch overlaps nothing, so its number
-stays. This is the desktop Archaeopteryx's rule, adopted so the two programs
-thin the same tree the same way; the marks they drop are close but not
-identical, because the boxes come from each program's own font metrics.
+stays. Branch events take part too. This is the desktop Archaeopteryx's rule,
+adopted so the two programs thin the same tree the same way; the marks they
+drop are close but not identical, because the boxes come from each program's
+own font metrics. It applies in the **rectangular** layout — the circular and
+unrooted views place their marks by angle rather than by row, and hiding them
+by rectangular boxes would drop the wrong ones.
 
 A host with little room to give can
 also start the whole panel tighter and narrower with

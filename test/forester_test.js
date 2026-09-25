@@ -82,6 +82,7 @@ runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
 runTest("describeValues              : ", testDescribeValues);
 runTest("tree statistics             : ", testTreeStatistics);
 runTest("label occupancy             : ", testLabelOccupancy);
+runTest("preorder claim order        : ", testPreorderOf);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
 runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
@@ -5975,6 +5976,74 @@ function testLabelOccupancy() {
     }
     if (neg.claim(-45, -45, 10, 10)) {
         return fail('overlap must be detected at negative coordinates too');
+    }
+    return true;
+}
+
+
+// The claim ORDER for crowded branch data. This is the half of the joint rule
+// that broke: the code took the layout's node list for preorder, but d3's
+// descendants() is BREADTH-first and the viewer reverses it for drawing, so
+// the root came LAST and the tie-break ran backwards -- the leaf-most mark
+// winning where the desktop keeps the one nearer the root.
+//
+// It shipped and a review caught it, because the acceptance measurement
+// ("zero overlapping marks") is order-INSENSITIVE by construction: whichever
+// mark of a colliding pair you keep, the survivors still do not overlap. Only
+// asking WHICH one survived can see it.
+function testPreorderOf() {
+    function fail(msg, got) {
+        console.log('    ' + msg + (got === undefined ? '' : ': ' + got));
+        return false;
+    }
+    function node(name, kids) {
+        var n = {name: name, children: kids};
+        (kids || []).forEach(function (k) { k.parent = n; });
+        return n;
+    }
+    var a1 = node('a1'), a2 = node('a2'), b1 = node('b1');
+    var a = node('a', [a1, a2]), b = node('b', [b1]);
+    var r = node('r', [a, b]);
+    var name = function (l) { return l.map(function (n) { return n.name; }).join(','); };
+
+    // the order the viewer actually had: d3 descendants() reversed
+    var asGiven = [b1, a2, a1, b, a, r];
+    if (name(forester.preorderOf(asGiven)) !== 'r,a,a1,a2,b,b1') {
+        return fail('preorder from the reversed breadth-first list',
+            name(forester.preorderOf(asGiven)));
+    }
+    // and from any other order, including preorder itself
+    if (name(forester.preorderOf([r, a, b, a1, a2, b1])) !== 'r,a,a1,a2,b,b1') {
+        return fail('preorder from the breadth-first list',
+            name(forester.preorderOf([r, a, b, a1, a2, b1])));
+    }
+    if (name(forester.preorderOf([r, a, a1, a2, b, b1])) !== 'r,a,a1,a2,b,b1') {
+        return fail('preorder is stable when already in preorder');
+    }
+    // THE PROPERTY THAT MATTERS: a parent is always claimed before its child,
+    // whatever order it arrives in. This is what makes the mark nearer the
+    // root keep its place.
+    var out = forester.preorderOf(asGiven);
+    for (var i = 0; i < out.length; ++i) {
+        var n = out[i];
+        if (n.parent && out.indexOf(n.parent) > i) {
+            return fail('a child was claimed before its parent', n.name);
+        }
+    }
+    // a SUBTREE view: the nodes handed over do not include their parent, and
+    // the walk has to root itself rather than drop them
+    var sub = forester.preorderOf([a2, a1, a]);
+    if (name(sub) !== 'a,a1,a2') {
+        return fail('a subtree should root its own walk', name(sub));
+    }
+    // nothing is ever dropped, whatever the shape
+    if (forester.preorderOf([b1, a1]).length !== 2 || forester.preorderOf([]).length !== 0) {
+        return fail('detached nodes must still come out');
+    }
+    // a node listed twice comes out once
+    if (forester.preorderOf([r, a, a, b, a1, a2, b1]).length !== 6) {
+        return fail('a repeated node should appear once',
+            forester.preorderOf([r, a, a, b, a1, a2, b1]).length);
     }
     return true;
 }
