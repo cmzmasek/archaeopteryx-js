@@ -26,6 +26,24 @@ consumers only see a change when a version is cut.
   reach. A wrong URL fails silently in someone else's browser, which is the
   worst place to find out.
 
+### Changed
+
+- **Auto-hide Labels now thins crowded branch data too.** Support values,
+  branch-length values and support symbols claim the box they are about to
+  occupy, and a mark overlapping one already claimed in that pass is left out
+  — root first, so the mark nearer the root keeps its place, and the same tree
+  drops the same marks every time. Numbers and symbols use separate maps;
+  symbols are never shrunk. The toggle still turns it all off.
+
+  Adopted from the desktop Archaeopteryx (`LabelOccupancy`, 0.11.161) as a
+  joint rule. Measured here before taking it: with auto-hide already on, **240
+  of 267 drawn support numbers overlapped another on `flu_h5.xml` (90%)**, 149
+  of 262 on `Adenoviridae`, 13 of 119 on `bcl2` — our auto-hide decimated tip
+  labels and had never touched branch data. After: **zero overlapping marks on
+  all three.**
+- `forester.labelOccupancy(cell)`: the map behind it, where the suite can
+  reach the parts that must match the desktop.
+
 ## 3.14.0 — 2026-09-23
 
 What is actually in this file? Nothing in the viewer answered that. Now the

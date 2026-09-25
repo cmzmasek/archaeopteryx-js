@@ -1100,6 +1100,21 @@ It describes what is on screen, so inside a subtree it describes the subtree
 and says so, and it is recomputed each time it opens rather than cached (24 ms
 on the 13,246-tip demo). There is no histogram.
 
+**Auto-hide Labels** also thins out **crowded branch data**. Support values,
+branch-length values and support symbols are drawn only where they fit: each
+mark claims the box it is about to occupy, and one that would overlap a box
+already claimed in that pass is left out. The claim order is the tree's own,
+root first, so the mark nearer the root keeps its place and the same tree at
+the same size always drops the same marks — on screen and in every export.
+Numbers and symbols are kept in separate maps, since the symbol sits on the
+branch and the numbers just above and below it. Symbols are never shrunk to
+fit: where a symbol's size means something, a smaller one would report
+something else. Switch the toggle off and everything is drawn. Zero needs no
+special case — a lone zero-length branch overlaps nothing, so its number
+stays. This is the desktop Archaeopteryx's rule, adopted so the two programs
+thin the same tree the same way; the marks they drop are close but not
+identical, because the boxes come from each program's own font metrics.
+
 A host with little room to give can
 also start the whole panel tighter and narrower with
 [`panelDensity: 'compact'`](#configuration), or collapsed to its header bar

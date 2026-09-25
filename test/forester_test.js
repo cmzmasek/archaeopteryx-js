@@ -81,6 +81,7 @@ runTest("Nexus label collisions      : ", testNexusLabelCollisions);
 runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
 runTest("describeValues              : ", testDescribeValues);
 runTest("tree statistics             : ", testTreeStatistics);
+runTest("label occupancy             : ", testLabelOccupancy);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
 runTest("vendored phyloxml copies  : ", testVendoredPhyloXmlCopiesAgree);
@@ -5893,3 +5894,87 @@ function testTreeStatistics() {
     return true;
 }
 
+
+// The occupancy map behind "auto-hide crowded branch data", adopted from the
+// desktop (LabelOccupancy, 0.11.161) as a JOINT rule on 2026-09-25. Every
+// property below is one the two programs must share, or the same tree drops
+// different marks in the two viewers. The COUNTS are not shared and cannot be
+// -- the boxes come from each program's own font metrics.
+function testLabelOccupancy() {
+    function fail(msg, got) {
+        console.log('    ' + msg + (got === undefined ? '' : ': ' + JSON.stringify(got)));
+        return false;
+    }
+    var o = forester.labelOccupancy(16);
+    // first claim wins
+    if (!o.claim(0, 0, 10, 10)) {
+        return fail('the first claim into an empty map must be granted');
+    }
+    if (o.claim(5, 5, 10, 10)) {
+        return fail('an overlapping claim must be refused');
+    }
+    // a REFUSED claim records nothing, so it cannot block a later one. The
+    // refused box above covered 5..15; if it had been recorded, this would be
+    // refused too.
+    if (!o.claim(11, 11, 4, 4)) {
+        return fail('a refused claim must not have been recorded');
+    }
+    // boxes that merely TOUCH do not overlap: strict comparisons on all four
+    // edges. 10..20 begins exactly where 0..10 ends.
+    var t = forester.labelOccupancy(16);
+    if (!t.claim(0, 0, 10, 10) || !t.claim(10, 0, 10, 10) || !t.claim(0, 10, 10, 10)) {
+        return fail('touching edges must not count as overlapping');
+    }
+    // A zero-size box is granted and reserves nothing. NOTE for a sabotage
+    // pass: removing that guard is an EQUIVALENT MUTANT and will survive.
+    // Under the strict comparisons a zero-size box can never overlap anything,
+    // so it would be granted either way; the guard only keeps entries out of
+    // the map that could cost comparisons and never change a verdict. The
+    // desktop's own comment says the same of theirs. The assertions below pin
+    // the BEHAVIOUR, which is all either program promises.
+    var z = forester.labelOccupancy(16);
+    if (!z.claim(50, 50, 0, 5) || !z.claim(50, 50, 5, 0)) {
+        return fail('a zero-size box must be granted');
+    }
+    if (!z.claim(50, 50, 5, 5)) {
+        return fail('a zero-size box must not reserve space');
+    }
+    // overlap is tested on BOTH axes: same x, far apart in y, is free
+    var ax = forester.labelOccupancy(16);
+    if (!ax.claim(0, 0, 10, 10) || !ax.claim(0, 100, 10, 10)) {
+        return fail('boxes far apart in y must not collide');
+    }
+    if (!ax.claim(100, 0, 10, 10)) {
+        return fail('boxes far apart in x must not collide');
+    }
+    // a box WIDER THAN A CELL still blocks: this is the case a per-box linked
+    // list gets wrong, and the desktop measured it as 12000 placed against
+    // 12070 before they fixed it. Cell 4, box 100 wide, then a claim at the
+    // far end of it.
+    var wide = forester.labelOccupancy(4);
+    if (!wide.claim(0, 0, 100, 4)) {
+        return fail('the wide box should be granted');
+    }
+    if (wide.claim(96, 0, 4, 4)) {
+        return fail('a box wider than one cell must block every cell it covers');
+    }
+    // the cell size is a performance knob, never a behavioural one: the same
+    // claims must come out the same way whatever it is
+    [1, 4, 16, 512].forEach(function (cell) {
+        var m = forester.labelOccupancy(cell);
+        m.claim(0, 0, 10, 10);
+        if (m.claim(5, 5, 10, 10) || !m.claim(40, 40, 10, 10)) {
+            throw new Error('cell size ' + cell + ' changed the verdict');
+        }
+    });
+    // negative coordinates are ordinary: a tree group's origin is not its
+    // top-left corner, and marks above or left of it are common
+    var neg = forester.labelOccupancy(16);
+    if (!neg.claim(-50, -50, 10, 10)) {
+        return fail('a box at negative coordinates must be granted');
+    }
+    if (neg.claim(-45, -45, 10, 10)) {
+        return fail('overlap must be detected at negative coordinates too');
+    }
+    return true;
+}

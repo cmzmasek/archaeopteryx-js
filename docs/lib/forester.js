@@ -3814,6 +3814,63 @@
     };
 
 
+    // The occupancy map behind "auto-hide crowded branch data": a mark is
+    // drawn only when its box overlaps nothing already granted in the same
+    // pass. Ported from the desktop's LabelOccupancy (0.11.161) as a JOINT
+    // rule on Christian's word, 2026-09-25, so neither side retunes it alone.
+    //
+    // Here rather than in the viewer because it is a pure algorithm and the
+    // suite can reach it: the parts that MUST match the desktop -- first claim
+    // wins, a refused claim records nothing, a zero-size box is granted and
+    // not recorded, and boxes that merely touch do not overlap -- are exactly
+    // the parts no screenshot would show going wrong.
+    // A uniform grid rather than all-pairs: a 13,246-tip tree with branch
+    // lengths on offers 18,511 boxes, and 171 million comparisons per redraw
+    // is not a redraw.
+    forester.labelOccupancy = function (cell) {
+        let size = Math.max(4, cell);
+        let cells = new Map();
+        return {
+            // true when nothing already granted overlaps, and then recorded
+            claim: function (x, y, w, h) {
+                if (!(w > 0) || !(h > 0)) {
+                    return true;   // reserves no space; recording it would only cost comparisons
+                }
+                let c0 = Math.floor(x / size), c1 = Math.floor((x + w) / size);
+                let r0 = Math.floor(y / size), r1 = Math.floor((y + h) / size);
+                for (let c = c0; c <= c1; ++c) {
+                    for (let r = r0; r <= r1; ++r) {
+                        let bucket = cells.get(c + ':' + r);
+                        if (!bucket) {
+                            continue;
+                        }
+                        for (let i = 0; i < bucket.length; ++i) {
+                            let b = bucket[i];
+                            // strict: boxes that merely touch do not overlap
+                            if (x < (b[0] + b[2]) && (x + w) > b[0]
+                                && y < (b[1] + b[3]) && (y + h) > b[1]) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                let box = [x, y, w, h];
+                for (let c = c0; c <= c1; ++c) {
+                    for (let r = r0; r <= r1; ++r) {
+                        let key = c + ':' + r;
+                        let bucket = cells.get(key);
+                        if (!bucket) {
+                            bucket = [];
+                            cells.set(key, bucket);
+                        }
+                        bucket.push(box);
+                    }
+                }
+                return true;
+            }
+        };
+    };
+
     // Where a protein domain can be read about, as {url, exact} or null.
     //
     // An InterPro ENTRY is addressed by ACCESSION and by nothing else --

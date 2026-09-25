@@ -3840,6 +3840,104 @@ function (root, d3, forester, phyloXml) {
     // a support dot. Returns the nodes that need a <g> -- those with any of
     // them, and every collapsed clade (its wedge and label). The rest are
     // drawn entirely by drawTreeGeometry's batched paths.
+    // ===================== Crowded branch data =====================
+    // A branch-anchored mark is drawn only when its box does not overlap one
+    // already granted in the same pass. Ported from the desktop's
+    // LabelOccupancy (0.11.161) as a JOINT rule on Christian's word,
+    // 2026-09-25: "match the desktop's new auto-hide rule for crowded branch
+    // data". Neither side retunes it alone.
+    //
+    // It exists because the obvious rule does not work. The desktop built
+    // "hide when the branch is drawn shorter than the text" first and measured
+    // it: on an 825-tip tree a third-of-text threshold hid 285 numbers of
+    // which only 51 collided, and still left 22 pile-ups. A number is
+    // unreadable when it overlaps ANOTHER number, which depends on closeness
+    // in y as much as in x, and branch length only sees x. Measured here
+    // before adopting it: with Auto-hide Labels already ON, 240 of 267 drawn
+    // support numbers overlapped another on flu_h5.xml (90%), 149 of 262 on
+    // Adenoviridae, 13 of 119 on bcl2 -- our auto-hide decimates TIP labels
+    // and had never touched branch data.
+    //
+    // WHAT MUST MATCH, or the two viewers drop different marks:
+    //  - the tie-break: PREORDER, first claim wins, so the mark nearer the
+    //    root keeps its place. d3's descendants() is preorder already.
+    //  - TWO maps, numbers and symbols. The symbol sits ON the branch and the
+    //    numbers just above and below it, so one shared map would let a
+    //    branch's own symbol block its own numbers.
+    //  - a refused claim records NOTHING, so a rejected mark never blocks a
+    //    later one.
+    //  - a zero-size box is granted and not recorded.
+    //  - symbols are never shrunk to fit: in a size-scaled mode the diameter
+    //    IS the support, and a smaller dot would report weaker support.
+    //
+    // WHAT CANNOT MATCH, and is not meant to: the COUNTS. The boxes come from
+    // each program's own font metrics, so the same tree at the same size drops
+    // a similar but not identical set. The rule is the contract; the tally is
+    // not.
+    //
+    // Where a branch-anchored mark sits, in the tree group's coordinates.
+    // Mirrors the placement in syncOptionalNodeChildren exactly -- the branch
+    // length back toward the parent and above the branch, the confidence at
+    // the branch midpoint and below it -- because a box that is not where the
+    // text is would hide the wrong marks.
+    // The font's LINE box, which is what the marks are laid out with and what
+    // the desktop measures too (FontMetrics.getHeight()). Not the per-glyph
+    // ink box: two numbers collide when their lines overlap, and ink boxes
+    // would let "1" slide under "0.81".
+    //
+    // Measured from the font rather than assumed. The fallback is what this
+    // font actually reports at 9px -- ascent 9, descent 2, line 11 -- read off
+    // a rendered label's getBBox rather than guessed.
+    let _branchFontCache = null;
+
+    function branchFontMetrics(fontPx) {
+        if (_branchFontCache && _branchFontCache.px === fontPx) {
+            return _branchFontCache;
+        }
+        if (!_legendMeasureCtx) {
+            _legendMeasureCtx = document.createElement('canvas').getContext('2d');
+        }
+        _legendMeasureCtx.font = fontPx + 'px ' + FONT_DEFAULTS;
+        let m = _legendMeasureCtx.measureText('0');
+        let ascent = m.fontBoundingBoxAscent;
+        let descent = m.fontBoundingBoxDescent;
+        if (!(ascent > 0)) {
+            ascent = fontPx;
+            descent = fontPx * (2 / 9);
+        }
+        _branchFontCache = {px: fontPx, ascent: ascent, descent: descent,
+            height: ascent + descent};
+        return _branchFontCache;
+    }
+
+    function branchMarkBox(d, kind, text, fontPx) {
+        if (!d.parent) {
+            return null;   // the root's branch has no span to write on
+        }
+        let w = legendTextWidth(text, fontPx + 'px ' + FONT_DEFAULTS);
+        let fm = branchFontMetrics(fontPx);
+        let h = fm.height;
+        if (radialDisplay()) {
+            // The text is rotated with the spoke, so its axis-aligned bounds
+            // are the honest conservative answer: a rotated box can only be
+            // smaller than the square that contains it. Slightly stricter than
+            // the desktop here, which is a divergence in COUNT, not in rule.
+            let r = Math.max(w, h);
+            return [(d.y || 0) - r, (d.x || 0) - r, 2 * r, 2 * r];
+        }
+        // Read off the rendered elements rather than inferred: the branch
+        // length is anchored at START and sits a quarter-em above the branch;
+        // the confidence is anchored MIDDLE and its baseline is one font size
+        // below it. Getting the anchor wrong is not a rounding error -- a
+        // middle-anchored box modelled as left-anchored is half its own width
+        // out, which let 44% of the granted numbers still overlap.
+        let baseline = (kind === 'bl') ? (d.x - (0.25 * fontPx)) : (d.x + fontPx);
+        let x = (kind === 'bl')
+            ? (d.y + (d.parent.y - d.y + 1))                    // start-anchored
+            : (d.y + (0.5 * (d.parent.y - d.y)) - (w / 2));     // middle-anchored
+        return [x, baseline - fm.ascent, w, h];
+    }
+
     function prepareNodeDrawing(nodes) {
         let wantBl = _state.showBranchLengthValues === true;
         let wantConf = _state.showConfidenceValues === true || _state.showMadValues === true;
@@ -3866,7 +3964,59 @@ function (root, d3, forester, phyloXml) {
                 drawn.push(d);
             }
         }
+        hideCrowdedBranchData(nodes);
         return drawn;
+    }
+
+    // The occupancy pass, over the nodes in the order d3 hands them, which is
+    // PREORDER -- so the mark nearer the root claims its space first and keeps
+    // it. Runs before anything is drawn, so the decision does not depend on
+    // the order the DOM happens to be updated in.
+    //
+    // Rides the existing Auto-hide Labels toggle, as on the desktop: switch it
+    // off and everything is drawn. The claims still run either way, so the two
+    // programs agree about what WOULD have been hidden.
+    function hideCrowdedBranchData(nodes) {
+        if (!_state.dynahide) {
+            return;
+        }
+        let fontPx = _state.branchDataFontSize;
+        let dotCell = 0;
+        for (let i = 0; i < nodes.length; ++i) {
+            if (nodes[i]._suppDot) {
+                dotCell = Math.max(dotCell, 2 * supportDotRadius(nodes[i]));
+            }
+        }
+        let cell = Math.max(fontPx, dotCell);
+        let numbers = forester.labelOccupancy(cell);
+        let symbols = forester.labelOccupancy(cell);
+        for (let i = 0, len = nodes.length; i !== len; ++i) {
+            let d = nodes[i];
+            // Branch length first, then confidence: they sit on opposite sides
+            // of the branch, so they rarely contend, but the order decides
+            // which survives when they do.
+            if (d._blText !== '') {
+                let b = branchMarkBox(d, 'bl', d._blText, fontPx);
+                if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
+                    d._blText = '';
+                }
+            }
+            if (d._confText !== '') {
+                let b = branchMarkBox(d, 'conf', d._confText, fontPx);
+                if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
+                    d._confText = '';
+                }
+            }
+            if (d._suppDot) {
+                // never shrunk to fit: in a size-scaled mode the diameter IS
+                // the support value, and a smaller dot reports weaker support
+                let r = supportDotRadius(d);
+                let cx = d.parent ? (d.y + (0.5 * (d.parent.y - d.y))) : d.y;
+                if (!symbols.claim(cx - r, d.x - r, 2 * r, 2 * r)) {
+                    d._suppDot = false;
+                }
+            }
+        }
     }
 
     function syncOptionalNodeChildren(node) {
