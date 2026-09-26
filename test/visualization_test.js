@@ -1552,10 +1552,37 @@ function testMsaConservationIdentity() {
 
 function testMsaConservationInformation() {
     // a fully conserved, fully occupied nucleotide column carries maximum
-    // information (1.0); an even two-way split over 4 bases carries half
+    // information (1.0); an even split over ALL FOUR bases carries none
     var r = forester.msaConservation(['AA', 'AC', 'AG', 'AT'], 2, 'information', true);
     var eps = 1e-9;
-    return Math.abs(r.scores[0] - 1) < eps && Math.abs(r.scores[1] - 0) < eps;
+    // THE SCORE IS NORMALISED BY THE ALPHABET, and the intuition that fits
+    // nucleotides does not fit protein. An even TWO-way split leaves H = 1 bit,
+    // so the score is 1 - 1/log2(K): a half for 4 bases, but 0.768622 for 20
+    // amino acids, because one bit of uncertainty is a smaller share of a
+    // bigger alphabet. Hand-derived, not read back from our own formula -- an
+    // expectation computed the way the code computes it agrees by
+    // construction, and an alphabet-size error would survive it. (The desktop
+    // hit exactly this: a "half the band" check that was true only for
+    // nucleotides.)
+    // THE SAME COLUMN, SCORED BOTH WAYS. One fixture under two alphabets, so
+    // an error on the path they share -- a hard-wired K, a dropped
+    // normalisation -- collapses the two answers into one and is caught by the
+    // comparison alone, before any constant is consulted.
+    var same = ['A', 'A', 'C', 'C'];
+    var ntTwo = forester.msaConservation(same, 1, 'information', true);
+    var aaTwo = forester.msaConservation(same, 1, 'information', false);
+    var aaMax = forester.msaConservation(['W', 'W', 'W'], 1, 'information', false);
+    return Math.abs(r.scores[0] - 1) < eps && Math.abs(r.scores[1] - 0) < eps
+        && ntTwo.scores[0] < aaTwo.scores[0]
+        // and then the LITERALS, not only the formula: an expectation written
+        // as 1 - 1/log2(K) agrees with a wrong K by construction, because it
+        // is the code's own rule restated. Derived by running, checked against
+        // the desktop's independent implementation, which answers the same
+        // digits.
+        && Math.abs(ntTwo.scores[0] - 0.5) < eps
+        && Math.abs(aaTwo.scores[0] - 0.768621786840) < 1e-11
+        && Math.abs(aaTwo.scores[0] - (1 - (1 / (Math.log(20) / Math.LN2)))) < eps
+        && Math.abs(aaMax.scores[0] - 1) < eps;
 }
 
 function testMsaLogoStackHeights() {
@@ -1640,9 +1667,129 @@ function testMsaLogoSmallSampleIsNotCorrected() {
     // reader entered a clade to get.
     var prot = forester.msaLogo(['W', 'W', 'W'], 1, false);
     var eps = 1e-9;
-    return Math.abs(prot.maxBits - (Math.log(20) / Math.LN2)) < eps
+    // maxBits as a LITERAL as well as a formula. Comparing the column against
+    // maxBits and maxBits against log2(20) is two statements of the same rule:
+    // a wrong alphabet size satisfies both. 4.321928094887363 is what log2(20)
+    // is, independently of what this code thinks it is.
+    return Math.abs(prot.maxBits - 4.321928094887363) < 1e-14
+        && Math.abs(prot.maxBits - (Math.log(20) / Math.LN2)) < eps
         && Math.abs(prot.columns[0].bits - prot.maxBits) < eps
         && Math.abs(prot.columns[0].letters[0].h - prot.maxBits) < eps;
+}
+
+// THE STACK MUST SUM TO THE COLUMN. Every letter's height is that letter's
+// share of the column's height, so the parts add up to the whole -- and the
+// bar the same data draws in the same band is that same height. This holds by
+// construction here, which is exactly what it did on the desktop until a
+// counting bug broke it: they counted every OCCURRENCE of a non-ASCII residue
+// as its own symbol, so a column reporting 2.736966 bits drew a stack summing
+// to 0.912322, a third of the bar beside it. An internal contradiction, not a
+// divergence, and no per-column expected value would have caught it -- only
+// the relation between the two numbers.
+//
+// A SYMBOL IS A CHARACTER, case folded. Two identical residues are one symbol
+// however they are written; counting them apart inflates the entropy and
+// deflates the stack in one move.
+function testMsaLogoStackSumsToTheColumn() {
+    var eps = 1e-9;
+    var cases = [
+        forester.msaLogo(['TTGCA', 'TTGCA', 'TAGCA', 'TACCA'], 5, true),
+        forester.msaLogo(['A', '-', '-'], 1, true),
+        forester.msaLogo(['-', '-'], 1, true),
+        forester.msaLogo(['MKTW', 'MRTW', 'MKSW', 'MKT-'], 4, false),
+        // a corrupt alignment: the residue outside ASCII is still one symbol
+        forester.msaLogo(['AA\u03a9', 'AA\u03a9', 'AAA'], 3, false),
+        // and case is not a symbol
+        forester.msaLogo(['acgt', 'ACGT', 'AcGt'], 4, true)
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var cols = cases[i].columns;
+        for (var c = 0; c < cols.length; ++c) {
+            var sum = cols[c].letters.reduce(function (t, l) { return t + l.h; }, 0);
+            if (Math.abs(sum - cols[c].height) > eps) {
+                console.log('    case ' + i + ' column ' + c + ': stack sums to ' + sum
+                    + ', column height ' + cols[c].height);
+                return false;
+            }
+            var ps = cols[c].letters.reduce(function (t, l) { return t + l.p; }, 0);
+            if (cols[c].letters.length > 0 && Math.abs(ps - 1) > eps) {
+                console.log('    case ' + i + ' column ' + c + ': frequencies sum to ' + ps);
+                return false;
+            }
+            // NO RESIDUE TWICE. The half a sum cannot see: a symbol counted
+            // under two identities inflates the letters while the heights
+            // still add to the whole, so the stack stays self-consistent and
+            // draws one residue as two. (Sums and identity each catch what the
+            // other misses; the desktop's copy of this bug broke the sum, ours
+            // would not have.)
+            var seen = {};
+            for (var li = 0; li < cols[c].letters.length; ++li) {
+                var ch = cols[c].letters[li].ch;
+                if (seen[ch]) {
+                    console.log('    case ' + i + ' column ' + c + ': "' + ch
+                        + '" appears twice in one stack: '
+                        + cols[c].letters.map(function (l) { return l.ch; }).join(','));
+                    return false;
+                }
+                seen[ch] = true;
+            }
+        }
+    }
+    // The case that broke on the desktop, spelled out: two identical non-ASCII
+    // residues are ONE symbol at p = 2/3, not two at p = 1/3 each.
+    var odd = cases[4].columns[2];
+    if (odd.letters.length !== 2 || odd.letters[0].ch !== '\u03a9'
+            || Math.abs(odd.letters[0].p - (2 / 3)) > eps) {
+        console.log('    a repeated non-ASCII residue was not one symbol: '
+            + JSON.stringify(odd.letters));
+        return false;
+    }
+    // Case folding, likewise: four columns each unanimous, so each is full height.
+    var folded = cases[5].columns;
+    for (var f = 0; f < folded.length; ++f) {
+        if (folded[f].letters.length !== 1 || Math.abs(folded[f].bits - 2) > eps) {
+            console.log('    case folding failed at column ' + f + ': '
+                + JSON.stringify(folded[f]));
+            return false;
+        }
+    }
+    return true;
+}
+
+// THE BAR AND THE LOGO ARE THE SAME NUMBER. The conservation track's
+// information score and the logo's stack height are one quantity in two units:
+// the score is normalised to [0, 1], the height is in bits, and
+// score * maxBits === height, column for column, occupancy included.
+//
+// Pinned because we compute them in two SEPARATE copies of the same counting
+// loop (forester.msaConservation and forester.msaLogo), so nothing but this
+// test stops them drifting. The desktop has one entropy feeding both and still
+// managed to draw a stack a third of the height of the bar beside it, from a
+// counting bug that moved only one of them -- which is the failure this
+// catches, one level up from where it happens.
+function testMsaBarAndLogoAgree() {
+    var eps = 1e-9;
+    var cases = [
+        {rows: ['TTGCA-', 'TTGCA-', 'TAGCAW', 'TACCA-'], len: 6, nt: true},
+        {rows: ['A', '-', '-'], len: 1, nt: true},
+        // protein, a ragged row, and a residue outside ASCII
+        {rows: ['MKTW', 'MRTW', 'MKSW', 'MKT-', 'AA\u03a9-'], len: 4, nt: false},
+        {rows: ['-', '-'], len: 1, nt: true}
+    ];
+    for (var i = 0; i < cases.length; ++i) {
+        var k = cases[i];
+        var bar = forester.msaConservation(k.rows, k.len, 'information', k.nt);
+        var logo = forester.msaLogo(k.rows, k.len, k.nt);
+        for (var c = 0; c < k.len; ++c) {
+            var fromBar = bar.scores[c] * logo.maxBits;
+            if (Math.abs(fromBar - logo.columns[c].height) > eps) {
+                console.log('    case ' + i + ' column ' + c + ': the bar says '
+                    + fromBar + ' bits, the logo draws ' + logo.columns[c].height);
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 function testMsaUngappedPosition() {
@@ -1670,6 +1817,8 @@ runTest("msa: logo half and half    : ", testMsaLogoHalfAndHalf);
 runTest("msa: logo gaps not a letter: ", testMsaLogoGapsAreNotALetter);
 runTest("msa: logo order reproduces : ", testMsaLogoOrderIsReproducible);
 runTest("msa: logo, small n uncorrec: ", testMsaLogoSmallSampleIsNotCorrected);
+runTest("msa: logo stack sums to col: ", testMsaLogoStackSumsToTheColumn);
+runTest("msa: bar and logo agree    : ", testMsaBarAndLogoAgree);
 runTest("msa: ungapped position     : ", testMsaUngappedPosition);
 runTest("msa: residue info          : ", testMsaResidueInfo);
 

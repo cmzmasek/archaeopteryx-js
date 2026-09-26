@@ -257,8 +257,10 @@ the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
 direction** flip — labels riding their spokes or standing upright — while
 vertical expansion greys out. **Fit** centres and scales the fan; **Esc**
 also resets rotation and label direction. Unrooted
-additionally greys out the aligned-phylogram option and Auto-hide Labels
-(there is no common label edge, and no even row spacing to hide against).
+additionally greys out the aligned-phylogram option (there is no common label
+edge). Auto-hide Labels stays live: the tip-label thinning it governs needs
+even row spacing and so does nothing in unrooted, but the crowded-branch-data
+rule it also governs applies in every layout.
 
 ## Rooting
 
@@ -565,7 +567,7 @@ To find a motif, pick **Molecular Sequence** in a search box: it matches the
 residues as written, gap characters included, as the desktop does.
 
 **Sequence Logo** (the checkbox under **Alignment**) replaces the conservation
-bar with a **logo**: every column a stack of letters, as tall as that column's
+bar with a **logo**: a stack of letters per column, as tall as that column's
 information content in bits and shared out by residue frequency, most frequent
 on top — the display the MEME Suite and WebLogo draw. A conserved column is one
 tall letter, a variable one a short pile, and the caption gives the scale
@@ -576,7 +578,8 @@ clade's motif rather than the file's, and the caption names how many tips that
 is (`n = 12`). Two consequences worth knowing: gaps are not a letter —
 frequencies are taken over the residues present, and the stack is then scaled
 by the column's occupancy, so a column held up by two sequences out of fifty
-draws short rather than perfectly conserved; and there is **no small-sample
+draws short rather than perfectly conserved and an all-gap column draws
+nothing; and there is **no small-sample
 correction**, because entering a three-tip clade is a normal thing to do and
 Schneider's correction would subtract more than the maximum and leave the
 column blank. Read `n` and judge.
@@ -1050,11 +1053,13 @@ each with a checkbox under Display Data to turn it off.
 Support and branch-length values draw **2 px smaller than the label font**
 (never below 6 px), as on the desktop, so they annotate without competing.
 And besides the numeric display there are **Support Dots**: a filled dot at
-the midpoint of every branch whose support is at least 95% (`supportDotMinimum`;
+the midpoint of a branch whose support is at least 95% (`supportDotMinimum`;
 posterior- and bootstrap-scaled trees are told apart automatically). The dot
 is always a fixed amount wider than the branch itself, so it tracks the
 Branch Width slider instead of sitting at one fixed size. A branch drawn
-shorter than the dot itself stays clean.
+shorter than the dot itself stays clean, and so does one whose dot would land
+on a dot already drawn — see the crowding rule below, which is what decides
+between them rather than either one being shrunk.
 
 The **control panel itself** follows the same idea. It opens showing the
 sections that describe the tree — what it can be coloured by, what it shows —
@@ -1114,9 +1119,22 @@ special case — a lone zero-length branch overlaps nothing, so its number
 stays. Branch events take part too. This is the desktop Archaeopteryx's rule,
 adopted so the two programs thin the same tree the same way; the marks they
 drop are close but not identical, because the boxes come from each program's
-own font metrics. It applies in the **rectangular** layout — the circular and
-unrooted views place their marks by angle rather than by row, and hiding them
-by rectangular boxes would drop the wrong ones.
+own font metrics.
+
+It applies in **all three layouts**. In the circular and unrooted views a mark
+rides its branch: it is drawn at the branch's midpoint, turned to the branch's
+direction and set just off the line, so the box claimed for it is the
+axis-aligned bounds of that turned rectangle, centred where the text's own
+centre lands — the desktop's formula, which carries over because both programs
+measure it in real screen space rather than in the layout's own units. A
+diagonal label's bounds are wider than its ink, so a crowded number is dropped
+rather than overprinted. The circular view of `flu_h5.xml` goes from 785 drawn
+numbers, 743 of them overlapping another, to 87 with none.
+
+One placement follows from that: in the two radial views every mark is drawn on
+the same point, the branch's midpoint, so a **branch event** sits a line clear
+of the branch-length value rather than on top of it. In the rectangular layout
+they are already apart along the branch and share the line above it.
 
 A host with little room to give can
 also start the whole panel tighter and narrower with
@@ -1156,7 +1174,7 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
-| `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: each column a stack of letters as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
+| `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: a stack of letters per column, as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
 | `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
 | `heatmapManualOrder` | `null` | The heat map's columns in your own order, as an array of property refs (`['meta:recA', 'meta:gyrA', …]`). Only read while `heatmapColumnOrder` is `'manual'`. A ref the tree has not got is ignored, and a column the list does not name follows the ones it does. |

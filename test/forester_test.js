@@ -81,6 +81,7 @@ runTest("Nexus label collisions      : ", testNexusLabelCollisions);
 runTest("Nexus matrix datatype       : ", testNexusMatrixDatatype);
 runTest("describeValues              : ", testDescribeValues);
 runTest("tree statistics             : ", testTreeStatistics);
+runTest("rotated label box           : ", testRotatedLabelBox);
 runTest("label occupancy             : ", testLabelOccupancy);
 runTest("preorder claim order        : ", testPreorderOf);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
@@ -5891,6 +5892,82 @@ function testTreeStatistics() {
         forester.parseNewHampshire('((a,b),c);', true, false)));
     if (bare.branchLengths !== null || bare.ultrametric || bare.tips !== 3) {
         return fail('a tree without lengths', bare);
+    }
+    return true;
+}
+
+
+// The box a mark riding its branch claims, in the circular and unrooted
+// layouts. The second half of the joint rule: the desktop's
+// paintBranchDataRadial arithmetic, which is portable only because both sides
+// measure it in real screen space. Pinned here because it is the piece that
+// decides WHICH radial marks survive, and no screenshot distinguishes a
+// slightly wrong box from a right one.
+function testRotatedLabelBox() {
+    function fail(msg, got) {
+        console.log('    ' + msg + (got === undefined ? '' : ': ' + JSON.stringify(got)));
+        return false;
+    }
+    function near(a, b) {
+        return Math.abs(a - b) < 1e-9;
+    }
+    function boxIs(got, x, y, w, h, msg) {
+        if (!near(got[0], x) || !near(got[1], y) || !near(got[2], w) || !near(got[3], h)) {
+            return fail(msg, got);
+        }
+        return true;
+    }
+    // Horizontal: the box is the label, centred on the point.
+    if (!boxIs(forester.rotatedLabelBox(100, 50, 40, 10, 0), 80, 45, 40, 10,
+        'a horizontal label is its own box')) {
+        return false;
+    }
+    // A quarter turn swaps the two, and the centre does not move.
+    if (!boxIs(forester.rotatedLabelBox(100, 50, 40, 10, Math.PI / 2), 95, 30, 10, 40,
+        'a quarter turn swaps width and height')) {
+        return false;
+    }
+    // 45 degrees is the worst case: both sides are (w + h) / sqrt(2).
+    var d = forester.rotatedLabelBox(0, 0, 40, 10, Math.PI / 4);
+    var expect = 50 / Math.sqrt(2);
+    if (!near(d[2], expect) || !near(d[3], expect)) {
+        return fail('45 degrees gives (w + h) / sqrt(2) on both sides', d);
+    }
+    // Conservative means AREA, not width: a long label turned 45 degrees is
+    // NARROWER than it was (35.4 against 40) while covering three times the
+    // ground. Claiming it is "wider than the label" reads true and is false,
+    // which is how a box model quietly starts dropping the wrong marks.
+    // rot_w * rot_h = w*h + |sin a cos a| * (w*w + h*h), never less than w*h.
+    for (var deg2 = 0; deg2 < 360; deg2 += 5) {
+        var r = forester.rotatedLabelBox(0, 0, 40, 10, deg2 * Math.PI / 180);
+        if (r[2] * r[3] < (40 * 10) - 1e-9) {
+            return fail('the box covers less than the label at ' + deg2 + ' degrees', r);
+        }
+    }
+    // A half turn is the SAME box: this is what lets the 180-degree flip that
+    // keeps the far half of a fan upright leave the geometry alone. Likewise
+    // the sign of the angle.
+    var a = forester.rotatedLabelBox(7, -3, 40, 10, 1.1);
+    var half = forester.rotatedLabelBox(7, -3, 40, 10, 1.1 + Math.PI);
+    var neg = forester.rotatedLabelBox(7, -3, 40, 10, -1.1);
+    for (var i = 0; i < 4; ++i) {
+        if (!near(a[i], half[i])) {
+            return fail('a half turn changes the box', [a, half]);
+        }
+        if (!near(a[i], neg[i])) {
+            return fail('the sign of the angle changes the box', [a, neg]);
+        }
+    }
+    // Whatever the angle, the box is centred on the point it was given and
+    // never smaller than the label's own shorter side.
+    for (var deg = 0; deg < 360; deg += 7) {
+        var b = forester.rotatedLabelBox(100, 50, 40, 10, deg * Math.PI / 180);
+        if (!near(b[0] + (b[2] / 2), 100) || !near(b[1] + (b[3] / 2), 50)) {
+            return fail('the box drifted off its centre at ' + deg + ' degrees', b);
+        }
+        if (b[2] < 10 - 1e-9 || b[3] < 10 - 1e-9) {
+            return fail('the box shrank below the label at ' + deg + ' degrees', b);
+        }
     }
     return true;
 }

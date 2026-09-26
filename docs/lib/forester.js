@@ -20,7 +20,7 @@
  *
  */
 
-// v 3.14.0
+// v 3.15.0
 // 2026-09-17
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
@@ -3859,6 +3859,33 @@
             }
         }
         return out;
+    };
+
+    // The box to claim for a mark that RIDES ITS BRANCH -- the circular and
+    // unrooted layouts, where a label is turned to the branch's direction
+    // instead of standing along a row. The axis-aligned bounds of the turned
+    // rectangle, centred on (cx, cy):
+    //
+    //     rot_w = |w*cos(a)| + |h*sin(a)|
+    //     rot_h = |w*sin(a)| + |h*cos(a)|
+    //
+    // The desktop's formula, verbatim (TreePanel.paintBranchDataRadial), and
+    // the second half of the joint rule below. It carries between the two
+    // programs because both measure it in real SCREEN space -- the layout's
+    // own units do not survive the trip, which is why this was parked as a
+    // divergence until forester-71 sent the arithmetic.
+    //
+    // Deliberately conservative: a diagonal label's bounds are wider than its
+    // ink, so a crowded number is dropped rather than overprinted. Exact at
+    // the right angles, worst at 45 degrees. Insensitive to the sign of the
+    // angle and to a half turn, which is what lets the 180-degree flip that
+    // keeps the far half of a fan upright leave the box alone.
+    forester.rotatedLabelBox = function (cx, cy, w, h, angle) {
+        let cos = Math.abs(Math.cos(angle));
+        let sin = Math.abs(Math.sin(angle));
+        let rw = (w * cos) + (h * sin);
+        let rh = (w * sin) + (h * cos);
+        return [cx - (rw / 2), cy - (rh / 2), rw, rh];
     };
 
     // The occupancy map behind "auto-hide crowded branch data": a mark is

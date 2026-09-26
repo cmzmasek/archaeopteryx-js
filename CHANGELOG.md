@@ -6,7 +6,12 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.15.0 — 2026-09-25
+
+Protein domains answer questions now: hover one for its name, E-value,
+coordinates and the tip it belongs to, and click through to what it is. And
+the crowding rule that thins branch data, new in this release, applies in all
+three layouts rather than only the rectangular one.
 
 ### Added
 
@@ -41,8 +46,43 @@ consumers only see a change when a version is cut.
   of 262 on `Adenoviridae`, 13 of 119 on `bcl2` — our auto-hide decimated tip
   labels and had never touched branch data. After: **zero overlapping marks on
   all three.**
-  Rectangular layout only for now: the circular and unrooted views place
-  their marks by angle, and rectangular boxes would drop the wrong ones.
+
+  **Every layout, not just the rectangular one.** In circular and unrooted a
+  mark rides its branch, so its box is the axis-aligned bounds of the turned
+  rectangle, centred where the text's own centre lands (the desktop's
+  `paintBranchDataRadial` formula, which carries over because both programs
+  measure it in real screen space).
+  Measured on `flu_h5.xml`: circular **785 numbers drawn, 743 overlapping ->
+  87, none overlapping**; unrooted 785 / 773 -> 16, none. A sparse tree loses
+  nothing — `woese-tree-of-life` keeps all 44 of its numbers in circular.
+- **A branch event no longer prints through a branch length.** The box claimed
+  for an event was modelled on the *confidence*, which sits below the branch,
+  while the event is drawn a quarter em above it like the branch length: the
+  pass reported a clean view over two numbers printed on each other (10 such
+  pairs on `branch_events.xml`). And in the radial layouts the two are drawn on
+  the same point, so the event is now lifted a line clear of the length instead
+  of being deleted by it. The drawing and the occupancy box now read their
+  offsets from one function, so they cannot drift apart again.
+- **Auto-hide Labels is no longer greyed out in the unrooted view.** The
+  tip-label thinning it governs does not run there, but the crowded-branch-data
+  rule does, and a greyed-out toggle left the user unable to switch off
+  something that was happening.
+- `forester.rotatedLabelBox(cx, cy, w, h, angle)`: the box a mark riding its
+  branch claims, which is the desktop's `paintBranchDataRadial` arithmetic. In
+  forester rather than the viewer so the suite can pin it — it decides which
+  radial marks survive, and no screenshot tells a slightly wrong box from a
+  right one.
+- Two standing checks on the sequence logo, from a cross-check with the desktop
+  that found the same class of defect there: the stack's letters sum to the
+  column's own height and no residue appears twice in one stack; and the
+  conservation bar and the logo are the same number
+  (`score × maxBits === height`, column for column). We compute those in two
+  separate copies of one counting loop, so nothing else stops them drifting.
+  The protein information score is now pinned as a literal, 0.768621786840 for
+  an even two-way split, and not only as the formula restated — an expectation
+  written as the code's own rule agrees with a shared misreading by
+  construction. The desktop's independent implementation answers the same
+  digits.
 - `forester.labelOccupancy(cell)` and `forester.preorderOf(nodes)`: the map and
   the claim order, where the suite can reach the parts that must match the
   desktop. The order is not the one the layout hands out — d3's

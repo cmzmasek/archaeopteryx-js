@@ -20,7 +20,7 @@
  *
  */
 
-// v 3.14.0
+// v 3.15.0
 // 2026-09-17
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -103,7 +103,7 @@ function (root, d3, forester, phyloXml) {
     // IIFE's own function name -- a plain object says what it is.)
     let archaeopteryx = {};
 
-    const VERSION = '3.14.0';
+    const VERSION = '3.15.0';
     const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
     const DESKTOP_WEBSITE = 'https://cmzmasek.github.io/archaeopteryx/';
     const SOURCE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js';
@@ -3209,7 +3209,11 @@ function (root, d3, forester, phyloXml) {
             .attr('transform', function (d) {
                 return radialDisplay() ? branchLabelTransform(d) : null;
             })
-            .attr('dy', '-.25em')
+            // Every one of these three reads its offset from branchMarkPlacement,
+            // the same function the occupancy boxes are built from: a box that is
+            // not where the text is hides the wrong marks, and two copies of the
+            // same number drift apart the first time one of them is edited.
+            .attr('dy', branchMarkPlacement('bl', _state.branchDataFontSize).dy)
             .attr('x', function (d) {
                 if (radialDisplay()) {
                     return 0;
@@ -3230,7 +3234,7 @@ function (root, d3, forester, phyloXml) {
             .attr('transform', function (d) {
                 return radialDisplay() ? branchLabelTransform(d) : null;
             })
-            .attr('dy', _state.branchDataFontSize)
+            .attr('dy', branchMarkPlacement('conf', _state.branchDataFontSize).dy)
             .attr('x', function (d) {
                 if (radialDisplay()) {
                     return 0;
@@ -3266,7 +3270,7 @@ function (root, d3, forester, phyloXml) {
             .attr('transform', function (d) {
                 return radialDisplay() ? branchLabelTransform(d) : null;
             })
-            .attr('dy', '-.25em')
+            .attr('dy', branchMarkPlacement('event', _state.branchDataFontSize).dy)
             .attr('x', function (d) {
                 if (radialDisplay()) {
                     return 0;
@@ -3925,34 +3929,93 @@ function (root, d3, forester, phyloXml) {
         return _branchFontCache;
     }
 
+    // Where a branch mark sits on its branch, read off the rendered elements
+    // rather than inferred: the horizontal anchor and the `dy` the element is
+    // drawn with. Getting either wrong is not a rounding error. A
+    // middle-anchored box modelled as left-anchored is half its own width out,
+    // which once let 44% of the granted numbers still overlap; and a branch
+    // EVENT sits a quarter em ABOVE the line like the branch length, not a
+    // font size below it like the confidence, so modelling it as a confidence
+    // put its box on the wrong side of the branch -- the one side it could
+    // never collide on.
+    function branchMarkPlacement(kind, fontPx) {
+        if (kind === 'conf') {
+            return {mid: true, dy: fontPx};
+        }
+        if (kind === 'event') {
+            // A radial layout draws every mark on ONE point, the branch's
+            // midpoint, so a branch event and a branch length -- both a quarter
+            // em above the line -- printed straight through each other. The
+            // event is lifted a whole line clear of the length. The rectangular
+            // layout already separates them along the branch (the length at the
+            // parent end, the event at the middle), so there they share a line.
+            return {mid: true, dy: radialDisplay()
+                ? ((-0.25 * fontPx) - branchFontMetrics(fontPx).height)
+                : (-0.25 * fontPx)};
+        }
+        return {mid: false, dy: -0.25 * fontPx};   // 'bl': start-anchored, a quarter em up
+    }
+
+    // The incoming branch's MIDPOINT and screen direction, in the tree group's
+    // own coordinates -- what a radial mark is actually drawn on, since
+    // branchLabelTransform rotates to the spoke and translates half a branch
+    // back along it. Circular: the leg runs along ONE spoke, so the midpoint is
+    // the mean of the two radii at the same angle (an arc's chord is not on the
+    // leg). Unrooted: the branch is a straight line, so it is the mean of the
+    // two points. Both match the desktop's two call sites of
+    // paintBranchDataRadial.
+    function radialBranchMid(d) {
+        let angle = spokeAngle(d);
+        if (_state.unrootedDisplay) {
+            if (d.ux === undefined) {
+                return null;
+            }
+            let p = (d.parent && d.parent.ux !== undefined) ? d.parent : null;
+            return p ? [0.5 * (d.ux + p.ux), 0.5 * (d.uy + p.uy), angle] : [d.ux, d.uy, angle];
+        }
+        let r = radialRadius(d.y);
+        if (d.parent) {
+            r = 0.5 * (r + radialRadius(d.parent.y));
+        }
+        let pt = polarXY(radialAngle(d.x), r);
+        return [pt[0], pt[1], angle];
+    }
+
     function branchMarkBox(d, kind, text, fontPx) {
         let w = legendTextWidth(text, fontPx + 'px ' + FONT_DEFAULTS);
         let fm = branchFontMetrics(fontPx);
         let h = fm.height;
+        let at = branchMarkPlacement(kind, fontPx);
         if (radialDisplay()) {
-            // The text is rotated with the spoke, so its axis-aligned bounds
-            // are the honest conservative answer: a rotated box can only be
-            // smaller than the square that contains it. Slightly stricter than
-            // the desktop here, which is a divergence in COUNT, not in rule.
-            let r = Math.max(w, h);
-            return [(d.y || 0) - r, (d.x || 0) - r, 2 * r, 2 * r];
+            // The mark rides the branch, so its box is the AXIS-ALIGNED bounds
+            // of the rotated rectangle, centred where the text's own centre
+            // lands: forester.rotatedLabelBox, which carries the desktop's
+            // formula and the reasons it is the conservative one.
+            let mid = radialBranchMid(d);
+            if (!mid) {
+                return null;
+            }
+            // `dy` shifts the BASELINE, so the box's centre sits half a line
+            // below it; and the 180-degree flip that keeps the far half of the
+            // fan upright carries this perpendicular offset with it.
+            let off = at.dy + (0.5 * (fm.descent - fm.ascent));
+            if (labelFlip(d)) {
+                off = -off;
+            }
+            // every radial mark is middle-anchored at x=0, so only the
+            // perpendicular offset moves its centre off the branch midpoint
+            return forester.rotatedLabelBox(mid[0] - (Math.sin(mid[2]) * off),
+                mid[1] + (Math.cos(mid[2]) * off), w, h, mid[2]);
         }
-        // Read off the rendered elements rather than inferred: the branch
-        // length is anchored at START and sits a quarter-em above the branch;
-        // the confidence is anchored MIDDLE and its baseline is one font size
-        // below it. Getting the anchor wrong is not a rounding error -- a
-        // middle-anchored box modelled as left-anchored is half its own width
-        // out, which let 44% of the granted numbers still overlap.
         // The ROOT's numbers are drawn too, at x=0 in its own group, and they
         // used to claim nothing -- so the first child's number, landing in
         // almost the same place, was granted and painted over them. The one
         // place the pass could not keep its promise.
         let span = d.parent ? (d.parent.y - d.y) : 0;
-        let baseline = (kind === 'bl') ? (d.x - (0.25 * fontPx)) : (d.x + fontPx);
-        let x = (kind === 'bl')
-            ? (d.y + span + 1)                        // start-anchored
-            : (d.y + (0.5 * span) - (w / 2));         // middle-anchored
-        return [x, baseline - fm.ascent, w, h];
+        let x = at.mid
+            ? (d.y + (0.5 * span) - (w / 2))          // middle-anchored
+            : (d.y + span + 1);                       // start-anchored
+        return [x, (d.x + at.dy) - fm.ascent, w, h];
     }
 
     function prepareNodeDrawing(nodes) {
@@ -4003,22 +4066,20 @@ function (root, d3, forester, phyloXml) {
     // order the DOM happens to be updated in.
     //
     // Rides the existing Auto-hide Labels toggle: switch it off and everything
-    // is drawn. Not attempted in the UNROOTED view, where update() already
-    // turns label auto-hiding off ("no even row spacing to decimate against")
-    // and where a node's drawn position is d.ux/d.uy, which bear no relation
-    // to the d.x/d.y these boxes are built from.
+    // is drawn. Runs in ALL THREE layouts, as the desktop does -- the boxes are
+    // built in the tree group's own coordinates, which is where every mark is
+    // actually drawn, so the circular and unrooted views are measured in their
+    // own space and not in the cluster's. (The tip-label decimation that shares
+    // the toggle is still skipped in unrooted: that one needs even row spacing
+    // to decimate against, and there is none.)
     function hideCrowdedBranchData(nodes) {
-        // Rectangular only, for now. The boxes below are built from d.x/d.y,
-        // which are the cluster's coordinates: in the CIRCULAR view a mark is
-        // drawn at the polar point of those, where equal cluster spacing means
-        // shrinking arc length near the centre, and in the UNROOTED view at
-        // d.ux/d.uy, which bear no relation to them at all. Hiding marks by
-        // boxes in the wrong space is worse than not hiding: it drops marks
-        // that do not overlap and keeps ones that do. update() already turns
-        // label auto-hiding off in unrooted for its own reasons. A KNOWN
-        // DIVERGENCE -- the desktop hides in every layout -- and the desktop
-        // session has been told.
-        if (!_state.dynahide || radialDisplay()) {
+        if (!_state.dynahide) {
+            return;
+        }
+        // No layout state, no honest boxes. Bailing out draws everything; going
+        // on would put every mark at the origin, where they all overlap and all
+        // but the first would be hidden -- a blank tree, with no error.
+        if ((_state.circularDisplay && !_radial) || (_state.unrootedDisplay && !_unroot)) {
             return;
         }
         let fontPx = _state.branchDataFontSize;
@@ -4055,7 +4116,7 @@ function (root, d3, forester, phyloXml) {
             // number nor were refused by one, and the pass reported "no
             // overlapping marks" while the user could see two.
             if (d._eventText !== '') {
-                let b = branchMarkBox(d, 'conf', d._eventText, fontPx);
+                let b = branchMarkBox(d, 'event', d._eventText, fontPx);
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._eventText = '';
                 }
@@ -4064,8 +4125,12 @@ function (root, d3, forester, phyloXml) {
                 // never shrunk to fit: in a size-scaled mode the diameter IS
                 // the support value, and a smaller dot reports weaker support
                 let r = supportDotRadius(d);
-                let cx = d.y + (0.5 * (d.parent.y - d.y));   // showSupportDot already required a parent
-                if (!symbols.claim(cx - r, d.x - r, 2 * r, 2 * r)) {
+                // showSupportDot already required a parent; a circle's bounds
+                // do not rotate, so the radial case needs only the midpoint
+                let at = radialDisplay()
+                    ? radialBranchMid(d)
+                    : [d.y + (0.5 * (d.parent.y - d.y)), d.x];
+                if (at && !symbols.claim(at[0] - r, at[1] - r, 2 * r, 2 * r)) {
                     d._suppDot = false;
                 }
             }
@@ -12299,10 +12364,11 @@ function (root, d3, forester, phyloXml) {
         if (alignBtn) {
             alignBtn.disabled = _state.unrootedDisplay || _basicTreeProperties.branchLengths !== true;
         }
-        let dyna = byId(DYNAHIDE_CB);
-        if (dyna) {
-            dyna.disabled = _state.unrootedDisplay;
-        }
+        // Auto-hide Labels stays live in every layout. It used to be greyed out
+        // in unrooted, where the tip-label decimation it governs does not run --
+        // but it also governs the crowded branch-data rule, which does run
+        // there, so greying it out left the user unable to switch off something
+        // that was happening.
         let msaCb = byId(MSA_CB);
         if (msaCb) {
             msaCb.disabled = radialDisplay();
@@ -15448,10 +15514,10 @@ function (root, d3, forester, phyloXml) {
             // "Auto-hide Labels" matches the desktop, which renamed the historical
             // "Dyna Hide" because that named the mechanism rather than what the user
             // sees. The _state.dynahide field keeps its name internally.
-            opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels when the tree is too dense for them to be readable', true));
+            opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels, and branch values that would overprint each other, where the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             if (_basicTreeProperties.confidences) {
-                opts.push(makeCheckboxItem('Support Dots', SUPPORT_DOTS_CB, 'to mark every branch with support of at least ' + _settings.supportDotMinimum + '% with a dot at its midpoint'));
+                opts.push(makeCheckboxItem('Support Dots', SUPPORT_DOTS_CB, 'to mark a branch with support of at least ' + _settings.supportDotMinimum + '% with a dot at its midpoint, where there is room to draw it'));
             }
             // Styles and visualizations sit here too, so the Nodes group only
             // appears at all on a tree carrying node/branch events
