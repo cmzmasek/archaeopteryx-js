@@ -262,6 +262,22 @@ circular always aligns — its external labels are pulled out to a shared ring,
 with dashed connectors to match, whichever display type is chosen, so the
 option changed nothing there. Auto-hide Labels stays live in every layout.
 
+### The control-panel cheat sheet
+
+The card button in the panel header opens **Control panel**: one row for every
+control the panel is currently showing, in the order it shows them, each with
+the control's own glyph or name and the sentence that explains it. The About
+box has a row for it too.
+
+It is **modeless** and sits beside the panel, so a row can be read while the
+control it names is used. It describes what is on the screen: fold a section
+and its controls leave the sheet, open a tree that offers no alignment and the
+alignment controls are not listed. Nothing on it is written twice — a row's
+words are the tooltip the control already carries, so a control added later
+needs no edit here, only a tooltip. And no row shows a live value, so a sheet
+that is saved or printed does not go wrong for every reader but the one who
+made it.
+
 ## Rooting
 
 The tool row's re-root button asks how: **MAD re-root (Tria et al., 2017)**

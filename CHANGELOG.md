@@ -10,6 +10,18 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **A control-panel cheat sheet.** The card button in the panel header (or the
+  Control panel row of the About box) opens a list of every control the panel is
+  currently showing, in the order it shows them, each beside the sentence that
+  already explains it. It is **modeless**, and sits beside the panel rather than
+  over it, so a row can be read while the control it names is clicked. Nothing is
+  written twice: a row's picture is the control's own glyph and a row's words are
+  the tooltip the control already carries, so a new control needs no edit — it
+  needs a tooltip. A folded section's controls leave the sheet, and a tree that
+  does not offer a control keeps it off. No row shows a live value, so a saved or
+  printed sheet is not wrong for everyone but the person who made it. This is the
+  desktop Archaeopteryx's Control Panel Cheat Sheet.
+
 - **The unrooted layout hides crowded tip labels**, which it never thinned at
   all. A name is drawn only where its own outline overlaps no name already
   drawn, root first, under the Auto-hide Labels switch; a name found by a
@@ -27,6 +39,9 @@ consumers only see a change when a version is cut.
 
 ### Changed
 
+- Every control of the panel now carries a description, and the two search menus,
+  the download-format menu and the panel title carry accessible names. The
+  download-format menu had no description at all.
 - **The aligned-phylogram option is greyed out in the circular layout**, where
   it did nothing: external labels are pulled out to a shared ring, with dashed
   connectors, whatever the display type. Measured on a 96-tip star of

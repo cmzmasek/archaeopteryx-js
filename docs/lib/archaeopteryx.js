@@ -10232,6 +10232,235 @@ function (root, d3, forester, phyloXml) {
     }
 
     // The cheat sheet: every combo above, then the plain keys.
+    // ===================== The control-panel cheat sheet =====================
+    //
+    // Every control the panel is SHOWING, in the order it shows them, each
+    // beside the sentence that already explains it. The desktop's
+    // ControlPanelCheatSheet, and built the same way on one principle: nothing
+    // is written twice. A row's picture is the control's own glyph, cloned;
+    // a row's words are the tooltip the control already carries. So a new
+    // control needs no edit here -- it needs a tooltip, and
+    // test_trees/panel_descriptions.html fails by name for any visible control
+    // without one.
+    //
+    // Two rules of Christian's, 2026-09-25, which the desktop follows too:
+    // name and description are separated by a COLON, never a dash; and no live
+    // VALUES appear -- a label reading "Font size: 6" is cut at the colon, so
+    // the sheet says what the control is and never what it is currently set
+    // to. "A printed 40% is wrong for every reader but the one who printed
+    // it."
+    //
+    // Modeless, and placed beside the panel rather than over it: a sheet you
+    // must close to touch the control it describes is half a sheet.
+    const CHEAT_SHEET_DIALOG = 'aptx_cheatsheet';
+    let _cheatSheetBody = null;
+
+    // this viewer's own panel, not another viewer's on the same page
+    function cheatSheetPanel() {
+        return (_container && _container.querySelector(':scope > .aptx-panel'))
+            || document.querySelector('.aptx-panel');
+    }
+
+    // The words for one control: its own title, or the title of the <label>
+    // that names it -- which is a SIBLING, not an ancestor, for the select
+    // menus (makeSelectMenu puts it there).
+    function controlDescription(el) {
+        let n = el;
+        for (let i = 0; i < 4 && n; ++i) {
+            let t = (n.getAttribute && (n.getAttribute('title') || n.getAttribute('aria-label'))) || '';
+            if (t.trim() !== '') {
+                return t.trim();
+            }
+            n = n.parentElement;
+        }
+        if (el.id) {
+            let lab = document.querySelector('label[for="' + el.id + '"]');
+            let t = lab ? (lab.getAttribute('title') || lab.getAttribute('aria-label') || '') : '';
+            if (t.trim() !== '') {
+                return t.trim();
+            }
+        }
+        return '';
+    }
+
+    // What the control is called, with any live value cut away. A checkbox is
+    // named by its own text, a menu or slider by the label beside it, a glyph
+    // button by nothing -- its picture is its name, and the row shows that.
+    function controlName(el) {
+        // ONE cut, at the end, over whatever source the name came from.
+        //
+        // It used to be applied only to the two sources that could carry a
+        // value -- a <label for> and an aria-label -- and not to a checkbox's
+        // own text or a button's value. That left "no sheet name contains a
+        // colon" meaning two different things on the two programs: on the
+        // desktop every name IS a cut label, so the rule asserts the cut ran
+        // and can never fire on correct output; here it would ALSO have
+        // constrained what a control may be called, and a checkbox legitimately
+        // labelled "Ratio 1:1" would have failed it. Cutting everywhere makes
+        // the invariant mean the same thing on both sides.
+        //
+        // What the cut is doing here, exactly: our labels read "Color by:" and
+        // "Shape:", so it removes a TRAILING colon, and removing the cut fails
+        // the sheet's value rule by name ("Color by:"). What it is NOT doing
+        // here is removing a value -- nothing follows a colon on this panel,
+        // unlike the desktop's "Font size: 6". So it is exercised but for the
+        // lesser of its two reasons. (Said precisely because the looser
+        // version of this note -- "a no-op, removing it passes every check" --
+        // was true for about an hour and then was not, once the desktop's
+        // sharper value rule was adopted here.)
+        return cutAtValue(rawControlName(el));
+    }
+
+    // "Font size: 6" -> "Font size". The colon is where a value starts, and a
+    // value on a sheet is wrong for everyone but whoever was looking when it
+    // was made.
+    function cutAtValue(name) {
+        return name ? name.split(':')[0].trim() : '';
+    }
+
+    // What the control is called, before the cut. A checkbox is named by its
+    // own text, a menu or slider by the label beside it, a glyph button by
+    // nothing -- its picture is its name, and the row shows that.
+    function rawControlName(el) {
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            let span = el.parentElement ? el.parentElement.querySelector('span') : null;
+            if (span && span.textContent.trim() !== '') {
+                return span.textContent.trim();
+            }
+        }
+        if (el.tagName === 'INPUT' && el.value && (el.type === 'button' || el.type === 'submit')) {
+            return el.value.trim();
+        }
+        if (el.id) {
+            let lab = document.querySelector('label[for="' + el.id + '"]');
+            if (lab && lab.textContent.trim() !== '') {
+                return lab.textContent.trim();
+            }
+        }
+        // a menu with no visible label of its own says what it is here
+        let aria = el.getAttribute('aria-label');
+        if (aria && aria.trim() !== '') {
+            return aria.trim();
+        }
+        // and a text button -- the hide toggle, the reset chips -- is its text
+        let own = (el.textContent || '').trim();
+        if (own !== '' && el.tagName === 'BUTTON' && !el.querySelector('svg')) {
+            return own;
+        }
+        return '';
+    }
+
+    function cheatSheetRows() {
+        let panel = cheatSheetPanel();
+        if (!panel) {
+            return [];
+        }
+        let rows = [];
+        let seen = new Set();
+        let all = panel.querySelectorAll('input, button, select');
+        for (let i = 0; i < all.length; ++i) {
+            let el = all[i];
+            // what the panel is SHOWING: a control the tree gives no data for
+            // is not on the screen and does not belong on the sheet. A
+            // DISABLED one is on the screen, and saying what it is is how a
+            // reader learns why it is greyed.
+            if (!el.disabled) {
+                let box = el.getBoundingClientRect();
+                if (box.width === 0 && box.height === 0) {
+                    continue;
+                }
+            }
+            let words = controlDescription(el);
+            if (words === '' || seen.has(el)) {
+                continue;
+            }
+            seen.add(el);
+            let svg = el.querySelector ? el.querySelector('svg.aptx-glyph') : null;
+            rows.push({name: controlName(el), words: words, glyph: svg});
+        }
+        return rows;
+    }
+
+    function renderCheatSheet(body) {
+        while (body.firstChild) {
+            body.removeChild(body.firstChild);
+        }
+        let rows = cheatSheetRows();
+        rows.forEach(function (row) {
+            let line = document.createElement('div');
+            line.className = 'aptx-dialog-line aptx-cheat-line';
+            let key = document.createElement('span');
+            key.className = 'aptx-dialog-key aptx-cheat-key';
+            if (row.glyph) {
+                let g = row.glyph.cloneNode(true);
+                g.removeAttribute('class');
+                g.setAttribute('class', 'aptx-glyph aptx-cheat-glyph');
+                key.appendChild(g);
+            }
+            if (row.name) {
+                let n = document.createElement('span');
+                n.className = 'aptx-cheat-name';
+                n.textContent = row.name;
+                key.appendChild(n);
+            }
+            let val = document.createElement('span');
+            val.className = 'aptx-dialog-val';
+            val.textContent = row.words;
+            line.appendChild(key);
+            line.appendChild(val);
+            body.appendChild(line);
+        });
+        if (rows.length === 0) {
+            let empty = document.createElement('p');
+            empty.className = 'aptx-shortcuts-note';
+            empty.textContent = 'No controls are showing.';
+            body.appendChild(empty);
+        }
+    }
+
+    // The panel is rebuilt on every render, so an open sheet is re-read from
+    // it rather than left describing a panel that has changed underneath.
+    function refreshCheatSheet() {
+        if (_cheatSheetBody && _cheatSheetBody.isConnected) {
+            renderCheatSheet(_cheatSheetBody);
+        }
+    }
+
+    function showCheatSheetDialog() {
+        let shell = makeDialogShell(CHEAT_SHEET_DIALOG, 'Control panel', 460);
+        shell.body.classList.add('aptx-shortcuts');
+        shell.body.classList.add('aptx-cheat');
+        _cheatSheetBody = shell.body;
+        renderCheatSheet(shell.body);
+        shell.dialog.addEventListener('close', function () {
+            if (_cheatSheetBody === shell.body) {
+                _cheatSheetBody = null;
+            }
+        });
+        // modeless, as the colour picker is: the point is to read a row and
+        // click the control it names without closing anything
+        shell.dialog.show();
+        placeBesidePanel(shell.dialog);
+    }
+
+    // Beside the panel, never over it, and inside the window.
+    function placeBesidePanel(dialog) {
+        let panel = cheatSheetPanel();
+        let box = panel ? panel.getBoundingClientRect() : null;
+        let w = dialog.offsetWidth;
+        let h = dialog.offsetHeight;
+        let left = box ? (box.right + 10) : 10;
+        if (left + w > window.innerWidth - 6) {
+            left = box ? (box.left - w - 10) : 6;
+        }
+        setStyles(dialog, {
+            'position': 'fixed',
+            'margin': '0',
+            'left': Math.max(6, Math.min(window.innerWidth - w - 6, left)) + 'px',
+            'top': Math.max(6, Math.min(window.innerHeight - h - 6, box ? box.top : 10)) + 'px'
+        });
+    }
+
     function showShortcutsDialog() {
         let shell = makeDialogShell(SHORTCUTS_DIALOG, 'Keyboard shortcuts', 400);
         shell.body.classList.add('aptx-shortcuts');
@@ -13467,6 +13696,14 @@ function (root, d3, forester, phyloXml) {
             + glyphDot(50, 29, 5.5);
     }
 
+    // a reference card: the outline, and the rows on it
+    function glyphCheatSheet() {
+        return '<rect x="18" y="12" width="64" height="76" rx="8"/>'
+            + glyphLine(32, 34, 68, 34)
+            + glyphLine(32, 50, 68, 50)
+            + glyphLine(32, 66, 56, 66);
+    }
+
     function glyphSun() {
         let s = glyphDot(50, 50, 20);
         for (let i = 0; i < 8; ++i) {
@@ -13535,6 +13772,7 @@ function (root, d3, forester, phyloXml) {
             case 'tree_prev': sw = 9; cap = 'round'; body = glyphChevron(false); break;
             case 'tree_next': sw = 9; cap = 'round'; body = glyphChevron(true); break;
             case 'info': sw = 7; cap = 'round'; body = glyphInfo(); break;
+            case 'cheat_sheet': sw = 7; cap = 'round'; body = glyphCheatSheet(); break;
             case 'sun': body = glyphSun(); break;
             case 'moon': body = glyphMoon(); break;
             default: throw new Error('unknown control-panel glyph: ' + kind);
@@ -13733,6 +13971,17 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-keys { display:inline-flex; gap:3px; flex-wrap:wrap; }'
             + '.aptx-kbd { font-family:inherit; font-size:10.5px; line-height:1; padding:3px 5px; min-width:18px; text-align:center; color:var(--p-ink); background:var(--p-surface2); border:1px solid var(--p-line-strong); border-bottom-width:2px; border-radius:4px; }'
             + '.aptx-shortcuts-note { margin:8px 0 0; font-size:10.5px; line-height:1.4; color:var(--p-muted); }'
+            // the cheat sheet: a scrolling card of glyph + name : description
+            // 31 rows is taller than a short window; the card scrolls rather
+            // than running off the bottom, and the title bar stays put
+            + '#' + CHEAT_SHEET_DIALOG + ' { max-height:min(78vh, 760px); display:flex; flex-direction:column; }'
+            + '#' + CHEAT_SHEET_DIALOG + ' .aptx-dialog-body { min-height:0; }'
+            + '.aptx-cheat .aptx-dialog-line { padding:3px 0; align-items:flex-start; }'
+            + '.aptx-cheat .aptx-cheat-key { flex:0 0 38%; display:flex; align-items:center; gap:6px; color:var(--p-ink); }'
+            + '.aptx-cheat .aptx-cheat-glyph { width:14px; height:14px; flex:none; color:var(--p-muted); }'
+            + '.aptx-cheat .aptx-cheat-name { overflow-wrap:anywhere; }'
+            + '.aptx-cheat .aptx-dialog-val { color:var(--p-muted); line-height:1.35; }'
+            + '.aptx-cheat .aptx-cheat-key:not(:empty)::after { content:":"; color:var(--p-faint); }'
             // representative tips: the input dialog and its result
             + '.aptx-reps { line-height:1.35; }'
             + '.aptx-reps-lead { margin:0 0 4px; }'
@@ -14055,6 +14304,18 @@ function (root, d3, forester, phyloXml) {
             });
             actions.appendChild(infoBtn);
 
+            let sheetBtn = document.createElement('button');
+            sheetBtn.type = 'button';
+            sheetBtn.className = 'aptx-info-btn';
+            sheetBtn.title = 'Control panel: what each control does';
+            sheetBtn.setAttribute('aria-label', 'Control panel cheat sheet');
+            sheetBtn.innerHTML = makeGlyph('cheat_sheet');
+            sheetBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                showCheatSheetDialog();
+            });
+            actions.appendChild(sheetBtn);
+
             let progName = header.querySelector('.' + PROGNAMELINK);
             if (progName) {
                 // Clicking the title used to navigate away to the project site;
@@ -14126,6 +14387,10 @@ function (root, d3, forester, phyloXml) {
                     fitPanelSections(panel, name);
                 }
                 savePanelSections();
+                // a folded section's controls are off the screen, so they
+                // leave the cheat sheet: it describes what the panel is
+                // showing, and folding does not go through a tree render
+                refreshCheatSheet();
             });
         }
         // What arrived open counts as opened, oldest at the BOTTOM: a panel is
@@ -14914,7 +15179,8 @@ function (root, d3, forester, phyloXml) {
             ['Desktop version', DESKTOP_WEBSITE, 'cmzmasek.github.io/archaeopteryx'],
             ['Source code', SOURCE_WEBSITE, 'github.com/cmzmasek/archaeopteryx-js'],
             ['License', LICENSE_WEBSITE, LICENSE_NAME],
-            ['Keyboard', null, 'shortcuts (' + (IS_MAC ? '\u2318 /' : 'Ctrl+/') + ')']].forEach(function (row) {
+            ['Keyboard', null, 'shortcuts (' + (IS_MAC ? '\u2318 /' : 'Ctrl+/') + ')'],
+            ['Control panel', null, 'what each control does']].forEach(function (row) {
             let line = document.createElement('div');
             line.className = 'aptx-dialog-line';
             let key = document.createElement('span');
@@ -14928,12 +15194,14 @@ function (root, d3, forester, phyloXml) {
                 a.target = '_blank';
                 a.rel = 'noopener noreferrer';
             } else {
-                // the shortcuts row opens the cheat sheet in place of the About box
+                // the two rows with no URL open another dialog in place of
+                // this one: the key list, and the control-panel sheet
+                let opener = row[0] === 'Control panel' ? showCheatSheetDialog : showShortcutsDialog;
                 a.href = '#';
                 a.addEventListener('click', function (e) {
                     e.preventDefault();
                     shell.dialog.close();
-                    showShortcutsDialog();
+                    opener();
                 });
             }
             a.textContent = row[2];
@@ -15504,7 +15772,11 @@ function (root, d3, forester, phyloXml) {
         function makeProgramDesc() {
             let h = "";
             h = h.concat('<div class=' + PROG_NAME + '>');
-            h = h.concat('<button type="button" class="' + PROGNAMELINK + '" title="About ' + NAME + '">' + NAME + ' ' + VERSION + '</button>');
+            // aria-label without the version: the cheat sheet names a control
+            // by this, and a version is a value -- it belongs in the About box
+            // it opens, not in a row that says what the button is
+            h = h.concat('<button type="button" class="' + PROGNAMELINK + '" aria-label="' + NAME
+                + '" title="About ' + NAME + '">' + NAME + ' ' + VERSION + '</button>');
             h = h.concat('</div>');
             return h;
         }
@@ -15825,7 +16097,8 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<input type="button" value="Download" name="' + DOWNLOAD_BUTTON + '" title="download/export tree in a selected format" id="' + DOWNLOAD_BUTTON + '">');
             //h = h.concat('<br>');
-            h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT + '">');
+            h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT
+                + '" aria-label="Download format" title="the file format the Download button writes">');
             if (pngExportAvailable()) {
                 h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
             }
@@ -15975,8 +16248,10 @@ function (root, d3, forester, phyloXml) {
             let h = "";
             h = h.concat('<label class="aptx-field-label" for="' + val + '">' + label + '</label>');
             h = h.concat('<div class="aptx-search-menus">');
-            h = h.concat('<select class="aptx-search-field" name="' + fsel + '" id="' + fsel + '" title="the field to search in"></select>');
-            h = h.concat('<select class="aptx-search-mode" name="' + msel + '" id="' + msel + '" title="how to match"></select>');
+            h = h.concat('<select class="aptx-search-field" name="' + fsel + '" id="' + fsel
+                + '" aria-label="' + label + ' field" title="the field to search in"></select>');
+            h = h.concat('<select class="aptx-search-mode" name="' + msel + '" id="' + msel
+                + '" aria-label="' + label + ' match" title="how to match"></select>');
             h = h.concat('</div>');
             h = h.concat('<div class="aptx-search-row">');
             h = h.concat('<input class="aptx-search-value" autocomplete="off" title="' + valTip + '" type="text" name="' + val + '" id="' + val + '">');
@@ -16206,6 +16481,7 @@ function (root, d3, forester, phyloXml) {
 
     function updateButtonEnabledState() {
         syncZoomRowButtons(); // layout- and tree-dependent disables track every render
+        refreshCheatSheet();  // an open sheet describes the panel as it is now
         // the uncollapse-all button lives only while something is collapsed, as on the desktop
         ((_root && collapseAllowed() && hasCollapsedIn(_root)) ? enableButton : disableButton)(byId(UNCOLLAPSE_ALL_BUTTON));
         if (_in_subtree) {
