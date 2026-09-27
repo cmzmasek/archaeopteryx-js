@@ -10139,10 +10139,10 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         if (_state.phylogram && !_state.alignPhylogram) {
-            if (radialDisplay()) {
-                // neither radial layout can show the aligned type: unrooted has
-                // nothing to align to, circular is always aligned already
-                toCladegram();
+            if (_state.unrootedDisplay) {
+                toCladegram();          // unrooted cannot align
+            } else if (_state.circularDisplay) {
+                toCladegram();          // circular is already showing the aligned type
             } else {
                 toAlignedPhylogram();
             }
@@ -12794,16 +12794,27 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
+    // In CIRCULAR these two leave the aligned/unaligned flag alone. That
+    // layout aligns whatever the flag says, so the button shown as chosen
+    // there is "aligned" regardless -- and writing the flag from it would
+    // silently change the user's choice for the layouts that CAN express it.
+    // A user who likes the plain phylogram in rectangular, steps into
+    // circular, flips to the cladogram and back, and returns, would have
+    // found the aligned one waiting.
     function toAlignedPhylogram() {
         _state.phylogram = true;
-        _state.alignPhylogram = true;
+        if (!_state.circularDisplay) {
+            _state.alignPhylogram = true;
+        }
         setDisplayTypeButtons();
         scheduleUpdate(null, 0);
     }
 
     function toCladegram() {
         _state.phylogram = false;
-        _state.alignPhylogram = false;
+        if (!_state.circularDisplay) {
+            _state.alignPhylogram = false;
+        }
         setDisplayTypeButtons();
         scheduleUpdate(null, 0);
     }
@@ -12835,29 +12846,39 @@ function (root, d3, forester, phyloXml) {
         // against; an alignment / time axis is inherently horizontal. Synced
         // BEFORE the zoom-row early return, and (via updateButtonEnabledState)
         // on every render, so subtree switches keep them honest.
+        // WHICH of the two phylogram buttons is dead depends on the layout,
+        // and it is the one the layout CANNOT do -- not the one it always
+        // does. Circular always carries its external labels out to a common
+        // ring on dashed connectors, whatever is chosen, so the circular
+        // phylogram IS the aligned one: the unavailable option there is the
+        // UNALIGNED phylogram. Unrooted is the other way round -- it has no
+        // common edge to align to, so what it cannot do is align.
+        //
+        // (Greying the aligned button in circular was the first attempt, on
+        // the grounds that picking it changed nothing. True, but backwards:
+        // it disabled the button that describes what the layout does and left
+        // live the one it cannot do, and the panel then showed "phylogram"
+        // selected over a picture whose labels are plainly aligned. Christian
+        // spotted the inconsistency, 2026-09-27.)
+        let measured = _basicTreeProperties.branchLengths === true;
         let phyBtn = byId(PHYLOGRAM_BUTTON);
         if (phyBtn) {
-            phyBtn.disabled = _basicTreeProperties.branchLengths !== true;
+            phyBtn.disabled = !measured || _state.circularDisplay;
+            phyBtn.title = _state.circularDisplay
+                ? 'the circular layout always aligns its labels to the ring'
+                : 'phylogram display (uses branch length values)';
         }
         let alignBtn = byId(PHYLOGRAM_ALIGNED_BUTTON);
         if (alignBtn) {
-            // Dead in BOTH radial layouts, for different reasons. Unrooted has
-            // no common edge to align to. Circular has one and always uses it:
-            // external labels are pulled out to the ring whatever the display
-            // type, with the dashed connectors drawn to match, so picking
-            // "aligned" there changed nothing at all -- measured on a 96-tip
-            // star of alternating branch lengths, labels sat at 285 px with
-            // 0.0 px of spread in the phylogram, the aligned phylogram AND the
-            // cladogram. A control that silently does nothing is worse than no
-            // control, so it says so instead (Christian, 2026-09-27: the ring
-            // stays aligned in both programs, jagged rings are not wanted).
-            alignBtn.disabled = radialDisplay() || _basicTreeProperties.branchLengths !== true;
-            alignBtn.title = _state.circularDisplay
-                ? 'the circular layout always aligns its labels to the ring'
-                : (_state.unrootedDisplay
-                    ? 'the unrooted layout has no common edge to align labels to'
-                    : 'phylogram display (uses branch length values) with aligned labels');
+            alignBtn.disabled = !measured || _state.unrootedDisplay;
+            alignBtn.title = _state.unrootedDisplay
+                ? 'the unrooted layout has no common edge to align labels to'
+                : 'phylogram display (uses branch length values) with aligned labels';
         }
+        // Which button is SHOWN as chosen is layout-dependent too, and this
+        // was only re-synced when the display type changed -- so switching
+        // layout left the previous layout's answer on the screen.
+        setDisplayTypeButtons();
         // Auto-hide Labels stays live in every layout. It used to be greyed out
         // in unrooted, where the every-k-th tip-label decimation does not run --
         // but it also governs the crowded branch-data rule, and now the
@@ -16516,9 +16537,15 @@ function (root, d3, forester, phyloXml) {
     }
 
     function setDisplayTypeButtons() {
-        setRadioButtonValue(PHYLOGRAM_BUTTON, _state.phylogram && !_state.alignPhylogram);
-        setRadioButtonValue(CLADOGRAM_BUTTON, !_state.phylogram && !_state.alignPhylogram);
-        setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, _state.alignPhylogram && _state.phylogram);
+        // In circular the labels ARE aligned, whatever alignPhylogram says, so
+        // that is the button shown as chosen: the panel describes the picture.
+        // The flag itself is left alone -- it is the user's choice for the
+        // layouts that can express it, and returning to rectangular restores
+        // what they picked there.
+        let alignedLook = _state.phylogram && (_state.alignPhylogram || _state.circularDisplay);
+        setRadioButtonValue(PHYLOGRAM_BUTTON, _state.phylogram && !alignedLook);
+        setRadioButtonValue(CLADOGRAM_BUTTON, !_state.phylogram);
+        setRadioButtonValue(PHYLOGRAM_ALIGNED_BUTTON, alignedLook);
         setCheckboxValue(LAYOUT_CIRC_BUTTON, _state.circularDisplay);
         setCheckboxValue(LAYOUT_UNROOTED_BUTTON, _state.unrootedDisplay);
         setCheckboxValue(LAYOUT_RECT_BUTTON, !radialDisplay());

@@ -42,12 +42,17 @@ consumers only see a change when a version is cut.
 - Every control of the panel now carries a description, and the two search menus,
   the download-format menu and the panel title carry accessible names. The
   download-format menu had no description at all.
-- **The aligned-phylogram option is greyed out in the circular layout**, where
-  it did nothing: external labels are pulled out to a shared ring, with dashed
-  connectors, whatever the display type. Measured on a 96-tip star of
-  alternating branch lengths, labels sat at the same radius with 0.0 px of
-  spread in all three display types. The ring stays aligned — a control that
-  silently does nothing is worse than no control.
+- **Each radial layout greys out the display type it cannot show, and the
+  chosen button describes the picture.** Circular carries its external labels
+  out to a shared ring on dashed connectors whatever is chosen — measured on a
+  96-tip star of alternating branch lengths, the labels sat at the same radius
+  with 0.0 px of spread in all three types — so the circular phylogram *is* the
+  aligned one: the type it cannot show is the UNALIGNED phylogram, and that is
+  the greyed button, with the aligned one shown as chosen. Unrooted is the other
+  way round, having no common edge to align to. Pressing the aligned button in
+  circular does not change the aligned/unaligned choice for the layouts that
+  can express it: step into circular, flip to the cladogram and back, return,
+  and the phylogram you picked is still the one selected.
 
 ### Fixed
 

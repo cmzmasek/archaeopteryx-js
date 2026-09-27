@@ -256,11 +256,15 @@ the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
 32nd of a turn per press), and the fit-width slot becomes the **node label
 direction** flip — labels riding their spokes or standing upright — while
 vertical expansion greys out. **Fit** centres and scales the fan; **Esc**
-also resets rotation and label direction. **Both radial layouts grey out the
-aligned-phylogram option**: unrooted has no common label edge to align to, and
-circular always aligns — its external labels are pulled out to a shared ring,
-with dashed connectors to match, whichever display type is chosen, so the
-option changed nothing there. Auto-hide Labels stays live in every layout.
+also resets rotation and label direction. **Each radial layout greys out the
+display type it cannot show.** Circular always aligns — its external labels are
+pulled out to a shared ring, with dashed connectors to match, whichever type is
+chosen — so the circular phylogram is the aligned one, and the greyed button
+there is the *unaligned* phylogram. Unrooted is the other way round: it has no
+common edge to align to, so the aligned type is the one greyed. The button shown
+as chosen describes the picture, and choosing the phylogram in circular leaves
+your aligned-or-not preference for the other layouts untouched. Auto-hide Labels
+stays live in every layout.
 
 ### The control-panel cheat sheet
 
@@ -554,9 +558,13 @@ phyloXML's domain `id` is optional, and a file with names alone (our own
 accessions and not Pfam identifiers. Only the domain boxes take the mouse, so
 the tree behind the track stays clickable.
 
-In the circular and unrooted layouts the tracks ride each tip's spoke
-outward and carry no names (the legend still works); they need radial
-labels, which switching layouts turns on. A malformed domain — a missing or
+In the circular and unrooted layouts the tracks ride each named tip's spoke
+outward and carry no names of their own (the legend still works); they need
+radial labels, which switching layouts turns on. An architecture goes with
+its name: where the crowding rule has taken a tip's name away, its track is
+left out too, since a track with no name beside it can only be identified by
+which spoke it sits on. Switching the name fields off is not the same thing —
+nothing is hidden by the rule then, and every track is still drawn. A malformed domain — a missing or
 impossible position or E-value — is skipped and counted in a console
 warning, never fatal. The tracks ride into the SVG, PDF and PNG exports.
 This is the desktop's domain display, drawn to the same numbers
@@ -1801,8 +1809,12 @@ mathematics — `spokeAngle(d)` is `uangle` in unrooted and the cluster angle
 minus π/2 in circular; `labelAngleDeg` rotates a label along its spoke and
 `labelFlip` adds 180° on the left half (`spokeAngle mod 2π ∈ (π/2, 3π/2)`).
 `layoutPointXY(d)` resolves a node's position in any layout for every
-consumer (overview dots, hit navigator, node transforms). Unrooted disables
-aligned phylograms and label auto-hiding, as the desktop does.
+consumer (overview dots, hit navigator, node transforms). Unrooted has no
+common edge to align labels to, so the aligned phylogram is the display type
+it greys out (circular greys the unaligned one instead, since it always
+aligns). It has no even rows either, so the every-k-th tip-label thinning does
+not run there — its crowded names are hidden by overlap instead, as on the
+desktop.
 
 ### The domain tracks
 
@@ -1813,7 +1825,10 @@ drawable when `from` and `to` are integers with `to > from` and `confidence`
 (its E-value) is a number; otherwise it is skipped and counted
 (`forester.domainArchitectureDomains`). Gate: `showDomainArchitectures`
 state (auto-on when `_basicTreeProperties.domainArchitectures`) AND external
-labels shown AND, in a radial layout, radial rather than upright labels.
+labels shown AND, in a radial layout, radial rather than upright labels AND,
+per tip, a name the crowding rule has not taken (`_labelDropped`) — note
+"taken by the rule", not "absent": with the name fields switched off nothing
+is hidden by the rule and every track is still drawn.
 
 Scale: one factor for the tree, `f = W_eff / Lmax × 0.9` px per residue.
 `W` (the track width) starts at `0.25 × viewport width`; `d+` / `d−` scale it
@@ -1826,8 +1841,8 @@ threshold never rescales. The rectangular layout reserves `20 + W + 10` px
 from `_w` past the label reservation (`_domainReserve`, counted wherever `_w`
 is), so the tree compresses to make room; the radial fit adds
 `4 + W_eff + 10` to the ring. Placement: rectangular `start = _w +
-nodeLabelGap + labelSpace + 20` for every tip (one aligned column) with box
-height `clamp(round(tipPitch / 2), 6, 16)`; circular `r0 = maxRad +
+nodeLabelGap + labelSpace + 20` for every tip still showing its name (one
+aligned column) with box height `clamp(round(tipPitch / 2), 6, 16)`; circular `r0 = maxRad +
 labelSpace + 4` under `rotate(spoke)`; unrooted `translate(tip)
 rotate(spoke)` with `start = labelSpace + 4`. A domain `from..to` covers
 `[start + (from − 1) f, start + to f]` — residue `r` is `[(r − 1) f, r f]`,
