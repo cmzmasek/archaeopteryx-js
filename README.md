@@ -1128,6 +1128,11 @@ already claimed in that pass is left out. The claim order is the tree's own,
 root first, so the mark nearer the root keeps its place and the same tree at
 the same size always drops the same marks — on screen and in every export.
 
+**The Auto-hide Labels toggle lights up while it is taking something away**,
+and its tooltip says what: *1 in k labels shown* where the every-k-th rule is
+thinning, or *n names that would overprint* in the unrooted layout, which
+thins by overlap instead. It stays dark on a tree with room for everything.
+
 **In the unrooted layout, crowded tip labels are hidden.** A name is drawn
 only where its own outline overlaps no name already drawn; the order is the
 tree's own, root first, so the same tree at the same size always keeps the

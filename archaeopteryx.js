@@ -3063,8 +3063,6 @@ function (root, d3, forester, phyloXml) {
                 });
             }
         }
-        syncDynahideIndicator(_state.dynahide && !_state.unrootedDisplay && _dynahide_factor >= 2);
-
         updateButtonEnabledState();
 
         // Only the nodes with something drawn for them individually get a
@@ -3873,6 +3871,11 @@ function (root, d3, forester, phyloXml) {
     // a rendered label's getBBox rather than guessed.
     let _fontMetricsCache = new Map();
 
+    // how many names the unrooted overlap rule took on the last render, for
+    // the Auto-hide indicator: that layout thins by overlap, not by index, so
+    // _dynahide_factor says nothing about it
+    let _unrootedNamesHidden = 0;
+
     function branchFontMetrics(fontPx) {
         // One cache for every size asked for, not one slot: labels and branch
         // marks run at different sizes in the same pass, and a single slot
@@ -4134,6 +4137,7 @@ function (root, d3, forester, phyloXml) {
     // of it (Christian, 2026-09-26: hits are exempt for tip labels, and for
     // nothing else).
     function hideCrowdedTipLabels(nodes) {
+        _unrootedNamesHidden = 0;
         if (!_state.dynahide || !_state.unrootedDisplay) {
             return;
         }
@@ -4157,6 +4161,7 @@ function (root, d3, forester, phyloXml) {
             } else if (!labels.claim(quad)) {
                 d._extLabelText = '';
                 d._labelDropped = true;
+                ++_unrootedNamesHidden;
             }
         }
     }
@@ -4236,6 +4241,9 @@ function (root, d3, forester, phyloXml) {
         // hideCrowdedBranchData, and the marks are placed against what is left
         hideCrowdedTipLabels(nodes);
         hideCrowdedBranchData(nodes);
+        // told after the rules have run, not before: what the unrooted rule
+        // hid is only known once it has looked at the labels
+        syncDynahideIndicator();
         for (let i = 0, len = nodes.length; i !== len; ++i) {
             let d = nodes[i];
             if (d._extLabelText !== '' || d._blText !== '' || d._confText !== ''
@@ -13071,7 +13079,14 @@ function (root, d3, forester, phyloXml) {
     // panel's accent: the checkbox item gets a box and its tooltip says how
     // many labels are shown. Called on every redraw, since the density
     // changes with the vertical zoom, the font size and the view.
-    function syncDynahideIndicator(active) {
+    // Lights the toggle while it is actually taking something away, and says
+    // what. The three layouts thin by different rules, so the indicator asks
+    // the rule that is running: rectangular and circular drop every k-th
+    // label by index, unrooted drops the ones whose names would overprint.
+    // It used to be told `!unrootedDisplay && factor >= 2`, which was right
+    // while unrooted thinned nothing and wrong from the day it did --
+    // Christian spotted the toggle staying dark there while names vanished.
+    function syncDynahideIndicator() {
         let cb = byId(DYNAHIDE_CB);
         let item = cb ? cb.closest('.aptx-check') : null;
         if (!item) {
@@ -13080,11 +13095,20 @@ function (root, d3, forester, phyloXml) {
         if (item.dataset.baseTitle === undefined) {
             item.dataset.baseTitle = item.title;
         }
-        item.classList.toggle('aptx-check-active', !!active);
-        item.title = active
-            ? item.dataset.baseTitle + ', hiding now: 1 in ' + _dynahide_factor
-                + ' labels shown, and branch data that would overlap'
-            : item.dataset.baseTitle;
+        let byIndex = !_state.unrootedDisplay && _dynahide_factor >= 2;
+        let byOverlap = _state.unrootedDisplay && _unrootedNamesHidden > 0;
+        let active = _state.dynahide === true && (byIndex || byOverlap);
+        item.classList.toggle('aptx-check-active', active);
+        if (!active) {
+            item.title = item.dataset.baseTitle;
+            return;
+        }
+        item.title = item.dataset.baseTitle + ', hiding now: '
+            + (byOverlap
+                ? (_unrootedNamesHidden + ' name' + (_unrootedNamesHidden === 1 ? '' : 's')
+                    + ' that would overprint')
+                : ('1 in ' + _dynahide_factor + ' labels shown'))
+            + ', and branch data that would overlap';
     }
 
     function dynaHideCbClicked() {

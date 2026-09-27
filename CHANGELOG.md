@@ -58,6 +58,11 @@ consumers only see a change when a version is cut.
   external labels to be on; this is the same rule per tip. It turns on whether
   the RULE took the name away, not on whether there is a name: switching the
   name fields off hides nothing by rule, and every architecture is still drawn.
+- **The Auto-hide Labels toggle now lights up in the unrooted layout too.** It
+  asked only the every-k-th thinning factor, which that layout does not use, so
+  the toggle stayed dark while names were being hidden. It now asks whichever
+  rule is running, and its tooltip says *n names that would overprint* rather
+  than claiming a 1-in-k rule it is not using.
 - **The panel header no longer overflows its own edge.** The cheat-sheet button
   made four, and four did not fit beside a title whose longest word cannot
   break: the row ended 2.4 px past the panel's right edge and squeezed the
