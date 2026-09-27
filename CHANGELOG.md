@@ -22,6 +22,15 @@ consumers only see a change when a version is cut.
   printed sheet is not wrong for everyone but the person who made it. This is the
   desktop Archaeopteryx's Control Panel Cheat Sheet.
 
+- **The circular layout thins its tip labels by whether they overprint**,
+  instead of borrowing the rectangular every-k-th rule. That rule reads the
+  display's height against the node count — row spacing, which says nothing
+  about the room on a ring — and it was wrong in both directions: measured at
+  1100×850 it kept 48 of 97 names on `Caliciviridae_100.xml` where all 97 fit
+  with not one overlapping pair, and 59 of 354 on `flu_h5.xml` where 118 are
+  readable. Both now draw what fits. The switch costs about 70 ms more on a
+  9,000-tip tree, since the geometric pass now sees every label rather than a
+  pre-thinned one in k.
 - **The unrooted layout hides crowded tip labels**, which it never thinned at
   all. A name is drawn only where its own outline overlaps no name already
   drawn, root first, under the Auto-hide Labels switch; a name found by a

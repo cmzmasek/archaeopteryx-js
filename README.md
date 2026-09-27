@@ -1137,24 +1137,36 @@ root first, so the mark nearer the root keeps its place and the same tree at
 the same size always drops the same marks — on screen and in every export.
 
 **The Auto-hide Labels toggle lights up while it is taking something away**,
-and its tooltip says what: *1 in k labels shown* where the every-k-th rule is
-thinning, or *n names that would overprint* in the unrooted layout, which
-thins by overlap instead. It stays dark on a tree with room for everything.
+and its tooltip says what: *1 in k labels shown* in the rectangular layout,
+which thins by index, or *n names that would overprint* in the two radial
+layouts, which thin by overlap. It stays dark on a tree with room for
+everything.
 
-**In the unrooted layout, crowded tip labels are hidden.** A name is drawn
-only where its own outline overlaps no name already drawn; the order is the
-tree's own, root first, so the same tree at the same size always keeps the
-same names. A name found by a search is drawn without being asked, so what you
-searched for is always on the screen. The other two layouts keep the every-k-th
-thinning they have: rectangular's rows are evenly spaced, and circular's labels
-ride a common ring where no two of them were ever found to overlap. The
-outlines are compared as they are drawn, turned, not as the upright boxes that
-enclose them — the bounds of a turned name are several times its own area, and
-comparing those would drop names that are plainly clear of each other.
-Measured at 1100×850 on `Caliciviridae_100.xml`, unrooted: 97 names drawn with
-172 overlapping pairs, the deepest printing 9.5 px through its neighbour, now
-34 names with none overlapping by as much as a pixel. Where there is room,
-nothing is dropped: `woese-tree-of-life.xml` keeps all 23.
+**In the circular and unrooted layouts, crowded tip labels are hidden by
+whether they actually overprint.** A name is drawn only where its own outline
+overlaps no name already drawn; the order is the tree's own, root first, so
+the same tree at the same size always keeps the same names. A name found by a
+search is drawn without being asked, so what you searched for is always on the
+screen. The outlines are compared as they are drawn, turned, not as the
+upright boxes that enclose them — the bounds of a turned name are several
+times its own area, and comparing those would drop names that are plainly
+clear of each other.
+
+The rectangular layout keeps the every-k-th thinning, where it belongs: its
+rows really are evenly spaced, and `k` is read from the font size against the
+row pitch. A fan has no rows, and until 2026-09-27 the circular layout
+borrowed that rule anyway — thinning a ring by the display's *height* over the
+node count, a quantity with nothing to do with a ring's circumference. It was
+wrong in both directions. Measured at 1100×850: on `Caliciviridae_100.xml` it
+kept 48 of 97 names where all 97 fit the ring with **not one** overlapping
+pair; on `flu_h5.xml` it kept 59 of 354 where 118 are readable. Both now draw
+what fits.
+
+Unrooted is the layout the rule takes names away in: on `Caliciviridae_100.xml`
+its 97 names had 172 overlapping pairs, the deepest printing 9.5 px through
+its neighbour, and 34 remain with none overlapping by more than the width of
+the measurement itself. Where there is room, nothing is dropped:
+`woese-tree-of-life.xml` keeps all 23 in every layout.
 
 **Names go down first, and numbers yield to them.** Every node label that will
 be drawn — a tip name or a clade name — reserves its space before any mark is
@@ -1389,7 +1401,7 @@ All 118 of them, alphabetically:
 | `showBranchVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
 | `showConfidenceValues` | Shown when the tree has confidences. |
 | `showDistributions` | Off by default. |
-| `showDynahideButton` | Shown automatically once the tree has enough tips to need it. |
+| `showDynahideButton` | The Auto-hide Labels checkbox is always shown. |
 | `showExternalLabels` | On by default; use the Ext. Labels checkbox. |
 | `showExternalLabelsButton` | Always shown. |
 | `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
@@ -1409,7 +1421,7 @@ All 118 of them, alphabetically:
 | `showSequenceGeneSymbol` | Sequence labelling follows what the tree contains. |
 | `showSequenceName` | Sequence labelling follows what the tree contains. |
 | `showSequenceSymbol` | Sequence labelling follows what the tree contains. |
-| `showShortenNodeNamesButton` | Shown automatically when the tree has long node names. |
+| `showShortenNodeNamesButton` | The Short Names checkbox is always shown; it starts on when the tree has long node names. |
 | `showTaxonomy` | Shown when the tree has taxonomies. |
 | `showTaxonomyButton` | Shown automatically when the tree has taxonomies. |
 | `showTaxonomyCode` | Taxonomy labelling follows what the tree contains. |
@@ -1812,9 +1824,9 @@ minus π/2 in circular; `labelAngleDeg` rotates a label along its spoke and
 consumer (overview dots, hit navigator, node transforms). Unrooted has no
 common edge to align labels to, so the aligned phylogram is the display type
 it greys out (circular greys the unaligned one instead, since it always
-aligns). It has no even rows either, so the every-k-th tip-label thinning does
-not run there — its crowded names are hidden by overlap instead, as on the
-desktop.
+aligns). Neither radial layout has even rows, so the every-k-th
+tip-label thinning runs in the rectangular layout alone — both fans hide their
+crowded names by overlap instead, as on the desktop.
 
 ### The domain tracks
 

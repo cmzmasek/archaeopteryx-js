@@ -3047,11 +3047,17 @@ function (root, d3, forester, phyloXml) {
         }
 
         if (_state.dynahide) {
-            if (_state.unrootedDisplay) {
-                // The every-k-th DECIMATION does not run here: it thins by
-                // index against even row spacing, and an unrooted fan has no
-                // rows. Its tip labels are thinned by hideCrowdedTipLabels
-                // instead, on whether they actually overlap.
+            if (radialDisplay()) {
+                // The every-k-th DECIMATION does not run in either radial
+                // layout: it thins by index against even ROW spacing, which a
+                // fan does not have. An unrooted fan has no rows at all; a
+                // circular one has a ring, whose room is set by its
+                // circumference and not by the display's height. Measured on
+                // Caliciviridae_100 at 1100x850, the index rule kept 48 of 97
+                // names in circular while all 97 fitted the ring with NOT ONE
+                // overlapping pair, and on flu_h5 it kept 59 of 354 where 100
+                // are readable. Both are now thinned by hideCrowdedTipLabels
+                // instead, on whether the names actually overprint.
                 forester.preOrderTraversal(_root, function (n) {
                     n.hide = false;
                 });
@@ -3871,10 +3877,10 @@ function (root, d3, forester, phyloXml) {
     // a rendered label's getBBox rather than guessed.
     let _fontMetricsCache = new Map();
 
-    // how many names the unrooted overlap rule took on the last render, for
-    // the Auto-hide indicator: that layout thins by overlap, not by index, so
-    // _dynahide_factor says nothing about it
-    let _unrootedNamesHidden = 0;
+    // how many names the radial overlap rule took on the last render, for the
+    // Auto-hide indicator: those layouts thin by overlap, not by index, so
+    // _dynahide_factor says nothing about them
+    let _radialNamesHidden = 0;
 
     function branchFontMetrics(fontPx) {
         // One cache for every size asked for, not one slot: labels and branch
@@ -4137,12 +4143,12 @@ function (root, d3, forester, phyloXml) {
     // of it (Christian, 2026-09-26: hits are exempt for tip labels, and for
     // nothing else).
     function hideCrowdedTipLabels(nodes) {
-        _unrootedNamesHidden = 0;
-        if (!_state.dynahide || !_state.unrootedDisplay) {
+        _radialNamesHidden = 0;
+        if (!_state.dynahide || !radialDisplay()) {
             return;
         }
         // no layout, no honest outlines; bailing draws everything
-        if (!_unroot) {
+        if (_state.unrootedDisplay ? !_unroot : !_radial) {
             return;
         }
         let labels = forester.orientedOccupancy(Math.max(4, _state.externalNodeFontSize));
@@ -4161,7 +4167,7 @@ function (root, d3, forester, phyloXml) {
             } else if (!labels.claim(quad)) {
                 d._extLabelText = '';
                 d._labelDropped = true;
-                ++_unrootedNamesHidden;
+                ++_radialNamesHidden;
             }
         }
     }
@@ -5392,8 +5398,12 @@ function (root, d3, forester, phyloXml) {
         showTaxonomyButton: 'shown automatically when the tree has taxonomies',
         showSequenceButton: 'shown automatically when the tree has sequences',
         showBranchColorsButton: 'the Visual Styles checkbox appears when the tree has branch colours or style properties',
-        showDynahideButton: 'shown automatically once the tree has enough tips to need it',
-        showShortenNodeNamesButton: 'shown automatically when the tree has long node names',
+        // These two are ALWAYS offered, deliberately: they do nothing on a tree
+        // that needs neither, and a control that comes and goes between trees
+        // is worse than one that is simply there. (Both messages used to
+        // promise a conditional appearance the code had already rejected.)
+        showDynahideButton: 'the Auto-hide Labels checkbox is always shown',
+        showShortenNodeNamesButton: 'the Short Names checkbox is always shown; it starts on when the tree has long node names',
         showExternalLabelsButton: 'always shown',
         showInternalLabelsButton: 'shown automatically when the tree has internal node data',
         // the collapse-by-depth / rank / feature feature is gone
@@ -13116,8 +13126,8 @@ function (root, d3, forester, phyloXml) {
         if (item.dataset.baseTitle === undefined) {
             item.dataset.baseTitle = item.title;
         }
-        let byIndex = !_state.unrootedDisplay && _dynahide_factor >= 2;
-        let byOverlap = _state.unrootedDisplay && _unrootedNamesHidden > 0;
+        let byIndex = !radialDisplay() && _dynahide_factor >= 2;
+        let byOverlap = radialDisplay() && _radialNamesHidden > 0;
         let active = _state.dynahide === true && (byIndex || byOverlap);
         item.classList.toggle('aptx-check-active', active);
         if (!active) {
@@ -13126,7 +13136,7 @@ function (root, d3, forester, phyloXml) {
         }
         item.title = item.dataset.baseTitle + ', hiding now: '
             + (byOverlap
-                ? (_unrootedNamesHidden + ' name' + (_unrootedNamesHidden === 1 ? '' : 's')
+                ? (_radialNamesHidden + ' name' + (_radialNamesHidden === 1 ? '' : 's')
                     + ' that would overprint')
                 : ('1 in ' + _dynahide_factor + ' labels shown'))
             + ', and branch data that would overlap';
