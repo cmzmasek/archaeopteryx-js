@@ -51,11 +51,13 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
-- **A domain architecture is no longer drawn for a tip whose name was hidden.**
-  Since the unrooted layout began hiding crowded names, a tip could show an
-  architecture with nothing to identify it by — 7 of 31 on `apaf.xml`.
-  `showDomainArchitectures` already required external labels to be on; this is
-  the same rule per tip.
+- **A domain architecture is no longer drawn for a tip whose name the crowding
+  rule hid.** Since the unrooted layout began hiding crowded names, a tip could
+  show an architecture with nothing to identify it by — 7 of 31 on `apaf.xml`,
+  and 48 of 96 on a decimated fan. `showDomainArchitectures` already required
+  external labels to be on; this is the same rule per tip. It turns on whether
+  the RULE took the name away, not on whether there is a name: switching the
+  name fields off hides nothing by rule, and every architecture is still drawn.
 - **The panel header no longer overflows its own edge.** The cheat-sheet button
   made four, and four did not fit beside a title whose longest word cannot
   break: the row ended 2.4 px past the panel's right edge and squeezed the

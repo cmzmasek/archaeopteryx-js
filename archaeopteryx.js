@@ -4156,6 +4156,7 @@ function (root, d3, forester, phyloXml) {
                 labels.occupy(quad);
             } else if (!labels.claim(quad)) {
                 d._extLabelText = '';
+                d._labelDropped = true;
             }
         }
     }
@@ -4216,7 +4217,12 @@ function (root, d3, forester, phyloXml) {
             }
             // Empty is the common case on a big tree: Auto-hide Labels blanks
             // them exactly when there are most nodes to blank.
-            d._extLabelText = (!_state.dynahide || !d.hide) ? (makeNodeLabel(d) || '') : '';
+            // WHY the text is empty matters downstream: a label the crowding
+            // rule took away is a different thing from a label the user
+            // switched off, and marks that accompany a name must tell them
+            // apart (drawDomainArchitectures).
+            d._labelDropped = _state.dynahide === true && d.hide === true;
+            d._extLabelText = d._labelDropped ? '' : (makeNodeLabel(d) || '');
             d._blText = wantBl ? asText(makeBranchLengthLabel(d)) : '';
             d._confText = wantConf ? asText(makeConfidenceValuesLabel(d)) : '';
             d._eventText = wantEvent ? asText(makeBranchEventsLabel(d)) : '';
@@ -10808,7 +10814,14 @@ function (root, d3, forester, phyloXml) {
         // end: a tip IMAGE painted before its label's claim was left orphaned
         // under a neighbour's name.)
         let tips = (domainsShown() && _root) ? displayedTips().filter(function (d) {
-            if (d._extLabelText === '') {
+            // Keyed on "the RULE hid this name", not on "there is no name".
+            // The two part company the moment the user switches the name
+            // fields off: nothing is hidden by the rule then, every label is
+            // empty, and every architecture should still be drawn. Keying on
+            // the empty text took all 31 of apaf's architectures away with the
+            // Node Name checkbox -- shipped, and caught by the desktop
+            // warning us they had met the same reading of their own fix.
+            if (d._labelDropped) {
                 return false;
             }
             return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
@@ -11977,7 +11990,7 @@ function (root, d3, forester, phyloXml) {
     // what the viewer writes onto a tree's nodes, left off a tree cut out of it
     const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
         'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText',
-        '_labelBoxes'];
+        '_labelBoxes', '_labelDropped'];
 
     // the whole tree's tip count, counted again only when the tree changes
     // (every change makes new _basicTreeProperties)
