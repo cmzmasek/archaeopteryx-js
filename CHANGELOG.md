@@ -51,6 +51,17 @@ consumers only see a change when a version is cut.
 
 ### Fixed
 
+- **A domain architecture is no longer drawn for a tip whose name was hidden.**
+  Since the unrooted layout began hiding crowded names, a tip could show an
+  architecture with nothing to identify it by — 7 of 31 on `apaf.xml`.
+  `showDomainArchitectures` already required external labels to be on; this is
+  the same rule per tip.
+- **The panel header no longer overflows its own edge.** The cheat-sheet button
+  made four, and four did not fit beside a title whose longest word cannot
+  break: the row ended 2.4 px past the panel's right edge and squeezed the
+  title into two ragged centred lines. The header now wraps, so the buttons
+  take their own right-aligned row and the title gets its full width back —
+  "Archaeopteryx.js 3.15.0" sits on one line where it used to break in two.
 - **Branch numbers no longer print through names.** The crowding rule added in
   3.15.0 kept branch-length values, support values and support symbols off each
   other, and off nothing else, so a number could still land across a tip name or

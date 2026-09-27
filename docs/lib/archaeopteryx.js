@@ -10797,7 +10797,20 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let existing = _svgGroup.select('g.aptx-domains');
+        // An architecture goes WITH ITS NAME, and is left out when the name
+        // is. domainsShown() already ties the whole track to external labels
+        // being on; this is the same rule per tip, and it became necessary the
+        // day unrooted started hiding crowded names -- before that every tip
+        // in every layout kept its label, so a nameless architecture could not
+        // happen. Measured on apaf when it could: 7 of 31 tips drew an
+        // architecture with no name beside it, identifiable only by which
+        // spoke it sat on. (The desktop reached the same rule from the other
+        // end: a tip IMAGE painted before its label's claim was left orphaned
+        // under a neighbour's name.)
         let tips = (domainsShown() && _root) ? displayedTips().filter(function (d) {
+            if (d._extLabelText === '') {
+                return false;
+            }
             return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
         }) : [];
         let f = tips.length > 0 ? domainScale() : 0;
@@ -14053,7 +14066,15 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-tip .aptx-dialog-line { padding:1px 0; }'
             + '.aptx-tip .aptx-dialog-line + .aptx-dialog-line { border-top:0; }'
             + '.aptx-tip .aptx-dialog-key { flex:0 0 auto; min-width:96px; }'
-            + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
+            // WRAPS. The title's longest word cannot break, so on a narrow
+            // panel the buttons had nowhere to go and overflowed the padding:
+            // with four of them they ended 2.4 px past the panel's own right
+            // edge, and squeezed the title into two ragged centred lines on
+            // the way. Wrapping puts them on their own right-aligned row
+            // instead, which also gives the title back its full width -- so
+            // "Archaeopteryx.js 3.15.0" sits on ONE line where it used to
+            // break in two.
+            + '.aptx-panel .' + PROG_NAME + ' { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; padding:9px 12px; border-bottom:1px solid var(--p-line); font-weight:600; letter-spacing:-0.01em; }'
             + '.aptx-panel .' + PROGNAMELINK + ',.aptx-panel .' + PROGNAMELINK + ':link,.aptx-panel .' + PROGNAMELINK + ':visited { color:var(--p-accent-ink); text-decoration:none; font-size:12px; border:0; }'
             + '.aptx-panel .' + PROGNAMELINK + ' { background:none; padding:0; margin:0; cursor:pointer;'
             + '  font-family:inherit; font-weight:inherit; letter-spacing:inherit; }'
