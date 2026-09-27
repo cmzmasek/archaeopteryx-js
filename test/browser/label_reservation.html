@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: what a name reserves in a radial layout</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// Does it matter HOW a rotated name reserves its space -- a run of short
+// boxes along the baseline, or one axis-aligned box round the whole thing?
+// This file was built to tell the two apart, with few branches so numbers
+// would survive and long names at an angle so the difference in reserved area
+// is at its largest.
+//
+// IT COULD NOT. At 24, 36, 48 and 60 tips with 28-character names, both
+// reservations draw exactly the same numbers. So does every real tree tried,
+// bar one number on flu_h5 unrooted. The reason is visible in the picture: in
+// a radial layout the numbers sit at branch midpoints near the centre and the
+// names are out at the rim, so they hardly contend at all, and where they do
+// the view is already saturated. The run is kept for its bound, not for a
+// count it cannot show. What this file DOES pin is that a view with room
+// loses nothing to the reservation.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const tips = Number(q.get('tips') || 14);
+    const nameLen = Number(q.get('namelen') || 28);
+    const tree = () => {
+        let c = '';
+        for (let i = 0; i < tips; ++i) {
+            let nm = ('Organism_' + (i + 1) + '_').padEnd(nameLen, 'x');
+            c += '<clade branch_length="' + (0.2 + (0.05 * (i % 5)))
+                + '"><name>' + nm + '</name></clade>';
+        }
+        return '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+            + '<clade>' + c + '</clade></phylogeny></phyloxml>';
+    };
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees('long.xml', tree()), {});
+    await viewer.ready;
+    await sleep(1200);
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    for (const id of ['bl_cb', 'dynahide_cb', 'layout_circ_b', 'layout_unrooted_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const bl = document.getElementById('bl_cb'); if (!bl.checked) { bl.click(); } await settle();
+    const count = () => [...document.querySelectorAll('#phylogram1 text.bllabel')]
+        .filter((t) => (t.textContent || '').trim() !== '').length;
+    const labels = () => [...document.querySelectorAll('#phylogram1 text.extlabel')]
+        .filter((t) => (t.textContent || '').trim() !== '').length;
+    const dh = document.getElementById('dynahide_cb');
+    for (const [name, id] of [['circular', 'layout_circ_b'], ['unrooted', 'layout_unrooted_b']]) {
+        document.getElementById(id).click(); await settle();
+        const kept = count();
+        if (dh.checked) { dh.click(); } await settle();
+        const all = count();
+        if (!dh.checked) { dh.click(); } await settle();
+        out.push(name + ': ' + labels() + ' names of ' + nameLen + ' characters, '
+            + kept + ' of ' + all + ' branch lengths drawn');
+        // What the fixture really establishes: reserving the names costs a
+        // roomy view nothing. If this ever fails, the reservation has grown.
+        check(name + ': a view with room loses no numbers to the names',
+            kept >= (all - 1), kept + ' of ' + all);
+    }
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

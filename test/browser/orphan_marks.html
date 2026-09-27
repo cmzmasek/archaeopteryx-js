@@ -1,0 +1,143 @@
+<!doctype html>
+<meta charset="utf-8"><title>marks left without their name</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The desktop found that a tip IMAGE, painted before the label's claim, was
+// left orphaned under a neighbour's name when its own tip lost its label. We
+// draw no tip images, but we do draw a DOMAIN ARCHITECTURE per tip, and since
+// unrooted started hiding crowded names there is a tip that can have a track
+// and no name. This measures how many.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    // A synthetic domained fan, for the case no stored tree reaches: enough
+    // tips that the every-k-th INDEX rule thins the labels in rectangular and
+    // circular, with an architecture on each. Without it "_labelDropped set by
+    // the index rule" is never exercised -- apaf has 31 tips and nothing is
+    // decimated at this size.
+    const bigFan = (n) => {
+        let c = '';
+        for (let i = 0; i < n; ++i) {
+            c += '<clade branch_length="' + (0.2 + (0.03 * (i % 7))) + '"><name>Protein_' + (i + 1)
+                + '</name><sequence><domain_architecture length="900">'
+                + '<domain from="20" to="140" confidence="1.0E-20">CARD</domain>'
+                + '<domain from="300" to="520" confidence="1.0E-15">NB-ARC</domain>'
+                + '<domain from="700" to="860" confidence="0.001">WD40</domain>'
+                + '</domain_architecture></sequence></clade>';
+        }
+        return '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+            + '<clade>' + c + '</clade></phylogeny></phyloxml>';
+    };
+    const big = new URLSearchParams(location.search).get('big');
+    const f = big ? 'fan.xml' : '../../docs/data/apaf.xml';
+    const t = big ? bigFan(Number(big)) : await (await fetch(f)).text();
+    const trees = archaeopteryx.parseTrees(f, t);
+    const v = archaeopteryx.launch('#p', trees, {});
+    await v.ready; await sleep(2000);
+    const settle = async () => { await sleep(2500); };
+    const need = ['layout_unrooted_b', 'layout_rect_b', 'dynahide_cb'];
+    for (const id of need) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const dom = document.getElementById('domains_cb')
+        || [...document.querySelectorAll('input[type=checkbox]')]
+            .find((c) => { const l = c.closest('label'); return l && /Domain/i.test(l.textContent); });
+    if (dom && !dom.checked) { dom.click(); await settle(); }
+
+    // Counted from the TREE: which tips have domain data, and which of those
+    // have a name drawn. A tip with an architecture and no name is the orphan.
+    const tipsWithDomains = [];
+    const walk = (n) => {
+        if (!n.children || n.children.length === 0) {
+            const seq = n.sequences || (n.sequence ? [n.sequence] : []);
+            const has = seq.some((q) => q && q.domain_architecture
+                && q.domain_architecture.domains && q.domain_architecture.domains.length);
+            if (has) { tipsWithDomains.push(String(n.id)); }
+            return;
+        }
+        n.children.forEach(walk);
+    };
+    walk(trees[0]);
+
+    const count = (name) => {
+        // what is DRAWN, not what the data offers: every domain box carries
+        // its own info, and the info names the tip it belongs to
+        const drawnFor = new Set();
+        for (const el of document.querySelectorAll('#p g.aptx-domains *')) {
+            const info = el.__aptxDomain;
+            if (!info) { continue; }
+            const key = info.nodeId !== undefined ? String(info.nodeId)
+                : (info.node && info.node.id !== undefined ? String(info.node.id)
+                    : (info.tip || info.name || ''));
+            if (key !== '') { drawnFor.add(key); }
+        }
+        const named = new Set([...document.querySelectorAll('#p text.extlabel')]
+            .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+                return d && !d.children && (t.textContent || '').trim() !== ''; })
+            .map((t) => String(t.parentNode.__data__.id)));
+        // The box's info names its tip as a STRING, and Short Names may have
+        // abbreviated the drawn label, so the two are matched by COUNT rather
+        // than by identity: how many domain-carrying tips still show a name,
+        // against how many architectures were drawn. They must agree.
+        const namedWithDomains = tipsWithDomains.filter((id) => named.has(id)).length;
+        out.push(name + ': ' + tipsWithDomains.length + ' tips carry domain data, '
+            + namedWithDomains + ' of them still show a name, '
+            + drawnFor.size + ' architectures drawn');
+        return {total: tipsWithDomains.length, drawn: drawnFor.size, named: namedWithDomains};
+    };
+
+    document.getElementById('layout_rect_b').click(); await settle();
+    const rect = count('rectangular');
+    document.getElementById('layout_unrooted_b').click(); await settle();
+    const unr = count('unrooted   ');
+    check('the tree actually carries domain data', unr.total > 0, unr.total + ' tips');
+    check('architectures are actually drawn', unr.drawn > 0 && rect.drawn > 0,
+        'rect ' + rect.drawn + ', unrooted ' + unr.drawn);
+    check('an architecture is drawn for exactly the tips that still show a name',
+        unr.drawn === unr.named && rect.drawn === rect.named,
+        'rect ' + rect.drawn + '/' + rect.named + ', unrooted ' + unr.drawn + '/' + unr.named);
+    // Without this the check above passes on a run where nothing was hidden
+    // at all. It asks about the RUN, not about one layout: which layout does
+    // the hiding depends on the tree -- apaf is thinned only in unrooted (the
+    // overlap rule), a 96-tip fan only in rectangular (the every-k-th rule).
+    check('the rule hid names somewhere in this run',
+        (rect.named < rect.total) || (unr.named < unr.total),
+        'rectangular ' + rect.named + '/' + rect.total
+            + ', unrooted ' + unr.named + '/' + unr.total);
+    out.push('ORPHANS in unrooted: ' + unr.without);
+    // THE SET THAT MATTERS is "tips the RULE hid", not "tips with no label
+    // text". They differ the moment the user turns the names off: nothing is
+    // hidden by the rule then, and every architecture should still be drawn.
+    // (The desktop hit this reading their own fix and warned us; ours keys off
+    // _extLabelText, which is empty for BOTH reasons.)
+    document.getElementById('layout_rect_b').click(); await settle();
+    const before = new Set();
+    for (const el of document.querySelectorAll('#p g.aptx-domains *')) {
+        if (el.__aptxDomain) { before.add(el.__aptxDomain.tip); }
+    }
+    const nn = document.getElementById('nn_cb');
+    if (nn && nn.checked) { nn.click(); await settle(); }
+    const after = new Set();
+    for (const el of document.querySelectorAll('#p g.aptx-domains *')) {
+        if (el.__aptxDomain) { after.add(el.__aptxDomain.tip); }
+    }
+    out.push('with node names switched OFF: ' + before.size + ' architectures -> ' + after.size);
+    check('switching the names off does not take the architectures with them',
+        after.size === before.size, before.size + ' -> ' + after.size);
+    if (nn && !nn.checked) { nn.click(); await settle(); }
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

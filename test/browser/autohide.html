@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx auto-hide crowded branch data</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/flu_h5.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(1500);
+    const on = (id) => { const c = document.getElementById(id); if (c && !c.checked) { c.click(); } };
+    const off = (id) => { const c = document.getElementById(id); if (c && c.checked) { c.click(); } };
+    const marks = () => [...document.querySelectorAll('#phylogram1 text.bllabel, #phylogram1 text.conflabel')]
+        .filter((t) => (t.textContent || '').trim() !== '')
+        .map((t) => { const b = t.getBoundingClientRect();
+            return {x: b.left, y: b.top, w: b.width, h: b.height}; })
+        .filter((b) => b.w > 0 && b.h > 0);
+    const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    const clashes = (L) => { let n = 0;
+        for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
+            if (hits(L[i], L[j])) { ++n; break; } } } return n; };
+
+    on('conf_cb'); on('bl_cb');
+    await sleep(1800);
+    const withHide = marks();
+    check('no granted mark overlaps another', clashes(withHide) === 0,
+        clashes(withHide) + ' of ' + withHide.length + ' overlap');
+    check('and something is still drawn', withHide.length > 0, withHide.length + ' drawn');
+
+    // the toggle: off means everything is drawn, crowded or not
+    off('dynahide_cb');
+    await sleep(1800);
+    const noHide = marks();
+    out.push('with auto-hide OFF: ' + noHide.length + ' drawn, ' + clashes(noHide) + ' overlapping');
+    check('switching auto-hide off draws more', noHide.length > withHide.length,
+        withHide.length + ' -> ' + noHide.length);
+    on('dynahide_cb');
+    await sleep(1800);
+    check('switching it back on restores the hiding', marks().length === withHide.length,
+        withHide.length + ' vs ' + marks().length);
+
+    // THE TWO MAPS. Numbers and symbols are kept apart on purpose: the symbol
+    // sits ON the branch and the numbers just above and below it, so one
+    // shared map would let a branch's own dot block its own numbers. With the
+    // dots on, the numbers must not thin out.
+    const numbersBefore = marks().length;
+    on('suppdots_cb');
+    await sleep(1900);
+    const dots = [...document.querySelectorAll('#phylogram1 circle.suppdot')]
+        .filter((c) => Number(c.getAttribute('r')) > 0);
+    const numbersAfter = marks().length;
+    out.push('support dots drawn: ' + dots.length
+        + ', numbers ' + numbersBefore + ' -> ' + numbersAfter);
+    check('the dots are drawn at all', dots.length > 0, dots.length + ' dots');
+    check('turning the dots on does not cost a single number',
+        numbersAfter === numbersBefore, numbersBefore + ' -> ' + numbersAfter);
+    // and the dots themselves obey the rule, in their own map
+    const dotBoxes = dots.map((c) => { const b = c.getBoundingClientRect();
+        return {x: b.left, y: b.top, w: b.width, h: b.height}; }).filter((b) => b.w > 0);
+    check('no granted dot overlaps another', clashes(dotBoxes) === 0,
+        clashes(dotBoxes) + ' of ' + dotBoxes.length + ' overlap');
+    off('suppdots_cb');
+    await sleep(1600);
+
+    // the tie-break: the mark nearer the ROOT keeps its place
+    const kept = [...document.querySelectorAll('#phylogram1 g.node')]
+        .filter((g) => [...g.querySelectorAll('text.conflabel')].some((t) => (t.textContent || '').trim()));
+    check('marks survive at more than one depth', kept.length > 2, kept.length + ' nodes keep a number');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

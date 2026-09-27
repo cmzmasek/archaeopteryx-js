@@ -1,0 +1,437 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx tip-label overlap, by layout and label direction</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// What a user SEES today: how many drawn tip labels overprint each other, in
+// each layout and each label direction. No rule is under test here -- this is
+// the baseline the desktop asked for, measured the way they measured theirs
+// (overlapping PAIRS among the labels actually drawn).
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/woese-tree-of-life.xml';
+    const text = await (await fetch(file)).text();
+    const trees = archaeopteryx.parseTrees(file, text);
+    const viewer = archaeopteryx.launch('#phylogram1', trees, {});
+    await viewer.ready;
+    await sleep(1200);
+
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    for (const id of ['dynahide_cb', 'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b', 'fitwidth']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const click = async (id) => { document.getElementById(id).click(); await settle(); };
+    const on = async (id) => { const c = document.getElementById(id); if (!c.checked) { c.click(); } await settle(); };
+    const off = async (id) => { const c = document.getElementById(id); if (c.checked) { c.click(); } await settle(); };
+
+    // Tip labels only: the class is shared with internal-node labels, so the
+    // datum decides.
+    //
+    // TWO conventions, because they do not agree and the difference is the
+    // whole radial question. getBoundingClientRect on a rotated <text> is the
+    // axis-aligned bounds OF the rotated box -- the conservative box the
+    // desktop's rule claims (rot_w, rot_h) -- and it calls two labels crowded
+    // when their tilted rectangles merely pass near each other. The oriented
+    // box is what the eye sees. A radial layout is measured mostly at an
+    // angle, a horizontal one mostly at zero, so reporting only the first
+    // would flatter horizontal labels by construction.
+    const labels = () => [...document.querySelectorAll('#phylogram1 text.extlabel')]
+        .map((t) => ({t: t, d: t.parentNode && t.parentNode.__data__}))
+        .filter((o) => o.d && !o.d.children && (o.t.textContent || '').trim() !== '')
+        .map(({t, d}) => {
+            const r = t.getBoundingClientRect();
+            const bb = t.getBBox();
+            const m = t.getScreenCTM();
+            if (!m || r.width <= 0 || r.height <= 0) { return null; }
+            const pt = (x, y) => [(m.a * x) + (m.c * y) + m.e, (m.b * x) + (m.d * y) + m.f];
+            return {
+                id: String(d.id),
+                aabb: {x: r.left, y: r.top, w: r.width, h: r.height},
+                quad: [pt(bb.x, bb.y), pt(bb.x + bb.width, bb.y),
+                       pt(bb.x + bb.width, bb.y + bb.height), pt(bb.x, bb.y + bb.height)]
+            };
+        })
+        .filter((b) => b !== null);
+    const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    // separating-axis test on two convex quads: a rectangle needs only its own
+    // two edge normals, so four axes decide the pair
+    const quadHits = (P, Q) => {
+        for (const R of [P, Q]) {
+            for (let k = 0; k < 2; ++k) {
+                const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                for (const v of P) { const d = (v[0] * ax) + (v[1] * ay); p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                for (const v of Q) { const d = (v[0] * ax) + (v[1] * ay); q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                if (p1 <= q0 + 1e-9 || q1 <= p0 + 1e-9) { return false; }
+            }
+        }
+        return true;
+    };
+    // How deep two labels interpenetrate, along the shallowest of the four
+    // axes. Needed because the rule's own outlines come from canvas
+    // measureText while the picture comes from the SVG renderer, and the two
+    // differ by well under a pixel -- so a rule that places labels exactly
+    // against each other leaves sub-pixel touches that are not overprinting.
+    const depth = (P, Q) => {
+        let best = Infinity;
+        for (const R of [P, Q]) {
+            for (let k = 0; k < 2; ++k) {
+                const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                const n = Math.hypot(ax, ay) || 1;
+                let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                for (const v of P) { const d = ((v[0] * ax) + (v[1] * ay)) / n; p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                for (const v of Q) { const d = ((v[0] * ax) + (v[1] * ay)) / n; q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                if (p1 <= q0 || q1 <= p0) { return 0; }
+                best = Math.min(best, Math.min(p1 - q0, q1 - p0));
+            }
+        }
+        return best;
+    };
+    const pairs = (L) => {
+        let box = 0, ink = 0; const inv = new Set();
+        let deepest = 0;
+        for (let i = 0; i < L.length; ++i) {
+            for (let j = i + 1; j < L.length; ++j) {
+                if (hits(L[i].aabb, L[j].aabb)) { ++box; }
+                if (quadHits(L[i].quad, L[j].quad)) {
+                    ++ink; inv.add(i); inv.add(j);
+                    deepest = Math.max(deepest, depth(L[i].quad, L[j].quad));
+                }
+            }
+        }
+        return {box: box, ink: ink, involved: inv.size, deepest: deepest};
+    };
+
+    // how many tips exist at all, to see what the every-k-th decimation drops
+    let total = 0;
+    const nameOf = new Map();
+    const walk = (n) => {
+        if (!n.children || n.children.length === 0) {
+            ++total;
+            if (n.id !== undefined && n.name) { nameOf.set(String(n.id), n.name); }
+            return;
+        }
+        n.children.forEach(walk);
+    };
+    walk(trees[0]);
+
+    // The overlap test measures itself first. A separating-axis test that
+    // consults only ONE rectangle's normals passes every check below -- it
+    // merely inflates unrooted from 172 pairs to 186 -- so the numbers this
+    // file exists to report would be wrong with nothing to say so. These three
+    // quads decide it without a tree: an axis-aligned square and a diamond
+    // that clears it only along the diamond's OWN normal.
+    {
+        const sq = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        const clear = [[8, 16], [16, 8], [24, 16], [16, 24]];   // nearest edge is x+y=24; the square reaches 20
+        const over = [[2, 10], [10, 2], [18, 10], [10, 18]];    // nearest edge is x+y=12; the square reaches 20
+        check('overlap test: a diamond separated only by its own normal is separate',
+            !quadHits(sq, clear) && !quadHits(clear, sq), 'both orders');
+        check('overlap test: a diamond that does reach in overlaps',
+            quadHits(sq, over) && quadHits(over, sq), 'both orders');
+        check('overlap test: a quad overlaps itself', quadHits(sq, sq));
+        check('overlap test: quads that only touch along an edge do not overlap',
+            !quadHits(sq, [[10, 0], [20, 0], [20, 10], [10, 10]]));
+    }
+
+    // What a first-come rule WOULD keep, under each box convention, over the
+    // same labels in the same order. The order is the DOM's, not the joint
+    // preorder, so these are not the counts a shipped rule would produce --
+    // but both conventions see the identical order, so the DIFFERENCE between
+    // them is the cost of the box definition alone.
+    const greedy = (L, overlaps) => {
+        const kept = [];
+        for (const c of L) {
+            if (!kept.some((k) => overlaps(k, c))) { kept.push(c); }
+        }
+        return kept.length;
+    };
+
+    const measure = async (name) => {
+        const L = labels();
+        const p = pairs(L);
+        const keptInk = greedy(L, (a, b) => quadHits(a.quad, b.quad));
+        const keptBox = greedy(L, (a, b) => hits(a.aabb, b.aabb));
+        out.push(name + ': ' + L.length + ' drawn, ' + p.ink + ' overlapping pairs ('
+            + p.involved + ' labels), ' + p.box + ' by the conservative rotated-box test'
+            + (p.deepest > 0 ? ('   deepest ' + p.deepest.toFixed(2) + ' px') : '')
+            + '   -- a first-come rule would keep ' + keptInk + ' (oriented box) / '
+            + keptBox + ' (rotated-box AABB)');
+        return {n: L.length, pairs: p.ink, box: p.box, keptInk: keptInk, keptBox: keptBox,
+            deepest: p.deepest, quads: L};
+    };
+
+    const dyna = document.getElementById('dynahide_cb');
+    out.push('Auto-hide Labels is ' + (dyna.checked ? 'ON' : 'off') + ' (default)');
+
+    await click('layout_rect_b');
+    const rect = await measure('rectangular            ');
+    await click('layout_circ_b');
+    const circR = await measure('circular,  radial      ');
+    await click('fitwidth');
+    const circH = await measure('circular,  horizontal  ');
+    await click('fitwidth');           // back to radial
+    // the same view with the rule off, so the dropped-for-nothing invariant
+    // can be asked of CIRCULAR as well: it thins by overlap now, so it owes
+    // the same account of every name it takes
+    await off('dynahide_cb');
+    const circOff = await measure('circular,  rule OFF    ');
+    await on('dynahide_cb');
+    await click('layout_unrooted_b');
+    const unrR = await measure('unrooted,  radial      ');
+    // the same view with the rule switched off, to say what it cost
+    await off('dynahide_cb');
+    const unrOff = await measure('unrooted,  rule OFF    ');
+    await on('dynahide_cb');
+    await click('fitwidth');
+    const unrH = await measure('unrooted,  horizontal  ');
+    await click('fitwidth');
+
+    // The claims this file is here to support, each as a check that can fail.
+    // Tip labels are thinned by INDEX (every k-th, k from font size against row
+    // spacing) in rectangular and circular, and not at all in unrooted -- never
+    // by whether two of them overprint. So the label direction, which decides
+    // the overprinting, cannot change the count; and on a tree small enough
+    // that k is 1, everything is drawn however badly it collides.
+    // CIRCULAR THINS BY OVERLAP NOW (2026-09-27), not by the rectangular
+    // every-k-th rule it used to borrow. That rule was keyed to row spacing --
+    // display height over node count -- which says nothing about the room on
+    // a ring: it kept 48 of 97 names on Caliciviridae where all 97 fit with
+    // no overlap at all, and 59 of 354 on flu_h5 where 118 are readable.
+    // ">= rectangular" was too weak to say anything: putting the index rule
+    // back in circular passed it, because circular then drew exactly what
+    // rectangular drew. The claim is that circular is no longer governed by
+    // ROW spacing -- so wherever the rows thin, the ring must keep more.
+    check('circular is not thinned by the rectangular row-spacing rule',
+        rect.n === total ? circR.n === total : circR.n > rect.n,
+        'of ' + total + ' tips, rectangular ' + rect.n + ', circular ' + circR.n);
+    // UNROOTED NOW HAS THE DESKTOP'S RULE (2026-09-27). It used to thin
+    // nothing at all, which is what the checks here used to say.
+    //
+    // Both directions, decided by the tree rather than assumed: where the
+    // whole set of names overlaps, the rule must drop some; where it does not,
+    // the rule must drop NONE. Asserting only the first fails on a small tree
+    // for being correct, which is how this check first ran (woese, 23 names
+    // with room for all 23).
+    check('unrooted thins where the names overlap, and only there',
+        unrOff.pairs > 0 ? (unrR.n < unrOff.n) : (unrR.n === unrOff.n),
+        unrOff.pairs + ' overlapping pairs with the rule off, ' + unrOff.n
+            + ' names drawn -> ' + unrR.n + ' with it on');
+    check('unrooted still draws something',
+        unrR.n > 0, unrR.n + ' drawn');
+    // AND IT DROPPED NOTHING FOR NOTHING. In a first-come pass a refusal is
+    // caused by something granted before it, and everything granted is still
+    // drawn -- so every name the rule dropped must touch one it kept. A name
+    // dropped with clear space round it is what a too-generous outline looks
+    // like from outside; the axis-aligned bounds of a turned name would do
+    // exactly that.
+    const droppedIds = [];
+    const droppedCirc = [];
+    {
+        const gapBetween = (P, Q) => {
+            // 0 when they touch or overlap, else the smallest axis gap
+            let worst = 0;
+            for (const R of [P, Q]) {
+                for (let k = 0; k < 2; ++k) {
+                    const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                    const n = Math.hypot(ax, ay) || 1;
+                    let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                    for (const v of P) { const d = ((v[0] * ax) + (v[1] * ay)) / n; p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                    for (const v of Q) { const d = ((v[0] * ax) + (v[1] * ay)) / n; q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                    worst = Math.max(worst, Math.max(q0 - p1, p0 - q1));
+                }
+            }
+            return Math.max(0, worst);
+        };
+        // BOTH radial layouts owe this account, not just unrooted. Circular
+        // thinned by index until 2026-09-27 and had nothing to answer for;
+        // now that it thins by overlap it can drop a name for nothing exactly
+        // as unrooted can, and asking only one of them would have left the
+        // newer half unwatched.
+        [['unrooted', unrOff, unrR], ['circular', circOff, circR]].forEach(function (row) {
+            const name = row[0], off_ = row[1], on_ = row[2];
+            const kept = new Set(on_.quads.map((q) => q.id));
+            let dropped = 0, forNothing = 0, furthest = 0;
+            for (const cand of off_.quads) {
+                if (kept.has(cand.id)) { continue; }
+                ++dropped;
+                (name === 'unrooted' ? droppedIds : droppedCirc).push(cand.id);
+                let best = Infinity;
+                for (const k of on_.quads) { best = Math.min(best, gapBetween(cand.quad, k.quad)); }
+                if (best > 1.0) { ++forNothing; }
+                furthest = Math.max(furthest, best === Infinity ? 0 : best);
+            }
+            out.push(name + ': ' + dropped + ' names dropped, furthest from anything kept '
+                + furthest.toFixed(2) + ' px');
+            check(name + ': every name it dropped touches one it kept',
+                forNothing === 0, forNothing + ' of ' + dropped + ' dropped with clear space, furthest '
+                    + furthest.toFixed(2) + ' px');
+        });
+    }
+    // The bound is DERIVED, not picked. The rule claims boxes measured with
+    // canvas measureText; this probe measures what the SVG renderer drew, and
+    // the ink-coverage harness puts that difference at up to 0.70 px per
+    // label. Two labels placed exactly against each other can therefore be
+    // read as interpenetrating by up to twice that. Anything beyond is the
+    // rule failing, not the measurement: real overprinting on these trees runs
+    // to 6-10 px.
+    check('and no two names it drew overprint beyond the measurement difference',
+        unrR.deepest < 1.5 && unrH.deepest < 1.5,
+        'radial ' + unrR.deepest.toFixed(2) + ' px, horizontal ' + unrH.deepest.toFixed(2)
+            + ' px, bound 1.5');
+    // circular is untouched: its labels ride a common ring, where measurement
+    // has never found two of them overlapping
+    // The two label DIRECTIONS need not keep the same names: an upright label
+    // on a ring takes a different shape from one riding its spoke, so the
+    // geometric rule answers differently. What must hold in both is that what
+    // it drew does not overprint.
+    check('circular: neither direction leaves names overprinting',
+        circR.deepest < 1.5 && circH.deepest < 1.5,
+        'radial ' + circR.deepest.toFixed(2) + ' px, horizontal ' + circH.deepest.toFixed(2) + ' px');
+    check('circular: and it still draws something in both directions',
+        circR.n > 0 && circH.n > 0, circR.n + ' / ' + circH.n);
+    // If the two conventions never parted, one of them would be unmeasured.
+    check('the conservative box test really is the looser of the two',
+        circR.box >= circR.pairs && unrR.box >= unrR.pairs
+            && (circR.box + unrR.box) > (circR.pairs + unrR.pairs),
+        'radial: ink ' + circR.pairs + '/' + unrR.pairs + ' vs box ' + circR.box + '/' + unrR.box);
+    // The point of the whole file: the conservative box is not free on labels
+    // this long and this close to radial.
+    check('the AABB box would cost circular-radial labels that do not collide',
+        circR.keptInk >= circR.keptBox,
+        'oriented keeps ' + circR.keptInk + ', AABB keeps ' + circR.keptBox + ' of ' + circR.n);
+    // A SEARCH HIT IS DRAWN WITHOUT BEING ASKED (Christian, 2026-09-26: hits
+    // are exempt for tip labels and for nothing else). Checked where it bites:
+    // in unrooted, on names the rule had just dropped.
+    // The term is taken from a name the rule DROPPED on this very tree, so the
+    // check cannot quietly test nothing: a term hardcoded for one tree found
+    // no hits on another and failed for having nothing to measure.
+    // A SEARCH HIT IS DRAWN WITHOUT BEING ASKED, in BOTH fans. This was asked
+    // of unrooted alone -- complete when written, since circular thinned by
+    // index then and had no exemption to honour. Circular hides by overlap
+    // now, so it owes the same promise, and asking only the older half was
+    // the third failure shape: a guard that never grew when a second layout
+    // acquired the same behaviour.
+    //
+    // The term comes from a name the rule actually dropped IN THAT LAYOUT, so
+    // the check cannot quietly test nothing, and where a layout dropped no
+    // name it says so LOUDLY rather than passing (a probe must be loud about
+    // what it could not read).
+    const hitsFromTree = (term) => {
+        const ids = [];
+        const walkHits = (n) => {
+            if (!n.children || n.children.length === 0) {
+                if (n.name && n.name.indexOf(term) >= 0) { ids.push(String(n.id)); }
+                return;
+            }
+            n.children.forEach(walkHits);
+        };
+        walkHits(trees[0]);
+        return ids;
+    };
+    const sf = document.getElementById('sf0');
+    const search = async (term) => {
+        sf.value = term;
+        sf.dispatchEvent(new Event('input', {bubbles: true}));
+        sf.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true, key: 'x'}));
+        await settle();
+    };
+    for (const [lname, lid, dropped] of [['unrooted', 'layout_unrooted_b', droppedIds],
+                                         ['circular', 'layout_circ_b', droppedCirc]]) {
+        if (!sf) {
+            out.push(lname + ': search check skipped, no search box');
+            continue;
+        }
+        const term = dropped.map((id) => nameOf.get(id)).filter(Boolean)[0];
+        if (!term) {
+            // NOT a silent skip: this tree cannot exercise the exemption in
+            // this layout, and saying so is the only way that fact is visible.
+            out.push(lname + ': EXEMPTION NOT EXERCISED -- the rule dropped no named tip here ('
+                + dropped.length + ' dropped), so this tree cannot test it');
+            continue;
+        }
+        await click(lid);
+        const beforeIds = new Set(labels().map((b) => b.id));
+        await search(term);
+        // Hits are counted from the TREE, not from the drawn labels: a hidden
+        // hit has no element to be bold, so counting bold elements can only
+        // ever find the hits already drawn -- "every hit I can see is drawn"
+        // is true of any viewer. Measured: with the exemption removed, the
+        // element count said 5 of 5 and passed.
+        const hitIds = hitsFromTree(term);
+        const drawnNow = new Set(labels().map((b) => b.id));
+        let hitsDrawn = 0, hitsRestored = 0;
+        for (const id of hitIds) {
+            if (drawnNow.has(id)) { ++hitsDrawn; }
+            if (!beforeIds.has(id) && drawnNow.has(id)) { ++hitsRestored; }
+        }
+        out.push(lname + ': searched "' + term + '", ' + hitIds.length + ' hits, ' + hitsDrawn
+            + ' of them drawn, ' + hitsRestored + ' brought back by being found');
+        check(lname + ': a hit is drawn even where the rule had dropped it',
+            hitIds.length > 0 && hitsDrawn === hitIds.length,
+            hitsDrawn + ' of ' + hitIds.length + ' hits drawn');
+        // without this, the check above passes on a search that changed nothing
+        check(lname + ': and the search really did bring some back',
+            hitsRestored > 0, hitsRestored + ' restored');
+        await search('');
+    }
+
+    // THE NUMBERS THE DOCS QUOTE. README and CHANGELOG state these counts for
+    // these trees at this size; a number in a document is a claim, and until
+    // now the harness only PRINTED them, so the docs could drift with nothing
+    // to catch it. (The desktop found the same hole in their demo catalogue:
+    // the render test printed the counts and passed while a mutant changed
+    // them.) Asserted only at the size the docs name.
+    const DOCUMENTED = {
+        'Caliciviridae_100.xml': {w: 1100, h: 850, circular: 97, unrooted: 34},
+        'flu_h5.xml': {w: 1100, h: 850, circular: 118},
+        'woese-tree-of-life.xml': {w: 1100, h: 850, circular: 23, unrooted: 23, rectangular: 23}
+    };
+    const docKey = Object.keys(DOCUMENTED).find((k) => file.indexOf(k) >= 0);
+    const doc = docKey ? DOCUMENTED[docKey] : null;
+    if (!doc) {
+        out.push('no documented counts for this tree');
+    } else if (window.innerWidth !== doc.w || window.innerHeight !== doc.h) {
+        out.push('documented counts skipped: needs ' + doc.w + 'x' + doc.h
+            + ', this window is ' + window.innerWidth + 'x' + window.innerHeight);
+    } else {
+        const got = {circular: circR.n, unrooted: unrR.n, rectangular: rect.n};
+        Object.keys(doc).forEach(function (k) {
+            if (k === 'w' || k === 'h') { return; }
+            check('the count README and CHANGELOG quote for ' + docKey + ' ' + k
+                + ' is still true', got[k] === doc[k],
+                'documented ' + doc[k] + ', measured ' + got[k]
+                    + ' -- if the new number is right, update both documents and this table');
+        });
+    }
+
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    out.push('tips in the tree: ' + total + ' (rectangular drew ' + rect.n + ')');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

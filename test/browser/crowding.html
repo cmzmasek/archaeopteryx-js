@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8"><title>do branch numbers pile up?</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const q = new URLSearchParams(location.search);
+    const file = q.get('tree') || '../../docs/data/flu_h5.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(1600);
+    const cb = document.getElementById('conf_cb');
+    if (cb && !cb.checked) { cb.click(); }
+    await sleep(1800);
+
+    // every drawn confidence label, as the browser lays it out
+    // ONLY the branch-anchored numbers. The earlier version matched any
+    // numeric text, which on a tree with numeric tip names counts labels the
+    // rule does not govern -- and would have made the rule look broken.
+    const labels = [...document.querySelectorAll('#phylogram1 svg text.bllabel, #phylogram1 svg text.conflabel')]
+        .filter((t) => (t.textContent || '').trim() !== '')
+        .map((t) => { const b = t.getBoundingClientRect();
+            return {cls: t.getAttribute('class'), t: t.textContent.trim(),
+                x: b.left, y: b.top, w: b.width, h: b.height}; })
+        .filter((b) => b.w > 0 && b.h > 0);
+    const overlaps = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x
+        || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    let collided = new Set();
+    for (let i = 0; i < labels.length; ++i) {
+        for (let j = i + 1; j < labels.length; ++j) {
+            if (overlaps(labels[i], labels[j])) { collided.add(i); collided.add(j); }
+        }
+    }
+    // a worst offender, to show whether the miss is geometry or contamination
+    let worst = null;
+    for (let i = 0; i < labels.length && !worst; ++i) {
+        for (let j = i + 1; j < labels.length; ++j) {
+            if (overlaps(labels[i], labels[j])) { worst = [labels[i], labels[j]]; break; }
+        }
+    }
+    window.__benchResult = {report: [
+        worst ? ('example overlap: ' + JSON.stringify(worst)) : 'no overlap at all',
+        'file ' + file.split('/').pop(),
+        'numeric branch labels drawn: ' + labels.length,
+        'labels overlapping another  : ' + collided.size
+            + (labels.length ? (' (' + Math.round(100 * collided.size / labels.length) + '%)') : '')
+    ], failures: 0};
+    window.__benchDone = true;
+})();
+</script>

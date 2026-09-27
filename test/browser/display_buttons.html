@@ -1,0 +1,116 @@
+<!doctype html>
+<meta charset="utf-8"><title>which display type can each layout show?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The three display-type buttons against what each layout can actually show.
+// The rule: a layout greys the type it CANNOT do, and the chosen button
+// describes the picture on the screen. Circular always carries its labels to
+// a common ring, so it can do the aligned type and not the unaligned one;
+// unrooted has no ring, so the reverse.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/apaf.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(2200);
+    const settle = () => sleep(2400);
+    const ids = {phy: 'phy_b', aligned: 'phya_b', clad: 'cla_b'};
+    for (const k of Object.keys(ids)) {
+        if (!document.getElementById(ids[k])) {
+            window.__benchResult = {report: ['FAIL  missing ' + ids[k]], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const st = () => {
+        const g = (id) => { const e = document.getElementById(id);
+            return {on: !!e.checked, off: !!e.disabled}; };
+        return {phy: g(ids.phy), aligned: g(ids.aligned), clad: g(ids.clad)};
+    };
+    // are the labels actually on one ring? measured, not assumed
+    const spread = () => {
+        const g = document.querySelector('#p g.node');
+        const m = g && g.parentNode.getScreenCTM();
+        if (!m) { return NaN; }
+        const c = [m.e, m.f];
+        const r = [...document.querySelectorAll('#p text.extlabel')]
+            .filter((t) => { const d = t.parentNode.__data__;
+                return d && !d.children && (t.textContent || '').trim() !== ''; })
+            .map((t) => { const mm = t.getScreenCTM(); const bb = t.getBBox();
+                const ax = t.getAttribute('text-anchor') === 'end' ? bb.x + bb.width : bb.x;
+                const x = (mm.a * ax) + (mm.c * (bb.y + bb.height / 2)) + mm.e;
+                const y = (mm.b * ax) + (mm.d * (bb.y + bb.height / 2)) + mm.f;
+                return Math.hypot(x - c[0], y - c[1]); });
+        return r.length ? (Math.max(...r) - Math.min(...r)) : NaN;
+    };
+
+    document.getElementById('layout_rect_b').click(); await settle();
+    document.getElementById(ids.phy).click(); await settle();
+    let s = st();
+    out.push('rectangular, phylogram: phy ' + JSON.stringify(s.phy)
+        + ' aligned ' + JSON.stringify(s.aligned) + ' cladogram ' + JSON.stringify(s.clad));
+    check('rectangular offers all three', !s.phy.off && !s.aligned.off && !s.clad.off);
+    check('rectangular: the plain phylogram is the one chosen', s.phy.on && !s.aligned.on);
+
+    document.getElementById('layout_circ_b').click(); await settle();
+    s = st();
+    const sp = spread();
+    out.push('circular: phy ' + JSON.stringify(s.phy) + ' aligned ' + JSON.stringify(s.aligned)
+        + ' cladogram ' + JSON.stringify(s.clad) + ', label radius spread ' + sp.toFixed(1) + ' px');
+    check('circular: the labels really are on one ring', sp < 1.0, sp.toFixed(1) + ' px');
+    check('circular: the UNALIGNED phylogram is the greyed one', s.phy.off && !s.aligned.off,
+        'phy disabled ' + s.phy.off + ', aligned disabled ' + s.aligned.off);
+    check('circular: and the ALIGNED one is shown as chosen', s.aligned.on && !s.phy.on,
+        'aligned ' + s.aligned.on + ', phy ' + s.phy.on);
+    check('circular: the greyed button says why',
+        /always aligns/.test(document.getElementById(ids.phy).title || ''),
+        document.getElementById(ids.phy).title);
+
+    document.getElementById('layout_unrooted_b').click(); await settle();
+    s = st();
+    out.push('unrooted: phy ' + JSON.stringify(s.phy) + ' aligned ' + JSON.stringify(s.aligned)
+        + ' cladogram ' + JSON.stringify(s.clad));
+    check('unrooted: the ALIGNED phylogram is the greyed one', s.aligned.off && !s.phy.off,
+        'aligned disabled ' + s.aligned.off + ', phy disabled ' + s.phy.off);
+    check('unrooted: and the plain phylogram is shown as chosen', s.phy.on && !s.aligned.on,
+        'phy ' + s.phy.on + ', aligned ' + s.aligned.on);
+
+    // the cladogram is reachable in circular, and comes back to the aligned
+    // look rather than to a button that cannot be pressed
+    document.getElementById('layout_circ_b').click(); await settle();
+    document.getElementById(ids.clad).click(); await settle();
+    s = st();
+    check('circular: the cladogram can be chosen', s.clad.on && !s.clad.off,
+        JSON.stringify(s.clad));
+    check('circular: and the greyed phylogram stays greyed under it', s.phy.off);
+    document.getElementById(ids.aligned).click(); await settle();
+    s = st();
+    check('circular: and the aligned phylogram takes it back',
+        s.aligned.on && !s.clad.on, 'aligned ' + s.aligned.on + ', cladogram ' + s.clad.on);
+    check('circular: the picture is a phylogram again (labels still on one ring)',
+        spread() < 1.0, spread().toFixed(1) + ' px');
+
+    // back to rectangular: the user's own choice is not lost on the trip
+    document.getElementById('layout_rect_b').click(); await settle();
+    s = st();
+    // THE TRIP MUST NOT CHANGE THEIR MIND. The user chose the plain phylogram
+    // in rectangular; circular cannot offer it, and the only phylogram button
+    // there is labelled "aligned". Pressing it, and the cladogram, and coming
+    // back must leave the plain phylogram chosen -- circular aligns whatever
+    // the flag says, so it has no business writing the flag.
+    check('rectangular still shows the plain phylogram the user picked',
+        s.phy.on && !s.aligned.on && !s.phy.off, JSON.stringify(s.phy));
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

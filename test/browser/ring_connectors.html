@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8"><title>do the ring connectors match the names?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// In circular a dashed connector runs from each tip out to the label ring, so
+// the name lines up at a common radius. A connector whose name was dropped
+// leads to nothing. The filter asks d.hide, which the radial rule leaves
+// false for everyone -- so this counts connectors against names drawn.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/flu_h5.xml';
+    const text = await (await fetch(file)).text();
+    const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {});
+    await v.ready; await sleep(2500);
+    document.getElementById('layout_circ_b').click();
+    await sleep(3500);
+    const conns = document.querySelectorAll('#p g.aptx-radial-conn line').length;
+    const names = [...document.querySelectorAll('#p text.extlabel')]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && !d.children && (t.textContent || '').trim() !== ''; }).length;
+    const clades = [...document.querySelectorAll('#p text.aptx-collapsed-label')]
+        .filter((t) => (t.textContent || '').trim() !== '').length;
+    out.push('circular: ' + conns + ' ring connectors, ' + names + ' tip names drawn, '
+        + clades + ' collapsed-clade names');
+    check('a connector is drawn only for a name that is drawn',
+        conns <= names + clades, conns + ' connectors for ' + (names + clades) + ' names');
+    // the aligned rectangular guides ask the same question, and used to ask it
+    // with the same expression -- so they are counted here too, to be sure the
+    // shared predicate did not change the layout it was already right for
+    document.getElementById('layout_rect_b').click();
+    await sleep(2500);
+    const phya = document.getElementById('phya_b');
+    if (phya && !phya.disabled) { phya.click(); await sleep(3000); }
+    const guides = document.querySelectorAll('#p path.aptx-tip-guide').length;
+    const rectNames = [...document.querySelectorAll('#p text.extlabel')]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && !d.children && (t.textContent || '').trim() !== ''; }).length;
+    out.push('rectangular aligned: ' + guides + ' tip guides, ' + rectNames + ' tip names drawn');
+    check('a guide is drawn only for a name that is drawn',
+        guides <= rectNames, guides + ' guides for ' + rectNames + ' names');
+    check('and guides are drawn at all in the aligned phylogram',
+        guides > 0, guides + ' guides');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

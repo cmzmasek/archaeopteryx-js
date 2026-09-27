@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Auto-hide crowded data (zero-length nest)</name>
+  <description>Fourteen internal branches of essentially no length, each carrying a bootstrap value -- an arbitrarily resolved polytomy, the shape real consensus trees have. A support number is drawn CENTRED on its branch, so here each one reaches far past both ends and lands on its neighbours. With &quot;Auto-hide Labels&quot; on (the default) a number is drawn only where nothing already drawn is in its way, and the support SYMBOLS are thinned the same way -- never shrunk, because in the size-scaled mode a symbol&apos;s diameter IS its value. Switch the checkbox off to draw every number and see what it is hiding (30 of 41 numbers and 24 of 61 symbols are dropped at a 900x600 window), or zoom in (Y+) and watch them come back as room appears -- nothing is hidden except where something already drawn is in the way. The branch of length EXACTLY zero near the bottom is the reason the rule asks about overlap rather than about branch length: give it room (zoom in, or switch auto-hide off) and its number is drawn like any other, because a missing number would claim there is no value where one was measured.</description>
+  <clade>
+    <branch_length>0.02</branch_length>
+    <clade>
+      <name>outgroup</name>
+      <branch_length>0.45</branch_length>
+      <confidence type="bootstrap">100</confidence>
+    </clade>
+    <clade>
+      <branch_length>4.0E-4</branch_length>
+      <confidence type="bootstrap">30</confidence>
+      <clade>
+        <name>nested_tip_1</name>
+        <branch_length>0.4</branch_length>
+        <confidence type="bootstrap">41</confidence>
+      </clade>
+      <clade>
+        <branch_length>4.0E-4</branch_length>
+        <confidence type="bootstrap">31</confidence>
+        <clade>
+          <name>nested_tip_2</name>
+          <branch_length>0.4</branch_length>
+          <confidence type="bootstrap">42</confidence>
+        </clade>
+        <clade>
+          <branch_length>4.0E-4</branch_length>
+          <confidence type="bootstrap">32</confidence>
+          <clade>
+            <name>nested_tip_3</name>
+            <branch_length>0.4</branch_length>
+            <confidence type="bootstrap">43</confidence>
+          </clade>
+          <clade>
+            <branch_length>4.0E-4</branch_length>
+            <confidence type="bootstrap">33</confidence>
+            <clade>
+              <name>nested_tip_4</name>
+              <branch_length>0.4</branch_length>
+              <confidence type="bootstrap">44</confidence>
+            </clade>
+            <clade>
+              <branch_length>4.0E-4</branch_length>
+              <confidence type="bootstrap">34</confidence>
+              <clade>
+                <name>nested_tip_5</name>
+                <branch_length>0.4</branch_length>
+                <confidence type="bootstrap">45</confidence>
+              </clade>
+              <clade>
+                <branch_length>4.0E-4</branch_length>
+                <confidence type="bootstrap">35</confidence>
+                <clade>
+                  <name>nested_tip_6</name>
+                  <branch_length>0.4</branch_length>
+                  <confidence type="bootstrap">46</confidence>
+                </clade>
+                <clade>
+                  <branch_length>4.0E-4</branch_length>
+                  <confidence type="bootstrap">36</confidence>
+                  <clade>
+                    <name>nested_tip_7</name>
+                    <branch_length>0.4</branch_length>
+                    <confidence type="bootstrap">47</confidence>
+                  </clade>
+                  <clade>
+                    <branch_length>4.0E-4</branch_length>
+                    <confidence type="bootstrap">37</confidence>
+                    <clade>
+                      <name>nested_tip_8</name>
+                      <branch_length>0.4</branch_length>
+                      <confidence type="bootstrap">48</confidence>
+                    </clade>
+                    <clade>
+                      <branch_length>4.0E-4</branch_length>
+                      <confidence type="bootstrap">38</confidence>
+                      <clade>
+                        <name>nested_tip_9</name>
+                        <branch_length>0.4</branch_length>
+                        <confidence type="bootstrap">49</confidence>
+                      </clade>
+                      <clade>
+                        <branch_length>4.0E-4</branch_length>
+                        <confidence type="bootstrap">39</confidence>
+                        <clade>
+                          <name>nested_tip_10</name>
+                          <branch_length>0.4</branch_length>
+                          <confidence type="bootstrap">50</confidence>
+                        </clade>
+                        <clade>
+                          <branch_length>4.0E-4</branch_length>
+                          <confidence type="bootstrap">40</confidence>
+                          <clade>
+                            <name>nested_tip_11</name>
+                            <branch_length>0.4</branch_length>
+                            <confidence type="bootstrap">51</confidence>
+                          </clade>
+                          <clade>
+                            <branch_length>4.0E-4</branch_length>
+                            <confidence type="bootstrap">41</confidence>
+                            <clade>
+                              <name>nested_tip_12</name>
+                              <branch_length>0.4</branch_length>
+                              <confidence type="bootstrap">52</confidence>
+                            </clade>
+                            <clade>
+                              <branch_length>4.0E-4</branch_length>
+                              <confidence type="bootstrap">42</confidence>
+                              <clade>
+                                <name>nested_tip_13</name>
+                                <branch_length>0.4</branch_length>
+                                <confidence type="bootstrap">53</confidence>
+                              </clade>
+                              <clade>
+                                <branch_length>4.0E-4</branch_length>
+                                <confidence type="bootstrap">43</confidence>
+                                <clade>
+                                  <name>nested_tip_14</name>
+                                  <branch_length>0.4</branch_length>
+                                  <confidence type="bootstrap">54</confidence>
+                                </clade>
+                                <clade>
+                                  <branch_length>4.0E-4</branch_length>
+                                  <confidence type="bootstrap">44</confidence>
+                                  <clade>
+                                    <name>nested_tip_15</name>
+                                    <branch_length>0.4</branch_length>
+                                    <confidence type="bootstrap">55</confidence>
+                                  </clade>
+                                  <clade>
+                                    <branch_length>4.0E-4</branch_length>
+                                    <confidence type="bootstrap">45</confidence>
+                                    <clade>
+                                      <name>nested_tip_16</name>
+                                      <branch_length>0.4</branch_length>
+                                      <confidence type="bootstrap">56</confidence>
+                                    </clade>
+                                    <clade>
+                                      <branch_length>4.0E-4</branch_length>
+                                      <confidence type="bootstrap">46</confidence>
+                                      <clade>
+                                        <name>nested_tip_17</name>
+                                        <branch_length>0.4</branch_length>
+                                        <confidence type="bootstrap">57</confidence>
+                                      </clade>
+                                      <clade>
+                                        <branch_length>4.0E-4</branch_length>
+                                        <confidence type="bootstrap">47</confidence>
+                                        <clade>
+                                          <name>nested_tip_18</name>
+                                          <branch_length>0.4</branch_length>
+                                          <confidence type="bootstrap">58</confidence>
+                                        </clade>
+                                        <clade>
+                                          <branch_length>4.0E-4</branch_length>
+                                          <confidence type="bootstrap">48</confidence>
+                                          <clade>
+                                            <name>nested_tip_19</name>
+                                            <branch_length>0.4</branch_length>
+                                            <confidence type="bootstrap">59</confidence>
+                                          </clade>
+                                          <clade>
+                                            <branch_length>4.0E-4</branch_length>
+                                            <confidence type="bootstrap">49</confidence>
+                                            <clade>
+                                              <name>nested_tip_20</name>
+                                              <branch_length>0.4</branch_length>
+                                              <confidence type="bootstrap">60</confidence>
+                                            </clade>
+                                            <clade>
+                                              <branch_length>4.0E-4</branch_length>
+                                              <confidence type="bootstrap">50</confidence>
+                                              <clade>
+                                                <name>nested_tip_21</name>
+                                                <branch_length>0.4</branch_length>
+                                                <confidence type="bootstrap">61</confidence>
+                                              </clade>
+                                              <clade>
+                                                <branch_length>4.0E-4</branch_length>
+                                                <confidence type="bootstrap">51</confidence>
+                                                <clade>
+                                                  <name>nested_tip_22</name>
+                                                  <branch_length>0.4</branch_length>
+                                                  <confidence type="bootstrap">62</confidence>
+                                                </clade>
+                                                <clade>
+                                                  <branch_length>4.0E-4</branch_length>
+                                                  <confidence type="bootstrap">52</confidence>
+                                                  <clade>
+                                                    <name>nested_tip_23</name>
+                                                    <branch_length>0.4</branch_length>
+                                                    <confidence type="bootstrap">63</confidence>
+                                                  </clade>
+                                                  <clade>
+                                                    <branch_length>4.0E-4</branch_length>
+                                                    <confidence type="bootstrap">53</confidence>
+                                                    <clade>
+                                                      <name>nested_tip_24</name>
+                                                      <branch_length>0.4</branch_length>
+                                                      <confidence type="bootstrap">64</confidence>
+                                                    </clade>
+                                                    <clade>
+                                                      <branch_length>4.0E-4</branch_length>
+                                                      <confidence type="bootstrap">54</confidence>
+                                                      <clade>
+                                                        <name>nested_tip_25</name>
+                                                        <branch_length>0.4</branch_length>
+                                                        <confidence type="bootstrap">65</confidence>
+                                                      </clade>
+                                                      <clade>
+                                                        <branch_length>4.0E-4</branch_length>
+                                                        <confidence type="bootstrap">55</confidence>
+                                                        <clade>
+                                                          <name>nested_tip_26</name>
+                                                          <branch_length>0.4</branch_length>
+                                                          <confidence type="bootstrap">66</confidence>
+                                                        </clade>
+                                                        <clade>
+                                                          <branch_length>4.0E-4</branch_length>
+                                                          <confidence type="bootstrap">56</confidence>
+                                                          <clade>
+                                                            <name>nested_tip_27</name>
+                                                            <branch_length>0.4</branch_length>
+                                                            <confidence type="bootstrap">67</confidence>
+                                                          </clade>
+                                                          <clade>
+                                                            <branch_length>4.0E-4</branch_length>
+                                                            <confidence type="bootstrap">57</confidence>
+                                                            <clade>
+                                                              <name>nested_tip_28</name>
+                                                              <branch_length>0.4</branch_length>
+                                                              <confidence type="bootstrap">68</confidence>
+                                                            </clade>
+                                                            <clade>
+                                                              <branch_length>4.0E-4</branch_length>
+                                                              <confidence type="bootstrap">58</confidence>
+                                                              <clade>
+                                                                <name>nested_tip_29</name>
+                                                                <branch_length>0.4</branch_length>
+                                                                <confidence type="bootstrap">69</confidence>
+                                                              </clade>
+                                                              <clade>
+                                                                <branch_length>4.0E-4</branch_length>
+                                                                <confidence type="bootstrap">59</confidence>
+                                                                <clade>
+                                                                  <name>nested_tip_30</name>
+                                                                  <branch_length>0.4</branch_length>
+                                                                  <confidence type="bootstrap">70</confidence>
+                                                                </clade>
+                                                                <clade>
+                                                                  <branch_length>4.0E-4</branch_length>
+                                                                  <confidence type="bootstrap">60</confidence>
+                                                                  <clade>
+                                                                    <name>nested_tip_31</name>
+                                                                    <branch_length>0.4</branch_length>
+                                                                    <confidence type="bootstrap">71</confidence>
+                                                                  </clade>
+                                                                  <clade>
+                                                                    <branch_length>4.0E-4</branch_length>
+                                                                    <confidence type="bootstrap">61</confidence>
+                                                                    <clade>
+                                                                      <name>nested_tip_32</name>
+                                                                      <branch_length>0.4</branch_length>
+                                                                      <confidence type="bootstrap">72</confidence>
+                                                                    </clade>
+                                                                    <clade>
+                                                                      <branch_length>4.0E-4</branch_length>
+                                                                      <confidence type="bootstrap">62</confidence>
+                                                                      <clade>
+                                                                        <name>nested_tip_33</name>
+                                                                        <branch_length>0.4</branch_length>
+                                                                        <confidence type="bootstrap">73</confidence>
+                                                                      </clade>
+                                                                      <clade>
+                                                                        <branch_length>4.0E-4</branch_length>
+                                                                        <confidence type="bootstrap">63</confidence>
+                                                                        <clade>
+                                                                          <name>nested_tip_34</name>
+                                                                          <branch_length>0.4</branch_length>
+                                                                          <confidence type="bootstrap">74</confidence>
+                                                                        </clade>
+                                                                        <clade>
+                                                                          <branch_length>4.0E-4</branch_length>
+                                                                          <confidence type="bootstrap">64</confidence>
+                                                                          <clade>
+                                                                            <name>nested_tip_35</name>
+                                                                            <branch_length>0.4</branch_length>
+                                                                            <confidence type="bootstrap">75</confidence>
+                                                                          </clade>
+                                                                          <clade>
+                                                                            <branch_length>4.0E-4</branch_length>
+                                                                            <confidence type="bootstrap">65</confidence>
+                                                                            <clade>
+                                                                              <name>nested_tip_36</name>
+                                                                              <branch_length>0.4</branch_length>
+                                                                              <confidence type="bootstrap">76</confidence>
+                                                                            </clade>
+                                                                            <clade>
+                                                                              <branch_length>4.0E-4</branch_length>
+                                                                              <confidence type="bootstrap">66</confidence>
+                                                                              <clade>
+                                                                                <name>nested_tip_37</name>
+                                                                                <branch_length>0.4</branch_length>
+                                                                                <confidence type="bootstrap">77</confidence>
+                                                                              </clade>
+                                                                              <clade>
+                                                                                <branch_length>4.0E-4</branch_length>
+                                                                                <confidence type="bootstrap">67</confidence>
+                                                                                <clade>
+                                                                                  <name>nested_tip_38</name>
+                                                                                  <branch_length>0.4</branch_length>
+                                                                                  <confidence type="bootstrap">78</confidence>
+                                                                                </clade>
+                                                                                <clade>
+                                                                                  <branch_length>4.0E-4</branch_length>
+                                                                                  <confidence type="bootstrap">68</confidence>
+                                                                                  <clade>
+                                                                                    <name>nested_tip_39</name>
+                                                                                    <branch_length>0.4</branch_length>
+                                                                                    <confidence type="bootstrap">79</confidence>
+                                                                                  </clade>
+                                                                                  <clade>
+                                                                                    <branch_length>4.0E-4</branch_length>
+                                                                                    <confidence type="bootstrap">69</confidence>
+                                                                                    <clade>
+                                                                                      <name>nested_tip_40</name>
+                                                                                      <branch_length>0.4</branch_length>
+                                                                                      <confidence type="bootstrap">80</confidence>
+                                                                                    </clade>
+                                                                                    <clade>
+                                                                                      <branch_length>4.0E-4</branch_length>
+                                                                                      <confidence type="bootstrap">70</confidence>
+                                                                                      <clade>
+                                                                                        <name>nested_tip_41</name>
+                                                                                        <branch_length>0.4</branch_length>
+                                                                                        <confidence type="bootstrap">81</confidence>
+                                                                                      </clade>
+                                                                                      <clade>
+                                                                                        <branch_length>4.0E-4</branch_length>
+                                                                                        <confidence type="bootstrap">71</confidence>
+                                                                                        <clade>
+                                                                                          <name>nested_tip_42</name>
+                                                                                          <branch_length>0.4</branch_length>
+                                                                                          <confidence type="bootstrap">82</confidence>
+                                                                                        </clade>
+                                                                                        <clade>
+                                                                                          <branch_length>4.0E-4</branch_length>
+                                                                                          <confidence type="bootstrap">72</confidence>
+                                                                                          <clade>
+                                                                                            <name>nested_tip_43</name>
+                                                                                            <branch_length>0.4</branch_length>
+                                                                                            <confidence type="bootstrap">83</confidence>
+                                                                                          </clade>
+                                                                                          <clade>
+                                                                                            <branch_length>4.0E-4</branch_length>
+                                                                                            <confidence type="bootstrap">73</confidence>
+                                                                                            <clade>
+                                                                                              <name>nested_tip_44</name>
+                                                                                              <branch_length>0.4</branch_length>
+                                                                                              <confidence type="bootstrap">84</confidence>
+                                                                                            </clade>
+                                                                                            <clade>
+                                                                                              <branch_length>4.0E-4</branch_length>
+                                                                                              <confidence type="bootstrap">74</confidence>
+                                                                                              <clade>
+                                                                                                <name>nested_tip_45</name>
+                                                                                                <branch_length>0.4</branch_length>
+                                                                                                <confidence type="bootstrap">85</confidence>
+                                                                                              </clade>
+                                                                                              <clade>
+                                                                                                <branch_length>4.0E-4</branch_length>
+                                                                                                <confidence type="bootstrap">75</confidence>
+                                                                                                <clade>
+                                                                                                  <name>nested_tip_46</name>
+                                                                                                  <branch_length>0.4</branch_length>
+                                                                                                  <confidence type="bootstrap">86</confidence>
+                                                                                                </clade>
+                                                                                                <clade>
+                                                                                                  <branch_length>4.0E-4</branch_length>
+                                                                                                  <confidence type="bootstrap">76</confidence>
+                                                                                                  <clade>
+                                                                                                    <name>nested_tip_47</name>
+                                                                                                    <branch_length>0.4</branch_length>
+                                                                                                    <confidence type="bootstrap">87</confidence>
+                                                                                                  </clade>
+                                                                                                  <clade>
+                                                                                                    <branch_length>4.0E-4</branch_length>
+                                                                                                    <confidence type="bootstrap">77</confidence>
+                                                                                                    <clade>
+                                                                                                      <name>nested_tip_48</name>
+                                                                                                      <branch_length>0.4</branch_length>
+                                                                                                      <confidence type="bootstrap">88</confidence>
+                                                                                                    </clade>
+                                                                                                    <clade>
+                                                                                                      <branch_length>4.0E-4</branch_length>
+                                                                                                      <confidence type="bootstrap">78</confidence>
+                                                                                                      <clade>
+                                                                                                        <name>nested_tip_49</name>
+                                                                                                        <branch_length>0.4</branch_length>
+                                                                                                        <confidence type="bootstrap">89</confidence>
+                                                                                                      </clade>
+                                                                                                      <clade>
+                                                                                                        <branch_length>4.0E-4</branch_length>
+                                                                                                        <confidence type="bootstrap">79</confidence>
+                                                                                                        <clade>
+                                                                                                          <name>nested_tip_50</name>
+                                                                                                          <branch_length>0.4</branch_length>
+                                                                                                          <confidence type="bootstrap">90</confidence>
+                                                                                                        </clade>
+                                                                                                        <clade>
+                                                                                                          <branch_length>4.0E-4</branch_length>
+                                                                                                          <confidence type="bootstrap">80</confidence>
+                                                                                                          <clade>
+                                                                                                            <name>nested_tip_51</name>
+                                                                                                            <branch_length>0.4</branch_length>
+                                                                                                            <confidence type="bootstrap">91</confidence>
+                                                                                                          </clade>
+                                                                                                          <clade>
+                                                                                                            <branch_length>4.0E-4</branch_length>
+                                                                                                            <confidence type="bootstrap">81</confidence>
+                                                                                                            <clade>
+                                                                                                              <name>nested_tip_52</name>
+                                                                                                              <branch_length>0.4</branch_length>
+                                                                                                              <confidence type="bootstrap">92</confidence>
+                                                                                                            </clade>
+                                                                                                            <clade>
+                                                                                                              <branch_length>4.0E-4</branch_length>
+                                                                                                              <confidence type="bootstrap">82</confidence>
+                                                                                                              <clade>
+                                                                                                                <name>nested_tip_53</name>
+                                                                                                                <branch_length>0.4</branch_length>
+                                                                                                                <confidence type="bootstrap">93</confidence>
+                                                                                                              </clade>
+                                                                                                              <clade>
+                                                                                                                <branch_length>4.0E-4</branch_length>
+                                                                                                                <confidence type="bootstrap">83</confidence>
+                                                                                                                <clade>
+                                                                                                                  <name>nested_tip_54</name>
+                                                                                                                  <branch_length>0.4</branch_length>
+                                                                                                                  <confidence type="bootstrap">94</confidence>
+                                                                                                                </clade>
+                                                                                                                <clade>
+                                                                                                                  <branch_length>4.0E-4</branch_length>
+                                                                                                                  <confidence type="bootstrap">84</confidence>
+                                                                                                                  <clade>
+                                                                                                                    <name>nested_tip_55</name>
+                                                                                                                    <branch_length>0.4</branch_length>
+                                                                                                                    <confidence type="bootstrap">95</confidence>
+                                                                                                                  </clade>
+                                                                                                                  <clade>
+                                                                                                                    <branch_length>4.0E-4</branch_length>
+                                                                                                                    <confidence type="bootstrap">85</confidence>
+                                                                                                                    <clade>
+                                                                                                                      <name>nested_tip_56</name>
+                                                                                                                      <branch_length>0.4</branch_length>
+                                                                                                                      <confidence type="bootstrap">41</confidence>
+                                                                                                                    </clade>
+                                                                                                                    <clade>
+                                                                                                                      <branch_length>4.0E-4</branch_length>
+                                                                                                                      <confidence type="bootstrap">86</confidence>
+                                                                                                                      <clade>
+                                                                                                                        <name>nested_tip_57</name>
+                                                                                                                        <branch_length>0.4</branch_length>
+                                                                                                                        <confidence type="bootstrap">42</confidence>
+                                                                                                                      </clade>
+                                                                                                                      <clade>
+                                                                                                                        <branch_length>4.0E-4</branch_length>
+                                                                                                                        <confidence type="bootstrap">87</confidence>
+                                                                                                                        <clade>
+                                                                                                                          <name>nested_tip_58</name>
+                                                                                                                          <branch_length>0.4</branch_length>
+                                                                                                                          <confidence type="bootstrap">43</confidence>
+                                                                                                                        </clade>
+                                                                                                                        <clade>
+                                                                                                                          <branch_length>4.0E-4</branch_length>
+                                                                                                                          <confidence type="bootstrap">88</confidence>
+                                                                                                                          <clade>
+                                                                                                                            <name>nested_tip_59</name>
+                                                                                                                            <branch_length>0.4</branch_length>
+                                                                                                                            <confidence type="bootstrap">44</confidence>
+                                                                                                                          </clade>
+                                                                                                                          <clade>
+                                                                                                                            <branch_length>4.0E-4</branch_length>
+                                                                                                                            <confidence type="bootstrap">89</confidence>
+                                                                                                                            <clade>
+                                                                                                                              <name>nested_tip_60</name>
+                                                                                                                              <branch_length>0.4</branch_length>
+                                                                                                                              <confidence type="bootstrap">45</confidence>
+                                                                                                                            </clade>
+                                                                                                                            <clade>
+                                                                                                                              <name>roomy_tip_a</name>
+                                                                                                                              <branch_length>0.35</branch_length>
+                                                                                                                              <confidence type="bootstrap">97</confidence>
+                                                                                                                            </clade>
+                                                                                                                            <clade>
+                                                                                                                              <branch_length>0.0</branch_length>
+                                                                                                                              <confidence type="bootstrap">88</confidence>
+                                                                                                                              <clade>
+                                                                                                                                <name>zero_branch_tip_a</name>
+                                                                                                                                <branch_length>0.3</branch_length>
+                                                                                                                              </clade>
+                                                                                                                              <clade>
+                                                                                                                                <name>zero_branch_tip_b</name>
+                                                                                                                                <branch_length>0.3</branch_length>
+                                                                                                                              </clade>
+                                                                                                                            </clade>
+                                                                                                                          </clade>
+                                                                                                                        </clade>
+                                                                                                                      </clade>
+                                                                                                                    </clade>
+                                                                                                                  </clade>
+                                                                                                                </clade>
+                                                                                                              </clade>
+                                                                                                            </clade>
+                                                                                                          </clade>
+                                                                                                        </clade>
+                                                                                                      </clade>
+                                                                                                    </clade>
+                                                                                                  </clade>
+                                                                                                </clade>
+                                                                                              </clade>
+                                                                                            </clade>
+                                                                                          </clade>
+                                                                                        </clade>
+                                                                                      </clade>
+                                                                                    </clade>
+                                                                                  </clade>
+                                                                                </clade>
+                                                                              </clade>
+                                                                            </clade>
+                                                                          </clade>
+                                                                        </clade>
+                                                                      </clade>
+                                                                    </clade>
+                                                                  </clade>
+                                                                </clade>
+                                                              </clade>
+                                                            </clade>
+                                                          </clade>
+                                                        </clade>
+                                                      </clade>
+                                                    </clade>
+                                                  </clade>
+                                                </clade>
+                                              </clade>
+                                            </clade>
+                                          </clade>
+                                        </clade>
+                                      </clade>
+                                    </clade>
+                                  </clade>
+                                </clade>
+                              </clade>
+                            </clade>
+                          </clade>
+                        </clade>
+                      </clade>
+                    </clade>
+                  </clade>
+                </clade>
+              </clade>
+            </clade>
+          </clade>
+        </clade>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

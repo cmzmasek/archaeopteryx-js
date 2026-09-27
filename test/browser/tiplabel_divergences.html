@@ -1,0 +1,412 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: three things the desktop's tip-label rule assumes</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// The desktop's tip-label rule (forester-71, 2026-09-25) assumes three things
+// about the surrounding picture. Each is checked here against OURS by running
+// it, because each would be a silent divergence if it did not hold:
+//   A. a circular PHYLOGRAM leaves its tip labels at the branch-length radius,
+//      so short tips crowd near the centre (they align only in the A mode);
+//   B. branch numbers are placed AFTER the labels and give way to them;
+//   C. a search hit is drawn without asking, so it is never the one dropped.
+// The fixture for A is theirs: a 96-tip star of alternating 0.2 / 0.6 lengths,
+// built here rather than stored, so it cannot drift from its description.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+
+    const star = (n) => {
+        let c = '';
+        for (let i = 0; i < n; ++i) {
+            c += '<clade branch_length="' + ((i % 2) ? 0.6 : 0.2) + '"><name>T'
+                + (i + 1) + '</name></clade>';
+        }
+        return '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+            + '<clade>' + c + '</clade></phylogeny></phyloxml>';
+    };
+    const which = new URLSearchParams(location.search).get('tree');
+    const text = which ? await (await fetch(which)).text() : star(96);
+    const name = which || 'star96.xml';
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(name, text), {});
+    await viewer.ready;
+    await sleep(1200);
+
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    // A control the DATA does not support is never rendered (no confidences,
+    // no conf_cb), so the two parts ask for different ones and a missing one
+    // is still a hard stop rather than a quietly empty measurement.
+    const need = (ids) => {
+        for (const id of ids) {
+            if (!document.getElementById(id)) {
+                window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+                window.__benchDone = true; return false;
+            }
+        }
+        return true;
+    };
+    if (!need(['dynahide_cb', 'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b',
+               'cla_b', 'phy_b', 'phya_b'])) { return; }
+    const click = async (id) => { document.getElementById(id).click(); await settle(); };
+    const _radialNow = () => !document.getElementById('layout_rect_b').checked;
+    const dh = document.getElementById('dynahide_cb');
+    const layouts = [['rectangular', 'layout_rect_b'], ['circular   ', 'layout_circ_b'],
+                     ['unrooted   ', 'layout_unrooted_b']];
+
+    // every drawn label, with the screen point its anchor actually sits at
+    const drawn = (sel, tipsOnly) => [...document.querySelectorAll('#phylogram1 ' + sel)]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && (!tipsOnly || !d.children) && (t.textContent || '').trim() !== ''; })
+        .map((t) => { const m = t.getScreenCTM(); const bb = t.getBBox();
+            if (!m) { return null; }
+            const pt = (x, y) => [(m.a * x) + (m.c * y) + m.e, (m.b * x) + (m.d * y) + m.f];
+            // The ANCHOR is the end of the box the text is anchored by, not
+            // always its left edge: a label on the left half is anchored
+            // 'end', so its start point is the box's RIGHT edge. Taking the
+            // left edge for both put half the ring 16 px out and made a
+            // perfectly aligned ring look 5% ragged.
+            const ax = (t.getAttribute('text-anchor') === 'end') ? (bb.x + bb.width) : bb.x;
+            return {node: t.parentNode.__data__, el: t.getAttribute('class') || '',
+                quad: [pt(bb.x, bb.y), pt(bb.x + bb.width, bb.y),
+                       pt(bb.x + bb.width, bb.y + bb.height), pt(bb.x, bb.y + bb.height)],
+                anchor: pt(ax, bb.y + (bb.height / 2))}; })
+        .filter((b) => b !== null);
+    const quadHits = (P, Q) => {
+        for (const R of [P, Q]) {
+            for (let k = 0; k < 2; ++k) {
+                const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                for (const v of P) { const d = (v[0] * ax) + (v[1] * ay); p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                for (const v of Q) { const d = (v[0] * ax) + (v[1] * ay); q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                if (p1 <= q0 + 1e-9 || q1 <= p0 + 1e-9) { return false; }
+            }
+        }
+        return true;
+    };
+    {   // the same three quads the tip-label file uses: a separating-axis test
+        // missing one rectangle's normals reports collisions that are not there
+        const sq = [[0, 0], [10, 0], [10, 10], [0, 10]];
+        check('overlap test: a diamond separated only by its own normal is separate',
+            !quadHits(sq, [[8, 16], [16, 8], [24, 16], [16, 24]]));
+        check('overlap test: a diamond that does reach in overlaps',
+            quadHits(sq, [[2, 10], [10, 2], [18, 10], [10, 18]]));
+    }
+    // How far the tip labels sit from the centre of the FAN -- which is the
+    // polar origin of the tree group, NOT the centre of the svg: the control
+    // panel overlays the left of the canvas and the fit does not centre the
+    // circle in it. Taking the svg's centre first reported a 587 px spread in
+    // all three modes, which is the offset between the two centres and says
+    // nothing about the labels. The origin is (0,0) in the tree group's own
+    // coordinates, so push that through the group's screen matrix.
+    const fanCentre = () => {
+        const g = document.querySelector('#phylogram1 g.node');
+        const G = g && g.parentNode;                 // the zoomed tree group
+        const m = G && G.getScreenCTM ? G.getScreenCTM() : null;
+        return m ? [m.e, m.f] : null;
+    };
+    const radii = () => {
+        const L = drawn('text.extlabel', true);
+        const c = fanCentre();
+        if (!c || L.length === 0) { return {n: L.length, min: NaN, max: NaN}; }
+        const r = L.map((b) => Math.hypot(b.anchor[0] - c[0], b.anchor[1] - c[1]));
+        return {n: L.length, min: Math.min(...r), max: Math.max(...r)};
+    };
+
+    // ---- A. does the display mode move the circular tip labels at all? ----
+    // Their fixture, so their numbers are the ones to beat: a 96-tip star of
+    // alternating 0.2 / 0.6 branch lengths, where the desktop's circular
+    // phylogram hides 24 of 96 and its cladogram hides none.
+    if (which) { out.push('A. skipped: run without ?tree for the star'); } else {
+    await click('layout_circ_b');
+    await click('phy_b');
+    const phy = radii();
+    await click('phya_b');
+    const aligned = radii();
+    await click('cla_b');
+    const clad = radii();
+    const spread = (x) => (x.max - x.min).toFixed(1);
+    // With Auto-hide off, nothing is thinned: that is what says the 48 above
+    // is the every-k-th index rule and not the geometry.
+    await click('phy_b');
+    if (dh.checked) { dh.click(); } await settle();
+    const wideOpen = radii();
+    if (!dh.checked) { dh.click(); } await settle();
+
+    out.push('A. circular star96, tip labels at radius ' + phy.max.toFixed(0) + ' px, spread '
+        + spread(phy) + ' px: phylogram ' + phy.n + ' drawn, aligned ' + aligned.n
+        + ', cladogram ' + clad.n + '; Auto-hide off ' + wideOpen.n);
+    // The spread is not zero because the anchor of a FLIPPED label is the far
+    // end of its text; against a ring of 400-odd px it is the same ring.
+    check('A. our circular PHYLOGRAM puts its tip labels on the ring, like the aligned mode',
+        (phy.max - phy.min) < (0.05 * phy.max)
+            && Math.abs(phy.max - aligned.max) < 1 && Math.abs(phy.min - aligned.min) < 1,
+        'ring ' + phy.max.toFixed(0) + ' px, spread ' + spread(phy)
+            + ' px, aligned ' + spread(aligned) + ' px');
+    check('A. the display mode changes NOTHING about our circular tip labels',
+        phy.n === aligned.n && phy.n === clad.n
+            && Math.abs(phy.max - clad.max) < 1,
+        'phylogram ' + phy.n + ', aligned ' + aligned.n + ', cladogram ' + clad.n);
+    // Until 2026-09-27 circular borrowed the rectangular every-k-th rule and
+    // dropped 48 of these 96 names for a reason unconnected to the ring. It
+    // thins by overlap now, and this star -- 96 evenly spaced labels on a
+    // common ring -- has room for all of them, so it must drop NONE.
+    check('A. circular keeps every name the ring has room for',
+        phy.n === 96 && wideOpen.n === 96,
+        phy.n + ' of ' + wideOpen.n + ' with Auto-hide on');
+    }
+
+    // ---- B. do branch numbers give way to tip labels? ----
+    if (!which) { out.push('B. skipped: pass ?tree= a tree that HAS confidences'); } else {
+    if (!need(['conf_cb', 'bl_cb'])) { return; }
+    await click('layout_circ_b');
+    await click('phy_b');
+    const numbersVsLabels = () => {
+        const L = drawn('text.extlabel', true);
+        const N = drawn('text.bllabel, text.conflabel', false);
+        let n = 0;
+        for (const a of N) { for (const b of L) { if (quadHits(a.quad, b.quad)) { ++n; break; } } }
+        return {clashes: n, numbers: N.length, labels: L.length};
+    };
+    const cb = document.getElementById('conf_cb'); if (!cb.checked) { cb.click(); } await settle();
+    const bl = document.getElementById('bl_cb'); if (!bl.checked) { bl.click(); } await settle();
+    // IS THE CHECK REACHABLE IN THIS LAYOUT? In circular the tip names are
+    // carried out to a common ring, outside every branch number, so a number
+    // cannot meet one there and "0 collisions" is not evidence of anything.
+    // Measured rather than assumed, and per tree: the bands are 47 px apart on
+    // apaf, 18 on Caliciviridae -- but only 2 px on flu_h5, so the separation
+    // is contingent, not structural, and saying "can never happen in circular"
+    // would be the kind of law that is one long branch label from being false.
+    const bandGap = () => {
+        const g = document.querySelector('#phylogram1 g.node');
+        const m = g && g.parentNode.getScreenCTM();
+        if (!m || !_radialNow()) { return null; }
+        const c = [m.e, m.f];
+        const radii = (sel, tips) => [...document.querySelectorAll('#phylogram1 ' + sel)]
+            .map((t) => ({t: t, d: t.parentNode && t.parentNode.__data__}))
+            .filter((o) => o.d && (tips === null || (tips ? !o.d.children : !!o.d.children))
+                && (o.t.textContent || '').trim() !== '')
+            .map(({t}) => { const mm = t.getScreenCTM(); const bb = t.getBBox();
+                return [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x + bb.width, bb.y + bb.height],
+                        [bb.x, bb.y + bb.height]]
+                    .map(([x, y]) => Math.hypot((mm.a * x) + (mm.c * y) + mm.e - c[0],
+                        (mm.b * x) + (mm.d * y) + mm.f - c[1])); });
+        const nums = radii('text.bllabel, text.conflabel', null).flat();
+        const tips = radii('text.extlabel', true).flat();
+        if (!nums.length || !tips.length) { return null; }
+        return Math.max(...nums) - Math.min(...tips);   // > 0 means the bands overlap
+    };
+    let worst = 0;
+    for (const [lname, lid] of layouts) {
+        await click(lid);
+        const r = numbersVsLabels();
+        worst = Math.max(worst, r.clashes);
+        const gap = bandGap();
+        out.push('B. ' + lname + ': ' + r.numbers + ' branch numbers, ' + r.labels
+            + ' tip labels, ' + r.clashes + ' numbers printing through a label'
+            + (gap === null ? ''
+                : (gap > 0 ? ('; bands overlap by ' + gap.toFixed(0) + ' px, so the check is exercised')
+                    : ('; NOT EXERCISED -- numbers stop ' + (-gap).toFixed(0)
+                        + ' px short of the tip-name ring, so no number can meet one here'))));
+        // THE CLAIM THE FIX EXISTS FOR. Without this the file reported the
+        // number and asserted nothing about it.
+        check('B. ' + lname.trim() + ': no branch number prints through a name',
+            r.clashes === 0, r.clashes + ' of ' + r.numbers);
+        check('B. ' + lname.trim() + ': and numbers are still drawn',
+            r.numbers > 0, r.numbers + ' drawn');
+    }
+    await click('layout_rect_b');
+
+    // The two mechanisms behind the rectangular collisions, kept because they
+    // are what the fix has to cover: a number too wide for its own branch, and
+    // an internal node's number sitting half a row off its neighbours.
+    {
+        const L = drawn('text.extlabel', true);
+        const N = drawn('text.bllabel, text.conflabel', false);
+        const g = document.querySelector('#phylogram1 g.node');
+        const m = g && g.parentNode.getScreenCTM();
+        const scale = m ? Math.sqrt(Math.abs((m.a * m.d) - (m.b * m.c))) : 1;
+        let own = 0, other = 0, otherFromInternal = 0, wider = 0;
+        for (const a of N) {
+            for (const b of L) {
+                if (!quadHits(a.quad, b.quad)) { continue; }
+                if (a.node === b.node) {
+                    ++own;
+                    const wTree = Math.hypot(a.quad[1][0] - a.quad[0][0], a.quad[1][1] - a.quad[0][1]) / scale;
+                    if (a.node.parent && wTree > (a.node.y - a.node.parent.y)) { ++wider; }
+                } else {
+                    ++other;
+                    if (a.node && a.node.children) { ++otherFromInternal; }
+                }
+                break;
+            }
+        }
+        const rowYs = L.map((b) => b.anchor[1]).sort((x, y) => x - y);
+        const gaps = [];
+        for (let i = 1; i < rowYs.length; ++i) { gaps.push(rowYs[i] - rowYs[i - 1]); }
+        gaps.sort((x, y) => x - y);
+        const medGap = gaps.length ? gaps[Math.floor(gaps.length / 2)] : NaN;
+        const lineH = N.length ? Math.abs(N[0].quad[3][1] - N[0].quad[0][1]) : NaN;
+        out.push('B. rectangular mechanisms: ' + own + ' crossing their OWN name ('
+            + wider + ' of them wider than their own branch), ' + other
+            + ' crossing another node\'s (' + otherFromInternal + ' from an internal node);'
+            + ' median row gap ' + medGap.toFixed(1) + ' px, line ' + lineH.toFixed(1) + ' px');
+        if (own + other > 0) {
+            check('B. a number crossing its own name is one too wide for its branch',
+                wider === own, wider + ' of ' + own);
+            check('B. an internal number sits HALF a row off, and half a row is less than a line',
+                (0.5 * medGap) < lineH,
+                'half gap ' + (0.5 * medGap).toFixed(1) + ' px, line ' + lineH.toFixed(1) + ' px');
+        }
+    }
+    }
+
+    // ---- D. does the rule refuse any number for NOTHING? ----
+    // In a first-come pass every refusal must be caused by something that was
+    // granted BEFORE it -- and everything granted is still drawn. So each
+    // number that is missing when the rule is on must overlap something in the
+    // final picture. One that does not was refused for nothing, which is what
+    // a too-generous reservation looks like from the outside.
+    //
+    // Numbers are compared by the box the RULE uses (axis-aligned, and in a
+    // radial layout the bounds of the rotated box), because the question is
+    // whether the implementation is consistent with its own model, not whether
+    // that model is tight. A label's oriented quad is allowed one line height
+    // of slack, which is the bound the segmented reservation guarantees.
+    if (!which) { out.push('D. skipped: needs a tree with branch data'); } else {
+    const aabbOf = (q) => { const xs = q.map((v) => v[0]), ys = q.map((v) => v[1]);
+        const x = Math.min(...xs), y = Math.min(...ys);
+        return {x: x, y: y, w: Math.max(...xs) - x, h: Math.max(...ys) - y}; };
+    const grow = (b, m) => ({x: b.x - m, y: b.y - m, w: b.w + (2 * m), h: b.h + (2 * m)});
+    const aabbHits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x
+        || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    const keyOf = (t) => (t.node && t.node.id !== undefined ? t.node.id : '?') + ':' + (t.el || '');
+    let totalRefused = 0;
+    for (const [lname, lid] of layouts) {
+        await click(lid);
+        if (dh.checked) { dh.click(); } await settle();
+        const allN = new Map(drawn('text.bllabel, text.conflabel', false).map((t) => [keyOf(t), t]));
+        if (!dh.checked) { dh.click(); } await settle();
+        const keptN = drawn('text.bllabel, text.conflabel', false);
+        const keptKeys = new Set(keptN.map(keyOf));
+        const keptLabels = drawn('text.extlabel', false);
+        const lineH = keptN.length ? aabbOf(keptN[0].quad).h : 11;
+        // How FAR a refusal reaches, not just whether something is near it.
+        // A reservation built as one axis-aligned box round a long rotated
+        // label refuses numbers a long way from the text, and those numbers
+        // are still "near some label" on a dense tree -- which is how that
+        // mutant survived the first version of this check. The segmented
+        // reservation guarantees an error of at most one step, so the
+        // MAXIMUM gap between a refused number and the nearest thing drawn
+        // is the quantity that separates the two implementations.
+        const gapBetween = (a, b) => {
+            const dx = Math.max(0, Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w)));
+            const dy = Math.max(0, Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h)));
+            return Math.hypot(dx, dy);
+        };
+        let refused = 0, unexplained = 0, maxGap = 0;
+        allN.forEach((t, k) => {
+            if (keptKeys.has(k)) { return; }
+            ++refused;
+            const box = aabbOf(t.quad);
+            let best = Infinity;
+            for (const o of keptN) { best = Math.min(best, gapBetween(box, aabbOf(o.quad))); }
+            for (const o of keptLabels) { best = Math.min(best, gapBetween(box, aabbOf(o.quad))); }
+            maxGap = Math.max(maxGap, best);
+            // Not zero: the space a mark reserves is its font's LINE box,
+            // while what is measured here is the element's rendered box, and
+            // the line box is the taller of the two by design (two numbers
+            // collide when their lines overlap, so that "1" cannot slide
+            // under "0.81"). The difference is under a pixel -- 0.6 px on the
+            // trees here -- and it is the only slack allowed. A reservation
+            // that grew with the name would show up as tens of pixels.
+            if (best > 1.5) { ++unexplained; }
+        });
+        totalRefused += refused;
+        out.push('D. ' + lname + ': ' + keptN.length + ' of ' + allN.size + ' numbers drawn, '
+            + refused + ' refused, furthest refusal ' + maxGap.toFixed(1) + ' px from anything drawn');
+        // In a first-come pass a refusal is caused by something granted
+        // BEFORE it, and everything granted is still on the screen -- so a
+        // refused number must TOUCH something drawn. A gap means the space
+        // was reserved by a box bigger than the thing that was drawn in it.
+        check('D. ' + lname.trim() + ': every refused number is up against something drawn',
+            unexplained === 0 && maxGap < 1.5, unexplained + ' of ' + refused
+                + ' refused with clear space round them, furthest ' + maxGap.toFixed(1) + ' px');
+    }
+    // Not `check(..., true)`: an assertion that cannot fail is not one.
+    check('D. and the rule really is refusing numbers on this tree',
+        totalRefused > 0, totalRefused + ' refused across the three layouts');
+    }
+
+    // ---- C. is a search hit exempt from being hidden? ----
+    // Their LABEL rule places a found node without asking. Our shipped branch
+    // rule consults no search state at all -- checked by running, because
+    // "grep found nothing" is not a behaviour.
+    if (!which) { out.push('C. skipped: needs a tree with branch data'); } else {
+    if (!need(['sf0'])) { return; }
+    const markSet = () => new Set([...document.querySelectorAll('#phylogram1 text.bllabel, #phylogram1 text.conflabel')]
+        .filter((t) => (t.textContent || '').trim() !== '')
+        .map((t) => { const d = t.parentNode.__data__;
+            return (d && d.id !== undefined ? d.id : (d && d.name) || '?') + ':' + t.getAttribute('class'); }));
+    const before = markSet();
+    // PRECONDITION. If the rule hid nothing on this view, "the search restored
+    // nothing" is true of a tree with nothing to restore, and the check below
+    // would pass on a viewer that DID exempt found nodes.
+    if (dh.checked) { dh.click(); } await settle();
+    const unhidden = markSet();
+    if (!dh.checked) { dh.click(); } await settle();
+    check('C. precondition: the rule is actually hiding branch marks on this view',
+        unhidden.size > before.size, before.size + ' drawn, ' + unhidden.size + ' with Auto-hide off');
+    const f = document.getElementById('sf0');
+    f.value = 'K';
+    f.dispatchEvent(new Event('input', {bubbles: true}));
+    f.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true, key: 'K'}));
+    await settle();
+    const hits = document.querySelectorAll('#phylogram1 .aptx-found, #phylogram1 [class*="found"]').length;
+    const after = markSet();
+    // A hit's NAME is drawn bold, and a bold name is wider, so the space it
+    // reserves changes and a different number can fit. That is the label
+    // exemption doing its job, not a number being excused, so the count alone
+    // no longer says anything. The rule to check is the one in force: a hit's
+    // own mark is refused exactly like anyone else's.
+    const foundIds = new Set([...document.querySelectorAll('#phylogram1 text.extlabel')]
+        .filter((t) => t.style.fontWeight === 'bold' || t.getAttribute('font-weight') === 'bold')
+        .map((t) => { const d = t.parentNode.__data__; return d ? String(d.id) : '?'; }));
+    let restored = 0, restoredOnHits = 0;
+    after.forEach((k) => {
+        if (before.has(k)) { return; }
+        ++restored;
+        if (foundIds.has(k.split(':')[0])) { ++restoredOnHits; }
+    });
+    out.push('C. search for "K": ' + hits + ' elements marked as hits, ' + foundIds.size
+        + ' names drawn bold, drawn branch marks ' + before.size + ' -> ' + after.size
+        + ', restored: ' + restored + ' (' + restoredOnHits + ' of them on a hit)');
+    check('C. no mark is restored because its own node was found',
+        restoredOnHits === 0, restoredOnHits + ' of ' + restored + ' restored marks sit on a hit');
+    // A search that hit nothing would make that check vacuous.
+    check('C. and the search really did hit something', hits > 0, hits + ' hit elements');
+    }
+
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

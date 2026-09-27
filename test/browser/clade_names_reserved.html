@@ -1,0 +1,100 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: clade names reserve space too</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// A clade name is a name. The reservation covers every drawn node label, not
+// just the tips, so a branch number gives way to an internal label as well --
+// which is where they meet most often in the rectangular layout, since an
+// internal label sits just above its branch and the numbers sit on it.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/woese-tree-of-life.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(1200);
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    // A missing LAYOUT control is a broken panel and a hard stop. A missing
+    // Int. Labels checkbox is not: it means this tree has no internal node
+    // data, so it cannot exercise the check at all -- which the file has to
+    // SAY, not report as a failure. (Running it on confidences.xml failed for
+    // having nothing to test, which reads exactly like a defect.)
+    for (const id of ['bl_cb', 'dynahide_cb', 'layout_rect_b', 'layout_circ_b',
+                      'layout_unrooted_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    if (!document.getElementById('intl_cb')) {
+        window.__benchResult = {report: ['NOT EXERCISED: this tree has no internal node labels,'
+            + ' so no clade name can be drawn and nothing here can be tested'], failures: 0};
+        window.__benchDone = true; return;
+    }
+    const quadsOf = (sel, internalOnly) => [...document.querySelectorAll('#phylogram1 ' + sel)]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && (!internalOnly || d.children) && (t.textContent || '').trim() !== ''; })
+        .map((t) => { const m = t.getScreenCTM(); const bb = t.getBBox();
+            if (!m) { return null; }
+            const pt = (x, y) => [(m.a * x) + (m.c * y) + m.e, (m.b * x) + (m.d * y) + m.f];
+            return [pt(bb.x, bb.y), pt(bb.x + bb.width, bb.y),
+                    pt(bb.x + bb.width, bb.y + bb.height), pt(bb.x, bb.y + bb.height)]; })
+        .filter((q) => q !== null);
+    const quadHits = (P, Q) => {
+        for (const R of [P, Q]) {
+            for (let k = 0; k < 2; ++k) {
+                const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                for (const v of P) { const d = (v[0] * ax) + (v[1] * ay); p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                for (const v of Q) { const d = (v[0] * ax) + (v[1] * ay); q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                if (p1 <= q0 + 1e-9 || q1 <= p0 + 1e-9) { return false; }
+            }
+        }
+        return true;
+    };
+    const on = async (id) => { const c = document.getElementById(id); if (!c.checked) { c.click(); } await settle(); };
+    await on('bl_cb'); await on('intl_cb'); await on('dynahide_cb');
+    // ALL THREE LAYOUTS. Circular was the important addition and the reason
+    // this file carries the weight: there the tip names ride out to the ring,
+    // outside every branch number, so a CLADE name is the only label a number
+    // can meet -- the tip-name check in tiplabel_divergences reports itself
+    // NOT EXERCISED there. Unrooted was simply missing.
+    for (const [name, id] of [['rectangular', 'layout_rect_b'], ['circular', 'layout_circ_b'],
+                              ['unrooted', 'layout_unrooted_b']]) {
+        document.getElementById(id).click(); await settle();
+        const clades = quadsOf('text.extlabel', true);
+        const nums = quadsOf('text.bllabel, text.conflabel', false);
+        let hits = 0;
+        for (const a of nums) { for (const b of clades) { if (quadHits(a, b)) { ++hits; break; } } }
+        out.push(name + ': ' + clades.length + ' clade names, ' + nums.length
+            + ' branch numbers, ' + hits + ' numbers printing through a clade name');
+        // The precondition: with no clade names on screen this says nothing.
+        check(name + ': clade names are actually drawn', clades.length > 0, clades.length + ' drawn');
+        check(name + ': no branch number prints through a clade name', hits === 0, hits + ' of ' + nums.length);
+    }
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

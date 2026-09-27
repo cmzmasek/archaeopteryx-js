@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8"><title>does rotating a uniform ring change which names are kept?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The desktop found that on a PERFECTLY UNIFORM ring at a tight size, rotating
+// the fan keeps the same NUMBER of names but a different SET -- and asked us to
+// measure rather than take their number, since we flip left-half labels too.
+//
+// Two explanations they offer, both true by construction of either program:
+// a flipped label's box sits the other way across its spoke by ascent-descent,
+// so a rotation carries tips across that boundary; and on a uniform ring every
+// neighbour pair is at exactly the same distance, so at the crowding threshold
+// the strict-overlap decision sits on the boundary for all of them at once.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const n = Number(q.get('tips') || 96);
+    const turns = Number(q.get('turns') || 13);   // pi/32 per press: 13 ~ 1.28 rad
+    // a uniform ring: n tips, identical branch lengths, identical name lengths
+    const star = () => {
+        let c = '';
+        for (let i = 0; i < n; ++i) {
+            c += '<clade branch_length="0.5"><name>Taxon_' + String(i + 1).padStart(3, '0')
+                + '</name></clade>';
+        }
+        return '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+            + '<clade>' + c + '</clade></phylogeny></phyloxml>';
+    };
+    const src = q.get('tree');
+    const text = src ? await (await fetch(src)).text() : star();
+    const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees(src || 'ring.xml', text), {});
+    await viewer.ready;
+    await sleep(2000);
+    const settle = () => sleep(2200);
+    for (const id of ['layout_circ_b', 'zoomin_x', 'zoomout_x', 'dynahide_cb', 'fitwidth']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const kept = () => [...document.querySelectorAll('#p text.extlabel')]
+        .map((t) => ({t: t, d: t.parentNode && t.parentNode.__data__}))
+        .filter((o) => o.d && !o.d.children && (o.t.textContent || '').trim() !== '')
+        .map((o) => o.t.textContent.trim()).sort();
+
+    document.getElementById('layout_circ_b').click(); await settle();
+    // ?flat=1 stands the labels upright instead of letting them ride their
+    // spokes. A flipped radial label's box sits the other way across its spoke
+    // (the desktop's explanation (a) for the set changing under rotation); an
+    // upright label never flips, so if that is the cause this case is stable.
+    if (q.get('flat') === '1') { document.getElementById('fitwidth').click(); await settle(); }
+    const before = kept();
+    for (let i = 0; i < turns; ++i) { document.getElementById('zoomin_x').click(); }
+    await settle();
+    const after = kept();
+
+    // and rotating BACK: the rule must be a pure function of the geometry on
+    // screen, not of how the fan got there
+    for (let i = 0; i < turns; ++i) { document.getElementById('zoomout_x').click(); }
+    await settle();
+    const back = kept();
+    const restored = back.length === before.length && back.every((v, i) => v === before[i]);
+    out.push('   rotated back: ' + back.length + ' names, '
+        + (restored ? 'the same set as before' : 'a DIFFERENT set'));
+    check('rotating back restores exactly what was there', restored,
+        before.length + ' -> ' + after.length + ' -> ' + back.length);
+
+    const sameSet = before.length === after.length
+        && before.every((v, i) => v === after[i]);
+    const onlyBefore = before.filter((v) => after.indexOf(v) < 0);
+    out.push(n + ' tips, rotated ' + turns + ' steps (' + (turns * Math.PI / 32).toFixed(2)
+        + ' rad): kept ' + before.length + ' -> ' + after.length + ', '
+        + onlyBefore.length + ' names swapped out'
+        + (sameSet ? ' (the same set)' : ''));
+
+    // WHICH names survive a rotation is not a property worth pinning: the
+    // geometry genuinely changes, and at a size where the ring is exactly full
+    // one name more or less fits. Measured here: riding their spokes, 1 of
+    // 96-97 changes over 1.28 rad; standing upright, 15-18 do, because an
+    // upright label's relation to its neighbours changes completely as the
+    // ring turns. What MUST hold is that whatever it kept does not overprint,
+    // and that the answer depends only on the geometry now on screen.
+    const quads = () => [...document.querySelectorAll('#p text.extlabel')]
+        .map((t) => ({t: t, d: t.parentNode && t.parentNode.__data__}))
+        .filter((o) => o.d && !o.d.children && (o.t.textContent || '').trim() !== '')
+        .map(({t}) => { const m = t.getScreenCTM(); const bb = t.getBBox();
+            const pt = (x, y) => [(m.a * x) + (m.c * y) + m.e, (m.b * x) + (m.d * y) + m.f];
+            return [pt(bb.x, bb.y), pt(bb.x + bb.width, bb.y),
+                    pt(bb.x + bb.width, bb.y + bb.height), pt(bb.x, bb.y + bb.height)]; });
+    const depth = (P, Q) => {
+        let best = Infinity;
+        for (const R of [P, Q]) { for (let k = 0; k < 2; ++k) {
+            const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+            const nn = Math.hypot(ax, ay) || 1;
+            let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+            for (const v of P) { const d = ((v[0] * ax) + (v[1] * ay)) / nn; p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+            for (const v of Q) { const d = ((v[0] * ax) + (v[1] * ay)) / nn; q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+            if (p1 <= q0 || q1 <= p0) { return 0; }
+            best = Math.min(best, Math.min(p1 - q0, q1 - p0)); } }
+        return best;
+    };
+    // measured on the ROTATED view, which is the one the rule just decided
+    for (let i = 0; i < turns; ++i) { document.getElementById('zoomin_x').click(); }
+    await settle();
+    const L = quads();
+    let deepest = 0;
+    for (let i = 0; i < L.length; ++i) {
+        for (let j = i + 1; j < L.length; ++j) { deepest = Math.max(deepest, depth(L[i], L[j])); }
+    }
+    out.push('   rotated view: ' + L.length + ' names, deepest overprint '
+        + deepest.toFixed(2) + ' px');
+    check('a rotated fan keeps names that do not overprint either',
+        deepest < 1.5, deepest.toFixed(2) + ' px, bound 1.5');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

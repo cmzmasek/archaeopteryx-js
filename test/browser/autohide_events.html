@@ -1,0 +1,80 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx auto-hide, branch events</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    let unsettled = 0;
+    const settle = async () => { let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) { await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key; } unsettled++; };
+    // A branch EVENT is drawn a quarter em ABOVE the branch, the same side as
+    // the branch length -- not below it where the confidence goes. The box the
+    // occupancy pass claims for it used to be modelled on the confidence, so an
+    // event could print straight through a branch length and the pass would
+    // report a clean view. branch_events.xml is the demo tree that carries them.
+    const file = '../../docs/data/branch_events.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await settle();
+    for (const id of ['bl_cb', 'brevts_cb', 'dynahide_cb', 'layout_rect_b', 'layout_circ_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const on = async (id) => { const c = document.getElementById(id); if (c && !c.checked) { c.click(); } await settle(); };
+    const off = async (id) => { const c = document.getElementById(id); if (c && c.checked) { c.click(); } await settle(); };
+
+    const boxes = (sel) => [...document.querySelectorAll(sel)]
+        .filter((t) => (t.textContent || '').trim() !== '')
+        .map((t) => { const b = t.getBoundingClientRect();
+            return {k: t.getAttribute('class'), x: b.left, y: b.top, w: b.width, h: b.height}; })
+        .filter((b) => b.w > 0 && b.h > 0);
+    const marks = () => boxes('#phylogram1 text.bllabel, #phylogram1 text.brancheventlabel');
+    const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    // ONLY length-against-event pairs: the question is whether the two kinds
+    // know about each other, and counting like against like would answer a
+    // different one.
+    const crossClashes = (L) => { let n = 0;
+        for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
+            if (L[i].k !== L[j].k && hits(L[i], L[j])) { ++n; } } } return n; };
+
+    await on('bl_cb'); await on('brevts_cb'); await on('dynahide_cb');
+    for (const [name, id] of [['rectangular', 'layout_rect_b'], ['circular', 'layout_circ_b']]) {
+        document.getElementById(id).click();
+        await settle();
+        const kept = marks();
+        const ev = kept.filter((b) => b.k === 'brancheventlabel').length;
+        const bl = kept.filter((b) => b.k === 'bllabel').length;
+        out.push(name + ': ' + bl + ' lengths, ' + ev + ' events drawn');
+        check(name + ': both kinds are actually on screen', ev > 0 && bl > 0, bl + ' / ' + ev);
+        check(name + ': no event prints through a branch length', crossClashes(kept) === 0,
+            crossClashes(kept) + ' crossing pairs');
+        await off('dynahide_cb');
+        const all = marks();
+        out.push(name + ': auto-hide OFF -> ' + all.length + ' marks, '
+            + crossClashes(all) + ' crossing pairs');
+        check(name + ': the two kinds do collide when nothing is hidden',
+            crossClashes(all) > 0, crossClashes(all) + ' crossing pairs with the rule off');
+        await on('dynahide_cb');
+    }
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

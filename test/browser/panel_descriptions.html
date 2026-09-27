@@ -1,0 +1,201 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: does every visible control say what it is?</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// The desktop's ControlPanelCheatSheetTest, borrowed: walk the LIVE panel on a
+// data-rich tree and name every visible control that carries no description.
+// A cheat sheet generated from the descriptions is only as complete as they
+// are, so this is the guard that has to exist first -- and it is worth having
+// whether or not the sheet is ever built, since a control with no tooltip is
+// undiscoverable today.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/apaf.xml';
+    const text = await (await fetch(file)).text();
+    const opts = {};
+    if (new URLSearchParams(location.search).get('compact') === '1') {
+        opts.panelDensity = 'compact';
+    }
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), opts);
+    await viewer.ready;
+    await sleep(2500);
+
+    const panel = document.querySelector('#phylogram1 .aptx-panel')
+        || document.querySelector('.aptx-panel') || document.body;
+    const visible = (el) => {
+        if (el.disabled) { return true; }   // disabled controls still need to say what they are
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) { return false; }
+        const st = getComputedStyle(el);
+        return st.visibility !== 'hidden' && st.display !== 'none';
+    };
+    // the description may sit on the control or on the <label> wrapping it,
+    // which is how the checkbox items carry theirs
+    const describedBy = (el) => {
+        let n = el;
+        for (let i = 0; i < 4 && n; ++i) {
+            const t = (n.getAttribute && (n.getAttribute('title') || n.getAttribute('aria-label'))) || '';
+            if (t.trim() !== '') { return t.trim(); }
+            n = n.parentElement;
+        }
+        // AND the <label for="id"> that names it, which is a SIBLING, not an
+        // ancestor. Walking only ancestors reported the two select menus as
+        // undescribed when makeSelectMenu had put their tooltip on the label
+        // all along -- the probe was wrong, not the panel.
+        if (el.id) {
+            const lab = document.querySelector('label[for="' + el.id + '"]');
+            const t = lab ? ((lab.getAttribute('title') || lab.getAttribute('aria-label') || '')) : '';
+            if (t.trim() !== '') { return t.trim(); }
+        }
+        return '';
+    };
+    const controls = [...panel.querySelectorAll('input, button, select')].filter(visible);
+    const missing = [];
+    const described = [];
+    for (const el of controls) {
+        const d = describedBy(el);
+        const name = (el.id || el.name || el.className || el.tagName).toString().slice(0, 40);
+        if (d === '') { missing.push(name + ' <' + el.tagName.toLowerCase() + '>'); }
+        else { described.push([name, d]); }
+    }
+    out.push('panel: ' + controls.length + ' visible controls, ' + described.length
+        + ' with a description, ' + missing.length + ' without');
+    missing.forEach((m) => out.push('   no description: ' + m));
+
+    // the shape of a description, if a sheet is ever generated from them:
+    // Christian's rule on the desktop is "name: description", never a dash
+    const withDash = described.filter(([, d]) => d.indexOf(' -- ') >= 0 || d.indexOf(' — ') >= 0);
+    out.push('descriptions containing a dash separator: ' + withDash.length);
+    withDash.slice(0, 5).forEach(([n, d]) => out.push('   ' + n + ': ' + d.slice(0, 80)));
+
+    // AND THE SHEET ITSELF IS READ, not a copy of how it names things. The
+    // first version of this file reimplemented the naming and drifted from
+    // the viewer's within the hour: the viewer learned to read aria-label and
+    // a button's own text, the copy here did not, and the harness went on
+    // reporting seven nameless controls that the sheet was naming correctly.
+    const sheetBtn = [...document.querySelectorAll('.aptx-info-btn')]
+        .find((b) => (b.getAttribute('aria-label') || '').indexOf('cheat sheet') >= 0);
+    if (!sheetBtn) {
+        window.__benchResult = {report: ['FAIL  no cheat-sheet button in the panel header'], failures: 1};
+        window.__benchDone = true; return;
+    }
+    sheetBtn.click();
+    await sleep(700);
+    const sheet = document.getElementById('aptx_cheatsheet');
+    const rows = sheet ? [...sheet.querySelectorAll('.aptx-cheat-line')] : [];
+    const rowText = rows.map((r) => ({
+        name: (r.querySelector('.aptx-cheat-name') || {textContent: ''}).textContent.trim(),
+        glyph: !!r.querySelector('svg'),
+        words: (r.querySelector('.aptx-dialog-val') || {textContent: ''}).textContent.trim()
+    }));
+    const faceless = rowText.filter((r) => r.name === '' && !r.glyph);
+    out.push('sheet: ' + rows.length + ' rows, ' + faceless.length
+        + ' with neither a glyph nor a name');
+    faceless.forEach((r) => out.push('   faceless row: ' + r.words.slice(0, 60)));
+
+    // THE HEADER MUST STAY INSIDE THE PANEL. Adding a fourth button to the
+    // header pushed the row 2.4 px past the panel's own right edge and
+    // squeezed the title into two ragged lines on the way, and nothing said
+    // so -- the sheet worked, every control was described, and the panel was
+    // simply mis-drawn. The title's longest word cannot break, so the buttons
+    // are what overflows.
+    {
+        const panelEl = document.querySelector('.aptx-panel');
+        const header = panelEl.querySelector(':scope > .progname');
+        const actions = panelEl.querySelector('.aptx-actions');
+        const pb = panelEl.getBoundingClientRect();
+        const hb = header.getBoundingClientRect();
+        const ab = actions.getBoundingClientRect();
+        const padRight = Math.round(parseFloat(getComputedStyle(header).paddingRight));
+        out.push('header: panel right ' + pb.right.toFixed(1) + ', actions right '
+            + ab.right.toFixed(1) + ', padding ' + padRight + ' px, header height '
+            + hb.height.toFixed(0) + ' px');
+        check('the header buttons stay inside the panel',
+            ab.right <= (pb.right - padRight + 0.5),
+            'actions end at ' + ab.right.toFixed(1) + ', panel padding ends at '
+                + (pb.right - padRight).toFixed(1));
+        check('and nothing in the header spills out of it',
+            ab.right <= hb.right + 0.5 && ab.left >= hb.left - 0.5,
+            'actions ' + ab.left.toFixed(1) + '-' + ab.right.toFixed(1)
+                + ' in header ' + hb.left.toFixed(1) + '-' + hb.right.toFixed(1));
+    }
+
+    check('every visible control says what it is', missing.length === 0,
+        missing.length + ' of ' + controls.length + ' without a description');
+    check('every row of the sheet shows a glyph or a name', faceless.length === 0,
+        faceless.length + ' of ' + rows.length + ' with neither');
+    // the sheet must cover the panel: a control missing from it is a control
+    // nobody can look up
+    check('the sheet has exactly one row per described control',
+        rows.length === described.length,
+        rows.length + ' rows for ' + described.length + ' described controls');
+    // and it must not print anything that changes while you look at it
+    // NO LIVE VALUES -- the desktop's formulation, which is better aimed than
+    // the one here was ("contains a digit anywhere", which would fail a
+    // control legitimately named "Top 10"). A value shows up as a colon still
+    // in the name, or a name ending in a digit or a percent sign.
+    const withValue = rowText.filter((r) => /:/.test(r.name) || /[\d%]$/.test(r.name.trim()));
+    check('no row names a live value', withValue.length === 0,
+        withValue.map((r) => r.name).join(' | '));
+
+    // Whether the CUT that guarantees it was exercised at all is a separate
+    // question, and on this panel the answer is no: not one label carries a
+    // value after its colon (the sliders are "Font", "Node", "Branch", not the
+    // desktop's "Font size: 6"). Reported rather than asserted, because a
+    // check that cannot fail is not one -- the day a label gains a value this
+    // number moves off zero and the assertion above starts doing real work.
+    const fromValueLabels = rowText.filter((r) => {
+        const el = [...document.querySelectorAll('.aptx-panel label[for]')]
+            .find((l) => l.textContent.split(':')[0].trim() === r.name);
+        return el && /:\s*\S/.test(el.textContent);
+    });
+    out.push('names cut from a value-bearing label: ' + fromValueLabels.length
+        + ' (0 means no label here carries a VALUE after its colon; the cut is'
+        + ' still exercised by trailing colons such as "Color by:")');
+
+    check('the panel was actually walked', controls.length > 20, controls.length + ' controls');
+
+    // MODELESS is the whole point of the shape chosen: a sheet you must close
+    // to touch the control it names is half a sheet. Asked of the browser
+    // directly. The first version of this check clicked a panel checkbox and
+    // asserted it toggled -- which a PROGRAMMATIC click does straight through
+    // a modal backdrop, so it passed with the dialog opened modally and tested
+    // nothing it named.
+    check('the sheet is modeless', !!sheet && !sheet.matches(':modal'), 'matches(:modal) is false');
+
+    // AND IT IS RE-READ when the panel changes. Collapsing a section hides its
+    // controls, so they must leave the sheet; counting rows before and after
+    // is the only way to see that the sheet followed. Asserting "rows > 0"
+    // after a change proves nothing -- the rows from the first render are
+    // still there, which is how the never-re-read mutant survived.
+    const legend = document.querySelector('.aptx-panel legend.aptx-legend-toggle');
+    const rowsBefore = document.querySelectorAll('#aptx_cheatsheet .aptx-cheat-line').length;
+    let rowsCollapsed = rowsBefore;
+    if (legend) {
+        legend.click();
+        await sleep(700);
+        rowsCollapsed = document.querySelectorAll('#aptx_cheatsheet .aptx-cheat-line').length;
+        legend.click();
+        await sleep(700);
+    }
+    const rowsBack = document.querySelectorAll('#aptx_cheatsheet .aptx-cheat-line').length;
+    out.push('sheet rows: ' + rowsBefore + ' -> ' + rowsCollapsed + ' with a section collapsed -> '
+        + rowsBack + ' reopened');
+    check('collapsing a panel section removes its controls from the sheet',
+        !!legend && rowsCollapsed < rowsBefore, rowsBefore + ' -> ' + rowsCollapsed);
+    check('and reopening it brings them back', rowsBack === rowsBefore,
+        rowsCollapsed + ' -> ' + rowsBack);
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

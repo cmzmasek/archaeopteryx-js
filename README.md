@@ -1145,9 +1145,12 @@ everything.
 **In the circular and unrooted layouts, crowded tip labels are hidden by
 whether they actually overprint.** A name is drawn only where its own outline
 overlaps no name already drawn; the order is the tree's own, root first, so
-the same tree at the same size always keeps the same names. A name found by a
-search is drawn without being asked, so what you searched for is always on the
-screen. The outlines are compared as they are drawn, turned, not as the
+the same tree at the same size always keeps the same names. **A name found by
+a search is the exception**: it is drawn without being asked, so what you
+searched for is always on the screen — and since the names it would have
+yielded to are already down, a hit can be drawn across one. That is the rule
+both programs agreed on, the hit being the thing you are looking for, and it
+is the one case where the sentence above does not hold. The outlines are compared as they are drawn, turned, not as the
 upright boxes that enclose them — the bounds of a turned name are several
 times its own area, and comparing those would drop names that are plainly
 clear of each other.
@@ -1162,7 +1165,8 @@ kept 48 of 97 names where all 97 fit the ring with **not one** overlapping
 pair; on `flu_h5.xml` it kept 59 of 354 where 118 are readable. Both now draw
 what fits.
 
-Unrooted is the layout the rule takes names away in: on `Caliciviridae_100.xml`
+Both fans lose names where a fan is crowded — circular takes 236 of 354 on
+`flu_h5.xml`, and unrooted is the harsher of the two: on `Caliciviridae_100.xml`
 its 97 names had 172 overlapping pairs, the deepest printing 9.5 px through
 its neighbour, and 34 remain with none overlapping by more than the width of
 the measurement itself. Where there is room, nothing is dropped:
@@ -1798,6 +1802,16 @@ alt-click placement it documented. `visualizationsLegendXpos` and
 The 2026 additions beyond the visualization system, specified tightly enough
 to rebuild. All pure logic lives in forester.js under `npm test`; the viewer
 draws.
+
+What the viewer draws is checked separately, by driving it in headless Chrome:
+`npm run test:browser` (or `test:browser:quick`, one case per harness, which is
+what CI runs). Those harnesses open a real tree, work the controls and measure
+the result — which marks are drawn, where they sit, whether a control lights.
+They exist because `npm test` cannot reach any of it: it covers the arithmetic,
+and the defects this code has actually had were wiring. A connector drawn out
+to the ring for a name that was hidden, an Auto-hide indicator dark over a tree
+it was thinning, a domain architecture left beside a tip whose name had gone —
+each of those passed every node test and every lint.
 
 ### The unrooted layout
 

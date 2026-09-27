@@ -10,6 +10,14 @@ consumers only see a change when a version is cut.
 
 ### Added
 
+- **The browser harnesses are in the repository and run in CI.** `npm run
+  test:browser` drives the viewer in headless Chrome — opening a real tree,
+  working the controls and measuring what is drawn — and a CI job runs a case
+  per harness on every push. They had lived outside the repository, so a fresh
+  checkout had no coverage of the viewer at all, and the node suite covers
+  forester.js, which is the arithmetic. Every defect this code has had recently
+  was wiring.
+
 - **A control-panel cheat sheet.** The card button in the panel header (or the
   Control panel row of the About box) opens a list of every control the panel is
   currently showing, in the order it shows them, each beside the sentence that
@@ -31,16 +39,18 @@ consumers only see a change when a version is cut.
   readable. Both now draw what fits. The switch costs about 70 ms more on a
   9,000-tip tree, since the geometric pass now sees every label rather than a
   pre-thinned one in k.
+
 - **The unrooted layout hides crowded tip labels**, which it never thinned at
   all. A name is drawn only where its own outline overlaps no name already
   drawn, root first, under the Auto-hide Labels switch; a name found by a
   search is drawn without being asked. Measured at 1100×850 on
   `Caliciviridae_100.xml`: 97 names with 172 overlapping pairs, the deepest
-  9.5 px through its neighbour, now 34 with none overlapping by as much as a
-  pixel. Where there is room nothing is dropped — `woese-tree-of-life.xml`
+  9.5 px through its neighbour, now 34 with none overlapping by more than the
+  difference between the two ways of measuring a label (about 0.7 px each). Where there is room nothing is dropped — `woese-tree-of-life.xml`
   keeps all 23. This is the desktop Archaeopteryx's rule, and the claim order
-  matches its unrooted painter, which reaches a node before its subtree.
-  Rectangular and circular keep the every-k-th thinning they have.
+  matches its unrooted painter, which reaches a node before its subtree. The
+  rectangular layout keeps the every-k-th thinning, whose row pitch is a real
+  quantity there.
 - `forester.orientedOccupancy`, first-come space-keeping for boxes that are
   turned: the outlines are compared, not the upright boxes enclosing them. On a
   48-label ring the upright bounds called 28 pairs crowded where the outlines

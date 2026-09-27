@@ -1,0 +1,59 @@
+<!doctype html>
+<meta charset="utf-8"><title>is the toggle lit while it hides branch data?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The switch governs THREE things: the every-k-th tip thinning, the radial
+// overlap thinning, and the crowded branch-data rule. The light asks only
+// about the first two, so a view where every name fits but numbers are being
+// refused shows a dark toggle over a tree it is actively thinning.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/Caliciviridae_100.xml';
+    const text = await (await fetch(file)).text();
+    const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {});
+    await v.ready; await sleep(2200);
+    const settle = () => sleep(2600);
+    for (const id of ['conf_cb', 'bl_cb', 'dynahide_cb', 'layout_circ_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['NOT EXERCISED: no ' + id + ' on this tree'], failures: 0};
+            window.__benchDone = true; return;
+        }
+    }
+    for (const id of ['conf_cb', 'bl_cb']) {
+        const c = document.getElementById(id); if (!c.checked) { c.click(); }
+    }
+    await settle();
+    const item = document.getElementById('dynahide_cb').closest('.aptx-check');
+    const marks = () => document.querySelectorAll('#p text.bllabel, #p text.conflabel').length;
+    const names = () => [...document.querySelectorAll('#p text.extlabel')]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && !d.children && (t.textContent || '').trim() !== ''; }).length;
+    const dh = document.getElementById('dynahide_cb');
+    for (const [lname, lid] of [['circular', 'layout_circ_b'], ['rectangular', 'layout_rect_b']]) {
+        document.getElementById(lid).click(); await settle();
+        const onMarks = marks(), onNames = names();
+        const lit = item.classList.contains('aptx-check-active');
+        if (dh.checked) { dh.click(); } await settle();
+        const offMarks = marks(), offNames = names();
+        if (!dh.checked) { dh.click(); } await settle();
+        const hidingMarks = offMarks - onMarks, hidingNames = offNames - onNames;
+        out.push(lname + ': names ' + onNames + '/' + offNames + ', branch marks '
+            + onMarks + '/' + offMarks + ' -- hiding ' + hidingNames + ' names and '
+            + hidingMarks + ' marks, toggle ' + (lit ? 'LIT' : 'dark'));
+        check(lname + ': lit whenever the switch is taking ANYTHING away',
+            lit === (hidingNames > 0 || hidingMarks > 0),
+            'hiding names ' + hidingNames + ', marks ' + hidingMarks + ', lit ' + lit);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

@@ -3055,8 +3055,11 @@ function (root, d3, forester, phyloXml) {
                 // circumference and not by the display's height. Measured on
                 // Caliciviridae_100 at 1100x850, the index rule kept 48 of 97
                 // names in circular while all 97 fitted the ring with NOT ONE
-                // overlapping pair, and on flu_h5 it kept 59 of 354 where 100
-                // are readable. Both are now thinned by hideCrowdedTipLabels
+                // overlapping pair, and on flu_h5 it kept 59 of 354 where 118
+                // are readable. (118 is the shipped rule measured; 100 was a
+                // greedy estimate in DOM order made before it was built, and
+                // is what this comment said until a review caught it against
+                // README and CHANGELOG.) Both are now thinned by hideCrowdedTipLabels
                 // instead, on whether the names actually overprint.
                 forester.preOrderTraversal(_root, function (n) {
                     n.hide = false;
@@ -3333,7 +3336,7 @@ function (root, d3, forester, phyloXml) {
         // a collapsed clade's label always shows, so its guide does too: from
         // past the wedge's farthest tip to the label column
         let collapsedGuides = alignedRect ? nodes.filter(function (d) {
-            return isCollapsed(d) && !(_state.dynahide && d.hide);
+            return isCollapsed(d) && nameDrawn(d);
         }) : [];
         if (tipGuides || collapsedGuides.length > 0) {
             let ext = _svgGroup.insert('g', 'g').attr('class', 'aptx-align-ext');
@@ -3346,7 +3349,7 @@ function (root, d3, forester, phyloXml) {
             if (tipGuides) {
                 guideStyle(ext.selectAll('path.aptx-tip-guide')
                     .data(links.filter(function (d) {
-                        return (!d.target.children && !(_state.dynahide && d.target.hide));
+                        return (!d.target.children && nameDrawn(d.target));
                     }))
                     .enter().append('path').attr('class', 'aptx-tip-guide'))
                     .attr('d', function (d) {
@@ -3369,7 +3372,7 @@ function (root, d3, forester, phyloXml) {
             // tips while their labels show; a collapsed clade always (its label
             // always shows), from its wedge's farthest reach out to the ring
             let connected = nodes.filter(function (d) {
-                if (_state.dynahide && d.hide) {
+                if (!nameDrawn(d)) {
                     return false;
                 }
                 if (isCollapsed(d)) {
@@ -3882,6 +3885,15 @@ function (root, d3, forester, phyloXml) {
     // _dynahide_factor says nothing about them
     let _radialNamesHidden = 0;
 
+    // and how many branch marks the crowding rule refused on the last render.
+    // The switch governs three things -- the every-k-th thinning, the radial
+    // overlap thinning and the branch-data rule -- and the indicator used to
+    // ask only about names, so a view where every name fitted but 201 numbers
+    // were being refused showed a dark toggle over a tree it was thinning.
+    // (Caliciviridae circular; apaf RECTANGULAR did it too, so this half was
+    // never right in any layout.)
+    let _branchMarksHidden = 0;
+
     function branchFontMetrics(fontPx) {
         // One cache for every size asked for, not one slot: labels and branch
         // marks run at different sizes in the same pass, and a single slot
@@ -4118,15 +4130,24 @@ function (root, d3, forester, phyloXml) {
         return quad;
     }
 
-    // ---- crowded TIP LABELS, in the unrooted layout ----
+    // ---- crowded TIP LABELS, in both radial layouts ----
     //
-    // The desktop's rule, adopted for the one layout that had nothing at all:
-    // a tip label is drawn only if its own outline overlaps no label already
-    // drawn this pass. Rectangular and circular keep the every-k-th thinning
-    // they have -- rectangular's rows really are evenly spaced, and circular
-    // pulls its labels out to a common ring where, measured on every tree
-    // tried, no two of them overlap. Unrooted has neither: its labels sit
-    // wherever the equal-angle layout put the tip, and nothing thinned them.
+    // The desktop's rule: a tip label is drawn only if its own outline overlaps
+    // no label already drawn this pass. Both fans use it; the rectangular
+    // layout keeps the every-k-th thinning, whose row pitch is a real quantity
+    // there.
+    //
+    // Unrooted had nothing at all before this -- its labels sit wherever the
+    // equal-angle layout put the tip. Circular had the rectangular rule, which
+    // reads the display's HEIGHT against the node count and says nothing about
+    // a ring: it kept 48 of 97 names on Caliciviridae where all 97 fit with no
+    // overlap, and 59 of 354 on flu_h5 where 118 are readable.
+    //
+    // A SEARCH HIT is placed without being asked, so it can be drawn across a
+    // name already down -- intended (the hit is what is being looked for), and
+    // measured: a 3-hit search on confidences unrooted puts 3 hits across
+    // non-hits, 8.1 px deep. It is the one case where "drawn only where it
+    // overlaps nothing" does not hold, and the README says so.
     // Measured at 1100x850 before this, overlapping pairs among the labels
     // drawn: 172 of 97 labels on Caliciviridae_100, 71 of 42 on confidences,
     // 10 of 31 on apaf -- clumps of a dozen names printed through each other.
@@ -4142,6 +4163,17 @@ function (root, d3, forester, phyloXml) {
     // looked for is always on the screen and everything after it keeps clear
     // of it (Christian, 2026-09-26: hits are exempt for tip labels, and for
     // nothing else).
+    // Is this node's name on the screen? Asked by everything drawn to a label
+    // -- the aligned guides, the circular ring connectors -- and it must be
+    // ONE question. It used to be spelled `_state.dynahide && d.hide`, which
+    // is the every-k-th rule and nothing else: when the radial layouts started
+    // hiding by overlap they left `hide` false for everyone, so on flu_h5 in
+    // circular 354 dashed connectors ran out to the ring for 118 names, 236 of
+    // them ending at nothing. `_labelDropped` is set by BOTH rules.
+    function nameDrawn(d) {
+        return !d._labelDropped;
+    }
+
     function hideCrowdedTipLabels(nodes) {
         _radialNamesHidden = 0;
         if (!_state.dynahide || !radialDisplay()) {
@@ -4275,9 +4307,9 @@ function (root, d3, forester, phyloXml) {
     // built in the tree group's own coordinates, which is where every mark is
     // actually drawn, so the circular and unrooted views are measured in their
     // own space and not in the cluster's. (The tip-label decimation that shares
-    // the toggle is skipped in unrooted, which has no rows to decimate
-    // against; hideCrowdedTipLabels thins that layout's names by overlap
-    // instead, and runs before this does.)
+    // the toggle runs in the rectangular layout alone; both fans have no rows
+    // to decimate against, and hideCrowdedTipLabels thins their names by
+    // overlap instead, running before this does.)
     function hideCrowdedBranchData(nodes) {
         if (!_state.dynahide) {
             return;
@@ -4288,6 +4320,7 @@ function (root, d3, forester, phyloXml) {
         if ((_state.circularDisplay && !_radial) || (_state.unrootedDisplay && !_unroot)) {
             return;
         }
+        _branchMarksHidden = 0;
         let fontPx = _state.branchDataFontSize;
         let dotCell = 0;
         for (let i = 0; i < nodes.length; ++i) {
@@ -4335,12 +4368,14 @@ function (root, d3, forester, phyloXml) {
                 let b = branchMarkBox(d, 'bl', d._blText, fontPx);
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._blText = '';
+                    ++_branchMarksHidden;
                 }
             }
             if (d._confText !== '') {
                 let b = branchMarkBox(d, 'conf', d._confText, fontPx);
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._confText = '';
+                    ++_branchMarksHidden;
                 }
             }
             // Branch EVENTS are branch-anchored too, half a branch from the
@@ -4352,6 +4387,7 @@ function (root, d3, forester, phyloXml) {
                 let b = branchMarkBox(d, 'event', d._eventText, fontPx);
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._eventText = '';
+                    ++_branchMarksHidden;
                 }
             }
             if (d._suppDot) {
@@ -4365,6 +4401,7 @@ function (root, d3, forester, phyloXml) {
                     : [d.y + (0.5 * (d.parent.y - d.y)), d.x];
                 if (at && !symbols.claim(at[0] - r, at[1] - r, 2 * r, 2 * r)) {
                     d._suppDot = false;
+                    ++_branchMarksHidden;
                 }
             }
         }
@@ -13111,12 +13148,13 @@ function (root, d3, forester, phyloXml) {
     // many labels are shown. Called on every redraw, since the density
     // changes with the vertical zoom, the font size and the view.
     // Lights the toggle while it is actually taking something away, and says
-    // what. The three layouts thin by different rules, so the indicator asks
-    // the rule that is running: rectangular and circular drop every k-th
-    // label by index, unrooted drops the ones whose names would overprint.
-    // It used to be told `!unrootedDisplay && factor >= 2`, which was right
-    // while unrooted thinned nothing and wrong from the day it did --
-    // Christian spotted the toggle staying dark there while names vanished.
+    // what. The switch governs three rules, and the light has to ask all three
+    // rather than whichever one was written first: the every-k-th thinning
+    // (rectangular, by index against the row pitch), the overlap thinning
+    // (both fans, by whether names would overprint) and the crowded
+    // branch-data rule (every layout). Asking only the first two left it dark
+    // over a circular tree with 201 numbers refused and every name drawn --
+    // and over a RECTANGULAR one with 18 refused, which was never right.
     function syncDynahideIndicator() {
         let cb = byId(DYNAHIDE_CB);
         let item = cb ? cb.closest('.aptx-check') : null;
@@ -13126,20 +13164,24 @@ function (root, d3, forester, phyloXml) {
         if (item.dataset.baseTitle === undefined) {
             item.dataset.baseTitle = item.title;
         }
-        let byIndex = !radialDisplay() && _dynahide_factor >= 2;
-        let byOverlap = radialDisplay() && _radialNamesHidden > 0;
-        let active = _state.dynahide === true && (byIndex || byOverlap);
-        item.classList.toggle('aptx-check-active', active);
-        if (!active) {
-            item.title = item.dataset.baseTitle;
-            return;
+        let parts = [];
+        if (!radialDisplay() && _dynahide_factor >= 2) {
+            parts.push('1 in ' + _dynahide_factor + ' labels shown');
+        } else if (radialDisplay() && _radialNamesHidden > 0) {
+            parts.push(_radialNamesHidden + ' name' + (_radialNamesHidden === 1 ? '' : 's')
+                + ' that would overprint');
         }
-        item.title = item.dataset.baseTitle + ', hiding now: '
-            + (byOverlap
-                ? (_radialNamesHidden + ' name' + (_radialNamesHidden === 1 ? '' : 's')
-                    + ' that would overprint')
-                : ('1 in ' + _dynahide_factor + ' labels shown'))
-            + ', and branch data that would overlap';
+        if (_branchMarksHidden > 0) {
+            // said only when it is happening: the clause used to be printed
+            // unconditionally, which made a promise of every render
+            parts.push(_branchMarksHidden + ' branch value' + (_branchMarksHidden === 1 ? '' : 's')
+                + ' that would overlap');
+        }
+        let active = _state.dynahide === true && parts.length > 0;
+        item.classList.toggle('aptx-check-active', active);
+        item.title = active
+            ? item.dataset.baseTitle + ', hiding now: ' + parts.join(', and ')
+            : item.dataset.baseTitle;
     }
 
     function dynaHideCbClicked() {

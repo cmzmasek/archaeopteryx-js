@@ -1,5 +1,11 @@
-# Continuous integration: lint the source and run the forester.js test suite
-# on every push and pull request.
+# Continuous integration: lint the source, run the node test suite, and drive
+# the viewer in headless Chrome on every push and pull request.
+#
+# The browser job exists because the node suite cannot reach the viewer at all:
+# it covers forester.js, which is the arithmetic, while every defect found in
+# the label work was WIRING -- a connector drawn for a name that was not, an
+# indicator dark over a tree it was thinning, an architecture left beside a
+# tip whose name had gone. Those are only visible in a rendered tree.
 
 name: CI
 
@@ -32,3 +38,23 @@ jobs:
 
       - name: Test
         run: npm test
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      # The runner image ships Google Chrome; cdp_run.js finds it by name and
+      # exits with a clear message if some future image does not.
+      - name: Show the browser
+        run: google-chrome --version
+
+      - name: Browser harnesses
+        run: node test/browser/run.js --quick

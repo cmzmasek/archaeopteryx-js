@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx zero is a value</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = [];
+    let failures = 0;
+    const check = (label, ok, detail) => {
+        if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + label + (detail === undefined ? '' : '   [' + detail + ']'));
+    };
+    // A:0 and the clade branch 0; support 0 on one clade, 95 on the other.
+    // Some non-zero lengths too, so the tree counts as having branch lengths.
+    const trees = archaeopteryx.parseTree('t.nh', '((A:0,B:0.2)x:0[0],(C:0.3,D:0.4)y:0.5[95]):0.1;');
+    const phy = Array.isArray(trees) ? trees[0] : trees;
+    const viewer = archaeopteryx.launch('#phylogram1', phy, {});
+    await viewer.ready;
+    await sleep(1200);
+
+    const cb = (id) => document.getElementById(id);
+    const on = (id) => { const c = cb(id); if (c && !c.checked) { c.click(); } };
+    on('bl_cb');            // Branch Lengths
+    on('conf_cb');          // Confidence Values
+    await sleep(1400);
+
+    const texts = [...document.querySelectorAll('#phylogram1 svg text')]
+        .map((t) => (t.textContent || '').trim()).filter(Boolean);
+    out.push('labels drawn: ' + JSON.stringify(texts));
+    const has = (v) => texts.indexOf(v) > -1;
+
+    check('a branch length of 0 is labelled', has('0'), 'zeros among ' + texts.length + ' labels');
+    check('a non-zero branch length is still labelled', has('0.2') && has('0.5'));
+    // three zeros: the tip's branch length, the clade's branch length, and
+    // the clade's support. Two would mean the support was dropped again.
+    check('a support value of 0 is labelled', texts.filter((t) => t === '0').length >= 3,
+        texts.filter((t) => t === '0').length + ' zero labels, 3 expected');
+    check('a non-zero support is still labelled', has('95'));
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

@@ -1,0 +1,198 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: does a name's reservation cover the name?</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// The check the desktop pins pixel by pixel, borrowed: every point of a drawn
+// name must lie inside the space that name reserved.
+//
+// The collision counts cannot see this. A reservation that is merely SMALL --
+// short by a descent, a few per cent narrow, or right for one layout and
+// subtly wrong for another -- hides nothing wrongly and shows no overlap
+// anywhere a number does not happen to sit, so it reads as a clean pass until
+// the day a number sits there.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const file = q.get('tree') || '../../docs/data/apaf.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(1200);
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) { if (++same >= 2) { return; } } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    for (const id of ['dynahide_cb', 'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b', 'fitwidth', 'sf0']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const dh = document.getElementById('dynahide_cb'); if (!dh.checked) { dh.click(); } await settle();
+
+    // SEARCH FIRST, so some names are drawn BOLD. A bold name is wider, and
+    // the space it reserves is measured from the font actually used -- so
+    // without a search the bold path of the reservation is never exercised
+    // and a box that ignored the weight would pass every view. (Measured: it
+    // did. This harness gave a clean run to a reservation built from the
+    // regular font while the name was painted bold. The desktop confirmed the
+    // same hole in their own render test.)
+    const reservedWidth = () => {
+        const m = new Map();
+        for (const t of document.querySelectorAll('#phylogram1 text.extlabel')) {
+            const d = t.parentNode && t.parentNode.__data__;
+            if (!d || !d._labelBoxes) { continue; }
+            // the boxes are a run along the baseline, so the reserved extent
+            // is the span they cover, not any one of them
+            let w = 0;
+            for (const b of d._labelBoxes) { w += b[2]; }
+            m.set(String(d.id), w);
+        }
+        return m;
+    };
+    const plainWidths = reservedWidth();
+    const sf = document.getElementById('sf0');
+    if (sf) {
+        sf.value = q.get('find') || 'A';
+        sf.dispatchEvent(new Event('input', {bubbles: true}));
+        sf.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true, key: 'A'}));
+        await settle();
+    }
+    const boldIds = [...document.querySelectorAll('#phylogram1 text.extlabel')]
+        .filter((t) => t.style.fontWeight === 'bold' || t.getAttribute('font-weight') === 'bold')
+        .map((t) => { const d = t.parentNode.__data__; return d ? String(d.id) : '?'; });
+    const boldWidths = reservedWidth();
+    let wider = 0, sample = '';
+    for (const id of boldIds) {
+        const before = plainWidths.get(id), after = boldWidths.get(id);
+        if (before === undefined || after === undefined) { continue; }
+        if (after > before + 1e-9) { ++wider; }
+        if (!sample) { sample = before.toFixed(1) + ' -> ' + after.toFixed(1); }
+    }
+    out.push('search: ' + boldIds.length + ' names drawn bold, ' + wider
+        + ' of them reserved MORE space than unfound (first: ' + sample + ')');
+    // THE PRECONDITION, and it fires before the ink check: a hit's name is
+    // painted bold, so the space it reserves must be wider than the same name
+    // unfound. Asserting only that some name is bold proves the DRAWING took
+    // that branch, not the RESERVATION -- which is the half that can be wrong.
+    check('a found name reserves more space than the same name unfound',
+        boldIds.length > 0 && wider > 0,
+        boldIds.length + ' bold, ' + wider + ' wider');
+
+    const probe = (name) => {
+        const g = document.querySelector('#phylogram1 g.node');
+        const G = g && g.parentNode;
+        const M = G && G.getScreenCTM ? G.getScreenCTM() : null;
+        if (!M) { return null; }
+        const pushTree = (x, y) => [(M.a * x) + (M.c * y) + M.e, (M.b * x) + (M.d * y) + M.f];
+        let labels = 0, withBoxes = 0, samples = 0, uncovered = 0, worst = 0, worstText = '', worstDump = '';
+        let maxOut = 0;
+        for (const t of document.querySelectorAll('#phylogram1 text.extlabel')) {
+            const d = t.parentNode && t.parentNode.__data__;
+            if (!d || (t.textContent || '').trim() === '') { continue; }
+            ++labels;
+            const boxes = d._labelBoxes;
+            if (!boxes || !boxes.length) { continue; }
+            ++withBoxes;
+            // the reserved boxes, pushed into screen space (the tree group's
+            // transform is translate and scale, so a box stays a box)
+            const rects = boxes.map((b) => {
+                const p0 = pushTree(b[0], b[1]), p1 = pushTree(b[0] + b[2], b[1] + b[3]);
+                return {x: Math.min(p0[0], p1[0]), y: Math.min(p0[1], p1[1]),
+                    w: Math.abs(p1[0] - p0[0]), h: Math.abs(p1[1] - p0[1])};
+            });
+            // sample the label's own rendered box, in its own frame, and push
+            // each sample through the element's screen matrix
+            const m = t.getScreenCTM(); const bb = t.getBBox();
+            if (!m) { continue; }
+            // HOW FAR outside, not merely whether. The reservation is built
+            // from the canvas font's line metrics and this probe measures the
+            // SVG renderer's own box for the same text; the two agree to about
+            // a pixel, so sampling the exact edge of the rendered box finds a
+            // 0.5-0.7 px shortfall on every rotated or flat label and none at
+            // all in the rectangular layout. That is a metric difference, not
+            // a misplaced box. A box in the WRONG PLACE misses by tens of
+            // pixels, so the distance is what separates the two.
+            let miss = 0, total = 0;
+            for (let i = 0; i <= 12; ++i) {
+                for (let j = 0; j <= 2; ++j) {
+                    const lx = bb.x + (bb.width * (i / 12));
+                    const ly = bb.y + (bb.height * (j / 2));
+                    const sx = (m.a * lx) + (m.c * ly) + m.e;
+                    const sy = (m.b * lx) + (m.d * ly) + m.f;
+                    ++total; ++samples;
+                    let best = Infinity;
+                    for (const r of rects) {
+                        const dx = Math.max(0, Math.max(r.x - sx, sx - (r.x + r.w)));
+                        const dy = Math.max(0, Math.max(r.y - sy, sy - (r.y + r.h)));
+                        best = Math.min(best, Math.hypot(dx, dy));
+                        if (best === 0) { break; }
+                    }
+                    if (best > 0) { ++miss; }
+                    if (best > 1.5) { ++uncovered; }
+                    maxOut = Math.max(maxOut, best);
+                }
+            }
+            if (miss / total > worst) {
+                worst = miss / total; worstText = t.textContent;
+                const p0 = pushTree(boxes[0][0], boxes[0][1]);
+                const pN = pushTree(boxes[boxes.length - 1][0] + boxes[boxes.length - 1][2],
+                    boxes[boxes.length - 1][1] + boxes[boxes.length - 1][3]);
+                const rb = t.getBoundingClientRect();
+                worstDump = 'reserved first corner ' + p0.map((v) => v.toFixed(1)).join(',')
+                    + ' last corner ' + pN.map((v) => v.toFixed(1)).join(',')
+                    + ' | rendered ' + rb.left.toFixed(1) + ',' + rb.top.toFixed(1)
+                    + ' to ' + rb.right.toFixed(1) + ',' + rb.bottom.toFixed(1)
+                    + ' | boxes ' + boxes.length + ' | anchor ' + t.getAttribute('text-anchor')
+                    + ' x=' + t.getAttribute('x') + ' dy=' + t.getAttribute('dy')
+                    + ' tf=' + (t.getAttribute('transform') || 'none');
+            }
+        }
+        return {labels: labels, withBoxes: withBoxes, samples: samples, uncovered: uncovered,
+            worst: worst, worstText: worstText, dump: worstDump, maxOut: maxOut};
+    };
+
+    for (const [name, id, flip] of [['rectangular    ', 'layout_rect_b', false],
+                                    ['circular radial', 'layout_circ_b', false],
+                                    ['circular flat  ', 'layout_circ_b', true],
+                                    ['unrooted radial', 'layout_unrooted_b', false],
+                                    ['unrooted flat  ', 'layout_unrooted_b', true]]) {
+        document.getElementById(id).click(); await settle();
+        if (flip) { document.getElementById('fitwidth').click(); await settle(); }
+        const r = probe(name);
+        if (!r) { check(name + ': probe could not read the tree group', false); continue; }
+        out.push(name + ': ' + r.withBoxes + ' of ' + r.labels + ' names reserved, furthest sample '
+            + r.maxOut.toFixed(2) + ' px outside its reservation, ' + r.uncovered + ' of ' + r.samples
+            + ' beyond a pixel and a half'
+            + (r.worst > 0 ? ('   worst "' + r.worstText + '" ' + (100 * r.worst).toFixed(0) + '%') : ''));
+        if (r.worst > 0) { out.push('    ' + r.dump); }
+        check(name + ': every name reserved space', r.withBoxes === r.labels,
+            r.withBoxes + ' of ' + r.labels);
+        check(name + ': every point of every name is inside its reservation, to within a pixel',
+            r.uncovered === 0 && r.maxOut < 1.5,
+            r.uncovered + ' of ' + r.samples + ' beyond 1.5 px, furthest ' + r.maxOut.toFixed(2) + ' px');
+        if (flip) { document.getElementById('fitwidth').click(); await settle(); }
+    }
+    check('every measurement was taken on a settled view', unsettled === 0, unsettled + ' never settled');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

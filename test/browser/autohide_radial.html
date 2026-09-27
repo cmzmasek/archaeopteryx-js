@@ -1,0 +1,145 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx auto-hide, circular and unrooted</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/flu_h5.xml';
+    const text = await (await fetch(file)).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), {});
+    await viewer.ready;
+    await sleep(1500);
+
+    // WAIT FOR THE PICTURE TO STOP MOVING. A layout change re-fits the view
+    // with an animation, and reading geometry while it runs measures nothing:
+    // the first probe of this file read its 21 dots at screen scales from
+    // 0.084 to 0.68 -- one synchronous loop over a picture that was still
+    // zooming -- and reported five overlaps that did not exist. Poll the tree's
+    // own screen matrix until it repeats.
+    let unsettled = 0;
+    const settle = async () => {
+        let last = null, same = 0;
+        for (let i = 0; i < 80; ++i) {
+            await sleep(120);
+            const el = document.querySelector('#phylogram1 g.node') || document.querySelector('#phylogram1 svg');
+            const m = (el && el.getScreenCTM) ? el.getScreenCTM() : null;
+            const key = m ? [m.a, m.b, m.c, m.d, m.e, m.f].map((v) => v.toFixed(3)).join(',') : 'none';
+            if (key !== 'none' && key === last) {
+                if (++same >= 2) { return; }
+            } else { same = 0; }
+            last = key;
+        }
+        unsettled++;
+    };
+    const on = async (id) => { const c = document.getElementById(id); if (c && !c.checked) { c.click(); } await settle(); };
+    const off = async (id) => { const c = document.getElementById(id); if (c && c.checked) { c.click(); } await settle(); };
+    // A harness that cannot find its controls must FAIL, not quietly measure
+    // a tree with nothing turned on: that reads exactly like a pass.
+    for (const id of ['conf_cb', 'bl_cb', 'dynahide_cb', 'suppdots_cb',
+                      'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing control: ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const layout = async (id) => { document.getElementById(id).click(); await settle(); };
+
+    // getBoundingClientRect on a rotated <text> is the browser's OWN
+    // axis-aligned bounds of the rotated box -- the same quantity the pass
+    // claims, but arrived at by rendering rather than by my arithmetic, so a
+    // wrong angle or centre shows up here as an overlap.
+    const boxes = (sel, keep) => [...document.querySelectorAll(sel)]
+        .filter(keep)
+        .map((t) => { const b = t.getBoundingClientRect();
+            return {x: b.left, y: b.top, w: b.width, h: b.height}; })
+        .filter((b) => b.w > 0 && b.h > 0);
+    const marks = () => boxes('#phylogram1 text.bllabel, #phylogram1 text.conflabel',
+        (t) => (t.textContent || '').trim() !== '');
+    const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    const clashes = (L) => { let n = 0;
+        for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
+            if (hits(L[i], L[j])) { ++n; break; } } } return n; };
+
+    // The DOTS are measured as circles, from the screen matrix, NOT with
+    // getBoundingClientRect. On a rotated element Chrome does not compute the
+    // shape's true outline: it takes the untransformed bbox, transforms that
+    // RECTANGLE and returns its axis-aligned bounds. A round dot riding a
+    // branch at 45 degrees is therefore reported up to sqrt(2) too wide, and
+    // this file's first run duly "found" five overlaps among dots that are
+    // provably 0 apart in tree units. (The text marks are unaffected: a rotated
+    // rectangle IS what they are, and what the pass claims for them.)
+    const dots = () => [...document.querySelectorAll('#phylogram1 circle.suppdot')]
+        .filter((c) => Number(c.getAttribute('r')) > 0)
+        .map((c) => { const m = c.getScreenCTM();
+            if (!m) { return null; }
+            const cx = Number(c.getAttribute('cx')) || 0;
+            const cy = Number(c.getAttribute('cy')) || 0;
+            const s = Math.sqrt(Math.abs((m.a * m.d) - (m.b * m.c)));
+            return {x: (m.a * cx) + (m.c * cy) + m.e, y: (m.b * cx) + (m.d * cy) + m.f,
+                r: Number(c.getAttribute('r')) * s}; })
+        .filter((d) => d && d.r > 0);
+    const dotClashes = (L) => { let n = 0;
+        for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
+            const dx = L[i].x - L[j].x, dy = L[i].y - L[j].y;
+            if (Math.sqrt((dx * dx) + (dy * dy)) < (L[i].r + L[j].r - 1e-6)) { ++n; break; } } } return n; };
+
+    await on('conf_cb'); await on('bl_cb'); await on('dynahide_cb');
+
+    const layouts = [['circular', 'layout_circ_b'], ['unrooted', 'layout_unrooted_b']];
+    for (const [name, id] of layouts) {
+        await layout(id);
+        const kept = marks();
+        const clash = clashes(kept);
+        check(name + ': no granted mark overlaps another', clash === 0,
+            clash + ' of ' + kept.length + ' overlap');
+        check(name + ': and something is still drawn', kept.length > 0, kept.length + ' drawn');
+
+        await off('dynahide_cb');
+        const all = marks();
+        const allClash = clashes(all);
+        out.push(name + ': auto-hide OFF -> ' + all.length + ' drawn, ' + allClash + ' overlapping');
+        // Without this the "0 overlap" above proves nothing: a sparse tree has
+        // no overlaps either way.
+        check(name + ': the view is genuinely crowded without the rule', allClash > 0,
+            allClash + ' overlap when everything is drawn');
+        check(name + ': the rule actually drops marks', all.length > kept.length,
+            kept.length + ' -> ' + all.length);
+        await on('dynahide_cb');
+        check(name + ': switching it back on restores the hiding', marks().length === kept.length,
+            kept.length + ' vs ' + marks().length);
+
+        const numbersBefore = marks().length;
+        await on('suppdots_cb');
+        const d = dots();
+        const dClash = dotClashes(d);
+        out.push(name + ': ' + d.length + ' dots, numbers ' + numbersBefore + ' -> ' + marks().length);
+        check(name + ': the dots are drawn at all', d.length > 0, d.length + ' dots');
+        check(name + ': no granted dot overlaps another', dClash === 0,
+            dClash + ' of ' + d.length + ' overlap');
+        check(name + ': turning the dots on does not cost a number',
+            marks().length === numbersBefore, numbersBefore + ' -> ' + marks().length);
+        await off('suppdots_cb');
+    }
+
+    // and the rectangular layout still behaves, after the round trip
+    await layout('layout_rect_b');
+    const rect = marks();
+    check('rectangular: still no granted mark overlaps another', clashes(rect) === 0,
+        clashes(rect) + ' of ' + rect.length + ' overlap');
+    // A reading taken off a moving picture is not a reading.
+    check('every measurement was taken on a settled view', unsettled === 0,
+        unsettled + ' never settled');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

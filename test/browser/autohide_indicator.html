@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8"><title>does the Auto-hide toggle light when it is hiding?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The toggle lights while it is taking something away. The three layouts
+// thin by different rules, so the light has to ask the rule that is running:
+// it used to ask only the every-k-th factor, which is meaningless in the
+// unrooted layout -- so the names vanished there with the toggle dark.
+//
+// RUN IT ON BOTH KINDS OF TREE. The default (Caliciviridae_100) is crowded in
+// all three layouts and pins the "lit while hiding" half; only a sparse tree
+// pins the other half, and a mutant that lights the toggle whenever the switch
+// is on passes the crowded run completely and fails the sparse one in all
+// three layouts. ?tree=../../docs/data/woese-tree-of-life.xml is the sparse one.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const file = new URLSearchParams(location.search).get('tree') || '../../docs/data/Caliciviridae_100.xml';
+    const text = await (await fetch(file)).text();
+    const trees = archaeopteryx.parseTrees(file, text);
+    const viewer = archaeopteryx.launch('#p', trees, {});
+    await viewer.ready;
+    await sleep(2500);
+    const settle = () => sleep(2600);
+    for (const id of ['dynahide_cb', 'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['FAIL  missing ' + id], failures: 1};
+            window.__benchDone = true; return;
+        }
+    }
+    const cb = document.getElementById('dynahide_cb');
+    const item = cb.closest('.aptx-check');
+    const tips = () => [...document.querySelectorAll('#p text.extlabel')]
+        .filter((t) => { const d = t.parentNode && t.parentNode.__data__;
+            return d && !d.children && (t.textContent || '').trim() !== ''; }).length;
+    let total = 0;
+    const walk = (n) => { if (!n.children || !n.children.length) { ++total; return; } n.children.forEach(walk); };
+    walk(trees[0]);
+
+    for (const [name, id] of [['rectangular', 'layout_rect_b'], ['circular   ', 'layout_circ_b'],
+                              ['unrooted   ', 'layout_unrooted_b']]) {
+        document.getElementById(id).click();
+        await settle();
+        const drawn = tips();
+        const hiding = drawn < total;
+        const lit = item.classList.contains('aptx-check-active');
+        out.push(name + ': ' + drawn + ' of ' + total + ' names drawn, toggle '
+            + (lit ? 'LIT' : 'dark') + ', title "' + (item.title || '').slice(-58) + '"');
+        check(name + ': the toggle is lit exactly when it is hiding something',
+            lit === hiding, 'hiding ' + hiding + ', lit ' + lit);
+        if (lit) {
+            check(name + ': and the title says what it is hiding',
+                /hiding now:/.test(item.title), item.title.slice(-40));
+            // the unrooted rule is not an every-k-th rule, and must not claim to be
+            if (name.trim() === 'unrooted') {
+                check('unrooted: the title does not claim a 1-in-k rule',
+                    !/1 in /.test(item.title), item.title.slice(-40));
+            }
+        }
+    }
+    // and switching it off puts the light out wherever we are
+    cb.click(); await settle();
+    check('switching it off puts the light out',
+        !item.classList.contains('aptx-check-active'), 'still lit');
+    check('and the title goes back to the plain one',
+        !/hiding now:/.test(item.title), item.title.slice(-40));
+    cb.click(); await settle();
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

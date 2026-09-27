@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8"><title>which mark survives a collision</title>
+<style>html,body{margin:0;height:100%}
+/* 900x600, the size the desktop measured this fixture at: at the full
+   window its 64 tips do not crowd at all and the test proves nothing. */
+#phylogram1{position:absolute;left:0;top:0;width:900px;height:600px}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    // The desktop's own crowding fixture (forester/demo/zero-length-nest.xml,
+    // 0.11.161), used here on purpose: a joint rule should be checked against
+    // the tree the other side built for it.
+    const text = await (await fetch('../data/phyloxml_trees/zero-length-nest.xml')).text();
+    const trees = archaeopteryx.parseTrees('t.xml', text);
+    const tree = Array.isArray(trees) ? trees[0] : trees;
+    const viewer = archaeopteryx.launch('#phylogram1', trees, {});
+    await viewer.ready;
+    await sleep(1500);
+    const cb = document.getElementById('conf_cb');
+    if (cb && !cb.checked) { cb.click(); }
+    await sleep(1800);
+
+    // The four internal branches are 0.0001 long, so their support numbers all
+    // want the same few pixels. Exactly one can be granted, and the rule says
+    // it must be the one nearest the ROOT -- 11, the first claimed in preorder.
+    // Which mark survived, by DEPTH. For every node that kept its number,
+    // walk up: if an ancestor's number was dropped while this one was kept,
+    // the tie-break ran backwards. That is the question "zero overlap" cannot
+    // ask, and the one the inverted order got wrong.
+    // Read the TREE for who should have a number and the DOM for who got one.
+    // Not the DOM alone: a node whose only mark was refused no longer gets a
+    // <g> at all, so a dropped mark is invisible from that side -- which made
+    // an earlier version of this check report "0 dropped" on a tree that was
+    // dropping half of them.
+    const kept = new Set();
+    [...document.querySelectorAll('#phylogram1 g.node')].forEach((g) => {
+        const t = g.querySelector('text.conflabel');
+        if (g.__data__ && t && (t.textContent || '').trim()) { kept.add(g.__data__); }
+    });
+    const lost = new Set();
+    forester.preOrderTraversalAll(forester.getTreeRoot(tree), (n) => {
+        if (n.children && n.confidences && n.confidences.length && !kept.has(n)) { lost.add(n); }
+    });
+    out.push('nodes with support: ' + (kept.size + lost.size)
+        + ', kept ' + kept.size + ', dropped ' + lost.size);
+    check('the fixture really does crowd', lost.size > 0, lost.size + ' dropped');
+    // NOT "no ancestor was ever dropped": an ancestor can lose to something
+    // else entirely, and the rule says nothing about unrelated marks. What the
+    // rule DOES imply exactly:
+    //
+    //  1. the FIRST claim in preorder can never be refused -- nothing has been
+    //     claimed yet -- so the shallowest node carrying support always keeps
+    //     its number. Under the inverted order the first claim is the deepest,
+    //     and the shallowest can lose.
+    const depth = (n) => { let d = 0; for (let p = n.parent; p; p = p.parent) { ++d; } return d; };
+    const all = [...kept, ...lost];
+    const minDepth = Math.min(...all.map(depth));
+    const shallowest = all.filter((n) => depth(n) === minDepth);
+    out.push('shallowest nodes with support are at depth ' + minDepth
+        + ': ' + shallowest.filter((n) => kept.has(n)).length + ' of ' + shallowest.length + ' kept');
+    check('the shallowest mark is never the one dropped',
+        shallowest.every((n) => kept.has(n)), 'depth ' + minDepth);
+
+    //  2. TRIED AND DROPPED: "the survivors skew nearer the root". Measured on
+    //     this fixture it is not true and the rule does not imply it -- mean
+    //     depth kept 32.47 against dropped 32.00. Collisions here are LOCAL, a
+    //     mark competing with its immediate neighbours, which sit at much the
+    //     same depth, so claiming root-first produces no depth skew at all. An
+    //     assertion tuned until that passed would have been measuring the
+    //     fixture's shape, not the rule.
+    const mean = (set) => [...set].reduce((a, n) => a + depth(n), 0) / (set.size || 1);
+    out.push('mean depth kept ' + mean(kept).toFixed(2) + ', dropped ' + mean(lost).toFixed(2)
+        + ' (recorded, not asserted -- see above)');
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
