@@ -256,11 +256,11 @@ the mouse wheel zooms too, and never rotates), **X− / X+ become rotate** (a
 32nd of a turn per press), and the fit-width slot becomes the **node label
 direction** flip — labels riding their spokes or standing upright — while
 vertical expansion greys out. **Fit** centres and scales the fan; **Esc**
-also resets rotation and label direction. Unrooted
-additionally greys out the aligned-phylogram option (there is no common label
-edge). Auto-hide Labels stays live: the tip-label thinning it governs needs
-even row spacing and so does nothing in unrooted, but the crowded-branch-data
-rule it also governs applies in every layout.
+also resets rotation and label direction. **Both radial layouts grey out the
+aligned-phylogram option**: unrooted has no common label edge to align to, and
+circular always aligns — its external labels are pulled out to a shared ring,
+with dashed connectors to match, whichever display type is chosen, so the
+option changed nothing there. Auto-hide Labels stays live in every layout.
 
 ## Rooting
 
@@ -1111,6 +1111,32 @@ mark claims the box it is about to occupy, and one that would overlap a box
 already claimed in that pass is left out. The claim order is the tree's own,
 root first, so the mark nearer the root keeps its place and the same tree at
 the same size always drops the same marks — on screen and in every export.
+
+**In the unrooted layout, crowded tip labels are hidden.** A name is drawn
+only where its own outline overlaps no name already drawn; the order is the
+tree's own, root first, so the same tree at the same size always keeps the
+same names. A name found by a search is drawn without being asked, so what you
+searched for is always on the screen. The other two layouts keep the every-k-th
+thinning they have: rectangular's rows are evenly spaced, and circular's labels
+ride a common ring where no two of them were ever found to overlap. The
+outlines are compared as they are drawn, turned, not as the upright boxes that
+enclose them — the bounds of a turned name are several times its own area, and
+comparing those would drop names that are plainly clear of each other.
+Measured at 1100×850 on `Caliciviridae_100.xml`, unrooted: 97 names drawn with
+172 overlapping pairs, the deepest printing 9.5 px through its neighbour, now
+34 names with none overlapping by as much as a pixel. Where there is room,
+nothing is dropped: `woese-tree-of-life.xml` keeps all 23.
+
+**Names go down first, and numbers yield to them.** Every node label that will
+be drawn — a tip name or a clade name — reserves its space before any mark is
+placed, and it is never asked: a label is drawn whatever else is there, so a
+number that would print through a name is the one left out. A value that has
+landed across a name is worse than a value not drawn at all, and it is the
+name that says what the tree is about. Measured at 1100×850 with both numbers
+on, before this: 44 of 93 numbers printed through a name in the rectangular
+view of `flu_h5.xml`, 30 of 55 on `confidences.xml`, 10 of 15 in the unrooted
+view. Now none, in any of the three layouts, and no number is refused unless
+something drawn is in its way.
 Numbers and symbols are kept in separate maps, since the symbol sits on the
 branch and the numbers just above and below it. Symbols are never shrunk to
 fit: where a symbol's size means something, a smaller one would report

@@ -2966,7 +2966,6 @@ function (root, d3, forester, phyloXml) {
             return {source: link.source.data, target: link.target.data};
         });
         _overviewLinks = links;   // the overview is built from these, not from the DOM
-        let gap = _state.nodeLabelGap;
 
         if (_state.phylogram === true) {
             _yScale = branchLengthScaling(forester.getAllExternalNodes(_root), _w);
@@ -3049,8 +3048,10 @@ function (root, d3, forester, phyloXml) {
 
         if (_state.dynahide) {
             if (_state.unrootedDisplay) {
-                // as on the desktop: no label auto-hiding in unrooted (there
-                // is no even row spacing to decimate against)
+                // The every-k-th DECIMATION does not run here: it thins by
+                // index against even row spacing, and an unrooted fan has no
+                // rows. Its tip labels are thinned by hideCrowdedTipLabels
+                // instead, on whether they actually overlap.
                 forester.preOrderTraversal(_root, function (n) {
                     n.hide = false;
                 });
@@ -3130,11 +3131,10 @@ function (root, d3, forester, phyloXml) {
                 return makeFoundOutlineColor(d) ? '0.9px' : null;
             })
             .style('paint-order', 'stroke')
+            // anchor, dy and x all come from nodeLabelPlacement, which the
+            // occupancy box is built from too
             .attr('text-anchor', function (d) {
-                if (radialDisplay()) {
-                    return labelFlip(d) ? 'end' : 'start';
-                }
-                return d.children ? 'end' : 'start';
+                return nodeLabelPlacement(d).anchor;
             })
             .attr('transform', function (d) {
                 if (_state.unrootedDisplay) {
@@ -3162,42 +3162,10 @@ function (root, d3, forester, phyloXml) {
                 return 'rotate(' + labelAngleDeg(d) + ') translate(' + off + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
             })
             .attr('dy', function (d) {
-                if (radialDisplay()) {
-                    return '0.32em';
-                }
-                if (d.children) {
-                    // the desktop's above-branch internal label: the baseline
-                    // is lifted so the glyph bottoms sit just clear of the
-                    // horizontal branch line, instead of straddling it
-                    return -(Math.round(0.2 * _state.internalNodeFontSize) + 1) + 'px';
-                }
-                return 0.3 * _state.externalNodeFontSize + 'px';
+                return nodeLabelPlacement(d).dy + 'px';
             })
             .attr('x', function (d) {
-                if (radialDisplay()) {
-                    return labelFlip(d) ? -gap : gap;
-                }
-                if (!(d.children)) {
-                    if (_state.phylogram && _state.alignPhylogram) {
-                        return (-_yScale(d.distToRoot) + _w + gap);
-                    } else {
-                        return gap;
-                    }
-                } else {
-                    // right-aligned so the label ends just left of the node
-                    // (the desktop's publication-style placement); a long
-                    // label on a node near the root shifts right so its
-                    // leading characters stay on the canvas rather than
-                    // clipping off the left edge
-                    let label = makeNodeLabel(d) || '';
-                    let est = label.length * _state.internalNodeFontSize * 0.55;
-                    let leftmost = d.y - gap - est;
-                    let minX = 2 - _settings.rootOffset;
-                    if (leftmost < minX) {
-                        return -gap + (minX - leftmost);
-                    }
-                    return -gap;
-                }
+                return nodeLabelPlacement(d).x;
             });
 
         node.select('text.bllabel')
@@ -3870,8 +3838,8 @@ function (root, d3, forester, phyloXml) {
     // in y as much as in x, and branch length only sees x. Measured here
     // before adopting it: with Auto-hide Labels already ON, 240 of 267 drawn
     // support numbers overlapped another on flu_h5.xml (90%), 149 of 262 on
-    // Adenoviridae, 13 of 119 on bcl2 -- our auto-hide decimates TIP labels
-    // and had never touched branch data.
+    // Adenoviridae, 13 of 119 on bcl2 -- our auto-hide only thinned TIP labels
+    // then, and had never touched branch data.
     //
     // WHAT MUST MATCH, or the two viewers drop different marks:
     //  - the tie-break: PREORDER, first claim wins, so the mark nearer the
@@ -3903,11 +3871,15 @@ function (root, d3, forester, phyloXml) {
     // Measured from the font rather than assumed. The fallback is what this
     // font actually reports at 9px -- ascent 9, descent 2, line 11 -- read off
     // a rendered label's getBBox rather than guessed.
-    let _branchFontCache = null;
+    let _fontMetricsCache = new Map();
 
     function branchFontMetrics(fontPx) {
-        if (_branchFontCache && _branchFontCache.px === fontPx) {
-            return _branchFontCache;
+        // One cache for every size asked for, not one slot: labels and branch
+        // marks run at different sizes in the same pass, and a single slot
+        // would re-measure on every alternation.
+        let hit = _fontMetricsCache.get(fontPx);
+        if (hit) {
+            return hit;
         }
         let ctx = measureCtx();
         ctx.font = fontPx + 'px ' + FONT_DEFAULTS;
@@ -3924,9 +3896,10 @@ function (root, d3, forester, phyloXml) {
         if (!(descent >= 0)) {
             descent = fontPx * (2 / 9);
         }
-        _branchFontCache = {px: fontPx, ascent: ascent, descent: descent,
+        let metrics = {px: fontPx, ascent: ascent, descent: descent,
             height: ascent + descent};
-        return _branchFontCache;
+        _fontMetricsCache.set(fontPx, metrics);
+        return metrics;
     }
 
     // Where a branch mark sits on its branch, read off the rendered elements
@@ -4018,6 +3991,215 @@ function (root, d3, forester, phyloXml) {
         return [x, (d.x + at.dy) - fm.ascent, w, h];
     }
 
+    // ---- the node's own label: one source for drawing it and for reserving
+    // its space ----
+    //
+    // The three attributes below (text-anchor, x, dy) and the occupancy box
+    // that keeps branch numbers off the name are the same decision, so they
+    // are made once here. Modelled after branchMarkPlacement, and for the same
+    // reason: a box that is not where the text is reserves the wrong space,
+    // and two copies of the arithmetic drift the first time one is edited.
+    function nodeLabelPlacement(d) {
+        let gap = _state.nodeLabelGap;
+        if (radialDisplay()) {
+            let flip = labelFlip(d);
+            return {anchor: flip ? 'end' : 'start', x: flip ? -gap : gap,
+                dy: 0.32 * nodeLabelFontSize(d)};
+        }
+        if (!d.children) {
+            let x = (_state.phylogram && _state.alignPhylogram)
+                ? (-_yScale(d.distToRoot) + _w + gap)
+                : gap;
+            return {anchor: 'start', x: x, dy: 0.3 * _state.externalNodeFontSize};
+        }
+        // the desktop's above-branch internal label: right-aligned so it ends
+        // just left of the node, and shifted right when a long label on a node
+        // near the root would otherwise clip off the left edge
+        let label = makeNodeLabel(d) || '';
+        let est = label.length * _state.internalNodeFontSize * 0.55;
+        let leftmost = d.y - gap - est;
+        let minX = 2 - _settings.rootOffset;
+        let x = (leftmost < minX) ? (-gap + (minX - leftmost)) : -gap;
+        return {anchor: 'end', x: x,
+            dy: -(Math.round(0.2 * _state.internalNodeFontSize) + 1)};
+    }
+
+    // The size the label is actually drawn at: a per-node style overrides the
+    // internal/external default, and the box has to follow it or a styled
+    // tree reserves the wrong space.
+    function nodeLabelFontSize(d) {
+        let style = nodeStyle(d);
+        if (style && style.fontSize) {
+            return style.fontSize;
+        }
+        return d.children ? _state.internalNodeFontSize : _state.externalNodeFontSize;
+    }
+
+    // The label's rectangle in the tree group's coordinates, as a start point
+    // on the baseline, a direction the text runs in, and its extents.
+    // Returns null when there is no label drawn.
+    function nodeLabelGeometry(d) {
+        let text = d._extLabelText;
+        if (!text) {
+            return null;
+        }
+        let fontPx = nodeLabelFontSize(d);
+        let style = nodeStyle(d);
+        let bold = getFoundColor(d)
+            || (style && (style.fontStyle === 'bold' || style.fontStyle === 'bold_italic'));
+        let w = legendTextWidth(text, (bold ? 'bold ' : '') + fontPx + 'px ' + FONT_DEFAULTS);
+        let fm = branchFontMetrics(fontPx);
+        let p = nodeLabelPlacement(d);
+        let at = layoutPointXY(d);
+        if (at[0] === undefined || at[1] === undefined) {
+            return null;   // not laid out (an unrooted node the layout never reached)
+        }
+        if (!radialDisplay() || _radialLabelsHorizontal) {
+            // upright text, whatever the layout: one axis-aligned rectangle
+            let base = at;
+            if (_state.circularDisplay && _radialLabelsHorizontal && !d.children && _radial) {
+                // the label rides out to its point on the ring, in screen terms
+                base = polarXY(radialAngle(d.x), _radial.maxRad);
+            }
+            let x0 = base[0] + p.x - (p.anchor === 'end' ? w : 0);
+            return {x: x0, y: (base[1] + p.dy) - fm.ascent, w: w, h: fm.height, angle: 0};
+        }
+        // Radial: the text starts a gap beyond the node (or beyond the ring,
+        // for a circular tip) and runs OUTWARD along the spoke -- on both
+        // halves of the fan, because the 180-degree flip that keeps the far
+        // half upright also reverses which end the anchor is.
+        //
+        // Built as an offset FROM THE NODE, not as a distance from the origin.
+        // A circular node lies on the ray its label runs along, so radius
+        // arithmetic happens to work there; an unrooted one does not -- its
+        // spoke angle is the direction its own branch came in at, which has
+        // nothing to do with its bearing from the centre. Measured with the
+        // radius version: unrooted still had 7 of 12 numbers printing through
+        // a name on flu_h5, because the boxes were being reserved in places
+        // no label was.
+        let theta = spokeAngle(d);
+        let along = _state.nodeLabelGap;
+        if (_state.circularDisplay && !d.children && _radial) {
+            along += _radial.maxRad - radialRadius(d.y);   // the pull out to the ring
+        }
+        let flip = labelFlip(d);
+        // the baseline offset is perpendicular to the text, and the flip
+        // carries it across with everything else
+        let off = flip ? -p.dy : p.dy;
+        let top = flip ? (off - fm.descent) : (off - fm.ascent);
+        let cos = Math.cos(theta), sin = Math.sin(theta);
+        return {x: at[0] + (cos * along) - (sin * top),
+            y: at[1] + (sin * along) + (cos * top),
+            w: w, h: fm.height, angle: theta};
+    }
+
+    // The label's own outline, as four corners in the tree group's
+    // coordinates: what the turned-box occupancy tests against.
+    function nodeLabelQuad(g) {
+        if (!g || !(g.w > 0) || !(g.h > 0)) {
+            return null;
+        }
+        let cos = Math.cos(g.angle), sin = Math.sin(g.angle);
+        let corners = [[0, 0], [g.w, 0], [g.w, g.h], [0, g.h]];
+        let quad = [];
+        for (let i = 0; i < corners.length; ++i) {
+            quad.push([g.x + (cos * corners[i][0]) - (sin * corners[i][1]),
+                g.y + (sin * corners[i][0]) + (cos * corners[i][1])]);
+        }
+        return quad;
+    }
+
+    // ---- crowded TIP LABELS, in the unrooted layout ----
+    //
+    // The desktop's rule, adopted for the one layout that had nothing at all:
+    // a tip label is drawn only if its own outline overlaps no label already
+    // drawn this pass. Rectangular and circular keep the every-k-th thinning
+    // they have -- rectangular's rows really are evenly spaced, and circular
+    // pulls its labels out to a common ring where, measured on every tree
+    // tried, no two of them overlap. Unrooted has neither: its labels sit
+    // wherever the equal-angle layout put the tip, and nothing thinned them.
+    // Measured at 1100x850 before this, overlapping pairs among the labels
+    // drawn: 172 of 97 labels on Caliciviridae_100, 71 of 42 on confidences,
+    // 10 of 31 on apaf -- clumps of a dozen names printed through each other.
+    //
+    // OUTLINES, not their axis-aligned bounds: a name lying near its spoke has
+    // bounds several times its own area, and on a 48-label ring those bounds
+    // called 28 pairs crowded where a reader sees none.
+    //
+    // Order is the tree's own, root first (forester.preorderOf), which is also
+    // what the desktop's unrooted painter does -- it reaches an internal node
+    // before its subtree -- so both programs keep the same label when two
+    // contend. A search HIT is placed without being asked, so the name being
+    // looked for is always on the screen and everything after it keeps clear
+    // of it (Christian, 2026-09-26: hits are exempt for tip labels, and for
+    // nothing else).
+    function hideCrowdedTipLabels(nodes) {
+        if (!_state.dynahide || !_state.unrootedDisplay) {
+            return;
+        }
+        // no layout, no honest outlines; bailing draws everything
+        if (!_unroot) {
+            return;
+        }
+        let labels = forester.orientedOccupancy(Math.max(4, _state.externalNodeFontSize));
+        let ordered = forester.preorderOf(nodes);
+        for (let i = 0, len = ordered.length; i !== len; ++i) {
+            let d = ordered[i];
+            if (d.children || d._extLabelText === '') {
+                continue;
+            }
+            let quad = nodeLabelQuad(nodeLabelGeometry(d));
+            if (!quad) {
+                continue;
+            }
+            if (getFoundColor(d)) {
+                labels.occupy(quad);
+            } else if (!labels.claim(quad)) {
+                d._extLabelText = '';
+            }
+        }
+    }
+
+    // The boxes to reserve for a label. An upright label is one rectangle. A
+    // rotated one is reserved as a RUN of short boxes along its baseline,
+    // never as one axis-aligned box around the whole thing: the bounds of a
+    // rotated rectangle grow with its LENGTH, so a 120 px name lying at 30
+    // degrees would reserve several times its own area. Stepping by the line
+    // height bounds the error at one step whatever the name is.
+    //
+    // Honestly measured: the run and the single box draw the SAME numbers on
+    // every tree tried (apaf, Caliciviridae, confidences) bar one -- flu_h5
+    // unrooted, 4 against 3 -- and a purpose-built sparse fixture with 28-
+    // character names could not separate them at all
+    // (test_trees/label_reservation.html). The views that would show the
+    // difference are already saturated, and the ones with room refuse nothing
+    // either way. It is kept for the bound, not for the count: the error of
+    // the single box grows without limit as names get longer, and this is
+    // ten lines.
+    function nodeLabelClaimBoxes(g) {
+        if (!g || !(g.w > 0) || !(g.h > 0)) {
+            return [];
+        }
+        if (g.angle === 0) {
+            return [[g.x, g.y, g.w, g.h]];
+        }
+        let cos = Math.cos(g.angle), sin = Math.sin(g.angle);
+        let step = Math.max(4, g.h);
+        let boxes = [];
+        for (let t = 0; t < g.w; t += step) {
+            let len = Math.min(step, g.w - t);
+            // the four corners of this slice, in tree coordinates
+            let xs = [], ys = [];
+            for (const [a, b] of [[t, 0], [t + len, 0], [t + len, g.h], [t, g.h]]) {
+                xs.push(g.x + (cos * a) - (sin * b));
+                ys.push(g.y + (sin * a) + (cos * b));
+            }
+            let x0 = Math.min(...xs), y0 = Math.min(...ys);
+            boxes.push([x0, y0, Math.max(...xs) - x0, Math.max(...ys) - y0]);
+        }
+        return boxes;
+    }
+
     function prepareNodeDrawing(nodes) {
         let wantBl = _state.showBranchLengthValues === true;
         let wantConf = _state.showConfidenceValues === true || _state.showMadValues === true;
@@ -4044,6 +4226,9 @@ function (root, d3, forester, phyloXml) {
         // childless <g class="node"> behind, and those are transformed on
         // every animation frame. On the big tree that was ~18,000 empty groups
         // per redraw, defeating the very thing the `drawn` filter is for.
+        // names first: the ones that survive then reserve their space inside
+        // hideCrowdedBranchData, and the marks are placed against what is left
+        hideCrowdedTipLabels(nodes);
         hideCrowdedBranchData(nodes);
         for (let i = 0, len = nodes.length; i !== len; ++i) {
             let d = nodes[i];
@@ -4070,8 +4255,9 @@ function (root, d3, forester, phyloXml) {
     // built in the tree group's own coordinates, which is where every mark is
     // actually drawn, so the circular and unrooted views are measured in their
     // own space and not in the cluster's. (The tip-label decimation that shares
-    // the toggle is still skipped in unrooted: that one needs even row spacing
-    // to decimate against, and there is none.)
+    // the toggle is skipped in unrooted, which has no rows to decimate
+    // against; hideCrowdedTipLabels thins that layout's names by overlap
+    // instead, and runs before this does.)
     function hideCrowdedBranchData(nodes) {
         if (!_state.dynahide) {
             return;
@@ -4093,6 +4279,33 @@ function (root, d3, forester, phyloXml) {
         let numbers = forester.labelOccupancy(cell);
         let symbols = forester.labelOccupancy(cell);
         let ordered = forester.preorderOf(nodes);
+
+        // THE NAMES GO DOWN FIRST, and they are not asked: a node label is
+        // drawn whatever else is there, so it reserves its space with occupy
+        // rather than claim. Everything below is then refused against it, and
+        // names outrank numbers -- the desktop's order, and the one a reader
+        // expects, since a name is what the tree is for and a value that has
+        // printed through one is worse than a value not drawn at all.
+        //
+        // Measured before this existed, at 1100x850 with both numbers on:
+        // 44 of 93 numbers printed through a name on flu_h5 in the
+        // rectangular layout, 30 of 55 on confidences, 10 of 15 unrooted.
+        // The 3.15.0 pass kept numbers off each OTHER and off nothing else.
+        for (let i = 0, len = ordered.length; i !== len; ++i) {
+            let boxes = nodeLabelClaimBoxes(nodeLabelGeometry(ordered[i]));
+            // kept on the node, beside the other per-render drawing state, so
+            // the reservation can be compared with the ink it is supposed to
+            // cover: a box that is merely SMALL -- short by a descent, or a
+            // few per cent narrow -- still hides nothing wrongly and still
+            // shows no overlap anywhere a number does not happen to sit. The
+            // desktop pins the same property pixel by pixel.
+            ordered[i]._labelBoxes = boxes.length ? boxes : null;
+            for (let b = 0; b < boxes.length; ++b) {
+                numbers.occupy(boxes[b][0], boxes[b][1], boxes[b][2], boxes[b][3]);
+                symbols.occupy(boxes[b][0], boxes[b][1], boxes[b][2], boxes[b][3]);
+            }
+        }
+
         for (let i = 0, len = ordered.length; i !== len; ++i) {
             let d = ordered[i];
             // Branch length first, then confidence: they sit on opposite sides
@@ -9912,7 +10125,9 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         if (_state.phylogram && !_state.alignPhylogram) {
-            if (_state.unrootedDisplay) {
+            if (radialDisplay()) {
+                // neither radial layout can show the aligned type: unrooted has
+                // nothing to align to, circular is always aligned already
                 toCladegram();
             } else {
                 toAlignedPhylogram();
@@ -11519,7 +11734,8 @@ function (root, d3, forester, phyloXml) {
 
     // what the viewer writes onto a tree's nodes, left off a tree cut out of it
     const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
-        'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText'];
+        'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText',
+        '_labelBoxes'];
 
     // the whole tree's tip count, counted again only when the tree changes
     // (every change makes new _basicTreeProperties)
@@ -12362,13 +12578,28 @@ function (root, d3, forester, phyloXml) {
         }
         let alignBtn = byId(PHYLOGRAM_ALIGNED_BUTTON);
         if (alignBtn) {
-            alignBtn.disabled = _state.unrootedDisplay || _basicTreeProperties.branchLengths !== true;
+            // Dead in BOTH radial layouts, for different reasons. Unrooted has
+            // no common edge to align to. Circular has one and always uses it:
+            // external labels are pulled out to the ring whatever the display
+            // type, with the dashed connectors drawn to match, so picking
+            // "aligned" there changed nothing at all -- measured on a 96-tip
+            // star of alternating branch lengths, labels sat at 285 px with
+            // 0.0 px of spread in the phylogram, the aligned phylogram AND the
+            // cladogram. A control that silently does nothing is worse than no
+            // control, so it says so instead (Christian, 2026-09-27: the ring
+            // stays aligned in both programs, jagged rings are not wanted).
+            alignBtn.disabled = radialDisplay() || _basicTreeProperties.branchLengths !== true;
+            alignBtn.title = _state.circularDisplay
+                ? 'the circular layout always aligns its labels to the ring'
+                : (_state.unrootedDisplay
+                    ? 'the unrooted layout has no common edge to align labels to'
+                    : 'phylogram display (uses branch length values) with aligned labels');
         }
         // Auto-hide Labels stays live in every layout. It used to be greyed out
-        // in unrooted, where the tip-label decimation it governs does not run --
-        // but it also governs the crowded branch-data rule, which does run
-        // there, so greying it out left the user unable to switch off something
-        // that was happening.
+        // in unrooted, where the every-k-th tip-label decimation does not run --
+        // but it also governs the crowded branch-data rule, and now the
+        // unrooted tip-label rule, both of which do run there, so greying it
+        // out left the user unable to switch off what they could see.
         let msaCb = byId(MSA_CB);
         if (msaCb) {
             msaCb.disabled = radialDisplay();
@@ -15514,7 +15745,7 @@ function (root, d3, forester, phyloXml) {
             // "Auto-hide Labels" matches the desktop, which renamed the historical
             // "Dyna Hide" because that named the mechanism rather than what the user
             // sees. The _state.dynahide field keeps its name internally.
-            opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels, and branch values that would overprint each other, where the tree is too dense for them to be readable', true));
+            opts.push(makeCheckboxItem('Auto-hide Labels', DYNAHIDE_CB, 'automatically hide external labels, and branch values that would overprint a name or each other, where the tree is too dense for them to be readable', true));
             opts.push(makeCheckboxItem('Short Names', SHORTEN_NODE_NAME_CB, 'to shorten long node names'));
             if (_basicTreeProperties.confidences) {
                 opts.push(makeCheckboxItem('Support Dots', SUPPORT_DOTS_CB, 'to mark a branch with support of at least ' + _settings.supportDotMinimum + '% with a dot at its midpoint, where there is room to draw it'));

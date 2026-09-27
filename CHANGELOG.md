@@ -6,6 +6,64 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+
+- **The unrooted layout hides crowded tip labels**, which it never thinned at
+  all. A name is drawn only where its own outline overlaps no name already
+  drawn, root first, under the Auto-hide Labels switch; a name found by a
+  search is drawn without being asked. Measured at 1100×850 on
+  `Caliciviridae_100.xml`: 97 names with 172 overlapping pairs, the deepest
+  9.5 px through its neighbour, now 34 with none overlapping by as much as a
+  pixel. Where there is room nothing is dropped — `woese-tree-of-life.xml`
+  keeps all 23. This is the desktop Archaeopteryx's rule, and the claim order
+  matches its unrooted painter, which reaches a node before its subtree.
+  Rectangular and circular keep the every-k-th thinning they have.
+- `forester.orientedOccupancy`, first-come space-keeping for boxes that are
+  turned: the outlines are compared, not the upright boxes enclosing them. On a
+  48-label ring the upright bounds called 28 pairs crowded where the outlines
+  found none, and a pass using them dropped 16 names that touched nothing.
+
+### Changed
+
+- **The aligned-phylogram option is greyed out in the circular layout**, where
+  it did nothing: external labels are pulled out to a shared ring, with dashed
+  connectors, whatever the display type. Measured on a 96-tip star of
+  alternating branch lengths, labels sat at the same radius with 0.0 px of
+  spread in all three display types. The ring stays aligned — a control that
+  silently does nothing is worse than no control.
+
+### Fixed
+
+- **Branch numbers no longer print through names.** The crowding rule added in
+  3.15.0 kept branch-length values, support values and support symbols off each
+  other, and off nothing else, so a number could still land across a tip name or
+  a clade name. Now every node label that will be drawn reserves its space first
+  and is never asked — a name is drawn whatever else is there — and the marks are
+  placed against it, so a value that would overprint a name is the one left out.
+  Measured at 1100×850 with both numbers on: 44 of 93 numbers printed through a
+  name in the rectangular view of `flu_h5.xml`, 30 of 55 on `confidences.xml`,
+  10 of 15 unrooted, 2 of 44 across clade names on `woese-tree-of-life.xml`. Now
+  none, in all three layouts, and no number is refused unless something drawn is
+  in its way.
+- A rotated name reserves a run of short boxes along its baseline rather than one
+  box round the whole thing: the bounds of a rotated rectangle grow with its
+  length, so a long name at an angle would otherwise reserve several times its own
+  area.
+
+### Changed
+
+- `forester.labelOccupancy` gained `occupy`, which records a box whether or not
+  the space was clear, for marks that are drawn regardless. A refused `claim`
+  records nothing, so a name put through `claim` would have left its space open
+  for the very number that overprints it.
+- The node label's anchor, offset and horizontal position now come from one
+  placement function, shared by the text and by the box reserved for it.
+- A node carries the space its label reserved for the current render, so the
+  reservation can be checked against the name it is supposed to cover rather
+  than only against what it happens to hide.
+
 ## 3.15.0 — 2026-09-25
 
 Protein domains answer questions now: hover one for its name, E-value,

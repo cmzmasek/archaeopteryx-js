@@ -83,6 +83,8 @@ runTest("describeValues              : ", testDescribeValues);
 runTest("tree statistics             : ", testTreeStatistics);
 runTest("rotated label box           : ", testRotatedLabelBox);
 runTest("label occupancy             : ", testLabelOccupancy);
+runTest("occupancy: occupy vs claim  : ", testLabelOccupancyOccupy);
+runTest("oriented occupancy          : ", testOrientedOccupancy);
 runTest("preorder claim order        : ", testPreorderOf);
 runTest("phyloXML -> Nexus -> phyloXML: ", testPhyloXmlNexusPhyloXmlRoundTrip);
 runTest("Nexus -> phyloXML -> Nexus  : ", testNexusPhyloXmlNexusRoundTrip);
@@ -5978,6 +5980,146 @@ function testRotatedLabelBox() {
 // property below is one the two programs must share, or the same tree drops
 // different marks in the two viewers. The COUNTS are not shared and cannot be
 // -- the boxes come from each program's own font metrics.
+function testOrientedOccupancy() {
+    function fail(msg, got) {
+        console.log('    ' + msg + (got === undefined ? '' : ': ' + JSON.stringify(got)));
+        return false;
+    }
+    var sq = [[0, 0], [10, 0], [10, 10], [0, 10]];
+    var o = forester.orientedOccupancy(16);
+    if (!o.claim(sq)) {
+        return fail('the first claim into an empty map must be granted');
+    }
+    if (o.claim(sq)) {
+        return fail('the same quad again must be refused');
+    }
+    // strict, as in labelOccupancy: touching edges do not overlap
+    if (!o.claim([[10, 0], [20, 0], [20, 10], [10, 10]])) {
+        return fail('touching edges must not count as overlapping');
+    }
+    // THE POINT OF THE WHOLE STRUCTURE. This diamond's axis-aligned BOUNDS
+    // (8..24) cross the square's (0..10), so the rectangular map would refuse
+    // it; its outline clears the square's corner along the diamond's own
+    // normal (its nearest edge is x+y=24, the square reaches 20), so this one
+    // grants it.
+    var d = forester.orientedOccupancy(16);
+    d.claim(sq);
+    if (!d.claim([[8, 16], [16, 8], [24, 16], [16, 24]])) {
+        return fail('a quad separated only by its OWN normal must be granted');
+    }
+    // THE SAME PAIR, CLAIMED THE OTHER WAY ROUND. This is the case that pins
+    // BOTH shapes' normals being tested. Above, the separating axis belongs to
+    // the quad being claimed, so a test that consulted only its normals would
+    // still get the right answer; here the axis belongs to the quad already in
+    // the map, and only a test that asks the stored shape too can find it. The
+    // square's own normals (x and y) do not separate them -- the diamond spans
+    // 8..24 against the square's 0..10 on both.
+    var d2 = forester.orientedOccupancy(16);
+    d2.claim([[8, 16], [16, 8], [24, 16], [16, 24]]);
+    if (!d2.claim(sq)) {
+        return fail('a separating axis belonging to the STORED quad must be found');
+    }
+    // and one that really does reach in is refused, in both orders
+    var e = forester.orientedOccupancy(16);
+    e.claim(sq);
+    if (e.claim([[2, 10], [10, 2], [18, 10], [10, 18]])) {
+        return fail('a quad that reaches into a claimed one must be refused');
+    }
+    var e2 = forester.orientedOccupancy(16);
+    e2.claim([[2, 10], [10, 2], [18, 10], [10, 18]]);
+    if (e2.claim(sq)) {
+        return fail('overlap must not depend on which quad was claimed first');
+    }
+    // a refused claim records nothing, so it cannot block a later one
+    var r = forester.orientedOccupancy(16);
+    r.claim(sq);
+    r.claim([[2, 2], [12, 2], [12, 12], [2, 12]]);        // refused
+    if (!r.claim([[11, 11], [15, 11], [15, 15], [11, 15]])) {
+        return fail('a refused claim must not have been recorded');
+    }
+    // occupy records whether or not the space was clear. The second quad
+    // reaches BEYOND the first, so whether it was recorded can be seen: a
+    // claim in the part only it covers is refused if it was, granted if it
+    // was not. Testing it with a quad that stays inside the first would be
+    // answered by the first one alone and prove nothing.
+    var u = forester.orientedOccupancy(16);
+    if (!u.occupy(sq)) {
+        return fail('occupying empty space must report the space was clear');
+    }
+    if (u.occupy([[5, 5], [15, 5], [15, 15], [5, 15]])) {
+        return fail('occupying taken space must report the space was NOT clear');
+    }
+    if (u.claim([[11, 11], [14, 11], [14, 14], [11, 14]])) {
+        return fail('a quad occupy reported as not clear must still have been recorded');
+    }
+    // a quad with no area reserves nothing
+    var z = forester.orientedOccupancy(16);
+    if (!z.claim([[3, 3], [3, 3], [3, 3], [3, 3]])) {
+        return fail('a zero-size quad must be granted');
+    }
+    if (!z.claim([[0, 0], [6, 0], [6, 6], [0, 6]])) {
+        return fail('a zero-size quad must reserve nothing');
+    }
+    // a claim spanning many grid cells is tested once, not once per cell, and
+    // still refuses correctly
+    var big = forester.orientedOccupancy(4);
+    if (!big.claim([[0, 0], [100, 0], [100, 12], [0, 12]])) {
+        return fail('a quad spanning many cells must be granted');
+    }
+    if (big.claim([[90, 6], [140, 6], [140, 18], [90, 18]])) {
+        return fail('an overlap in one far cell must still refuse');
+    }
+    return true;
+}
+
+function testLabelOccupancyOccupy() {
+    function fail(msg, got) {
+        console.log('    ' + msg + (got === undefined ? '' : ': ' + JSON.stringify(got)));
+        return false;
+    }
+    // occupy() records WHETHER OR NOT the space was clear. That is the whole
+    // difference from claim(), and the reason the viewer uses it for names: a
+    // node label is drawn no matter what, so if its box were put through
+    // claim() and refused, the space would stay open and a branch number would
+    // be granted it and print straight through the name.
+    var o = forester.labelOccupancy(16);
+    if (!o.occupy(0, 0, 10, 10)) {
+        return fail('occupying empty space must report the space was clear');
+    }
+    if (o.occupy(5, 5, 10, 10)) {
+        return fail('occupying taken space must report the space was NOT clear');
+    }
+    // the refused-looking second occupy must still be RECORDED: it covered
+    // 5..15, so a claim inside 10..15 has to be refused by it
+    if (o.claim(11, 11, 3, 3)) {
+        return fail('a box that occupy reported as not clear must still have been recorded');
+    }
+    // and an ordinary claim is refused by an occupied box
+    var c = forester.labelOccupancy(16);
+    c.occupy(0, 0, 10, 10);
+    if (c.claim(5, 5, 10, 10)) {
+        return fail('a claim overlapping an occupied box must be refused');
+    }
+    if (!c.claim(10, 0, 10, 10)) {
+        return fail('touching an occupied box is not overlapping it');
+    }
+    // zero-size occupies nothing, as zero-size claims nothing
+    var z = forester.labelOccupancy(16);
+    if (!z.occupy(50, 50, 0, 5) || !z.occupy(50, 50, 5, 0)) {
+        return fail('a zero-size occupy must report clear');
+    }
+    if (!z.claim(50, 50, 5, 5)) {
+        return fail('a zero-size occupy must reserve nothing');
+    }
+    // claim and occupy share one map, in both directions
+    var m = forester.labelOccupancy(16);
+    m.claim(0, 0, 10, 10);
+    if (m.occupy(5, 5, 10, 10)) {
+        return fail('occupy must see boxes that claim recorded');
+    }
+    return true;
+}
+
 function testLabelOccupancy() {
     function fail(msg, got) {
         console.log('    ' + msg + (got === undefined ? '' : ': ' + JSON.stringify(got)));

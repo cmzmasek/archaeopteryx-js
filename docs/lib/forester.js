@@ -3901,46 +3901,208 @@
     // A uniform grid rather than all-pairs: a 13,246-tip tree with branch
     // lengths on offers 18,511 boxes, and 171 million comparisons per redraw
     // is not a redraw.
+    /**
+     * The same first-come space-keeping as labelOccupancy, but for boxes that
+     * are TURNED: each claim is a quadrilateral, and two of them overlap only
+     * if their own outlines do.
+     *
+     * A turned label cannot use the axis-aligned map. The bounds of a rotated
+     * rectangle grow with its length, so a long name lying near its spoke
+     * reserves several times its own area, and the map refuses neighbours that
+     * a reader can see are clear of it. Measured on a 48-label circular ring:
+     * 28 pairs "overlapping" by the bounds where the outlines gave 0, and a
+     * first-come pass over the same labels in the same order kept 48 by
+     * outline against 32 by bounds -- sixteen names dropped for nothing.
+     *
+     * The grid is still used, on each quad's bounds, to find which claims are
+     * worth testing; only the test itself is exact.
+     *
+     * @param cell - grid size, in the same units as the quads
+     * @returns an object with claim(quad) and occupy(quad); a quad is four
+     *          [x, y] corners in order round the shape
+     */
+    forester.orientedOccupancy = function (cell) {
+        let size = Math.max(4, cell);
+        let cells = new Map();
+        let boundsOf = function (quad) {
+            let x0 = quad[0][0], x1 = quad[0][0], y0 = quad[0][1], y1 = quad[0][1];
+            for (let i = 1; i < quad.length; ++i) {
+                x0 = Math.min(x0, quad[i][0]);
+                x1 = Math.max(x1, quad[i][0]);
+                y0 = Math.min(y0, quad[i][1]);
+                y1 = Math.max(y1, quad[i][1]);
+            }
+            return [x0, y0, x1, y1];
+        };
+        // Separating-axis test. A rectangle's own two edge normals are enough
+        // for itself, but BOTH shapes' normals are needed: with only one
+        // shape's, a box that clears another along the OTHER's axis is
+        // reported as overlapping. Strict, so shapes that merely touch do not
+        // overlap -- as in labelOccupancy.
+        let overlaps = function (P, Q) {
+            for (let s = 0; s < 2; ++s) {
+                let R = s === 0 ? P : Q;
+                for (let k = 0; k < 2; ++k) {
+                    let ax = R[k + 1][1] - R[k][1];
+                    let ay = R[k][0] - R[k + 1][0];
+                    let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                    for (let i = 0; i < P.length; ++i) {
+                        let d = (P[i][0] * ax) + (P[i][1] * ay);
+                        p0 = Math.min(p0, d);
+                        p1 = Math.max(p1, d);
+                    }
+                    for (let i = 0; i < Q.length; ++i) {
+                        let d = (Q[i][0] * ax) + (Q[i][1] * ay);
+                        q0 = Math.min(q0, d);
+                        q1 = Math.max(q1, d);
+                    }
+                    if (p1 <= q0 || q1 <= p0) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+        let record = function (quad, b) {
+            let c1 = Math.floor(b[2] / size);
+            let r1 = Math.floor(b[3] / size);
+            for (let c = Math.floor(b[0] / size); c <= c1; ++c) {
+                for (let r = Math.floor(b[1] / size); r <= r1; ++r) {
+                    let key = c + ':' + r;
+                    let bucket = cells.get(key);
+                    if (!bucket) {
+                        bucket = [];
+                        cells.set(key, bucket);
+                    }
+                    bucket.push(quad);
+                }
+            }
+        };
+        let free = function (quad, b) {
+            let seen = null;
+            let c1 = Math.floor(b[2] / size);
+            let r1 = Math.floor(b[3] / size);
+            for (let c = Math.floor(b[0] / size); c <= c1; ++c) {
+                for (let r = Math.floor(b[1] / size); r <= r1; ++r) {
+                    let bucket = cells.get(c + ':' + r);
+                    if (!bucket) {
+                        continue;
+                    }
+                    for (let i = 0; i < bucket.length; ++i) {
+                        // a quad spans several cells, so the same one comes up
+                        // more than once; the test is the expensive part
+                        if (seen === null) {
+                            seen = new Set();
+                        }
+                        if (seen.has(bucket[i])) {
+                            continue;
+                        }
+                        seen.add(bucket[i]);
+                        if (overlaps(quad, bucket[i])) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        };
+        let degenerate = function (quad) {
+            if (!quad || quad.length !== 4) {
+                return true;
+            }
+            let b = boundsOf(quad);
+            return !((b[2] - b[0]) > 0) || !((b[3] - b[1]) > 0);
+        };
+        return {
+            claim: function (quad) {
+                if (degenerate(quad)) {
+                    return true;   // reserves nothing, as a zero-size box does
+                }
+                let b = boundsOf(quad);
+                if (!free(quad, b)) {
+                    return false;
+                }
+                record(quad, b);
+                return true;
+            },
+            // record without asking, for what is drawn whatever else is there
+            occupy: function (quad) {
+                if (degenerate(quad)) {
+                    return true;
+                }
+                let b = boundsOf(quad);
+                let clear = free(quad, b);
+                record(quad, b);
+                return clear;
+            }
+        };
+    };
+
     forester.labelOccupancy = function (cell) {
         let size = Math.max(4, cell);
         let cells = new Map();
+        let record = function (x, y, w, h) {
+            let box = [x, y, w, h];
+            let c1 = Math.floor((x + w) / size);
+            let r1 = Math.floor((y + h) / size);
+            for (let c = Math.floor(x / size); c <= c1; ++c) {
+                for (let r = Math.floor(y / size); r <= r1; ++r) {
+                    let key = c + ':' + r;
+                    let bucket = cells.get(key);
+                    if (!bucket) {
+                        bucket = [];
+                        cells.set(key, bucket);
+                    }
+                    bucket.push(box);
+                }
+            }
+        };
+        let free = function (x, y, w, h) {
+            let c1 = Math.floor((x + w) / size);
+            let r1 = Math.floor((y + h) / size);
+            for (let c = Math.floor(x / size); c <= c1; ++c) {
+                for (let r = Math.floor(y / size); r <= r1; ++r) {
+                    let bucket = cells.get(c + ':' + r);
+                    if (!bucket) {
+                        continue;
+                    }
+                    for (let i = 0; i < bucket.length; ++i) {
+                        let b = bucket[i];
+                        // strict: boxes that merely touch do not overlap
+                        if (x < (b[0] + b[2]) && (x + w) > b[0]
+                            && y < (b[1] + b[3]) && (y + h) > b[1]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        };
         return {
             // true when nothing already granted overlaps, and then recorded
             claim: function (x, y, w, h) {
                 if (!(w > 0) || !(h > 0)) {
                     return true;   // reserves no space; recording it would only cost comparisons
                 }
-                let c0 = Math.floor(x / size), c1 = Math.floor((x + w) / size);
-                let r0 = Math.floor(y / size), r1 = Math.floor((y + h) / size);
-                for (let c = c0; c <= c1; ++c) {
-                    for (let r = r0; r <= r1; ++r) {
-                        let bucket = cells.get(c + ':' + r);
-                        if (!bucket) {
-                            continue;
-                        }
-                        for (let i = 0; i < bucket.length; ++i) {
-                            let b = bucket[i];
-                            // strict: boxes that merely touch do not overlap
-                            if (x < (b[0] + b[2]) && (x + w) > b[0]
-                                && y < (b[1] + b[3]) && (y + h) > b[1]) {
-                                return false;
-                            }
-                        }
-                    }
+                if (!free(x, y, w, h)) {
+                    return false;
                 }
-                let box = [x, y, w, h];
-                for (let c = c0; c <= c1; ++c) {
-                    for (let r = r0; r <= r1; ++r) {
-                        let key = c + ':' + r;
-                        let bucket = cells.get(key);
-                        if (!bucket) {
-                            bucket = [];
-                            cells.set(key, bucket);
-                        }
-                        bucket.push(box);
-                    }
-                }
+                record(x, y, w, h);
                 return true;
+            },
+            // Record without asking, for what is drawn whatever else is there.
+            // A refused CLAIM records nothing, so a label put through claim()
+            // and refused would leave the space open and let a number print
+            // straight through the name it lost to -- the opposite of the
+            // point. Returns whether the space was clear, for measurement;
+            // the box is recorded either way.
+            occupy: function (x, y, w, h) {
+                if (!(w > 0) || !(h > 0)) {
+                    return true;
+                }
+                let clear = free(x, y, w, h);
+                record(x, y, w, h);
+                return clear;
             }
         };
     };
