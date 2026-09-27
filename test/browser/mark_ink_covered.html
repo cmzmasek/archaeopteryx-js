@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8"><title>does a branch mark's ink sit inside the box it claimed?</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Names have had this check since the reservation went in: every point of a
+// drawn name must lie inside the space it claimed. Branch MARKS never did --
+// and that is the half that failed on a Linux CI runner (10 of 87 circular
+// marks overlapping) while the label half passed on the same machine. If a
+// mark's box is measured smaller than the text the browser draws, the rule
+// grants two marks the same pixels and they collide.
+//
+// The box is claimed in TREE coordinates, so it is pushed through the tree
+// group's own matrix and compared with the element's rendered box, in both
+// width and height. The numbers are printed whatever the verdict: on a font
+// the measuring and the drawing disagree about, the SIZE of the disagreement
+// is the diagnosis.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const file = q.get('tree') || '../../docs/data/confidences.xml';
+    const text = await (await fetch(file)).text();
+    const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {});
+    await v.ready; await sleep(2200);
+    const settle = () => sleep(2600);
+    for (const id of ['conf_cb', 'bl_cb', 'layout_rect_b', 'layout_circ_b', 'layout_unrooted_b']) {
+        if (!document.getElementById(id)) {
+            window.__benchResult = {report: ['NOT EXERCISED: no ' + id + ' on this tree'], failures: 0};
+            window.__benchDone = true; return;
+        }
+    }
+    for (const id of ['conf_cb', 'bl_cb']) {
+        const c = document.getElementById(id); if (!c.checked) { c.click(); }
+    }
+    await settle();
+
+    const CLASS_OF = {bl: 'bllabel', conf: 'conflabel', event: 'brancheventlabel'};
+    const probe = (name) => {
+        const g = document.querySelector('#p g.node');
+        const G = g && g.parentNode;
+        const M = G && G.getScreenCTM ? G.getScreenCTM() : null;
+        if (!M) { return null; }
+        const push = (x, y) => [(M.a * x) + (M.c * y) + M.e, (M.b * x) + (M.d * y) + M.f];
+        let marks = 0, worstW = 0, worstH = 0, worstText = '';
+        for (const el of document.querySelectorAll('#p g.node')) {
+            const d = el.__data__;
+            if (!d || !d._markBoxes) { continue; }
+            for (const kind of Object.keys(d._markBoxes)) {
+                const t = el.querySelector('text.' + CLASS_OF[kind]);
+                if (!t || (t.textContent || '').trim() === '') { continue; }
+                const b = d._markBoxes[kind];
+                const p0 = push(b[0], b[1]);
+                const p1 = push(b[0] + b[2], b[1] + b[3]);
+                const claimedW = Math.abs(p1[0] - p0[0]), claimedH = Math.abs(p1[1] - p0[1]);
+                const r = t.getBoundingClientRect();
+                ++marks;
+                // how much WIDER the drawn thing is than the space claimed for
+                // it; negative means the claim was generous, which is safe
+                const dw = r.width - claimedW, dh = r.height - claimedH;
+                if (dw > worstW) { worstW = dw; worstText = t.textContent; }
+                if (dh > worstH) { worstH = dh; }
+            }
+        }
+        return {marks: marks, worstW: worstW, worstH: worstH, worstText: worstText};
+    };
+
+    for (const [lname, lid] of [['rectangular', 'layout_rect_b'], ['circular   ', 'layout_circ_b'],
+                                ['unrooted   ', 'layout_unrooted_b']]) {
+        document.getElementById(lid).click(); await settle();
+        const r = probe(lname);
+        if (!r || r.marks === 0) { out.push(lname + ': no marks drawn'); continue; }
+        out.push(lname + ': ' + r.marks + ' marks; drawn wider than claimed by at most '
+            + r.worstW.toFixed(2) + ' px, taller by ' + r.worstH.toFixed(2)
+            + (r.worstText ? (' (worst "' + r.worstText + '")') : ''));
+        // A claim narrower than the ink is how two marks come to share pixels.
+        // The bound is the one the label check uses: the two ways of measuring
+        // a string differ by under a pixel on a font they agree about.
+        check(lname.trim() + ': a mark is no wider than the box it claimed',
+            r.worstW < 1.5, r.worstW.toFixed(2) + ' px wider, bound 1.5');
+        check(lname.trim() + ': and no taller', r.worstH < 1.5,
+            r.worstH.toFixed(2) + ' px taller, bound 1.5');
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

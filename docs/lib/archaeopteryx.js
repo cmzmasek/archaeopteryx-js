@@ -4321,6 +4321,23 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         _branchMarksHidden = 0;
+        // Each granted mark's claimed box is kept on the node, as a label's is
+        // (_labelBoxes). Names have had an ink-coverage check since the
+        // reservation went in -- every point of a drawn name must lie inside
+        // the space it claimed -- and branch MARKS never did, which is the
+        // half that failed on a Linux CI runner while the label half passed.
+        for (let i = 0; i < nodes.length; ++i) {
+            nodes[i]._markBoxes = null;
+        }
+        let stash = function (d, kind, box) {
+            if (!box) {
+                return;
+            }
+            if (!d._markBoxes) {
+                d._markBoxes = {};
+            }
+            d._markBoxes[kind] = box;
+        };
         let fontPx = _state.branchDataFontSize;
         let dotCell = 0;
         for (let i = 0; i < nodes.length; ++i) {
@@ -4369,6 +4386,8 @@ function (root, d3, forester, phyloXml) {
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._blText = '';
                     ++_branchMarksHidden;
+                } else {
+                    stash(d, 'bl', b);
                 }
             }
             if (d._confText !== '') {
@@ -4376,6 +4395,8 @@ function (root, d3, forester, phyloXml) {
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._confText = '';
                     ++_branchMarksHidden;
+                } else {
+                    stash(d, 'conf', b);
                 }
             }
             // Branch EVENTS are branch-anchored too, half a branch from the
@@ -4388,6 +4409,8 @@ function (root, d3, forester, phyloXml) {
                 if (b && !numbers.claim(b[0], b[1], b[2], b[3])) {
                     d._eventText = '';
                     ++_branchMarksHidden;
+                } else {
+                    stash(d, 'event', b);
                 }
             }
             if (d._suppDot) {
@@ -12045,7 +12068,7 @@ function (root, d3, forester, phyloXml) {
     // what the viewer writes onto a tree's nodes, left off a tree cut out of it
     const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
         'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText',
-        '_labelBoxes', '_labelDropped'];
+        '_labelBoxes', '_labelDropped', '_markBoxes'];
 
     // the whole tree's tip count, counted again only when the tree changes
     // (every change makes new _basicTreeProperties)

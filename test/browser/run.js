@@ -39,7 +39,8 @@ const CASES = {
     'display_buttons': ['', '?tree=../../docs/data/woese-tree-of-life.xml'],
     'ring_rotation': [''],
     'ring_connectors': ['?tree=../../docs/data/flu_h5.xml', ''],
-    'indicator_branchdata': ['', '?tree=../../docs/data/apaf.xml']
+    'indicator_branchdata': ['', '?tree=../../docs/data/apaf.xml'],
+    'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',
