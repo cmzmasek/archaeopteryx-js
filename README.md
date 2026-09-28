@@ -1026,12 +1026,15 @@ when the sequences are of unequal length, why it cannot.
   is the window: the part of the tree in view, at the current zoom. *Full
   size* (the default) is the whole tree, re-laid-out large enough that no tip
   name has to be hidden — in rows in the rectangular layout, around the ring in
-  the circular one — and cropped to the drawing, with the legend beside the
-  tree rather than over it. The window itself is left exactly as it was. An
-  unrooted fan is enlarged only while that still frees names: tips on very
-  short branches can collide at any size.
+  the circular one — and cropped to the drawing, with the legends (colour,
+  shape, domains, the heat-map ring's scale) stacked beside the tree rather
+  than over it. The window itself is left exactly as it was. An unrooted fan
+  is enlarged only while that still frees names: tips on very short branches
+  can collide at any size. An alignment track is drawn as its window, the
+  columns in view, in a full-size figure too: a genome-length alignment drawn
+  whole would be hundreds of thousands of cells.
 * **PNG: 2× / 4× / 8×** — the image's resolution relative to the screen
-  (`pngExportScale` sets the starting choice). A browser caps how large a
+  (`pngExportScale` sets the starting choice, snapped to one of the three). A browser caps how large a
   canvas it will paint; past that the PNG comes out at the largest scale it can
   paint, with a console warning, rather than blank.
 * **Copy Newick** puts the tree on the clipboard, exactly as the Newick
@@ -1189,7 +1192,8 @@ branch-length values and support symbols are drawn only where they fit: each
 mark claims the box it is about to occupy, and one that would overlap a box
 already claimed in that pass is left out. The claim order is the tree's own,
 root first, so the mark nearer the root keeps its place and the same tree at
-the same size always drops the same marks — on screen and in every export.
+the same size always drops the same marks — on screen and in an *As shown*
+export. A *Full size* figure is drawn larger, so it has room to keep more.
 
 **The Auto-hide Labels toggle lights up while it is taking something away**,
 and its tooltip says what. The switch governs three rules and the light asks

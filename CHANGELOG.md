@@ -6,7 +6,13 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.17.0 — 2026-09-28
+
+Downloads, rebuilt. Graphics can now show the whole tree at full size rather
+than only the window; the Download section says, format by format, what each
+file keeps, and when a file is only a subtree; a table of every tip, Copy
+Newick and Copy PNG join it. And support dots, confidence and branch-length
+values no longer float off their branch inside a subtree.
 
 ### Added
 - **Full-size graphics.** SVG, PDF and PNG can now draw the **whole tree**, not
