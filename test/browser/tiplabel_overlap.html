@@ -421,10 +421,19 @@
         const got = {circular: circR.n, unrooted: unrR.n, rectangular: rect.n};
         Object.keys(doc).forEach(function (k) {
             if (k === 'w' || k === 'h') { return; }
+            // The documented number is a measurement on one machine's FONT.
+            // How many names fit a ring depends on how wide the system draws
+            // them: the same tree gives 34 on macOS and 33 on a Linux CI
+            // runner, with the rule-off measurements identical on both (97
+            // names, 172 overlapping pairs). So the count is pinned within a
+            // name or two -- enough to catch a change in behaviour, which is
+            // what it is for, and not enough to claim a constant the font
+            // decides. A real regression moves it by tens (48 against 97).
             check('the count README and CHANGELOG quote for ' + docKey + ' ' + k
-                + ' is still true', got[k] === doc[k],
+                + ' still holds, to within the font', Math.abs(got[k] - doc[k]) <= 2,
                 'documented ' + doc[k] + ', measured ' + got[k]
-                    + ' -- if the new number is right, update both documents and this table');
+                    + ' -- more than two apart means the behaviour changed, not the font;'
+                    + ' update both documents and this table');
         });
     }
 

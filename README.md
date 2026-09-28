@@ -1803,6 +1803,12 @@ The 2026 additions beyond the visualization system, specified tightly enough
 to rebuild. All pure logic lives in forester.js under `npm test`; the viewer
 draws.
 
+The counts quoted above are measurements on one machine, and how many names
+fit a ring depends on how wide the system draws them: the same tree keeps 34
+in the unrooted view here and 33 on a Linux CI runner, with the crowding
+identical on both (97 names, 172 overlapping pairs with the rule off). The
+rule is the same; the font is not.
+
 What the viewer draws is checked separately, by driving it in headless Chrome:
 `npm run test:browser` (or `test:browser:quick`, one case per harness, which is
 what CI runs). Those harnesses open a real tree, work the controls and measure

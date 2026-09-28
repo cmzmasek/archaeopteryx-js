@@ -179,12 +179,40 @@
     if (!need(['conf_cb', 'bl_cb'])) { return; }
     await click('layout_circ_b');
     await click('phy_b');
+    // HOW DEEP a number sits in a name, not merely that the two touch. The
+    // rule places a number against the space a name reserved, so its promise
+    // is only as exact as the agreement between the canvas measurement it
+    // claims boxes with and the text the browser draws: 0.55 px on macOS,
+    // 1.49 px on a Linux CI runner. A number touching a name there is the
+    // measurement, not a number printed through a name -- and this check said
+    // "1 of 7" for an overlap of well under a pixel.
+    const depthOf = (P, Q) => {
+        let best = Infinity;
+        for (const R of [P, Q]) {
+            for (let k = 0; k < 2; ++k) {
+                const ax = R[k + 1][1] - R[k][1], ay = R[k][0] - R[k + 1][0];
+                const n = Math.hypot(ax, ay) || 1;
+                let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+                for (const v of P) { const d = ((v[0] * ax) + (v[1] * ay)) / n; p0 = Math.min(p0, d); p1 = Math.max(p1, d); }
+                for (const v of Q) { const d = ((v[0] * ax) + (v[1] * ay)) / n; q0 = Math.min(q0, d); q1 = Math.max(q1, d); }
+                if (p1 <= q0 || q1 <= p0) { return 0; }
+                best = Math.min(best, Math.min(p1 - q0, q1 - p0));
+            }
+        }
+        return best;
+    };
     const numbersVsLabels = () => {
         const L = drawn('text.extlabel', true);
         const N = drawn('text.bllabel, text.conflabel', false);
-        let n = 0;
-        for (const a of N) { for (const b of L) { if (quadHits(a.quad, b.quad)) { ++n; break; } } }
-        return {clashes: n, numbers: N.length, labels: L.length};
+        let n = 0, deepest = 0;
+        for (const a of N) {
+            for (const b of L) {
+                const d = depthOf(a.quad, b.quad);
+                if (d > 1.5) { ++n; }
+                deepest = Math.max(deepest, d);
+            }
+        }
+        return {clashes: n, numbers: N.length, labels: L.length, deepest: deepest};
     };
     const cb = document.getElementById('conf_cb'); if (!cb.checked) { cb.click(); } await settle();
     const bl = document.getElementById('bl_cb'); if (!bl.checked) { bl.click(); } await settle();
@@ -221,7 +249,8 @@
         worst = Math.max(worst, r.clashes);
         const gap = bandGap();
         out.push('B. ' + lname + ': ' + r.numbers + ' branch numbers, ' + r.labels
-            + ' tip labels, ' + r.clashes + ' numbers printing through a label'
+            + ' tip labels, ' + r.clashes + ' numbers printing through a label (deepest '
+            + r.deepest.toFixed(2) + ' px)'
             + (gap === null ? ''
                 : (gap > 0 ? ('; bands overlap by ' + gap.toFixed(0) + ' px, so the check is exercised')
                     : ('; NOT EXERCISED -- numbers stop ' + (-gap).toFixed(0)
