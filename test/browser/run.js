@@ -63,6 +63,18 @@ function serve() {
     });
 }
 
+// the harness's own report array, as cdp_run prints it
+function reportLines(out) {
+    const lines = [];
+    for (const raw of out.split('\n')) {
+        const m = raw.match(/^\s*"(.*)",?$/);
+        if (m) {
+            lines.push(m[1].replace(/\\"/g, '"').trim());
+        }
+    }
+    return lines;
+}
+
 function runOne(port, harness, query) {
     return new Promise((resolve) => {
         const url = 'http://127.0.0.1:' + port + '/test/browser/' + harness + '.html' + query;
@@ -96,14 +108,22 @@ async function main() {
             ++ran;
             if (r.ok) {
                 console.log('pass  ' + label);
+                // A passing harness's MEASUREMENTS are the diagnosis when some
+                // other harness fails, and they were invisible: only failures
+                // printed anything. mark_ink_covered passed on a CI runner
+                // where three other cases failed, and the numbers it had just
+                // measured -- the whole reason it was written -- were nowhere
+                // in the log. Measurement lines are the report entries that
+                // are neither a pass nor a FAIL.
+                reportLines(r.out).filter((l) => !/^(pass|FAIL)\s/.test(l))
+                    .forEach((l) => console.log('        ' + l));
             } else {
                 ++bad;
                 console.log('FAIL  ' + label
                     + (r.failures === null ? ' (the harness did not finish)'
                         : ' (' + r.failures + ' failing checks)'));
                 // the harness's own report, so the failure names itself
-                r.out.split('\n').filter((l) => /FAIL|MUTATION INVALID|Error/.test(l))
-                    .slice(0, 12).forEach((l) => console.log('        ' + l.trim()));
+                reportLines(r.out).slice(0, 14).forEach((l) => console.log('        ' + l));
             }
         }
     }
