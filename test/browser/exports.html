@@ -1,0 +1,360 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: does every download write what it says?</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/jspdf.umd.min.js"></script>
+<script src="../../docs/lib/svg2pdf.umd.min.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script type="module">
+import {Canvg} from '../../docs/lib/canvg.js';
+window.Canvg = Canvg;
+
+// Every download, driven the way a user drives it -- the Download button, the
+// menu it opens, the section's choices -- with the file caught on its way to
+// the disk and then READ: parsed back, measured, decoded. Nothing here asks
+// the code what it meant to write.
+//
+//   ?tree=<file>     the tree (default flu_h5: 354 tips, far too many for the
+//                    window, so "as shown" and "full size" must differ)
+//   ?layout=circular|unrooted   switch the layout first
+//   &seqs=1          the Nexus entry's promise, on an aligned and a ragged tree
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const out = []; let failures = 0;
+const check = (l, ok, d) => { if (!ok) { failures++; }
+    out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+const finish = () => { window.__benchResult = {report: out, failures: failures}; window.__benchDone = true; };
+const q = new URLSearchParams(location.search);
+
+// ---- the files, caught instead of saved --------------------------------
+const files = [];
+const blobs = new Map();
+const create = URL.createObjectURL.bind(URL);
+URL.createObjectURL = (b) => { const u = create(b); blobs.set(u, b); return u; };
+HTMLAnchorElement.prototype.click = function () {
+    if (this.download) { files.push({name: this.download, blob: blobs.get(this.href)}); }
+};
+// jsPDF saves through its own bundled saver, on an anchor it never attaches
+window.jspdf.jsPDF.API.save = function (name) {
+    files.push({name: name, blob: this.output('blob'), pdf: this});
+};
+const nextFile = async (before, ms) => {
+    const t0 = Date.now();
+    while (files.length <= before && Date.now() - t0 < (ms || 20000)) { await sleep(50); }
+    return files.length > before ? files[files.length - 1] : null;
+};
+let copied = null;
+Object.defineProperty(navigator, 'clipboard', {configurable: true,
+    value: {writeText: (t) => { copied = t; return Promise.resolve(); }}});
+
+const byId = (id) => document.getElementById(id);
+const menu = () => document.querySelector('.aptx-node-menu');
+const menuEntry = (label) => menu() && [...menu().querySelectorAll('button')]
+    .find((b) => b.firstChild && b.firstChild.nodeValue === label);
+async function download(label) {
+    if (!menu()) { byId('dl_b').click(); await sleep(150); }
+    const b = menuEntry(label);
+    if (!b) { return null; }
+    const before = files.length;
+    b.click();
+    return nextFile(before);
+}
+const svgOf = async (f) => new DOMParser().parseFromString(await f.blob.text(), 'image/svg+xml').documentElement;
+// the same proportions, RELATIVELY: a tall page's ratio is ~0.05, and an
+// absolute tolerance of 0.01 let jsPDF's silent clamp of 17,223 pt to 14,400
+// -- the bottom sixth of the tree cut off -- pass as the same shape
+const sameShape = (w1, h1, w2, h2) => Math.abs(((w1 / h1) / (w2 / h2)) - 1) < 0.01;
+const tipNames = (root) => forester.getAllExternalNodes(root).map((n) => n.name).filter(Boolean);
+// the tip names a graphic actually draws: a tip's label is a text.extlabel,
+// and one the auto-hide rules refused is not drawn at all (or drawn empty)
+const tipLabelsIn = (svg) => [...svg.querySelectorAll('text.extlabel')]
+    .filter((t) => t.textContent.trim() !== '').length;
+
+async function launch(file, text) {
+    const trees = archaeopteryx.parseTrees(file, text);
+    const viewer = archaeopteryx.launch('#phylogram1', trees);
+    await viewer.ready;
+    await sleep(1800);
+    return trees;
+}
+
+(async function () {
+    if (q.get('seqs') === '1') {
+        // room for the whole panel, so nothing is folded to fit
+        byId('phylogram1').style.cssText = 'position:absolute;left:0;top:0;width:1100px;height:2400px';
+        await nexusPromise();
+        finish();
+        return;
+    }
+    let file = q.get('tree') || '../../docs/data/flu_h5.xml';
+    let text;
+    if (q.get('big')) {
+        // big enough that full size passes the PDF page limit and the PNG
+        // canvas limit -- no tree in docs/data is, at the default font
+        let n = 0;
+        const clade = (k) => k === 1 ? 'tip' + (++n) + ':0.1'
+            : '(' + clade(Math.floor(k / 2)) + ',' + clade(k - Math.floor(k / 2)) + '):0.05';
+        text = clade(+q.get('big')) + ';';
+        file = 'big.tre';
+    } else {
+        text = await (await fetch(file)).text();
+    }
+    const trees = await launch(file, text);
+    const tree = Array.isArray(trees) ? trees[0] : trees;
+    if (q.get('layout')) {
+        const seg = byId(q.get('layout') === 'circular' ? 'layout_circ_b' : 'layout_unrooted_b');
+        seg.closest('label').click();
+        await sleep(1800);
+    }
+    const names = tipNames(tree);
+    const tips = forester.getAllExternalNodes(tree).length;
+
+    // ---- the section -------------------------------------------------------
+    const section = document.querySelector('fieldset.aptx-download');
+    const legend = section && section.querySelector(':scope > legend');
+    check('Download is a titled section', !!legend && legend.textContent.trim() === 'Download');
+    // On this short window the panel's fitter folds sections to make room,
+    // bottom first -- so Download may arrive folded HERE; that it starts open
+    // is checked where there is room (the seqs=1 case). Unfolded to measure.
+    if (section && section.classList.contains('aptx-collapsed')) {
+        out.push('Download arrived folded: the window is too short for the whole panel');
+        legend.click();
+        await sleep(200);
+    }
+    // A button's words sit in its middle and fit inside it. Measured on the
+    // text itself: the button was a fixed 60px, the word wider, and it ran
+    // into the right edge -- centred by its CSS and off-centre on screen.
+    for (const id of ['dl_b', 'copy_nh_b']) {
+        const b = byId(id);
+        const range = document.createRange();
+        range.selectNodeContents(b);
+        const tr = range.getBoundingClientRect();
+        const br = b.getBoundingClientRect();
+        const off = ((tr.left + tr.right) / 2) - ((br.left + br.right) / 2);
+        // on screen at all first: a folded section's buttons measure 0 wide,
+        // and a zero-width text is centred in a zero-width button
+        check(id + ': its words are centred and inside it', br.width > 20 && tr.width > 10
+            && Math.abs(off) <= 1.5 && tr.left >= br.left && tr.right <= br.right,
+            'text ' + tr.left.toFixed(1) + '..' + tr.right.toFixed(1) + ' in button '
+                + br.left.toFixed(1) + '..' + br.right.toFixed(1) + ', off centre by ' + off.toFixed(1));
+    }
+    check('Full size is the graphics default', byId('dl_full_b').checked === true);
+    check('4x is the PNG default', byId('dl_png4_b').checked === true);
+
+    if (q.get('shot') === 'panel') { finish(); return; }
+
+    // ---- the menu ----------------------------------------------------------
+    byId('dl_b').click();
+    await sleep(150);
+    const m = menu();
+    check('the Download button opens a menu', !!m);
+    if (!m) { finish(); return; }
+    const headings = [...m.querySelectorAll('.aptx-node-menu-heading')].map((h) => h.textContent);
+    out.push('menu groups: ' + headings.join(' | '));
+    check('... grouped as graphics and tree', headings.length >= 2
+        && /^Graphics/.test(headings[0]) && headings[1] === 'Tree');
+    const entries = [...m.querySelectorAll('button')];
+    const bare = entries.filter((b) => !b.querySelector('.aptx-menu-detail')
+        || b.querySelector('.aptx-menu-detail').textContent.trim() === '');
+    check('every format says what it keeps', entries.length >= 6 && bare.length === 0,
+        entries.length + ' entries, ' + bare.length + ' without');
+    const mr = m.getBoundingClientRect();
+    check('... and the menu is inside the window', mr.top >= 0 && mr.left >= 0
+        && mr.bottom <= innerHeight && mr.right <= innerWidth,
+        mr.left.toFixed(0) + ',' + mr.top.toFixed(0) + ' ' + mr.width.toFixed(0) + 'x' + mr.height.toFixed(0));
+    if (q.get('shot') === 'menu') { finish(); return; }
+    byId('dl_b').click();
+    await sleep(150);
+    check('pressed again, the button closes it', !menu());
+
+    // ---- the tree formats --------------------------------------------------
+    byId('dl_name').value = 'my figure.svg';
+    let f = await download('Newick');
+    check('Newick is named from the name field, its typed extension not doubled',
+        f && f.name === 'my figure.tre', f && f.name);
+    byId('dl_name').value = 'fig/1';
+    f = await download('Newick');
+    check('... and a path separator cannot get into the name', f && f.name === 'fig_1.tre', f && f.name);
+    const nhText = f ? await f.blob.text() : '';
+    const nh = forester.parseNewHampshire(nhText, true, false);
+    check('the Newick file reads back with every tip', tipNames(nh).length === names.length,
+        tipNames(nh).length + ' of ' + names.length);
+    byId('copy_nh_b').click();
+    await sleep(200);
+    check('Copy Newick copies what the Newick download writes', copied === nhText,
+        copied === null ? 'nothing copied' : copied.length + ' vs ' + nhText.length + ' chars');
+    check('... and says so on its face', /Copied/.test(byId('copy_nh_b').textContent),
+        byId('copy_nh_b').textContent);
+    f = await download('phyloXML');
+    const px = f ? phyloXml.parse(await f.blob.text(), {trim: true, normalize: true})[0] : null;
+    check('the phyloXML file reads back with every tip', px && tipNames(px).length === names.length,
+        px ? tipNames(px).length + ' of ' + names.length : 'no file');
+    f = await download('Nexus');
+    const nexText = f ? await f.blob.text() : '';
+    check('the Nexus file carries the tree', /Begin Trees;/.test(nexText) && f.name === 'fig_1.nexus',
+        f && f.name);
+    byId('dl_name').value = '';
+    f = await download('Newick');
+    check('an empty name falls back to the tree\'s', f && f.name.length > 4 && f.name !== '.tre', f && f.name);
+
+    // ---- graphics: as shown -------------------------------------------------
+    const live = document.querySelector('rect.basebackground').ownerSVGElement;
+    // The tree group as DRAWN: every element with its attributes sorted. Its
+    // innerHTML is not that -- a label re-created by the full-size redraws
+    // comes back with the same attributes set in another order.
+    const canon = (el) => '<' + el.tagName + ' ' + [...el.attributes].map((a) => a.name + '=' + a.value).sort().join(' ')
+        + '>' + [...el.childNodes].map((c) => c.nodeType === 1 ? canon(c) : (c.nodeValue || '')).join('') + '</>';
+    const snapshot = () => canon(live.children[1]);   // the tree group, after the background
+    const before = snapshot();
+    byId('dl_shown_b').closest('label').click();
+    await sleep(100);
+    f = await download('SVG');
+    const shown = f ? await svgOf(f) : null;
+    const shownNames = shown ? tipLabelsIn(shown) : 0;
+    check('as shown: the SVG is the window\'s size', shown
+        && +shown.getAttribute('width') === live.width.baseVal.value
+        && +shown.getAttribute('height') === live.height.baseVal.value,
+        shown && shown.getAttribute('width') + 'x' + shown.getAttribute('height'));
+    out.push('as shown: ' + shownNames + ' of ' + tips + ' tip names in the SVG');
+
+    // ---- graphics: full size ------------------------------------------------
+    byId('dl_full_b').closest('label').click();
+    await sleep(100);
+    const t0 = performance.now();
+    f = await download('SVG');
+    const ms = performance.now() - t0;
+    const full = f ? await svgOf(f) : null;
+    const fullNames = full ? tipLabelsIn(full) : 0;
+    if (q.get('shot') === 'full' && full) {
+        // the exported picture itself, fitted to the window, for a human to look at
+        document.body.innerHTML = '';
+        document.body.style.background = '#888';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f.blob);
+        img.style.cssText = 'display:block;max-width:100vw;max-height:100vh;margin:auto;background:#fff';
+        document.body.appendChild(img);
+        await sleep(800);
+        finish();
+        return;
+    }
+    const fw = full ? +full.getAttribute('width') : 0;
+    const fh = full ? +full.getAttribute('height') : 0;
+    out.push('full size: ' + fw + 'x' + fh + ' px, ' + fullNames + ' of ' + tips
+        + ' tip names, in ' + ms.toFixed(0) + ' ms');
+    // the precondition, or the next check proves nothing: the window must
+    // actually be hiding names for "full size" to have anything to add
+    check('the fixture crowds the window (as shown drops names)', shownNames < tips,
+        shownNames + ' of ' + tips);
+    const unrooted = q.get('layout') === 'unrooted';
+    // unrooted has no rows and no ring: names on a cluster of short branches
+    // collide at any size (flu_h5: 176 of 354 still refused at 67,000 px), so
+    // there the bar is only that full size draws more than the window does
+    check(unrooted ? 'full size: more tip names than the window' : 'full size: every tip name is in the SVG',
+        unrooted ? fullNames > shownNames : fullNames === tips,
+        fullNames + ' of ' + tips);
+    check('... and the SVG is its own size, not the window\'s', fw > 0 && fh > 0
+        && (fw !== live.width.baseVal.value || fh !== live.height.baseVal.value));
+    // the drawing is cropped to the tree: every piece of ink inside the page
+    {
+        const holder = document.createElement('div');
+        holder.style.cssText = 'position:fixed;left:-100000px;top:0';
+        holder.appendChild(document.importNode(full, true));
+        document.body.appendChild(holder);
+        const s = holder.firstChild;
+        const sr = s.getBoundingClientRect();
+        let outside = 0;
+        s.querySelectorAll('text').forEach((t) => {
+            if (t.textContent === '') { return; }
+            const r = t.getBoundingClientRect();
+            if (r.left < sr.left - 0.5 || r.top < sr.top - 0.5 || r.right > sr.right + 0.5
+                || r.bottom > sr.bottom + 0.5) { ++outside; }
+        });
+        check('... with every label inside the page', outside === 0, outside + ' outside');
+        // the legend cards stand beside the tree, not on it (the page's
+        // second child is the tree group, after the background)
+        const treeBox = s.children[1].getBoundingClientRect();
+        const cards = [...s.querySelectorAll(':scope > g.legendLabelColor, :scope > g.legendNodeShape')];
+        const onTree = cards.filter((g) => { const r = g.getBoundingClientRect();
+            return r.left < treeBox.right && r.right > treeBox.left && r.top < treeBox.bottom && r.bottom > treeBox.top; });
+        out.push('legend cards: ' + cards.length);
+        check('... and no legend card lies on the tree', onTree.length === 0, onTree.length + ' of ' + cards.length);
+        holder.remove();
+    }
+    const after = snapshot();
+    let at = 0;
+    while (at < before.length && before[at] === after[at]) { ++at; }
+    check('... and the window is left exactly as it was', after === before,
+        before.length + ' vs ' + after.length + ' chars of tree'
+        + (after === before ? '' : ', first difference at ' + at + ': "' + before.substr(Math.max(0, at - 60), 120)
+            + '" became "' + after.substr(Math.max(0, at - 60), 120) + '"'));
+
+    // ---- PNG and PDF, full size --------------------------------------------
+    for (const k of [2, 8]) {
+        byId('dl_png' + k + '_b').closest('label').click();
+        await sleep(50);
+        f = await download('PNG');
+        const bmp = f ? await createImageBitmap(f.blob) : null;
+        const want = Math.round(fw * k);
+        out.push('PNG ' + k + 'x: ' + (bmp ? bmp.width + 'x' + bmp.height : 'none'));
+        // exactly k x, or -- where the browser cannot paint that much -- less,
+        // but never nothing, and never out of proportion
+        check('PNG ' + k + 'x: the image is ' + k + 'x the drawing, or as near as the browser paints',
+            bmp && bmp.width <= want && bmp.width > fw * 0.5
+            && sameShape(bmp.width, bmp.height, fw, fh),
+            bmp ? bmp.width + ' vs ' + want : 'no image');
+        if (bmp) {
+            // and it is not blank: a canvas past the browser's cap paints nothing
+            const c = new OffscreenCanvas(bmp.width, bmp.height);
+            const ctx = c.getContext('2d');
+            ctx.drawImage(bmp, 0, 0);
+            const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+            let dark = 0;
+            for (let i = 0; i < d.length; i += 4 * 97) { if (d[i] < 128) { ++dark; } }
+            check('PNG ' + k + 'x: the tree is painted on it', dark > 50, dark + ' dark samples');
+        }
+    }
+    f = await download('PDF');
+    const pageSize = f && f.pdf ? f.pdf.internal.pageSize : null;
+    const pw = pageSize ? pageSize.getWidth() : 0;
+    const ph = pageSize ? pageSize.getHeight() : 0;
+    out.push('PDF page: ' + pw.toFixed(0) + 'x' + ph.toFixed(0) + ' pt');
+    check('PDF: a page within the 200-inch limit, in the drawing\'s proportions', f && f.name.endsWith('.pdf')
+        && pw > 0 && pw <= 14400.5 && ph <= 14400.5 && sameShape(pw, ph, fw, fh), (pw / ph).toFixed(4)
+        + ' vs ' + (fw / fh).toFixed(4));
+    finish();
+})().catch((e) => { check('the harness ran', false, String(e && e.stack || e)); finish(); });
+
+// The Nexus entry says what the file will hold -- and the file agrees.
+async function nexusPromise() {
+    const tip = (n, s) => '<clade><name>' + n + '</name>'
+        + (s ? '<sequence><mol_seq is_aligned="true">' + s + '</mol_seq></sequence>' : '') + '</clade>';
+    const doc = (a, b, c) => '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+        + '<clade>' + tip('A', a) + tip('B', b) + '</clade>' + tip('C', c) + '</clade></phylogeny></phyloxml>';
+    const cases = [['aligned', doc('MKLEFIQ', 'MKL-FIQ', 'MRLEFIE'), false],
+        ['ragged', doc('MKLEFIQ', 'MKLFIQ', 'MRLEFIEWW'), true]];
+    for (const [name, xml, ragged] of cases) {
+        await launch(name + '.xml', xml);
+        const section = document.querySelector('fieldset.aptx-download');
+        check(name + ': the Download section starts open', section && !section.classList.contains('aptx-collapsed'));
+        byId('dl_b').click();
+        await sleep(150);
+        const b = menuEntry('Nexus');
+        const detail = b && b.querySelector('.aptx-menu-detail');
+        out.push(name + ': "' + (detail ? detail.textContent : '') + '"');
+        check(name + ': the menu offers FASTA', !!menuEntry('FASTA'));
+        const before = files.length;
+        b.click();
+        const f = await nextFile(before);
+        const text = f ? await f.blob.text() : '';
+        const matrix = /Begin Characters;/.test(text);
+        check(name + ': the file ' + (ragged ? 'leaves the sequences out' : 'carries the alignment'),
+            matrix === !ragged);
+        check(name + ': and the menu said so', detail && (ragged
+            ? detail.classList.contains('aptx-menu-warn') && /without the sequences/.test(detail.textContent)
+            : !detail.classList.contains('aptx-menu-warn') && /alignment/.test(detail.textContent)));
+    }
+}
+</script>

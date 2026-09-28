@@ -630,7 +630,8 @@ missing symbol `?` arrives as `X` or `N`. A phyloXML `<mol_seq>` is kept
 exactly as written, by both programs. Sequences
 of *unequal* length are not an alignment and cannot form a character matrix,
 so they are not written at all — the file says so in a bracketed comment
-rather than padding them into an alignment that does not exist.
+rather than padding them into an alignment that does not exist, and the
+Nexus entry of the Download menu says so before you choose it.
 
 ## Heat maps
 
@@ -1004,11 +1005,40 @@ a popup any more, and nothing fails silently.
 | **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
 | **Metadata table** (`.tsv`, `.csv`) | in (beside a tree) | A header row and one row per tip, the first column naming the tip: every other column is joined onto the tips as a property, so it is offered for Color-by and Shape, searched, shown in the node data and written into phyloXML exports. See [Metadata tables](#metadata-tables). | — |
 | **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. Offered in the Download menu only when the tree actually carries molecular sequences (aligned or not). | [9] |
-| SVG · PNG · vector PDF | out | A snapshot of the drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
+| SVG · PNG · vector PDF | out | The drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG), either as shown on screen or the whole tree at full size (see [Downloads](#downloads)). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
 
 The parser for a given input is auto-detected (see **The entry points**
 above); the Download menu offers whichever output formats the current tree
 can carry.
+
+### Downloads
+
+The panel's **Download** section holds the choices every download shares, and
+its **Download…** button opens the format menu, grouped as Graphics, Tree and
+Sequences. Each entry says what that format keeps — phyloXML everything the
+tree carries, Newick only names, branch lengths and support — and the Nexus
+entry says, before you pick it, whether the file will carry the alignment or,
+when the sequences are of unequal length, why it cannot.
+
+* **Name** — the file name; each format adds its own extension (a typed
+  `.svg` or `.tre` is not doubled). It starts as the tree's name.
+* **Graphics: As shown / Full size** — what SVG, PDF and PNG draw. *As shown*
+  is the window: the part of the tree in view, at the current zoom. *Full
+  size* (the default) is the whole tree, re-laid-out large enough that no tip
+  name has to be hidden — in rows in the rectangular layout, around the ring in
+  the circular one — and cropped to the drawing, with the legend beside the
+  tree rather than over it. The window itself is left exactly as it was. An
+  unrooted fan is enlarged only while that still frees names: tips on very
+  short branches can collide at any size.
+* **PNG: 2× / 4× / 8×** — the image's resolution relative to the screen
+  (`pngExportScale` sets the starting choice). A browser caps how large a
+  canvas it will paint; past that the PNG comes out at the largest scale it can
+  paint, with a console warning, rather than blank.
+* **Copy Newick** puts the tree on the clipboard, exactly as the Newick
+  download writes it.
+
+A full-size PDF taller or wider than 200 inches (14,400 pt, the PDF page
+limit) is scaled onto the largest page; it is vector, so nothing is lost.
 
 Newick and Nexus files usually carry branch support as a bare internal label
 (`)100:0.05`). Archaeopteryx.js recognises those automatically and treats them
@@ -1274,7 +1304,7 @@ copy-pastable JSON.
 | `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `enableDownloads` | `true` | Offer the download buttons. |
-| `pngExportScale` | `4` | PNG export resolution multiplier. |
+| `pngExportScale` | `4` | The PNG resolution the Download section starts on, snapped to its 2×, 4× or 8×. |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
 | `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |
@@ -1385,11 +1415,11 @@ All 118 of them, alphabetically:
 | `labelColorDefault` | The default label colour is fixed. |
 | `minBranchLengthValueToShow` | No longer configurable. |
 | `minConfidenceValueToShow` | No longer configurable. |
-| `nameForFastaDownload` | Download names follow `treeName`. |
-| `nameForNhDownload` | Download names follow `treeName`. |
-| `nameForPhyloXmlDownload` | Download names follow `treeName`. |
-| `nameForPngDownload` | Download names follow `treeName`. |
-| `nameForSvgDownload` | Download names follow `treeName`. |
+| `nameForFastaDownload` | Download names follow `treeName`, or the Download section's Name field. |
+| `nameForNhDownload` | Download names follow `treeName`, or the Download section's Name field. |
+| `nameForPhyloXmlDownload` | Download names follow `treeName`, or the Download section's Name field. |
+| `nameForPngDownload` | Download names follow `treeName`, or the Download section's Name field. |
+| `nameForSvgDownload` | Download names follow `treeName`, or the Download section's Name field. |
 | `nhExportReplaceIllegalChars` | Always on; Newick cannot carry those characters. |
 | `nodeLabelGap` | The label gap is fixed. |
 | `nodeSizeDefault` | Node size is fixed; the Node size slider changes it. |

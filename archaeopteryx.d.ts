@@ -79,6 +79,8 @@ export interface ArchaeopteryxConfig {
     /** 'compact' tightens the control panel's spacing and narrows it (the
      * tree's left margin follows). The same controls, nothing hidden. */
     panelDensity?: 'comfortable' | 'compact';
+    /** The PNG resolution the Download section starts on, snapped to its
+     * 2x, 4x or 8x. */
     pngExportScale?: number;
     rootOffset?: number;
     searchAinitialValue?: string | null;

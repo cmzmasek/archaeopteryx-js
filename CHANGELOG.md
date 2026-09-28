@@ -6,6 +6,45 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
+## Unreleased
+
+### Added
+- **Full-size graphics.** SVG, PDF and PNG can now draw the **whole tree**, not
+  just the window: the Download section's *Graphics* choice is **As shown** (the
+  window, as before) or **Full size** (the new default). Full size re-lays-out
+  the tree off-screen, large enough that no tip name has to be hidden — all 354
+  names of flu_h5 where the window shows 59, and all 354 around the circular
+  ring where it shows 118 — crops the picture to the drawing, and sets the
+  legend beside the tree instead of over it. The window is left exactly as it
+  was. In the unrooted layout, where names on very short branches collide at
+  any size, the fan grows only while growing still frees names.
+- **The Download menu says what each format keeps.** The Download button opens
+  an in-page menu, grouped as Graphics, Tree and Sequences, replacing the
+  native select: phyloXML keeps everything the tree carries, Newick only names,
+  branch lengths and support. The **Nexus** entry says, before it is chosen,
+  whether the file will carry the alignment — or, for sequences of unequal
+  length, that it cannot and why, in the words the writer puts in the file.
+- **PNG resolution: 2× / 4× / 8×**, chosen in the panel (4× by default;
+  `pngExportScale` sets the starting choice). A PNG larger than the browser
+  will paint comes out at the largest scale it can, with a console warning —
+  it used to come out blank.
+- **An editable file name.** Each format adds its own extension; a typed one
+  is not doubled, and characters no file system accepts are replaced.
+- **Copy Newick** puts the tree on the clipboard, exactly as the Newick
+  download writes it.
+
+### Changed
+- **Download is a section of its own** and folds like the others (it starts
+  open).
+- A full-size PDF past the 200-inch PDF page limit is scaled onto the largest
+  page. jsPDF would otherwise clamp the page silently and cut the drawing off.
+- The SVG file is typed `image/svg+xml` (it was `application/svg+xml`).
+
+### Fixed
+- The **Download** button's word ran into its right edge: the button was
+  forced to 60 px, narrower than the word. The two buttons now share the row,
+  their words centred.
+
 ## 3.16.0 — 2026-09-28
 
 Crowded radial trees become readable: the two fan layouts now hide the tip

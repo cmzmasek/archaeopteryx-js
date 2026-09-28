@@ -40,7 +40,8 @@ const CASES = {
     'ring_rotation': [''],
     'ring_connectors': ['?tree=../../docs/data/flu_h5.xml', ''],
     'indicator_branchdata': ['', '?tree=../../docs/data/apaf.xml'],
-    'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml']
+    'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
+    'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?big=1200']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',

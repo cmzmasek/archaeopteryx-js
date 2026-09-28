@@ -188,13 +188,7 @@ function (root, d3, forester, phyloXml) {
     const BACKGROUND_COLOR_DARK = '#182029';
     const BRANCH_COLOR_DARK = '#8fa1b3';
     const LABEL_COLOR_DARK = '#e7eef5';
-    const NAME_FOR_NH_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NH_SUFFIX;
-    const NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + XML_SUFFIX;
-    const NAME_FOR_PDF_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PDF_SUFFIX;
-    const NAME_FOR_PNG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + PNG_SUFFIX;
-    const NAME_FOR_SVG_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + SVG_SUFFIX;
-    const NAME_FOR_FASTA_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + FASTA_SUFFIX;
-    const NAME_FOR_NEXUS_DOWNLOAD_DEFAULT = 'archaeopteryx_js' + NEXUS_SUFFIX;
+    const DOWNLOAD_STEM_DEFAULT = 'archaeopteryx_js';
     const NODE_LABEL_GAP_DEFAULT = 10;
     const NODE_SIZE_DEFAULT_DEFAULT = 3;
     const VISUALIZATIONS_LEGEND_YPOS_DEFAULT = 30;
@@ -361,6 +355,11 @@ function (root, d3, forester, phyloXml) {
     const SUPPORT_DOTS_CB = 'suppdots_cb';
     const MAD_VALUES_CB = 'mad_cb';
     const DOWNLOAD_BUTTON = 'dl_b';
+    const DOWNLOAD_NAME_FIELD = 'dl_name';
+    const DOWNLOAD_AS_SHOWN_BUTTON = 'dl_shown_b';
+    const DOWNLOAD_FULL_SIZE_BUTTON = 'dl_full_b';
+    const DOWNLOAD_PNG_SCALES = [2, 4, 8];
+    const COPY_NEWICK_BUTTON = 'copy_nh_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
     const MSA_LOGO_CB = 'msa_logo_cb';
@@ -381,7 +380,6 @@ function (root, d3, forester, phyloXml) {
     const TIME_AXIS_CB = 'timeaxis_cb';
     const TIME_GRID_CB = 'timegrid_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
-    const EXPORT_FORMAT_SELECT = 'exp_f_sel';
     const FONT_SIZE_SLIDER = 'fs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
     const INTERNAL_LABEL_CB = 'intl_cb';
@@ -498,6 +496,12 @@ function (root, d3, forester, phyloXml) {
     // "Instance variables"
     // ---------------------------
     let _baseSvg = null;
+    // The Download section's two choices. Full size is the default: a figure
+    // is usually wanted whole, and "as shown" crops it to wherever the view
+    // happened to be. _pngScale starts from pngExportScale, snapped to the
+    // nearest of the scales the section offers.
+    let _downloadFullSize = true;
+    let _pngScale = 4;
     let _basicTreeProperties = null;
     let _displayHeight = 0;
     let _displayWidth = 0;
@@ -1554,6 +1558,10 @@ function (root, d3, forester, phyloXml) {
 
     let _nodeMenu = null;
     let _nodeMenuDismiss = null; // the listeners that close it, so they can be detached
+    // The button a menu was opened from, when the click that just closed the
+    // menu landed on it: its own click handler then leaves the menu closed
+    // rather than opening it again, so the button toggles.
+    let _menuClosedBy = null;
 
     function removeNodeMenu() {
         if (_nodeMenuDismiss) {
@@ -1567,8 +1575,11 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // items: [{label, action, danger}]; anchored at the click position.
-    function showNodeMenu(items, event, titleText) {
+    // items: [{label, action, danger}]; anchored at the click position, or
+    // under (else above) `anchorEl` when one is given. An item may carry a
+    // `detail` line under its label (`warn` tints it), and {heading} starts
+    // a titled group.
+    function showNodeMenu(items, event, titleText, anchorEl) {
         removeNodeMenu();
         if (!items || items.length < 1) {
             return;
@@ -1596,9 +1607,22 @@ function (root, d3, forester, phyloXml) {
                 menu.appendChild(note);
                 return;
             }
+            if (item.heading) {
+                let heading = document.createElement('div');
+                heading.className = 'aptx-node-menu-title aptx-node-menu-heading';
+                heading.textContent = item.heading;
+                menu.appendChild(heading);
+                return;
+            }
             let b = document.createElement('button');
             b.type = 'button';
             b.textContent = item.label;
+            if (item.detail) {
+                let detail = document.createElement('span');
+                detail.className = 'aptx-menu-detail' + (item.warn ? ' aptx-menu-warn' : '');
+                detail.textContent = item.detail;
+                b.appendChild(detail);
+            }
             if (item.title) {
                 b.title = item.title;
             }
@@ -1618,10 +1642,19 @@ function (root, d3, forester, phyloXml) {
         document.body.appendChild(menu);
 
         // Place it at the pointer, nudged back inside the window if it would
-        // otherwise hang off the right or bottom edge.
+        // otherwise hang off the right or bottom edge. Opened from a button,
+        // it hangs under the button, or stands on it where there is no room
+        // below -- the Download button sits at the foot of the panel.
         let x = (event && event.pageX !== undefined) ? event.pageX : 0;
         let y = (event && event.pageY !== undefined) ? event.pageY : 0;
         let r = menu.getBoundingClientRect();
+        if (anchorEl) {
+            let a = anchorEl.getBoundingClientRect();
+            let below = document.documentElement.clientHeight - a.bottom;
+            x = window.scrollX + a.left;
+            y = window.scrollY + ((below >= r.height + 12 || a.top < r.height + 12)
+                ? a.bottom + 4 : a.top - r.height - 4);
+        }
         let maxX = window.scrollX + document.documentElement.clientWidth - r.width - 8;
         let maxY = window.scrollY + document.documentElement.clientHeight - r.height - 8;
         menu.style.left = Math.max(window.scrollX + 8, Math.min(x, maxX)) + 'px';
@@ -1643,6 +1676,7 @@ function (root, d3, forester, phyloXml) {
             if (_nodeMenu && _nodeMenu.contains(e.target)) {
                 return;
             }
+            _menuClosedBy = (anchorEl && anchorEl.contains(e.target)) ? anchorEl : null;
             removeNodeMenu();
         };
         let onKey = function (e) {
@@ -5396,11 +5430,11 @@ function (root, d3, forester, phyloXml) {
         internalNodeFontSize: 'font size is fixed at launch (11px) and changed only via the in-panel Font slider -- not a launch config key',
         branchDataFontSize: 'derived from the fixed label size (2px smaller, floor 6px) and changed only via the in-panel Font slider -- not a launch config key',
         // download filenames follow the tree's name
-        nameForNhDownload: 'download names follow "treeName"',
-        nameForPhyloXmlDownload: 'download names follow "treeName"',
-        nameForPngDownload: 'download names follow "treeName"',
-        nameForSvgDownload: 'download names follow "treeName"',
-        nameForFastaDownload: 'download names follow "treeName"',
+        nameForNhDownload: 'download names follow "treeName", or the Download section\'s Name field',
+        nameForPhyloXmlDownload: 'download names follow "treeName", or the Download section\'s Name field',
+        nameForPngDownload: 'download names follow "treeName", or the Download section\'s Name field',
+        nameForSvgDownload: 'download names follow "treeName", or the Download section\'s Name field',
+        nameForFastaDownload: 'download names follow "treeName", or the Download section\'s Name field',
         // which taxonomy / sequence field to label with is read off the tree
         showTaxonomyCode: 'taxonomy labelling follows what the tree contains',
         showTaxonomyScientificName: 'taxonomy labelling follows what the tree contains',
@@ -6004,20 +6038,7 @@ function (root, d3, forester, phyloXml) {
         // The tree names itself; a caller-supplied name only ever disagreed with
         // the file. It is the stem of every download filename.
         _state.treeName = _treeData.name ? _treeData.name.trim().replace(/\W+/g, '_') : null;
-        _state.nameForNhDownload = _state.treeName
-            ? (_state.treeName + NH_SUFFIX) : NAME_FOR_NH_DOWNLOAD_DEFAULT;
-        _state.nameForPhyloXmlDownload = _state.treeName
-            ? (_state.treeName + XML_SUFFIX) : NAME_FOR_PHYLOXML_DOWNLOAD_DEFAULT;
-        _state.nameForPngDownload = _state.treeName
-            ? (_state.treeName + PNG_SUFFIX) : NAME_FOR_PNG_DOWNLOAD_DEFAULT;
-        _state.nameForPdfDownload = _state.treeName
-            ? (_state.treeName + PDF_SUFFIX) : NAME_FOR_PDF_DOWNLOAD_DEFAULT;
-        _state.nameForSvgDownload = _state.treeName
-            ? (_state.treeName + SVG_SUFFIX) : NAME_FOR_SVG_DOWNLOAD_DEFAULT;
-        _state.nameForFastaDownload = _state.treeName
-            ? (_state.treeName + FASTA_SUFFIX) : NAME_FOR_FASTA_DOWNLOAD_DEFAULT;
-        _state.nameForNexusDownload = _state.treeName
-            ? (_state.treeName + NEXUS_SUFFIX) : NAME_FOR_NEXUS_DOWNLOAD_DEFAULT;
+        _state.downloadStem = _state.treeName || DOWNLOAD_STEM_DEFAULT;
 
         // === undefined, not a truthy check: 0 is a legitimate explicit
         // position (the legend's top-left corner) and must survive, not be
@@ -13272,12 +13293,161 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0);
     }
 
-    function downloadButtonPressed() {
-        const s = byId(EXPORT_FORMAT_SELECT);
-        if (s) {
-            let format = s.value;
-            downloadTree(format);
+    // The Download button opens the format menu under itself; pressed again
+    // while the menu is open, it closes it.
+    function downloadButtonPressed(event) {
+        let btn = event.currentTarget;
+        if (_menuClosedBy === btn) {
+            _menuClosedBy = null;
+            return;
         }
+        showNodeMenu(downloadMenuItems(), null, null, btn);
+        // opened from the keyboard (a click with no pointer), the keyboard
+        // goes into the menu: Tab walks the formats, Escape closes it
+        if (event.detail === 0 && _nodeMenu) {
+            let first = _nodeMenu.querySelector('button');
+            if (first) {
+                first.focus();
+            }
+        }
+    }
+
+    // Every format says what it keeps: a Newick file silently drops
+    // everything but names, lengths and support, and a user picking by
+    // extension would never know.
+    function downloadMenuItems() {
+        let items = [];
+        let entry = function (format) {
+            return function () {
+                downloadTree(format);
+            };
+        };
+        items.push({heading: 'Graphics, ' + (_downloadFullSize ? 'full size' : 'as shown')});
+        items.push({label: 'SVG', detail: 'vector: edit it in Inkscape or Illustrator',
+            action: entry(SVG_EXPORT_FORMAT)});
+        if (pdfExportAvailable()) {
+            items.push({label: 'PDF', detail: 'vector: ready to print or to put in a paper',
+                action: entry(PDF_EXPORT_FORMAT)});
+        }
+        if (pngExportAvailable()) {
+            items.push({label: 'PNG', detail: 'image, at ' + _pngScale + '× the screen\'s resolution',
+                action: entry(PNG_EXPORT_FORMAT)});
+        }
+        items.push({heading: 'Tree'});
+        items.push({label: 'phyloXML', detail: 'keeps everything the tree carries: taxonomy, sequences, dates, properties',
+            action: entry(PHYLOXML_EXPORT_FORMAT)});
+        items.push({label: 'Newick', detail: 'names, branch lengths and support values only',
+            action: entry(NH_EXPORT_FORMAT)});
+        let nexus = nexusDownloadDetail();
+        items.push({label: 'Nexus', detail: nexus.text, warn: nexus.warn, action: entry(NEXUS_EXPORT_FORMAT)});
+        // only when there is something to write: a tip carrying a molecular
+        // sequence, aligned or not (same gate as the node menu's Fasta
+        // entries) -- on any other tree the download would be an empty file
+        if (_basicTreeProperties && _basicTreeProperties.maxMolSeqLength > 0) {
+            items.push({heading: 'Sequences'});
+            items.push({label: 'FASTA', detail: 'every molecular sequence the tips carry',
+                action: entry(FASTA_EXPORT_FORMAT)});
+        }
+        return items;
+    }
+
+    // What a Nexus download will hold, asked of the WRITER rather than
+    // predicted: toNexus decides whether the sequences can form a matrix
+    // (equal lengths, unambiguous labels), and when they cannot it says why
+    // in a bracketed comment -- which is the sentence shown here, so the menu
+    // and the file can never disagree.
+    function nexusDownloadDetail() {
+        let plain = {text: 'the tree: names, branch lengths and support values', warn: false};
+        if (!_root || !_basicTreeProperties || !(_basicTreeProperties.maxMolSeqLength > 0)) {
+            return plain;
+        }
+        let nex;
+        try {
+            nex = forester.toNexus(_root, 9, _settings.nhExportWriteConfidences);
+        } catch {
+            return plain;
+        }
+        if (nex.indexOf('Begin Characters;') >= 0) {
+            return {text: 'the tree and its alignment, in one file', warn: false};
+        }
+        let why = /\[ Molecular sequences were not written: ([^\]]*?)\s*\]/.exec(nex);
+        return {
+            text: 'the tree only, without the sequences: ' + (why ? why[1] : 'they cannot form a matrix')
+                + ' phyloXML and FASTA keep them.',
+            warn: true
+        };
+    }
+
+    // The file name the user typed, made safe, with the format's extension.
+    // A typed extension is not doubled up ("tree.svg" saves as tree.svg, and
+    // as tree.png from the PNG entry), and an empty field falls back to the
+    // tree's name.
+    function downloadFileName(suffix) {
+        let field = byId(DOWNLOAD_NAME_FIELD);
+        let stem = (field ? field.value : '').trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_');
+        let lower = stem.toLowerCase();
+        [NH_SUFFIX, NEXUS_SUFFIX, XML_SUFFIX, FASTA_SUFFIX, SVG_SUFFIX, PDF_SUFFIX, PNG_SUFFIX,
+            '.nex', '.nwk', '.newick', '.fa', '.fas'].some(function (x) {
+            if (lower.length > x.length && lower.endsWith(x)) {
+                stem = stem.substring(0, stem.length - x.length);
+                return true;
+            }
+            return false;
+        });
+        if (stem.replace(/[._\s]/g, '') === '') {
+            stem = _state.downloadStem;
+        }
+        return stem + suffix;
+    }
+
+    function copyNewickPressed(event) {
+        let btn = event.currentTarget;
+        let nh = _root ? forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences) : '';
+        copyText(nh).then(function (ok) {
+            flashButton(btn, ok ? 'Copied ✓' : 'Copy failed');
+        });
+    }
+
+    // The async clipboard API where the page allows it (a secure context);
+    // otherwise the old select-and-copy, so a page served over plain http
+    // still copies. Resolves to whether the text made it.
+    function copyText(text) {
+        let legacy = function () {
+            let ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-10000px';
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try {
+                ok = document.execCommand('copy');
+            } catch {
+                ok = false;
+            }
+            ta.remove();
+            return ok;
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).then(function () {
+                return true;
+            }, legacy);
+        }
+        return Promise.resolve(legacy());
+    }
+
+    // A button says what just happened on its own face for a moment, then
+    // goes back to its name: no toast to find, and nothing left behind.
+    function flashButton(btn, text) {
+        if (btn.dataset.label === undefined) {
+            btn.dataset.label = btn.textContent;
+        }
+        btn.textContent = text;
+        clearTimeout(btn._flashTimer);
+        btn._flashTimer = setTimeout(function () {
+            btn.textContent = btn.dataset.label;
+        }, 1600);
     }
 
     function changeBaseBackgoundColor(color) {
@@ -13998,13 +14168,13 @@ function (root, d3, forester, phyloXml) {
         }
         // Dark palette tokens, shared by the system-preference default and the
         // explicit "dark" choice from the header light/dark switch.
-        let dark = '  --p-bg:rgba(24,35,46,0.86); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090;'
+        let dark = '  --p-bg:rgba(24,35,46,0.86); --p-ink:#e7eef5; --p-muted:#94a4b3; --p-faint:#6f8090; --p-warn:#f0a35e;'
             + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
             + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
             + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4);';
         let css = ''
             + '.aptx-panel {'
-            + '  --p-bg: rgba(255,255,255,0.86); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.86); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2; --p-warn:#b15a0b;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '  --p-shadow-sm:0 1px 2px rgba(23,34,46,0.12);'
@@ -14031,7 +14201,7 @@ function (root, d3, forester, phyloXml) {
             // (they cannot live inside the panel), so they carry their own
             // copy of the palette and follow the same light / dark rules.
             + '.aptx-node-menu, .aptx-suggest {'
-            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2; --p-warn:#b15a0b;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '}'
@@ -14061,6 +14231,17 @@ function (root, d3, forester, phyloXml) {
             + '  background:#e5484d; color:#fff; }'
             + '.aptx-node-menu hr { border:0; border-top:1px solid var(--p-line); margin:3px 4px; }'
             + '.aptx-node-menu-note { padding:4px 9px 7px; color:var(--p-ink); white-space:normal; }'
+            // A group title inside a menu (the Download menu's Graphics / Tree
+            // / Sequences): the title's type, set off from the group above.
+            + '.aptx-node-menu-heading { margin-top:4px; }'
+            + '.aptx-node-menu-heading:first-child { margin-top:0; }'
+            // an entry's second line: what that choice keeps or does
+            + '.aptx-node-menu button .aptx-menu-detail { display:block; white-space:normal; font-size:10px;'
+            + '  line-height:1.35; color:var(--p-muted); margin-top:1px; }'
+            + '.aptx-node-menu button .aptx-menu-detail.aptx-menu-warn { color:var(--p-warn); }'
+            + '.aptx-node-menu button:hover .aptx-menu-detail, .aptx-node-menu button:focus-visible .aptx-menu-detail {'
+            + '  color:rgba(255,255,255,0.86); }'
+            + '.aptx-node-menu:has(.aptx-menu-detail) { width:264px; max-width:264px; }'
             // The search suggestions: the node menu's chrome under the value box.
             + '.aptx-suggest { position:absolute; z-index:1000; max-width:320px; padding:4px; box-sizing:border-box;'
             + '  border:1px solid var(--p-line-strong); border-radius:10px; background:var(--p-bg); color:var(--p-ink);'
@@ -14079,7 +14260,7 @@ function (root, d3, forester, phyloXml) {
             + '  font-size:10px; color:var(--p-faint); }'
             // The node-data dialog, on the same palette as the panel and the menu.
             + '.aptx-dialog, .aptx-busy, .aptx-msa-nav {'
-            + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.98); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2; --p-warn:#b15a0b;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
             + '  --p-accent:#2f83f2; --p-accent-ink:#1c5fbf; --p-accent-weak:rgba(47,131,242,0.12);'
             + '}'
@@ -14229,7 +14410,7 @@ function (root, d3, forester, phyloXml) {
             + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
             // The hover tooltip, on the same palette.
             + '.aptx-tip {'
-            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2;'
+            + '  --p-bg: rgba(255,255,255,0.97); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2; --p-warn:#b15a0b;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1;'
             + '}'
             + '@media (prefers-color-scheme:dark){ .aptx-tip:not(.aptx-light):not(.aptx-dark) {' + dark + '} }'
@@ -14384,6 +14565,16 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-zoomrow .aptx-gbtn { flex:1 1 0; padding:0; }'
             + '.aptx-panel .aptx-zoomrow .aptx-gbtn:last-child { margin-right:0; }'
             + '.aptx-panel .aptx-domrow { display:flex; align-items:center; gap:4px; margin:3px 0; }'
+            // The Download section: a label column, then a control that fills
+            // the row -- the name field, a segmented choice, or the two buttons
+            // sharing it equally (their words centred, never clipped).
+            + '.aptx-panel .aptx-dlrow { display:flex; align-items:center; gap:6px; margin:4px 0; }'
+            + '.aptx-panel .aptx-dlrow .aptx-dllabel { flex:0 0 52px; font-size:10px; color:var(--p-muted); }'
+            + '.aptx-panel .aptx-dlrow input[type=text] { flex:1 1 auto; min-width:0; height:24px; box-sizing:border-box; }'
+            + '.aptx-panel .aptx-dlrow .aptx-segmented { flex:1 1 auto; display:flex; }'
+            + '.aptx-panel .aptx-dlrow .aptx-seg { flex:1 1 0; padding:3px 4px; font-weight:500; white-space:nowrap; }'
+            + '.aptx-panel .aptx-dlrow .aptx-dlbtn { flex:1 1 0; min-width:0; margin:0; padding:0 6px;'
+            + '  display:flex; align-items:center; justify-content:center; white-space:nowrap; }'
             + '.aptx-panel .aptx-domrow .aptx-domlabel { flex:0 0 64px; font-size:10px; color:var(--p-muted); }'
             + '.aptx-panel .aptx-domrow input[type=button] { width:30px; padding:0; margin:0; }'
             // ... except one that has a WORD on it: the rule above sizes the
@@ -14412,7 +14603,6 @@ function (root, d3, forester, phyloXml) {
             + '  line-height:1; color:var(--p-muted); transition:transform .15s,color .15s; }'
             + '.aptx-panel legend.aptx-legend-toggle:hover::after { color:var(--p-accent-ink); }'
             + '.aptx-panel legend.aptx-legend-toggle:hover { color:var(--p-accent-ink); }'
-            + '.aptx-panel #' + EXPORT_FORMAT_SELECT + ' { margin-left:6px; }'
             + '.aptx-panel fieldset.aptx-collapsed > legend.aptx-legend-toggle::after { transform:rotate(-90deg); }'
             + '.aptx-panel fieldset.aptx-collapsed > legend { margin-bottom:0; }'
             + '.aptx-panel fieldset.aptx-collapsed > .aptx-fieldset-body { display:none; }'
@@ -15618,14 +15808,6 @@ function (root, d3, forester, phyloXml) {
         // the stylesheet's job now: the search row sizes its R button, and the
         // zoom grid stretches Y+/Y- to the exact width of the button row.)
 
-        const downloadButton = byId(DOWNLOAD_BUTTON);
-
-        if (downloadButton) {
-            setStyles(downloadButton, {
-                'width': '60px', 'margin-bottom': '3px'
-            });
-        }
-
 
         on(SEARCH_FIELD_0, 'keyup', searchValueKeyup);
 
@@ -15842,12 +16024,18 @@ function (root, d3, forester, phyloXml) {
 
         // ----------------
 
-        if (downloadButton) {
-            downloadButton.addEventListener('click', downloadButtonPressed);
-        }
-
-        setStyles(byId(EXPORT_FORMAT_SELECT), {
-            'font': 'inherit', 'color': 'inherit'
+        on(DOWNLOAD_BUTTON, 'click', downloadButtonPressed);
+        on(COPY_NEWICK_BUTTON, 'click', copyNewickPressed);
+        on(DOWNLOAD_AS_SHOWN_BUTTON, 'change', function () {
+            _downloadFullSize = false;
+        });
+        on(DOWNLOAD_FULL_SIZE_BUTTON, 'change', function () {
+            _downloadFullSize = true;
+        });
+        DOWNLOAD_PNG_SCALES.forEach(function (k) {
+            on('dl_png' + k + '_b', 'change', function () {
+                _pngScale = k;
+            });
         });
 
         // ---------------
@@ -16298,34 +16486,42 @@ function (root, d3, forester, phyloXml) {
             return h;
         }
 
+        // A titled section like the others, so it folds. The format is picked
+        // from a menu the Download button opens (showDownloadMenu), where each
+        // format says what it keeps; the rows above it are the choices every
+        // graphic, or every file, shares.
         function makeDownloadSection() {
-            let h = "";
-            h = h.concat('<form action="#">');
-            h = h.concat('<fieldset>');
-            h = h.concat('<input type="button" value="Download" name="' + DOWNLOAD_BUTTON + '" title="download/export tree in a selected format" id="' + DOWNLOAD_BUTTON + '">');
-            //h = h.concat('<br>');
-            h = h.concat('<select name="' + EXPORT_FORMAT_SELECT + '" id="' + EXPORT_FORMAT_SELECT
-                + '" aria-label="Download format" title="the file format the Download button writes">');
+            let h = '<fieldset class="aptx-download">';
+            h = h.concat('<legend>Download</legend>');
+            h = h.concat('<div class="aptx-dlrow"><label class="aptx-dllabel" for="' + DOWNLOAD_NAME_FIELD
+                + '" title="the file name: each format adds its own extension">Name</label>');
+            h = h.concat('<input type="text" id="' + DOWNLOAD_NAME_FIELD + '" name="' + DOWNLOAD_NAME_FIELD
+                + '" spellcheck="false" autocomplete="off"'
+                + ' title="the file name: each format adds its own extension"></div>');
+            h = h.concat('<div class="aptx-dlrow"><span class="aptx-dllabel">Graphics</span>');
+            h = h.concat('<div class="aptx-segmented">');
+            h = h.concat(makeSegment('As shown', DOWNLOAD_AS_SHOWN_BUTTON, 'dl_extent_radio',
+                'SVG, PDF and PNG show what is on screen: the part of the tree in view, at the current zoom'));
+            h = h.concat(makeSegment('Full size', DOWNLOAD_FULL_SIZE_BUTTON, 'dl_extent_radio',
+                'SVG, PDF and PNG show the whole tree, drawn large enough for every name'));
+            h = h.concat('</div></div>');
             if (pngExportAvailable()) {
-                h = h.concat('<option value="' + PNG_EXPORT_FORMAT + '">' + PNG_EXPORT_FORMAT + '</option>');
+                h = h.concat('<div class="aptx-dlrow"><span class="aptx-dllabel">PNG</span>');
+                h = h.concat('<div class="aptx-segmented">');
+                DOWNLOAD_PNG_SCALES.forEach(function (k) {
+                    h = h.concat(makeSegment(k + '×', 'dl_png' + k + '_b', 'dl_png_radio',
+                        'PNG at ' + k + ' times the resolution of the screen'));
+                });
+                h = h.concat('</div></div>');
             }
-            if (pdfExportAvailable()) {
-                h = h.concat('<option value="' + PDF_EXPORT_FORMAT + '">' + PDF_EXPORT_FORMAT + '</option>');
-            }
-            h = h.concat('<option value="' + SVG_EXPORT_FORMAT + '">' + SVG_EXPORT_FORMAT + '</option>');
-            h = h.concat('<option value="' + PHYLOXML_EXPORT_FORMAT + '">' + PHYLOXML_EXPORT_FORMAT + '</option>');
-            h = h.concat('<option value="' + NH_EXPORT_FORMAT + '">' + NH_EXPORT_FORMAT + '</option>');
-            h = h.concat('<option value="' + NEXUS_EXPORT_FORMAT + '">' + NEXUS_EXPORT_FORMAT + '</option>');
-            // only when there is something to write: a tip carrying a
-            // molecular sequence, aligned or not (same gate as the node
-            // menu's Fasta entries) -- on any other tree the download would
-            // just be an empty file
-            if (_basicTreeProperties.maxMolSeqLength > 0) {
-                h = h.concat('<option value="' + FASTA_EXPORT_FORMAT + '">' + FASTA_EXPORT_FORMAT + '</option>');
-            }
-            h = h.concat('</select>');
+            h = h.concat('<div class="aptx-dlrow">');
+            h = h.concat('<button type="button" class="aptx-gbtn aptx-dlbtn" id="' + DOWNLOAD_BUTTON + '" name="'
+                + DOWNLOAD_BUTTON + '" aria-haspopup="menu"'
+                + ' title="download the tree: choose the format from the menu">Download…</button>');
+            h = h.concat('<button type="button" class="aptx-gbtn aptx-dlbtn" id="' + COPY_NEWICK_BUTTON + '" name="'
+                + COPY_NEWICK_BUTTON + '" title="copy the tree to the clipboard in Newick format">Copy Newick</button>');
+            h = h.concat('</div>');
             h = h.concat('</fieldset>');
-            h = h.concat('</form>');
             return h;
         }
 
@@ -16578,6 +16774,20 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(VISUAL_STYLES_CB, _state.useVisualStyles);
         setCheckboxValue(VIS_CB, _state.showVisualizations);
         setCheckboxValue(DYNAHIDE_CB, _state.dynahide);
+        {
+            let nameField = byId(DOWNLOAD_NAME_FIELD);
+            if (nameField) {
+                nameField.value = _state.downloadStem;
+            }
+            // once per launch, not in initializeSettings: zoom-to-fit re-runs
+            // that, and would throw the user's pick away
+            _pngScale = DOWNLOAD_PNG_SCALES.reduce(function (best, k) {
+                let want = _settings.pngExportScale;
+                return Math.abs(Math.log(k / want)) < Math.abs(Math.log(best / want)) ? k : best;
+            });
+            setRadioButtonValue(_downloadFullSize ? DOWNLOAD_FULL_SIZE_BUTTON : DOWNLOAD_AS_SHOWN_BUTTON, true);
+            setRadioButtonValue('dl_png' + _pngScale + '_b', true);
+        }
         setCheckboxValue(MSA_CB, _state.showMsa);
         setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
@@ -16846,67 +17056,307 @@ function (root, d3, forester, phyloXml) {
         return svgText;
     }
 
-    function getTreeAsSvg() {
-        let svg = treeSvgElement();
-        if (!svg) {
+    // The live tree's <svg>, copied and cleaned for a file: the overview, the
+    // search halos and the hover glow are on-screen aids, not the tree.
+    function exportCopy(svg) {
+        return cleanExportCopy(svg.cloneNode(true));
+    }
+
+    function cleanExportCopy(copy) {
+        // Serialize a COPY with the overview taken out of it: the overview is
+        // an on-screen navigation aid, not part of the tree, and working on a
+        // copy leaves the live display untouched.
+        let overview = copy.querySelector('.aptx-overview');
+        if (overview) {
+            overview.remove();
+        }
+        // the halo discs' translucency and pulse live in page CSS the
+        // export cannot carry -- serialized as-is they become solid blobs
+        copy.querySelectorAll('circle.foundHalo').forEach(function (h) {
+            h.remove();
+        });
+        let glow = copy.querySelector('.aptx-hoverglow');
+        if (glow) {
+            glow.remove();
+        }
+        return copy;
+    }
+
+    // The same element of the copy as `live` is of the svg: children are
+    // cloned in order, so the index finds it -- in a copy nothing has been
+    // taken out of yet (cleaning it removes the overview, and every child
+    // after that would be off by one).
+    function copyCounterpart(svg, copy, live) {
+        let i = Array.prototype.indexOf.call(svg.children, live);
+        return i >= 0 ? copy.children[i] : null;
+    }
+
+    // The graphic an SVG, PDF or PNG download draws, as {text, w, h}: the
+    // serialized light-theme svg and its size in px. Which one follows the
+    // Download section's choice.
+    function exportGraphic() {
+        if (!treeSvgElement() || typeof window.XMLSerializer === 'undefined') {
             return null;
         }
-        let svgTree = null;
-        if (typeof window.XMLSerializer !== 'undefined') {
-            // Serialize a COPY with the overview taken out of it: the overview is
-            // an on-screen navigation aid, not part of the tree, and working on a
-            // copy leaves the live display untouched.
-            let copy = svg.cloneNode(true);
-            let overview = copy.querySelector('.aptx-overview');
-            if (overview) {
-                overview.remove();
-            }
-            // the halo discs' translucency and pulse live in page CSS the
-            // export cannot carry -- serialized as-is they become solid blobs
-            copy.querySelectorAll('circle.foundHalo').forEach(function (h) {
-                h.remove();
-            });
-            let glow = copy.querySelector('.aptx-hoverglow');
-            if (glow) {
-                glow.remove();
-            }
-            // The floating strips re-anchor to the TREE for export: on screen
-            // a strip may be stuck at the viewport bottom, but a figure must
-            // not carry an artefact of where the user happened to be scrolled
-            // -- the axis belongs at the bottom of the tree. (As the desktop
-            // does for PDF and graphics export.)
-            let t = d3.zoomTransform(svg);
-            copy.querySelectorAll('.aptx-float > g').forEach(function (strip) {
-                strip.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + t.k + ')');
-            });
-            svgTree = toLightExport((new XMLSerializer()).serializeToString(copy));
-        } else if (typeof svg.xml !== 'undefined') {
-            svgTree = svg.xml;
+        return _downloadFullSize ? graphicFullSize() : graphicAsShown();
+    }
+
+    // "As shown": the viewport, exactly as it is on screen.
+    function graphicAsShown() {
+        let svg = treeSvgElement();
+        let copy = exportCopy(svg);
+        // The floating strips re-anchor to the TREE for export: on screen
+        // a strip may be stuck at the viewport bottom, but a figure must
+        // not carry an artefact of where the user happened to be scrolled
+        // -- the axis belongs at the bottom of the tree. (As the desktop
+        // does for PDF and graphics export.)
+        let t = d3.zoomTransform(svg);
+        copy.querySelectorAll('.aptx-float > g').forEach(function (strip) {
+            strip.setAttribute('transform', 'translate(' + t.x + ',' + t.y + ') scale(' + t.k + ')');
+        });
+        return {
+            text: toLightExport((new XMLSerializer()).serializeToString(copy)),
+            w: svg.width.baseVal.value || _displayWidth,
+            h: svg.height.baseVal.value || _displayHeight
+        };
+    }
+
+    // How far apart a full-size drawing puts its tips, in label heights, and
+    // how large it may grow at the very most -- a bound on the file, not a
+    // size anyone should meet short of tens of thousands of tips.
+    const FULL_SIZE_ROW_PITCH = 1.3;
+    const FULL_SIZE_MAX_EXTENT = 200000;
+    const FULL_SIZE_MARGIN = 20;
+    const FULL_SIZE_LEGEND_GAP = 24;
+
+    // "Full size": the whole tree, whatever part of it is on screen and
+    // however far it is zoomed out, drawn large enough for every tip name.
+    //
+    // The tree is re-laid-out at that size -- not scaled: scaling the picture
+    // would enlarge the names with it and leave them exactly as crowded --
+    // serialized, and put back. All of it runs in one task, so the screen
+    // never paints the enlarged tree, and the zoom transform is never
+    // touched: the copy simply leaves it out.
+    function graphicFullSize() {
+        let svg = treeSvgElement();
+        let keepW = _displayWidth;
+        let keepH = _displayHeight;
+        let keepHide = _state.dynahide;
+        try {
+            growToFullSize(keepHide);
+            return serializeFullSize(svg);
+        } finally {
+            _state.dynahide = keepHide;
+            _displayWidth = keepW;
+            _displayHeight = keepH;
+            update(null, 0);
         }
-        return svgTree;
+    }
+
+    // Enlarge the layout until no tip name has to be dropped. Rectangular: the
+    // row pitch is set outright. Circular: the ring is sized from its tips
+    // first. Then every layout is ASKED -- the auto-hide rules, switched on
+    // for the question, are what decide whether a name fits -- and grown
+    // again until none is refused. The width never shrinks below the window,
+    // so a tree zoomed out to a sliver comes out at a readable width.
+    function growToFullSize(userHides) {
+        let pitch = Math.max(4, _state.externalNodeFontSize || 0) * FULL_SIZE_ROW_PITCH;
+        let fit = _settings.enableDynamicSizing ? displaySizeFromContainer() : null;
+        let fitW = (fit && fit.w > 0) ? fit.w : _settings.displayWidth;
+        let fitH = (fit && fit.h > 0) ? fit.h : _settings.displayHeight;
+        let cap = function (v) {
+            return Math.min(FULL_SIZE_MAX_EXTENT, v);
+        };
+        _state.dynahide = true;
+        if (radialDisplay()) {
+            let side = cap(Math.max(Math.min(_displayWidth, _displayHeight), Math.min(fitW, fitH)));
+            _displayWidth = side;
+            _displayHeight = side;
+            update(null, 0);
+            // Sized first so every tip has a label's height of arc: on the
+            // ring in circular, where the names stand; in unrooted, where
+            // there is no ring, as if the tips were spread evenly around the
+            // fan's rim -- the most a fan's size can promise.
+            let rows = 0;
+            forEachDisplayed(function (n) {
+                if (!n.children || isCollapsed(n)) {
+                    ++rows;
+                }
+            });
+            let span = (_state.circularDisplay && _radial) ? Math.max(0.1, _radial.angleSpan) : 2 * Math.PI;
+            let radius = (_state.circularDisplay && _radial) ? _radial.maxRad : _displayWidth * 0.42;
+            let need = (rows * pitch) / span;
+            if (radius > 0 && need > radius) {
+                _displayWidth = cap(_displayWidth * need / radius);
+                _displayHeight = _displayWidth;
+                update(null, 0);
+            }
+            // Then grown while growing still frees names, and no further. In
+            // an unrooted fan names collide that no size will part: flu_h5's
+            // clusters sit on branches a thousand times shorter than the tree,
+            // and at 67,000 px across 176 of its 354 names were still refused
+            // (332 at 850 px, 322 at 2,300) -- chasing them only made a file
+            // too large to paint as a PNG. The drawing kept is the smallest
+            // that showed the fewest refusals.
+            let best = {hidden: _radialNamesHidden, side: _displayWidth};
+            for (let i = 0; i < 12 && _radialNamesHidden > 0 && _displayWidth < FULL_SIZE_MAX_EXTENT; ++i) {
+                _displayWidth = cap(_displayWidth * 1.4);
+                _displayHeight = _displayWidth;
+                update(null, 0);
+                if (_radialNamesHidden < best.hidden * 0.95) {
+                    best = {hidden: _radialNamesHidden, side: _displayWidth};
+                } else {
+                    break;
+                }
+            }
+            if (_displayWidth !== best.side) {
+                _displayWidth = best.side;
+                _displayHeight = best.side;
+                update(null, 0);
+            }
+        } else {
+            _displayWidth = cap(Math.max(_displayWidth, fitW));
+            _displayHeight = cap(Math.max(_displayHeight, fitH));
+            update(null, 0);
+            for (let i = 0; i < 4 && (_rowUnit < pitch * 0.999 || _dynahide_factor >= 2)
+                && _displayHeight < FULL_SIZE_MAX_EXTENT; ++i) {
+                // the vertical span less the fixed reserves is what the rows
+                // share, so that is the part that scales
+                let span = layoutSpans().vertical;
+                let reserve = _displayHeight - span;
+                let f = Math.max(pitch / Math.max(_rowUnit, 1e-6), 1.05);
+                _displayHeight = cap(reserve + (span * f));
+                update(null, 0);
+            }
+        }
+        // drawn once more under the user's own auto-hide choice: with it off,
+        // what it would have hidden is drawn, as it is on screen
+        if (!userHides) {
+            _state.dynahide = false;
+            update(null, 0);
+        }
+    }
+
+    // The enlarged drawing, cropped to what is actually drawn: the tree
+    // (with its floating strips, anchored to it) and, to its left rather than
+    // over it, the legend cards.
+    function serializeFullSize(svg) {
+        let M = FULL_SIZE_MARGIN;
+        let box = null;
+        let grow = function (b) {
+            if (!b || !(b.width > 0 || b.height > 0)) {
+                return;
+            }
+            if (!box) {
+                box = {x0: b.x, y0: b.y, x1: b.x + b.width, y1: b.y + b.height};
+            } else {
+                box.x0 = Math.min(box.x0, b.x);
+                box.y0 = Math.min(box.y0, b.y);
+                box.x1 = Math.max(box.x1, b.x + b.width);
+                box.y1 = Math.max(box.y1, b.y + b.height);
+            }
+        };
+        grow(_svgGroup.node().getBBox());
+        // a strip's content is drawn in tree coordinates; its own transform
+        // only places it on screen, and getBBox leaves that out
+        let strips = _floatGroup ? Array.prototype.slice.call(_floatGroup.node().children) : [];
+        strips.forEach(function (g) {
+            grow(g.getBBox());
+        });
+        if (!box) {
+            return graphicAsShown();
+        }
+        let legends = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE].map(function (id) {
+            return svg.querySelector(':scope > g.' + id);
+        }).filter(Boolean);
+        let lbox = null;
+        legends.forEach(function (g) {
+            let b = g.getBBox();
+            if (!lbox) {
+                lbox = {x0: b.x, y0: b.y, x1: b.x + b.width, y1: b.y + b.height};
+            } else {
+                lbox.x0 = Math.min(lbox.x0, b.x);
+                lbox.y0 = Math.min(lbox.y0, b.y);
+                lbox.x1 = Math.max(lbox.x1, b.x + b.width);
+                lbox.y1 = Math.max(lbox.y1, b.y + b.height);
+            }
+        });
+        let legendW = lbox ? (lbox.x1 - lbox.x0) + FULL_SIZE_LEGEND_GAP : 0;
+        let legendH = lbox ? (lbox.y1 - lbox.y0) : 0;
+        let treeW = box.x1 - box.x0;
+        let treeH = box.y1 - box.y0;
+        let W = Math.ceil(M + legendW + treeW + M);
+        let H = Math.ceil(M + Math.max(treeH, legendH) + M);
+
+        let copy = svg.cloneNode(true);
+        let place = 'translate(' + (M + legendW - box.x0) + ',' + (M - box.y0) + ')';
+        let tree = copyCounterpart(svg, copy, _svgGroup.node());
+        if (tree) {
+            tree.setAttribute('transform', place);
+        }
+        copy.querySelectorAll('.aptx-float > g').forEach(function (strip) {
+            strip.setAttribute('transform', place);
+        });
+        if (lbox) {
+            legends.map(function (g) {
+                return copyCounterpart(svg, copy, g);
+            }).forEach(function (c) {
+                if (c) {
+                    c.setAttribute('transform', 'translate(' + (M - lbox.x0) + ',' + (M - lbox.y0) + ')');
+                }
+            });
+        }
+        cleanExportCopy(copy);
+        copy.setAttribute('width', W);
+        copy.setAttribute('height', H);
+        copy.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        return {text: toLightExport((new XMLSerializer()).serializeToString(copy)), w: W, h: H};
     }
 
     function downloadTree(format) {
-        if (format === PNG_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
-            downloadAsPng();
-            changeBaseBackgoundColor(_state.backgroundColorDefault);
-        } else if (format === SVG_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
-            downloadAsSVG();
-            changeBaseBackgoundColor(_state.backgroundColorDefault);
-        } else if (format === NH_EXPORT_FORMAT) {
+        if (format === NH_EXPORT_FORMAT) {
             downloadAsNH();
         } else if (format === NEXUS_EXPORT_FORMAT) {
             downloadAsNexus();
         } else if (format === PHYLOXML_EXPORT_FORMAT) {
             downloadAsPhyloXml();
-        } else if (format === PDF_EXPORT_FORMAT) {
-            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
-            downloadAsPdf();
-            changeBaseBackgoundColor(_state.backgroundColorDefault);
         } else if (format === FASTA_EXPORT_FORMAT) {
             downloadAsFastaAll();
+        } else if (format === SVG_EXPORT_FORMAT || format === PDF_EXPORT_FORMAT || format === PNG_EXPORT_FORMAT) {
+            let draw = function () {
+                changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
+                let graphic;
+                try {
+                    graphic = exportGraphic();
+                } finally {
+                    changeBaseBackgoundColor(_state.backgroundColorDefault);
+                }
+                if (!graphic) {
+                    return;
+                }
+                if (format === SVG_EXPORT_FORMAT) {
+                    downloadAsSVG(graphic);
+                } else if (format === PDF_EXPORT_FORMAT) {
+                    downloadAsPdf(graphic);
+                } else {
+                    downloadAsPng(graphic);
+                }
+            };
+            // A full-size drawing re-lays-out the whole tree, more than once
+            // on a crowded one: on a tree whose redraws are slow, the card
+            // goes up first, as it does for any slow redraw.
+            if (_downloadFullSize && _redrawMs >= REDRAW_CARD_MS && _container) {
+                showBusy(_container, 'Drawing the whole tree');
+                afterPaint(function () {
+                    try {
+                        draw();
+                    } finally {
+                        hideBusy();
+                    }
+                });
+            } else {
+                draw();
+            }
         }
     }
 
@@ -16939,7 +17389,7 @@ function (root, d3, forester, phyloXml) {
 
     function downloadAsPhyloXml() {
         let x = phyloXml.toPhyloXML(_root, 9);
-        saveAs(new Blob([x], {type: "application/xml"}), _state.nameForPhyloXmlDownload);
+        saveAs(new Blob([x], {type: "application/xml"}), downloadFileName(XML_SUFFIX));
     }
 
     function downloadAsNH() {
@@ -16947,7 +17397,7 @@ function (root, d3, forester, phyloXml) {
         // not a preference: writing them out produces a file that will not parse
         // back in.
         let nh = forester.toNewHampshire(_root, 9, true, _settings.nhExportWriteConfidences);
-        saveAs(new Blob([nh], {type: "application/txt"}), _state.nameForNhDownload);
+        saveAs(new Blob([nh], {type: "application/txt"}), downloadFileName(NH_SUFFIX));
     }
 
     function downloadAsNexus() {
@@ -16955,17 +17405,16 @@ function (root, d3, forester, phyloXml) {
         // when the tips carry an alignment -- carrying tree and alignment
         // in one file is what Nexus is for
         let nex = forester.toNexus(_root, 9, _settings.nhExportWriteConfidences);
-        saveAs(new Blob([nex], {type: "application/txt"}), _state.nameForNexusDownload);
+        saveAs(new Blob([nex], {type: "application/txt"}), downloadFileName(NEXUS_SUFFIX));
     }
 
-    function downloadAsSVG() {
-        let svg = getTreeAsSvg();
-        saveAs(new Blob([decodeURIComponent(encodeURIComponent(svg))], {type: "application/svg+xml"}), _state.nameForSvgDownload);
+    function downloadAsSVG(graphic) {
+        saveAs(new Blob([graphic.text], {type: "image/svg+xml"}), downloadFileName(SVG_SUFFIX));
     }
 
     function downloadAsFastaAll() {
         let fasta_text = forester.getMolecularSequencesAsFasta(_root, '\n');
-        saveAs(new Blob([fasta_text], {type: "application/txt"}), _state.nameForFastaDownload);
+        saveAs(new Blob([fasta_text], {type: "application/txt"}), downloadFileName(FASTA_SUFFIX));
     }
 
     // Vector PDF via the OPTIONAL page-level libraries jsPDF and svg2pdf.js
@@ -16979,13 +17428,18 @@ function (root, d3, forester, phyloXml) {
             && window.jspdf.jsPDF.API.svg);
     }
 
-    function downloadAsPdf() {
+    // The largest page a PDF may have: 200 inches a side (ISO 32000, Annex C).
+    // Readers refuse, or quietly clip, anything past it -- and a full-size
+    // tree of a few thousand tips is past it -- so a larger drawing is scaled
+    // onto the largest page instead. It is vector: nothing is lost by that.
+    const PDF_MAX_PAGE_PT = 14400;
+
+    function downloadAsPdf(graphic) {
         if (!pdfExportAvailable()) {
             console.error(ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
             return;
         }
-        let svg = getTreeAsSvg();
-        let el = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+        let el = new DOMParser().parseFromString(graphic.text, 'image/svg+xml').documentElement;
         // the full-canvas background rect is sized in percentages, which
         // svg2pdf renders literally (a dark 100pt square at the origin); the
         // PDF page is white anyway, so the rect is simply dropped
@@ -17017,9 +17471,9 @@ function (root, d3, forester, phyloXml) {
                 }
             });
         });
-        let svgEl = treeSvgElement();
-        let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
-        let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
+        let fit = Math.min(1, PDF_MAX_PAGE_PT / Math.max(graphic.w, graphic.h));
+        let w = graphic.w * fit;
+        let h = graphic.h * fit;
         let pdf = new window.jspdf.jsPDF({
             orientation: w >= h ? 'landscape' : 'portrait',
             unit: 'pt',
@@ -17027,7 +17481,7 @@ function (root, d3, forester, phyloXml) {
             compress: true
         });
         pdf.svg(el, {x: 0, y: 0, width: w, height: h}).then(function () {
-            pdf.save(_state.nameForPdfDownload);
+            pdf.save(downloadFileName(PDF_SUFFIX));
             holder.remove();
         }, function (err) {
             holder.remove();
@@ -17044,23 +17498,55 @@ function (root, d3, forester, phyloXml) {
         return !!(window.Canvg && window.Canvg.fromString);
     }
 
-    function downloadAsPng() {
+    // The biggest canvas this browser will actually paint, at no more than
+    // the scale asked for. Browsers cap a canvas by side and by area, and
+    // differently (Safari's area cap is a sixteenth of Chrome's); past the
+    // cap a canvas is not an error, it is just blank -- which is what a
+    // full-size PNG of a large tree would silently have been. So the canvas
+    // is TRIED: filled, and its far corner read back.
+    function paintableCanvas(w, h, scale) {
+        for (let k = scale; k > 0.05; k *= 0.8) {
+            let canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(w * k));
+            canvas.height = Math.max(1, Math.round(h * k));
+            let ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                let px;
+                try {
+                    px = ctx.getImageData(canvas.width - 1, canvas.height - 1, 1, 1).data;
+                } catch {
+                    px = null;
+                }
+                if (px && px[3] === 255) {
+                    return {canvas: canvas, ctx: ctx, scale: k};
+                }
+            }
+        }
+        return null;
+    }
+
+    function downloadAsPng(graphic) {
         if (!pngExportAvailable()) {
             console.error(ERROR + 'PNG export needs the optional canvg library on the page');
             return;
         }
-        let svg = getTreeAsSvg();
         // Render onto an up-scaled canvas so the exported PNG is high-resolution
-        // rather than 1:1 with the on-screen SVG. Scale is configurable via
-        // _settings.pngExportScale (default 4x).
-        let svgEl = treeSvgElement();
-        let scale = _settings.pngExportScale > 0 ? _settings.pngExportScale : 4;
-        let w = (svgEl && svgEl.width.baseVal.value) || _displayWidth;
-        let h = (svgEl && svgEl.height.baseVal.value) || _displayHeight;
-        let canvas = document.createElement('canvas');
-        canvas.width = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        let ctx = canvas.getContext('2d');
+        // rather than 1:1 with the on-screen SVG: the scale is the Download
+        // section's 2x/4x/8x, less where the browser cannot paint a canvas that
+        // large (paintableCanvas).
+        let target = paintableCanvas(graphic.w, graphic.h, _pngScale);
+        if (!target) {
+            console.error(ERROR + 'PNG export failed: this browser cannot paint a canvas of that size');
+            return;
+        }
+        if (target.scale < _pngScale) {
+            console.warn(WARNING + ': PNG exported at ' + target.scale.toFixed(2) + 'x rather than ' + _pngScale
+                + 'x: the largest image this browser can paint');
+        }
+        let canvas = target.canvas;
+        let ctx = target.ctx;
         // The up-scaling is done on the CONTEXT, not through canvg's own
         // scaleWidth/scaleHeight: canvg 4's scaling pipeline mis-scales (a
         // requested 4x came out at 2.5x, leaving unpainted margins -- and any
@@ -17069,17 +17555,15 @@ function (root, d3, forester, phyloXml) {
         // background before canvg draws a thing. ignoreDimensions keeps canvg
         // from resizing the canvas to the SVG's size (which would erase both
         // the transform and the fill); ignoreClear keeps it from clearing the
-        // fill back to transparent. Content outside the on-screen viewport
-        // falls outside the canvas and is cropped, so the export shows
-        // exactly the visible view. v4's render() is async (v1's canvg()
+        // fill back to transparent. v4's render() is async (v1's canvg()
         // call drew synchronously, so toBlob could follow on the next line).
         ctx.fillStyle = _state.backgroundColorForPrintExportDefault;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(scale, scale);
-        let v = window.Canvg.fromString(ctx, svg);
+        ctx.scale(target.scale, target.scale);
+        let v = window.Canvg.fromString(ctx, graphic.text);
         v.render({ignoreDimensions: true, ignoreClear: true}).then(function () {
             canvas.toBlob(function (blob) {
-                saveAs(blob, _state.nameForPngDownload);
+                saveAs(blob, downloadFileName(PNG_SUFFIX));
             });
         }, function (err) {
             console.error(ERROR + 'PNG export failed: ' + err);
