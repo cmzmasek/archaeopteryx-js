@@ -19,7 +19,7 @@ consumers only see a change when a version is cut.
   was. In the unrooted layout, where names on very short branches collide at
   any size, the fan grows only while growing still frees names.
 - **The Download menu says what each format keeps.** The Download button opens
-  an in-page menu, grouped as Graphics, Tree and Sequences, replacing the
+  an in-page menu, grouped as Graphics, Tree and Tip data, replacing the
   native select: phyloXML keeps everything the tree carries, Newick only names,
   branch lengths and support. The **Nexus** entry says, before it is chosen,
   whether the file will carry the alignment — or, for sequences of unequal
@@ -31,11 +31,15 @@ consumers only see a change when a version is cut.
 - **An editable file name.** Each format adds its own extension; a typed one
   is not doubled, and characters no file system accepts are replaced.
 - **Copy Newick** puts the tree on the clipboard, exactly as the Newick
-  download writes it.
+  download writes it, and **Copy PNG** puts the picture there — the desktop's
+  copy-image, for pasting straight into Word or PowerPoint.
+- **TSV of every tip** in the Download menu: the node menu's *Download Ext.
+  Node Data* for the whole tree — names, taxonomy, sequence names, branch
+  lengths and every property, one row per tip.
 
 ### Changed
-- **Download is a section of its own** and folds like the others (it starts
-  open).
+- **Download is a section of its own** and folds like the others; it starts
+  folded.
 - A full-size PDF past the 200-inch PDF page limit is scaled onto the largest
   page. jsPDF would otherwise clamp the page silently and cut the drawing off.
 - The SVG file is typed `image/svg+xml` (it was `application/svg+xml`).

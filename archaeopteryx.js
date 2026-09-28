@@ -158,6 +158,7 @@ function (root, d3, forester, phyloXml) {
     const XML_SUFFIX = '.xml';
     const FASTA_SUFFIX = '.fasta';
     const NEXUS_SUFFIX = '.nexus';
+    const TSV_SUFFIX = '.tsv';
 
 
     // ---------------------------
@@ -236,6 +237,7 @@ function (root, d3, forester, phyloXml) {
     const DUPLICATION_AND_SPECIATION_COLOR_COLOR = '#E69F00';
     const DUPLICATION_COLOR = '#D55E00';
     const FASTA_EXPORT_FORMAT = 'Fasta';
+    const TSV_EXPORT_FORMAT = 'TSV';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
     // branch-data (support / branch-length) text sits 2px under the label
@@ -360,6 +362,7 @@ function (root, d3, forester, phyloXml) {
     const DOWNLOAD_FULL_SIZE_BUTTON = 'dl_full_b';
     const DOWNLOAD_PNG_SCALES = [2, 4, 8];
     const COPY_NEWICK_BUTTON = 'copy_nh_b';
+    const COPY_PNG_BUTTON = 'copy_png_b';
     const DYNAHIDE_CB = 'dynahide_cb';
     const MSA_CB = 'msa_cb';
     const MSA_LOGO_CB = 'msa_logo_cb';
@@ -13340,11 +13343,13 @@ function (root, d3, forester, phyloXml) {
             action: entry(NH_EXPORT_FORMAT)});
         let nexus = nexusDownloadDetail();
         items.push({label: 'Nexus', detail: nexus.text, warn: nexus.warn, action: entry(NEXUS_EXPORT_FORMAT)});
-        // only when there is something to write: a tip carrying a molecular
-        // sequence, aligned or not (same gate as the node menu's Fasta
-        // entries) -- on any other tree the download would be an empty file
+        // FASTA only when there is something to write: a tip carrying a
+        // molecular sequence, aligned or not (same gate as the node menu's
+        // Fasta entries) -- on any other tree the download would be empty
+        items.push({heading: 'Tip data'});
+        items.push({label: 'TSV', detail: 'a table, one row per tip: names, taxonomy, sequence names, '
+            + 'branch lengths and every property', action: entry(TSV_EXPORT_FORMAT)});
         if (_basicTreeProperties && _basicTreeProperties.maxMolSeqLength > 0) {
-            items.push({heading: 'Sequences'});
             items.push({label: 'FASTA', detail: 'every molecular sequence the tips carry',
                 action: entry(FASTA_EXPORT_FORMAT)});
         }
@@ -13713,7 +13718,9 @@ function (root, d3, forester, phyloXml) {
     //    of open sections: three open sections measure anywhere from 215px to
     //    562px, so a count would not have bounded the height at all.
     const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
-    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Domain Architectures'];
+    // Download too (Christian, 2026-09-28): four rows, and not something a
+    // session uses often.
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Domain Architectures', 'Download'];
 
     function loadPanelSections() {
         if (_panelSections) {
@@ -16026,6 +16033,7 @@ function (root, d3, forester, phyloXml) {
 
         on(DOWNLOAD_BUTTON, 'click', downloadButtonPressed);
         on(COPY_NEWICK_BUTTON, 'click', copyNewickPressed);
+        on(COPY_PNG_BUTTON, 'click', copyPngPressed);
         on(DOWNLOAD_AS_SHOWN_BUTTON, 'change', function () {
             _downloadFullSize = false;
         });
@@ -16518,8 +16526,15 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<button type="button" class="aptx-gbtn aptx-dlbtn" id="' + DOWNLOAD_BUTTON + '" name="'
                 + DOWNLOAD_BUTTON + '" aria-haspopup="menu"'
                 + ' title="download the tree: choose the format from the menu">Download…</button>');
+            h = h.concat('</div>');
+            h = h.concat('<div class="aptx-dlrow">');
             h = h.concat('<button type="button" class="aptx-gbtn aptx-dlbtn" id="' + COPY_NEWICK_BUTTON + '" name="'
                 + COPY_NEWICK_BUTTON + '" title="copy the tree to the clipboard in Newick format">Copy Newick</button>');
+            if (pngCopyAvailable()) {
+                h = h.concat('<button type="button" class="aptx-gbtn aptx-dlbtn" id="' + COPY_PNG_BUTTON + '" name="'
+                    + COPY_PNG_BUTTON + '" title="copy the tree to the clipboard as a PNG image, to paste into'
+                    + ' a document or a slide: drawn as the Graphics and PNG choices above say">Copy PNG</button>');
+            }
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;
@@ -17322,18 +17337,10 @@ function (root, d3, forester, phyloXml) {
             downloadAsPhyloXml();
         } else if (format === FASTA_EXPORT_FORMAT) {
             downloadAsFastaAll();
+        } else if (format === TSV_EXPORT_FORMAT) {
+            downloadAsTsvAll();
         } else if (format === SVG_EXPORT_FORMAT || format === PDF_EXPORT_FORMAT || format === PNG_EXPORT_FORMAT) {
-            let draw = function () {
-                changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
-                let graphic;
-                try {
-                    graphic = exportGraphic();
-                } finally {
-                    changeBaseBackgoundColor(_state.backgroundColorDefault);
-                }
-                if (!graphic) {
-                    return;
-                }
+            withGraphic(function (graphic) {
                 if (format === SVG_EXPORT_FORMAT) {
                     downloadAsSVG(graphic);
                 } else if (format === PDF_EXPORT_FORMAT) {
@@ -17341,22 +17348,37 @@ function (root, d3, forester, phyloXml) {
                 } else {
                     downloadAsPng(graphic);
                 }
-            };
-            // A full-size drawing re-lays-out the whole tree, more than once
-            // on a crowded one: on a tree whose redraws are slow, the card
-            // goes up first, as it does for any slow redraw.
-            if (_downloadFullSize && _redrawMs >= REDRAW_CARD_MS && _container) {
-                showBusy(_container, 'Drawing the whole tree');
-                afterPaint(function () {
-                    try {
-                        draw();
-                    } finally {
-                        hideBusy();
-                    }
-                });
-            } else {
-                draw();
+            });
+        }
+    }
+
+    // Hands fn the graphic the Download section's choices describe (null when
+    // there is none), drawn in the light export colours. A full-size drawing
+    // re-lays-out the whole tree, more than once on a crowded one: on a tree
+    // whose redraws are slow, the card goes up first, as it does for any slow
+    // redraw.
+    function withGraphic(fn) {
+        let draw = function () {
+            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
+            let graphic;
+            try {
+                graphic = exportGraphic();
+            } finally {
+                changeBaseBackgoundColor(_state.backgroundColorDefault);
             }
+            fn(graphic);
+        };
+        if (_downloadFullSize && _redrawMs >= REDRAW_CARD_MS && _container) {
+            showBusy(_container, 'Drawing the whole tree');
+            afterPaint(function () {
+                try {
+                    draw();
+                } finally {
+                    hideBusy();
+                }
+            });
+        } else {
+            draw();
         }
     }
 
@@ -17410,6 +17432,17 @@ function (root, d3, forester, phyloXml) {
 
     function downloadAsSVG(graphic) {
         saveAs(new Blob([graphic.text], {type: "image/svg+xml"}), downloadFileName(SVG_SUFFIX));
+    }
+
+    // Every tip's data, one row per tip top to bottom as drawn: the node
+    // menu's "Download Ext. Node Data" for the whole tree -- the desktop's
+    // columns, and a table that joins back onto the tree as metadata.
+    function downloadAsTsvAll() {
+        let tips = forester.getAllExternalNodes(_root).reverse();
+        let tsv = forester.externalNodeDataTsv(tips, function (n, i) {
+            return (n.viewId !== undefined) ? n.viewId : i + 1;
+        });
+        saveAs(new Blob([tsv], {type: 'text/tab-separated-values'}), downloadFileName(TSV_SUFFIX));
     }
 
     function downloadAsFastaAll() {
@@ -17528,18 +17561,25 @@ function (root, d3, forester, phyloXml) {
     }
 
     function downloadAsPng(graphic) {
-        if (!pngExportAvailable()) {
-            console.error(ERROR + 'PNG export needs the optional canvg library on the page');
-            return;
+        renderPng(graphic).then(function (blob) {
+            saveAs(blob, downloadFileName(PNG_SUFFIX));
+        }, function (err) {
+            console.error(ERROR + 'PNG export failed: ' + err);
+        });
+    }
+
+    // The graphic as a PNG Blob, at the Download section's 2x/4x/8x -- less
+    // where the browser cannot paint a canvas that large (paintableCanvas).
+    function renderPng(graphic) {
+        if (!graphic) {
+            return Promise.reject(new Error('nothing to draw'));
         }
-        // Render onto an up-scaled canvas so the exported PNG is high-resolution
-        // rather than 1:1 with the on-screen SVG: the scale is the Download
-        // section's 2x/4x/8x, less where the browser cannot paint a canvas that
-        // large (paintableCanvas).
+        if (!pngExportAvailable()) {
+            return Promise.reject(new Error('PNG export needs the optional canvg library on the page'));
+        }
         let target = paintableCanvas(graphic.w, graphic.h, _pngScale);
         if (!target) {
-            console.error(ERROR + 'PNG export failed: this browser cannot paint a canvas of that size');
-            return;
+            return Promise.reject(new Error('this browser cannot paint a canvas of that size'));
         }
         if (target.scale < _pngScale) {
             console.warn(WARNING + ': PNG exported at ' + target.scale.toFixed(2) + 'x rather than ' + _pngScale
@@ -17561,12 +17601,50 @@ function (root, d3, forester, phyloXml) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.scale(target.scale, target.scale);
         let v = window.Canvg.fromString(ctx, graphic.text);
-        v.render({ignoreDimensions: true, ignoreClear: true}).then(function () {
-            canvas.toBlob(function (blob) {
-                saveAs(blob, downloadFileName(PNG_SUFFIX));
+        return v.render({ignoreDimensions: true, ignoreClear: true}).then(function () {
+            return new Promise(function (resolve, reject) {
+                canvas.toBlob(function (blob) {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('the canvas gave no image'));
+                    }
+                }, 'image/png');
             });
+        });
+    }
+
+    // Copying an image needs the async clipboard's write() and ClipboardItem
+    // (a secure page: https, or localhost) as well as canvg; the button is
+    // only offered where all three are there.
+    function pngCopyAvailable() {
+        return pngExportAvailable() && typeof window.ClipboardItem === 'function'
+            && !!(navigator.clipboard && navigator.clipboard.write);
+    }
+
+    // The desktop's "copy image": the picture straight onto the clipboard,
+    // for a Word document or a slide. The ClipboardItem is made at once, with
+    // the image as a PROMISE, inside the click: Safari allows a clipboard
+    // write only during the gesture, and drawing the PNG takes longer than
+    // that -- a promise-valued item is how it waits (Chrome takes it too).
+    function copyPngPressed(event) {
+        let btn = event.currentTarget;
+        let png = new Promise(function (resolve, reject) {
+            withGraphic(function (graphic) {
+                renderPng(graphic).then(resolve, reject);
+            });
+        });
+        let written;
+        try {
+            written = navigator.clipboard.write([new window.ClipboardItem({'image/png': png})]);
+        } catch (e) {
+            written = Promise.reject(e);
+        }
+        written.then(function () {
+            flashButton(btn, 'Copied ✓');
         }, function (err) {
-            console.error(ERROR + 'PNG export failed: ' + err);
+            console.error(ERROR + 'copying the PNG failed: ' + err);
+            flashButton(btn, 'Copy failed');
         });
     }
 

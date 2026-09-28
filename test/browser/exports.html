@@ -47,8 +47,12 @@ const nextFile = async (before, ms) => {
     return files.length > before ? files[files.length - 1] : null;
 };
 let copied = null;
+let copiedItems = null;
 Object.defineProperty(navigator, 'clipboard', {configurable: true,
-    value: {writeText: (t) => { copied = t; return Promise.resolve(); }}});
+    value: {writeText: (t) => { copied = t; return Promise.resolve(); },
+        // a real clipboard waits on a promise-valued item before it resolves
+        write: async (items) => { for (const it of items) { await it.getType('image/png'); }
+            copiedItems = items; }}});
 
 const byId = (id) => document.getElementById(id);
 const menu = () => document.querySelector('.aptx-node-menu');
@@ -116,18 +120,16 @@ async function launch(file, text) {
     const section = document.querySelector('fieldset.aptx-download');
     const legend = section && section.querySelector(':scope > legend');
     check('Download is a titled section', !!legend && legend.textContent.trim() === 'Download');
-    // On this short window the panel's fitter folds sections to make room,
-    // bottom first -- so Download may arrive folded HERE; that it starts open
-    // is checked where there is room (the seqs=1 case). Unfolded to measure.
+    // it starts folded (checked where the panel has room: seqs=1); unfolded
+    // here to measure and to use
     if (section && section.classList.contains('aptx-collapsed')) {
-        out.push('Download arrived folded: the window is too short for the whole panel');
         legend.click();
         await sleep(200);
     }
     // A button's words sit in its middle and fit inside it. Measured on the
     // text itself: the button was a fixed 60px, the word wider, and it ran
     // into the right edge -- centred by its CSS and off-centre on screen.
-    for (const id of ['dl_b', 'copy_nh_b']) {
+    for (const id of ['dl_b', 'copy_nh_b', 'copy_png_b']) {
         const b = byId(id);
         const range = document.createRange();
         range.selectNodeContents(b);
@@ -196,6 +198,14 @@ async function launch(file, text) {
     const nexText = f ? await f.blob.text() : '';
     check('the Nexus file carries the tree', /Begin Trees;/.test(nexText) && f.name === 'fig_1.nexus',
         f && f.name);
+    f = await download('TSV');
+    const tsv = f ? (await f.blob.text()).split('\n').filter((l) => l !== '') : [];
+    const header = tsv.length ? tsv[0].split('\t') : [];
+    out.push('TSV: ' + (tsv.length - 1) + ' rows, columns ' + header.join(', ').slice(0, 120));
+    check('the TSV file has a row per tip, under a header naming them', f && f.name === 'fig_1.tsv'
+        && tsv.length - 1 === tips && header.indexOf('name') >= 0
+        && tsv.slice(1).every((l) => l.split('\t').length === header.length),
+        f && f.name + ', ' + (tsv.length - 1) + ' rows of ' + tips + ' tips');
     byId('dl_name').value = '';
     f = await download('Newick');
     check('an empty name falls back to the tree\'s', f && f.name.length > 4 && f.name !== '.tre', f && f.name);
@@ -316,6 +326,22 @@ async function launch(file, text) {
             check('PNG ' + k + 'x: the tree is painted on it', dark > 50, dark + ' dark samples');
         }
     }
+    // Copy PNG: the same picture as the PNG download, on the clipboard
+    byId('dl_png2_b').closest('label').click();
+    await sleep(50);
+    copiedItems = null;
+    byId('copy_png_b').click();
+    {
+        const t1 = Date.now();
+        while (!copiedItems && Date.now() - t1 < 20000) { await sleep(50); }
+    }
+    const clip = copiedItems ? await createImageBitmap(await copiedItems[0].getType('image/png')) : null;
+    check('Copy PNG puts the drawing on the clipboard at the chosen scale', clip
+        && clip.width === Math.round(fw * 2) && sameShape(clip.width, clip.height, fw, fh),
+        clip ? clip.width + 'x' + clip.height + ' vs ' + Math.round(fw * 2) : 'nothing copied');
+    await sleep(100);
+    check('... and says so on its face', /Copied/.test(byId('copy_png_b').textContent),
+        byId('copy_png_b').textContent);
     f = await download('PDF');
     const pageSize = f && f.pdf ? f.pdf.internal.pageSize : null;
     const pw = pageSize ? pageSize.getWidth() : 0;
@@ -338,7 +364,9 @@ async function nexusPromise() {
     for (const [name, xml, ragged] of cases) {
         await launch(name + '.xml', xml);
         const section = document.querySelector('fieldset.aptx-download');
-        check(name + ': the Download section starts open', section && !section.classList.contains('aptx-collapsed'));
+        // folded by default (Christian, 2026-09-28), in a panel with room
+        // for everything, so the fitter has had no reason to fold it
+        check(name + ': the Download section starts folded', section && section.classList.contains('aptx-collapsed'));
         byId('dl_b').click();
         await sleep(150);
         const b = menuEntry('Nexus');

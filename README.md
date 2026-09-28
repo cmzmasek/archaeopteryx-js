@@ -1013,9 +1013,9 @@ can carry.
 
 ### Downloads
 
-The panel's **Download** section holds the choices every download shares, and
-its **Download…** button opens the format menu, grouped as Graphics, Tree and
-Sequences. Each entry says what that format keeps — phyloXML everything the
+The panel's **Download** section (folded until you open it) holds the choices
+every download shares, and its **Download…** button opens the format menu,
+grouped as Graphics, Tree and Tip data. Each entry says what that format keeps — phyloXML everything the
 tree carries, Newick only names, branch lengths and support — and the Nexus
 entry says, before you pick it, whether the file will carry the alignment or,
 when the sequences are of unequal length, why it cannot.
@@ -1036,6 +1036,15 @@ when the sequences are of unequal length, why it cannot.
   paint, with a console warning, rather than blank.
 * **Copy Newick** puts the tree on the clipboard, exactly as the Newick
   download writes it.
+* **Copy PNG** puts the picture on the clipboard, drawn as the Graphics and PNG
+  choices say — ready to paste into a Word document or a slide. It needs a
+  secure page (https, or localhost) and canvg, and is offered only where both
+  are there.
+
+**TSV** (under Tip data) writes every tip's data as a table, one row per tip in
+the order drawn: the node menu's **Download Ext. Node Data** for the whole
+tree, with the same columns, and a table that joins back onto the tree as
+[metadata](#metadata-tables).
 
 A full-size PDF taller or wider than 200 inches (14,400 pt, the PDF page
 limit) is scaled onto the largest page; it is vector, so nothing is lost.
