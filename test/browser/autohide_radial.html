@@ -65,9 +65,24 @@
     const marks = () => boxes('#phylogram1 text.bllabel, #phylogram1 text.conflabel',
         (t) => (t.textContent || '').trim() !== '');
     const hits = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    // HOW DEEP, not only whether. The rule packs marks edge to edge -- touching
+    // is allowed, overlapping is not -- so the promise is only as exact as the
+    // agreement between the canvas measurement it claims boxes with and the
+    // text the browser draws. Measured: 0.55 px on macOS, 1.49 px on a Linux
+    // CI runner, which is enough to turn two touching marks into two
+    // overlapping ones. The depth tells that apart from a rule that is
+    // actually granting the same pixels twice.
+    const depth = (a, b) => {
+        if (!hits(a, b)) { return 0; }
+        return Math.min(Math.min((a.x + a.w) - b.x, (b.x + b.w) - a.x),
+            Math.min((a.y + a.h) - b.y, (b.y + b.h) - a.y));
+    };
     const clashes = (L) => { let n = 0;
         for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
             if (hits(L[i], L[j])) { ++n; break; } } } return n; };
+    const deepest = (L) => { let d = 0;
+        for (let i = 0; i < L.length; ++i) { for (let j = i + 1; j < L.length; ++j) {
+            d = Math.max(d, depth(L[i], L[j])); } } return d; };
 
     // The DOTS are measured as circles, from the screen matrix, NOT with
     // getBoundingClientRect. On a rotated element Chrome does not compute the
@@ -99,8 +114,11 @@
         await layout(id);
         const kept = marks();
         const clash = clashes(kept);
-        check(name + ': no granted mark overlaps another', clash === 0,
-            clash + ' of ' + kept.length + ' overlap');
+        const deep = deepest(kept);
+        out.push(name + ': deepest overlap among granted marks ' + deep.toFixed(2) + ' px');
+        check(name + ': no granted mark overlaps another by more than the measurement',
+            deep < 3.0, clash + ' of ' + kept.length + ' overlap, deepest '
+                + deep.toFixed(2) + ' px, bound 3.0');
         check(name + ': and something is still drawn', kept.length > 0, kept.length + ' drawn');
 
         await off('dynahide_cb');
@@ -133,8 +151,10 @@
     // and the rectangular layout still behaves, after the round trip
     await layout('layout_rect_b');
     const rect = marks();
-    check('rectangular: still no granted mark overlaps another', clashes(rect) === 0,
-        clashes(rect) + ' of ' + rect.length + ' overlap');
+    out.push('rectangular: deepest overlap among granted marks ' + deepest(rect).toFixed(2) + ' px');
+    check('rectangular: still no granted mark overlaps another by more than the measurement',
+        deepest(rect) < 3.0, clashes(rect) + ' of ' + rect.length + ' overlap, deepest '
+            + deepest(rect).toFixed(2) + ' px, bound 3.0');
     // A reading taken off a moving picture is not a reading.
     check('every measurement was taken on a settled view', unsettled === 0,
         unsettled + ' never settled');
