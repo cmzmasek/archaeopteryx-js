@@ -2954,7 +2954,6 @@ function (root, d3, forester, phyloXml) {
             hn.data.x = hn.x + _topReserve;
             hn.data.y = hn.y;
             hn.data.depth = hn.depth;
-            hn.data._drawnParent = hn.parent ? hn.parent.data : null;
         });
         let nodes = hierarchy.descendants().map(function (hn) {
             return hn.data;
@@ -3248,8 +3247,9 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (drawnParent(d)) {
-                    return (drawnParent(d).y - d.y + 1);
+                let p = drawnParent(d);
+                if (p) {
+                    return (p.y - d.y + 1);
                 } else {
                     return 0;
                 }
@@ -3269,8 +3269,9 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (drawnParent(d)) {
-                    return (0.5 * (drawnParent(d).y - d.y));
+                let p = drawnParent(d);
+                if (p) {
+                    return (0.5 * (p.y - d.y));
                 } else {
                     return 0;
                 }
@@ -3291,7 +3292,8 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                return drawnParent(d) ? (0.5 * (drawnParent(d).y - d.y)) : 0;
+                let p = drawnParent(d);
+                return p ? (0.5 * (p.y - d.y)) : 0;
             });
 
         node.select('text.brancheventlabel')
@@ -3305,8 +3307,9 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (drawnParent(d)) {
-                    return (0.5 * (drawnParent(d).y - d.y));
+                let p = drawnParent(d);
+                if (p) {
+                    return (0.5 * (p.y - d.y));
                 }
             });
 
@@ -4019,12 +4022,14 @@ function (root, d3, forester, phyloXml) {
             if (d.ux === undefined) {
                 return null;
             }
-            let p = (drawnParent(d) && drawnParent(d).ux !== undefined) ? drawnParent(d) : null;
+            let p = drawnParent(d);
+            p = (p && p.ux !== undefined) ? p : null;
             return p ? [0.5 * (d.ux + p.ux), 0.5 * (d.uy + p.uy), angle] : [d.ux, d.uy, angle];
         }
         let r = radialRadius(d.y);
-        if (drawnParent(d)) {
-            r = 0.5 * (r + radialRadius(drawnParent(d).y));
+        let p = drawnParent(d);
+        if (p) {
+            r = 0.5 * (r + radialRadius(p.y));
         }
         let pt = polarXY(radialAngle(d.x), r);
         return [pt[0], pt[1], angle];
@@ -4060,7 +4065,8 @@ function (root, d3, forester, phyloXml) {
         // used to claim nothing -- so the first child's number, landing in
         // almost the same place, was granted and painted over them. The one
         // place the pass could not keep its promise.
-        let span = drawnParent(d) ? (drawnParent(d).y - d.y) : 0;
+        let p = drawnParent(d);
+        let span = p ? (p.y - d.y) : 0;
         let x = at.mid
             ? (d.y + (0.5 * span) - (w / 2))          // middle-anchored
             : (d.y + span + 1);                       // start-anchored
@@ -4476,7 +4482,7 @@ function (root, d3, forester, phyloXml) {
                 // do not rotate, so the radial case needs only the midpoint
                 let at = radialDisplay()
                     ? radialBranchMid(d)
-                    : [d.y + (0.5 * (drawnParent(d).y - d.y)), d.x];
+                    : [d.y + (0.5 * (drawnParent(d).y - d.y)), d.x];   // one use
                 if (at && !symbols.claim(at[0] - r, at[1] - r, 2 * r, 2 * r)) {
                     d._suppDot = false;
                     ++_branchMarksHidden;
@@ -4788,35 +4794,39 @@ function (root, d3, forester, phyloXml) {
         }
     };
 
-    // The node d's branch is DRAWN from: its parent in this layout. Not
-    // d.parent, which is the parent in the whole tree -- in a subtree view the
-    // top node hangs from the wrapper the view was entered with, while its own
-    // parent keeps the coordinates of whatever layout last drew it. Every mark
-    // placed "halfway back to the parent" (support dots, confidence and branch
-    // length values, events) went there: into empty space, and further off
-    // with each subtree entered inside a subtree (Christian, 2026-09-28).
+    // The node d's branch is DRAWN from: its parent in this layout. That is
+    // d.parent for every node but one -- in a subtree view the top node hangs
+    // from the wrapper the view was entered with, while its own parent keeps
+    // the coordinates of whatever layout last drew it. Every mark placed
+    // "halfway back to the parent" (support dots, confidence and branch length
+    // values, events) went there: into empty space, and further off with each
+    // subtree entered inside a subtree (Christian, 2026-09-28). Asked, not
+    // stored: a node link kept on every node made the representatives copy
+    // (copyTreeKeepingTips) deep-copy each node's whole ancestor chain --
+    // 5.4 s instead of 5 ms on a 6,000-deep tree (the review measured it).
     function drawnParent(d) {
-        return d._drawnParent !== undefined ? d._drawnParent : d.parent;
+        return (d === topNode()) ? _root : d.parent;
     }
 
     // How long node d's branch is DRAWN, in layout units -- not its
     // branch_length: the gate for decorations that need room on the branch.
     function drawnBranchSpan(d) {
-        if (!drawnParent(d)) {
+        let p = drawnParent(d);
+        if (!p) {
             return 0;
         }
         if (_state.unrootedDisplay) {
-            if (d.ux === undefined || drawnParent(d).ux === undefined) {
+            if (d.ux === undefined || p.ux === undefined) {
                 return 0;
             }
-            let dx = d.ux - drawnParent(d).ux;
-            let dy = d.uy - drawnParent(d).uy;
+            let dx = d.ux - p.ux;
+            let dy = d.uy - p.uy;
             return Math.sqrt((dx * dx) + (dy * dy));
         }
         if (_state.circularDisplay) {
-            return Math.abs(radialRadius(drawnParent(d).y) - radialRadius(d.y));
+            return Math.abs(radialRadius(p.y) - radialRadius(d.y));
         }
-        return Math.abs(drawnParent(d).y - d.y);
+        return Math.abs(p.y - d.y);
     }
 
     // The Support Dots threshold on the tree's own scale: the setting is a
@@ -4924,17 +4934,18 @@ function (root, d3, forester, phyloXml) {
     // Transform for a branch-data label (confidence / branch length / events):
     // rotate to the node's angle and sit at the midpoint of the branch (radially).
     function branchLabelTransform(d) {
-        if (!drawnParent(d) || (_state.unrootedDisplay && drawnParent(d).ux === undefined)) {
+        let p = drawnParent(d);
+        if (!p || (_state.unrootedDisplay && p.ux === undefined)) {
             // no laid-out parent (the displayed subtree's root): angle only
             return 'rotate(' + labelAngleDeg(d) + ')';
         }
         let mid;
         if (_state.unrootedDisplay) {
-            let dx = d.ux - drawnParent(d).ux;
-            let dy = d.uy - drawnParent(d).uy;
+            let dx = d.ux - p.ux;
+            let dy = d.uy - p.uy;
             mid = -Math.sqrt((dx * dx) + (dy * dy)) / 2;
         } else {
-            mid = (radialRadius(drawnParent(d).y) - radialRadius(d.y)) / 2;
+            mid = (radialRadius(p.y) - radialRadius(d.y)) / 2;
         }
         return 'rotate(' + labelAngleDeg(d) + ') translate(' + mid + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
     }
@@ -6923,7 +6934,7 @@ function (root, d3, forester, phyloXml) {
                 } else {
                     filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.tsv';
                 }
-                saveAs(new Blob([tipTableTsv(node)], {type: 'text/tab-separated-values'}), filename);
+                saveAs(new Blob([tipTableTsv(ext_nodes)], {type: 'text/tab-separated-values'}), filename);
                 update();
             }
 
@@ -12157,7 +12168,7 @@ function (root, d3, forester, phyloXml) {
     // what the viewer writes onto a tree's nodes, left off a tree cut out of it
     const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
         'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText',
-        '_labelBoxes', '_labelDropped', '_markBoxes', '_drawnParent'];
+        '_labelBoxes', '_labelDropped', '_markBoxes'];
 
     // the whole tree's tip count, counted again only when the tree changes
     // (every change makes new _basicTreeProperties)
@@ -17264,9 +17275,6 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // The enlarged drawing, cropped to what is actually drawn: the tree
-    // (with its floating strips, anchored to it) and, to its left rather than
-    // over it, the legend cards.
     // The smallest box around every non-empty one of `boxes` (getBBox
     // results), as {x0, y0, x1, y1}; null when none has any size.
     function unionBox(boxes) {
@@ -17386,8 +17394,11 @@ function (root, d3, forester, phyloXml) {
     // redraw last timed, so the card goes up when that redraw was even a
     // fraction of the card's threshold.
     function withGraphic(fn, fail) {
+        // without a handler the error is thrown on, as it was before there
+        // was one -- to the page's error handling and the harnesses -- rather
+        // than turned into a console line and a click that did nothing
         let failed = fail || function (err) {
-            console.error(ERROR + 'the graphic could not be made: ' + err);
+            throw err;
         };
         let draw = function () {
             let graphic;
@@ -17507,14 +17518,16 @@ function (root, d3, forester, phyloXml) {
     // menu's "Download Ext. Node Data" for the whole tree -- the desktop's
     // columns, and a table that joins back onto the tree as metadata.
     function downloadAsTsvAll() {
-        saveAs(new Blob([tipTableTsv(_root)], {type: 'text/tab-separated-values'}), downloadFileName(TSV_SUFFIX));
+        saveAs(new Blob([tipTableTsv(forester.getAllExternalNodes(_root).reverse())],
+            {type: 'text/tab-separated-values'}), downloadFileName(TSV_SUFFIX));
     }
 
-    // The table of the tips under `node`, top to bottom as drawn -- one
-    // writer for the Download menu's TSV and the node menu's Download Ext.
-    // Node Data, so their columns and rows cannot drift apart.
-    function tipTableTsv(node) {
-        return forester.externalNodeDataTsv(forester.getAllExternalNodes(node).reverse(), function (n, i) {
+    // The table of `tips` (top to bottom as drawn: getAllExternalNodes
+    // reversed) -- one writer for the Download menu's TSV and the node
+    // menu's Download Ext. Node Data, so their columns and ids cannot drift
+    // apart. The caller walks the tips, once, and may count them too.
+    function tipTableTsv(tips) {
+        return forester.externalNodeDataTsv(tips, function (n, i) {
             return (n.viewId !== undefined) ? n.viewId : i + 1;
         });
     }

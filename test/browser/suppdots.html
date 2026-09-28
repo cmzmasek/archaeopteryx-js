@@ -26,17 +26,28 @@ const byId = (id) => document.getElementById(id);
 const click = async (id, ms) => { byId(id).closest('label') ? byId(id).closest('label').click() : byId(id).click();
     await sleep(ms || 1200); };
 
-// every visible dot whose centre is on no branch stroke (within 1.5 px)
-function floatingDots() {
+// every visible mark whose anchor is on no branch stroke (within 1.5 px): a
+// dot's centre; a number's anchor (its x, before the dy that lifts or lowers
+// the text off the branch) -- the dots, the confidence values and the branch
+// lengths all go through the same parent-relative placement
+const MARKS = {
+    'support dots': {sel: 'circle.suppdot', shown: (c) => +c.getAttribute('r') > 0,
+        at: (c) => [+c.getAttribute('cx'), +(c.getAttribute('cy') || 0)]},
+    'confidence values': {sel: 'text.conflabel', shown: (t) => t.textContent.trim() !== '',
+        at: (t) => [+(t.getAttribute('x') || 0), 0]},
+    'branch lengths': {sel: 'text.bllabel', shown: (t) => t.textContent.trim() !== '',
+        at: (t) => [+(t.getAttribute('x') || 0), 0]}
+};
+function floatingMarks(kind) {
+    const k = MARKS[kind];
     const branches = [...document.querySelectorAll('g.aptx-branches path')];
-    const dots = [...document.querySelectorAll('circle.suppdot')].filter((c) => +c.getAttribute('r') > 0);
+    const dots = [...document.querySelectorAll(k.sel)].filter(k.shown);
     const svg = dots.length ? dots[0].ownerSVGElement : null;
     let off = [];
     for (const c of dots) {
         const m = c.getScreenCTM();
         const p = svg.createSVGPoint();
-        p.x = +c.getAttribute('cx');
-        p.y = +(c.getAttribute('cy') || 0);
+        [p.x, p.y] = k.at(c);
         const screen = p.matrixTransform(m);
         let on = false;
         for (const b of branches) {
@@ -64,7 +75,7 @@ function floatingDots() {
     const viewer = archaeopteryx.launch('#phylogram1', trees);
     await viewer.ready;
     await sleep(1500);
-    for (const id of ['suppdots_cb', 'conf_cb']) { if (!byId(id).checked) { byId(id).click(); await sleep(500); } }
+    for (const id of ['suppdots_cb', 'conf_cb', 'bl_cb']) { if (!byId(id).checked) { byId(id).click(); await sleep(500); } }
 
     const N = forester.getAllExternalNodes(tree).length;
     const tipsUnder = (n) => forester.getAllExternalNodes(n).length;
@@ -88,6 +99,7 @@ function floatingDots() {
     const views = [['whole tree', null], ['subtree', outer], ['subtree of the subtree', deep]];
     const layouts = [['rectangular', 'layout_rect_b'], ['circular', 'layout_circ_b'], ['unrooted', 'layout_unrooted_b']];
     const displays = [['phylogram', 'phy_b'], ['cladogram', 'cla_b']];
+    const drawn = {};
     const shotAt = new URLSearchParams(location.search).get('shot');
     for (const [vname, node] of views) {
         if (node) {
@@ -111,10 +123,16 @@ function floatingDots() {
             for (const [dname, did] of displays) {
                 if (byId(did).disabled) { continue; }
                 await click(did);
-                const r = floatingDots();
-                check(vname + ', ' + lname + ', ' + dname + ': every support dot is on a branch',
-                    r.dots > 0 && r.off.length === 0,
-                    r.dots + ' dots' + (r.off.length ? ', off a branch at ' + r.off.slice(0, 4).join(' ') : ''));
+                for (const kind of Object.keys(MARKS)) {
+                    const r = floatingMarks(kind);
+                    // a crowded fan may hide every number of a kind (auto-hide);
+                    // only the dots must be there in every view -- the numbers
+                    // must be there SOMEWHERE in each view, counted below
+                    drawn[vname + '/' + kind] = (drawn[vname + '/' + kind] || 0) + r.dots;
+                    check(vname + ', ' + lname + ', ' + dname + ': every one of the ' + kind + ' is on a branch',
+                        (kind !== 'support dots' || r.dots > 0) && r.off.length === 0,
+                        r.dots + ' drawn' + (r.off.length ? ', off a branch at ' + r.off.slice(0, 4).join(' ') : ''));
+                }
             }
         }
         if (shotAt && vname === shotAt) {
@@ -123,6 +141,9 @@ function floatingDots() {
             break;   // leave it on screen for the screenshot
         }
         await click('layout_rect_b');
+    }
+    for (const [key, n] of Object.entries(drawn)) {
+        check(key + ': drawn at all, so the checks above tested something', n > 0, n);
     }
     window.__benchResult = {report: out, failures: failures};
     window.__benchDone = true;
