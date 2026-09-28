@@ -58,7 +58,22 @@
         }
         return '';
     };
-    const controls = [...panel.querySelectorAll('input, button, select')].filter(visible);
+    // A control's clickable SURFACE is what the user sees: a segmented button's
+    // <input> is 0x0 and transparent, the visible thing is the <label> around
+    // it. Asking the input left all eight segments -- three layouts, three
+    // display types, the time/divergence pair -- out of this count AND out of
+    // the sheet, and the two agreed with each other, so the check passed
+    // while six glyphs were missing from the sheet (Christian spotted it).
+    const surfaceOf = (el) => {
+        const b = el.getBoundingClientRect();
+        if (b.width > 0 || b.height > 0) { return el; }
+        const lab = el.closest('label');
+        if (lab) { const lb = lab.getBoundingClientRect();
+            if (lb.width > 0 || lb.height > 0) { return lab; } }
+        return null;
+    };
+    const controls = [...panel.querySelectorAll('input, button, select')]
+        .filter((el) => el.disabled ? (surfaceOf(el) || visible(el)) : surfaceOf(el));
     const missing = [];
     const described = [];
     for (const el of controls) {
@@ -163,6 +178,22 @@
         + ' still exercised by trailing colons such as "Color by:")');
 
     check('the panel was actually walked', controls.length > 20, controls.length + ' controls');
+
+    // AND THE SEGMENTED BUTTONS ARE ON IT. They are the layouts and the display
+    // types -- the controls a reader is most likely to look up -- and they were
+    // absent entirely. Checked by their own tooltips appearing as rows.
+    {
+        const segs = [...panel.querySelectorAll('label.aptx-seg')]
+            .filter((l) => { const b = l.getBoundingClientRect(); return b.width > 0 || b.height > 0; });
+        const words = new Set(rowText.map((r) => r.words));
+        const absent = segs.map((l) => (l.getAttribute('title') || '').trim())
+            .filter((t) => t !== '' && !words.has(t));
+        out.push('segmented buttons on screen: ' + segs.length + ', missing from the sheet: '
+            + absent.length);
+        check('every segmented button is on the sheet', absent.length === 0,
+            absent.map((t) => t.slice(0, 40)).join(' | '));
+        check('and there are some to check', segs.length >= 6, segs.length + ' segments');
+    }
 
     // MODELESS is the whole point of the shape chosen: a sheet you must close
     // to touch the control it names is half a sheet. Asked of the browser

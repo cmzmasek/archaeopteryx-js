@@ -71,8 +71,13 @@
         'phy disabled ' + s.phy.off + ', aligned disabled ' + s.aligned.off);
     check('circular: and the ALIGNED one is shown as chosen', s.aligned.on && !s.phy.on,
         'aligned ' + s.aligned.on + ', phy ' + s.phy.on);
-    check('circular: the greyed button says why',
-        /always aligns/.test(document.getElementById(ids.phy).title || ''),
+    // The INTENT, not the wording: a greyed button must say that it is greyed
+    // and in which layout. Tying this to the phrase "always aligns" made it
+    // fail the moment the description was rewritten to explain the type
+    // properly, which is a test objecting to an improvement.
+    check('circular: the greyed button says it is greyed, and where',
+        /greyed/i.test(document.getElementById(ids.phy).title || '')
+            && /circular/i.test(document.getElementById(ids.phy).title || ''),
         document.getElementById(ids.phy).title);
 
     document.getElementById('layout_unrooted_b').click(); await settle();

@@ -408,6 +408,20 @@ function (root, d3, forester, phyloXml) {
     const VIS_CB = 'vis_cb';
     const LADDERIZE_BUTTON = 'ladderize_b';
     const PHYLOGRAM_ALIGNED_BUTTON = 'phya_b';
+    // What the three display types DO, in one place: the tooltip, the reason a
+    // type is greyed, and the cheat-sheet row are all this sentence. A control
+    // named only after itself ("phylogram display (uses branch length
+    // values)") tells a reader who already knows what it is.
+    // Each says WHEN it is greyed, whether or not it is greyed now: that is a
+    // property of the control, not of the view, and a reader of the sheet in
+    // one layout is owed what happens in the others.
+    const PHYLOGRAM_WHAT = 'phylogram: branch lengths drawn to scale, so the tips end ragged.'
+        + ' Greyed in the circular layout, which always carries its labels to the outer ring,'
+        + ' so there the aligned phylogram is the one drawn';
+    const PHYLOGRAM_ALIGNED_WHAT = 'aligned phylogram: branch lengths to scale, with every tip'
+        + ' carried on to a common column, or in the circular layout to the outer ring.'
+        + ' Greyed in the unrooted layout, which has no column or ring to carry them to';
+    const CLADOGRAM_WHAT = 'cladogram: topology only, branch lengths ignored, every tip flush';
     const PHYLOGRAM_BUTTON = 'phy_b';
     const PHYLOGRAM_CLADOGRAM_CONTROLGROUP = 'phy_cla_g';
     const BRANCH_SCALE_CONTROLGROUP = 'branch_scale_g';
@@ -10431,7 +10445,37 @@ function (root, d3, forester, phyloXml) {
         if (own !== '' && el.tagName === 'BUTTON' && !el.querySelector('svg')) {
             return own;
         }
+        // a segmented button drawn as TEXT rather than a glyph (Time / Div) is
+        // named by its own label, which is the only thing on it
+        let seg = el.closest ? el.closest('label.aptx-seg') : null;
+        if (seg && !seg.querySelector('svg')) {
+            let segText = (seg.textContent || '').trim();
+            if (segText !== '') {
+                return segText;
+            }
+        }
         return '';
+    }
+
+    // What the user actually sees and clicks. A segmented button's <input> is
+    // 0x0 and transparent -- the visible thing is the <label> around it, which
+    // carries the glyph and the tooltip -- so asking the input whether it is
+    // on the screen answered no for all eight of them: the three layouts, the
+    // three display types and the time/divergence pair were absent from the
+    // sheet entirely (Christian, 2026-09-28).
+    function controlSurface(el) {
+        let box = el.getBoundingClientRect();
+        if (box.width > 0 || box.height > 0) {
+            return el;
+        }
+        let label = el.closest ? el.closest('label') : null;
+        if (label) {
+            let lb = label.getBoundingClientRect();
+            if (lb.width > 0 || lb.height > 0) {
+                return label;
+            }
+        }
+        return null;
     }
 
     function cheatSheetRows() {
@@ -10448,26 +10492,30 @@ function (root, d3, forester, phyloXml) {
             // is not on the screen and does not belong on the sheet. A
             // DISABLED one is on the screen, and saying what it is is how a
             // reader learns why it is greyed.
-            if (!el.disabled) {
-                let box = el.getBoundingClientRect();
-                if (box.width === 0 && box.height === 0) {
-                    continue;
-                }
+            let surface = el.disabled ? (controlSurface(el) || el) : controlSurface(el);
+            if (!surface) {
+                continue;
             }
             let words = controlDescription(el);
             if (words === '' || seen.has(el)) {
                 continue;
             }
             seen.add(el);
-            let svg = el.querySelector ? el.querySelector('svg.aptx-glyph') : null;
+            // the glyph belongs to the surface, not to a 0x0 input inside it
+            let svg = surface.querySelector ? surface.querySelector('svg.aptx-glyph') : null;
             rows.push({name: controlName(el), words: words, glyph: svg});
         }
         return rows;
     }
 
     function renderCheatSheet(body) {
+        // everything but the standing lead paragraph
+        let keep = body.querySelector('.aptx-cheat-lead');
         while (body.firstChild) {
             body.removeChild(body.firstChild);
+        }
+        if (keep) {
+            body.appendChild(keep);
         }
         let rows = cheatSheetRows();
         rows.forEach(function (row) {
@@ -10514,6 +10562,11 @@ function (root, d3, forester, phyloXml) {
         let shell = makeDialogShell(CHEAT_SHEET_DIALOG, 'Control panel', 460);
         shell.body.classList.add('aptx-shortcuts');
         shell.body.classList.add('aptx-cheat');
+        // says what the reader is looking at, as the desktop's sheet does
+        let lead = document.createElement('p');
+        lead.className = 'aptx-cheat-lead';
+        lead.textContent = 'Every control the panel is showing, with the icon it draws and what it does.';
+        shell.body.appendChild(lead);
         _cheatSheetBody = shell.body;
         renderCheatSheet(shell.body);
         shell.dialog.addEventListener('close', function () {
@@ -12934,16 +12987,12 @@ function (root, d3, forester, phyloXml) {
         let phyBtn = byId(PHYLOGRAM_BUTTON);
         if (phyBtn) {
             phyBtn.disabled = !measured || _state.circularDisplay;
-            phyBtn.title = _state.circularDisplay
-                ? 'the circular layout always aligns its labels to the ring'
-                : 'phylogram display (uses branch length values)';
+            phyBtn.title = PHYLOGRAM_WHAT;
         }
         let alignBtn = byId(PHYLOGRAM_ALIGNED_BUTTON);
         if (alignBtn) {
             alignBtn.disabled = !measured || _state.unrootedDisplay;
-            alignBtn.title = _state.unrootedDisplay
-                ? 'the unrooted layout has no common edge to align labels to'
-                : 'phylogram display (uses branch length values) with aligned labels';
+            alignBtn.title = PHYLOGRAM_ALIGNED_WHAT;
         }
         // Which button is SHOWN as chosen is layout-dependent too, and this
         // was only re-synced when the display type changed -- so switching
@@ -14122,6 +14171,7 @@ function (root, d3, forester, phyloXml) {
             // than running off the bottom, and the title bar stays put
             + '#' + CHEAT_SHEET_DIALOG + ' { max-height:min(78vh, 760px); display:flex; flex-direction:column; }'
             + '#' + CHEAT_SHEET_DIALOG + ' .aptx-dialog-body { min-height:0; }'
+            + '.aptx-cheat-lead { margin:0 0 9px; font-size:10.5px; line-height:1.4; color:var(--p-muted); }'
             + '.aptx-cheat .aptx-dialog-line { padding:3px 0; align-items:flex-start; }'
             + '.aptx-cheat .aptx-cheat-key { flex:0 0 38%; display:flex; align-items:center; gap:6px; color:var(--p-ink); }'
             + '.aptx-cheat .aptx-cheat-glyph { width:14px; height:14px; flex:none; color:var(--p-muted); }'
@@ -16081,14 +16131,17 @@ function (root, d3, forester, phyloXml) {
             // desktop
             let layoutGroup = 'layout_control_radio';
             h = h.concat('<div class="aptx-segmented">');
-            h = h.concat(makeSegment(makeGlyph('rectangular'), LAYOUT_RECT_BUTTON, layoutGroup, 'rectangular, root at left'));
-            h = h.concat(makeSegment(makeGlyph('circular'), LAYOUT_CIRC_BUTTON, layoutGroup, 'circular'));
-            h = h.concat(makeSegment(makeGlyph('unrooted'), LAYOUT_UNROOTED_BUTTON, layoutGroup, 'unrooted (equal-angle)'));
+            h = h.concat(makeSegment(makeGlyph('rectangular'), LAYOUT_RECT_BUTTON, layoutGroup,
+                'rectangular layout: the root at the left, the tips in even rows down the page'));
+            h = h.concat(makeSegment(makeGlyph('circular'), LAYOUT_CIRC_BUTTON, layoutGroup,
+                'circular layout: the tree as a fan, every tip label carried out to a common ring'));
+            h = h.concat(makeSegment(makeGlyph('unrooted'), LAYOUT_UNROOTED_BUTTON, layoutGroup,
+                'unrooted layout: equal-angle, drawing no root branch at all'));
             h = h.concat('</div>');
             h = h.concat('<div class="' + PHYLOGRAM_CLADOGRAM_CONTROLGROUP + ' aptx-segmented">');
-            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, 'phylogram display (uses branch length values)'));
-            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, 'phylogram display (uses branch length values) with aligned labels'));
-            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, ' cladogram display (ignores branch length values)'));
+            h = h.concat(makeSegment(makeGlyph('phylogram'), PHYLOGRAM_BUTTON, radioGroup, PHYLOGRAM_WHAT));
+            h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, PHYLOGRAM_ALIGNED_WHAT));
+            h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, CLADOGRAM_WHAT));
             h = h.concat('</div>');
             // The branch SCALE, when the tree states two different things: its
             // nodes' dates, and its branches' divergence. Hidden otherwise,

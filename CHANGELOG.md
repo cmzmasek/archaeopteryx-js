@@ -18,6 +18,14 @@ consumers only see a change when a version is cut.
   forester.js, which is the arithmetic. Every defect this code has had recently
   was wiring.
 
+- The cheat sheet shows **the layout and display-type buttons**, which were
+  missing from it entirely: a segmented button's input is 0×0 and transparent —
+  the visible thing is the label around it — so asking the input whether it was
+  on the screen answered no for all six. Each now appears with the glyph it
+  draws, and the display types say what they do and when they are greyed
+  ("phylogram: branch lengths drawn to scale, so the tips end ragged. Greyed in
+  the circular layout, which always carries its labels to the outer ring…")
+  rather than naming themselves.
 - **A control-panel cheat sheet.** The card button in the panel header (or the
   Control panel row of the About box) opens a list of every control the panel is
   currently showing, in the order it shows them, each beside the sentence that
