@@ -51,6 +51,14 @@ consumers only see a change when a version is cut.
 - The SVG file is typed `image/svg+xml` (it was `application/svg+xml`).
 
 ### Fixed
+- **Support dots floating in empty space in a subtree** (and their
+  confidence or branch-length value with them). A subtree view hangs its top
+  node from a wrapper made when the subtree is entered, but every mark placed
+  halfway along a branch measured back to the node's parent in the *whole*
+  tree — whose coordinates were whatever layout had last drawn it. The mark
+  landed off the branch, further off with each subtree entered inside a
+  subtree, in the rectangular and circular layouts. Marks now measure from
+  the parent the branch is actually drawn from.
 - The **Download** button's word ran into its right edge: the button was
   forced to 60 px, narrower than the word. The two buttons now share the row,
   their words centred.

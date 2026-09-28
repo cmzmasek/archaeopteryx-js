@@ -2954,6 +2954,7 @@ function (root, d3, forester, phyloXml) {
             hn.data.x = hn.x + _topReserve;
             hn.data.y = hn.y;
             hn.data.depth = hn.depth;
+            hn.data._drawnParent = hn.parent ? hn.parent.data : null;
         });
         let nodes = hierarchy.descendants().map(function (hn) {
             return hn.data;
@@ -3247,8 +3248,8 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (d.parent) {
-                    return (d.parent.y - d.y + 1);
+                if (drawnParent(d)) {
+                    return (drawnParent(d).y - d.y + 1);
                 } else {
                     return 0;
                 }
@@ -3268,8 +3269,8 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (d.parent) {
-                    return (0.5 * (d.parent.y - d.y));
+                if (drawnParent(d)) {
+                    return (0.5 * (drawnParent(d).y - d.y));
                 } else {
                     return 0;
                 }
@@ -3290,7 +3291,7 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                return d.parent ? (0.5 * (d.parent.y - d.y)) : 0;
+                return drawnParent(d) ? (0.5 * (drawnParent(d).y - d.y)) : 0;
             });
 
         node.select('text.brancheventlabel')
@@ -3304,8 +3305,8 @@ function (root, d3, forester, phyloXml) {
                 if (radialDisplay()) {
                     return 0;
                 }
-                if (d.parent) {
-                    return (0.5 * (d.parent.y - d.y));
+                if (drawnParent(d)) {
+                    return (0.5 * (drawnParent(d).y - d.y));
                 }
             });
 
@@ -4018,12 +4019,12 @@ function (root, d3, forester, phyloXml) {
             if (d.ux === undefined) {
                 return null;
             }
-            let p = (d.parent && d.parent.ux !== undefined) ? d.parent : null;
+            let p = (drawnParent(d) && drawnParent(d).ux !== undefined) ? drawnParent(d) : null;
             return p ? [0.5 * (d.ux + p.ux), 0.5 * (d.uy + p.uy), angle] : [d.ux, d.uy, angle];
         }
         let r = radialRadius(d.y);
-        if (d.parent) {
-            r = 0.5 * (r + radialRadius(d.parent.y));
+        if (drawnParent(d)) {
+            r = 0.5 * (r + radialRadius(drawnParent(d).y));
         }
         let pt = polarXY(radialAngle(d.x), r);
         return [pt[0], pt[1], angle];
@@ -4059,7 +4060,7 @@ function (root, d3, forester, phyloXml) {
         // used to claim nothing -- so the first child's number, landing in
         // almost the same place, was granted and painted over them. The one
         // place the pass could not keep its promise.
-        let span = d.parent ? (d.parent.y - d.y) : 0;
+        let span = drawnParent(d) ? (drawnParent(d).y - d.y) : 0;
         let x = at.mid
             ? (d.y + (0.5 * span) - (w / 2))          // middle-anchored
             : (d.y + span + 1);                       // start-anchored
@@ -4475,7 +4476,7 @@ function (root, d3, forester, phyloXml) {
                 // do not rotate, so the radial case needs only the midpoint
                 let at = radialDisplay()
                     ? radialBranchMid(d)
-                    : [d.y + (0.5 * (d.parent.y - d.y)), d.x];
+                    : [d.y + (0.5 * (drawnParent(d).y - d.y)), d.x];
                 if (at && !symbols.claim(at[0] - r, at[1] - r, 2 * r, 2 * r)) {
                     d._suppDot = false;
                     ++_branchMarksHidden;
@@ -4787,24 +4788,35 @@ function (root, d3, forester, phyloXml) {
         }
     };
 
+    // The node d's branch is DRAWN from: its parent in this layout. Not
+    // d.parent, which is the parent in the whole tree -- in a subtree view the
+    // top node hangs from the wrapper the view was entered with, while its own
+    // parent keeps the coordinates of whatever layout last drew it. Every mark
+    // placed "halfway back to the parent" (support dots, confidence and branch
+    // length values, events) went there: into empty space, and further off
+    // with each subtree entered inside a subtree (Christian, 2026-09-28).
+    function drawnParent(d) {
+        return d._drawnParent !== undefined ? d._drawnParent : d.parent;
+    }
+
     // How long node d's branch is DRAWN, in layout units -- not its
     // branch_length: the gate for decorations that need room on the branch.
     function drawnBranchSpan(d) {
-        if (!d.parent) {
+        if (!drawnParent(d)) {
             return 0;
         }
         if (_state.unrootedDisplay) {
-            if (d.ux === undefined || d.parent.ux === undefined) {
+            if (d.ux === undefined || drawnParent(d).ux === undefined) {
                 return 0;
             }
-            let dx = d.ux - d.parent.ux;
-            let dy = d.uy - d.parent.uy;
+            let dx = d.ux - drawnParent(d).ux;
+            let dy = d.uy - drawnParent(d).uy;
             return Math.sqrt((dx * dx) + (dy * dy));
         }
         if (_state.circularDisplay) {
-            return Math.abs(radialRadius(d.parent.y) - radialRadius(d.y));
+            return Math.abs(radialRadius(drawnParent(d).y) - radialRadius(d.y));
         }
-        return Math.abs(d.parent.y - d.y);
+        return Math.abs(drawnParent(d).y - d.y);
     }
 
     // The Support Dots threshold on the tree's own scale: the setting is a
@@ -4838,7 +4850,7 @@ function (root, d3, forester, phyloXml) {
     }
 
     function showSupportDot(d) {
-        if (!_state.showSupportDots || !d.parent
+        if (!_state.showSupportDots || !drawnParent(d)
             || !d.confidences || d.confidences.length === 0) {
             return false;
         }
@@ -4912,17 +4924,17 @@ function (root, d3, forester, phyloXml) {
     // Transform for a branch-data label (confidence / branch length / events):
     // rotate to the node's angle and sit at the midpoint of the branch (radially).
     function branchLabelTransform(d) {
-        if (!d.parent || (_state.unrootedDisplay && d.parent.ux === undefined)) {
+        if (!drawnParent(d) || (_state.unrootedDisplay && drawnParent(d).ux === undefined)) {
             // no laid-out parent (the displayed subtree's root): angle only
             return 'rotate(' + labelAngleDeg(d) + ')';
         }
         let mid;
         if (_state.unrootedDisplay) {
-            let dx = d.ux - d.parent.ux;
-            let dy = d.uy - d.parent.uy;
+            let dx = d.ux - drawnParent(d).ux;
+            let dy = d.uy - drawnParent(d).uy;
             mid = -Math.sqrt((dx * dx) + (dy * dy)) / 2;
         } else {
-            mid = (radialRadius(d.parent.y) - radialRadius(d.y)) / 2;
+            mid = (radialRadius(drawnParent(d).y) - radialRadius(d.y)) / 2;
         }
         return 'rotate(' + labelAngleDeg(d) + ') translate(' + mid + ',0)' + (labelFlip(d) ? ' rotate(180)' : '');
     }
@@ -12145,7 +12157,7 @@ function (root, d3, forester, phyloXml) {
     // what the viewer writes onto a tree's nodes, left off a tree cut out of it
     const VIEW_NODE_FIELDS = ['viewId', 'collapsed', 'x', 'y', 'x0', 'y0', 'id', 'hide', 'hasVis', 'distToRoot',
         'ux', 'uy', 'uangle', '_style', '_suppDot', '_extLabelText', '_eventText', '_confText', '_blText',
-        '_labelBoxes', '_labelDropped', '_markBoxes'];
+        '_labelBoxes', '_labelDropped', '_markBoxes', '_drawnParent'];
 
     // the whole tree's tip count, counted again only when the tree changes
     // (every change makes new _basicTreeProperties)

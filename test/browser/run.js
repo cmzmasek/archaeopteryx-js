@@ -41,6 +41,7 @@ const CASES = {
     'ring_connectors': ['?tree=../../docs/data/flu_h5.xml', ''],
     'indicator_branchdata': ['', '?tree=../../docs/data/apaf.xml'],
     'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
+    'suppdots': [''],
     'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?legends=1', '?big=1200']
 };
 
