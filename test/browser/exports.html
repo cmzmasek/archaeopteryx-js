@@ -87,6 +87,11 @@ async function launch(file, text) {
 }
 
 (async function () {
+    if (q.get('legends') === '1') {
+        await legendCards();
+        finish();
+        return;
+    }
     if (q.get('subtree') === '1') {
         await subtreeFiles();
         finish();
@@ -204,6 +209,10 @@ async function launch(file, text) {
     const nexText = f ? await f.blob.text() : '';
     check('the Nexus file carries the tree', /Begin Trees;/.test(nexText) && f.name === 'fig_1.nexus',
         f && f.name);
+    byId('dl_name').value = 'tips.tsv';
+    f = await download('TSV');
+    check('... and a typed .tsv is not doubled either', f && f.name === 'tips.tsv', f && f.name);
+    byId('dl_name').value = 'fig/1';
     f = await download('TSV');
     const tsv = f ? (await f.blob.text()).split('\n').filter((l) => l !== '') : [];
     const header = tsv.length ? tsv[0].split('\t') : [];
@@ -348,6 +357,18 @@ async function launch(file, text) {
     await sleep(100);
     check('... and says so on its face', /Copied/.test(byId('copy_png_b').textContent),
         byId('copy_png_b').textContent);
+    // and when the picture cannot be made, the button says so rather than
+    // leaving the clipboard write waiting forever (no serializer: no graphic)
+    {
+        const keep = window.XMLSerializer;
+        window.XMLSerializer = undefined;
+        await sleep(1700);   // the previous "Copied" has gone back to the name
+        byId('copy_png_b').click();
+        await sleep(400);
+        window.XMLSerializer = keep;
+        check('Copy PNG says when it failed', /failed/.test(byId('copy_png_b').textContent),
+            byId('copy_png_b').textContent);
+    }
     f = await download('PDF');
     const pageSize = f && f.pdf ? f.pdf.internal.pageSize : null;
     const pw = pageSize ? pageSize.getWidth() : 0;
@@ -358,6 +379,66 @@ async function launch(file, text) {
         + ' vs ' + (fw / fh).toFixed(4));
     finish();
 })().catch((e) => { check('the harness ran', false, String(e && e.stack || e)); finish(); });
+
+// Every card the viewer pins to the window -- the colour and shape legends,
+// the domain legend, the heat-map ring's scale -- lands in the full-size
+// figure beside the tree: present, on the page, and off the tree. Only the
+// colour legend was moved at first; the domain legend landed on the tree
+// and half off the page (the review of 15857e6..12e5d62 caught it).
+async function legendCards() {
+    const cases = [
+        {file: '../../docs/data/apaf.xml', config: {}, domains: 'legend', circular: false},
+        {file: '../../docs/data/sparse-accessory-genome.xml', config: {showHeatmap: true}, circular: true}
+    ];
+    for (const c of cases) {
+        const trees = archaeopteryx.parseTrees(c.file, await (await fetch(c.file)).text());
+        const viewer = archaeopteryx.launch('#phylogram1', trees, c.config);
+        await viewer.ready;
+        await sleep(1500);
+        if (c.domains) {
+            const sel = byId('domain_labels');
+            sel.value = c.domains;
+            sel.dispatchEvent(new Event('change'));
+            await sleep(1200);
+        }
+        if (c.circular) {
+            byId('layout_circ_b').closest('label').click();
+            await sleep(1500);
+        }
+        const name = c.file.split('/').pop() + (c.circular ? ' circular' : '');
+        const live = document.querySelector('rect.basebackground').ownerSVGElement;
+        const classes = ['legendLabelColor', 'legendNodeShape', 'legendDomains', 'aptx-heatmap-ringlegend']
+            .filter((k) => live.querySelector(':scope > g.' + k));
+        out.push(name + ': cards on screen: ' + classes.join(', '));
+        const section = document.querySelector('fieldset.aptx-download');
+        if (section.classList.contains('aptx-collapsed')) {
+            section.querySelector(':scope > legend').click();
+            await sleep(200);
+        }
+        const f = await download('SVG');
+        const holder = document.createElement('div');
+        holder.style.cssText = 'position:fixed;left:-100000px;top:0';
+        holder.appendChild(document.importNode(await svgOf(f), true));
+        document.body.appendChild(holder);
+        const svg = holder.firstChild;
+        const page = svg.getBoundingClientRect();
+        const tree = svg.children[1].getBoundingClientRect();
+        for (const k of classes) {
+            const g = svg.querySelector(':scope > g.' + k);
+            const r = g ? g.getBoundingClientRect() : null;
+            const inPage = r && r.left >= page.left - 0.5 && r.top >= page.top - 0.5
+                && r.right <= page.right + 0.5 && r.bottom <= page.bottom + 0.5;
+            const onTree = r && r.left < tree.right && r.right > tree.left && r.top < tree.bottom && r.bottom > tree.top;
+            check(name + ': the ' + k + ' card is in the figure, on the page, off the tree', r && inPage && !onTree,
+                r ? 'at ' + (r.left - page.left).toFixed(0) + ',' + (r.top - page.top).toFixed(0) + ' in '
+                    + page.width.toFixed(0) + 'x' + page.height.toFixed(0) + (onTree ? ', ON the tree' : '') : 'missing');
+        }
+        // the fixture has to carry the cards this is about, or it proves nothing
+        check(name + ': the fixture shows the card under test', classes.includes(c.domains ? 'legendDomains'
+            : 'aptx-heatmap-ringlegend'), classes.join(', '));
+        holder.remove();
+    }
+}
 
 // In a subtree the files hold the subtree -- the menu says so, and the file
 // keeps the tree's name -- while a collapsed clade is still written whole:

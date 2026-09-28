@@ -1561,10 +1561,6 @@ function (root, d3, forester, phyloXml) {
 
     let _nodeMenu = null;
     let _nodeMenuDismiss = null; // the listeners that close it, so they can be detached
-    // The button a menu was opened from, when the click that just closed the
-    // menu landed on it: its own click handler then leaves the menu closed
-    // rather than opening it again, so the button toggles.
-    let _menuClosedBy = null;
 
     function removeNodeMenu() {
         if (_nodeMenuDismiss) {
@@ -1679,7 +1675,14 @@ function (root, d3, forester, phyloXml) {
             if (_nodeMenu && _nodeMenu.contains(e.target)) {
                 return;
             }
-            _menuClosedBy = (anchorEl && anchorEl.contains(e.target)) ? anchorEl : null;
+            // A click on the button the menu hangs from closes it and goes no
+            // further: the button's own handler would open it straight
+            // again. Stopped here, in the capture phase at the document, the
+            // click never reaches the button -- so the button toggles.
+            if (anchorEl && anchorEl.contains(e.target)) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
             removeNodeMenu();
         };
         let onKey = function (e) {
@@ -6908,10 +6911,7 @@ function (root, d3, forester, phyloXml) {
                 } else {
                     filename = 'External_Node_Data_for_' + ext_nodes.length + '_Nodes.tsv';
                 }
-                const tsv = forester.externalNodeDataTsv(ext_nodes, function (n, i) {
-                    return (n.viewId !== undefined) ? n.viewId : i + 1;
-                });
-                saveAs(new Blob([tsv], {type: 'text/tab-separated-values'}), filename);
+                saveAs(new Blob([tipTableTsv(node)], {type: 'text/tab-separated-values'}), filename);
                 update();
             }
 
@@ -13300,10 +13300,6 @@ function (root, d3, forester, phyloXml) {
     // while the menu is open, it closes it.
     function downloadButtonPressed(event) {
         let btn = event.currentTarget;
-        if (_menuClosedBy === btn) {
-            _menuClosedBy = null;
-            return;
-        }
         showNodeMenu(downloadMenuItems(), null, null, btn);
         // opened from the keyboard (a click with no pointer), the keyboard
         // goes into the menu: Tab walks the formats, Escape closes it
@@ -13376,7 +13372,9 @@ function (root, d3, forester, phyloXml) {
         if (nex.indexOf('Begin Characters;') >= 0) {
             return {text: 'the tree and its alignment, in one file', warn: false};
         }
-        let why = /\[ Molecular sequences were not written: ([^\]]*?)\s*\]/.exec(nex);
+        // to the comment's own closing " ]" at the end of its line: a taxon
+        // label quoted inside the reason may itself hold a ']'
+        let why = /\[ Molecular sequences were not written: (.*?) \]$/m.exec(nex);
         return {
             text: 'the tree only, without the sequences: ' + (why ? why[1] : 'they cannot form a matrix')
                 + ' phyloXML and FASTA keep them.',
@@ -13392,8 +13390,9 @@ function (root, d3, forester, phyloXml) {
         let field = byId(DOWNLOAD_NAME_FIELD);
         let stem = (field ? field.value : '').trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_');
         let lower = stem.toLowerCase();
-        [NH_SUFFIX, NEXUS_SUFFIX, XML_SUFFIX, FASTA_SUFFIX, SVG_SUFFIX, PDF_SUFFIX, PNG_SUFFIX,
-            '.nex', '.nwk', '.newick', '.fa', '.fas'].some(function (x) {
+        [NH_SUFFIX, NEXUS_SUFFIX, XML_SUFFIX, FASTA_SUFFIX, TSV_SUFFIX, SVG_SUFFIX, PDF_SUFFIX, PNG_SUFFIX,
+            '.nex', '.nwk', '.newick', '.nh', '.nhx', '.tree', '.phyloxml', '.fa', '.fas', '.txt',
+            '.csv'].some(function (x) {
             if (lower.length > x.length && lower.endsWith(x)) {
                 stem = stem.substring(0, stem.length - x.length);
                 return true;
@@ -14248,7 +14247,7 @@ function (root, d3, forester, phyloXml) {
             + '  line-height:1.35; color:var(--p-muted); margin-top:1px; }'
             + '.aptx-node-menu button .aptx-menu-detail.aptx-menu-warn { color:var(--p-warn); }'
             + '.aptx-node-menu button:hover .aptx-menu-detail, .aptx-node-menu button:focus-visible .aptx-menu-detail {'
-            + '  color:rgba(255,255,255,0.86); }'
+            + '  color:inherit; opacity:0.86; }'
             + '.aptx-node-menu:has(.aptx-menu-detail) { width:264px; max-width:264px; }'
             // The search suggestions: the node menu's chrome under the value box.
             + '.aptx-suggest { position:absolute; z-index:1000; max-width:320px; padding:4px; box-sizing:border-box;'
@@ -17256,53 +17255,66 @@ function (root, d3, forester, phyloXml) {
     // The enlarged drawing, cropped to what is actually drawn: the tree
     // (with its floating strips, anchored to it) and, to its left rather than
     // over it, the legend cards.
-    function serializeFullSize(svg) {
-        let M = FULL_SIZE_MARGIN;
-        let box = null;
-        let grow = function (b) {
+    // The smallest box around every non-empty one of `boxes` (getBBox
+    // results), as {x0, y0, x1, y1}; null when none has any size.
+    function unionBox(boxes) {
+        let u = null;
+        boxes.forEach(function (b) {
             if (!b || !(b.width > 0 || b.height > 0)) {
                 return;
             }
-            if (!box) {
-                box = {x0: b.x, y0: b.y, x1: b.x + b.width, y1: b.y + b.height};
+            if (!u) {
+                u = {x0: b.x, y0: b.y, x1: b.x + b.width, y1: b.y + b.height};
             } else {
-                box.x0 = Math.min(box.x0, b.x);
-                box.y0 = Math.min(box.y0, b.y);
-                box.x1 = Math.max(box.x1, b.x + b.width);
-                box.y1 = Math.max(box.y1, b.y + b.height);
+                u.x0 = Math.min(u.x0, b.x);
+                u.y0 = Math.min(u.y0, b.y);
+                u.x1 = Math.max(u.x1, b.x + b.width);
+                u.y1 = Math.max(u.y1, b.y + b.height);
             }
-        };
-        grow(_svgGroup.node().getBBox());
+        });
+        return u;
+    }
+
+    // Every card the viewer pins to the WINDOW rather than to the tree: the
+    // colour and shape legends, the domain legend, the heat-map ring's scale.
+    // On screen they sit where the window has room; in a full-size figure the
+    // window is gone, so they are stacked beside the tree instead.
+    const WINDOW_LEGEND_CLASSES = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE, LEGEND_DOMAINS, 'aptx-heatmap-ringlegend'];
+    const FULL_SIZE_LEGEND_STACK_GAP = 12;
+
+    // The enlarged drawing, cropped to what is actually drawn: the tree
+    // (with its floating strips, anchored to it) and, in a column to its left
+    // rather than over it, the legend cards.
+    function serializeFullSize(svg) {
+        let M = FULL_SIZE_MARGIN;
         // a strip's content is drawn in tree coordinates; its own transform
         // only places it on screen, and getBBox leaves that out
         let strips = _floatGroup ? Array.prototype.slice.call(_floatGroup.node().children) : [];
-        strips.forEach(function (g) {
-            grow(g.getBBox());
-        });
+        let box = unionBox([_svgGroup.node().getBBox()].concat(strips.map(function (g) {
+            return g.getBBox();
+        })));
         if (!box) {
             return graphicAsShown();
         }
-        let legends = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE].map(function (id) {
-            return svg.querySelector(':scope > g.' + id);
-        }).filter(Boolean);
-        let lbox = null;
-        legends.forEach(function (g) {
-            let b = g.getBBox();
-            if (!lbox) {
-                lbox = {x0: b.x, y0: b.y, x1: b.x + b.width, y1: b.y + b.height};
-            } else {
-                lbox.x0 = Math.min(lbox.x0, b.x);
-                lbox.y0 = Math.min(lbox.y0, b.y);
-                lbox.x1 = Math.max(lbox.x1, b.x + b.width);
-                lbox.y1 = Math.max(lbox.y1, b.y + b.height);
+        let cards = [];
+        WINDOW_LEGEND_CLASSES.forEach(function (cls) {
+            let g = svg.querySelector(':scope > g.' + cls);
+            let b = g ? g.getBBox() : null;
+            if (b && (b.width > 0 || b.height > 0)) {
+                cards.push({g: g, b: b});
             }
         });
-        let legendW = lbox ? (lbox.x1 - lbox.x0) + FULL_SIZE_LEGEND_GAP : 0;
-        let legendH = lbox ? (lbox.y1 - lbox.y0) : 0;
+        let columnW = 0;
+        let columnH = 0;
+        cards.forEach(function (c, i) {
+            columnW = Math.max(columnW, c.b.width);
+            columnH += c.b.height + (i > 0 ? FULL_SIZE_LEGEND_STACK_GAP : 0);
+        });
+        let legendW = cards.length > 0 ? columnW + FULL_SIZE_LEGEND_GAP : 0;
         let treeW = box.x1 - box.x0;
         let treeH = box.y1 - box.y0;
         let W = Math.ceil(M + legendW + treeW + M);
-        let H = Math.ceil(M + Math.max(treeH, legendH) + M);
+        let H = Math.ceil(M + Math.max(treeH, columnH) + M);
 
         let copy = svg.cloneNode(true);
         let place = 'translate(' + (M + legendW - box.x0) + ',' + (M - box.y0) + ')';
@@ -17313,15 +17325,16 @@ function (root, d3, forester, phyloXml) {
         copy.querySelectorAll('.aptx-float > g').forEach(function (strip) {
             strip.setAttribute('transform', place);
         });
-        if (lbox) {
-            legends.map(function (g) {
-                return copyCounterpart(svg, copy, g);
-            }).forEach(function (c) {
-                if (c) {
-                    c.setAttribute('transform', 'translate(' + (M - lbox.x0) + ',' + (M - lbox.y0) + ')');
-                }
-            });
-        }
+        // A card's own transform, where it has one, only placed it in the
+        // window (getBBox leaves it out), so it is replaced, not added to.
+        let y = M;
+        cards.forEach(function (c) {
+            let cc = copyCounterpart(svg, copy, c.g);
+            if (cc) {
+                cc.setAttribute('transform', 'translate(' + (M - c.b.x) + ',' + (y - c.b.y) + ')');
+            }
+            y += c.b.height + FULL_SIZE_LEGEND_STACK_GAP;
+        });
         cleanExportCopy(copy);
         copy.setAttribute('width', W);
         copy.setAttribute('height', H);
@@ -17353,23 +17366,35 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    // Hands fn the graphic the Download section's choices describe (null when
-    // there is none), drawn in the light export colours. A full-size drawing
-    // re-lays-out the whole tree, more than once on a crowded one: on a tree
-    // whose redraws are slow, the card goes up first, as it does for any slow
-    // redraw.
-    function withGraphic(fn) {
+    // Hands fn the graphic the Download section's choices describe, drawn in
+    // the light export colours; a failure -- no graphic, or a throw anywhere
+    // on the way -- goes to fail instead, so a caller waiting on the result
+    // (Copy PNG's clipboard write) always hears back. A full-size drawing
+    // re-lays-out the tree several times over, each pass larger than the
+    // redraw last timed, so the card goes up when that redraw was even a
+    // fraction of the card's threshold.
+    function withGraphic(fn, fail) {
+        let failed = fail || function (err) {
+            console.error(ERROR + 'the graphic could not be made: ' + err);
+        };
         let draw = function () {
-            changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
             let graphic;
             try {
-                graphic = exportGraphic();
-            } finally {
-                changeBaseBackgoundColor(_state.backgroundColorDefault);
+                changeBaseBackgoundColor(_state.backgroundColorForPrintExportDefault);
+                try {
+                    graphic = exportGraphic();
+                } finally {
+                    changeBaseBackgoundColor(_state.backgroundColorDefault);
+                }
+                if (!graphic) {
+                    throw new Error('this browser cannot serialize the tree');
+                }
+                fn(graphic);
+            } catch (err) {
+                failed(err);
             }
-            fn(graphic);
         };
-        if (_downloadFullSize && _redrawMs >= REDRAW_CARD_MS && _container) {
+        if (_downloadFullSize && _redrawMs * FULL_SIZE_REDRAWS_EXPECTED >= REDRAW_CARD_MS && _container) {
             showBusy(_container, 'Drawing the whole tree');
             afterPaint(function () {
                 try {
@@ -17382,6 +17407,11 @@ function (root, d3, forester, phyloXml) {
             draw();
         }
     }
+
+    // How many redraws a full-size drawing typically costs: the drawing at the
+    // window's size, one or two to reach the size, and the one that puts the
+    // window back -- more on a crowded fan.
+    const FULL_SIZE_REDRAWS_EXPECTED = 4;
 
     /**
      * Saves a Blob to a file using native browser APIs (an <a download> link
@@ -17465,11 +17495,16 @@ function (root, d3, forester, phyloXml) {
     // menu's "Download Ext. Node Data" for the whole tree -- the desktop's
     // columns, and a table that joins back onto the tree as metadata.
     function downloadAsTsvAll() {
-        let tips = forester.getAllExternalNodes(_root).reverse();
-        let tsv = forester.externalNodeDataTsv(tips, function (n, i) {
+        saveAs(new Blob([tipTableTsv(_root)], {type: 'text/tab-separated-values'}), downloadFileName(TSV_SUFFIX));
+    }
+
+    // The table of the tips under `node`, top to bottom as drawn -- one
+    // writer for the Download menu's TSV and the node menu's Download Ext.
+    // Node Data, so their columns and rows cannot drift apart.
+    function tipTableTsv(node) {
+        return forester.externalNodeDataTsv(forester.getAllExternalNodes(node).reverse(), function (n, i) {
             return (n.viewId !== undefined) ? n.viewId : i + 1;
         });
-        saveAs(new Blob([tsv], {type: 'text/tab-separated-values'}), downloadFileName(TSV_SUFFIX));
     }
 
     function downloadAsFastaAll() {
@@ -17659,7 +17694,7 @@ function (root, d3, forester, phyloXml) {
         let png = new Promise(function (resolve, reject) {
             withGraphic(function (graphic) {
                 renderPng(graphic).then(resolve, reject);
-            });
+            }, reject);
         });
         let written;
         try {

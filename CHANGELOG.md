@@ -15,7 +15,8 @@ consumers only see a change when a version is cut.
   the tree off-screen, large enough that no tip name has to be hidden — all 354
   names of flu_h5 where the window shows 59, and all 354 around the circular
   ring where it shows 118 — crops the picture to the drawing, and sets the
-  legend beside the tree instead of over it. The window is left exactly as it
+  legends beside the tree instead of over it — the colour and shape legends,
+  the domain legend and the heat-map ring's scale, stacked in one column. The window is left exactly as it
   was. In the unrooted layout, where names on very short branches collide at
   any size, the fan grows only while growing still frees names.
 - **The Download menu says what each format keeps.** The Download button opens
