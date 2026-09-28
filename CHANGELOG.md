@@ -37,6 +37,11 @@ consumers only see a change when a version is cut.
   Node Data* for the whole tree — names, taxonomy, sequence names, branch
   lengths and every property, one row per tip.
 
+- **Downloads say when they are a subtree.** In a subtree the Download menu's
+  Tree and Tip data groups read "subtree, 19 of 50 tips", and the phyloXML and
+  Nexus files keep the tree's name, marked "(subtree)" — they had no name at
+  all (Nexus wrote `tree1`). Whole-tree files are unchanged, byte for byte.
+
 ### Changed
 - **Download is a section of its own** and folds like the others; it starts
   folded.

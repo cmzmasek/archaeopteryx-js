@@ -1041,6 +1041,15 @@ when the sequences are of unequal length, why it cannot.
   secure page (https, or localhost) and canvg, and is offered only where both
   are there.
 
+**In a subtree, and with clades collapsed.** Every download follows the tree
+you are looking at. In a **subtree** the files hold the subtree only — the
+menu's Tree and Tip data groups say so ("subtree, 19 of 50 tips"), and
+phyloXML and Nexus name it after the tree, marked "(subtree)"; the subtree is
+written as a rooted tree of its own, its root keeping the branch that leads
+into it. A **collapsed** clade is how the tree is drawn, not what it holds:
+the graphics draw it collapsed, as on screen, and every file writes it in
+full.
+
 **TSV** (under Tip data) writes every tip's data as a table, one row per tip in
 the order drawn: the node menu's **Download Ext. Node Data** for the whole
 tree, with the same columns, and a table that joins back onto the tree as

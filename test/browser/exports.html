@@ -80,12 +80,18 @@ const tipLabelsIn = (svg) => [...svg.querySelectorAll('text.extlabel')]
 async function launch(file, text) {
     const trees = archaeopteryx.parseTrees(file, text);
     const viewer = archaeopteryx.launch('#phylogram1', trees);
+    window.__aptxViewer = viewer;
     await viewer.ready;
     await sleep(1800);
     return trees;
 }
 
 (async function () {
+    if (q.get('subtree') === '1') {
+        await subtreeFiles();
+        finish();
+        return;
+    }
     if (q.get('seqs') === '1') {
         // room for the whole panel, so nothing is folded to fit
         byId('phylogram1').style.cssText = 'position:absolute;left:0;top:0;width:1100px;height:2400px';
@@ -352,6 +358,69 @@ async function launch(file, text) {
         + ' vs ' + (fw / fh).toFixed(4));
     finish();
 })().catch((e) => { check('the harness ran', false, String(e && e.stack || e)); finish(); });
+
+// In a subtree the files hold the subtree -- the menu says so, and the file
+// keeps the tree's name -- while a collapsed clade is still written whole:
+// collapsing is how the tree is drawn, not what it contains.
+async function subtreeFiles() {
+    const file = '../../docs/data/swH1-HA1.nexus';
+    const trees = await launch(file, await (await fetch(file)).text());
+    const tree = Array.isArray(trees) ? trees[0] : trees;
+    const N = forester.getAllExternalNodes(tree).length;
+    const tipsUnder = (n) => forester.getAllExternalNodes(n).length;
+    const all = [];
+    forester.preOrderTraversalAll(tree, (n) => all.push(n));
+    const sub = all.filter((n) => n.children && n !== tree && n !== tree.children[0] && tipsUnder(n) < N)
+        .sort((a, b) => Math.abs(tipsUnder(a) - 0.4 * N) - Math.abs(tipsUnder(b) - 0.4 * N))[0];
+    const inner = [];
+    forester.preOrderTraversalAll(sub, (n) => inner.push(n));
+    const col = inner.find((n) => n !== sub && n.children && tipsUnder(n) >= 2);
+    const S = tipsUnder(sub);
+    const readName = (xml) => (xml.match(/<phylogeny[^>]*>\s*<name>([^<]*)<\/name>/) || [])[1];
+    const headings = async () => {
+        byId('dl_b').click();
+        await sleep(150);
+        const h = [...menu().querySelectorAll('.aptx-node-menu-heading')].map((x) => x.textContent);
+        byId('dl_b').click();
+        await sleep(100);
+        return h;
+    };
+
+    // the whole tree first: its file's name, and a menu with nothing to say
+    const whole = await download('phyloXML');
+    const name = readName(whole ? await whole.blob.text() : '');
+    let h = await headings();
+    check('whole tree: the menu says nothing of a subtree', h.indexOf('Tree') >= 0 && h.indexOf('Tip data') >= 0,
+        h.join(' | '));
+    out.push('tree name: ' + name);
+
+    window.__aptxViewer.applyViewState({subtree: sub.viewId, collapsed: [col.viewId]});
+    await sleep(1500);
+    h = await headings();
+    const note = 'subtree, ' + S + ' of ' + N + ' tips';
+    out.push('menu groups: ' + h.join(' | '));
+    check('subtree: the menu says the files are a part of the tree', h.indexOf('Tree: ' + note) >= 0
+        && h.indexOf('Tip data: ' + note) >= 0, 'expected "' + note + '"');
+    const px = await download('phyloXML');
+    const pxText = px ? await px.blob.text() : '';
+    const pxTree = phyloXml.parse(pxText, {trim: true, normalize: true})[0];
+    check('subtree phyloXML: the subtree\'s tips, the tree\'s name', tipsUnder(pxTree) === S
+        && readName(pxText) === name + ' (subtree)', tipsUnder(pxTree) + ' tips, "' + readName(pxText) + '"');
+    const nex = await download('Nexus');
+    const nexText = nex ? await nex.blob.text() : '';
+    const treeLine = (nexText.match(/ Tree ([^=]*)=/) || [])[1];
+    check('subtree Nexus: the subtree\'s taxa, the tree\'s name', /NTax=(\d+)/.exec(nexText)[1] === String(S)
+        && treeLine === "'" + name + " (subtree)'", treeLine);
+    const tsv = await download('TSV');
+    const rows = tsv ? (await tsv.blob.text()).trim().split('\n').length - 1 : 0;
+    check('subtree TSV: every tip of the subtree, the collapsed clade\'s too', rows === S, rows + ' of ' + S);
+
+    // and nothing leaked back: out of the subtree, the tree is written as before
+    window.__aptxViewer.applyViewState({});
+    await sleep(1500);
+    const again = await download('phyloXML');
+    check('back on the whole tree, its file is exactly as it was', again && (await again.blob.text()) === (await whole.blob.text()));
+}
 
 // The Nexus entry says what the file will hold -- and the file agrees.
 async function nexusPromise() {

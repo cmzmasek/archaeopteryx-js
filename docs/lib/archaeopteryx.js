@@ -13336,7 +13336,8 @@ function (root, d3, forester, phyloXml) {
             items.push({label: 'PNG', detail: 'image, at ' + _pngScale + '× the screen\'s resolution',
                 action: entry(PNG_EXPORT_FORMAT)});
         }
-        items.push({heading: 'Tree'});
+        let part = subtreeExtentNote();
+        items.push({heading: part ? 'Tree: ' + part : 'Tree'});
         items.push({label: 'phyloXML', detail: 'keeps everything the tree carries: taxonomy, sequences, dates, properties',
             action: entry(PHYLOXML_EXPORT_FORMAT)});
         items.push({label: 'Newick', detail: 'names, branch lengths and support values only',
@@ -13346,7 +13347,7 @@ function (root, d3, forester, phyloXml) {
         // FASTA only when there is something to write: a tip carrying a
         // molecular sequence, aligned or not (same gate as the node menu's
         // Fasta entries) -- on any other tree the download would be empty
-        items.push({heading: 'Tip data'});
+        items.push({heading: part ? 'Tip data: ' + part : 'Tip data'});
         items.push({label: 'TSV', detail: 'a table, one row per tip: names, taxonomy, sequence names, '
             + 'branch lengths and every property', action: entry(TSV_EXPORT_FORMAT)});
         if (_basicTreeProperties && _basicTreeProperties.maxMolSeqLength > 0) {
@@ -13368,7 +13369,7 @@ function (root, d3, forester, phyloXml) {
         }
         let nex;
         try {
-            nex = forester.toNexus(_root, 9, _settings.nhExportWriteConfidences);
+            nex = forester.toNexus(treeForExport(), 9, _settings.nhExportWriteConfidences);
         } catch {
             return plain;
         }
@@ -17409,8 +17410,33 @@ function (root, d3, forester, phyloXml) {
         }, 1000);
     }
 
+    // What a tree file is written from. The whole tree as it is; a subtree
+    // view's root is a bare wrapper made when the subtree was entered, and
+    // written as it stands it gave the file no name at all (phyloXML wrote
+    // none, Nexus "tree1"). So it goes out under the tree's own name, marked
+    // as a subtree. A shallow copy: the drawing's wrapper is left alone, and
+    // the whole-tree files are byte for byte what they were.
+    function treeForExport() {
+        if (_root === _root_const || !_root_const) {
+            return _root;
+        }
+        let name = _root_const.name ? String(_root_const.name).trim() : '';
+        return Object.assign({}, _root, {name: name ? name + ' (subtree)' : undefined});
+    }
+
+    // "subtree, 19 of 50 tips" while a subtree is shown, else null: said in
+    // the Download menu, so nobody writes a part of the tree thinking it the
+    // whole.
+    function subtreeExtentNote() {
+        if (_root === _root_const || !_root_const) {
+            return null;
+        }
+        return 'subtree, ' + forester.getAllExternalNodes(_root).length.toLocaleString() + ' of '
+            + forester.getAllExternalNodes(_root_const).length.toLocaleString() + ' tips';
+    }
+
     function downloadAsPhyloXml() {
-        let x = phyloXml.toPhyloXML(_root, 9);
+        let x = phyloXml.toPhyloXML(treeForExport(), 9);
         saveAs(new Blob([x], {type: "application/xml"}), downloadFileName(XML_SUFFIX));
     }
 
@@ -17426,7 +17452,8 @@ function (root, d3, forester, phyloXml) {
         // taxa and trees blocks as on the desktop, plus a characters block
         // when the tips carry an alignment -- carrying tree and alignment
         // in one file is what Nexus is for
-        let nex = forester.toNexus(_root, 9, _settings.nhExportWriteConfidences);
+        let phy = treeForExport();
+        let nex = forester.toNexus(phy, 9, _settings.nhExportWriteConfidences);
         saveAs(new Blob([nex], {type: "application/txt"}), downloadFileName(NEXUS_SUFFIX));
     }
 
