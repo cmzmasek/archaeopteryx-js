@@ -49,7 +49,7 @@
         const M = G && G.getScreenCTM ? G.getScreenCTM() : null;
         if (!M) { return null; }
         const push = (x, y) => [(M.a * x) + (M.c * y) + M.e, (M.b * x) + (M.d * y) + M.f];
-        let marks = 0, worstW = 0, worstH = 0, worstText = '';
+        let marks = 0, worstW = 0, worstH = 0, worstText = '', worstOff = 0, worstOffText = '';
         for (const el of document.querySelectorAll('#p g.node')) {
             const d = el.__data__;
             if (!d || !d._markBoxes) { continue; }
@@ -67,9 +67,21 @@
                 const dw = r.width - claimedW, dh = r.height - claimedH;
                 if (dw > worstW) { worstW = dw; worstText = t.textContent; }
                 if (dh > worstH) { worstH = dh; }
+                // AND WHERE IT SITS. Size alone is not enough: a box of the
+                // right size in the wrong place lets two marks that claimed
+                // clear space be drawn on top of each other, which is exactly
+                // the failure this harness was written for -- and the first
+                // version measured only width and height, passed on the
+                // machine that was failing, and said nothing.
+                const cx0 = Math.min(p0[0], p1[0]), cy0 = Math.min(p0[1], p1[1]);
+                const off = Math.max(
+                    Math.abs(r.left - cx0), Math.abs(r.top - cy0),
+                    Math.abs(r.right - (cx0 + claimedW)), Math.abs(r.bottom - (cy0 + claimedH)));
+                if (off > worstOff) { worstOff = off; worstOffText = t.textContent; }
             }
         }
-        return {marks: marks, worstW: worstW, worstH: worstH, worstText: worstText};
+        return {marks: marks, worstW: worstW, worstH: worstH, worstText: worstText,
+            worstOff: worstOff, worstOffText: worstOffText};
     };
 
     for (const [lname, lid] of [['rectangular', 'layout_rect_b'], ['circular   ', 'layout_circ_b'],
@@ -79,7 +91,9 @@
         if (!r || r.marks === 0) { out.push(lname + ': no marks drawn'); continue; }
         out.push(lname + ': ' + r.marks + ' marks; drawn wider than claimed by at most '
             + r.worstW.toFixed(2) + ' px, taller by ' + r.worstH.toFixed(2)
-            + (r.worstText ? (' (worst "' + r.worstText + '")') : ''));
+            + (r.worstText ? (' (worst "' + r.worstText + '")') : '')
+            + '; furthest EDGE off its claimed box ' + r.worstOff.toFixed(2) + ' px'
+            + (r.worstOffText ? (' (worst "' + r.worstOffText + '")') : ''));
         // A claim narrower than the ink is how two marks come to share pixels.
         // The bound is the one the label check uses: the two ways of measuring
         // a string differ by under a pixel on a font they agree about.
@@ -87,6 +101,8 @@
             r.worstW < 1.5, r.worstW.toFixed(2) + ' px wider, bound 1.5');
         check(lname.trim() + ': and no taller', r.worstH < 1.5,
             r.worstH.toFixed(2) + ' px taller, bound 1.5');
+        check(lname.trim() + ': and is drawn where it claimed to be',
+            r.worstOff < 1.5, r.worstOff.toFixed(2) + ' px off, bound 1.5');
     }
     window.__benchResult = {report: out, failures: failures};
     window.__benchDone = true;
