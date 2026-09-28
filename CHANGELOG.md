@@ -26,7 +26,9 @@ consumers only see a change when a version is cut.
   whether the file will carry the alignment — or, for sequences of unequal
   length, that it cannot and why, in the words the writer puts in the file.
 - **PNG resolution: 2× / 4× / 8×**, chosen in the panel (4× by default;
-  `pngExportScale` sets the starting choice). A PNG larger than the browser
+  `pngExportScale` sets the starting choice). **`pngExportScale` is narrowed**
+  to 2, 4 or 8: any other value is snapped to the nearest, with a console
+  warning — it used to take any positive number. A PNG larger than the browser
   will paint comes out at the largest scale it can, with a console warning —
   it used to come out blank.
 - **An editable file name.** Each format adds its own extension; a typed one

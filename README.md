@@ -1322,7 +1322,7 @@ copy-pastable JSON.
 | `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `enableDownloads` | `true` | Offer the download buttons. |
-| `pngExportScale` | `4` | The PNG resolution the Download section starts on, snapped to its 2×, 4× or 8×. |
+| `pngExportScale` | `4` | The PNG resolution the Download section starts on: 2, 4 or 8 (any other value is snapped to the nearest, with a console warning). |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
 | `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |

@@ -16823,6 +16823,13 @@ function (root, d3, forester, phyloXml) {
                 let want = _settings.pngExportScale;
                 return Math.abs(Math.log(k / want)) < Math.abs(Math.log(best / want)) ? k : best;
             });
+            // any positive number used to be taken as it was; the panel offers
+            // 2x, 4x and 8x, and the setting is now the one it starts on
+            // (Christian, 2026-09-28) -- said, not done silently
+            if (_pngScale !== _settings.pngExportScale) {
+                console.warn(WARNING + ': pngExportScale ' + _settings.pngExportScale + ' is not one of '
+                    + DOWNLOAD_PNG_SCALES.join(', ') + ': the PNG starts at ' + _pngScale + 'x');
+            }
             setRadioButtonValue(_downloadFullSize ? DOWNLOAD_FULL_SIZE_BUTTON : DOWNLOAD_AS_SHOWN_BUTTON, true);
             setRadioButtonValue('dl_png' + _pngScale + '_b', true);
         }
