@@ -6,10 +6,17 @@ Release body. The published npm package and the live demo site are decoupled —
 `docs/` is served from `master`, so demos update on every push, while npm
 consumers only see a change when a version is cut.
 
-## Unreleased
+## 3.16.0 — 2026-09-28
+
+Crowded radial trees become readable: the two fan layouts now hide the tip
+names that would overprint each other instead of thinning by a row pitch that
+a fan does not have, and branch values give way to names everywhere. The panel
+gained a cheat sheet listing every control it is showing with the icon it
+draws, and the browser harnesses that check all of this moved into the
+repository and run in CI.
+
 
 ### Added
-
 - **The browser harnesses are in the repository and run in CI.** `npm run
   test:browser` drives the viewer in headless Chrome — opening a real tree,
   working the controls and measuring what is drawn — and a CI job runs a case
@@ -65,7 +72,6 @@ consumers only see a change when a version is cut.
   found none, and a pass using them dropped 16 names that touched nothing.
 
 ### Changed
-
 - Every control of the panel now carries a description, and the two search menus,
   the download-format menu and the panel title carry accessible names. The
   download-format menu had no description at all.
@@ -81,8 +87,17 @@ consumers only see a change when a version is cut.
   can express it: step into circular, flip to the cladogram and back, return,
   and the phylogram you picked is still the one selected.
 
-### Fixed
+- `forester.labelOccupancy` gained `occupy`, which records a box whether or not
+  the space was clear, for marks that are drawn regardless. A refused `claim`
+  records nothing, so a name put through `claim` would have left its space open
+  for the very number that overprints it.
+- The node label's anchor, offset and horizontal position now come from one
+  placement function, shared by the text and by the box reserved for it.
+- A node carries the space its label reserved for the current render, so the
+  reservation can be checked against the name it is supposed to cover rather
+  than only against what it happens to hide.
 
+### Fixed
 - **A domain architecture is no longer drawn for a tip whose name the crowding
   rule hid.** Since the unrooted layout began hiding crowded names, a tip could
   show an architecture with nothing to identify it by — 7 of 31 on `apaf.xml`,
@@ -116,18 +131,6 @@ consumers only see a change when a version is cut.
   box round the whole thing: the bounds of a rotated rectangle grow with its
   length, so a long name at an angle would otherwise reserve several times its own
   area.
-
-### Changed
-
-- `forester.labelOccupancy` gained `occupy`, which records a box whether or not
-  the space was clear, for marks that are drawn regardless. A refused `claim`
-  records nothing, so a name put through `claim` would have left its space open
-  for the very number that overprints it.
-- The node label's anchor, offset and horizontal position now come from one
-  placement function, shared by the text and by the box reserved for it.
-- A node carries the space its label reserved for the current render, so the
-  reservation can be checked against the name it is supposed to cover rather
-  than only against what it happens to hide.
 
 ## 3.15.0 — 2026-09-25
 

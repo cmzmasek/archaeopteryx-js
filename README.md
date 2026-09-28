@@ -270,8 +270,15 @@ stays live in every layout.
 
 The card button in the panel header opens **Control panel**: one row for every
 control the panel is currently showing, in the order it shows them, each with
-the control's own glyph or name and the sentence that explains it. The About
-box has a row for it too.
+the control's own glyph or name and the sentence that explains it — the layout
+and display-type buttons included, drawn with the very glyph they carry in the
+panel. The About box has a row for it too.
+
+The display types say what they do and when they are greyed, whether or not
+they are greyed in the view you are looking at: *"phylogram: branch lengths
+drawn to scale, so the tips end ragged. Greyed in the circular layout, which
+always carries its labels to the outer ring, so there the aligned phylogram is
+the one drawn."*
 
 It is **modeless** and sits beside the panel, so a row can be read while the
 control it names is used. It describes what is on the screen: fold a section
@@ -1137,10 +1144,11 @@ root first, so the mark nearer the root keeps its place and the same tree at
 the same size always drops the same marks — on screen and in every export.
 
 **The Auto-hide Labels toggle lights up while it is taking something away**,
-and its tooltip says what: *1 in k labels shown* in the rectangular layout,
-which thins by index, or *n names that would overprint* in the two radial
-layouts, which thin by overlap. It stays dark on a tree with room for
-everything.
+and its tooltip says what. The switch governs three rules and the light asks
+all three: *1 in k labels shown* in the rectangular layout, which thins by
+index; *n names that would overprint* in the two radial layouts, which thin by
+overlap; and *n branch values that would overlap*, in any layout. It stays dark
+on a tree with room for everything.
 
 **In the circular and unrooted layouts, crowded tip labels are hidden by
 whether they actually overprint.** A name is drawn only where its own outline
