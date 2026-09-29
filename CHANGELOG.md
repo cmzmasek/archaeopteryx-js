@@ -9,9 +9,11 @@ users see a change only when a version is cut.
 
 ### Added
 - **The time axis in the circular layout.** Node-age bars run along each
-  node's spoke; the ruler runs out from the root along the gap between the
-  last tip and the first, turning with the tree; **Time Grid** draws rings;
-  a geologic axis lays its intervals down as coloured rings.
+  node's spoke, and on through the centre where a range reaches back past
+  the root's own age (as on the desktop); the ruler runs out from the root
+  along the gap between the last tip and the first, turning with the tree;
+  **Time Grid** draws rings; a geologic axis lays its intervals down as
+  coloured rings.
 - **Time | Div on BEAST clock-model trees.** Their branch lengths are time and
   each branch states its clock `rate`, so divergence is length × rate
   (substitutions per site). The switch appears when every branch has a rate

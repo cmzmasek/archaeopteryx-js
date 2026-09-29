@@ -738,9 +738,11 @@ Node
 tooltips show the date. The **Time Axis** checkbox under Display Data toggles
 everything; the axis needs a phylogram (branch lengths carry the time) and
 the rectangular or circular layout. In **circular** the bars run along each
-node's spoke, the ruler runs out from the root along the gap between the last
-tip and the first (turning with the tree), and a geologic axis lays its
-intervals down as coloured rings. **Time Grid** (off by default, like the
+node's spoke — and on through the centre, onto the far side, where a range
+reaches back past the root's own age, as the desktop draws it — the ruler
+runs out from the root along the gap between the last tip and the first
+(turning with the tree), and a geologic axis lays its intervals down as
+coloured rings. **Time Grid** (off by default, like the
 desktop's "Time axis grid lines") adds faint lines behind the tree at the
 fine geologic-interval boundaries or the calendar year ticks (rings, in
 circular), so a node's position can be read against the axis.

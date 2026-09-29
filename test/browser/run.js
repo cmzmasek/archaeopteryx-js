@@ -42,7 +42,7 @@ const CASES = {
     'indicator_branchdata': ['', '?tree=../../docs/data/apaf.xml'],
     'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
     'suppdots': [''],
-    'time_circular': [''],
+    'time_circular': ['', '?fossil=1'],
     'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?legends=1', '?big=1200']
 };
 

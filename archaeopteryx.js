@@ -11708,12 +11708,13 @@ function (root, d3, forester, phyloXml) {
         function timeBar(d, x0, x1, thick, fill, cls) {    // bound to d, for probes
             let el;
             if (circular) {
-                // Each end is clamped at the centre. NAMED DIVERGENCE: the
-                // desktop continues a bar through the centre onto the far
-                // side (Christian, 2026-09-28: recorded, neither changes).
+                // A bound older than the root's own estimate is a NEGATIVE
+                // radius, and the bar runs on through the centre onto the far
+                // side of its spoke's line, as the rectangular bar straddles
+                // the root's x. As on the desktop (hpdRadialRange).
                 let a = radialAngle(d.x);
-                let p0 = polarXY(a, Math.max(0, radialRadius(x0)));
-                let p1 = polarXY(a, Math.max(0, radialRadius(x1)));
+                let p0 = polarXY(a, radialRadius(x0));
+                let p1 = polarXY(a, radialRadius(x1));
                 el = g.append('line').attr('x1', p0[0]).attr('y1', p0[1])
                     .attr('x2', p1[0]).attr('y2', p1[1])
                     .attr('stroke', fill).attr('stroke-width', thick);
@@ -11730,8 +11731,8 @@ function (root, d3, forester, phyloXml) {
             let q;
             if (circular) {
                 let a = radialAngle(d.x);
-                let r = Math.max(0, radialRadius(x));
-                let half = 4 / Math.max(r, 4);    // 4px either side, as an angle
+                let r = radialRadius(x);    // negative past the centre, as the bar's end is
+                let half = 4 / Math.max(Math.abs(r), 4);    // 4px either side, as an angle
                 p = polarXY(a - half, r);
                 q = polarXY(a + half, r);
             } else {
@@ -11739,7 +11740,8 @@ function (root, d3, forester, phyloXml) {
                 q = [x, d.x + 4];
             }
             g.append('line').attr('x1', p[0]).attr('y1', p[1]).attr('x2', q[0]).attr('y2', q[1])
-                .attr('stroke', FOSSIL_BAR_COLOR).attr('stroke-width', 1);
+                .attr('stroke', FOSSIL_BAR_COLOR).attr('stroke-width', 1)
+                .datum(d).attr('class', 'aptx-fossil-cap');
         }
 
         // ---- HPD age bars (internal) + tip bars: fossil ranges, or sampling dates ----
