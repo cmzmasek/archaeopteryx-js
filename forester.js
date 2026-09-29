@@ -6580,7 +6580,9 @@
         let root = forester.getTreeRoot(phy);
         if (root && root._timeLengthsKept === true) {
             forester.preOrderTraversalAll(root, function (n) {
-                n.branch_length = n._timeLength;
+                if (n !== root) {    // the root has no branch, and no layout touches what it states
+                    n.branch_length = n._timeLength;
+                }
             });
             stampLengthUnit(phy, root, dateUnitOf(root) || PLAIN_TIME_LENGTH_UNIT);
             return true;
@@ -6588,7 +6590,7 @@
         if (!root || !everyNodeStates(root, auspiceNodeDate)) {
             return false;
         }
-        setDeltaBranchLengths(root, null, auspiceNodeDate, timeGapOf(root));
+        layOutBelowRoot(root, auspiceNodeDate, timeGapOf(root));
         stampLengthUnit(phy, root, dateUnitOf(root) || PLAIN_TIME_LENGTH_UNIT);
         return true;
     };
@@ -6598,10 +6600,24 @@
         if (!root || !divergenceStatesEveryBranch(root)) {
             return false;
         }
-        setDeltaBranchLengths(root, null, auspiceNodeDiv, divergenceGap);
+        layOutBelowRoot(root, auspiceNodeDiv, divergenceGap);
         stampLengthUnit(phy, root, DIVERGENCE_LENGTH_UNIT);
         return true;
     };
+
+    // The root has no branch to lay out: it keeps the length it has, or none.
+    // Given a length of 0 by the switch, a tree saved from Div stated a root
+    // branch its file never had, and the desktop's copy of it did not.
+    function layOutBelowRoot(root, metricOf, gapOf) {
+        let had = Object.prototype.hasOwnProperty.call(root, 'branch_length');
+        let length = root.branch_length;
+        setDeltaBranchLengths(root, null, metricOf, gapOf);
+        if (had) {
+            root.branch_length = length;
+        } else {
+            delete root.branch_length;
+        }
+    }
 
     function everyNodeStates(root, metricOf) {
         let every = true;

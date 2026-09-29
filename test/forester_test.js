@@ -5535,6 +5535,28 @@ function testTimeDivergenceScale() {
             return false;
         }
     }
+    // The root has no branch: the switch leaves it the length it has, or
+    // none. It was given 0, and a tree saved from Div then stated a root
+    // branch that its file never had.
+    var rooted = [['a clock tree', asOpened(heightsText)], ['a tree with lengths of its own recording divergence', ladder('1.5', '1.5')],
+        ['a Nextstrain build', ncovLess('none')]];
+    for (var rt = 0; rt < rooted.length; ++rt) {
+        var top = forester.getTreeRoot(rooted[rt][1]);
+        var hadLength = Object.prototype.hasOwnProperty.call(top, 'branch_length');
+        var topLength = top.branch_length;
+        var states = [forester.applyDivergenceBranchLengths, forester.applyTimeBranchLengths,
+            forester.applyDivergenceBranchLengths];
+        for (var stt = 0; stt < states.length; ++stt) {
+            if (states[stt](rooted[rt][1]) !== true
+                || Object.prototype.hasOwnProperty.call(top, 'branch_length') !== hadLength
+                || top.branch_length !== topLength) {
+                console.log('    ' + rooted[rt][0] + ': the root arrived with ' + (hadLength ? 'a length of ' + topLength : 'no length')
+                    + ' and after press ' + (stt + 1) + ' has ' + (Object.prototype.hasOwnProperty.call(top, 'branch_length')
+                        ? top.branch_length : 'none'));
+                return false;
+            }
+        }
+    }
     // a build that states no dates opens in divergence, and says so
     var undatedBuild = forester.parseAuspiceJson(JSON.stringify({version: 'v2', tree: {name: 'r', node_attrs: {div: 0},
         children: [{name: 'a', node_attrs: {div: 0.001}}, {name: 'b', node_attrs: {div: 0.004}}]}}));
