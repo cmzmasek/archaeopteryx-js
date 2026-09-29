@@ -751,8 +751,14 @@ Where a tree states both **time** and a different **divergence**, a
 **Time | Div** switch appears beside the phylogram buttons (⌘⇧X): an Auspice
 build (`num_date` and `div`), or a BEAST clock-model tree, whose branch
 lengths are time and whose divergence is each length times its `rate`
-(substitutions per site). It is offered only when the two draw different
-pictures; the time axis is hidden while the branches show divergence.
+(substitutions per site) — whether its node ages were placed in calendar time
+or are still heights. It is offered only when the two draw different
+pictures, and only when both can state **every** branch: every node dated,
+and every node recording its divergence or every branch stating a length
+(and, on a clock-model tree, a rate, written as a plain number). A value the
+file states is stated, whether zero or negative; where one is missing the
+switch is not offered, rather than a branch drawn at length 0 that the file
+never described. The time axis is hidden while the branches show divergence.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -961,7 +967,9 @@ pick them up. Both metrics are retained, and
 `forester.applyTimeBranchLengths(phy)` /
 `forester.applyDivergenceBranchLengths(phy)` /
 `forester.hasTimeAndDivergence(phy)` are the plumbing behind the
-**Time | Div** switch.
+**Time | Div** switch. The two `apply` functions answer `true` when they
+laid the tree out, and `false` — leaving every branch length as it was —
+when their layout cannot state every branch.
 
 **BEAST-style and NHX annotations** in Newick/Nexus input are always parsed
 (they used to be discarded): in a `[&key=value,...]` blob — as written by

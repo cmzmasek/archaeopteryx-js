@@ -4844,14 +4844,16 @@ function testTimeDivergenceScale() {
     // one clock for every branch, and with one branch's rate missing. A's
     // length (2.05) differs from its height gap (2), as a mean length and a
     // median height do, so only the LOADED lengths satisfy the round trip.
-    function clockTree(rates) {
+    function clockNexus(rates) {
         var r = function (k) {
             return rates[k] === null ? '' : 'rate=' + rates[k] + ',';
         };
-        var nex = '#NEXUS\nBegin trees;\ntree T = [&R] ((A_2004[&' + r('A') + 'height=0]:2.05,B_2003[&' + r('B')
+        return '#NEXUS\nBegin trees;\ntree T = [&R] ((A_2004[&' + r('A') + 'height=0]:2.05,B_2003[&' + r('B')
             + 'height=1]:1)[&' + r('X') + 'height=2]:2,(C_2004[&' + r('C') + 'height=0]:3,D_2002[&' + r('D')
             + 'height=2]:1)[&' + r('Y') + 'height=3]:1)[&height=4];\nEnd;\n';
-        var t = forester.parseNexus(nex)[0];
+    }
+    function clockTree(rates) {
+        var t = forester.parseNexus(clockNexus(rates))[0];
         forester.captureDivergence(t);
         forester.convertLoadedHeightsToDates(t);
         return t;
@@ -4892,6 +4894,83 @@ function testTimeDivergenceScale() {
     var partial = Object.assign({}, varying, {D: null});
     if (forester.hasTimeAndDivergence(clockTree(partial))) {
         console.log('    a rate missing on one branch must not mix substitutions with years');
+        return false;
+    }
+
+    // What counts as a rate: a finite number that is not negative, however it
+    // is written. Joint with the desktop, whose BranchLengthLayoutTest holds
+    // the same two lists. The rate is set as TEXT on the parsed tree (a Nexus
+    // comment cannot carry a blank), on D, whose branch is 1 long -- so its
+    // divergence is the rate itself. A tree with no rate to go by keeps the
+    // lengths it was loaded with: asking for the offer alone would miss a
+    // rate of NaN, which the shift test refuses for its own reasons.
+    function rateWritten(node, spelling) {
+        var t = forester.parseNexus(clockNexus(varying))[0];
+        var r = forester.getTreeRoot(t);
+        forester.preOrderTraversalAll(r, function (n) {
+            if ((node === 'root') ? (n === r) : (n.name === node)) {
+                n.properties = [{ref: 'beast:rate', value: spelling, datatype: 'xsd:string', applies_to: 'node'}];
+            }
+        });
+        forester.captureDivergence(t);
+        forester.convertLoadedHeightsToDates(t);
+        return t;
+    }
+    function lengthsOf(t) {
+        var l = {};
+        var r = forester.getTreeRoot(t);
+        forester.preOrderTraversalAll(r, function (n) {
+            if (n !== r) {
+                l[n.name || ('above ' + n.children[0].name)] = n.branch_length;
+            }
+        });
+        return l;
+    }
+    var spelt = [['0', 0], ['0.0', 0], ['1e-3', 0.001], [' 0.005 ', 0.005], ['12', 12], ['+0.004', 0.004], ['.5', 0.5], ['5.', 5], ['2E-3', 0.002]];
+    for (var g = 0; g < spelt.length; ++g) {
+        var rated = rateWritten('D_2002', spelt[g][0]);
+        if (!forester.hasTimeAndDivergence(rated)) {
+            console.log('    "' + spelt[g][0] + '" is a rate: the switch should be offered');
+            return false;
+        }
+        forester.applyDivergenceBranchLengths(rated);
+        if (Math.abs(lengthsOf(rated).D_2002 - spelt[g][1]) > 1e-12) {
+            console.log('    "' + spelt[g][0] + '" on a branch 1 long should draw ' + spelt[g][1] + ', got '
+                + lengthsOf(rated).D_2002);
+            return false;
+        }
+    }
+    // ...and a number with something after it, or in another notation, is not
+    // one: the front of "0.01abc" is not a rate anybody wrote. (The last three
+    // are numbers to Java's parseDouble, so to the desktop: a named difference.)
+    var notRates = ['-0.001', '-1e-9', 'fast', 'NaN', 'Infinity', '-Infinity', '', ' ',
+        '0.01abc', '1,5', '0x10', '1_000', '0.5 per year', '1d', '0.005d', '0x1p-8'];
+    for (var b = 0; b < notRates.length; ++b) {
+        var unrated = rateWritten('D_2002', notRates[b]);
+        var asLoaded = lengthsOf(unrated);
+        if (forester.hasTimeAndDivergence(unrated)) {
+            console.log('    "' + notRates[b] + '" is no rate: the switch must not be offered');
+            return false;
+        }
+        forester.applyDivergenceBranchLengths(unrated);
+        var drawn = lengthsOf(unrated);
+        for (var k in asLoaded) {
+            if (Math.abs(drawn[k] - asLoaded[k]) > 1e-9) {
+                console.log('    "' + notRates[b] + '" is no rate, so no rate may be used: ' + k + ' was '
+                    + asLoaded[k] + ', drawn ' + drawn[k]);
+                return false;
+            }
+        }
+    }
+    // the root has no branch, so what it states as a rate is never asked for
+    var rootRated = rateWritten('root', 'fast');
+    if (!forester.hasTimeAndDivergence(rootRated)) {
+        console.log('    the root states no usable rate, and has no branch to need one: the switch should be offered');
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(rootRated);
+    if (Math.abs(lengthsOf(rootRated).A_2004 - 0.0205) > 1e-12) {
+        console.log('    with a rate on the root, A should still draw 2.05 x 0.01, got ' + lengthsOf(rootRated).A_2004);
         return false;
     }
 
@@ -4959,6 +5038,153 @@ function testTimeDivergenceScale() {
     if (flat !== all) {
         console.log('    expected the age tree to collapse under the time view, got ' + flat + '/' + all);
         return false;
+    }
+
+    // ...but a CLOCK-MODEL tree still stating heights is offered the switch:
+    // its time view is its own branch lengths and reads no date, so there is
+    // nothing to collapse. beast-annotations.nex has no dates in its labels,
+    // so its heights stay heights (every child EARLIER than its parent); the
+    // two pictures differ by a tenth of the tree's width. With the desktop,
+    // which pairs it with the same tree less ONE rate (isolate_C's).
+    var heightsText = fs.readFileSync(path.join(__dirname, '..', 'docs', 'data', 'beast-annotations.nex'), 'utf8');
+    function asOpened(text) {
+        var ts = forester.parseNexus(text);
+        forester.captureDivergence(ts[0]);
+        forester.convertLoadedHeightsToDates(ts);
+        return ts[0];
+    }
+    var heights = asOpened(heightsText);
+    var later = 0;
+    var branches = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(heights), function (n) {
+        if (n !== forester.getTreeRoot(heights)) {
+            ++branches;
+            if (n.date.value > n.parent.date.value) {
+                ++later;
+            }
+        }
+    });
+    if (branches !== 8 || later !== 0) {
+        console.log('    fixture: beast-annotations.nex should still state heights on its 8 branches, '
+            + later + ' of ' + branches + ' run the calendar way');
+        return false;
+    }
+    if (!forester.hasTimeAndDivergence(heights) || forester.branchLengthScale(heights) !== 'time') {
+        console.log('    a clock-model tree stating heights should be offered the switch, opening in time: '
+            + forester.hasTimeAndDivergence(heights) + ' ' + forester.branchLengthScale(heights));
+        return false;
+    }
+    var heightsLoaded = lengthsOf(heights);
+    if (forester.applyDivergenceBranchLengths(heights) !== true
+        || Math.abs(lengthsOf(heights).isolate_C - (0.8 * 0.0026)) > 1e-12) {
+        console.log('    isolate_C, 0.8 long at a rate of 0.0026, should draw 0.00208, got ' + lengthsOf(heights).isolate_C);
+        return false;
+    }
+    forester.applyTimeBranchLengths(heights);
+    for (var hk in heightsLoaded) {
+        if (lengthsOf(heights)[hk] !== heightsLoaded[hk]) {
+            console.log('    back in time ' + hk + ' should be ' + heightsLoaded[hk] + ' again, got ' + lengthsOf(heights)[hk]);
+            return false;
+        }
+    }
+    var oneRate = 'isolate_C[&height=0.0,rate=0.0026]';
+    if (heightsText.split(oneRate).length !== 2) {
+        console.log('    fixture: beast-annotations.nex should state isolate_C\'s rate exactly once');
+        return false;
+    }
+    if (forester.hasTimeAndDivergence(asOpened(heightsText.replace(oneRate, 'isolate_C[&height=0.0]')))) {
+        console.log('    the same tree less isolate_C\'s rate must not be offered the switch');
+        return false;
+    }
+
+    // The switch is offered only when BOTH layouts can state EVERY branch
+    // (joint with the desktop, 2026-09-29). A branch drawn at 0 because a datum
+    // is missing says "nothing happened here", which the file never said. One
+    // datum is taken out of a real build at a time -- an internal node, a tip,
+    // the root -- so the missing datum is the single cause; the build as it is
+    // is the control.
+    var ncovText = fs.readFileSync(path.join(__dirname, '..', 'docs', 'data', 'nextstrain-ncov.json'), 'utf8');
+    function ncovLess(which, attr) {
+        var doc = JSON.parse(ncovText);
+        var internal = null;
+        var tip = null;
+        (function w(x, depth) {
+            var kids = x.children || [];
+            if (kids.length === 0) {
+                tip = tip || x;
+            } else if (depth > 0) {
+                internal = internal || x;
+            }
+            kids.forEach(function (c) { w(c, depth + 1); });
+        }(doc.tree, 0));
+        var target = {internal: internal, tip: tip, root: doc.tree}[which];
+        if (which !== 'none') {
+            if (!target || target.node_attrs[attr] === undefined) {
+                return null;   // the fixture has no such datum to take out
+            }
+            delete target.node_attrs[attr];
+        }
+        var phy = forester.parseAuspiceJson(doc);
+        phy = Array.isArray(phy) ? phy[0] : phy;
+        forester.captureDivergence(phy);
+        return phy;
+    }
+    if (!forester.hasTimeAndDivergence(ncovLess('none'))) {
+        console.log('    the build as it is should be offered the switch, or the refusals below prove nothing');
+        return false;
+    }
+    var missing = [['internal', 'num_date'], ['tip', 'num_date'], ['root', 'num_date'],
+        ['internal', 'div'], ['tip', 'div'], ['root', 'div']];
+    for (var m = 0; m < missing.length; ++m) {
+        var less = ncovLess(missing[m][0], missing[m][1]);
+        var what = missing[m][1] + ' taken off ' + (missing[m][0] === 'root' ? 'the root' : 'one ' + missing[m][0] + ' node');
+        if (less === null) {
+            console.log('    fixture: could not take ' + what);
+            return false;
+        }
+        if (forester.hasTimeAndDivergence(less)) {
+            console.log('    ' + what + ': the switch must not be offered');
+            return false;
+        }
+        // and the layout that cannot state every branch leaves the tree alone
+        var before = JSON.stringify(lengthsOf(less));
+        var applied = missing[m][1] === 'div' ? forester.applyDivergenceBranchLengths(less)
+            : forester.applyTimeBranchLengths(less);
+        if (applied !== false || JSON.stringify(lengthsOf(less)) !== before) {
+            console.log('    ' + what + ': that layout must leave the tree as it was (answered ' + applied + ')');
+            return false;
+        }
+    }
+    // a tree that records its divergence states it that way and no other:
+    // nothing is captured beside it to stand in for a node that records none
+    var captured = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(ncovLess('tip', 'div')), function (n) {
+        if (n._divergence !== undefined) {
+            ++captured;
+        }
+    });
+    if (captured !== 0) {
+        console.log('    a tree recording its divergence should capture none from its branch lengths, ' + captured + ' nodes did');
+        return false;
+    }
+    // A length that is STATED is stated, whether zero or negative -- real
+    // BEAST trees state negative ones (influenza.tree: 35 of 1372) -- and only
+    // one that is not there is missing.
+    function clockWithLength(len) {
+        var nex = clockNexus(varying);
+        if (nex.split(']:2.05,').length !== 2) {
+            return null;
+        }
+        return asOpened(nex.replace(']:2.05,', len === null ? '],' : (']:' + len + ',')));
+    }
+    var stated = [[0, true], [-0.5, true], [null, false]];
+    for (var s = 0; s < stated.length; ++s) {
+        var cl = clockWithLength(stated[s][0]);
+        if (cl === null || forester.hasTimeAndDivergence(cl) !== stated[s][1]) {
+            console.log('    a clock tree whose branch A ' + (stated[s][0] === null ? 'states no length' : 'is ' + stated[s][0] + ' long')
+                + (stated[s][1] ? ' should' : ' must not') + ' be offered the switch');
+            return false;
+        }
     }
     return true;
 }

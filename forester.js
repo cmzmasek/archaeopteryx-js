@@ -6409,12 +6409,8 @@
             ? node.date.value : null;
     }
 
-    // A node's CUMULATIVE divergence from the root. Auspice states it outright
-    // as nextstrain:div; every other tree states it as branch lengths, which
-    // are the same thing in difference form, so it is summed at load and kept
-    // on the node (see forester.captureDivergence). The property wins where it
-    // exists, so an Auspice tree behaves exactly as it always did.
-    function auspiceNodeDiv(node) {
+    // The divergence a node RECORDS (nextstrain:div), or null.
+    function recordedDiv(node) {
         if (node.properties) {
             for (let i = 0; i < node.properties.length; ++i) {
                 if (node.properties[i].ref === NEXTSTRAIN_PREFIX + 'div') {
@@ -6422,6 +6418,33 @@
                     return isFinite(d) ? d : null;
                 }
             }
+        }
+        return null;
+    }
+
+    function recordsDivergence(root) {
+        let found = false;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!found && recordedDiv(n) !== null) {
+                found = true;
+            }
+        });
+        return found;
+    }
+
+    // A node's CUMULATIVE divergence from the root. Auspice states it outright
+    // as nextstrain:div; every other tree states it as branch lengths, which
+    // are the same thing in difference form, so it is summed at load and kept
+    // on the node (see forester.captureDivergence). A tree states it ONE way:
+    // where any node records a divergence nothing is captured, so a node that
+    // records none has none. Until 2026-09-29 such a node fell back to the sum
+    // of the loaded lengths, which on an Auspice tree are YEARS -- a tip whose
+    // div of 0.0008 was missing drew its branch at 0.2794, where the file's
+    // own numbers said 0.0002.
+    function auspiceNodeDiv(node) {
+        let d = recordedDiv(node);
+        if (d !== null) {
+            return d;
         }
         return (typeof node._divergence === 'number' && isFinite(node._divergence))
             ? node._divergence : null;
@@ -6431,16 +6454,6 @@
         let found = false;
         forester.preOrderTraversalAll(node, function (n) {
             if (auspiceNodeDate(n) !== null) {
-                found = true;
-            }
-        });
-        return found;
-    }
-
-    function auspiceHasAnyDiv(node) {
-        let found = false;
-        forester.preOrderTraversalAll(node, function (n) {
-            if (auspiceNodeDiv(n) !== null) {
                 found = true;
             }
         });
@@ -6470,6 +6483,11 @@
     // time -- lossless and reversible, and reusing the exact recompute the
     // parser itself used, so the toggle can never drift from the loaded view.
 
+    // Both leave the tree exactly as it was, and answer false, when their
+    // layout cannot state every branch: a branch drawn at 0 because a datum is
+    // MISSING says "nothing happened along this branch", which the file never
+    // said. A datum that is stated is stated, whether zero or negative.
+
     forester.applyTimeBranchLengths = function (phy) {
         let root = forester.getTreeRoot(phy);
         // a clock-model tree's branch lengths already ARE time, and switching
@@ -6478,14 +6496,43 @@
             forester.preOrderTraversalAll(root, function (n) {
                 n.branch_length = n._timeLength;
             });
-            return;
+            return true;
+        }
+        if (!root || !everyNodeStates(root, auspiceNodeDate)) {
+            return false;
         }
         setDeltaBranchLengths(root, null, auspiceNodeDate);
+        return true;
     };
 
     forester.applyDivergenceBranchLengths = function (phy) {
-        setDeltaBranchLengths(forester.getTreeRoot(phy), null, auspiceNodeDiv);
+        let root = forester.getTreeRoot(phy);
+        if (!root || !divergenceStatesEveryBranch(root)) {
+            return false;
+        }
+        setDeltaBranchLengths(root, null, auspiceNodeDiv);
+        return true;
     };
+
+    function everyNodeStates(root, metricOf) {
+        let every = true;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (every && metricOf(n) === null) {
+                every = false;
+            }
+        });
+        return every;
+    }
+
+    // Recorded on every node (the root too: it is the parent its children are
+    // measured from), or captured from branch lengths every one of which the
+    // file stated.
+    function divergenceStatesEveryBranch(root) {
+        if (recordsDivergence(root)) {
+            return everyNodeStates(root, recordedDiv);
+        }
+        return root._everyLengthStated === true && everyNodeStates(root, auspiceNodeDiv);
+    }
 
     /**
      * Records each node's cumulative divergence from the root, summed from the
@@ -6508,11 +6555,22 @@
         if (!root) {
             return;
         }
+        // A tree that RECORDS its divergence states it that way and no other:
+        // nothing is captured, so a node that records none has none (see
+        // auspiceNodeDiv).
+        if (recordsDivergence(root)) {
+            root._divergenceFromRates = false;
+            root._everyLengthStated = false;
+            return;
+        }
         // A BEAST clock-model tree states its branch lengths in TIME and each
         // branch's clock rate beside it, so its divergence is length x rate
         // (substitutions per site). Only when EVERY branch states a rate: a
         // partial one would mix substitutions with years along a path.
         let rates = everyBranchClockRate(root);
+        // a length of 0, or a negative one, is a length the file stated; one
+        // that is not there is not, and the switch is not offered on it
+        let everyLength = true;
         (function walk(node, cumulative) {
             node._divergence = cumulative;
             if (rates) {
@@ -6522,7 +6580,11 @@
             if (children) {
                 for (let i = 0; i < children.length; ++i) {
                     let bl = children[i].branch_length;
-                    let step = (typeof bl === 'number' && isFinite(bl) && bl > 0) ? bl : 0;
+                    let stated = typeof bl === 'number' && isFinite(bl);
+                    if (!stated) {
+                        everyLength = false;
+                    }
+                    let step = (stated && bl > 0) ? bl : 0;
                     if (rates) {
                         step *= rates.get(children[i]);
                     }
@@ -6531,10 +6593,14 @@
             }
         }(root, 0));
         root._divergenceFromRates = rates !== null;
+        root._everyLengthStated = everyLength;
     };
 
     // Each non-root node's BEAST clock rate (the `rate` annotation), or null
-    // unless every branch states a finite, non-negative one.
+    // unless every branch states a finite, non-negative one. A rate is a plain
+    // decimal number and nothing else (parseBeastNumber): parseFloat reads a
+    // number out of the front of "0.01abc" or "1,5", and a rate nobody wrote
+    // would then scale a branch.
     function everyBranchClockRate(root) {
         let rates = new Map();
         let ok = true;
@@ -6548,12 +6614,12 @@
             if (n.properties) {
                 for (let i = 0; i < n.properties.length; ++i) {
                     if (n.properties[i].ref === BEAST_PREFIX + 'rate') {
-                        r = parseFloat(n.properties[i].value);
+                        r = parseBeastNumber(n.properties[i].value);
                         break;
                     }
                 }
             }
-            if (r === null || !isFinite(r) || r < 0) {
+            if (r === null || r < 0) {
                 ok = false;
                 return;
             }
@@ -6721,31 +6787,48 @@
     };
 
     /**
-     * True when the tree carries BOTH a time signal (dated nodes, running the
-     * calendar way) and a divergence signal that says something different, so
-     * a time <-> divergence toggle is meaningful. Auspice states divergence as
-     * nextstrain:div; a BEAST clock-model tree as branch length x rate (its
-     * lengths are time); any other tree as its branch lengths.
+     * True when the tree carries BOTH a time signal and a divergence signal
+     * that says something different, so a time <-> divergence toggle is
+     * meaningful. Auspice states divergence as nextstrain:div; a BEAST
+     * clock-model tree as branch length x rate (its lengths are time); any
+     * other tree as its branch lengths.
      *
-     * NAMED DIVERGENCE from the desktop (2026-09-28, recorded, not decided):
-     * it offers the switch when most nodes are dated and ANY branch has a
-     * rate, with no shift test; draws an unrated branch at 0 in Div; and its
-     * Time recomputes date gaps instead of restoring the loaded lengths.
+     * Offered only when BOTH layouts can state EVERY branch (joint with the
+     * desktop, 2026-09-29): every node is dated, and every node records its
+     * divergence, or every branch states a length (and, on a clock-model tree,
+     * a rate). A value that is stated is stated, whether zero or negative;
+     * only an absent one is missing. Otherwise the switch is not offered and
+     * the tree stays in the layout it arrived in.
+     *
+     * A tree whose dates are still AGES (a height, largest at the root) is
+     * refused where the time view is built from the dates, which would
+     * collapse it; not on a clock-model tree, whose time view is its own
+     * branch lengths and reads no date.
+     *
+     * NAMED DIVERGENCE from the desktop (0.11.167; recorded, not decided): it
+     * offers the switch by what the tree carries (a recorded divergence, or a
+     * rate on every branch) without asking whether the two pictures differ
+     * or which way the dates run, and its Time recomputes date gaps (the
+     * absolute value: a child older than its parent is turned round) instead
+     * of restoring the loaded lengths.
      *
      * @param phy the tree
      * @returns {boolean}
      */
     forester.hasTimeAndDivergence = function (phy) {
         let root = forester.getTreeRoot(phy);
-        if (!root || !auspiceHasAnyDate(root) || !timeIncreasesTowardTips(root)) {
+        if (!root || !auspiceHasAnyDate(root)) {
             return false;
         }
-        // auspiceHasAnyDiv is true for every tree once the divergence has been
-        // captured, so it cannot decide this on its own -- it only says a
-        // divergence measure EXISTS. Whether it says anything different is the
-        // shift test, and that is the question worth asking of both kinds of
-        // tree.
-        return auspiceHasAnyDiv(root) && divergenceDiffersFromTime(root);
+        if (root._divergenceFromRates !== true && !timeIncreasesTowardTips(root)) {
+            return false;
+        }
+        if (!everyNodeStates(root, auspiceNodeDate) || !divergenceStatesEveryBranch(root)) {
+            return false;
+        }
+        // Whether the divergence says anything DIFFERENT is the shift test,
+        // and that is the question worth asking of every kind of tree.
+        return divergenceDiffersFromTime(root);
     };
 
     // A number that is not NaN. It used to test only for null, undefined and

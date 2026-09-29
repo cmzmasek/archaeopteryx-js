@@ -17,8 +17,24 @@ users see a change only when a version is cut.
 - **Time | Div on BEAST clock-model trees.** Their branch lengths are time and
   each branch states its clock `rate`, so divergence is length × rate
   (substitutions per site). The switch appears when every branch has a rate
-  and the two pictures differ; switching back to Time restores the lengths
-  the file stated, exactly.
+  and the two pictures differ, whether the node ages were placed in calendar
+  time or are still heights; switching back to Time restores the lengths the
+  file stated, exactly. A rate is a plain number: `0.01abc` is not one.
+
+### Changed
+- **Time | Div is offered only when both layouts can state every branch**: every
+  node dated, and every node recording its divergence or every branch stating
+  a length. A stated zero or negative value is stated; where a value is
+  missing the switch is not offered, rather than a branch drawn at length 0.
+  A joint rule with the desktop. No tree in 784 tested loses the switch.
+- `forester.applyTimeBranchLengths` and `forester.applyDivergenceBranchLengths`
+  answer `true` or `false`, and leave the tree as it was when their layout
+  cannot state every branch.
+
+### Fixed
+- A node missing its recorded divergence (`nextstrain:div`) no longer borrows
+  a number measured in years: a tree that records divergence states it that
+  way and no other.
 
 ## 3.17.0 — 2026-09-28
 
