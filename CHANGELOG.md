@@ -46,6 +46,10 @@ The rules of the Time | Div switch, now shared with the desktop.
   answer `true` or `false`, and leave the tree as it was when their layout
   cannot state every branch. The time layout follows the direction the
   tree's dates run, so a tree dated in ages is laid out too.
+- **The tree states what its branch lengths measure** (phyloXML's
+  `branch_length_unit`): `subs/site` in Div; in Time the unit of its dates, or
+  `time`. A Nextstrain build states `year`, or `subs/site` when it opens in
+  divergence. Saved phyloXML carries it. As the desktop writes it.
 - In the circular layout a node-age bar under a pixel long is drawn one pixel
   from its inner end outward, as in the rectangular layout and on the desktop
   (it was centred).
@@ -54,6 +58,9 @@ The rules of the Time | Div switch, now shared with the desktop.
 - **Div and back is lossless on time trees that state negative lengths.** On
   Nextstrain `*_timetree.nexus` files the stated negative lengths came back as
   0 (37, 29, 7 and 3 of them on four real files).
+- **A BEAST clock-model tree saved from the Div view opens again showing
+  divergence.** It came back labelled Time, its divergence taken for its time,
+  and Div then drew rate × divergence. It is known by the unit it states.
 - A node missing its recorded divergence (`nextstrain:div`) no longer borrows
   a number measured in years: a tree that records divergence states it that
   way and no other.

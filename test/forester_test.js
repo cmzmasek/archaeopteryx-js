@@ -5449,6 +5449,101 @@ function testTimeDivergenceScale() {
         return false;
     }
 
+    // What the branch lengths MEASURE is stated on the tree, and each layout
+    // stamps its own unit: substitutions per site for divergence; for time the
+    // unit of the tree's own dates, or plainly "time" where they state none.
+    // The desktop's words. A saved file then says what its lengths are.
+    var px = require('./lib/phyloxml').phyloXml;
+    var units = [['a Nextstrain build', ncovLess('none'), 'year', 'year'],
+        ['a clock tree dated in calendar years', clockTree(varying), undefined, 'year'],
+        ['a clock tree still stating heights', asOpened(heightsText), undefined, 'time']];
+    for (var u = 0; u < units.length; ++u) {
+        var ut = units[u][1];
+        if (ut.branch_length_unit !== units[u][2]) {
+            console.log('    ' + units[u][0] + ' arrives stating the unit ' + units[u][2] + ', got ' + ut.branch_length_unit);
+            return false;
+        }
+        forester.applyDivergenceBranchLengths(ut);
+        if (ut.branch_length_unit !== 'subs/site') {
+            console.log('    ' + units[u][0] + ' in Div should state subs/site, got ' + ut.branch_length_unit);
+            return false;
+        }
+        forester.applyTimeBranchLengths(ut);
+        if (ut.branch_length_unit !== units[u][3]) {
+            console.log('    ' + units[u][0] + ' back in Time should state ' + units[u][3] + ', got ' + ut.branch_length_unit);
+            return false;
+        }
+    }
+    // A tree saved while Div is on screen, and opened again, arrives showing
+    // divergence and can get back to its time. A clock-model tree is known by
+    // the unit it states: its lengths were taken for its time whatever they
+    // were, and it came back labelled Time with a Div of rate x divergence.
+    // The same tree saved from TIME is the control.
+    function reopened(phy) {
+        var back = px.parse(px.toPhyloXML(phy, 12), {trim: true, normalize: true});
+        back.forEach(function (b) { forester.captureDivergence(b); });
+        forester.convertLoadedHeightsToDates(back);
+        return back[0];
+    }
+    var saved = [['a clock tree still stating heights', function () { return asOpened(heightsText); }, 'time'],
+        ['a Nextstrain build', function () { return ncovLess('none'); }, 'year']];
+    for (var sv = 0; sv < saved.length; ++sv) {
+        var original = saved[sv][1]();
+        var inTime = inOrder(original);
+        forester.applyDivergenceBranchLengths(original);
+        var inDiv = inOrder(original);
+        var fromDiv = reopened(original);
+        var worstOf = function (a, b) {
+            var w = 0;
+            for (var q = 0; q < a.length; ++q) {
+                w = Math.max(w, Math.abs(a[q] - b[q]));
+            }
+            return (a.length === b.length) ? w : Infinity;
+        };
+        if (worstOf(inOrder(fromDiv), inDiv) > 1e-9 || worstOf(inDiv, inTime) < 1e-3) {
+            console.log('    fixture: ' + saved[sv][0] + ' saved from Div should come back with its divergence for lengths');
+            return false;
+        }
+        if (!forester.hasTimeAndDivergence(fromDiv) || forester.branchLengthScale(fromDiv) !== 'divergence') {
+            console.log('    ' + saved[sv][0] + ', saved from Div and opened again, arrives showing DIVERGENCE: offered '
+                + forester.hasTimeAndDivergence(fromDiv) + ', ' + forester.branchLengthScale(fromDiv));
+            return false;
+        }
+        if (fromDiv.branch_length_unit !== 'subs/site') {
+            console.log('    ...stating that its lengths are in subs/site, got ' + fromDiv.branch_length_unit);
+            return false;
+        }
+        if (forester.applyTimeBranchLengths(fromDiv) !== true || worstOf(inOrder(fromDiv), inTime) > 1e-9
+            || forester.branchLengthScale(fromDiv) !== 'time') {
+            console.log('    ...Time gets it back to its time: off by ' + worstOf(inOrder(fromDiv), inTime));
+            return false;
+        }
+        // laid out from its dates this time, and in their unit
+        if (fromDiv.branch_length_unit !== saved[sv][2]) {
+            console.log('    ...in the unit of its dates, ' + saved[sv][2] + ', got ' + fromDiv.branch_length_unit);
+            return false;
+        }
+        if (forester.applyDivergenceBranchLengths(fromDiv) !== true || worstOf(inOrder(fromDiv), inDiv) > 1e-9) {
+            console.log('    ...and Div to its divergence again: off by ' + worstOf(inOrder(fromDiv), inDiv));
+            return false;
+        }
+        forester.applyTimeBranchLengths(original);
+        var fromTime = reopened(original);
+        if (forester.branchLengthScale(fromTime) !== 'time' || worstOf(inOrder(fromTime), inTime) > 1e-9
+            || forester.applyDivergenceBranchLengths(fromTime) !== true || worstOf(inOrder(fromTime), inDiv) > 1e-9) {
+            console.log('    ' + saved[sv][0] + ' saved from TIME arrives in time, and its Div is its divergence');
+            return false;
+        }
+    }
+    // a build that states no dates opens in divergence, and says so
+    var undatedBuild = forester.parseAuspiceJson(JSON.stringify({version: 'v2', tree: {name: 'r', node_attrs: {div: 0},
+        children: [{name: 'a', node_attrs: {div: 0.001}}, {name: 'b', node_attrs: {div: 0.004}}]}}));
+    undatedBuild = Array.isArray(undatedBuild) ? undatedBuild[0] : undatedBuild;
+    if (undatedBuild.branch_length_unit !== 'subs/site') {
+        console.log('    a build with no dates opens in divergence and states subs/site, got ' + undatedBuild.branch_length_unit);
+        return false;
+    }
+
     // A build has no branch lengths of its own, so it opens in the metric it
     // states COMPLETELY (joint with the desktop, 2026-09-29): time when every
     // node is dated, else divergence when every node records one, else as it

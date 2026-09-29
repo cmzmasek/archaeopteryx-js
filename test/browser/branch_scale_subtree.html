@@ -164,6 +164,8 @@
         check('back on the whole tree: every tip shown', shownTips() === allTips, shownTips() + ' of ' + allTips);
         check('back on the whole tree: ONE layout, and it is Div', back.t === 0 && back.neither.length === 0 && back.d === telling, back.text);
         check('back on the whole tree: the switch says Div', byId('branch_scale_div_b').checked && !byId('branch_scale_time_b').checked);
+        // what the lengths measure is stated on the tree, so a file saved now says so
+        check('the tree states that its lengths are in subs/site', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);
 
         // the other way: Div on the whole tree, Time pressed in the view
         check('entered the view again', await enter(clade) && shownTips() === cladeTips, shownTips() + ' tips');
@@ -174,6 +176,7 @@
         check('Time pressed in the view, back on the whole tree: ONE layout, and it is Time', again.d === 0 && again.neither.length === 0
             && again.t === telling && byId('branch_scale_time_b').checked, again.text);
         check('and the lengths are the ones the file stated', nodes.every((n) => Math.abs(n.branch_length - want.get(n).time) < 1e-9));
+        check('the tree states that its lengths are in the unit of its dates', tree.branch_length_unit === 'year', tree.branch_length_unit);
     } catch (e) {
         check('the page ran', false, e && e.stack);
     }

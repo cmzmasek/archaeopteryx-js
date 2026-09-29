@@ -772,7 +772,14 @@ child dated before its parent, which real Nextstrain builds state — keeps its
 sign; it is drawn at length 0, as any negative branch length is. In Div a
 node recording less divergence than its parent draws at 0. The time axis is
 hidden while the branches show divergence. The switch acts on the whole
-tree, also from a subtree view. These rules are shared with the desktop.
+tree, also from a subtree view.
+
+What the branch lengths measure is stated on the tree, as phyloXML's
+`branch_length_unit`, and each layout stamps its own: `subs/site` for
+divergence; for time the unit of the tree's own dates (`year`), or `time`
+where they state none. A tree saved while Div is on screen therefore says
+so, and opens again showing divergence, able to get back to its time. These
+rules are shared with the desktop.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.

@@ -6401,6 +6401,9 @@
         } else {
             setDeltaBranchLengths(root, null, recordedDiv, divergenceGap);
         }
+        // ...and says which, as the desktop's reader does: a saved copy then
+        // states what its branch lengths measure
+        phy.branch_length_unit = opensInTime ? CALENDAR_LENGTH_UNIT : DIVERGENCE_LENGTH_UNIT;
         // A tip keeps its date INTERVAL: on a Nextstrain build it is the
         // sampling-date uncertainty of a sample dated only to its month or
         // year, which is data. (It was dropped here until 2026-09-17 because
@@ -6520,6 +6523,53 @@
     // MISSING says "nothing happened along this branch", which the file never
     // said. A datum that is stated is stated, whether zero or negative.
 
+    // What a tree's branch lengths MEASURE is stated on the tree (phyloXML's
+    // branch_length_unit), and each layout stamps its own: the scale bar, the
+    // tree's properties and a saved file then all say the same. Divergence is
+    // in substitutions per site; time is in the unit of the tree's own dates,
+    // or plainly "time" where they state none (BEAST heights). The desktop's
+    // words, byte for byte (BranchLengthLayout.distanceUnit).
+    //
+    // It is also how a clock-model tree saved from the Div view is known for
+    // what it is when it is opened again (see captureDivergence).
+    const DIVERGENCE_LENGTH_UNIT = 'subs/site';
+    const CALENDAR_LENGTH_UNIT = 'year';
+    const PLAIN_TIME_LENGTH_UNIT = 'time';
+
+    // The unit of the first dated node that states one, in preorder, children
+    // in file order; null where none does.
+    function dateUnitOf(root) {
+        let unit = null;
+        (function walk(n) {
+            if (unit !== null) {
+                return;
+            }
+            if (n.date && typeof n.date.unit === 'string' && n.date.unit.trim().length > 0) {
+                unit = n.date.unit.trim();
+                return;
+            }
+            let children = n.children;
+            if (children) {
+                for (let i = 0; i < children.length; ++i) {
+                    walk(children[i]);
+                }
+            }
+        }(root));
+        return unit;
+    }
+
+    // `phy` may be the tree or its root; only the tree carries a unit.
+    function stampLengthUnit(phy, root, unit) {
+        if (phy && phy !== root && typeof phy === 'object') {
+            phy.branch_length_unit = unit;
+        }
+    }
+
+    function statesDivergenceUnit(phy) {
+        return !!phy && typeof phy.branch_length_unit === 'string'
+            && phy.branch_length_unit.trim() === DIVERGENCE_LENGTH_UNIT;
+    }
+
     // Back in TIME a tree gets the lengths it had in time: the ones it
     // arrived with, kept at load (see captureDivergence). So a file's own
     // lengths are what is shown, to the digit, where they and its node dates
@@ -6532,12 +6582,14 @@
             forester.preOrderTraversalAll(root, function (n) {
                 n.branch_length = n._timeLength;
             });
+            stampLengthUnit(phy, root, dateUnitOf(root) || PLAIN_TIME_LENGTH_UNIT);
             return true;
         }
         if (!root || !everyNodeStates(root, auspiceNodeDate)) {
             return false;
         }
         setDeltaBranchLengths(root, null, auspiceNodeDate, timeGapOf(root));
+        stampLengthUnit(phy, root, dateUnitOf(root) || PLAIN_TIME_LENGTH_UNIT);
         return true;
     };
 
@@ -6547,6 +6599,7 @@
             return false;
         }
         setDeltaBranchLengths(root, null, auspiceNodeDiv, divergenceGap);
+        stampLengthUnit(phy, root, DIVERGENCE_LENGTH_UNIT);
         return true;
     };
 
@@ -6594,6 +6647,17 @@
      * divergence nor rates: it has no second layout, and the switch is never
      * offered on it.
      *
+     * A tree may ARRIVE showing divergence: it was saved while Div was on
+     * screen. One that records its divergence is known by its lengths, which
+     * are not its date gaps. A clock-model tree is known by what it states --
+     * the unit of its branch lengths is the one the divergence layout stamps
+     * -- since its lengths are not its date gaps even in time. Such a tree
+     * keeps no time lengths (it carries none): its time is laid out from its
+     * dates, and its divergence is each rate times that. Until 2026-09-29 a
+     * clock-model tree's lengths were taken for its time whatever they were,
+     * and one saved from Div came back labelled Time, with a Div of rate x
+     * divergence. Joint with the desktop.
+     *
      * Call once per tree at load, before anything rewrites a branch length.
      *
      * @param phy the tree
@@ -6618,7 +6682,9 @@
         if (!recorded && rates === null) {
             return;
         }
-        let keep = rates !== null || branchLengthsAreTime(root);
+        let showsDivergence = rates !== null && statesDivergenceUnit(phy);
+        let keep = (rates !== null && !showsDivergence) || (recorded && branchLengthsAreTime(root));
+        let gapOf = showsDivergence ? timeGapOf(root) : null;
         (function walk(node, cumulative) {
             if (keep) {
                 node._timeLength = node.branch_length;
@@ -6629,10 +6695,17 @@
             let children = node.children;
             if (children) {
                 for (let i = 0; i < children.length; ++i) {
-                    let bl = children[i].branch_length;
-                    // a length of 0, or a negative one, adds no divergence
-                    let step = (rates && typeof bl === 'number' && isFinite(bl) && bl > 0)
-                        ? (bl * rates.get(children[i])) : 0;
+                    // the branch's time: the length it arrived with, or, on
+                    // a tree that arrived showing divergence, its date gap
+                    let span = children[i].branch_length;
+                    if (gapOf) {
+                        let d = auspiceNodeDate(children[i]);
+                        let pd = auspiceNodeDate(node);
+                        span = (d !== null && pd !== null) ? gapOf(d, pd) : 0;
+                    }
+                    // a span of 0, or a negative one, adds no divergence
+                    let step = (rates && typeof span === 'number' && isFinite(span) && span > 0)
+                        ? (span * rates.get(children[i])) : 0;
                     walk(children[i], cumulative + step);
                 }
             }
