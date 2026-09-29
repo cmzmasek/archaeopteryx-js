@@ -16,29 +16,39 @@ users see a change only when a version is cut.
   coloured rings.
 - **Time | Div on BEAST clock-model trees.** Their branch lengths are time and
   each branch states its clock `rate`, so divergence is length × rate
-  (substitutions per site). The switch appears when every branch has a rate
-  and the two pictures differ, whether the node ages were placed in calendar
-  time or are still heights; switching back to Time restores the lengths the
-  file stated, exactly. A rate is a plain number: `0.01abc` is not one.
+  (substitutions per site), whether the node ages were placed in calendar
+  time or are still heights. Switching back to Time restores the lengths the
+  file stated, exactly. A rate is a plain decimal number: `0.01abc` is not one.
 
 ### Changed
-- **Time | Div is offered only when both layouts can state every branch**: every
-  node dated, and every node recording its divergence or every branch stating
-  a length. A stated zero or negative value is stated; where a value is
-  missing the switch is not offered, rather than a branch drawn at length 0.
-  A joint rule with the desktop. No tree in 784 tested loses the switch.
-- `forester.applyTimeBranchLengths` and `forester.applyDivergenceBranchLengths`
-  answer `true` or `false`, and leave the tree as it was when their layout
-  cannot state every branch.
+The rules of the Time | Div switch, now shared with the desktop.
+- **Offered whenever both layouts can state every branch and each has some
+  depth.** Every node dated, every branch stating a length, and every node
+  recording its divergence or every branch stating a rate. A stated zero or
+  negative value is stated; where a value is missing the switch is not
+  offered, rather than a branch drawn at length 0. A tree whose divergence is
+  0 everywhere, or whose tips all carry the root's date, is not offered it.
+- **No longer asked: whether the two pictures differ** (the 2% test). A
+  strict-clock tree is offered the switch.
+- **A tree with neither a recorded divergence nor clock rates is never
+  offered the switch**; its branch lengths used to be taken for its
+  divergence. None of 784 trees tested was offered it that way.
+- **Back in Time a tree has the lengths it arrived with**, not lengths worked
+  out again from its dates.
 - **A time span that runs backwards keeps its sign.** A child dated before its
   parent is negative in Time (it was clamped to 0), in a Nextstrain build as it
   opens and after the switch; 42 branches in 4 of 11 real builds. It is drawn
-  at length 0, as before, so no picture moves. With the desktop (0.11.168).
+  at length 0, as before, so no picture moves.
 - **A Nextstrain build opens in the metric it states completely**: time when
   every node has a date, else divergence when every node records one, else
-  as before. With the desktop.
-- The time layout follows the direction the tree's dates run, so
-  `forester.applyTimeBranchLengths` lays out a tree dated in ages too.
+  as before.
+- `forester.applyTimeBranchLengths` and `forester.applyDivergenceBranchLengths`
+  answer `true` or `false`, and leave the tree as it was when their layout
+  cannot state every branch. The time layout follows the direction the
+  tree's dates run, so a tree dated in ages is laid out too.
+- In the circular layout a node-age bar under a pixel long is drawn one pixel
+  from its inner end outward, as in the rectangular layout and on the desktop
+  (it was centred).
 
 ### Fixed
 - **Div and back is lossless on time trees that state negative lengths.** On

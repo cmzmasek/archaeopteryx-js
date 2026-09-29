@@ -4814,13 +4814,12 @@ function testTimeDivergenceScale() {
         return false;
     }
 
-    // A BEAST time tree states time TWICE -- its branch lengths already are
-    // the gaps between its dates -- and this one's clock barely varies, so
-    // length x rate draws the same picture and the control must stay hidden. Measured: influenza.tree's branch lengths
-    // differ from the date gaps by a median 7% PER BRANCH, which looks like a
-    // separate measure, but the differences cancel and every tip lands within
-    // 0.3% of where the other metric puts it. Comparing branches pair by pair
-    // is the wrong question; the layout shift is the right one.
+    // A BEAST time tree whose clock is CONSTANT (0.004 on every branch): its
+    // divergence is its time rescaled, one picture drawn twice with two scale
+    // bars. It is offered the switch all the same (Christian, 2026-09-29:
+    // "Always offer; refuse only zero"; one rule for both programs). Until
+    // then the switch was offered only where the two pictures differed by
+    // more than 2% of the tree's width, and this tree was refused.
     var beast = forester.parseNexus(
         fs.readFileSync(path.join(__dirname, 'data', 'beast', 'beast-tip-dates.nex'), 'utf8'))[0];
     var loaded = [];
@@ -4830,8 +4829,20 @@ function testTimeDivergenceScale() {
     });
     var anchor2 = forester.inferHeightDateAnchor(beast);
     forester.convertHeightsToDates(beast, anchor2.present);
-    if (forester.hasTimeAndDivergence(beast)) {
-        console.log('    a BEAST time tree should NOT offer the switch: its branches already are time');
+    var statedRates = {};
+    forester.preOrderTraversalAll(forester.getTreeRoot(beast), function (n) {
+        (n.properties || []).forEach(function (q) {
+            if (q.ref === 'beast:rate') {
+                statedRates[q.value] = true;
+            }
+        });
+    });
+    if (Object.keys(statedRates).join() !== '0.004') {
+        console.log('    fixture: beast-tip-dates.nex should state one rate, 0.004, on every branch: ' + Object.keys(statedRates));
+        return false;
+    }
+    if (!forester.hasTimeAndDivergence(beast)) {
+        console.log('    a constant-clock BEAST tree should be offered the switch');
         return false;
     }
     // its lengths are time, and it arrives in the time view
@@ -4889,8 +4900,19 @@ function testTimeDivergenceScale() {
         console.log('    back to time should restore the loaded lengths exactly: ' + clockLoaded + ' -> ' + clockBack);
         return false;
     }
-    if (forester.hasTimeAndDivergence(clockTree({A: 0.01, B: 0.01, X: 0.01, C: 0.01, D: 0.01, Y: 0.01}))) {
-        console.log('    one clock for every branch draws the time picture again: no switch');
+    if (!forester.hasTimeAndDivergence(clockTree({A: 0.01, B: 0.01, X: 0.01, C: 0.01, D: 0.01, Y: 0.01}))) {
+        console.log('    one clock for every branch: the same picture at another scale, and offered the switch');
+        return false;
+    }
+    // ...but a picture with no DEPTH is not: every rate 0 is a divergence of
+    // nothing on every branch, and the tree would be drawn as a point. One
+    // rate above 0, on one branch, and it has a picture again.
+    if (forester.hasTimeAndDivergence(clockTree({A: 0, B: 0, X: 0, C: 0, D: 0, Y: 0}))) {
+        console.log('    every rate 0: there is no divergence to draw, and the switch must not be offered');
+        return false;
+    }
+    if (!forester.hasTimeAndDivergence(clockTree({A: 0, B: 0, X: 0, C: 0, D: 0.001, Y: 0}))) {
+        console.log('    one rate above 0 gives the divergence picture a depth: the switch should be offered');
         return false;
     }
     var partial = Object.assign({}, varying, {D: null});
@@ -4993,42 +5015,79 @@ function testTimeDivergenceScale() {
         }
     }
 
-    // A tree still stating AGES (a height, largest at the root) is not offered
-    // the switch where the time view is built from the dates. A choice, and a
-    // named difference from the desktop, since 2026-09-29: the time view now
-    // takes its gaps in the direction the dates run, so it CAN state such a
-    // tree (below). Until then it took child minus parent and clamped at 0,
-    // and every branch collapsed to nothing.
+    // A tree with dates and branch lengths but NO recorded divergence and NO
+    // clock rates has no second layout, and is never offered the switch
+    // (Christian, 2026-09-29: JS follows the desktop). Until then its branch
+    // lengths were taken for its divergence and it was offered the switch when
+    // they drew a different picture from its dates -- unless the dates were
+    // ages, which the time view could not then lay out.
     //
-    // Two trees differing ONLY in which way time runs, so the direction is the
-    // single cause -- the desktop's way of isolating a rule, and better than
-    // restating the rule in the test's own words. The real BEAST fixture will
-    // not do here: it refuses for a different reason (its two metrics barely
-    // differ), which would let a broken direction check pass unnoticed.
-    function directed(forward) {
+    // Four trees differing in two things only: which way time runs, and
+    // whether the nodes RECORD a divergence. So the recorded divergence is the
+    // single cause of the offer, and the direction is the cause of nothing.
+    function directed(forward, recorded) {
+        var div = function (v) {
+            return recorded ? [{ref: 'nextstrain:div', value: String(v), datatype: 'xsd:decimal', applies_to: 'node'}] : undefined;
+        };
         var tips = [];
         for (var k = 0; k < 8; ++k) {
+            var len = (k % 2 === 0) ? 0.1 : 3.0;    // divergence, unlike the date gaps
             tips.push({
                 name: 't' + k,
                 date: {value: forward ? (2000 + k) : (8 - k)},
-                branch_length: (k % 2 === 0) ? 0.1 : 3.0    // divergence, unlike the date gaps
+                branch_length: len,
+                properties: div((k < 4 ? 1 : 0) + len)
             });
         }
-        var inner = {name: '', date: {value: forward ? 1995 : 12}, branch_length: 1, children: tips.slice(0, 4)};
+        var inner = {name: '', date: {value: forward ? 1995 : 12}, branch_length: 1, children: tips.slice(0, 4),
+            properties: div(1)};
         return {name: 'T', children: [{name: '', date: {value: forward ? 1990 : 20},
-            children: [inner].concat(tips.slice(4))}]};
+            children: [inner].concat(tips.slice(4)), properties: div(0)}]};
     }
-    var forward = directed(true);
-    forester.captureDivergence(forward);
-    if (!forester.hasTimeAndDivergence(forward)) {
-        console.log('    the control tree runs the calendar way and should offer the switch');
-        return false;
+    var forward = directed(true, false);
+    var backward = directed(false, false);
+    var plain = [['calendar dates', forward], ['ages', backward]];
+    for (var pl = 0; pl < plain.length; ++pl) {
+        forester.captureDivergence(plain[pl][1]);
+        if (forester.hasTimeAndDivergence(plain[pl][1])) {
+            console.log('    a tree with ' + plain[pl][0] + ', no recorded divergence and no rates must not be offered the switch');
+            return false;
+        }
+        var plainBefore = JSON.stringify(lengthsOf(plain[pl][1]));
+        if (forester.applyDivergenceBranchLengths(plain[pl][1]) !== false
+            || JSON.stringify(lengthsOf(plain[pl][1])) !== plainBefore) {
+            console.log('    ...and it has no divergence layout: its branch lengths must be left as they are');
+            return false;
+        }
     }
-    var backward = directed(false);
-    forester.captureDivergence(backward);
-    if (forester.hasTimeAndDivergence(backward)) {
-        console.log('    a tree stating ages must not offer the switch');
-        return false;
+    var recording = [['calendar dates', directed(true, true)], ['ages', directed(false, true)]];
+    for (var rc = 0; rc < recording.length; ++rc) {
+        forester.captureDivergence(recording[rc][1]);
+        if (!forester.hasTimeAndDivergence(recording[rc][1])) {
+            console.log('    the same tree RECORDING its divergence, with ' + recording[rc][0]
+                + ', should be offered the switch, or the refusals above prove nothing');
+            return false;
+        }
+        // its lengths are its divergence, so it arrives in divergence; Time
+        // lays it out by its dates, and Div brings back what it recorded
+        var recLoaded = lengthsOf(recording[rc][1]);
+        var apart = function (a, b) {
+            var worst = 0;
+            for (var key in a) {
+                worst = Math.max(worst, Math.abs(a[key] - b[key]));
+            }
+            return worst;
+        };
+        if (forester.branchLengthScale(recording[rc][1]) !== 'divergence'
+            || forester.applyTimeBranchLengths(recording[rc][1]) !== true
+            || apart(lengthsOf(recording[rc][1]), recLoaded) < 1
+            || forester.branchLengthScale(recording[rc][1]) !== 'time'
+            || forester.applyDivergenceBranchLengths(recording[rc][1]) !== true
+            || apart(lengthsOf(recording[rc][1]), recLoaded) > 1e-12) {
+            console.log('    ...and with ' + recording[rc][0] + ' it arrives in divergence, Time lays it out by its dates, '
+                + 'and Div brings back the lengths it recorded (now ' + apart(lengthsOf(recording[rc][1]), recLoaded) + ' apart)');
+            return false;
+        }
     }
     // The time view takes its gaps in the direction the dates run, so each
     // tree is laid out by its own dates, whichever way they run: every tip
@@ -5294,6 +5353,99 @@ function testTimeDivergenceScale() {
     }
     if (forester.branchLengthScale(ownLengths) !== 'time') {
         console.log('    back in time the tree should say so, negative length and all');
+        return false;
+    }
+
+    // Back in Time a tree gets the lengths it HAD in time, not lengths worked
+    // out again from its dates (Christian, 2026-09-29: "File's stated
+    // lengths"; joint with the desktop). A ladder of 12 tips recording its
+    // divergence, every length its date gap -- but t7's, stated 1.0 where its
+    // dates are 1.5 apart. One branch in 22, so the tree still arrives in
+    // time, and the two answers differ on that branch alone.
+    function ladder(t7, t3) {
+        var nwk = 't0[&num_date=2001.5,div=0.0020]:1.5';
+        for (var k = 1; k < 12; ++k) {
+            var node = 2001 - k;         // the node joining tip k, dated a year before the one below it
+            var below = (k === 1) ? 2001.5 : (2001 - (k - 1));
+            var tipLen = (k === 7) ? t7 : ((k === 3) ? t3 : '1.5');
+            nwk = '(' + nwk.replace(/:[-0-9.]+$/, ':' + (k === 1 ? '1.5' : String(below - node)))
+                + ',t' + k + '[&num_date=' + (node + 1.5) + ',div=' + (0.001 * (12 - k) + 0.0004 * k).toFixed(4) + ']'
+                + (tipLen === null ? '' : ':' + tipLen)
+                + ')[&num_date=' + node + ',div=' + (0.001 * (11 - k)).toFixed(4) + ']:1';
+        }
+        return asOpened('#NEXUS\nBegin trees;\ntree T = [&R] ' + nwk.replace(/:1$/, '') + ';\nEnd;\n');
+    }
+    // every branch in preorder: the ladder's internal nodes are unnamed, and
+    // all but one hang above an unnamed node, so no name tells them apart
+    function inOrder(phy) {
+        var r = forester.getTreeRoot(phy);
+        var all = [];
+        forester.preOrderTraversalAll(r, function (n) {
+            if (n !== r) {
+                all.push(n.branch_length);
+            }
+        });
+        return all;
+    }
+    var kept = ladder('1.0', '1.5');
+    var keptLoaded = inOrder(kept);
+    var t7 = forester.findByNodeName(kept, 't7')[0];
+    if (keptLoaded.length !== 22 || !t7 || t7.branch_length !== 1 || !forester.hasTimeAndDivergence(kept)
+        || forester.branchLengthScale(kept) !== 'time') {
+        console.log('    fixture: a ladder of 22 branches, t7 stated 1 long, offered the switch and arriving in time: '
+            + keptLoaded.length + ' ' + (t7 && t7.branch_length) + ' ' + forester.hasTimeAndDivergence(kept) + ' '
+            + forester.branchLengthScale(kept));
+        return false;
+    }
+    if (Math.abs((t7.date.value - t7.parent.date.value) - 1.5) > 1e-9) {
+        console.log('    fixture: t7 should be dated 1.5 years after its parent, got ' + (t7.date.value - t7.parent.date.value));
+        return false;
+    }
+    var agreeing = 0;
+    forester.preOrderTraversalAll(forester.getTreeRoot(kept), function (n) {
+        if (n !== forester.getTreeRoot(kept) && Math.abs((n.date.value - n.parent.date.value) - n.branch_length) < 1e-9) {
+            ++agreeing;
+        }
+    });
+    if (agreeing !== 21) {
+        console.log('    fixture: every length but t7\'s should be its date gap, ' + agreeing + ' of 22 are');
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(kept);
+    if (t7.branch_length === 1 || forester.branchLengthScale(kept) !== 'divergence') {
+        console.log('    fixture: Div should have rewritten t7 (' + t7.branch_length + ')');
+        return false;
+    }
+    forester.applyTimeBranchLengths(kept);
+    var keptBack = inOrder(kept);
+    for (var kk = 0; kk < keptLoaded.length; ++kk) {
+        if (keptBack[kk] !== keptLoaded[kk]) {
+            console.log('    back in Time branch ' + kk + ' should be the ' + keptLoaded[kk] + ' the file stated, got ' + keptBack[kk]);
+            return false;
+        }
+    }
+    if (t7.branch_length !== 1) {
+        console.log('    back in Time t7 is the 1 the file stated, not the 1.5 between its dates: ' + t7.branch_length);
+        return false;
+    }
+    // a length that is not there is missing on a recording tree too
+    if (forester.hasTimeAndDivergence(ladder('1.0', null))) {
+        console.log('    a recording tree one of whose branches states no length must not be offered the switch');
+        return false;
+    }
+    // A picture needs DEPTH in time as well: a clock tree every node of which
+    // carries the same height has no time picture, whatever its lengths say.
+    var flatTime = asOpened(clockNexus(varying).replace(/height=[0-9.]+/g, 'height=0'));
+    var flatDates = {};
+    forester.preOrderTraversalAll(forester.getTreeRoot(flatTime), function (n) {
+        flatDates[n.date.value] = true;
+    });
+    if (Object.keys(flatDates).length !== 1) {
+        console.log('    fixture: every node should carry one and the same date: ' + Object.keys(flatDates));
+        return false;
+    }
+    if (forester.hasTimeAndDivergence(flatTime)) {
+        console.log('    every node on the root\'s date: there is no time picture, and the switch must not be offered');
         return false;
     }
 

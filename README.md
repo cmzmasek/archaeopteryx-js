@@ -747,23 +747,32 @@ desktop's "Time axis grid lines") adds faint lines behind the tree at the
 fine geologic-interval boundaries or the calendar year ticks (rings, in
 circular), so a node's position can be read against the axis.
 
-Where a tree states both **time** and a different **divergence**, a
-**Time | Div** switch appears beside the phylogram buttons (⌘⇧X): an Auspice
-build (`num_date` and `div`), or a BEAST clock-model tree, whose branch
-lengths are time and whose divergence is each length times its `rate`
-(substitutions per site) — whether its node ages were placed in calendar time
-or are still heights. It is offered only when the two draw different
-pictures, and only when both can state **every** branch: every node dated,
-and every node recording its divergence or every branch stating a length
-(and, on a clock-model tree, a rate, written as a plain number). A value the
-file states is stated, whether zero or negative; where one is missing the
-switch is not offered, rather than a branch drawn at length 0 that the file
-never described. A span that runs **backwards** — a child dated before its
-parent, which real Nextstrain builds state — keeps its sign in Time, so every
-node keeps its own date and switching to Div and back returns exactly the
-lengths the tree arrived with; it is drawn at length 0, as any negative
-branch length is. In Div a node recording less divergence than its parent
-draws at 0. The time axis is hidden while the branches show divergence.
+Where a tree can be laid out by **time** and by **divergence**, a
+**Time | Div** switch appears beside the phylogram buttons (⌘⇧X). The tree
+must state a divergence: recorded on its nodes (an Auspice build's `div`), or
+a clock `rate` on every branch (a BEAST clock-model tree, whose branch lengths
+are time and whose divergence is each length times its rate, in substitutions
+per site — whether its node ages were placed in calendar time or are still
+heights). A tree with neither has no second layout. A rate is a plain decimal
+number: `0.01abc` is not one.
+
+Both layouts must be able to state **every** branch: every node dated, every
+branch stating a length, and every node recording its divergence or every
+branch stating a rate. A value the file states is stated, whether zero or
+negative; where one is missing the switch is not offered, rather than a
+branch drawn at length 0 that the file never described. And each picture must
+have some depth: a tree whose divergence is 0 on every branch, or whose tips
+all carry the root's date, is not offered a switch to a point. Whether the
+two pictures differ is not asked — a strict clock's divergence is its time at
+another scale, and it is offered the switch like any other.
+
+Back in Time the tree has exactly the branch lengths it arrived with, so
+switching to Div and back changes nothing. A span that runs **backwards** — a
+child dated before its parent, which real Nextstrain builds state — keeps its
+sign; it is drawn at length 0, as any negative branch length is. In Div a
+node recording less divergence than its parent draws at 0. The time axis is
+hidden while the branches show divergence. The switch acts on the whole
+tree, also from a subtree view. These rules are shared with the desktop.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
