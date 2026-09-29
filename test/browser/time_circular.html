@@ -52,7 +52,11 @@
             }
             const h = LEVEL[depth];
             const kids = build(depth + 1, h) + ',' + build(depth + 1, h);
-            const ann = 'height=' + h + ',height_95%_HPD={' + (h * 0.9).toFixed(2) + ',' + (h * 1.15).toFixed(2) + '}';
+            // the LAST node of the deepest level states an interval a fraction
+            // of a pixel long (0.003 years): it is drawn at the 1 px floor
+            const narrow = depth === 3 && tip === 16;
+            const ann = 'height=' + h + ',height_95%_HPD={' + (narrow ? (h - 0.001).toFixed(3) + ',' + (h + 0.002).toFixed(3)
+                : (h * 0.9).toFixed(2) + ',' + (h * 1.15).toFixed(2)) + '}';
             return depth === 0 ? '(' + kids + ')[&' + ann + ']'
                 : '(' + kids + ')[&rate=' + rate() + ',' + ann + ']:' + (parentH - h);
         };
@@ -122,6 +126,24 @@
         const rs = along(rootBar, polarOf(rootBar.__data__).a).s.slice().sort((p, q) => p - q);
         check('circular: the root\'s bar runs through the centre', rs[0] < -0.5 && rs[1] > 0.5,
             rs.map((v) => v.toFixed(1)).join(' to '));
+        // An interval shorter than a pixel is drawn one pixel long, from its
+        // INNER end outward -- [inner, inner + 1], the desktop's rule and the
+        // rectangular bar's. Centred on the interval, it would start half a
+        // pixel further in.
+        const narrowBars = bs.filter((b) => (b.__data__.date.maximum - b.__data__.date.minimum) < 0.01);
+        check('circular: one bar states an interval under a pixel long', narrowBars.length === 1
+            && (narrowBars[0].__data__.date.maximum - narrowBars[0].__data__.date.minimum) * perYear < 0.5,
+            narrowBars.length + ' such bars' + (narrowBars.length ? ', ' + ((narrowBars[0].__data__.date.maximum
+                - narrowBars[0].__data__.date.minimum) * perYear).toFixed(3) + ' px' : ''));
+        if (narrowBars.length === 1) {
+            const nd = narrowBars[0].__data__;
+            const q = polarOf(nd);
+            const ns = along(narrowBars[0], q.a).s.slice().sort((p, q2) => p - q2);
+            const innerWanted = q.r - (nd.date.value - nd.date.minimum) * perYear;
+            check('circular: it is drawn one pixel long, from its inner end outward',
+                Math.abs((ns[1] - ns[0]) - 1) < 0.01 && Math.abs(ns[0] - innerWanted) < 0.05,
+                'drawn ' + ns[0].toFixed(3) + ' to ' + ns[1].toFixed(3) + ', the inner end belongs at ' + innerWanted.toFixed(3));
+        }
         check('circular: its far end is as far past the centre as the interval is older than the root',
             older < -20 && Math.abs(rs[0] - older) < 0.5 && Math.abs(rs[1] - younger) < 0.5,
             'drawn ' + rs.map((v) => v.toFixed(1)).join(' to ') + ', the dates say ' + older.toFixed(1) + ' to ' + younger.toFixed(1));

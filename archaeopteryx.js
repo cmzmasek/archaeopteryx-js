@@ -11764,11 +11764,13 @@ function (root, d3, forester, phyloXml) {
             let xa = d.y - ((max - value) * s);
             let xb = d.y + ((value - min) * s);
             if (circular && Math.abs(radialRadius(xb) - radialRadius(xa)) < 1) {
-                // the 1px floor, along the spoke
-                let mid = (xa + xb) / 2;
-                let half = 0.5 * (_radial.maxY / _radial.maxRad);
-                xa = mid - half;
-                xb = mid + half;
+                // the 1px floor, along the spoke: from the bar's inner end
+                // outward, as the rectangular bar is floored from its left
+                // end and as the desktop draws it (hpdRadialRange). It was
+                // centred on the interval until 2026-09-29.
+                let inner = Math.min(xa, xb);
+                xa = inner;
+                xb = inner + (_radial.maxY / _radial.maxRad);
             }
             // What a TIP's interval means is the axis's to say. On geologic
             // time it is a fossil's observed range, FAD to LAD, and is drawn
