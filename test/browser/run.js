@@ -43,7 +43,7 @@ const CASES = {
     'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
     'suppdots': [''],
     'time_circular': ['', '?fossil=1'],
-    'branch_scale_subtree': ['', '?clock=1'],
+    'branch_scale_subtree': ['', '?clock=1', '?refused=1'],
     'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?legends=1', '?big=1200']
 };
 

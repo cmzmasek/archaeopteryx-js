@@ -19,6 +19,11 @@
 // the viewer touches anything, never from the switch: a Nextstrain build's
 // date and div differences; with ?clock=1 a BEAST clock tree's loaded length,
 // and that length x its rate.
+//
+// ?refused=1 -- the OFFER is judged on the whole tree too. The clock tree less
+// ONE rate (T15's) is not offered the switch, and a clade in which every
+// branch states a rate is not offered it in its own view either: the press
+// would lay out the whole tree, which has no divergence to lay out.
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const byId = (id) => document.getElementById(id);
@@ -27,7 +32,8 @@
         out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
     const prop = (n, ref) => { for (const p of (n.properties || [])) { if (p.ref === ref) { return parseFloat(p.value); } } return null; };
     try {
-        const clock = /clock=1/.test(location.search);
+        const refused = /refused=1/.test(location.search);
+        const clock = refused || /clock=1/.test(location.search);
         let trees;
         if (clock) {
             const LEVEL = [8, 6, 4.5, 3.2];
@@ -42,7 +48,14 @@
                 const kids = build(depth + 1, h) + ',' + build(depth + 1, h);
                 return depth === 0 ? '(' + kids + ')[&height=' + h + ']' : '(' + kids + ')[&rate=' + rate() + ',height=' + h + ']:' + (parentH - h);
             };
-            trees = archaeopteryx.parseTrees('clock.nex', '#NEXUS\nBegin trees;\ntree CLOCK = [&R] ' + build(0, 0) + ';\nEnd;\n');
+            let newick = build(0, 0);
+            if (refused) {
+                const less = newick.replace(/T15_(\d+)\[&rate=[0-9.]+,/, 'T15_$1[&');
+                check('fixture: exactly one rate taken out, T15\'s', less !== newick && less.length < newick.length
+                    && (less.match(/rate=/g) || []).length === (newick.match(/rate=/g) || []).length - 1);
+                newick = less;
+            }
+            trees = archaeopteryx.parseTrees('clock.nex', '#NEXUS\nBegin trees;\ntree CLOCK = [&R] ' + newick + ';\nEnd;\n');
         } else {
             const text = await (await fetch('../../docs/data/nextstrain-ncov.json')).text();
             trees = archaeopteryx.parseTrees('nextstrain-ncov.json', text);
@@ -74,11 +87,14 @@
             return {t, d, neither, text: t + ' branches in Time, ' + d + ' in Div' + (neither.length ? ', ' + neither.length + ' in NEITHER (' + neither.slice(0, 3).join(', ') + ')' : '')};
         };
         const telling = nodes.filter((n) => Math.abs(want.get(n).time - want.get(n).div) > 1e-9).length;
+        const asLoaded = () => nodes.every((n) => n.branch_length === want.get(n).time);
         out.push((clock ? 'clock tree' : 'nextstrain-ncov.json') + ': ' + nodes.length + ' branches, ' + telling + ' of them tell the two layouts apart');
         const group = document.querySelector('#p .branch_scale_g');
         const offered = () => !!group && getComputedStyle(group).display !== 'none' && group.offsetParent !== null;
-        check('whole tree: the switch is offered, and it opens in Time', offered() && byId('branch_scale_time_b').checked
-            && layout().d === 0 && layout().neither.length === 0, layout().text);
+        if (!refused) {
+            check('whole tree: the switch is offered, and it opens in Time', offered() && byId('branch_scale_time_b').checked
+                && layout().d === 0 && layout().neither.length === 0, layout().text);
+        }
 
         // into the view of a clade, two levels down, the way a user goes
         const pickClade = () => nodes.filter((n) => n.children && n.parent !== root && n.parent && n.parent.parent
@@ -110,6 +126,28 @@
             return true;
         };
         const shownTips = () => [...document.querySelectorAll('#p g.node')].filter((g) => g.__data__ && !g.__data__.children && !g.__data__._children).length;
+        async function refusedInTheViewToo() {
+            check('whole tree: the switch is NOT offered (one branch states no rate)', !offered());
+            const unrated = nodes.filter((n) => n.name && n.name.indexOf('T15_') === 0)[0];
+            const rated = (n) => (n.properties || []).some((q) => q.ref === 'beast:rate');
+            const whole = (c) => { const inC = []; forester.preOrderTraversalAll(c, (n) => inC.push(n)); return inC; };
+            const clade = nodes.filter((n) => n.children && n.parent !== root && n.parent.parent
+                && forester.getAllExternalNodes(n).length === 4 && whole(n).indexOf(unrated) < 0)[0];
+            check('fixture: T15 states no rate, and the clade to view states one on every branch, a date on every node',
+                !!unrated && !rated(unrated) && !!clade && whole(clade).every((n) => rated(n) && n.date && typeof n.date.value === 'number'),
+                clade ? whole(clade).length + ' nodes in the clade' : 'no clade');
+            check('entered the view of that clade', await enter(clade) && shownTips() === 4, shownTips() + ' tips shown');
+            check('in the view: the switch is NOT offered either', !offered());
+            check('and no branch length has been touched', asLoaded());
+            byId('ret_b').click(); await sleep(1800);
+            check('back on the whole tree: not offered, nothing touched', !offered() && asLoaded() && shownTips() === forester.getAllExternalNodes(root).length);
+        }
+        if (refused) {
+            await refusedInTheViewToo();
+            window.__benchResult = {report: out, failures: failures};
+            window.__benchDone = true;
+            return;
+        }
         const allTips = forester.getAllExternalNodes(root).length;
         const cladeTips = forester.getAllExternalNodes(clade).length;
         check('entered the view of a clade', await enter(clade) && shownTips() === cladeTips,
