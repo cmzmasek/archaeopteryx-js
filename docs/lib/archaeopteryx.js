@@ -10287,7 +10287,8 @@ function (root, d3, forester, phyloXml) {
     /**
      * Redraws the tree with its branch lengths taken from the chosen metric:
      * TIME (the gaps between the nodes' dates) or DIVERGENCE (what the file's
-     * own branch lengths measured, recorded at load). Both metrics stay on the
+     * own branch lengths measured, recorded at load; on a BEAST clock-model
+     * tree, whose lengths are time, each length times its clock rate). Both metrics stay on the
      * tree, so this is reversible and lossless -- a round trip restores the
      * loaded branch lengths exactly.
      *
@@ -11524,7 +11525,7 @@ function (root, d3, forester, phyloXml) {
     // even on a fossil-only tree whose youngest tip is far from the present.
 
     function timeAxisShown() {
-        return _state.showTimeAxis === true && !radialDisplay()
+        return _state.showTimeAxis === true && !_state.unrootedDisplay
             && _state.phylogram === true
             && _timeInfo !== null && _timeInfo.type !== null
             && _basicTreeProperties.branchLengths === true
@@ -11539,7 +11540,8 @@ function (root, d3, forester, phyloXml) {
     }
 
     function timeAxisBottomReserve() {
-        if (!timeAxisShown()) {
+        // circular draws its ruler in the tree's own gap, not under it
+        if (!timeAxisShown() || _state.circularDisplay) {
             return 0;
         }
         return _timeInfo.type === 'geologic' ? TIME_GEO_RESERVE : TIME_CAL_RESERVE;
@@ -11699,6 +11701,43 @@ function (root, d3, forester, phyloXml) {
         }
 
         let sc = info.type === 'calendar' ? -corr : corr;
+        let circular = _state.circularDisplay;
+
+        // A bar spanning depths x0..x1 at node d: a band across the branch in
+        // rectangular, a segment along the node's spoke in circular.
+        function timeBar(d, x0, x1, thick, fill, cls) {    // bound to d, for probes
+            let el;
+            if (circular) {
+                let a = radialAngle(d.x);
+                let p0 = polarXY(a, Math.max(0, radialRadius(x0)));
+                let p1 = polarXY(a, Math.max(0, radialRadius(x1)));
+                el = g.append('line').attr('x1', p0[0]).attr('y1', p0[1])
+                    .attr('x2', p1[0]).attr('y2', p1[1])
+                    .attr('stroke', fill).attr('stroke-width', thick);
+            } else {
+                el = g.append('rect').attr('x', Math.min(x0, x1)).attr('y', d.x - (thick / 2))
+                    .attr('width', Math.max(1, Math.abs(x1 - x0))).attr('height', thick)
+                    .attr('fill', fill);
+            }
+            el.datum(d).attr('class', cls);
+        }
+        // a short stroke ACROSS the branch at depth x: a fossil range's end cap
+        function timeCap(d, x) {
+            let p;
+            let q;
+            if (circular) {
+                let a = radialAngle(d.x);
+                let r = Math.max(0, radialRadius(x));
+                let half = 4 / Math.max(r, 4);    // 4px either side, as an angle
+                p = polarXY(a - half, r);
+                q = polarXY(a + half, r);
+            } else {
+                p = [x, d.x - 4];
+                q = [x, d.x + 4];
+            }
+            g.append('line').attr('x1', p[0]).attr('y1', p[1]).attr('x2', q[0]).attr('y2', q[1])
+                .attr('stroke', FOSSIL_BAR_COLOR).attr('stroke-width', 1);
+        }
 
         // ---- HPD age bars (internal) + tip bars: fossil ranges, or sampling dates ----
         forEachDisplayed(function (d) {
@@ -11719,9 +11758,13 @@ function (root, d3, forester, phyloXml) {
             let s = sc;
             let xa = d.y - ((max - value) * s);
             let xb = d.y + ((value - min) * s);
-            let left = Math.min(xa, xb);
-            let w = Math.max(1, Math.abs(xb - xa));
-            let y = d.x;
+            if (circular && Math.abs(radialRadius(xb) - radialRadius(xa)) < 1) {
+                // the 1px floor, along the spoke
+                let mid = (xa + xb) / 2;
+                let half = 0.5 * (_radial.maxY / _radial.maxRad);
+                xa = mid - half;
+                xb = mid + half;
+            }
             // What a TIP's interval means is the axis's to say. On geologic
             // time it is a fossil's observed range, FAD to LAD, and is drawn
             // as one below. On CALENDAR time it is the uncertainty of a
@@ -11734,26 +11777,23 @@ function (root, d3, forester, phyloXml) {
             // the desktop alike). The width test is the entry guard above.
             let sampledTip = !d.children && info.type === 'calendar';
             if (d.children) {
-                g.append('rect').attr('x', left).attr('y', y - 3.5)
-                    .attr('width', w).attr('height', 7)
-                    .attr('fill', HPD_BAR_COLOR);
+                timeBar(d, xa, xb, 7, HPD_BAR_COLOR, 'aptx-age-bar');
             } else if (sampledTip) {
-                g.append('rect').attr('class', 'aptx-sampling-bar')
-                    .attr('x', left).attr('y', y - 2.5)
-                    .attr('width', w).attr('height', 5)
-                    .attr('fill', HPD_BAR_COLOR);
+                timeBar(d, xa, xb, 5, HPD_BAR_COLOR, 'aptx-sampling-bar');
             } else {
-                g.append('rect').attr('x', left).attr('y', y - 2.5)
-                    .attr('width', w).attr('height', 5)
-                    .attr('fill', FOSSIL_BAR_COLOR);
+                timeBar(d, xa, xb, 5, FOSSIL_BAR_COLOR, 'aptx-fossil-bar');
                 // FAD/LAD end caps, so the range reads as a bracketed interval
-                [left, left + w].forEach(function (cx) {
-                    g.append('line').attr('x1', cx).attr('x2', cx)
-                        .attr('y1', y - 4).attr('y2', y + 4)
-                        .attr('stroke', FOSSIL_BAR_COLOR).attr('stroke-width', 1);
-                });
+                let lo = Math.min(xa, xb);
+                let hi = Math.max(xa, xb, lo + 1);
+                timeCap(d, lo);
+                timeCap(d, hi);
             }
         });
+
+        if (circular) {
+            drawCircularTimeRuler(info, anchor, maxTipX, corr, g, grid, ink);
+            return;
+        }
 
         // ---- the axis itself: a FLOATING strip (see floatStripGroup) ----
         let ax = floatStripGroup('aptx-time-axis', axisTop - 4, timeAxisBottomReserve() + 4);
@@ -11909,6 +11949,151 @@ function (root, d3, forester, phyloXml) {
             });
         }
         placeFloatingOverlays();
+    }
+
+    // The circular layout's time axis. Its ruler runs along the gap between
+    // the last tip and the first -- the one ray no branch crosses -- from the
+    // root out to the tips, so it turns with the tree. "Time Grid" draws each
+    // tick as a full ring behind the tree; a geologic axis lays its intervals
+    // down as coloured rings, as the desktop does.
+    function drawCircularTimeRuler(info, anchor, maxTipX, corr, g, grid, ink) {
+        let depthOf;       // a date -> depth, the axis the radius is drawn from
+        let ticks = [];
+        let from;          // the root end and the tip end, as dates
+        let to;
+        let bands = [];
+        if (info.type === 'geologic') {
+            let rootAge = info.rootAge;
+            if (!(rootAge > 0)) {
+                return;
+            }
+            let anchorAge = anchor ? anchor.date.value : rootAge;
+            let anchorX = anchor ? anchor.y : _root.y;
+            depthOf = function (age) {
+                return anchorX + ((anchorAge - age) * corr);
+            };
+            from = rootAge;
+            to = Math.max(0, anchorAge - ((maxTipX - anchorX) / corr));
+            forester.maAxisTickValues(rootAge).forEach(function (v) {
+                if (v >= to - 1e-9 && v <= rootAge + 1e-9) {
+                    ticks.push({value: v, text: String(v)});
+                }
+            });
+            if (to > 0) {
+                ticks.push({value: to, text: String(Math.round(to * 100) / 100), first: true});
+            }
+            bands = forester.geoOverlapping(forester.geoBandRanks(to, rootAge)[1], to, rootAge);
+        } else {
+            let present = info.presentDate;
+            if (!(present > 0)) {
+                return;
+            }
+            let anchorYear = anchor ? anchor.date.value : present;
+            let anchorX = anchor ? anchor.y : maxTipX;
+            depthOf = function (yv) {
+                return anchorX - ((anchorYear - yv) * corr);
+            };
+            from = anchorYear - ((anchorX - _root.y) / corr);
+            to = present;
+            forester.calendarTickYears(from, to).forEach(function (yv) {
+                ticks.push({value: yv, text: String(Math.round(yv))});
+            });
+        }
+        let radiusOf = function (v) {
+            return Math.max(0, radialRadius(depthOf(v)));
+        };
+        let r0 = radiusOf(from);
+        let r1 = radiusOf(to);
+        if (!(r1 > r0)) {
+            return;
+        }
+        // behind the tree: the geologic rings, then the grid rings
+        let behind = null;
+        if (bands.length > 0 || grid) {
+            behind = grid || _svgGroup.insert('g', 'g').attr('class', 'aptx-timegrid')
+                .style('pointer-events', 'none');
+        }
+        let ring = d3.arc().startAngle(0).endAngle(2 * Math.PI);
+        let named = [];
+        bands.forEach(function (iv) {
+            let a = radiusOf(Math.min(iv.old, from));
+            let b = radiusOf(Math.max(iv.young, to));
+            if (b - a <= 0) {
+                return;
+            }
+            behind.append('path').attr('d', ring.innerRadius(a).outerRadius(b)())
+                .attr('fill', iv.color).attr('fill-opacity', 0.35);
+            named.push({r: (a + b) / 2, span: b - a, text: iv.name, color: iv.color});
+        });
+        if (grid) {
+            ticks.forEach(function (t) {
+                let r = radiusOf(t.value);
+                if (r > r0 + 0.5 && r < r1 - 0.5) {
+                    grid.append('circle').attr('r', r).attr('fill', 'none')
+                        .attr('stroke', ink).attr('stroke-opacity', 0.18).attr('stroke-width', 1);
+                }
+            });
+        }
+
+        // the ruler, on the gap's centre line
+        let gap = _radialRotation + _radial.angleSpan + ((2 * Math.PI - _radial.angleSpan) / 2);
+        let screen = gap - (Math.PI / 2);
+        let along = [Math.cos(screen), Math.sin(screen)];
+        let across = [-along[1], along[0]];
+        let flip = along[0] < -1e-9;       // keep every number upright
+        let deg = (screen * 180 / Math.PI) + (flip ? 180 : 0);
+        let at = function (r, off) {
+            return [(along[0] * r) + (across[0] * off), (along[1] * r) + (across[1] * off)];
+        };
+        let ax = g.append('g').attr('class', 'aptx-time-ruler');
+        let e0 = at(r0, 0);
+        let e1 = at(r1, 0);
+        ax.append('line').attr('x1', e0[0]).attr('y1', e0[1]).attr('x2', e1[0]).attr('y2', e1[1])
+            .attr('stroke', ink).attr('stroke-width', 1);
+        // numbers on one side of the ruler, interval names on the other; the
+        // headline value first, then the round ticks outward, none overlapping
+        function label(r, off, text, fill, backdrop) {
+            let p = at(r, off);
+            let t = ax.append('g')
+                .attr('transform', 'translate(' + p[0] + ',' + p[1] + ') rotate(' + deg + ')');
+            let w = text.length * 5.5;
+            if (backdrop) {
+                t.append('rect').attr('x', -(w / 2) - 2).attr('y', -6).attr('width', w + 4).attr('height', 12)
+                    .attr('rx', 2).attr('fill', _state.backgroundColorDefault).attr('fill-opacity', 0.85);
+            }
+            t.append('text').attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+                .style('font-size', '9px').style('fill', fill).text(text);
+        }
+        let side = flip ? -1 : 1;
+        let placed = [];
+        ticks.sort(function (p, q) {
+            return (q.first ? 1 : 0) - (p.first ? 1 : 0) || radiusOf(p.value) - radiusOf(q.value);
+        });
+        ticks.forEach(function (t) {
+            let r = radiusOf(t.value);
+            let c0 = at(r, -4);
+            let c1 = at(r, 4);
+            ax.append('line').attr('x1', c0[0]).attr('y1', c0[1]).attr('x2', c1[0]).attr('y2', c1[1])
+                .attr('stroke', ink).attr('stroke-width', 1);
+            let half = t.text.length * 2.8;
+            for (let i = 0; i < placed.length; ++i) {
+                if (Math.abs(placed[i] - r) < (half * 2) + 6) {
+                    if (!t.first) {
+                        return;
+                    }
+                }
+            }
+            label(r, side * 11, t.text, ink, true);
+            placed.push(r);
+        });
+        if (info.type === 'geologic') {
+            label(r1 + 14, 0, 'Ma', ink, false);
+            named.forEach(function (n) {
+                if ((n.text.length * 5.5) + 4 <= n.span) {
+                    label(n.r, -side * 11, n.text, ink, true);
+                }
+            });
+        }
     }
 
     function timeAxisCbClicked() {
@@ -13067,12 +13252,13 @@ function (root, d3, forester, phyloXml) {
         syncHeatmapControls();
         let timeCb = byId(TIME_AXIS_CB);
         if (timeCb) {
-            timeCb.disabled = radialDisplay();
+            // circular draws it along the gap; only unrooted cannot
+            timeCb.disabled = _state.unrootedDisplay === true;
         }
         let timeGridCb = byId(TIME_GRID_CB);
         if (timeGridCb) {
             // grid lines hang off the time axis: no axis, nothing to grid
-            timeGridCb.disabled = radialDisplay() || _state.showTimeAxis !== true;
+            timeGridCb.disabled = _state.unrootedDisplay === true || _state.showTimeAxis !== true;
         }
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
@@ -16369,7 +16555,7 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeSegment('Time', BRANCH_SCALE_TIME_BUTTON, 'branch_scale_radio',
                 'branch lengths measure TIME (the nodes\' dates)'));
             h = h.concat(makeSegment('Div', BRANCH_SCALE_DIV_BUTTON, 'branch_scale_radio',
-                'branch lengths measure DIVERGENCE (substitutions, as the file states them)'));
+                'branch lengths measure DIVERGENCE (substitutions: as the file states them, or on a BEAST tree its time x clock rate)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
@@ -16471,8 +16657,8 @@ function (root, d3, forester, phyloXml) {
             if (_timeInfo && _timeInfo.type) {
                 opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
                     + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
-                    + ' and node-age bars (phylogram, rectangular layout only)'));
-                opts.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide vertical grid lines at the '
+                    + ' and node-age bars (phylogram; rectangular and circular layouts)'));
+                opts.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide grid lines (rings, in circular) at the '
                     + (_timeInfo.type === 'geologic' ? 'geologic interval boundaries' : 'calendar year ticks')));
             }
 

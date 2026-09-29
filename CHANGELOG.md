@@ -5,6 +5,19 @@ as work lands on `master`; a release turns that section into its GitHub Release
 body. The demo site (`docs/`, served from `master`) updates on every push; npm
 users see a change only when a version is cut.
 
+## Unreleased
+
+### Added
+- **The time axis in the circular layout.** Node-age bars run along each
+  node's spoke; the ruler runs out from the root along the gap between the
+  last tip and the first, turning with the tree; **Time Grid** draws rings;
+  a geologic axis lays its intervals down as coloured rings.
+- **Time | Div on BEAST clock-model trees.** Their branch lengths are time and
+  each branch states its clock `rate`, so divergence is length × rate
+  (substitutions per site). The switch appears when every branch has a rate
+  and the two pictures differ; switching back to Time restores the lengths
+  the file stated, exactly.
+
 ## 3.17.0 — 2026-09-28
 
 Downloads, rebuilt: full-size graphics, a menu that says what each file keeps,

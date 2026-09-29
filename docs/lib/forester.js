@@ -6471,7 +6471,16 @@
     // parser itself used, so the toggle can never drift from the loaded view.
 
     forester.applyTimeBranchLengths = function (phy) {
-        setDeltaBranchLengths(forester.getTreeRoot(phy), null, auspiceNodeDate);
+        let root = forester.getTreeRoot(phy);
+        // a clock-model tree's branch lengths already ARE time, and switching
+        // back gives exactly what the file stated (see captureDivergence)
+        if (root && root._divergenceFromRates === true) {
+            forester.preOrderTraversalAll(root, function (n) {
+                n.branch_length = n._timeLength;
+            });
+            return;
+        }
+        setDeltaBranchLengths(root, null, auspiceNodeDate);
     };
 
     forester.applyDivergenceBranchLengths = function (phy) {
@@ -6480,9 +6489,11 @@
 
     /**
      * Records each node's cumulative divergence from the root, summed from the
-     * branch lengths AS LOADED, so the divergence view survives the time view
+     * branch lengths AS LOADED (times each branch's clock rate, on a BEAST
+     * clock-model tree), so the divergence view survives the time view
      * overwriting `branch_length`. Kept in `_divergence`, which is private:
-     * no writer emits it, and a re-read of our own output re-derives it.
+     * no writer emits it, and a re-read of our own output re-derives it. A
+     * clock-model tree also keeps its loaded lengths, in `_timeLength`.
      *
      * A tree whose branch lengths ARE its dates (an Auspice time tree, say)
      * gets the snapshot too; it is `hasTimeAndDivergence` that decides whether
@@ -6497,18 +6508,59 @@
         if (!root) {
             return;
         }
+        // A BEAST clock-model tree states its branch lengths in TIME and each
+        // branch's clock rate beside it, so its divergence is length x rate
+        // (substitutions per site). Only when EVERY branch states a rate: a
+        // partial one would mix substitutions with years along a path.
+        let rates = everyBranchClockRate(root);
         (function walk(node, cumulative) {
             node._divergence = cumulative;
+            if (rates) {
+                node._timeLength = node.branch_length;
+            }
             let children = node.children;
             if (children) {
                 for (let i = 0; i < children.length; ++i) {
                     let bl = children[i].branch_length;
                     let step = (typeof bl === 'number' && isFinite(bl) && bl > 0) ? bl : 0;
+                    if (rates) {
+                        step *= rates.get(children[i]);
+                    }
                     walk(children[i], cumulative + step);
                 }
             }
         }(root, 0));
+        root._divergenceFromRates = rates !== null;
     };
+
+    // Each non-root node's BEAST clock rate (the `rate` annotation), or null
+    // unless every branch states a finite, non-negative one.
+    function everyBranchClockRate(root) {
+        let rates = new Map();
+        let ok = true;
+        let branches = 0;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!ok || n === root) {
+                return;
+            }
+            ++branches;
+            let r = null;
+            if (n.properties) {
+                for (let i = 0; i < n.properties.length; ++i) {
+                    if (n.properties[i].ref === BEAST_PREFIX + 'rate') {
+                        r = parseFloat(n.properties[i].value);
+                        break;
+                    }
+                }
+            }
+            if (r === null || !isFinite(r) || r < 0) {
+                ok = false;
+                return;
+            }
+            rates.set(n, r);
+        });
+        return (ok && branches > 0) ? rates : null;
+    }
 
     // How much the tree's SHAPE would change between the two metrics, as a
     // fraction of its width: each tip's distance from the root under each
@@ -6518,9 +6570,9 @@
     // wrong answer: on influenza.tree the branch lengths differ from the date
     // gaps by a median of 7% per branch, which looks like a separate measure,
     // but the differences cancel along every path and all 687 tips land within
-    // 0.3% of where the other metric puts them. Its branch lengths ARE time --
-    // a BEAST time tree states time -- so a toggle would redraw one picture
-    // twice. A real Nextstrain build, where divergence is genuinely a
+    // 0.3% of where the other metric puts them. Its branch lengths ARE time
+    // (its divergence is length x rate; without rates a toggle would redraw
+    // one picture twice). A real Nextstrain build, where divergence is genuinely a
     // different measurement, moves tips by 24.8% of the tree's width.
     //
     // Both metrics are read WITHOUT touching branch_length, so this can be
@@ -6647,16 +6699,38 @@
      */
     forester.branchLengthScale = function (phy) {
         let root = forester.getTreeRoot(phy);
-        return (root && branchLengthsAreTime(root)) ? 'time' : 'divergence';
+        if (!root) {
+            return 'divergence';
+        }
+        if (branchLengthsAreTime(root)) {
+            return 'time';
+        }
+        // A clock-model tree's branch lengths are time exactly while they are
+        // the ones it was loaded with (the switch back restores them); its
+        // derived divergence is on screen otherwise.
+        if (root._divergenceFromRates === true) {
+            let loaded = true;
+            forester.preOrderTraversalAll(root, function (n) {
+                if (n.branch_length !== n._timeLength) {
+                    loaded = false;
+                }
+            });
+            return loaded ? 'time' : 'divergence';
+        }
+        return 'divergence';
     };
 
     /**
      * True when the tree carries BOTH a time signal (dated nodes, running the
      * calendar way) and a divergence signal that says something different, so
      * a time <-> divergence toggle is meaningful. Auspice states divergence as
-     * nextstrain:div; a BEAST tree states it as its branch lengths, which on a
-     * real one differ from the dates on nearly every branch (influenza.tree:
-     * 1344 of 1372).
+     * nextstrain:div; a BEAST clock-model tree as branch length x rate (its
+     * lengths are time); any other tree as its branch lengths.
+     *
+     * NAMED DIVERGENCE from the desktop (2026-09-28, recorded, not decided):
+     * it offers the switch when most nodes are dated and ANY branch has a
+     * rate, with no shift test; draws an unrated branch at 0 in Div; and its
+     * Time recomputes date gaps instead of restoring the loaded lengths.
      *
      * @param phy the tree
      * @returns {boolean}

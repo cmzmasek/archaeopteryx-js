@@ -1,0 +1,143 @@
+<!doctype html>
+<meta charset="utf-8"><title>time axis in the circular layout, and Time | Div on a BEAST clock tree</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, on a BEAST MCC tree (HA_continuous_MCC.tre): no Time | Div switch,
+// and no age bars in the circular layout. A BEAST clock-model tree states its
+// branch lengths in time and a clock rate per branch, so its divergence is
+// length x rate; and the time axis now draws in circular: bars along each
+// node's spoke, a ruler along the gap between the last tip and the first.
+//
+// The tree is built here, so the harness needs nothing from the git-excluded
+// test_trees/: 16 tips sampled in 2018-2020, heights with 95% HPD intervals on
+// every internal node, and clock rates that VARY, so the two views differ.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const settle = () => sleep(2200);
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    try {
+        const LEVEL = [8, 6, 4.5, 3.2];     // internal heights by depth; tips at 0-2
+        let k = 0, tip = 0;
+        const rate = () => (0.002 + 0.004 * (k++ % 4)).toFixed(3);
+        const build = (depth, parentH) => {
+            if (depth === 4) {
+                const h = tip % 3;
+                const name = 'T' + tip++ + '_' + (2020 - h);
+                return name + '[&rate=' + rate() + ',height=' + h + ']:' + (parentH - h);
+            }
+            const h = LEVEL[depth];
+            const kids = build(depth + 1, h) + ',' + build(depth + 1, h);
+            const ann = 'height=' + h + ',height_95%_HPD={' + (h * 0.9).toFixed(2) + ',' + (h * 1.15).toFixed(2) + '}';
+            return depth === 0 ? '(' + kids + ')[&' + ann + ']'
+                : '(' + kids + ')[&rate=' + rate() + ',' + ann + ']:' + (parentH - h);
+        };
+        const nex = '#NEXUS\nBegin trees;\ntree CLOCK = [&R] ' + build(0, 0) + ';\nEnd;\n';
+        const trees = archaeopteryx.parseTrees('clock.nex', nex);
+        const tree = Array.isArray(trees) ? trees[0] : trees;
+        const viewer = archaeopteryx.launch('#p', trees, {});
+        await viewer.ready;
+        await settle();
+
+        const group = document.querySelector('#p .branch_scale_g');
+        check('the Time | Div switch is offered', !!group && getComputedStyle(group).display !== 'none'
+            && group.offsetParent !== null);
+        check('it opens on Time', byId('branch_scale_time_b') && byId('branch_scale_time_b').checked);
+        check('the time axis is on', byId('timeaxis_cb') && byId('timeaxis_cb').checked);
+
+        const bars = () => [...document.querySelectorAll('#p .aptx-time .aptx-age-bar')];
+        const internal = [];
+        forester.preOrderTraversalAll(tree, (d) => { if (d.children && d.date && d.date.minimum !== d.date.maximum) { internal.push(d); } });
+        check('rectangular: one age bar per dated internal node', bars().length === internal.length && internal.length === 15,
+            bars().length + ' bars, ' + internal.length + ' nodes');
+
+        byId('layout_circ_b').click(); await settle();
+        const bs = bars();
+        check('circular: one age bar per dated internal node', bs.length === 15, bs.length + ' bars');
+        check('circular: every bar is a segment, not a rectangle', bs.every((b) => b.tagName === 'line'));
+        // each bar lies along its OWN node's spoke and spans the node's age:
+        // the node sits on the segment, between its ends. Only tips are drawn
+        // as g.node, so an internal node's point is placed the way the layout
+        // places every node -- radius linear in depth (y), angle linear in the
+        // cross-axis position (x) -- with both scales read off the drawn tips.
+        const tipPos = (g) => { const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(g.getAttribute('transform') || '');
+            return m ? [+m[1], +m[2]] : null; };
+        const tipsDrawn = [...document.querySelectorAll('#p g.node')].filter((g) => g.__data__ && !g.__data__.children)
+            .map((g) => ({d: g.__data__, p: tipPos(g)})).filter((t) => t.p).sort((a, b) => a.d.x - b.d.x);
+        const t0 = tipsDrawn[0], t1 = tipsDrawn[1];
+        const ang = (p) => Math.atan2(p[1], p[0]);
+        let dA = ang(t1.p) - ang(t0.p);
+        dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+        const perX = dA / (t1.d.x - t0.d.x);
+        const perY = Math.hypot(...t0.p) / t0.d.y;
+        const pointOf = (d) => { const a = ang(t0.p) + (d.x - t0.d.x) * perX, r = d.y * perY;
+            return [r * Math.cos(a), r * Math.sin(a)]; };
+        let off = [], spans = [];
+        bs.forEach((b) => {
+            const p = pointOf(b.__data__);
+            const a = [+b.getAttribute('x1'), +b.getAttribute('y1')], c = [+b.getAttribute('x2'), +b.getAttribute('y2')];
+            const cross = (a[0] * p[1] - a[1] * p[0]) / Math.max(1e-9, Math.hypot(...a) * Math.hypot(...p));
+            const across = Math.abs(p[0] * (c[1] - a[1]) - p[1] * (c[0] - a[0]) + c[0] * a[1] - c[1] * a[0])
+                / Math.max(1e-9, Math.hypot(c[0] - a[0], c[1] - a[1]));
+            const rp = Math.hypot(...p), ra = Math.hypot(...a), rc = Math.hypot(...c);
+            if (Math.abs(cross) > 1e-3 || across > 0.5) { off.push(across.toFixed(2)); }
+            if (!(rp >= Math.min(ra, rc) - 0.5 && rp <= Math.max(ra, rc) + 0.5)) { spans.push(rp.toFixed(1) + ' not in ' + ra.toFixed(1) + '-' + rc.toFixed(1)); }
+        });
+        check('circular: the tips confirm the placement', tipsDrawn.every((t) => { const q = pointOf(t.d);
+            return Math.hypot(q[0] - t.p[0], q[1] - t.p[1]) < 0.5; }));
+        check('circular: every bar lies on its node\'s spoke', off.length === 0, off.slice(0, 5).join(' '));
+        check('circular: every bar spans its node', spans.length === 0, spans.slice(0, 3).join('; '));
+
+        // the ruler: in the gap no branch crosses, with year labels
+        const ruler = document.querySelector('#p .aptx-time-ruler');
+        check('circular: the ruler is drawn', !!ruler);
+        if (ruler) {
+            const l = ruler.querySelector('line');
+            const rulerAng = ang([+l.getAttribute('x2'), +l.getAttribute('y2')]);
+            const tipAngles = tipsDrawn.map((t) => ang(t.p));
+            const gapMin = Math.min(...tipAngles.map((t) => { let x = Math.abs(t - rulerAng) % (2 * Math.PI); return Math.min(x, 2 * Math.PI - x); }));
+            const step = 2 * Math.PI / tipAngles.length;
+            check('circular: 16 tips measured', tipAngles.length === 16, tipAngles.length);
+            // and in THE gap: between the last tip and the first, in tip order.
+            // Clearance alone is not enough -- halfway round, the ruler falls
+            // between two neighbouring tips and clears both just as well.
+            const dir = Math.sign(perX);
+            const rel = (a) => { const x = (dir * (a - ang(t0.p))) % (2 * Math.PI); return x < 0 ? x + 2 * Math.PI : x; };
+            const lastRel = rel(ang(tipsDrawn[tipsDrawn.length - 1].p));
+            check('circular: the ruler lies in the gap, clear of every tip', gapMin > 0.4 * step && rel(rulerAng) > lastRel,
+                (gapMin / step).toFixed(2) + ' tip spacings from the nearest tip; at ' + rel(rulerAng).toFixed(3)
+                + ' rad past the first tip, the last at ' + lastRel.toFixed(3));
+            const years = [...ruler.querySelectorAll('text')].map((t) => +t.textContent);
+            check('circular: year labels, within the tree\'s span', years.length >= 2
+                && years.every((y) => y >= 2010 && y <= 2021), years.join(','));
+        }
+        check('circular: no strip under the tree', !document.querySelector('#p g.aptx-time-axis'));
+
+        byId('timegrid_cb').click(); await settle();
+        const rings = document.querySelectorAll('#p g.aptx-timegrid circle').length;
+        check('circular: Time Grid draws rings', rings >= 1, rings + ' rings');
+        byId('timegrid_cb').click(); await settle();
+
+        byId('branch_scale_div_b').click(); await settle();
+        check('Div: the switch took', byId('branch_scale_div_b').checked);
+        check('Div: no age bars (calendar years do not measure substitutions)', bars().length === 0, bars().length);
+        byId('branch_scale_time_b').click(); await settle();
+        check('back to Time: the bars return', bars().length === 15, bars().length);
+
+        byId('layout_unrooted_b').click(); await settle();
+        check('unrooted: no time axis', bars().length === 0 && !document.querySelector('#p .aptx-time-ruler'));
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

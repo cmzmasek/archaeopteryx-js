@@ -737,10 +737,20 @@ slimmer, and only when it has a width: a tip dated to the day draws nothing.
 Node
 tooltips show the date. The **Time Axis** checkbox under Display Data toggles
 everything; the axis needs a phylogram (branch lengths carry the time) and
-the rectangular layout. **Time Grid** (off by default, like the desktop's
-"Time axis grid lines") adds faint vertical lines behind the tree at the
-fine geologic-interval boundaries or the calendar year ticks, so a node's
-position can be read against the axis.
+the rectangular or circular layout. In **circular** the bars run along each
+node's spoke, the ruler runs out from the root along the gap between the last
+tip and the first (turning with the tree), and a geologic axis lays its
+intervals down as coloured rings. **Time Grid** (off by default, like the
+desktop's "Time axis grid lines") adds faint lines behind the tree at the
+fine geologic-interval boundaries or the calendar year ticks (rings, in
+circular), so a node's position can be read against the axis.
+
+Where a tree states both **time** and a different **divergence**, a
+**Time | Div** switch appears beside the phylogram buttons (⌘⇧X): an Auspice
+build (`num_date` and `div`), or a BEAST clock-model tree, whose branch
+lengths are time and whose divergence is each length times its `rate`
+(substitutions per site). It is offered only when the two draw different
+pictures; the time axis is hidden while the branches show divergence.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -948,8 +958,8 @@ interval, and every trait (country, host, clade, ...) becomes a
 pick them up. Both metrics are retained, and
 `forester.applyTimeBranchLengths(phy)` /
 `forester.applyDivergenceBranchLengths(phy)` /
-`forester.hasTimeAndDivergence(phy)` are the plumbing for a future
-time↔divergence display toggle.
+`forester.hasTimeAndDivergence(phy)` are the plumbing behind the
+**Time | Div** switch.
 
 **BEAST-style and NHX annotations** in Newick/Nexus input are always parsed
 (they used to be discarded): in a `[&key=value,...]` blob — as written by

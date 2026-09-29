@@ -4813,8 +4813,8 @@ function testTimeDivergenceScale() {
     }
 
     // A BEAST time tree states time TWICE -- its branch lengths already are
-    // the gaps between its dates -- so there is nothing to switch between and
-    // the control must stay hidden. Measured: influenza.tree's branch lengths
+    // the gaps between its dates -- and this one's clock barely varies, so
+    // length x rate draws the same picture and the control must stay hidden. Measured: influenza.tree's branch lengths
     // differ from the date gaps by a median 7% PER BRANCH, which looks like a
     // separate measure, but the differences cancel and every tip lands within
     // 0.3% of where the other metric puts it. Comparing branches pair by pair
@@ -4832,16 +4832,75 @@ function testTimeDivergenceScale() {
         console.log('    a BEAST time tree should NOT offer the switch: its branches already are time');
         return false;
     }
-    if (forester.branchLengthScale(beast) !== 'divergence') {
-        console.log('    a BEAST tree arrives stating its own branch lengths');
+    // its lengths are time, and it arrives in the time view
+    if (forester.branchLengthScale(beast) !== 'time') {
+        console.log('    a BEAST clock tree arrives in the time view, got ' + forester.branchLengthScale(beast));
+        return false;
+    }
+
+    // A clock-model tree whose rates VARY states a second measure: branch
+    // length (time) x rate is substitutions per site, and the switch is
+    // offered. Two controls isolate the rates as the cause: the same tree with
+    // one clock for every branch, and with one branch's rate missing. A's
+    // length (2.05) differs from its height gap (2), as a mean length and a
+    // median height do, so only the LOADED lengths satisfy the round trip.
+    function clockTree(rates) {
+        var r = function (k) {
+            return rates[k] === null ? '' : 'rate=' + rates[k] + ',';
+        };
+        var nex = '#NEXUS\nBegin trees;\ntree T = [&R] ((A_2004[&' + r('A') + 'height=0]:2.05,B_2003[&' + r('B')
+            + 'height=1]:1)[&' + r('X') + 'height=2]:2,(C_2004[&' + r('C') + 'height=0]:3,D_2002[&' + r('D')
+            + 'height=2]:1)[&' + r('Y') + 'height=3]:1)[&height=4];\nEnd;\n';
+        var t = forester.parseNexus(nex)[0];
+        forester.captureDivergence(t);
+        forester.convertLoadedHeightsToDates(t);
+        return t;
+    }
+    var varying = {A: 0.01, B: 0.05, X: 0.002, C: 0.03, D: 0.001, Y: 0.02};
+    var clock = clockTree(varying);
+    if (!forester.hasTimeAndDivergence(clock) || forester.branchLengthScale(clock) !== 'time') {
+        console.log('    varying clock rates should offer the switch, opening in time: '
+            + forester.hasTimeAndDivergence(clock) + ' ' + forester.branchLengthScale(clock));
+        return false;
+    }
+    var clockLoaded = [];
+    forester.preOrderTraversalAll(forester.getTreeRoot(clock), function (n) {
+        clockLoaded.push(n.branch_length);
+    });
+    forester.applyDivergenceBranchLengths(clock);
+    var tipA = forester.getAllExternalNodes(forester.getTreeRoot(clock)).filter(function (n) {
+        return n.name === 'A_2004';
+    })[0];
+    if (forester.branchLengthScale(clock) !== 'divergence' || Math.abs(tipA.branch_length - 0.0205) > 1e-12) {
+        console.log('    divergence should be length x rate: A 2.05 x 0.01 = 0.0205, got ' + tipA.branch_length
+            + ' (' + forester.branchLengthScale(clock) + ')');
+        return false;
+    }
+    forester.applyTimeBranchLengths(clock);
+    var clockBack = [];
+    forester.preOrderTraversalAll(forester.getTreeRoot(clock), function (n) {
+        clockBack.push(n.branch_length);
+    });
+    if (forester.branchLengthScale(clock) !== 'time' || clockBack.join() !== clockLoaded.join()) {
+        console.log('    back to time should restore the loaded lengths exactly: ' + clockLoaded + ' -> ' + clockBack);
+        return false;
+    }
+    if (forester.hasTimeAndDivergence(clockTree({A: 0.01, B: 0.01, X: 0.01, C: 0.01, D: 0.01, Y: 0.01}))) {
+        console.log('    one clock for every branch draws the time picture again: no switch');
+        return false;
+    }
+    var partial = Object.assign({}, varying, {D: null});
+    if (forester.hasTimeAndDivergence(clockTree(partial))) {
+        console.log('    a rate missing on one branch must not mix substitutions with years');
         return false;
     }
 
     // Reversible and lossless: the branch lengths the file arrived with come
-    // back exactly, because the divergence was recorded before the time view
-    // overwrote them.
-    forester.applyTimeBranchLengths(beast);
+    // back exactly. They are time (a clock tree's divergence is length x
+    // rate), so they come back through the time view, from the copy kept
+    // before the divergence view overwrote them.
     forester.applyDivergenceBranchLengths(beast);
+    forester.applyTimeBranchLengths(beast);
     var back = [];
     forester.preOrderTraversalAll(forester.getTreeRoot(beast), function (n) {
         back.push(n.branch_length);
