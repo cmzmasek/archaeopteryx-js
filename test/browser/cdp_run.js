@@ -50,6 +50,28 @@ const chrome = spawn(findChrome(), [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 0 only when a result was read from the page; the runner treats anything
+// else as a case that did not finish.
+let exitCode = 0;
+
+// A hard limit on the whole run. The wait below is a loop that ASKS Chrome
+// whether the page is done, so a Chrome that stops answering is never timed
+// out by it -- the question itself never returns. One case sat that way for 23
+// minutes (2026-09-29) and would have sat until CI's own limit. This does not
+// ask: it stops Chrome and says so.
+const GRACE_SEC = 30;
+const watchdog = setTimeout(() => {
+    console.error('cdp_run: no answer from Chrome ' + (timeoutSec + GRACE_SEC) + ' s after it started ('
+        + url + '); stopped');
+    try {
+        chrome.kill('SIGKILL');
+    } catch { /* already gone */ }
+    try {
+        fs.rmSync(profile, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
+    } catch { /* a leftover temp profile is harmless */ }
+    process.exit(4);
+}, (timeoutSec + GRACE_SEC) * 1000);
+
 async function main() {
     let targets;
     for (let i = 0; i < 50; ++i) {
@@ -59,7 +81,12 @@ async function main() {
         } catch { /* not up yet */ }
         await sleep(200);
     }
-    const page = targets.find((t) => t.type === 'page');
+    const page = targets && targets.find((t) => t.type === 'page');
+    if (!page) {
+        console.error('cdp_run: Chrome did not come up within 10 s');
+        exitCode = 3;
+        return;
+    }
     const ws = new WebSocket(page.webSocketDebuggerUrl);
     await new Promise((r) => ws.addEventListener('open', r));
     let id = 0;
@@ -101,12 +128,16 @@ async function main() {
     ws.close();
 }
 
-main().catch((e) => console.error(e)).finally(async () => {
+main().catch((e) => {
+    console.error(e);
+    exitCode = 1;
+}).finally(async () => {
+    clearTimeout(watchdog);
     const exited = new Promise((r) => chrome.once('exit', r));
     chrome.kill();
     await exited;
     try {
         fs.rmSync(profile, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
     } catch { /* a leftover temp profile is harmless */ }
-    process.exit(0);
+    process.exit(exitCode);
 });
