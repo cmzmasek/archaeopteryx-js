@@ -92,6 +92,19 @@
         const group = document.querySelector('#p .branch_scale_g');
         const offered = () => !!group && getComputedStyle(group).display !== 'none' && group.offsetParent !== null;
         if (!refused) {
+            // what each button SAYS it does must be what it does. Time is the
+            // lengths the tree states, not "the nodes' dates", which it said
+            // until the rule changed under it (2026-09-29); nor "the time it
+            // spans", which reads as the gap between two dates; nor simply "as
+            // the tree arrived", which a tree that arrived in Div did not.
+            const says = (id) => { const b = byId(id); const l = b && (b.closest('label') || b.parentElement);
+                return ((b && b.title) || (l && l.title) || (l && l.getAttribute('data-tip')) || '').trim(); };
+            check('the Time button says what it does', /its stated length in time/.test(says('branch_scale_time_b'))
+                && /arrived showing divergence/.test(says('branch_scale_time_b'))
+                && !/time it spans|\(the nodes' dates\)/.test(says('branch_scale_time_b')), says('branch_scale_time_b'));
+            check('the Div button says what it does', /as the tree records it/.test(says('branch_scale_div_b'))
+                && /clock rate/.test(says('branch_scale_div_b')) && !/as the file states them/.test(says('branch_scale_div_b')),
+                says('branch_scale_div_b'));
             check('whole tree: the switch is offered, and it opens in Time', offered() && byId('branch_scale_time_b').checked
                 && layout().d === 0 && layout().neither.length === 0, layout().text);
         }

@@ -10286,11 +10286,12 @@ function (root, d3, forester, phyloXml) {
 
     /**
      * Redraws the tree with its branch lengths taken from the chosen metric:
-     * TIME (the gaps between the nodes' dates) or DIVERGENCE (what the file's
-     * own branch lengths measured, recorded at load; on a BEAST clock-model
-     * tree, whose lengths are time, each length times its clock rate). Both metrics stay on the
-     * tree, so this is reversible and lossless -- a round trip restores the
-     * loaded branch lengths exactly.
+     * TIME (the lengths the tree arrived with, where it arrived in time; its
+     * date gaps otherwise) or DIVERGENCE (what its nodes record, or on a BEAST
+     * clock-model tree each branch's time times its clock rate). Both stay on
+     * the tree, so this is reversible and lossless -- a round trip restores
+     * the branch lengths exactly. Always the WHOLE tree, whatever is on view.
+     * The rules are forester.hasTimeAndDivergence's, shared with the desktop.
      *
      * @param scale 'time' or 'divergence'
      */
@@ -16555,14 +16556,14 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeSegment(makeGlyph('aligned_phylogram'), PHYLOGRAM_ALIGNED_BUTTON, radioGroup, PHYLOGRAM_ALIGNED_WHAT));
             h = h.concat(makeSegment(makeGlyph('cladogram'), CLADOGRAM_BUTTON, radioGroup, CLADOGRAM_WHAT));
             h = h.concat('</div>');
-            // The branch SCALE, when the tree states two different things: its
-            // nodes' dates, and its branches' divergence. Hidden otherwise,
+            // The branch SCALE, when the tree can be laid out by time and by
+            // divergence (forester.hasTimeAndDivergence). Hidden otherwise,
             // which is most trees.
             h = h.concat('<div class="' + BRANCH_SCALE_CONTROLGROUP + ' aptx-segmented">');
             h = h.concat(makeSegment('Time', BRANCH_SCALE_TIME_BUTTON, 'branch_scale_radio',
-                'branch lengths measure TIME (the nodes\' dates)'));
+                'lay the tree out by TIME (each branch at its stated length in time; from the node dates where the tree arrived showing divergence)'));
             h = h.concat(makeSegment('Div', BRANCH_SCALE_DIV_BUTTON, 'branch_scale_radio',
-                'branch lengths measure DIVERGENCE (substitutions: as the file states them, or on a BEAST tree its time x clock rate)'));
+                'lay the tree out by DIVERGENCE (substitutions per site: as the tree records it, or on a BEAST tree each branch\'s time x its clock rate)'));
             h = h.concat('</div>');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
