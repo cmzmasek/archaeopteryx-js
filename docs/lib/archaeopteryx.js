@@ -11708,6 +11708,9 @@ function (root, d3, forester, phyloXml) {
         function timeBar(d, x0, x1, thick, fill, cls) {    // bound to d, for probes
             let el;
             if (circular) {
+                // Each end is clamped at the centre. NAMED DIVERGENCE: the
+                // desktop continues a bar through the centre onto the far
+                // side (Christian, 2026-09-28: recorded, neither changes).
                 let a = radialAngle(d.x);
                 let p0 = polarXY(a, Math.max(0, radialRadius(x0)));
                 let p1 = polarXY(a, Math.max(0, radialRadius(x1)));
