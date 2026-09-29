@@ -30,8 +30,20 @@ users see a change only when a version is cut.
 - `forester.applyTimeBranchLengths` and `forester.applyDivergenceBranchLengths`
   answer `true` or `false`, and leave the tree as it was when their layout
   cannot state every branch.
+- **A time span that runs backwards keeps its sign.** A child dated before its
+  parent is negative in Time (it was clamped to 0), in a Nextstrain build as it
+  opens and after the switch; 42 branches in 4 of 11 real builds. It is drawn
+  at length 0, as before, so no picture moves. With the desktop (0.11.168).
+- **A Nextstrain build opens in the metric it states completely**: time when
+  every node has a date, else divergence when every node records one, else
+  as before. With the desktop.
+- The time layout follows the direction the tree's dates run, so
+  `forester.applyTimeBranchLengths` lays out a tree dated in ages too.
 
 ### Fixed
+- **Div and back is lossless on time trees that state negative lengths.** On
+  Nextstrain `*_timetree.nexus` files the stated negative lengths came back as
+  0 (37, 29, 7 and 3 of them on four real files).
 - A node missing its recorded divergence (`nextstrain:div`) no longer borrows
   a number measured in years: a tree that records divergence states it that
   way and no other.

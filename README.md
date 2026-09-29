@@ -758,7 +758,12 @@ and every node recording its divergence or every branch stating a length
 (and, on a clock-model tree, a rate, written as a plain number). A value the
 file states is stated, whether zero or negative; where one is missing the
 switch is not offered, rather than a branch drawn at length 0 that the file
-never described. The time axis is hidden while the branches show divergence.
+never described. A span that runs **backwards** — a child dated before its
+parent, which real Nextstrain builds state — keeps its sign in Time, so every
+node keeps its own date and switching to Div and back returns exactly the
+lengths the tree arrived with; it is drawn at length 0, as any negative
+branch length is. In Div a node recording less divergence than its parent
+draws at 0. The time axis is hidden while the branches show divergence.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -958,10 +963,13 @@ A protein/DNA/RNA characters matrix in a Nexus file
 (sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
 alignment track appears just as it does for phyloXML.
 
-An Auspice dataset opens on the **time view** (branch lengths from `num_date`
-differences; a divergence-only build falls back to `div` differences): the
-calendar time axis and node-age bars come from `num_date` and its confidence
-interval, and every trait (country, host, clade, ...) becomes a
+An Auspice dataset has no branch lengths of its own, so it opens in the
+metric it states completely: the **time view** when every node states a
+`num_date` (branch lengths are the `num_date` differences, sign kept), else
+the divergence view when every node states a `div`, else time if any node is
+dated. In the time view the calendar time axis and node-age bars come from
+`num_date` and its confidence interval, and every trait (country, host,
+clade, ...) becomes a
 `nextstrain:<trait>` node property — so Color-by, search and the node dialog
 pick them up. Both metrics are retained, and
 `forester.applyTimeBranchLengths(phy)` /

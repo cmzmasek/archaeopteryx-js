@@ -6388,12 +6388,18 @@
         if (typeof title === 'string' && title.trim().length > 0) {
             phy.name = title.trim();
         }
-        if (auspiceHasAnyDate(root)) {
-            setDeltaBranchLengths(root, null, auspiceNodeDate); // default view = time
+        // A build has no branch lengths of its own, so it opens in the metric
+        // it states COMPLETELY: time when every node states num_date, else
+        // divergence when every node states div, else as it always did (time
+        // if any node is dated, divergence if none is). Joint with the
+        // desktop, 2026-09-29. A num_date is a calendar year, so the gap is
+        // child minus parent, and it keeps its sign.
+        let opensInTime = everyNodeStates(root, auspiceNodeDate)
+            || (!everyNodeStates(root, recordedDiv) && auspiceHasAnyDate(root));
+        if (opensInTime) {
+            setDeltaBranchLengths(root, null, auspiceNodeDate, calendarGap);
         } else {
-            // a divergence-only build carries no num_date anywhere; div deltas
-            // keep the layout meaningful instead of a cladogram
-            setDeltaBranchLengths(root, null, auspiceNodeDiv);
+            setDeltaBranchLengths(root, null, recordedDiv, divergenceGap);
         }
         // A tip keeps its date INTERVAL: on a Nextstrain build it is the
         // sampling-date uncertainty of a sample dated only to its month or
@@ -6464,17 +6470,43 @@
     // (num_date -> the time view; nextstrain:div -> the divergence view).
     // The root's length is 0, and a node missing the metric (or whose parent
     // misses it) gets 0 -- so a time<->divergence toggle can never leave a
-    // stale cross-scale length behind. A (spurious) negative delta clamps to 0.
-    function setDeltaBranchLengths(node, parentValue, metricOf) {
+    // stale cross-scale length behind.
+    function setDeltaBranchLengths(node, parentValue, metricOf, gapOf) {
         let v = metricOf(node);
-        node.branch_length = (parentValue !== null && v !== null)
-            ? Math.max(0, v - parentValue) : 0;
+        node.branch_length = (parentValue !== null && v !== null) ? gapOf(v, parentValue) : 0;
         let children = node.children;
         if (children) {
             for (let i = 0; i < children.length; ++i) {
-                setDeltaBranchLengths(children[i], v, metricOf);
+                setDeltaBranchLengths(children[i], v, metricOf, gapOf);
             }
         }
+    }
+
+    // A TIME gap keeps its sign. A child dated before its parent is what the
+    // file states -- real Nextstrain builds state it (42 branches in 4 of 11,
+    // one of them by 4.09 years) -- so the length is negative and every node
+    // keeps its own date. Clamped at 0 until 2026-09-29, which also made the
+    // switch lossy: a time tree stating negative lengths came back from Div
+    // with 0 in their place. (A negative length is DRAWN at 0, as it always
+    // was and as the desktop draws it; this is about the value.)
+    function calendarGap(v, parentValue) {
+        return v - parentValue;
+    }
+
+    function ageGap(v, parentValue) {
+        return parentValue - v;
+    }
+
+    // In the direction the tree's dates run: calendar dates increase toward
+    // the tips, ages (a height) toward the root. As the desktop measures it.
+    function timeGapOf(root) {
+        return timeIncreasesTowardTips(root) ? calendarGap : ageGap;
+    }
+
+    // Divergence accumulates: a node recording less than its parent is noise,
+    // not a branch running backwards, and draws at 0.
+    function divergenceGap(v, parentValue) {
+        return Math.max(0, v - parentValue);
     }
 
     // The time<->divergence plumbing: both metrics are RETAINED on a parsed
@@ -6501,7 +6533,7 @@
         if (!root || !everyNodeStates(root, auspiceNodeDate)) {
             return false;
         }
-        setDeltaBranchLengths(root, null, auspiceNodeDate);
+        setDeltaBranchLengths(root, null, auspiceNodeDate, timeGapOf(root));
         return true;
     };
 
@@ -6510,7 +6542,7 @@
         if (!root || !divergenceStatesEveryBranch(root)) {
             return false;
         }
-        setDeltaBranchLengths(root, null, auspiceNodeDiv);
+        setDeltaBranchLengths(root, null, auspiceNodeDiv, divergenceGap);
         return true;
     };
 
@@ -6696,6 +6728,7 @@
     function branchLengthsAreTime(root) {
         let pairs = 0;
         let same = 0;
+        let gapOf = timeGapOf(root);
         forester.preOrderTraversalAll(root, function (n) {
             if (!n.children) {
                 return;
@@ -6712,8 +6745,11 @@
                     continue;
                 }
                 ++pairs;
-                let scale = Math.max(Math.abs(bl), Math.abs(cv - pv), 1e-9);
-                if (Math.abs(Math.abs(cv - pv) - bl) <= (scale * 1e-6)) {
+                // signed, as the time view writes it: a length the file
+                // states negative is its date gap too
+                let gap = gapOf(cv, pv);
+                let scale = Math.max(Math.abs(bl), Math.abs(gap), 1e-9);
+                if (Math.abs(gap - bl) <= (scale * 1e-6)) {
                     ++same;
                 }
             }
@@ -6721,13 +6757,14 @@
         return pairs > 0 && (same * 20) >= (pairs * 19);
     }
 
-    // Whether the dates run the way the time view needs them to: a CALENDAR
-    // date increases toward the tips, and setDeltaBranchLengths takes
-    // child - parent and clamps at 0. A BEAST height runs the other way -- it
-    // is an age, largest at the root -- so a tree still stating heights would
-    // get a branch length of 0 everywhere and collapse to a point. Measured,
-    // not assumed: forester.convertHeightsToDates turns heights into calendar
-    // dates, and a tree it REFUSED still states ages.
+    // Which way the tree's dates run: a CALENDAR date increases toward the
+    // tips; a BEAST height runs the other way -- it is an age, largest at the
+    // root. Measured, not assumed, by the majority of the parent-child pairs
+    // that differ (a tie, or none, reads as ages): forester.
+    // convertHeightsToDates turns heights into calendar dates, and a tree it
+    // REFUSED still states ages. The time view takes its gaps in this
+    // direction (timeGapOf), so the few pairs that run AGAINST it come out
+    // negative.
     function timeIncreasesTowardTips(root) {
         let up = 0;
         let pairs = 0;
@@ -6801,9 +6838,10 @@
      * the tree stays in the layout it arrived in.
      *
      * A tree whose dates are still AGES (a height, largest at the root) is
-     * refused where the time view is built from the dates, which would
-     * collapse it; not on a clock-model tree, whose time view is its own
-     * branch lengths and reads no date.
+     * refused where the time view is built from the dates; not on a
+     * clock-model tree, whose time view is its own branch lengths. (The time
+     * view can state an age tree since 2026-09-29, so this refusal is now a
+     * choice and not a necessity: a named difference, the desktop offers.)
      *
      * NAMED DIVERGENCE from the desktop (0.11.167; recorded, not decided): it
      * offers the switch by what the tree carries (a recorded divergence, or a

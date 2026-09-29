@@ -3694,8 +3694,8 @@ function testTaxlabelColours() {
 
 // Auspice edge cases: an already-parsed object as input, a tiny divergence
 // rendered without scientific notation, a node missing num_date breaking
-// the delta chain to 0 (never a stale length), and a negative delta
-// clamping to 0.
+// the delta chain to 0 (never a stale length), and a date gap that runs
+// backwards keeping its sign.
 function testAuspiceMore() {
     var phy = forester.parseAuspiceJson({
         version: "v2",
@@ -3729,8 +3729,10 @@ function testAuspiceMore() {
     if (undated.branch_length !== 0 || late.branch_length !== 0) {
         return false;
     }
-    // a tip older than its parent clamps to 0, not -0.5
-    return early.branch_length === 0;
+    // A tip dated before its parent is -0.5 long: the file states both
+    // dates, and the node keeps its own. It clamped to 0 until 2026-09-29
+    // (Christian: "keep it negative in Time"; with the desktop's 0.11.168).
+    return early.branch_length === -0.5;
 }
 
 // forester.ladderize: sorts a node's children by clade size at ANY child
@@ -4991,9 +4993,12 @@ function testTimeDivergenceScale() {
         }
     }
 
-    // A tree still stating AGES (a height, largest at the root) must not offer
-    // the switch: the time view takes child minus parent and clamps at 0, so
-    // every branch would collapse to nothing.
+    // A tree still stating AGES (a height, largest at the root) is not offered
+    // the switch where the time view is built from the dates. A choice, and a
+    // named difference from the desktop, since 2026-09-29: the time view now
+    // takes its gaps in the direction the dates run, so it CAN state such a
+    // tree (below). Until then it took child minus parent and clamped at 0,
+    // and every branch collapsed to nothing.
     //
     // Two trees differing ONLY in which way time runs, so the direction is the
     // single cause -- the desktop's way of isolating a rule, and better than
@@ -5025,18 +5030,33 @@ function testTimeDivergenceScale() {
         console.log('    a tree stating ages must not offer the switch');
         return false;
     }
-    // and this is why: applied to it, the time view leaves nothing
-    forester.applyTimeBranchLengths(backward);
-    var flat = 0;
-    var all = 0;
-    forester.preOrderTraversalAll(forester.getTreeRoot(backward), function (n) {
-        ++all;
-        if (n.branch_length === 0) {
-            ++flat;
-        }
-    });
-    if (flat !== all) {
-        console.log('    expected the age tree to collapse under the time view, got ' + flat + '/' + all);
+    // The time view takes its gaps in the direction the dates run, so each
+    // tree is laid out by its own dates, whichever way they run: every tip
+    // ends up as far from the root as its date is from the root's.
+    function offItsDate(phy) {
+        var r = forester.getTreeRoot(phy);
+        var worst = 0;
+        (function walk(n, depth) {
+            var here = depth + (n === r ? 0 : n.branch_length);
+            worst = Math.max(worst, Math.abs(here - Math.abs(n.date.value - r.date.value)));
+            (n.children || []).forEach(function (c) { walk(c, here); });
+        }(r, 0));
+        return worst;
+    }
+    if (forester.applyTimeBranchLengths(backward) !== true || offItsDate(backward) > 1e-12) {
+        console.log('    the age tree under the time view: a node is ' + offItsDate(backward) + ' off its own date');
+        return false;
+    }
+    if (forester.applyTimeBranchLengths(forward) !== true || offItsDate(forward) > 1e-12) {
+        console.log('    the calendar tree under the time view: a node is ' + offItsDate(forward) + ' off its own date');
+        return false;
+    }
+    // t0 is dated 8 under a parent dated 12: four long, not minus four
+    var t0 = forester.getAllExternalNodes(forester.getTreeRoot(backward)).filter(function (n) {
+        return n.name === 't0';
+    })[0];
+    if (t0.branch_length !== 4) {
+        console.log('    t0, aged 8 under a node aged 12, should be 4 long, got ' + t0.branch_length);
         return false;
     }
 
@@ -5185,6 +5205,169 @@ function testTimeDivergenceScale() {
                 + (stated[s][1] ? ' should' : ' must not') + ' be offered the switch');
             return false;
         }
+    }
+
+    // A span that runs BACKWARDS keeps its sign in Time and draws at 0 in Div
+    // (Christian, 2026-09-29; with the desktop's 0.11.168). Real builds state
+    // it: a child dated before its parent on 42 branches of 4 Nextstrain
+    // builds in 11. Here one tip of a real build is dated 0.3 years before its
+    // parent, and another records less divergence than its parent.
+    function ncovWith(change) {
+        var doc = JSON.parse(ncovText);
+        var tips = [];
+        (function w(x, parent) {
+            if (!x.children || x.children.length === 0) {
+                tips.push({node: x, parent: parent});
+            }
+            (x.children || []).forEach(function (c) { w(c, x); });
+        }(doc.tree, null));
+        var named = change(tips);
+        var phy = forester.parseAuspiceJson(doc);
+        phy = Array.isArray(phy) ? phy[0] : phy;
+        forester.captureDivergence(phy);
+        return {phy: phy, tip: forester.findByNodeName(phy, named)[0]};
+    }
+    var early = ncovWith(function (tips) {
+        tips[2].node.node_attrs.num_date = {value: tips[2].parent.node_attrs.num_date.value - 0.3};
+        return tips[2].node.name;
+    });
+    if (!early.tip || Math.abs(early.tip.branch_length + 0.3) > 1e-9) {
+        console.log('    a tip dated 0.3 years before its parent should load -0.3 long, got '
+            + (early.tip ? early.tip.branch_length : 'no such tip'));
+        return false;
+    }
+    var earlyLoaded = lengthsOf(early.phy);
+    if (!forester.hasTimeAndDivergence(early.phy) || forester.branchLengthScale(early.phy) !== 'time') {
+        console.log('    one backwards span should not cost the build its switch, nor its time view');
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(early.phy);
+    if (!(early.tip.branch_length >= 0)) {
+        console.log('    in Div the same tip is its divergence, which is not negative: ' + early.tip.branch_length);
+        return false;
+    }
+    forester.applyTimeBranchLengths(early.phy);
+    var earlyBack = lengthsOf(early.phy);
+    for (var ek in earlyLoaded) {
+        if (earlyBack[ek] !== earlyLoaded[ek]) {
+            console.log('    Div and back: ' + ek + ' loaded ' + earlyLoaded[ek] + ', now ' + earlyBack[ek]);
+            return false;
+        }
+    }
+    var lessDiv = ncovWith(function (tips) {
+        tips[2].node.node_attrs.div = tips[2].parent.node_attrs.div / 2;
+        return tips[2].node.name;
+    });
+    forester.applyDivergenceBranchLengths(lessDiv.phy);
+    if (lessDiv.tip.branch_length !== 0) {
+        console.log('    a tip recording less divergence than its parent draws at 0 in Div, got ' + lessDiv.tip.branch_length);
+        return false;
+    }
+
+    // The same on a time tree with branch lengths OF ITS OWN (a Nextstrain
+    // *_timetree.nexus): B is -0.1 long, dated 0.1 years before its parent.
+    // The switch used to bring such a length back as 0 -- four real files
+    // lost 37, 29, 7 and 3 of theirs -- so the round trip was not lossless.
+    var ownLengths = asOpened('#NEXUS\nBegin trees;\ntree T = [&R] ((A[&num_date=2001.0,div=0.0030]:1.0,'
+        + 'B[&num_date=1999.9,div=0.0021]:-0.1)[&num_date=2000.0,div=0.0020]:2.0,(C[&num_date=2002.0,div=0.0060]:3.0,'
+        + 'D[&num_date=2000.5,div=0.0012]:1.5)[&num_date=1999.0,div=0.0010]:1.0)[&num_date=1998.0,div=0];\nEnd;\n');
+    var ownLoaded = lengthsOf(ownLengths);
+    if (ownLoaded.B !== -0.1 || !forester.hasTimeAndDivergence(ownLengths)
+        || forester.branchLengthScale(ownLengths) !== 'time') {
+        console.log('    fixture: B should load -0.1 long on a tree offered the switch and arriving in time: '
+            + ownLoaded.B + ' ' + forester.hasTimeAndDivergence(ownLengths) + ' ' + forester.branchLengthScale(ownLengths));
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(ownLengths);
+    if (Math.abs(lengthsOf(ownLengths).B - 0.0001) > 1e-12 || forester.branchLengthScale(ownLengths) !== 'divergence') {
+        console.log('    in Div B is 0.0021 - 0.0020, got ' + lengthsOf(ownLengths).B);
+        return false;
+    }
+    forester.applyTimeBranchLengths(ownLengths);
+    var ownBack = lengthsOf(ownLengths);
+    for (var ok in ownLoaded) {
+        if (Math.abs(ownBack[ok] - ownLoaded[ok]) > 1e-9) {
+            console.log('    Div and back on a tree with lengths of its own: ' + ok + ' stated ' + ownLoaded[ok]
+                + ', now ' + ownBack[ok]);
+            return false;
+        }
+    }
+    if (forester.branchLengthScale(ownLengths) !== 'time') {
+        console.log('    back in time the tree should say so, negative length and all');
+        return false;
+    }
+
+    // A build has no branch lengths of its own, so it opens in the metric it
+    // states COMPLETELY (joint with the desktop, 2026-09-29): time when every
+    // node is dated, else divergence when every node records one, else as it
+    // always did. One datum out of a real build at a time.
+    function opens(which, attr, alsoTipDiv) {
+        var doc = JSON.parse(ncovText);
+        var internal = null;
+        var tip = null;
+        (function w(x, depth) {
+            var kids = x.children || [];
+            if (kids.length === 0) {
+                tip = tip || x;
+            } else if (depth > 0) {
+                internal = internal || x;
+            }
+            kids.forEach(function (c) { w(c, depth + 1); });
+        }(doc.tree, 0));
+        if (which) {
+            delete (which === 'internal' ? internal : tip).node_attrs[attr];
+        }
+        if (alsoTipDiv) {
+            delete tip.node_attrs.div;
+        }
+        var phy = forester.parseAuspiceJson(doc);
+        phy = Array.isArray(phy) ? phy[0] : phy;
+        // what each branch would be in each metric, from the file's own numbers
+        var inTime = 0;
+        var inDiv = 0;
+        var branches = 0;
+        var r = forester.getTreeRoot(phy);
+        forester.preOrderTraversalAll(r, function (n) {
+            if (n === r) {
+                return;
+            }
+            ++branches;
+            var d = n.date ? n.date.value : undefined;
+            var pd = n.parent.date ? n.parent.date.value : undefined;
+            var v = divOf(n);
+            var pv = divOf(n.parent);
+            if (d !== undefined && pd !== undefined && Math.abs(n.branch_length - (d - pd)) < 1e-12) {
+                ++inTime;
+            }
+            if (v !== null && pv !== null && Math.abs(n.branch_length - Math.max(0, v - pv)) < 1e-12) {
+                ++inDiv;
+            }
+        });
+        return {time: inTime, div: inDiv, branches: branches};
+    }
+    function divOf(n) {
+        var hit = (n.properties || []).filter(function (q) { return q.ref === 'nextstrain:div'; })[0];
+        return hit ? parseFloat(hit.value) : null;
+    }
+    var whole = opens(null);
+    if (whole.time !== whole.branches || whole.div === whole.branches) {
+        console.log('    the build as it is opens in time: ' + JSON.stringify(whole));
+        return false;
+    }
+    var lessOneDiv = opens('internal', 'div');
+    if (lessOneDiv.time !== lessOneDiv.branches) {
+        console.log('    every node dated, one div missing: opens in time: ' + JSON.stringify(lessOneDiv));
+        return false;
+    }
+    var lessOneDate = opens('internal', 'num_date');
+    if (lessOneDate.div !== lessOneDate.branches) {
+        console.log('    one date missing, every node records divergence: opens in DIVERGENCE: ' + JSON.stringify(lessOneDate));
+        return false;
+    }
+    var lessBoth = opens('internal', 'num_date', true);
+    if (lessBoth.div === lessBoth.branches || lessBoth.time === 0) {
+        console.log('    neither metric complete: opens as it always did, in time: ' + JSON.stringify(lessBoth));
+        return false;
     }
     return true;
 }
