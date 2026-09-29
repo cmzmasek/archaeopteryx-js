@@ -1,0 +1,145 @@
+<!doctype html>
+<meta charset="utf-8"><title>Time | Div pressed inside a subtree view</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Time | Div pressed INSIDE a subtree view. The switch lays the WHOLE tree out
+// again, not the clade on view: back on the whole tree there is one layout,
+// and the switch says which. The desktop found the opposite in its own
+// viewer (2026-09-29): Div in the view of a clade rewrote only that clade,
+// and the whole tree came back with branches in substitutions beside
+// branches in years.
+//
+// What each branch should measure is taken from the file's own numbers before
+// the viewer touches anything, never from the switch: a Nextstrain build's
+// date and div differences; with ?clock=1 a BEAST clock tree's loaded length,
+// and that length x its rate.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const prop = (n, ref) => { for (const p of (n.properties || [])) { if (p.ref === ref) { return parseFloat(p.value); } } return null; };
+    try {
+        const clock = /clock=1/.test(location.search);
+        let trees;
+        if (clock) {
+            const LEVEL = [8, 6, 4.5, 3.2];
+            let k = 0, tip = 0;
+            const rate = () => (0.002 + 0.004 * (k++ % 4)).toFixed(3);
+            const build = (depth, parentH) => {
+                if (depth === 4) {
+                    const h = tip % 3;
+                    return 'T' + tip++ + '_' + (2020 - h) + '[&rate=' + rate() + ',height=' + h + ']:' + (parentH - h);
+                }
+                const h = LEVEL[depth];
+                const kids = build(depth + 1, h) + ',' + build(depth + 1, h);
+                return depth === 0 ? '(' + kids + ')[&height=' + h + ']' : '(' + kids + ')[&rate=' + rate() + ',height=' + h + ']:' + (parentH - h);
+            };
+            trees = archaeopteryx.parseTrees('clock.nex', '#NEXUS\nBegin trees;\ntree CLOCK = [&R] ' + build(0, 0) + ';\nEnd;\n');
+        } else {
+            const text = await (await fetch('../../docs/data/nextstrain-ncov.json')).text();
+            trees = archaeopteryx.parseTrees('nextstrain-ncov.json', text);
+        }
+        const tree = Array.isArray(trees) ? trees[0] : trees;
+        const root = forester.getTreeRoot(tree);
+        // expectations, taken BEFORE the viewer or the switch touches anything
+        const nodes = [];
+        forester.preOrderTraversalAll(root, (n) => { if (n !== root) { nodes.push(n); } });
+        const want = new Map();
+        nodes.forEach((n) => {
+            if (clock) {
+                want.set(n, {time: n.branch_length, div: n.branch_length * prop(n, 'beast:rate')});
+            } else {
+                want.set(n, {time: Math.max(0, n.date.value - n.parent.date.value),
+                    div: Math.max(0, prop(n, 'nextstrain:div') - prop(n.parent, 'nextstrain:div'))});
+            }
+        });
+        const viewer = archaeopteryx.launch('#p', trees, {});
+        await viewer.ready;
+        await sleep(2200);
+        const layout = () => {
+            let t = 0, d = 0, neither = [];
+            nodes.forEach((n) => {
+                const w = want.get(n), bl = n.branch_length;
+                const isT = Math.abs(bl - w.time) < 1e-9, isD = Math.abs(bl - w.div) < 1e-9;
+                if (isT && !isD) { ++t; } else if (isD && !isT) { ++d; } else if (!isT && !isD) { neither.push((n.name || 'internal') + '=' + bl); }
+            });
+            return {t, d, neither, text: t + ' branches in Time, ' + d + ' in Div' + (neither.length ? ', ' + neither.length + ' in NEITHER (' + neither.slice(0, 3).join(', ') + ')' : '')};
+        };
+        const telling = nodes.filter((n) => Math.abs(want.get(n).time - want.get(n).div) > 1e-9).length;
+        out.push((clock ? 'clock tree' : 'nextstrain-ncov.json') + ': ' + nodes.length + ' branches, ' + telling + ' of them tell the two layouts apart');
+        const group = document.querySelector('#p .branch_scale_g');
+        const offered = () => !!group && getComputedStyle(group).display !== 'none' && group.offsetParent !== null;
+        check('whole tree: the switch is offered, and it opens in Time', offered() && byId('branch_scale_time_b').checked
+            && layout().d === 0 && layout().neither.length === 0, layout().text);
+
+        // into the view of a clade, two levels down, the way a user goes
+        const pickClade = () => nodes.filter((n) => n.children && n.parent !== root && n.parent && n.parent.parent
+            && forester.getAllExternalNodes(n).length >= 3)
+            .sort((a, b) => forester.getAllExternalNodes(b).length - forester.getAllExternalNodes(a).length)[0];
+        const clade = pickClade();
+        const inside = new Set(); forester.preOrderTraversalAll(clade, (n) => inside.add(n));
+        // Only tips have a g.node; an internal node is found by the pointer's
+        // position. In the rectangular layout a node sits at (d.y, d.x) in the
+        // tree group's own coordinates, which a drawn tip confirms first.
+        const enter = async (node) => {
+            const tipG = [...document.querySelectorAll('#p g.node')].find((x) => x.__data__ && !x.__data__.children);
+            const m0 = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(tipG.getAttribute('transform') || '');
+            if (!m0 || Math.abs(+m0[1] - tipG.__data__.y) > 0.01 || Math.abs(+m0[2] - tipG.__data__.x) > 0.01) {
+                out.push('a tip is not drawn at (d.y, d.x): ' + tipG.getAttribute('transform') + ' vs ' + tipG.__data__.y + ',' + tipG.__data__.x);
+                return false;
+            }
+            const M = tipG.parentNode.getScreenCTM();
+            const at = {clientX: M.a * node.y + M.c * node.x + M.e, clientY: M.b * node.y + M.d * node.x + M.f,
+                bubbles: true, cancelable: true, view: window};
+            const svg = tipG.ownerSVGElement;
+            svg.dispatchEvent(new MouseEvent('mousemove', at));
+            svg.dispatchEvent(new MouseEvent('click', at));
+            await sleep(400);
+            const item = [...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.textContent === 'Switch to Subtree');
+            if (!item) { out.push('no menu at ' + at.clientX.toFixed(0) + ',' + at.clientY.toFixed(0)); return false; }
+            item.click();
+            await sleep(1800);
+            return true;
+        };
+        const shownTips = () => [...document.querySelectorAll('#p g.node')].filter((g) => g.__data__ && !g.__data__.children && !g.__data__._children).length;
+        const allTips = forester.getAllExternalNodes(root).length;
+        const cladeTips = forester.getAllExternalNodes(clade).length;
+        check('entered the view of a clade', await enter(clade) && shownTips() === cladeTips,
+            shownTips() + ' tips shown, the clade has ' + cladeTips + ', the tree ' + allTips);
+        check('in the view: the switch is offered', offered());
+        byId('branch_scale_div_b').click(); await sleep(1800);
+        const inView = layout();
+        let inT = 0, outT = 0;
+        nodes.forEach((n) => { const w = want.get(n); if (Math.abs(n.branch_length - w.time) < 1e-9 && Math.abs(w.time - w.div) > 1e-9) { if (inside.has(n)) { ++inT; } else { ++outT; } } });
+        check('Div pressed in the view: the WHOLE tree is in Div, not only the clade', inView.t === 0 && inView.neither.length === 0,
+            inView.text + '; still in Time: ' + inT + ' inside the clade, ' + outT + ' outside it');
+        byId('ret_b').click(); await sleep(1800);
+        const back = layout();
+        check('back on the whole tree: every tip shown', shownTips() === allTips, shownTips() + ' of ' + allTips);
+        check('back on the whole tree: ONE layout, and it is Div', back.t === 0 && back.neither.length === 0 && back.d === telling, back.text);
+        check('back on the whole tree: the switch says Div', byId('branch_scale_div_b').checked && !byId('branch_scale_time_b').checked);
+
+        // the other way: Div on the whole tree, Time pressed in the view
+        check('entered the view again', await enter(clade) && shownTips() === cladeTips, shownTips() + ' tips');
+        check('in the view: the switch still says Div', byId('branch_scale_div_b').checked);
+        byId('branch_scale_time_b').click(); await sleep(1800);
+        byId('ret_b').click(); await sleep(1800);
+        const again = layout();
+        check('Time pressed in the view, back on the whole tree: ONE layout, and it is Time', again.d === 0 && again.neither.length === 0
+            && again.t === telling && byId('branch_scale_time_b').checked, again.text);
+        check('and the lengths are the ones the file stated', nodes.every((n) => Math.abs(n.branch_length - want.get(n).time) < 1e-9));
+    } catch (e) {
+        check('the page ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
