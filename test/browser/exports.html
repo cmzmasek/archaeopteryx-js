@@ -97,6 +97,11 @@ async function launch(file, text) {
         finish();
         return;
     }
+    if (q.get('subtree') === 'div') {
+        await subtreeFromDiv();
+        finish();
+        return;
+    }
     if (q.get('seqs') === '1') {
         // room for the whole panel, so nothing is folded to fit
         byId('phylogram1').style.cssText = 'position:absolute;left:0;top:0;width:1100px;height:2400px';
@@ -438,6 +443,49 @@ async function legendCards() {
             : 'aptx-heatmap-ringlegend'), classes.join(', '));
         holder.remove();
     }
+}
+
+// A subtree saved while Div is on screen says what its lengths measure: the
+// phylogeny's own attributes go with the part. Without branch_length_unit
+// the file opened again labelled Time with its divergence for lengths -- the
+// fault mended for whole trees on 2026-09-29, found for subtrees by review.
+async function subtreeFromDiv() {
+    const file = '../../docs/data/beast-annotations.nex';
+    const trees = await launch(file, await (await fetch(file)).text());
+    const tree = Array.isArray(trees) ? trees[0] : trees;
+    const group = document.querySelector('#phylogram1 .branch_scale_g, .branch_scale_g');
+    check('the clock tree is offered Time | Div', !!group && getComputedStyle(group).display !== 'none');
+    byId('branch_scale_div_b').click();
+    await sleep(1500);
+    check('in Div the tree states subs/site', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);
+    const all = [];
+    forester.preOrderTraversalAll(tree, (n) => all.push(n));
+    const sub = all.find((n) => n.children && n.parent && n.parent.parent && n.parent.parent.parent
+        && forester.getAllExternalNodes(n).length >= 2);
+    window.__aptxViewer.applyViewState({subtree: sub.viewId});
+    await sleep(1500);
+    const tag = (xml) => (xml.match(/<phylogeny[^>]*>/) || ['none'])[0];
+    const px = await download('phyloXML');
+    const pxText = px ? await px.blob.text() : '';
+    check('the subtree\'s phyloXML states subs/site', /branch_length_unit="subs\/site"/.test(tag(pxText)), tag(pxText));
+    // and read back, it knows what it shows: divergence, with its time to come back to
+    const back = phyloXml.parse(pxText, {trim: true, normalize: true})[0];
+    forester.captureDivergence(back);
+    forester.convertLoadedHeightsToDates([back]);
+    const sum = (t) => { const r = forester.getTreeRoot(t); let x = 0; forester.preOrderTraversalAll(r, (n) => { if (n !== r && typeof n.branch_length === 'number') { x += n.branch_length; } }); return x; };
+    const asSaved = sum(back);
+    const offered = forester.hasTimeAndDivergence(back);
+    const arrives = forester.branchLengthScale(back);
+    forester.applyTimeBranchLengths(back);
+    const inTime = sum(back);
+    check('opened again, the part arrives showing divergence and Time lays it out from its dates',
+        offered && arrives === 'divergence' && inTime > 10 * asSaved,
+        'offered ' + offered + ', arrives in ' + arrives + ', lengths ' + asSaved.toPrecision(4) + ' -> Time ' + inTime.toPrecision(4));
+    // the whole tree, back out of the view, says the same
+    window.__aptxViewer.applyViewState({});
+    await sleep(1200);
+    const whole = await download('phyloXML');
+    check('and the whole tree\'s file states subs/site too', /branch_length_unit="subs\/site"/.test(tag(whole ? await whole.blob.text() : '')));
 }
 
 // In a subtree the files hold the subtree -- the menu says so, and the file

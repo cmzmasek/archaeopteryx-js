@@ -29,6 +29,12 @@
 // deleting the one unrated tip leaves a tree with a rate on every branch, and
 // the switch appears.
 //
+// ?opensdiv=1 -- a Nextstrain build with one node undated opens in divergence
+// (every node records div), is refused the switch, and draws NO time axis:
+// calendar years over substitutions read as a confident lie, and the axis was
+// drawn there until review found it (2026-09-29). The intact build is the
+// control: in time, its axis on.
+//
 // ?refused=1 -- the OFFER is judged on the whole tree too. The clock tree less
 // ONE rate (T15's) is not offered the switch, and a clade in which every
 // branch states a rate is not offered it in its own view either: the press
@@ -43,9 +49,17 @@
     try {
         const refused = /refused=1/.test(location.search);
         const deleting = (/[?&]delete=(1|gain)/.exec(location.search) || [])[1] || null;
+        const opensDiv = /opensdiv=1/.test(location.search);
         const clock = refused || deleting !== null || /clock=1/.test(location.search);
         let trees;
-        if (clock) {
+        if (opensDiv) {
+            const doc = JSON.parse(await (await fetch('../../docs/data/nextstrain-ncov.json')).text());
+            let internal = null;
+            (function w(x, depth) { const kids = x.children || []; if (kids.length && depth > 0) { internal = internal || x; } kids.forEach((c) => w(c, depth + 1)); }(doc.tree, 0));
+            check('fixture: one internal node had a date to take out', !!internal && !!internal.node_attrs.num_date);
+            delete internal.node_attrs.num_date;
+            trees = archaeopteryx.parseTrees('nextstrain-ncov.json', JSON.stringify(doc));
+        } else if (clock) {
             const LEVEL = [8, 6, 4.5, 3.2];
             let k = 0, tip = 0;
             const rate = () => (0.002 + 0.004 * (k++ % 4)).toFixed(3);
@@ -80,7 +94,9 @@
             if (clock) {
                 want.set(n, {time: n.branch_length, div: n.branch_length * prop(n, 'beast:rate')});
             } else {
-                want.set(n, {time: Math.max(0, n.date.value - n.parent.date.value),
+                // a time gap keeps its sign; divergence never runs backwards
+                // (a node without a date has no time gap: ?opensdiv=1)
+                want.set(n, {time: (n.date && n.parent.date) ? n.date.value - n.parent.date.value : NaN,
                     div: Math.max(0, prop(n, 'nextstrain:div') - prop(n.parent, 'nextstrain:div'))});
             }
         });
@@ -101,6 +117,16 @@
         out.push((clock ? 'clock tree' : 'nextstrain-ncov.json') + ': ' + nodes.length + ' branches, ' + telling + ' of them tell the two layouts apart');
         const group = document.querySelector('#p .branch_scale_g');
         const offered = () => !!group && getComputedStyle(group).display !== 'none' && group.offsetParent !== null;
+        if (opensDiv) {
+            const axisDrawn = () => !!document.querySelector('#p g.aptx-time-axis, #p .aptx-time-ruler, #p .aptx-time .aptx-age-bar');
+            check('the build opens in divergence and says so', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);
+            check('it is refused the switch', !offered());
+            check('the Time Axis checkbox is on, as for any dated tree', byId('timeaxis_cb') && byId('timeaxis_cb').checked);
+            check('and yet no time axis is drawn over the divergence', !axisDrawn());
+            window.__benchResult = {report: out, failures: failures};
+            window.__benchDone = true;
+            return;
+        }
         if (!refused && !deleting) {
             // what each button SAYS it does must be what it does. Time is the
             // lengths the tree states, not "the nodes' dates", which it said
@@ -232,17 +258,11 @@
             check('T15 deleted from the node menu', await deleteTip(unrated) && !forester.getAllExternalNodes(root).some((n) => n.name.indexOf('T15_') === 0));
             check('a rate on every branch now: the switch appears, on Time', offered() && byId('branch_scale_time_b').checked);
             check('on screen: every node on its date', offBy('time').worst < 1e-9, offBy('time').who + ' off by ' + offBy('time').worst);
-            // its divergence is worked out only now, from the tree as it is:
-            // the branch that took the removed node's place spans both, at
-            // the surviving node's rate (the removed node's rate went with it)
-            (function place(n, div) {
-                const len = (n === root || typeof n.branch_length !== 'number') ? 0 : n.branch_length;
-                const d = div + (n === root ? 0 : Math.max(0, len) * rate(n));
-                belongs.get(n).div = d;
-                (n.children || []).forEach((c) => place(c, d));
-            }(root, 0));
             byId('branch_scale_div_b').click(); await sleep(1800);
-            check('Div pressed: every node on its divergence, each branch at its rate times the time it now spans', offBy('div').worst < 1e-9, offBy('div').who + ' off by ' + offBy('div').worst);
+            // per piece: the removed node's own rate over its own span, as
+            // when it was a branch, so the picture in Div is the one the file
+            // gave
+            check('Div pressed: every node on its divergence, each piece at its own rate', offBy('div').worst < 1e-9, offBy('div').who + ' off by ' + offBy('div').worst);
             byId('branch_scale_time_b').click(); await sleep(1800);
             check('and back: every node on its date', offBy('time').worst < 1e-9, offBy('time').who + ' off by ' + offBy('time').worst);
             window.__benchResult = {report: out, failures: failures};

@@ -43,8 +43,8 @@ const CASES = {
     'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
     'suppdots': [''],
     'time_circular': ['', '?fossil=1'],
-    'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain'],
-    'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?legends=1', '?big=1200']
+    'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1'],
+    'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',

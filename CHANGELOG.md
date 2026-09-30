@@ -64,8 +64,19 @@ The rules of the Time | Div switch, now shared with the desktop.
 - **A node deleted while the tree has two layouts.** The branch that takes
   the place of the removed node's now spans, in time, what both spanned, so
   every node that is left stays on its own date after switching to Div and
-  back; it came back short by the removed node's length. Deleting the one
-  tip without a clock rate now makes the switch appear.
+  back; it came back short by the removed node's length. Its divergence is
+  the sum over its pieces, each at the rate its node stated (with the
+  desktop). Deleting the one tip without a clock rate now makes the switch
+  appear. Two branches of length 0 merge into one of length 0, not into a
+  missing length, and a negative span keeps its sign through a merge.
+- **A Nextstrain build that opens in divergence** (a node without a date,
+  divergence on every node) no longer draws the calendar time axis over its
+  substitution-scaled branches.
+- **A subtree saved as phyloXML** carries the tree's own attributes, its
+  `branch_length_unit` among them, so a part saved from Div opens again
+  showing divergence.
+- Pressing the switch inside a subtree view measures the clade on view, not
+  the whole tree.
 - **A BEAST clock-model tree saved from the Div view opens again showing
   divergence.** It came back labelled Time, its divergence taken for its time,
   and Div then drew rate × divergence. It is known by the unit it states.

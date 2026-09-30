@@ -113,10 +113,20 @@ async function main() {
     await send('Emulation.setFocusEmulationEnabled', {enabled: true});
     await send('Page.navigate', {url});
     const t0 = Date.now();
+    let done = false;
     while ((Date.now() - t0) / 1000 < timeoutSec) {
         const r = await send('Runtime.evaluate', {expression: 'window.__benchDone === true', returnByValue: true});
-        if (r.result && r.result.result && r.result.result.value === true) break;
+        if (r.result && r.result.result && r.result.result.value === true) {
+            done = true;
+            break;
+        }
         await sleep(500);
+    }
+    if (!done) {
+        // no result to read: the page never finished. run.js reads the
+        // missing result too, but the exit code has to say it on its own
+        console.error('cdp_run: the page did not finish within ' + timeoutSec + ' s (' + url + ')');
+        exitCode = 2;
     }
     const res = await send('Runtime.evaluate', {expression: 'JSON.stringify(window.__benchResult || null, null, 2)', returnByValue: true});
     console.log(res.result.result.value);
@@ -132,10 +142,19 @@ main().catch((e) => {
     console.error(e);
     exitCode = 1;
 }).finally(async () => {
-    clearTimeout(watchdog);
+    // the watchdog stays armed until Chrome is known to have gone: one that
+    // shrugs off the polite signal is killed after a few seconds, and if
+    // even that hangs the watchdog still ends the run
     const exited = new Promise((r) => chrome.once('exit', r));
     chrome.kill();
+    const hard = setTimeout(() => {
+        try {
+            chrome.kill('SIGKILL');
+        } catch { /* already gone */ }
+    }, 5000);
     await exited;
+    clearTimeout(hard);
+    clearTimeout(watchdog);
     try {
         fs.rmSync(profile, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
     } catch { /* a leftover temp profile is harmless */ }

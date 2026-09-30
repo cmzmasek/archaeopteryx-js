@@ -225,37 +225,89 @@
                 throw ("this should never have happened, child node index = " + cni);
             }
             let x = p.children[0];
-            let nbl = undefined;
-            if (x.branch_length || p.branch_length) {
-                nbl = (x.branch_length > 0 ? x.branch_length : 0) + (p.branch_length > 0 ? p.branch_length : 0);
-            }
-            // The length kept for the Time | Div switch goes with the branch:
-            // x now spans, in time, what it and the node removed above it
-            // spanned. Signed, so that x stays on its own date. Left as it
-            // was, x came back from Div short by its parent's length (0.65
-            // years on a real Nextstrain build). A length that was not kept
-            // for either leaves x with none. As the desktop sums them.
-            let keptBoth = false;
-            let showingKept = false;
+            let stated = function (v) {
+                return typeof v === 'number' && isFinite(v);
+            };
+            // What the merged branch is made of, for a clock-model tree's
+            // divergence: each piece's span in time and the rate its node
+            // stated, kept on x (see divergenceOfPieces). A removed node's
+            // rate goes on scaling its own piece, as the desktop keeps it.
+            let showsDiv = statesDivergenceUnit(phy);
+            let root = forester.getTreeRoot(phy);
+            let pieceOf = function (n) {
+                if (Array.isArray(n._pieces)) {
+                    return n._pieces;
+                }
+                let span = null;
+                if (stated(n._timeLength)) {
+                    span = n._timeLength;
+                } else if (showsDiv) {
+                    let d = auspiceNodeDate(n);
+                    let pd = auspiceNodeDate(n.parent);
+                    span = (d !== null && pd !== null) ? timeGapOf(root)(d, pd) : null;
+                } else if (stated(n.branch_length)) {
+                    span = n.branch_length;
+                }
+                return span === null ? null : [{span: span, rate: clockRateOf(n)}];
+            };
+            let xs = pieceOf(x);
+            let ps = pieceOf(p);
+            let pieces = (xs && ps) ? xs.concat(ps) : null;
+            // The two lengths add up, sign and all: a stated 0 is a length (a
+            // truthiness test once turned two zeros into no length at all),
+            // and a negative span stays a negative span, so that a node keeps
+            // its date. One length stated and one not: the one stated.
+            let nbl = (stated(x.branch_length) && stated(p.branch_length)) ? (x.branch_length + p.branch_length)
+                : (stated(x.branch_length) ? x.branch_length : (stated(p.branch_length) ? p.branch_length : undefined));
+            // The length kept for the Time | Div switch goes with the branch
+            // the same way: x now spans, in time, what it and the node removed
+            // above it spanned. Left as it was, x came back from Div short by
+            // its parent's length (0.65 years on a real Nextstrain build). A
+            // length not kept for either leaves x with none.
             if (Object.prototype.hasOwnProperty.call(x, '_timeLength')
                 || Object.prototype.hasOwnProperty.call(p, '_timeLength')) {
-                let kept = function (v) {
-                    return typeof v === 'number' && isFinite(v);
-                };
-                keptBoth = kept(x._timeLength) && kept(p._timeLength);
-                // both branches on screen in time, as kept
-                showingKept = keptBoth && x.branch_length === x._timeLength && p.branch_length === p._timeLength;
-                x._timeLength = keptBoth ? (x._timeLength + p._timeLength) : undefined;
+                x._timeLength = (stated(x._timeLength) && stated(p._timeLength))
+                    ? (x._timeLength + p._timeLength) : undefined;
             }
             x.parent = pp;
             pp.children[cni] = x;
-            // in time, the branch on screen is the kept one, sign and all:
-            // adding the two as plain lengths leaves a negative one out
-            x.branch_length = showingKept ? x._timeLength : nbl;
+            x.branch_length = nbl;
+            if (pieces) {
+                x._pieces = pieces;
+            } else {
+                delete x._pieces;
+            }
+            // On a captured clock-model tree the cumulative divergence of x,
+            // and of everything under it, moves by what the merged branch's
+            // divergence is now against what x's was.
+            if (pieces && stated(x._divergence) && stated(pp._divergence)) {
+                let own = clockRateOf(x);
+                if (own !== null) {
+                    let shift = (pp._divergence + divergenceOfPieces(pieces, own)) - x._divergence;
+                    if (shift !== 0) {
+                        forester.preOrderTraversalAll(x, function (n) {
+                            n._divergence += shift;
+                        });
+                    }
+                }
+            }
         }
 
     };
 
+    // The divergence along a branch made of pieces (see forester.deleteSubtree):
+    // each piece's span, where it is positive, times the rate its node stated,
+    // or the surviving node's where it stated none. Clamped piece by piece,
+    // as each was when it was a branch of its own, so that deleting a node
+    // moves nobody in Div.
+    function divergenceOfPieces(pieces, ownRate) {
+        let sum = 0;
+        for (let i = 0; i < pieces.length; ++i) {
+            let r = (pieces[i].rate === null || pieces[i].rate === undefined) ? ownRate : pieces[i].rate;
+            sum += Math.max(0, pieces[i].span) * r;
+        }
+        return sum;
+    }
 
     /**
      * To re-root a tree object.
@@ -6605,6 +6657,9 @@
     forester.applyTimeBranchLengths = function (phy) {
         let root = forester.getTreeRoot(phy);
         if (root && root._timeLengthsKept === true) {
+            if (!everyLengthWasStated(root)) {
+                return false;    // a branch with no kept length: nothing to give back
+            }
             forester.preOrderTraversalAll(root, function (n) {
                 if (n !== root) {    // the root has no branch, and no layout touches what it states
                     n.branch_length = n._timeLength;
@@ -6745,9 +6800,15 @@
                         let pd = auspiceNodeDate(node);
                         span = (d !== null && pd !== null) ? gapOf(d, pd) : 0;
                     }
-                    // a span of 0, or a negative one, adds no divergence
-                    let step = (rates && typeof span === 'number' && isFinite(span) && span > 0)
-                        ? (span * rates.get(children[i])) : 0;
+                    // a span of 0, or a negative one, adds no divergence; a
+                    // branch made of pieces (a node deleted above it) adds
+                    // each piece's
+                    let step = 0;
+                    if (rates && Array.isArray(children[i]._pieces)) {
+                        step = divergenceOfPieces(children[i]._pieces, rates.get(children[i]));
+                    } else if (rates && typeof span === 'number' && isFinite(span) && span > 0) {
+                        step = span * rates.get(children[i]);
+                    }
                     walk(children[i], cumulative + step);
                 }
             }
@@ -6766,6 +6827,20 @@
             }
         });
         return every;
+    }
+
+    // A node's BEAST clock rate (the `rate` annotation) as everyBranchClockRate
+    // reads it: a plain decimal, not negative; else null.
+    function clockRateOf(n) {
+        if (n.properties) {
+            for (let i = 0; i < n.properties.length; ++i) {
+                if (n.properties[i].ref === BEAST_PREFIX + 'rate') {
+                    let r = parseBeastNumber(n.properties[i].value);
+                    return (r === null || r < 0) ? null : r;
+                }
+            }
+        }
+        return null;
     }
 
     // Each non-root node's BEAST clock rate (the `rate` annotation), or null

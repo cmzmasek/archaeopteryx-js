@@ -10307,11 +10307,23 @@ function (root, d3, forester, phyloXml) {
             forester.applyDivergenceBranchLengths(_treeData);
         }
         // the branch lengths ARE the layout, so everything measured from them
-        // has to be measured again
-        _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
-        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, scale === 'time');
-        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, scale !== 'time');
+        // has to be measured again -- for the tree ON VIEW, as switchToSubtree
+        // measures it: a clade's properties are not the whole tree's
+        _basicTreeProperties = forester.collectBasicTreeProperties(displayedRoot());
+        syncBranchScaleControls();
         zoomToFit();
+    }
+
+    // The switch's two buttons and whether the pair is shown at all, from the
+    // state: most trees state only one thing, and a control offering a choice
+    // that does not exist is worse than no control.
+    function syncBranchScaleControls() {
+        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, _state.branchScale === 'time');
+        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, _state.branchScale !== 'time');
+        let scaleGroup = document.querySelector('.' + BRANCH_SCALE_CONTROLGROUP);
+        if (scaleGroup) {
+            scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
+        }
     }
 
     // The tree was EDITED (a node deleted). Whether it has two layouts is asked
@@ -10339,12 +10351,7 @@ function (root, d3, forester, phyloXml) {
         } else {
             _state.branchScale = forester.branchLengthScale(_treeData);
         }
-        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, _state.branchScale === 'time');
-        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, _state.branchScale !== 'time');
-        let scaleGroup = document.querySelector('.' + BRANCH_SCALE_CONTROLGROUP);
-        if (scaleGroup) {
-            scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
-        }
+        syncBranchScaleControls();
     }
 
     function branchScaleButtonClicked() {
@@ -11559,19 +11566,32 @@ function (root, d3, forester, phyloXml) {
     // the tree's own branch scale, so the bands line up with the branches
     // even on a fossil-only tree whose youngest tip is far from the present.
 
+    // Whether the branch lengths on screen measure divergence: the switch says
+    // so where it is offered; the tree's own unit where it is not (a build
+    // that opened in divergence, a tree saved from Div).
+    function branchesShowDivergence() {
+        if (_branchScaleAvailable) {
+            return _state.branchScale === 'divergence';
+        }
+        return !!_treeData && typeof _treeData.branch_length_unit === 'string'
+            && _treeData.branch_length_unit.trim() === 'subs/site';
+    }
+
     function timeAxisShown() {
         return _state.showTimeAxis === true && !_state.unrootedDisplay
             && _state.phylogram === true
             && _timeInfo !== null && _timeInfo.type !== null
             && _basicTreeProperties.branchLengths === true
             // The axis is an overlay calibrated to the tree's own branch scale,
-            // so it must be hidden when the branches are showing DIVERGENCE
-            // and divergence is a different measure -- calendar years against
-            // substitutions reads as a confident lie. Only then: where the two
-            // metrics agree (a BEAST time tree, whose branch lengths ARE time)
-            // there is no switch and the axis is calibrated correctly, which
-            // is what makes a converted BEAST tree show its years at all.
-            && !(_branchScaleAvailable && _state.branchScale === 'divergence');
+            // so it must be hidden when the branches are showing DIVERGENCE --
+            // calendar years against substitutions reads as a confident lie.
+            // Whether the switch is offered is not the question: a Nextstrain
+            // build with one undated node opens in divergence, says so in its
+            // unit, and is refused the switch; its axis was drawn over
+            // substitutions until 2026-09-29. A tree in time shows its axis
+            // (a converted BEAST tree its years) whether or not it has a
+            // second layout.
+            && !branchesShowDivergence();
     }
 
     function timeAxisBottomReserve() {
@@ -17164,14 +17184,7 @@ function (root, d3, forester, phyloXml) {
             disableCheckbox('#' + PHYLOGRAM_BUTTON);
             disableCheckbox('#' + PHYLOGRAM_ALIGNED_BUTTON);
         }
-        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, _state.branchScale === 'time');
-        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, _state.branchScale !== 'time');
-        // most trees state only one thing, and a control offering a choice
-        // that does not exist is worse than no control
-        let scaleGroup = document.querySelector('.' + BRANCH_SCALE_CONTROLGROUP);
-        if (scaleGroup) {
-            scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
-        }
+        syncBranchScaleControls();
     }
 
 
@@ -17709,7 +17722,15 @@ function (root, d3, forester, phyloXml) {
             return _root;
         }
         let name = _root_const.name ? String(_root_const.name).trim() : '';
-        return Object.assign({}, _root, {name: name ? name + ' (subtree)' : undefined});
+        // what the phylogeny itself states goes with the part: without its
+        // branch_length_unit a subtree saved from Div opened again as time
+        let part = Object.assign({}, _root, {name: name ? name + ' (subtree)' : undefined});
+        ['rooted', 'rerootable', 'type', 'branch_length_unit'].forEach(function (k) {
+            if (_root_const[k] !== undefined && _root_const[k] !== null) {
+                part[k] = _root_const[k];
+            }
+        });
+        return part;
     }
 
     // "subtree, 19 of 50 tips" while a subtree is shown, else null: said in

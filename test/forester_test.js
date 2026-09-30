@@ -5672,6 +5672,138 @@ function testTimeDivergenceScale() {
         }
     }
 
+    // The desktop's pinned numbers for a deletion on a clock tree (its review
+    // and ours, 2026-09-29): a merged branch's divergence is the sum over its
+    // PIECES, each at the rate its node stated -- the removed node's rate
+    // goes on scaling its own span. beast-annotations.nex less isolate_E: D
+    // takes (D,E)'s branch, 0.0035 x 0.5 + 0.0034 x 0.3 = 0.00277, and 0.8 in
+    // time; in either layout, twice round. The same tree with isolate_A
+    // stated 1.407 between nodes 1.2 apart, less isolate_B: A =
+    // 0.0031 x 1.407 + 0.0030 x 0.9 = 0.0070617, and 2.307 in time. And the
+    // same again on a tree that GAINS the switch by the deletion -- the one
+    // unrated tip removed -- since what the tree keeps is taken afresh then.
+    // (In the third way isolate_C's removal also merges (D,E)'s branch with
+    // its parent's, 1.3 at 0.0029, so D is then made of three pieces:
+    // 0.00277 + 0.00377 = 0.00654, and 2.1 in time. A's branch is untouched.)
+    var pinned = [
+        ['beast-annotations.nex less isolate_E', heightsText, 'isolate_E', 'isolate_D', 0.00277, 0.8, 0.00654, 2.1],
+        ['...with isolate_A stated 1.407, less isolate_B', heightsText.replace('isolate_A[&height=0.0,rate=0.0031]:1.2',
+            'isolate_A[&height=0.0,rate=0.0031]:1.407'), 'isolate_B', 'isolate_A', 0.0070617, 2.307, 0.0070617, 2.307]
+    ];
+    if (pinned[1][1] === heightsText || heightsText.split('isolate_A[&height=0.0,rate=0.0031]:1.2').length !== 2) {
+        console.log('    fixture: isolate_A\'s length should be stated exactly once');
+        return false;
+    }
+    for (var pn = 0; pn < pinned.length; ++pn) {
+        for (var way = 0; way < 3; ++way) {
+            // 0: deleted in Time; 1: deleted in Div; 2: the tree refused at
+            // first (isolate_C unrated), C deleted first, so it is captured
+            // again after the deletion
+            var text = pinned[pn][1];
+            if (way === 2) {
+                text = text.replace(oneRate, 'isolate_C[&height=0.0]');
+            }
+            var pt = asOpened(text);
+            if (way === 2) {
+                if (forester.hasTimeAndDivergence(pt)) {
+                    console.log('    fixture: without isolate_C\'s rate the tree must not be offered the switch');
+                    return false;
+                }
+                forester.deleteSubtree(pt, forester.findByNodeName(pt, 'isolate_C')[0]);
+                forester.captureDivergence(pt);
+                if (!forester.hasTimeAndDivergence(pt) || forester.branchLengthScale(pt) !== 'time') {
+                    console.log('    isolate_C deleted, a rate on every branch: the switch should be offered, in time');
+                    return false;
+                }
+            }
+            if (way === 1) {
+                forester.applyDivergenceBranchLengths(pt);
+            }
+            forester.deleteSubtree(pt, forester.findByNodeName(pt, pinned[pn][2])[0]);
+            var survivor = forester.findByNodeName(pt, pinned[pn][3])[0];
+            var wantDiv = pinned[pn][way === 2 ? 6 : 4];
+            var wantTime = pinned[pn][way === 2 ? 7 : 5];
+            var rounds = [['Div', forester.applyDivergenceBranchLengths, wantDiv], ['Time', forester.applyTimeBranchLengths, wantTime],
+                ['Div', forester.applyDivergenceBranchLengths, wantDiv], ['Time', forester.applyTimeBranchLengths, wantTime]];
+            for (var rd = 0; rd < rounds.length; ++rd) {
+                if (rounds[rd][1](pt) !== true || Math.abs(survivor.branch_length - rounds[rd][2]) > 1e-9) {
+                    console.log('    ' + pinned[pn][0] + (way === 0 ? ', deleted in Time' : way === 1 ? ', deleted in Div' : ', captured after the deletion')
+                        + ': ' + pinned[pn][3] + ' in ' + rounds[rd][0] + ' should be ' + rounds[rd][2] + ', got ' + survivor.branch_length);
+                    return false;
+                }
+            }
+        }
+    }
+    // Two stated lengths add up, sign and all, whatever the tree: a stated 0
+    // is a length (two zeros used to merge into none), and a negative span
+    // stays negative on a tree that keeps nothing (the switch refused), so
+    // the node keeps its date and, captured later, its kept time.
+    var zeros = forester.parseNewHampshire('((A:0.0,B:0.0):0.0,(C:1,D:1):1);');
+    forester.deleteSubtree(zeros, forester.findByNodeName(zeros, 'B')[0]);
+    if (forester.findByNodeName(zeros, 'A')[0].branch_length !== 0) {
+        console.log('    two branches of length 0 merge into one of length 0, got ' + forester.findByNodeName(zeros, 'A')[0].branch_length);
+        return false;
+    }
+    var refusedNeg = asOpened(negativeSpan.replace('isolate_C[&height=0.0,rate=0.0026]', 'isolate_C[&height=0.0]'));
+    if (forester.hasTimeAndDivergence(refusedNeg)) {
+        console.log('    fixture: the negative-span tree without isolate_C\'s rate must not be offered');
+        return false;
+    }
+    forester.deleteSubtree(refusedNeg, forester.findByNodeName(refusedNeg, 'isolate_E')[0]);
+    var dNeg = forester.findByNodeName(refusedNeg, 'isolate_D')[0];
+    if (Math.abs(dNeg.branch_length - 0.8) > 1e-12) {
+        console.log('    on a tree that keeps nothing, D takes (D,E)\'s -0.05 with its sign: 0.8, got ' + dNeg.branch_length);
+        return false;
+    }
+    // ...and with isolate_C gone too, D hangs from the root: 0.85 - 0.05 + 1.3
+    forester.deleteSubtree(refusedNeg, forester.findByNodeName(refusedNeg, 'isolate_C')[0]);
+    forester.captureDivergence(refusedNeg);
+    if (!forester.hasTimeAndDivergence(refusedNeg) || Math.abs(dNeg.branch_length - 2.1) > 1e-12) {
+        console.log('    fixture: isolate_C gone, the tree is offered and D is 2.1 long: ' + forester.hasTimeAndDivergence(refusedNeg)
+            + ' ' + dNeg.branch_length);
+        return false;
+    }
+    forester.applyDivergenceBranchLengths(refusedNeg);
+    // three pieces: 0.85 at 0.0035, -0.05 at 0.0034 (adds nothing), 1.3 at 0.0029
+    if (Math.abs(dNeg.branch_length - (0.85 * 0.0035 + 1.3 * 0.0029)) > 1e-12) {
+        console.log('    ...in Div D is 0.85 x 0.0035 + 0 + 1.3 x 0.0029, got ' + dNeg.branch_length);
+        return false;
+    }
+    forester.applyTimeBranchLengths(refusedNeg);
+    if (Math.abs(dNeg.branch_length - 2.1) > 1e-12) {
+        console.log('    ...and captured then, D comes back from Div at 2.1, got ' + dNeg.branch_length);
+        return false;
+    }
+    // A removed node that stated no rate: its piece is scaled at the
+    // survivor's rate (the desktop's rule). (D,E) without a rate: refused at
+    // first; E deleted, D takes 0.3 at its own 0.0035, and the tree, captured
+    // then, is offered: D in Div is 0.0035 x 0.8.
+    var noRateAbove = asOpened(heightsText.replace(',rate=0.0034]', ']'));
+    if (heightsText.split(',rate=0.0034]').length !== 2 || forester.hasTimeAndDivergence(noRateAbove)) {
+        console.log('    fixture: (D,E) should state rate 0.0034 exactly once, and without it the tree is refused');
+        return false;
+    }
+    forester.deleteSubtree(noRateAbove, forester.findByNodeName(noRateAbove, 'isolate_E')[0]);
+    forester.captureDivergence(noRateAbove);
+    forester.applyDivergenceBranchLengths(noRateAbove);
+    var dNoRate = forester.findByNodeName(noRateAbove, 'isolate_D')[0];
+    if (!forester.hasTimeAndDivergence(noRateAbove) || Math.abs(dNoRate.branch_length - (0.0035 * 0.8)) > 1e-12) {
+        console.log('    the removed node stated no rate: D\'s piece of it is scaled at D\'s own, 0.0035 x 0.8 = 0.0028, got '
+            + dNoRate.branch_length + ' (offered ' + forester.hasTimeAndDivergence(noRateAbove) + ')');
+        return false;
+    }
+    // A tree that kept its lengths but not one for every branch is refused
+    // the switch, and Time, asked all the same, answers false and leaves it.
+    var lengthless = asOpened('#NEXUS\nBegin trees;\ntree T = [&R] ((A_2004[&rate=0.01,height=0],B_2003[&rate=0.01,height=1]:1)[&rate=0.01,height=2]:2,C_2004[&rate=0.01,height=0]:4)[&height=4];\nEnd;\n');
+    var lengthlessBefore = JSON.stringify(inOrder(lengthless));
+    if (forester.hasTimeAndDivergence(lengthless) || forester.applyTimeBranchLengths(lengthless) !== false
+        || forester.applyDivergenceBranchLengths(lengthless) !== false || JSON.stringify(inOrder(lengthless)) !== lengthlessBefore
+        || lengthless.branch_length_unit !== undefined) {
+        console.log('    a clock tree with a length missing: not offered, and neither layout touches it (unit '
+            + lengthless.branch_length_unit + ')');
+        return false;
+    }
+
     // The root has no branch: the switch leaves it the length it has, or
     // none. It was given 0, and a tree saved from Div then stated a root
     // branch that its file never had.

@@ -768,7 +768,8 @@ two pictures differ is not asked — a strict clock's divergence is its time at
 another scale, and it is offered the switch like any other.
 
 Back in Time the tree has exactly the branch lengths it arrived with, so
-switching to Div and back changes nothing. A span that runs **backwards** — a
+switching to Div and back changes no branch length (the tree's stated unit
+follows the layout, below). A span that runs **backwards** — a
 child dated before its parent, which real Nextstrain builds state — keeps its
 sign; it is drawn at length 0, as any negative branch length is. In Div a
 node recording less divergence than its parent draws at 0. The time axis is
