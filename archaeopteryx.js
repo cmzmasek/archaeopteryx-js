@@ -13991,7 +13991,7 @@ function (root, d3, forester, phyloXml) {
     const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
     // Download too (Christian, 2026-09-28): four rows, and not something a
     // session uses often.
-    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['Zoom', 'Sizes', 'Domain Architectures', 'Download'];
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['View & Tools', 'Sizes', 'Domain Architectures', 'Download'];
 
     function loadPanelSections() {
         if (_panelSections) {
@@ -14006,6 +14006,11 @@ function (root, d3, forester, phyloXml) {
                         _panelSections[k] = saved[k];
                     }
                 });
+                // the section was called Zoom until 2026-09-30: a fold
+                // remembered under that name still counts
+                if (typeof saved.Zoom === 'boolean' && _panelSections['View & Tools'] === undefined) {
+                    _panelSections['View & Tools'] = saved.Zoom;
+                }
             }
         } catch {
             // no storage (private mode), or junk written by something else:
@@ -16739,7 +16744,7 @@ function (root, d3, forester, phyloXml) {
             // syncZoomRowButtons). The Y buttons span the whole row.
             let h = "";
             h = h.concat('<fieldset>');
-            h = h.concat('<legend>Zoom</legend>');
+            h = h.concat('<legend>View &amp; Tools</legend>');
             h = h.concat('<div class="aptx-zoomgrid">');
             h = h.concat(makeButton('Y+', ZOOM_IN_Y, 'zoom in vertically (or Shift+mousewheel)'));
             h = h.concat('<div class="aptx-zoomrow">');
@@ -16751,8 +16756,9 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('</div>');
             h = h.concat(makeButton('Y-', ZOOM_OUT_Y, 'zoom out vertically (or Shift+mousewheel)'));
             h = h.concat('</div>');
-            // the tool buttons share the Zoom section rather than paying for
-            // a fieldset of their own
+            // the tool buttons share the section with the zoom row rather
+            // than paying for a fieldset of their own -- hence its name
+            // (Christian, 2026-09-30: "ZOOM" named only half of it)
             h = h.concat('<div class="aptx-toolrow">');
             h = h.concat(makeGlyphButton('ladderize_asc', LADDERIZE_BUTTON, 'ladderize all'));
             h = h.concat(makeGlyphButton('whole_tree', RETURN_TO_SUPERTREE_BUTTON, 'return all the way to the complete tree (if in a sub-tree)'));
