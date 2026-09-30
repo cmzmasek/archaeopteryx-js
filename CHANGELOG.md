@@ -28,6 +28,11 @@ users see a change only when a version is cut.
   shared view, `scaleAxis` / `scaleGrid` replace `timeAxis` / `timeGrid`,
   which older links still carry and are still read.
 
+### Fixed
+- **The time axis drew a second, faint line above its ruler** (the strip's
+  top edge), and its numbers in the browser's serif font; both gone, on the
+  new distance axis too.
+
 ## 3.18.0 — 2026-09-30
 
 Time trees: the time axis in the circular layout, and the Time | Div switch
