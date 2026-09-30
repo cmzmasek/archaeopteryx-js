@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.1.5
+// v 1.1.6
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -300,6 +300,8 @@
     var DISTRIBUTIONS = 'distributions';
     var REFERENCES = 'references';
     var POINTS = 'points';
+    // the style properties whose value the desktop writes as a colour
+    var STYLE_COLOR_REFS = {'style:font_color': true, 'style:node_color': true};
 
     // --------------------------------------------------------------
     // Instance variables
@@ -1539,10 +1541,38 @@
                 if (!prop[PROPERTY_REF_ATTR]) {
                     throw new PhyloXmlError("property ref is missing");
                 }
-                addSingleElement(PROPERTY, prop.value, prop, [PROPERTY_REF_ATTR,
+                var value = STYLE_COLOR_REFS[prop[PROPERTY_REF_ATTR]] ? styleColor(prop.value) : prop.value;
+                addSingleElement(PROPERTY, value, prop, [PROPERTY_REF_ATTR,
                     PROPERTY_UNIT_ATTR, PROPERTY_DATATYPE_ATTR, PROPERTY_APPLIES_TO_ATTR,
                     PROPERTY_ID_REF_ATTR]);
             }
+        }
+
+        // A node's style colour (style:font_color, style:node_color) is written
+        // as the desktop writes it: lower-case "#rrggbb". The desktop does not
+        // keep the text -- it reads the colour as a number (java.awt.Color.decode,
+        // i.e. Integer.decode: "#" or "0x" hex, a leading 0 octal, else decimal)
+        // and prints that number back -- so "#E65050" comes back "#e65050" and
+        // every spelling it understands comes back in the one form. A value it
+        // cannot read is written as it stands here.
+        function styleColor(v) {
+            var t = (v === undefined || v === null) ? '' : String(v).trim();
+            var m = /^([-+]?)(?:(0[xX]|#)([0-9a-fA-F]+)|(0[0-7]+)|([0-9]+))$/.exec(t);
+            if (!m) {
+                return v;
+            }
+            var n = m[3] !== undefined ? parseInt(m[3], 16)
+                : (m[4] !== undefined ? parseInt(m[4], 8) : parseInt(m[5], 10));
+            if (m[1] === '-') {
+                n = -n;
+            }
+            if (!isFinite(n) || n > 2147483647 || n < -2147483648) {
+                return v;                          // outside an int: Integer.decode refuses it
+            }
+            var hex = function (c) {
+                return (c < 16 ? '0' : '') + c.toString(16);
+            };
+            return '#' + hex((n >> 16) & 255) + hex((n >> 8) & 255) + hex(n & 255);
         }
 
         function addSingleElement(elemName, elemValue, object, attributeNames) {
