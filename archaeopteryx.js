@@ -5942,7 +5942,10 @@ function (root, d3, forester, phyloXml) {
         _branchScaleAvailable = _treeData ? forester.hasTimeAndDivergence(_treeData) : false;
         _state.branchScale = _treeData ? forester.branchLengthScale(_treeData) : 'divergence';
         if (_state.showScaleAxis === undefined) {
-            _state.showScaleAxis = !!(_timeInfo && _timeInfo.type);
+            // on for a tree SHOWN in time; a dated tree that opens in
+            // divergence (a build refused the switch) is a divergence tree
+            // on screen, and opens without its distance axis like any other
+            _state.showScaleAxis = !!(_timeInfo && _timeInfo.type) && !branchesShowDivergence();
         }
         _state.showScaleGrid = _state.showScaleGrid === true; // desktop default: off
         _state.showSupportDots = _state.showSupportDots === true;

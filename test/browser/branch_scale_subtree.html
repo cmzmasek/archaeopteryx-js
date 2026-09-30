@@ -32,8 +32,9 @@
 // ?opensdiv=1 -- a Nextstrain build with one node undated opens in divergence
 // (every node records div), is refused the switch, and draws NO time axis:
 // calendar years over substitutions read as a confident lie, and the axis was
-// drawn there until review found it (2026-09-29). The intact build is the
-// control: in time, its axis on.
+// drawn there until review found it (2026-09-29). It opens with the Scale Axis
+// off, as a divergence tree; asked for, the axis measures distance. The intact
+// build is the control: in time, its axis on.
 //
 // ?view=1 -- the choice rides in the shared view: a view taken with Div on
 // screen says so, a view applied says so, the hash form carries it, a view
@@ -153,8 +154,17 @@
             const axisDrawn = () => !!document.querySelector('#p g.aptx-time-axis, #p .aptx-time-ruler, #p .aptx-time .aptx-age-bar');
             check('the build opens in divergence and says so', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);
             check('it is refused the switch', !offered());
-            check('the Time Axis checkbox is on, as for any dated tree', byId('scaleaxis_cb') && byId('scaleaxis_cb').checked);
-            check('and yet no time axis is drawn over the divergence', !axisDrawn());
+            // Opening in divergence, it is a divergence tree on screen: the
+            // Scale Axis opens off as on any other, and the scale bar shows.
+            // (Until the axis also measured distance, the box opened ON here
+            // and drew nothing; review found the distance axis in its place.)
+            check('the Scale Axis opens off, as on any tree shown in divergence',
+                byId('scaleaxis_cb') && !byId('scaleaxis_cb').checked);
+            check('no time axis is drawn over the divergence', !axisDrawn());
+            check('nor a distance axis; the scale bar shows', !document.querySelector('#p g.aptx-distance-axis')
+                && !!document.querySelector('#p g.aptx-scalebar'));
+            byId('scaleaxis_cb').click(); await sleep(2200);
+            check('asked for, the axis measures distance', !!document.querySelector('#p g.aptx-distance-axis') && !axisDrawn());
             window.__benchResult = {report: out, failures: failures};
             window.__benchDone = true;
             return;
