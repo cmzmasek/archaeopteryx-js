@@ -753,8 +753,9 @@ must state a divergence: recorded on its nodes (an Auspice build's `div`), or
 a clock `rate` on every branch (a BEAST clock-model tree, whose branch lengths
 are time and whose divergence is each length times its rate, in substitutions
 per site — whether its node ages were placed in calendar time or are still
-heights). A tree with neither has no second layout. A rate is a plain decimal
-number: `0.01abc` is not one.
+heights). A tree with neither has no second layout. A rate, and a recorded
+divergence, is a plain decimal number: `0.01abc` is not one; a negative
+divergence is a value, drawn at 0.
 
 Both layouts must be able to state **every** branch: every node dated, every
 branch stating a length, and every node recording its divergence or every

@@ -46,6 +46,9 @@ The rules of the Time | Div switch, now shared with the desktop.
   answer `true` or `false`, and leave the tree as it was when their layout
   cannot state every branch. The time layout follows the direction the
   tree's dates run, so a tree dated in ages is laid out too.
+- **A recorded divergence (`nextstrain:div`) is a plain decimal number**, as
+  a clock rate is: `0.005d`, `0x10` and `1,5` are not one. A negative one is a
+  value, and its branch draws at 0.
 - **The tree states what its branch lengths measure** (phyloXML's
   `branch_length_unit`): `subs/site` in Div; in Time the unit of its dates, or
   `time`. A Nextstrain build states `year`, or `subs/site` when it opens in
@@ -58,6 +61,11 @@ The rules of the Time | Div switch, now shared with the desktop.
 - **Div and back is lossless on time trees that state negative lengths.** On
   Nextstrain `*_timetree.nexus` files the stated negative lengths came back as
   0 (37, 29, 7 and 3 of them on four real files).
+- **A node deleted while the tree has two layouts.** The branch that takes
+  the place of the removed node's now spans, in time, what both spanned, so
+  every node that is left stays on its own date after switching to Div and
+  back; it came back short by the removed node's length. Deleting the one
+  tip without a clock rate now makes the switch appear.
 - **A BEAST clock-model tree saved from the Div view opens again showing
   divergence.** It came back labelled Time, its divergence taken for its time,
   and Div then drew rate × divergence. It is known by the unit it states.

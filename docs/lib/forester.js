@@ -229,9 +229,29 @@
             if (x.branch_length || p.branch_length) {
                 nbl = (x.branch_length > 0 ? x.branch_length : 0) + (p.branch_length > 0 ? p.branch_length : 0);
             }
+            // The length kept for the Time | Div switch goes with the branch:
+            // x now spans, in time, what it and the node removed above it
+            // spanned. Signed, so that x stays on its own date. Left as it
+            // was, x came back from Div short by its parent's length (0.65
+            // years on a real Nextstrain build). A length that was not kept
+            // for either leaves x with none. As the desktop sums them.
+            let keptBoth = false;
+            let showingKept = false;
+            if (Object.prototype.hasOwnProperty.call(x, '_timeLength')
+                || Object.prototype.hasOwnProperty.call(p, '_timeLength')) {
+                let kept = function (v) {
+                    return typeof v === 'number' && isFinite(v);
+                };
+                keptBoth = kept(x._timeLength) && kept(p._timeLength);
+                // both branches on screen in time, as kept
+                showingKept = keptBoth && x.branch_length === x._timeLength && p.branch_length === p._timeLength;
+                x._timeLength = keptBoth ? (x._timeLength + p._timeLength) : undefined;
+            }
             x.parent = pp;
             pp.children[cni] = x;
-            x.branch_length = nbl;
+            // in time, the branch on screen is the kept one, sign and all:
+            // adding the two as plain lengths leaves a negative one out
+            x.branch_length = showingKept ? x._timeLength : nbl;
         }
 
     };
@@ -6418,13 +6438,19 @@
             ? node.date.value : null;
     }
 
-    // The divergence a node RECORDS (nextstrain:div), or null.
+    // The divergence a node RECORDS (nextstrain:div), or null. A plain decimal
+    // number and nothing else (parseBeastNumber), as a clock rate is: every
+    // number the switch reads is read one way, on both programs. parseFloat
+    // read one out of the front of "0.005abc", "1,5" and "0x10" -- which the
+    // Nexus reader had never let through, so the same value was a divergence
+    // in a phyloXML file and none in a Nexus one. A NEGATIVE one is a value;
+    // the branch along which it falls is drawn at 0 (divergenceGap).
+    // Christian, 2026-09-29.
     function recordedDiv(node) {
         if (node.properties) {
             for (let i = 0; i < node.properties.length; ++i) {
                 if (node.properties[i].ref === NEXTSTRAIN_PREFIX + 'div') {
-                    let d = parseFloat(node.properties[i].value);
-                    return isFinite(d) ? d : null;
+                    return parseBeastNumber(node.properties[i].value);
                 }
             }
         }

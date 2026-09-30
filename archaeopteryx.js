@@ -6449,11 +6449,11 @@ function (root, d3, forester, phyloXml) {
         // and a tree whose dates carry a unit is never touched. The desktop
         // converts at the same point, next to its internal-label policy
         // (their HeightDateConverter, 0.11.151).
-        // Each node's cumulative divergence is recorded from the branch
-        // lengths AS LOADED, before anything rewrites them, so the time <->
-        // divergence switch is reversible rather than one-way. Auspice states
-        // divergence outright (nextstrain:div) and is unaffected; every other
-        // tree states it as its branch lengths, which the time view overwrites.
+        // What the Time | Div switch needs to be lossless is kept from the
+        // branch lengths AS LOADED, before anything rewrites them: the
+        // lengths a tree arrived with in time, and on a BEAST clock-model
+        // tree its divergence, each length times its rate (see
+        // forester.captureDivergence).
         trees.forEach(function (t) {
             forester.captureDivergence(t);
         });
@@ -7217,6 +7217,7 @@ function (root, d3, forester, phyloXml) {
                     items.push({label: deleteLabel, danger: true, action: function () {
                         forester.deleteSubtree(tree, d);
                         _treeData = tree;
+                        branchScaleAfterEdit();
                         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
                         refreshVisualizations(true);
                         search0();
@@ -10311,6 +10312,39 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, scale === 'time');
         setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, scale !== 'time');
         zoomToFit();
+    }
+
+    // The tree was EDITED (a node deleted). Whether it has two layouts is asked
+    // of the tree as it is now, and the layout on screen is laid out again
+    // from what the tree keeps and records: the branch that took the place of
+    // a removed node's is as long as both were, in either layout. A tree that
+    // was never offered the switch still has the branch lengths of its file,
+    // so what it keeps is taken afresh -- deleting the one tip without a
+    // clock rate leaves a tree with a rate on every branch.
+    function branchScaleAfterEdit() {
+        if (!_treeData) {
+            return;
+        }
+        let was = _branchScaleAvailable;
+        if (!was) {
+            forester.captureDivergence(_treeData);
+        }
+        _branchScaleAvailable = forester.hasTimeAndDivergence(_treeData);
+        if (was && _branchScaleAvailable && _state.branchScale === 'divergence') {
+            forester.applyDivergenceBranchLengths(_treeData);
+        } else if (was) {
+            // in time, or no longer a tree with two layouts: back in time
+            forester.applyTimeBranchLengths(_treeData);
+            _state.branchScale = 'time';
+        } else {
+            _state.branchScale = forester.branchLengthScale(_treeData);
+        }
+        setCheckboxValue(BRANCH_SCALE_TIME_BUTTON, _state.branchScale === 'time');
+        setCheckboxValue(BRANCH_SCALE_DIV_BUTTON, _state.branchScale !== 'time');
+        let scaleGroup = document.querySelector('.' + BRANCH_SCALE_CONTROLGROUP);
+        if (scaleGroup) {
+            scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
+        }
     }
 
     function branchScaleButtonClicked() {

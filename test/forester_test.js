@@ -5535,6 +5535,143 @@ function testTimeDivergenceScale() {
             return false;
         }
     }
+    // What counts as a recorded divergence: a plain decimal number, as for a
+    // rate (Christian, 2026-09-29; the desktop pins the same two lists). Set
+    // as TEXT on a tip of a real build, the way a phyloXML file hands it
+    // over; its parent records 0.0006. A NEGATIVE one is a value, and the
+    // branch along which it falls is drawn at 0.
+    function divWritten(spelling) {
+        var made = ncovWith(function (tips) {
+            return tips[2].node.name;
+        });
+        (made.tip.properties || []).forEach(function (q) {
+            if (q.ref === 'nextstrain:div') {
+                q.value = spelling;
+            }
+        });
+        forester.captureDivergence(made.phy);
+        return made;
+    }
+    var plainDiv = divWritten('0.0008');
+    var parentDiv = divOf(plainDiv.tip.parent);
+    if (!(parentDiv > 0 && parentDiv < 0.008) || !forester.hasTimeAndDivergence(plainDiv.phy)) {
+        console.log('    fixture: the tip\'s parent should record a divergence between 0 and 0.008, got ' + parentDiv);
+        return false;
+    }
+    var divs = [['0.008', 0.008], ['8e-3', 0.008], [' 0.008 ', 0.008], ['+0.008', 0.008], ['.008', 0.008],
+        ['5.', 5], ['0', 0], ['-0.0', 0], ['-0.001', -0.001], ['-1e-9', -1e-9]];
+    for (var dv = 0; dv < divs.length; ++dv) {
+        var asDiv = divWritten(divs[dv][0]);
+        if (!forester.hasTimeAndDivergence(asDiv.phy) || forester.applyDivergenceBranchLengths(asDiv.phy) !== true) {
+            console.log('    "' + divs[dv][0] + '" is a divergence: the switch should be offered');
+            return false;
+        }
+        var wanted = Math.max(0, divs[dv][1] - parentDiv);
+        if (Math.abs(asDiv.tip.branch_length - wanted) > 1e-12) {
+            console.log('    "' + divs[dv][0] + '" under a parent recording ' + parentDiv + ' should draw ' + wanted + ', got '
+                + asDiv.tip.branch_length);
+            return false;
+        }
+    }
+    var notDivs = ['0.008d', '1f', '0x1p-8', '0x10', '0.01abc', '1,5', '1_000', 'NaN', 'Infinity', '', ' ', '1e400', '1e',
+        '.', '+'];
+    for (var nd = 0; nd < notDivs.length; ++nd) {
+        var noDiv = divWritten(notDivs[nd]);
+        var noDivBefore = JSON.stringify(lengthsOf(noDiv.phy));
+        if (forester.hasTimeAndDivergence(noDiv.phy)) {
+            console.log('    "' + notDivs[nd] + '" is no divergence: the switch must not be offered');
+            return false;
+        }
+        if (forester.applyDivergenceBranchLengths(noDiv.phy) !== false || JSON.stringify(lengthsOf(noDiv.phy)) !== noDivBefore) {
+            console.log('    "' + notDivs[nd] + '" is no divergence: the tree must be left as it was');
+            return false;
+        }
+    }
+
+    // A node DELETED, in either layout: the branch that takes the place of
+    // the removed node's spans what both spanned, so every node that is left
+    // stays on its own date in Time and on its own divergence in Div. The
+    // kept length did not go with the branch, and the node came back from Div
+    // short by its parent's length (0.65 years on this build). Found by the
+    // desktop's review of its own code, 2026-09-29.
+    // The third tree states a NEGATIVE span on the node that is removed,
+    // (D,E), 0.05 younger than its parent: the kept lengths are summed with
+    // their signs, 0.85 - 0.05, or D would land 0.05 off its date.
+    var negativeSpan = '#NEXUS\nBEGIN TREES;\n\tTREE t = [&R] ((isolate_A[&height=0.0,rate=0.0031]:1.2,'
+        + 'isolate_B[&height=0.0,rate=0.0028]:1.2)[&height=1.2,rate=0.0030]:0.9,(isolate_C[&height=0.0,rate=0.0026]:0.8,'
+        + '(isolate_D[&height=0.0,rate=0.0035]:0.85,isolate_E[&height=0.0,rate=0.0033]:0.85)[&height=0.85,rate=0.0034]:-0.05)'
+        + '[&height=0.8,rate=0.0029]:1.3)[&height=2.1,rate=0.0030];\nEND;\n';
+    var edited = [['a Nextstrain build', function () { return ncovLess('none'); }, null],
+        ['a clock tree', function () { return asOpened(heightsText); }, null],
+        ['a clock tree with a negative span', function () { return asOpened(negativeSpan); }, 'isolate_E']];
+    for (var ed = 0; ed < edited.length; ++ed) {
+        for (var shown = 0; shown < 2; ++shown) {
+            var et = edited[ed][1]();
+            var er = forester.getTreeRoot(et);
+            // where every node belongs, from the tree as it arrived
+            var belongs = new Map();
+            (function place(n, time) {
+                var here = time + ((n === er || typeof n.branch_length !== 'number') ? 0 : n.branch_length);
+                belongs.set(n, here);
+                (n.children || []).forEach(function (c) { place(c, here); });
+            }(er, 0));
+            forester.applyDivergenceBranchLengths(et);
+            var belongsDiv = new Map();
+            (function place(n, d) {
+                var here = d + ((n === er) ? 0 : Math.max(0, n.branch_length));
+                belongsDiv.set(n, here);
+                (n.children || []).forEach(function (c) { place(c, here); });
+            }(er, 0));
+            if (shown === 0) {
+                forester.applyTimeBranchLengths(et);
+            }
+            var named = edited[ed][2];
+            var victim = forester.getAllExternalNodes(er).filter(function (n) {
+                return n.parent.parent && n.parent.parent.parent && n.parent.children.length === 2
+                    && (named === null || n.name === named);
+            })[0];
+            if (named !== null && !(victim.parent.branch_length < 0 || victim.parent._timeLength < 0)) {
+                console.log('    fixture: the node removed with ' + named + ' should state a negative span');
+                return false;
+            }
+            var heir = victim.parent.children.filter(function (c) { return c !== victim; })[0];
+            var gone = victim.parent;
+            forester.deleteSubtree(et, victim);
+            if (heir.parent !== gone.parent || forester.branchLengthScale(et) !== (shown === 0 ? 'time' : 'divergence')) {
+                console.log('    fixture: ' + edited[ed][0] + ': the deleted tip\'s sibling should hang from its grandparent, in '
+                    + (shown === 0 ? 'time' : 'divergence') + ' (' + forester.branchLengthScale(et) + ')');
+                return false;
+            }
+            var offBy = function (map, clamp) {
+                var worst = 0;
+                (function walk(n, depth) {
+                    var len = (n === er || typeof n.branch_length !== 'number') ? 0 : n.branch_length;
+                    var here = depth + (clamp ? Math.max(0, len) : len);
+                    worst = Math.max(worst, Math.abs(here - map.get(n)));
+                    (n.children || []).forEach(function (c) { walk(c, here); });
+                }(er, 0));
+                return worst;
+            };
+            // as it stands after the deletion, before anything is pressed
+            if (offBy(shown === 0 ? belongs : belongsDiv, shown !== 0) > 1e-9) {
+                console.log('    ' + edited[ed][0] + ', a tip deleted while ' + (shown === 0 ? 'Time' : 'Div')
+                    + ' was shown: on screen a node is ' + offBy(shown === 0 ? belongs : belongsDiv, shown !== 0)
+                    + ' from where it belongs');
+                return false;
+            }
+            var presses = [[forester.applyTimeBranchLengths, belongs, false, 'Time'],
+                [forester.applyDivergenceBranchLengths, belongsDiv, true, 'Div'],
+                [forester.applyTimeBranchLengths, belongs, false, 'Time again']];
+            for (var pr = 0; pr < presses.length; ++pr) {
+                if (presses[pr][0](et) !== true || offBy(presses[pr][1], presses[pr][2]) > 1e-9) {
+                    console.log('    ' + edited[ed][0] + ', a tip deleted while ' + (shown === 0 ? 'Time' : 'Div') + ' was shown, then '
+                        + presses[pr][3] + ': a node is ' + offBy(presses[pr][1], presses[pr][2]) + ' from where it belongs');
+                    return false;
+                }
+            }
+        }
+    }
+
     // The root has no branch: the switch leaves it the length it has, or
     // none. It was given 0, and a tree saved from Div then stated a root
     // branch that its file never had.
