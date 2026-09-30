@@ -5,6 +5,14 @@ as work lands on `master`; a release turns that section into its GitHub Release
 body. The demo site (`docs/`, served from `master`) updates on every push; npm
 users see a change only when a version is cut.
 
+## Unreleased
+
+### Added
+- **A shared view carries the Time | Div choice** (`scale=time` or
+  `scale=divergence` in the hash, and in `getViewState` / `applyViewState`),
+  on a tree that has both layouts. A link to a tree shown in Div opened in
+  Time.
+
 ## 3.18.0 — 2026-09-30
 
 Time trees: the time axis in the circular layout, and the Time | Div switch

@@ -504,9 +504,10 @@ desktop's Unicode entry: it stays with the text field there, as it should.
 A view is what you made of a tree with the panel: the layout and display
 type, which labels show, the colour and shape fields, both searches, the
 clade you switched to, the clades you collapsed, the font, node and branch
-sizes, the rotation, and the tracks — which track is shown, the heat map's
-column order (including one you arranged by hand) and whether the alignment
-is summarised as a logo. On the demo pages it rides in the URL's
+sizes, the rotation, whether the branches show time or divergence, and the
+tracks — which track is shown, the heat map's column order (including one
+you arranged by hand) and whether the alignment is summarised as a logo. On
+the demo pages it rides in the URL's
 `#` hash and follows every change, so the address bar is always a link to
 what is on screen: copy it (**Copy link to this view** in the toolbar) and
 the recipient opens the same tree in the same view. Opening your own file

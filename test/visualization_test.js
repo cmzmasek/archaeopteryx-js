@@ -2857,7 +2857,7 @@ function testViewStateCodec() {
         subtree: 17, collapsed: [3, 44, 128], colorBy: 'tax:common_name', shapeBy: 'meta:Host',
         show: ['name', 'external', 'custom:x'], font: 9.5, node: 3, branch: 1.5, rotation: -3,
         horizontalLabels: true, msa: false, domains: true, domainLabels: 'legend', domainGlow: false,
-        domainEvalue: -3, timeAxis: true, timeGrid: false,
+        domainEvalue: -3, timeAxis: true, timeGrid: false, scale: 'divergence',
         msaLogo: true, heatmap: true, heatmapOrder: 'clustered-presence',
         heatmapManual: ['meta:recA', 'meta:gyrA'],
         searchA: {field: 'Any Text', mode: 'regex', value: 'a b&c=d \u00e9'},
@@ -2867,7 +2867,7 @@ function testViewStateCodec() {
     if (enc.indexOf('#') >= 0 || enc.indexOf(' ') >= 0 || enc.indexOf('colorBy=tax:common_name') < 0
         || enc.indexOf('collapsed=3,44,128') < 0 || enc.indexOf('a=a+b%26c%3Dd+%C3%A9') < 0
         || enc.indexOf('af=Any+Text') < 0 || enc.indexOf('msa=0') < 0
-        || enc.indexOf('heatmapManual=meta:recA,meta:gyrA') < 0) {
+        || enc.indexOf('heatmapManual=meta:recA,meta:gyrA') < 0 || enc.indexOf('scale=divergence') < 0) {
         console.log('    encoded: ' + enc);
         return false;
     }

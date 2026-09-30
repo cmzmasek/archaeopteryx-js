@@ -35,6 +35,11 @@
 // drawn there until review found it (2026-09-29). The intact build is the
 // control: in time, its axis on.
 //
+// ?view=1 -- the choice rides in the shared view: a view taken with Div on
+// screen says so, a view applied says so, the hash form carries it, a view
+// given at launch opens in Div, and a tree with one layout ignores the key.
+// Until 2026-09-30 a shared view of a tree shown in Div opened in Time.
+//
 // ?refused=1 -- the OFFER is judged on the whole tree too. The clock tree less
 // ONE rate (T15's) is not offered the switch, and a clade in which every
 // branch states a rate is not offered it in its own view either: the press
@@ -50,7 +55,8 @@
         const refused = /refused=1/.test(location.search);
         const deleting = (/[?&]delete=(1|gain)/.exec(location.search) || [])[1] || null;
         const opensDiv = /opensdiv=1/.test(location.search);
-        const clock = refused || deleting !== null || /clock=1/.test(location.search);
+        const viewCase = /[?&]view=1/.test(location.search);
+        const clock = refused || deleting !== null || viewCase || /clock=1/.test(location.search);
         let trees;
         if (opensDiv) {
             const doc = JSON.parse(await (await fetch('../../docs/data/nextstrain-ncov.json')).text());
@@ -100,7 +106,8 @@
                     div: Math.max(0, prop(n, 'nextstrain:div') - prop(n.parent, 'nextstrain:div'))});
             }
         });
-        const viewer = archaeopteryx.launch('#p', trees, {});
+        // ?view=1 launches straight into a view that says divergence
+        const viewer = archaeopteryx.launch('#p', trees, viewCase ? {view: {scale: 'divergence'}} : {});
         await viewer.ready;
         await sleep(2200);
         const layout = () => {
@@ -117,6 +124,31 @@
         out.push((clock ? 'clock tree' : 'nextstrain-ncov.json') + ': ' + nodes.length + ' branches, ' + telling + ' of them tell the two layouts apart');
         const group = document.querySelector('#p .branch_scale_g');
         const offered = () => !!group && getComputedStyle(group).display !== 'none' && group.offsetParent !== null;
+        if (viewCase) {
+            const inLayout = (which) => nodes.every((n) => Math.abs(n.branch_length - want.get(n)[which]) < 1e-9);
+            check('a view given at launch with scale=divergence opens in Div', inLayout('div') && byId('branch_scale_div_b').checked
+                && viewer.getViewState().scale === 'divergence', viewer.getViewState().scale);
+            check('the hash form carries it', /(^|&)scale=divergence(&|$)/.test(archaeopteryx.encodeViewState(viewer.getViewState()))
+                && archaeopteryx.decodeViewState(archaeopteryx.encodeViewState(viewer.getViewState())).scale === 'divergence');
+            viewer.applyViewState({scale: 'time'}); await sleep(1800);
+            check('a view applied with scale=time lays the tree out in Time', inLayout('time') && byId('branch_scale_time_b').checked
+                && viewer.getViewState().scale === 'time', viewer.getViewState().scale);
+            byId('branch_scale_div_b').click(); await sleep(1800);
+            check('the switch pressed: the view taken now says divergence', viewer.getViewState().scale === 'divergence', viewer.getViewState().scale);
+            viewer.applyViewState({scale: 'sideways'}); await sleep(1200);
+            check('a value that is neither is ignored', inLayout('div') && viewer.getViewState().scale === 'divergence');
+            // a tree with one layout: no key in its view, and the key ignored
+            const plain = archaeopteryx.parseTrees('plain.nwk', '((A:1,B:2):1,(C:1,D:3):2);');
+            const v2 = archaeopteryx.launch('#p', plain, {view: {scale: 'divergence'}});
+            await v2.ready; await sleep(1800);
+            const g2 = document.querySelector('#p .branch_scale_g');
+            check('a tree with one layout: the key is neither written nor honoured, and no switch is shown',
+                v2.getViewState().scale === undefined && !!g2 && getComputedStyle(g2).display === 'none',
+                JSON.stringify(v2.getViewState().scale) + (g2 ? ', switch ' + getComputedStyle(g2).display : ', no switch element'));
+            window.__benchResult = {report: out, failures: failures};
+            window.__benchDone = true;
+            return;
+        }
         if (opensDiv) {
             const axisDrawn = () => !!document.querySelector('#p g.aptx-time-axis, #p .aptx-time-ruler, #p .aptx-time .aptx-age-bar');
             check('the build opens in divergence and says so', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);

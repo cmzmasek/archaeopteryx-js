@@ -9741,6 +9741,9 @@ function (root, d3, forester, phyloXml) {
             s.timeAxis = _state.showTimeAxis === true;
             s.timeGrid = _state.timeAxisGrid === true;
         }
+        if (_branchScaleAvailable) {
+            s.scale = _state.branchScale;   // time or divergence: which layout the branches show
+        }
         let a = searchStateOf(0);
         let b = searchStateOf(1);
         if (a) {
@@ -9809,6 +9812,16 @@ function (root, d3, forester, phyloXml) {
                     n.collapsed = true;
                 }
             });
+        }
+        // the branches' layout, time or divergence, on a tree that has both:
+        // laid out before the properties are measured, since the lengths are
+        // the layout. A tree with one layout ignores the key.
+        if (_branchScaleAvailable && (s.scale === 'time' || s.scale === 'divergence') && s.scale !== _state.branchScale) {
+            let laidOut = (s.scale === 'time') ? forester.applyTimeBranchLengths(_treeData)
+                : forester.applyDivergenceBranchLengths(_treeData);
+            if (laidOut) {
+                _state.branchScale = s.scale;
+            }
         }
         _basicTreeProperties = forester.collectBasicTreeProperties(_root);
 
@@ -9952,6 +9965,7 @@ function (root, d3, forester, phyloXml) {
     function syncViewControls() {
         setDisplayTypeButtons();
         syncZoomRowButtons();
+        syncBranchScaleControls();
         VIEW_SHOW_FLAGS.forEach(function (f) {
             setCheckboxValue(f[1], _state[f[2]] === true);
         });
@@ -10041,7 +10055,7 @@ function (root, d3, forester, phyloXml) {
     // The heat map's four keys and the alignment logo went in exactly that
     // way, while the README promised a link reproduced the figure.
     const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine',
-        'heatmapOrder'];
+        'heatmapOrder', 'scale'];
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
     const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow',
