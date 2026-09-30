@@ -1,0 +1,140 @@
+<!doctype html>
+<meta charset="utf-8"><title>the Scale Axis and Scale Grid on a tree that is not in time</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-09-30: the desktop's Scale Axis and Scale Grid Lines, in JS
+// as ONE switch pair with the time axis -- time on a time tree, distance from
+// the root on any other phylogram. Off by default; the scale bar gives way
+// while the axis is on; circular draws the ruler in the gap and the grid as
+// rings; unrooted and the cladogram have none.
+//
+// The tree is built here: its deepest tip (C) is 0.4 from the root, so the
+// ticks are 0, 0.05, ... 0.4 -- nine -- and the grid has seven inner lines.
+//
+//   (no query)   the switch, the ruler's calibration, grid, circular, unrooted
+//   ?old=1       the renamed config keys still work, with a warning
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const settle = () => sleep(2200);
+    const byId = (id) => document.getElementById(id);
+    const q = (s) => document.querySelector('#p ' + s);
+    const qa = (s) => [...document.querySelectorAll('#p ' + s)];
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
+    // an element-space point in screen pixels
+    const screen = (el, x, y) => { const p = el.ownerSVGElement.createSVGPoint(); p.x = x; p.y = y;
+        return p.matrixTransform(el.getScreenCTM()); };
+    const tip = (name) => qa('g.node').find((g) => g.__data__ && g.__data__.name === name && !g.__data__.children);
+    const tipPos = (g) => { const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(g.getAttribute('transform') || '');
+        return m ? [+m[1], +m[2]] : null; };
+    const DIST = {A: 0.15, B: 0.25, C: 0.4, D: 0.25};
+    const NINE = ['0', '0.05', '0.1', '0.15', '0.2', '0.25', '0.3', '0.35', '0.4'];
+    try {
+        const trees = archaeopteryx.parseTrees('t.nwk', '((A:0.1,B:0.2):0.05,(C:0.3,D:0.15):0.1);');
+        const tree = Array.isArray(trees) ? trees[0] : trees;
+        tree.branch_length_unit = 'subs/site';
+        const old = /[?&]old=1/.test(location.search);
+        const viewer = archaeopteryx.launch('#p', trees, old ? {showTimeAxis: true, timeAxisGrid: true} : {});
+        await viewer.ready;
+        await settle();
+        const strip = () => q('g.aptx-distance-axis');
+        const gridLines = () => qa('g.aptx-distance-grid line');
+
+        if (old) {
+            check('old keys: the axis is on', !!strip() && byId('scaleaxis_cb').checked);
+            check('old keys: the grid is on', gridLines().length === 7 && byId('scalegrid_cb').checked,
+                gridLines().length + ' lines');
+            check('old keys: each warns, naming its new key',
+                warnings.some((w) => /"showTimeAxis" was replaced by "showScaleAxis"/.test(w))
+                && warnings.some((w) => /"timeAxisGrid" was replaced by "showScaleGrid"/.test(w)),
+                warnings.filter((w) => /Axis|Grid/.test(w)).length + ' warnings');
+            finish();
+            return;
+        }
+
+        check('offered on a tree that is not in time', !!byId('scaleaxis_cb') && !!byId('scalegrid_cb'));
+        check('off by default, as on the desktop', !byId('scaleaxis_cb').checked && !strip());
+        check('the grid waits for the axis', byId('scalegrid_cb').disabled);
+        check('the scale bar is shown meanwhile', !!q('g.aptx-scalebar'));
+
+        byId('scaleaxis_cb').click(); await settle();
+        check('on: the ruler is drawn', !!strip());
+        check('on: the scale bar gives way', !q('g.aptx-scalebar'));
+        check('on: the grid is offered', !byId('scalegrid_cb').disabled);
+        const texts = strip() ? [...strip().querySelectorAll('text')].map((t) => t.textContent) : [];
+        const ticks = strip() ? [...strip().querySelectorAll('line')].filter((l) =>
+            +l.getAttribute('x1') === +l.getAttribute('x2') && +l.getAttribute('y2') - +l.getAttribute('y1') === 4) : [];
+        check('nine ticks, 0 to the deepest tip', ticks.length === 9, ticks.length);
+        check('the numbers, and the unit at the end', texts.filter((t) => t !== 'subs/site').join(' ') === NINE.join(' ')
+            && texts[texts.length - 1] === 'subs/site', texts.join(' '));
+        // Calibration: each tick sits at the screen x of the tips at its
+        // distance -- two tips pin both the offset and the scale. A ruler
+        // measured from the stub, or in the wrong units, misses both.
+        // read now: the next redraw replaces these elements
+        const tickXs = ticks.map((l) => screen(l, +l.getAttribute('x1'), 0).x);
+        const tickX = (v) => tickXs[NINE.indexOf(String(v))];
+        const miss = Object.keys(DIST).map((n) => { const g = tip(n);
+            return n + ' ' + (screen(g, 0, 0).x - tickX(DIST[n])).toFixed(2); });
+        check('every tip sits over its distance on the ruler',
+            miss.every((m) => Math.abs(+m.split(' ')[1]) < 0.5), miss.join(', '));
+
+        byId('scalegrid_cb').click(); await settle();
+        const gl = gridLines();
+        check('grid: a line at every inner tick', gl.length === 7, gl.length + ' lines');
+        const gx = gl.map((l) => screen(l, +l.getAttribute('x1'), 0).x).sort((a, b) => a - b);
+        const want = NINE.slice(1, 8).map((v) => tickX(+v));
+        check('grid: each line on its tick', gx.every((x, i) => Math.abs(x - want[i]) < 0.5),
+            gx.map((x, i) => (x - want[i]).toFixed(2)).join(' '));
+        check('grid: behind the tree', gl.length > 0 && gl[0].parentNode.previousElementSibling === null);
+
+        const vs = viewer.getViewState();
+        check('the view state carries both', vs.scaleAxis === true && vs.scaleGrid === true,
+            JSON.stringify({scaleAxis: vs.scaleAxis, scaleGrid: vs.scaleGrid}));
+        viewer.applyViewState({timeAxis: false}); await settle();
+        check('an old link\'s timeAxis still switches it', !strip() && !byId('scaleaxis_cb').checked);
+        viewer.applyViewState({scaleAxis: true, timeAxis: false}); await settle();
+        check('the new key wins over the old', !!strip() && byId('scaleaxis_cb').checked);
+
+        byId('cla_b').click(); await settle();
+        check('cladogram: no axis, nothing to switch', !strip() && byId('scaleaxis_cb').disabled
+            && gridLines().length === 0);
+        byId('phy_b').click(); await settle();
+        check('phylogram again: the axis returns', !!strip() && !byId('scaleaxis_cb').disabled);
+
+        byId('layout_circ_b').click(); await settle();
+        check('circular: no strip under the tree', !strip());
+        const ruler = q('g.aptx-distance .aptx-time-ruler');
+        check('circular: the ruler is drawn', !!ruler);
+        const rt = ruler ? [...ruler.querySelectorAll('text')].map((t) => t.textContent) : [];
+        check('circular: its numbers and unit', rt.includes('0.4') && rt.includes('subs/site'), rt.join(' '));
+        const rings = qa('g.aptx-distance-grid circle').map((c) => +c.getAttribute('r'));
+        check('circular: the grid is seven rings', rings.length === 7, rings.length);
+        const off = ['A', 'B'].map((n) => { const r = Math.hypot(...tipPos(tip(n)));
+            return Math.min(...rings.map((x) => Math.abs(x - r))); });
+        check('circular: a tip at a tick\'s distance lies on its ring', off.every((d) => d < 0.5),
+            off.map((d) => d.toFixed(2)).join(' '));
+
+        byId('layout_unrooted_b').click(); await settle();
+        check('unrooted: no axis, no grid, the scale bar back', !q('g.aptx-distance') && gridLines().length === 0
+            && !!q('g.aptx-scalebar') && byId('scaleaxis_cb').disabled);
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    finish();
+
+    function finish() {
+        window.__benchResult = {report: out, failures: failures};
+        window.__benchDone = true;
+    }
+})();
+</script>

@@ -1981,6 +1981,32 @@ function testTimeAxisTicks() {
         && forester.niceAxisStep(31.25) === 50;
 }
 
+// The distance axis's ticks: 0 at the root to the deepest tip, in nice
+// steps, clean decimals (i * step, never an accumulated sum: 0.1 + 0.2 + 0.1
+// is 0.30000000000000004 by the third tick), and the tip itself when it
+// falls on a step.
+function testDistanceAxisTicks() {
+    var cases = [
+        [0.4, '0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4'],
+        [0.7, '0,0.1,0.2,0.3,0.4,0.5,0.6,0.7'],
+        [3.1, '0,0.5,1,1.5,2,2.5,3'],
+        [0.00037, '0,0.00005,0.0001,0.00015,0.0002,0.00025,0.0003,0.00035'],
+        [1234, '0,200,400,600,800,1000,1200']
+    ];
+    var ok = true;
+    cases.forEach(function (c) {
+        var got = forester.distanceAxisTickValues(c[0]).join(',');
+        if (got !== c[1]) {
+            console.log('    ' + c[0] + ': ' + got);
+            ok = false;
+        }
+    });
+    return ok && forester.distanceAxisTickValues(0).length === 0
+        && forester.distanceAxisTickValues(-1).length === 0
+        && forester.distanceAxisTickValues(NaN).length === 0
+        && forester.distanceAxisTickValues(Infinity).length === 0;
+}
+
 console.log("\ngeologic time scale\n");
 
 runTest("time: band rank pairs      : ", testGeoBandRanks);
@@ -1988,6 +2014,7 @@ runTest("time: interval queries     : ", testGeoQueries);
 runTest("time: axis-type detection  : ", testTimeAxisDetection);
 runTest("time: interval vs noise    : ", testDateIntervalNoise);
 runTest("time: tick mathematics     : ", testTimeAxisTicks);
+runTest("distance axis ticks        : ", testDistanceAxisTicks);
 
 // --------------------------------------------------------------
 // audit regressions (2026-09-03 code audit)

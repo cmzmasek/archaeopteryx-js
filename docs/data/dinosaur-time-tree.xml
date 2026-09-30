@@ -2,7 +2,7 @@
 <phyloxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd" xmlns="http://www.phyloxml.org">
 <phylogeny rooted="true" branch_length_unit="My" rerootable="true">
   <name>Dinosaur time tree (demo)</name>
-  <description>A schematic, time-calibrated archosaur tree (ages in Ma), with Archaeopteryx in the Late Jurassic. It is auto-detected as a time tree and draws the coloured ICS geologic axis (Period over Epoch) beneath the phylogram; the Time Axis checkbox under Display Data toggles it. Extant tips (Crocodylia, modern birds) are at 0 Ma so the axis reaches the present; the extinct taxa sit at their ages. Schematic, not a rigorous phylogeny.</description>
+  <description>A schematic, time-calibrated archosaur tree (ages in Ma), with Archaeopteryx in the Late Jurassic. It is auto-detected as a time tree and draws the coloured ICS geologic axis (Period over Epoch) beneath the phylogram; the Scale Axis checkbox under Display Data toggles it. Extant tips (Crocodylia, modern birds) are at 0 Ma so the axis reaches the present; the extinct taxa sit at their ages. Schematic, not a rigorous phylogeny.</description>
   <clade>
     <name>Archosauria</name>
     <branch_length>0.0</branch_length>

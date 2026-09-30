@@ -380,8 +380,8 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_EVALUE_READOUT = 'domain_evalue';
     const DOMAIN_LABELS_SELECT = 'domain_labels';
     const DOMAIN_GLOW_CB = 'domain_glow_cb';
-    const TIME_AXIS_CB = 'timeaxis_cb';
-    const TIME_GRID_CB = 'timegrid_cb';
+    const SCALE_AXIS_CB = 'scaleaxis_cb';
+    const SCALE_GRID_CB = 'scalegrid_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
     const FONT_SIZE_SLIDER = 'fs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
@@ -641,6 +641,7 @@ function (root, d3, forester, phyloXml) {
     // ------ time axis (the desktop's geologic / calendar overlays) ------
     const TIME_GEO_RESERVE = 52;          // two ICS band rows + the Ma ruler
     const TIME_CAL_RESERVE = 26;          // the calendar year ruler
+    const DISTANCE_AXIS_RESERVE = 26;     // the distance ruler, one label row
     const TIME_BAND_ROW_H = 13;
     const HPD_BAR_COLOR = 'rgba(70,130,220,0.35)';    // translucent blue, the usual HPD tint
     const FOSSIL_BAR_COLOR = 'rgba(150,100,55,0.86)'; // opaque-ish sepia
@@ -5440,6 +5441,23 @@ function (root, d3, forester, phyloXml) {
                 return v === true ? 'confidence' : PARSE_DEFAULTS.internalNumericLabels;
             },
             note: 'use \'confidence\' for what this flag did (\'auto\' is the new default, and does not promote mixed trees)'
+        },
+        // Renamed after 3.18.0, when the axis stopped being time-only: a tree
+        // whose branches measure divergence gets a distance axis from the
+        // same switch. The meaning on a time tree is unchanged.
+        showTimeAxis: {
+            to: 'showScaleAxis',
+            map: function (v) {
+                return v;
+            },
+            note: 'the one switch now draws the time axis on a time tree and a distance axis on any other phylogram'
+        },
+        timeAxisGrid: {
+            to: 'showScaleGrid',
+            map: function (v) {
+                return v;
+            },
+            note: 'the grid follows the scale axis, time or distance'
         }
     };
 
@@ -5610,8 +5628,8 @@ function (root, d3, forester, phyloXml) {
         'domainLabels',
         'domainGlow',
         'domainEvalueExponent',
-        'showTimeAxis',
-        'timeAxisGrid',
+        'showScaleAxis',
+        'showScaleGrid',
         'showSupportDots',
         'searchAinitialValue',
         'searchBinitialValue',
@@ -5910,10 +5928,11 @@ function (root, d3, forester, phyloXml) {
                     + ' with a missing or impossible from / to / E-value ignored');
             }
         }
-        // Likewise a dated tree draws its time axis from the start --
-        // geologic ICS bands or calendar years, decided from the <date>
-        // elements by forester.timeAxisInfo -- again unless the caller set
-        // showTimeAxis explicitly.
+        // Likewise a dated tree draws its scale axis from the start -- a
+        // time axis of geologic ICS bands or calendar years, decided from the
+        // <date> elements by forester.timeAxisInfo -- again unless the caller
+        // set showScaleAxis explicitly. Any other tree opens without one, as
+        // on the desktop: its distance axis is asked for.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
         _timeTree = _treeData ? forester.isTimeTree(_treeData) : false;
         // Whether this tree says two different things -- when its nodes sit in
@@ -5922,10 +5941,10 @@ function (root, d3, forester, phyloXml) {
         // BEAST or Newick file arrives stating its own branch lengths.
         _branchScaleAvailable = _treeData ? forester.hasTimeAndDivergence(_treeData) : false;
         _state.branchScale = _treeData ? forester.branchLengthScale(_treeData) : 'divergence';
-        if (_state.showTimeAxis === undefined) {
-            _state.showTimeAxis = !!(_timeInfo && _timeInfo.type);
+        if (_state.showScaleAxis === undefined) {
+            _state.showScaleAxis = !!(_timeInfo && _timeInfo.type);
         }
-        _state.timeAxisGrid = _state.timeAxisGrid === true; // desktop default: off
+        _state.showScaleGrid = _state.showScaleGrid === true; // desktop default: off
         _state.showSupportDots = _state.showSupportDots === true;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
@@ -9737,9 +9756,9 @@ function (root, d3, forester, phyloXml) {
             s.domainGlow = _state.domainGlow === true;
             s.domainEvalue = _state.domainEvalueExponent;
         }
-        if (_timeInfo && _timeInfo.type) {
-            s.timeAxis = _state.showTimeAxis === true;
-            s.timeGrid = _state.timeAxisGrid === true;
+        if (_basicTreeProperties.branchLengths === true) {
+            s.scaleAxis = _state.showScaleAxis === true;
+            s.scaleGrid = _state.showScaleGrid === true;
         }
         if (_branchScaleAvailable) {
             s.scale = _state.branchScale;   // time or divergence: which layout the branches show
@@ -9894,11 +9913,15 @@ function (root, d3, forester, phyloXml) {
                 _domain.palette = null;   // the drawn set changed: the palette is dealt again
             }
         }
-        if (typeof s.timeAxis === 'boolean') {
-            _state.showTimeAxis = s.timeAxis;
+        // timeAxis / timeGrid: the names before the axis also measured
+        // distance, still read so that older links keep their axis
+        let axis = typeof s.scaleAxis === 'boolean' ? s.scaleAxis : s.timeAxis;
+        if (typeof axis === 'boolean') {
+            _state.showScaleAxis = axis;
         }
-        if (typeof s.timeGrid === 'boolean') {
-            _state.timeAxisGrid = s.timeGrid;
+        let grid = typeof s.scaleGrid === 'boolean' ? s.scaleGrid : s.timeGrid;
+        if (typeof grid === 'boolean') {
+            _state.showScaleGrid = grid;
         }
         if (!radialDisplay()) {
             _radialLabelsHorizontal = false;
@@ -9978,8 +10001,8 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap === true);
         syncHeatmapControls();
-        setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis === true);
-        setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid === true);
+        setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis === true);
+        setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid === true);
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
         setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
         syncDomainControls();
@@ -10059,7 +10082,7 @@ function (root, d3, forester, phyloXml) {
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
     const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow',
-        'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+        'scaleAxis', 'scaleGrid', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
     // Lists of strings, comma-joined. A property ref carries ':' but never a
     // comma, and encodeViewValue leaves both readable in a hash.
     const VIEW_LIST_KEYS = ['heatmapManual'];
@@ -10226,7 +10249,7 @@ function (root, d3, forester, phyloXml) {
         {key: 'e', label: 'E', shift: true, what: 'Expand vertically until the labels fit', run: function () { zoomToExpandY(); }},
         {key: 'l', label: 'L', shift: true, what: 'Next layout: rectangular, circular, unrooted', run: cycleLayout},
         {key: 'd', label: 'D', shift: true, what: 'Next display type: phylogram, aligned, cladogram', run: cycleDisplayType},
-        {key: 'x', label: 'X', shift: true, what: 'Time / divergence scale, or the time axis', run: toggleTimeAxis},
+        {key: 'x', label: 'X', shift: true, what: 'Time / divergence scale, or the scale axis', run: toggleScaleAxis},
         {key: 'o', label: 'O', shift: true, what: 'Ladderize (order the tree)', run: function () { ladderizeButtonPressed(); }},
         {key: 'u', label: 'U', shift: true, what: 'Uncollapse every clade', run: function () { uncollapseAll(); }},
         {key: 'f', label: 'F', what: 'Go to the search box', run: focusSearch, typing: true},
@@ -10373,19 +10396,19 @@ function (root, d3, forester, phyloXml) {
     }
 
     // Shift+X. The switch takes this key over where the tree offers it, as was
-    // always intended; on every other tree it still works the Time Axis
+    // always intended; on every other tree it works the Scale Axis
     // checkbox, so the key never does nothing.
-    function toggleTimeAxis() {
+    function toggleScaleAxis() {
         if (_branchScaleAvailable) {
             setBranchScale(_state.branchScale === 'time' ? 'divergence' : 'time');
             return;
         }
-        let cb = byId(TIME_AXIS_CB);
+        let cb = byId(SCALE_AXIS_CB);
         if (!cb || cb.disabled) {
             return;
         }
         cb.checked = !cb.checked;
-        timeAxisCbClicked();
+        scaleAxisCbClicked();
     }
 
     function focusSearch() {
@@ -11591,11 +11614,24 @@ function (root, d3, forester, phyloXml) {
             && _treeData.branch_length_unit.trim() === 'subs/site';
     }
 
-    function timeAxisShown() {
-        return _state.showTimeAxis === true && !_state.unrootedDisplay
+    // The Scale Axis switch, as on the desktop: an axis under a rectangular
+    // or circular phylogram. What it measures is the tree's to say -- time
+    // on a time tree whose branches show time, distance from the root on
+    // every other -- so flipping Time | Div changes what the axis reads,
+    // never whether there is one.
+    function scaleAxisShown() {
+        return _state.showScaleAxis === true && !_state.unrootedDisplay
             && _state.phylogram === true
+            && _basicTreeProperties.branchLengths === true;
+    }
+
+    function distanceAxisShown() {
+        return scaleAxisShown() && !timeAxisShown();
+    }
+
+    function timeAxisShown() {
+        return scaleAxisShown()
             && _timeInfo !== null && _timeInfo.type !== null
-            && _basicTreeProperties.branchLengths === true
             // The axis is an overlay calibrated to the tree's own branch scale,
             // so it must be hidden when the branches are showing DIVERGENCE --
             // calendar years against substitutions reads as a confident lie.
@@ -11608,10 +11644,13 @@ function (root, d3, forester, phyloXml) {
             && !branchesShowDivergence();
     }
 
-    function timeAxisBottomReserve() {
+    function scaleAxisBottomReserve() {
         // circular draws its ruler in the tree's own gap, not under it
-        if (!timeAxisShown() || _state.circularDisplay) {
+        if (!scaleAxisShown() || _state.circularDisplay) {
             return 0;
+        }
+        if (!timeAxisShown()) {
+            return DISTANCE_AXIS_RESERVE;
         }
         return _timeInfo.type === 'geologic' ? TIME_GEO_RESERVE : TIME_CAL_RESERVE;
     }
@@ -11624,7 +11663,7 @@ function (root, d3, forester, phyloXml) {
         // own bottom rows (conservation, consensus, ruler) must end above it
         // or the bar covers them -- the old bare slider did exactly that.
         // The scale bar sits in the same band, under the tree's last row.
-        return Math.max(msaShown() ? msaBottomReserve() + MSA_NAV_RESERVE : 0, timeAxisBottomReserve(),
+        return Math.max(msaShown() ? msaBottomReserve() + MSA_NAV_RESERVE : 0, scaleAxisBottomReserve(),
             heatmapBottomReserve(),
             scaleBarShown() && !radialDisplay() ? SCALE_BAR_RESERVE : 0);
     }
@@ -11634,14 +11673,15 @@ function (root, d3, forester, phyloXml) {
     // round number of branch-length units (forester.scaleBarLength) with
     // end ticks and its length written above, drawn in the tree's own
     // coordinates so it zooms and exports with the tree and its label stays
-    // true. Not in a cladogram (nothing to measure) and not under a time
-    // axis (which is a scale already); in the radial layouts it sits below
-    // the fan at its left edge.
+    // true. Not in a cladogram (nothing to measure) and not under the scale
+    // axis (which says the same, and more); in the radial layouts it sits
+    // below the fan at its left edge. The desktop keeps its bar beside its
+    // axis; ours gives way (Christian, 2026-09-30).
     const SCALE_BAR_TARGET_PX = 100;
     const SCALE_BAR_RESERVE = 30;
 
     function scaleBarShown() {
-        return _state.phylogram === true && _basicTreeProperties.branchLengths === true && !timeAxisShown();
+        return _state.phylogram === true && _basicTreeProperties.branchLengths === true && !scaleAxisShown();
     }
 
     // pixels per branch-length unit in the current layout's own coordinates
@@ -11717,6 +11757,15 @@ function (root, d3, forester, phyloXml) {
             delete _floatStrips['aptx-time-axis'];
         }
         _svgGroup.selectAll('g.aptx-timegrid').remove();
+        _svgGroup.selectAll('g.aptx-distance, g.aptx-distance-grid').remove();
+        if (_floatGroup) {
+            _floatGroup.selectAll('g.aptx-distance-axis').remove();
+            delete _floatStrips['aptx-distance-axis'];
+        }
+        if (distanceAxisShown()) {
+            drawDistanceAxis();
+            return;
+        }
         if (!timeAxisShown() || !_root || !_yScale) {
             return;
         }
@@ -11758,7 +11807,7 @@ function (root, d3, forester, phyloXml) {
         // BEHIND the tree (inserted first in the group) at the fine geologic
         // boundaries / calendar year ticks; each axis branch below fills it
         let grid = null;
-        if (_state.timeAxisGrid) {
+        if (_state.showScaleGrid) {
             grid = _svgGroup.insert('g', 'g').attr('class', 'aptx-timegrid')
                 .style('pointer-events', 'none');
         }
@@ -11872,13 +11921,15 @@ function (root, d3, forester, phyloXml) {
         }
 
         // ---- the axis itself: a FLOATING strip (see floatStripGroup) ----
-        let ax = floatStripGroup('aptx-time-axis', axisTop - 4, timeAxisBottomReserve() + 4);
+        // the viewer's sans-serif: an SVG text inherits the browser's serif
+        let ax = floatStripGroup('aptx-time-axis', axisTop - 4, scaleAxisBottomReserve() + 4)
+            .style('font-family', FONT_DEFAULTS);
         function axisBackdrop(x0, x1) {
             // opaque, in the background colour, so tips panned under the
             // strip do not show through between the bands and the ruler
             let left = Math.min(x0, x1);
             ax.append('rect').attr('x', left - 2).attr('y', axisTop - 4)
-                .attr('width', Math.abs(x1 - x0) + 4).attr('height', timeAxisBottomReserve() + 4)
+                .attr('width', Math.abs(x1 - x0) + 4).attr('height', scaleAxisBottomReserve() + 4)
                 .attr('fill', _state.backgroundColorDefault);
             ax.append('line').attr('x1', left - 2).attr('x2', left - 2 + Math.abs(x1 - x0) + 4)
                 .attr('y1', axisTop - 4).attr('y2', axisTop - 4)
@@ -12038,7 +12089,19 @@ function (root, d3, forester, phyloXml) {
         let from;          // the root end and the tip end, as dates
         let to;
         let bands = [];
-        if (info.type === 'geologic') {
+        let unit = null;   // written once past the tip end
+        if (info.type === 'distance') {
+            // not a date: a distance from the displayed root, 0 at its centre
+            depthOf = function (v) {
+                return info.rootDepth + (v * corr);
+            };
+            from = 0;
+            to = info.maxDist;
+            ticks = info.ticks.map(function (v) {
+                return {value: v, text: String(v)};
+            });
+            unit = info.unit;
+        } else if (info.type === 'geologic') {
             let rootAge = info.rootAge;
             if (!(rootAge > 0)) {
                 return;
@@ -12059,6 +12122,7 @@ function (root, d3, forester, phyloXml) {
                 ticks.push({value: to, text: String(Math.round(to * 100) / 100), first: true});
             }
             bands = forester.geoOverlapping(forester.geoBandRanks(to, rootAge)[1], to, rootAge);
+            unit = 'Ma';
         } else {
             let present = info.presentDate;
             if (!(present > 0)) {
@@ -12121,7 +12185,7 @@ function (root, d3, forester, phyloXml) {
         let at = function (r, off) {
             return [(along[0] * r) + (across[0] * off), (along[1] * r) + (across[1] * off)];
         };
-        let ax = g.append('g').attr('class', 'aptx-time-ruler');
+        let ax = g.append('g').attr('class', 'aptx-time-ruler').style('font-family', FONT_DEFAULTS);
         let e0 = at(r0, 0);
         let e1 = at(r1, 0);
         ax.append('line').attr('x1', e0[0]).attr('y1', e0[1]).attr('x2', e1[0]).attr('y2', e1[1])
@@ -12162,8 +12226,11 @@ function (root, d3, forester, phyloXml) {
             label(r, side * 11, t.text, ink, true);
             placed.push(r);
         });
+        if (unit) {
+            // along the ruler past its end, so a long unit reads outward
+            label(r1 + 8 + (unit.length * 2.8), 0, unit, ink, false);
+        }
         if (info.type === 'geologic') {
-            label(r1 + 14, 0, 'Ma', ink, false);
             named.forEach(function (n) {
                 if ((n.text.length * 5.5) + 4 <= n.span) {
                     label(n.r, -side * 11, n.text, ink, true);
@@ -12172,13 +12239,111 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
-    function timeAxisCbClicked() {
-        _state.showTimeAxis = getCheckboxValue(TIME_AXIS_CB);
+    // The distance axis, the desktop's "Scale Axis": a ruler from 0 at the
+    // displayed root out to the deepest tip, in branch-length units, with
+    // round ticks and the tree's unit at its end; "Scale Grid" draws each
+    // tick as a faint line (a ring, in circular) behind the tree. Measured
+    // per draw, so a subtree view's axis starts at ITS root.
+    function drawDistanceAxis() {
+        if (!_root || !_yScale) {
+            return;
+        }
+        let corr = Math.abs(_yScale(1) - _yScale(0));
+        if (!isFinite(corr) || corr <= 0) {
+            return;
+        }
+        let rootDepth = (topNode() || _root).y;
+        let maxTipX = rootDepth;
+        forEachDisplayed(function (n) {
+            if (!n.children && n.y > maxTipX) {
+                maxTipX = n.y;
+            }
+        });
+        let maxDist = (maxTipX - rootDepth) / corr;
+        let ticks = forester.distanceAxisTickValues(maxDist);
+        if (ticks.length === 0) {
+            return;
+        }
+        let unit = _treeData && typeof _treeData.branch_length_unit === 'string'
+            ? _treeData.branch_length_unit.trim() : '';
+        let ink = _state.branchColorDefault;
+        let grid = null;
+        if (_state.showScaleGrid) {
+            grid = _svgGroup.insert('g', 'g').attr('class', 'aptx-distance-grid')
+                .style('pointer-events', 'none');
+        }
+        if (_state.circularDisplay) {
+            let g = _svgGroup.append('g').attr('class', 'aptx-distance').style('pointer-events', 'none');
+            drawCircularTimeRuler({type: 'distance', rootDepth: rootDepth, maxDist: maxDist, ticks: ticks,
+                unit: unit || null}, null, maxTipX, corr, g, grid, ink);
+            return;
+        }
+        let xOf = function (v) {
+            return rootDepth + (v * corr);
+        };
+        let axisTop = _clusterH + 6;
+        if (grid) {
+            // the root and tip ends excluded: they would retrace the tree
+            ticks.forEach(function (v) {
+                if (v > 0 && v < maxDist - 1e-9) {
+                    grid.append('line').attr('x1', xOf(v)).attr('x2', xOf(v))
+                        .attr('y1', 0).attr('y2', axisTop)
+                        .attr('stroke', ink).attr('stroke-opacity', 0.18)
+                        .attr('stroke-width', 1);
+                }
+            });
+        }
+        let reserve = scaleAxisBottomReserve();
+        let ax = floatStripGroup('aptx-distance-axis', axisTop - 4, reserve + 4)
+            .style('font-family', FONT_DEFAULTS);
+        let x0 = xOf(0);
+        let x1 = xOf(maxDist);
+        // opaque, as the time axis's, so tips panned under it do not show
+        ax.append('rect').attr('x', x0 - 2).attr('y', axisTop - 4)
+            .attr('width', (x1 - x0) + 4).attr('height', reserve + 4)
+            .attr('fill', _state.backgroundColorDefault);
+        ax.append('line').attr('x1', x0 - 2).attr('x2', x1 + 2)
+            .attr('y1', axisTop - 4).attr('y2', axisTop - 4)
+            .attr('stroke', ink).attr('stroke-opacity', 0.25).attr('stroke-width', 1);
+        let rulerY = axisTop + 4;
+        ax.append('line').attr('x1', x0).attr('x2', x1)
+            .attr('y1', rulerY).attr('y2', rulerY)
+            .attr('stroke', ink).attr('stroke-width', 1);
+        // every tick drawn, its number only where it clears the last one
+        let lastRight = -Infinity;
+        ticks.forEach(function (v) {
+            let x = xOf(v);
+            ax.append('line').attr('x1', x).attr('x2', x)
+                .attr('y1', rulerY).attr('y2', rulerY + 4)
+                .attr('stroke', ink).attr('stroke-width', 1);
+            let text = String(v);
+            let half = text.length * 2.8;
+            if ((x - half) >= lastRight + 4) {
+                ax.append('text').attr('x', x).attr('y', rulerY + 14)
+                    .attr('text-anchor', 'middle')
+                    .style('font-size', '9px').style('fill', ink)
+                    .text(text);
+                lastRight = x + half;
+            }
+        });
+        if (unit) {
+            // past the ruler's end, and past the last number, which is
+            // centred on that end
+            ax.append('text').attr('x', Math.max(x1 + 8, lastRight + 6)).attr('y', rulerY + 14)
+                .attr('text-anchor', 'start')
+                .style('font-size', '9px').style('fill', ink)
+                .text(unit);
+        }
+        placeFloatingOverlays();
+    }
+
+    function scaleAxisCbClicked() {
+        _state.showScaleAxis = getCheckboxValue(SCALE_AXIS_CB);
         scheduleUpdate(null, 0);
     }
 
-    function timeGridCbClicked() {
-        _state.timeAxisGrid = getCheckboxValue(TIME_GRID_CB);
+    function scaleGridCbClicked() {
+        _state.showScaleGrid = getCheckboxValue(SCALE_GRID_CB);
         scheduleUpdate(null, 0);
     }
 
@@ -13326,15 +13491,17 @@ function (root, d3, forester, phyloXml) {
             heatCb.disabled = _state.unrootedDisplay === true;
         }
         syncHeatmapControls();
-        let timeCb = byId(TIME_AXIS_CB);
-        if (timeCb) {
-            // circular draws it along the gap; only unrooted cannot
-            timeCb.disabled = _state.unrootedDisplay === true;
+        let axisCb = byId(SCALE_AXIS_CB);
+        if (axisCb) {
+            // circular draws it along the gap; unrooted cannot, and a
+            // cladogram has nothing to measure
+            axisCb.disabled = _state.unrootedDisplay === true || _state.phylogram !== true;
         }
-        let timeGridCb = byId(TIME_GRID_CB);
-        if (timeGridCb) {
-            // grid lines hang off the time axis: no axis, nothing to grid
-            timeGridCb.disabled = _state.unrootedDisplay === true || _state.showTimeAxis !== true;
+        let gridCb = byId(SCALE_GRID_CB);
+        if (gridCb) {
+            // grid lines hang off the scale axis: no axis, nothing to grid
+            gridCb.disabled = _state.unrootedDisplay === true || _state.phylogram !== true
+                || _state.showScaleAxis !== true;
         }
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
@@ -16189,8 +16356,8 @@ function (root, d3, forester, phyloXml) {
         on(DOMAIN_EVALUE_INC, 'click', function () { domainEvalueStep(1); });
         on(DOMAIN_LABELS_SELECT, 'change', domainLabelsChanged);
         on(DOMAIN_GLOW_CB, 'click', domainGlowCbClicked);
-        on(TIME_AXIS_CB, 'click', timeAxisCbClicked);
-        on(TIME_GRID_CB, 'click', timeGridCbClicked);
+        on(SCALE_AXIS_CB, 'click', scaleAxisCbClicked);
+        on(SCALE_GRID_CB, 'click', scaleGridCbClicked);
 
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
         on(BRANCH_SCALE_TIME_BUTTON, 'click', branchScaleButtonClicked);
@@ -16735,12 +16902,16 @@ function (root, d3, forester, phyloXml) {
             if (heatmapAvailable()) {
                 opts.push(makeCheckboxItem('Heat Map', HEATMAP_CB, 'to show/hide a cell per tip and numeric field beside the tree, every column on one color scale; concentric rings in the circular layout (not in the unrooted one, where a column has no ring to be)'));
             }
-            if (_timeInfo && _timeInfo.type) {
-                opts.push(makeCheckboxItem('Time Axis', TIME_AXIS_CB, 'to show/hide the '
-                    + (_timeInfo.type === 'geologic' ? 'geologic (ICS) time axis' : 'calendar time axis')
-                    + ' and node-age bars (phylogram; rectangular and circular layouts)'));
-                opts.push(makeCheckboxItem('Time Grid', TIME_GRID_CB, 'to show/hide grid lines (rings, in circular) at the '
-                    + (_timeInfo.type === 'geologic' ? 'geologic interval boundaries' : 'calendar year ticks')));
+            if (_basicTreeProperties.branchLengths === true) {
+                let timeAxis = _timeInfo && _timeInfo.type
+                    ? (_timeInfo.type === 'geologic' ? 'the geologic (ICS) time axis' : 'the calendar time axis')
+                    : null;
+                opts.push(makeCheckboxItem('Scale Axis', SCALE_AXIS_CB, 'to show/hide '
+                    + (timeAxis ? timeAxis + ' and node-age bars (a distance axis while the branches show divergence)'
+                        : 'a labeled distance axis from the root to the deepest tip')
+                    + ' (phylogram; rectangular and circular layouts)'));
+                opts.push(makeCheckboxItem('Scale Grid', SCALE_GRID_CB, 'to show/hide grid lines (rings, in circular) at the '
+                    + (timeAxis ? 'time axis\'s intervals or ticks' : 'scale axis ticks')));
             }
 
             let h = '<fieldset><legend>Display Data</legend>';
@@ -17106,8 +17277,8 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
         syncHeatmapControls();
-        setCheckboxValue(TIME_AXIS_CB, _state.showTimeAxis);
-        setCheckboxValue(TIME_GRID_CB, _state.timeAxisGrid);
+        setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis);
+        setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         populateVisualizationMenus();
         initializeSearchOptions();

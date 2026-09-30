@@ -71,7 +71,7 @@
         check('the Time | Div switch is offered', !!group && getComputedStyle(group).display !== 'none'
             && group.offsetParent !== null);
         check('it opens on Time', byId('branch_scale_time_b') && byId('branch_scale_time_b').checked);
-        check('the time axis is on', byId('timeaxis_cb') && byId('timeaxis_cb').checked);
+        check('the time axis is on', byId('scaleaxis_cb') && byId('scaleaxis_cb').checked);
 
         const bars = () => [...document.querySelectorAll('#p .aptx-time .aptx-age-bar')];
         const internal = [];
@@ -173,16 +173,21 @@
         }
         check('circular: no strip under the tree', !document.querySelector('#p g.aptx-time-axis'));
 
-        byId('timegrid_cb').click(); await settle();
+        byId('scalegrid_cb').click(); await settle();
         const rings = document.querySelectorAll('#p g.aptx-timegrid circle').length;
         check('circular: Time Grid draws rings', rings >= 1, rings + ' rings');
-        byId('timegrid_cb').click(); await settle();
+        byId('scalegrid_cb').click(); await settle();
 
         byId('branch_scale_div_b').click(); await settle();
         check('Div: the switch took', byId('branch_scale_div_b').checked);
         check('Div: no age bars (calendar years do not measure substitutions)', bars().length === 0, bars().length);
+        // one Scale Axis switch: on a tree flipped to Div it measures distance
+        check('Div: the axis measures distance instead', !!document.querySelector('#p g.aptx-distance .aptx-time-ruler')
+            && !document.querySelector('#p g.aptx-time .aptx-time-ruler'));
         byId('branch_scale_time_b').click(); await settle();
         check('back to Time: the bars return', bars().length === 15, bars().length);
+        check('back to Time: the time axis returns', !!document.querySelector('#p g.aptx-time .aptx-time-ruler')
+            && !document.querySelector('#p g.aptx-distance'));
 
         byId('layout_unrooted_b').click(); await settle();
         check('unrooted: no time axis', bars().length === 0 && !document.querySelector('#p .aptx-time-ruler'));
@@ -213,7 +218,7 @@
         const viewer = archaeopteryx.launch('#p', trees, {});
         await viewer.ready;
         await settle();
-        check('fossil: the time axis is on', byId('timeaxis_cb') && byId('timeaxis_cb').checked);
+        check('fossil: the time axis is on', byId('scaleaxis_cb') && byId('scaleaxis_cb').checked);
         byId('layout_circ_b').click(); await settle();
         const tips = {};
         [...document.querySelectorAll('#p g.node')].filter((g) => g.__data__ && !g.__data__.children)

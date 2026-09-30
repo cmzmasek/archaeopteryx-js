@@ -8,10 +8,25 @@ users see a change only when a version is cut.
 ## Unreleased
 
 ### Added
+- **Scale Axis and Scale Grid, on every phylogram** — the desktop's Scale
+  Axis and Scale Grid Lines. The time axis's two checkboxes are now one pair
+  for any tree with branch lengths: on a time tree they draw the time axis as
+  before; on any other phylogram — or a time tree flipped to **Div** — a
+  labelled distance ruler from 0 at the root to the deepest tip, in the tree's
+  units, with its unit at the end, and grid lines at its ticks. Rectangular
+  and circular (the ruler in the gap, the grid as rings); none in unrooted or
+  a cladogram. Off by default on a tree that is not in time. The scale bar
+  gives way while the axis is on.
 - **A shared view carries the Time | Div choice** (`scale=time` or
   `scale=divergence` in the hash, and in `getViewState` / `applyViewState`),
   on a tree that has both layouts. A link to a tree shown in Div opened in
   Time.
+
+### Changed
+- **Config: `showTimeAxis` is now `showScaleAxis`, `timeAxisGrid` is now
+  `showScaleGrid`**; the old names still work, with a console warning. In a
+  shared view, `scaleAxis` / `scaleGrid` replace `timeAxis` / `timeGrid`,
+  which older links still carry and are still read.
 
 ## 3.18.0 — 2026-09-30
 

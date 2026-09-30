@@ -153,7 +153,7 @@
             const axisDrawn = () => !!document.querySelector('#p g.aptx-time-axis, #p .aptx-time-ruler, #p .aptx-time .aptx-age-bar');
             check('the build opens in divergence and says so', tree.branch_length_unit === 'subs/site', tree.branch_length_unit);
             check('it is refused the switch', !offered());
-            check('the Time Axis checkbox is on, as for any dated tree', byId('timeaxis_cb') && byId('timeaxis_cb').checked);
+            check('the Time Axis checkbox is on, as for any dated tree', byId('scaleaxis_cb') && byId('scaleaxis_cb').checked);
             check('and yet no time axis is drawn over the divergence', !axisDrawn());
             window.__benchResult = {report: out, failures: failures};
             window.__benchDone = true;

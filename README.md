@@ -247,8 +247,19 @@ A phylogram carries a **scale bar** at the bottom left: a round number of
 branch-length units (1, 2 or 5 × 10ᵏ, whichever makes the bar about 100 px)
 with its length written above it. It is drawn with the tree, so it zooms and
 exports with it and its label always holds. A cladogram has nothing to
-measure and shows none, and a tree under a time axis leaves the measuring to
+measure and shows none, and a tree under a scale axis leaves the measuring to
 the axis.
+
+**Scale Axis** under Display Data (off by default, as on the desktop) draws a
+labelled ruler under a phylogram, from 0 at the root out to the deepest tip, in
+the tree's branch-length units, with the unit at its end when the tree states
+one. **Scale Grid** adds a faint line at every tick, behind the tree. In the
+circular layout the ruler runs out from the root along the gap between the last
+tip and the first, and the grid lines become rings; the unrooted layout has no
+axis. The ruler floats at the bottom of the window as the tree scrolls, and it
+starts at a subtree view's own root. On a time tree the same switch draws the
+time axis instead (below): a tree flipped to **Div** gets the distance ruler,
+and one flipped back gets its time axis.
 
 In the two radial layouts the zoom row changes meaning, exactly as on the
 desktop: **Y+ / Y− become the plain + / − zoom** (a circle has one diameter;
@@ -734,12 +745,12 @@ nodes, and on tips whatever the axis says the range means — on geologic
 time a fossil's observed range, sepia **FAD/LAD bars with end caps**; on
 calendar time the uncertainty of a **sampling date**, drawn like an age bar,
 slimmer, and only when it has a width. Node tooltips show the date. The
-**Time Axis** checkbox under Display Data toggles everything; the axis needs
+**Scale Axis** checkbox under Display Data toggles everything; the axis needs
 a phylogram and the rectangular or circular layout. In **circular** the bars
 run along each node's spoke — on through the centre where a range reaches
 back past the root's own age — the ruler runs out from the root along the
 gap between the last tip and the first, turning with the tree, and a
-geologic axis lays its intervals down as coloured rings. **Time Grid** (off
+geologic axis lays its intervals down as coloured rings. **Scale Grid** (off
 by default) adds faint lines, or rings, at the fine interval boundaries or
 the calendar years.
 
@@ -1349,8 +1360,8 @@ copy-pastable JSON.
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
 | `domainEvalueExponent` | `-3` | The E-value threshold's exponent at launch, an integer from `-20` to `3`: domains with an E-value at or under `10^exponent` are drawn. |
-| `showTimeAxis` | tree-derived | Open with the time axis shown. Default: on when the tree carries `<date>` elements, off otherwise — an explicit `true`/`false` overrides that. |
-| `timeAxisGrid` | `false` | Open with the Time Grid vertical lines on (only meaningful — and only offered as a checkbox — while the time axis itself is shown). |
+| `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements, off otherwise — an explicit `true`/`false` overrides that. |
+| `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
 | `searchAinitialValue` | `null` | Prefill search box A. |
@@ -1373,7 +1384,7 @@ copy-pastable JSON.
 ### Anything else throws
 
 An unrecognised key is an error, whether it was removed in this modernization
-or simply mistyped (the two deprecated keys below are the exception — they
+or simply mistyped (the deprecated keys below are the exception — they
 warn rather than throw):
 
 ```
@@ -1388,14 +1399,15 @@ whatever it names.
 
 ### Accepted, with a warning
 
-Two keys are neither current nor removed: they are accepted so an existing
-embed keeps working, and warn on the console. Both concern Newick support
-values.
+Four keys are neither current nor removed: they are accepted so an existing
+embed keeps working, and warn on the console.
 
 | Key | What happens |
 |---|---|
 | `nhConfidenceValuesAsInternalNames` | Translated to `internalNumericLabels`. **`true` becomes `'confidence'`, not `'auto'`** — `'auto'` is all-or-nothing and promotes nothing in a tree that mixes clade names with support, so a caller moved to it silently would lose promotions they had. An explicit `internalNumericLabels` always wins. |
 | `nhConfidenceValuesInBrackets` | Retired: ignored. It gated whether `[95]` is read as a confidence, but setting it `false` never reinterpreted the bracket — it *discarded* it, so the option's only effect was to throw support values away. A bracket that is not a number is a Newick comment and was ignored either way, and NHX / BEAST blobs go through a different path. Bracketed values are now always read as confidences. |
+| `showTimeAxis` | Translated to `showScaleAxis`, value unchanged: the switch now also draws a distance axis on a tree that is not in time. An explicit `showScaleAxis` always wins. |
+| `timeAxisGrid` | Translated to `showScaleGrid`, value unchanged. |
 
 ### What replaced the rest
 

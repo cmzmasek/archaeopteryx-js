@@ -9461,13 +9461,22 @@
     // Tick ages for a "Ma before present" ruler: ~8 nice steps from 0 back
     // to the root age.
     forester.maAxisTickValues = function (rootAge) {
-        if (!(rootAge > 0) || !isFinite(rootAge)) {
+        return forester.distanceAxisTickValues(rootAge);
+    };
+
+    // Tick values for a distance axis: ~8 nice steps from 0 (the root) out
+    // to maxDist (the deepest tip), in the tree's branch-length units.
+    forester.distanceAxisTickValues = function (maxDist) {
+        if (!(maxDist > 0) || !isFinite(maxDist)) {
             return [];
         }
-        let step = forester.niceAxisStep(rootAge / 8);
+        let step = forester.niceAxisStep(maxDist / 8);
+        if (!(step > 0)) {
+            return [];
+        }
         let vals = [];
-        for (let v = 0; v <= rootAge + 1e-9; v += step) {
-            vals.push(Math.round(v * 1e6) / 1e6);
+        for (let i = 0; (i * step) <= maxDist + (step * 1e-9); ++i) {
+            vals.push(Number((i * step).toPrecision(12)));
         }
         return vals;
     };

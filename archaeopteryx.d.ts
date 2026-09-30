@@ -104,9 +104,17 @@ export interface ArchaeopteryxConfig {
      * bar: each column a stack of letters as tall as its information content,
      * over the tips currently on screen. Only drawn with the track shown. */
     showMsaLogo?: boolean;
+    /** The scale axis under a phylogram: the time axis on a time tree whose
+     * branches show time, a distance axis on any other. Default: on for a
+     * time tree, off otherwise. */
+    showScaleAxis?: boolean;
+    /** Grid lines (rings, in circular) at the scale axis's ticks. */
+    showScaleGrid?: boolean;
     showSupportDots?: boolean;
+    /** @deprecated renamed showScaleAxis; still read, with a warning. */
     showTimeAxis?: boolean;
     supportDotMinimum?: number;
+    /** @deprecated renamed showScaleGrid; still read, with a warning. */
     timeAxisGrid?: boolean;
     /** Open straight into a view (getViewState / decodeViewState). */
     view?: ViewState | null;
@@ -165,7 +173,11 @@ export interface ViewState {
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;
     domainEvalue?: number;
+    scaleAxis?: boolean;
+    scaleGrid?: boolean;
+    /** @deprecated the name of scaleAxis in older links; still read. */
     timeAxis?: boolean;
+    /** @deprecated the name of scaleGrid in older links; still read. */
     timeGrid?: boolean;
     searchA?: ViewSearch;
     searchB?: ViewSearch;
