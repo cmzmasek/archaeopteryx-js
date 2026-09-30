@@ -5,7 +5,13 @@ as work lands on `master`; a release turns that section into its GitHub Release
 body. The demo site (`docs/`, served from `master`) updates on every push; npm
 users see a change only when a version is cut.
 
-## Unreleased
+## 3.18.0 — 2026-09-30
+
+Time trees: the time axis in the circular layout, and the Time | Div switch
+made one rule with the desktop Archaeopteryx — when it is offered, what Time
+gives back, a span that runs backwards, a node deleted meanwhile, and what a
+saved file says its lengths measure. Saved phyloXML is now byte for byte what
+the desktop writes.
 
 ### Added
 - **The time axis in the circular layout.** Node-age bars run along each
@@ -62,6 +68,10 @@ The rules of the Time | Div switch, now shared with the desktop.
 - In the circular layout a node-age bar under a pixel long is drawn one pixel
   from its inner end outward, as in the rectangular layout and on the desktop
   (it was centred).
+- The panel's **Zoom** section is **View & Tools**: it holds the zoom row and
+  the tool row (ladderize, whole tree, up one level, uncollapse all, re-root,
+  representative tips), and its name said only half.
+- The Time and Div buttons say what they do.
 
 ### Fixed
 - **Div and back is lossless on time trees that state negative lengths.** On
