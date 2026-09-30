@@ -1,0 +1,122 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the desktop's figure setting (aptx:figure) opens the heat map</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-09-30: JS reads the desktop's figure setting, the property
+// <property ref="aptx:figure" applies_to="phylogeny"> directly under
+// <phylogeny>. Its MATRIX columns open as the heat map -- only those, in the
+// file's order; other column types are not drawn here. A copy on a CLADE (where
+// desktops 0.11.117 to 0.11.172 wrote it) is ignored, and dropped from what is
+// saved; the phylogeny's own copy is saved back unchanged, after the clades.
+// And a column with one value on every tip (a single-copy core gene) is a
+// column: the colour-by rule refusing it had dropped it from the matrix.
+//
+// The tree is built here (6 tips). The figure names, in this order: geneC,
+// geneA, geneD (1 on every tip), geneB as MATRIX, and geneE as a COLOR_STRIP.
+// geneF is numeric too and named nowhere. The ROOT CLADE carries an old-style
+// figure naming geneA and geneB only.
+//
+//   (no query)   figure under <phylogeny>: opens on, those columns, that order
+//   ?clade=1     the figure only on the root clade: ignored, and not saved
+//   ?given=1     showHeatmap: false in the config wins over the figure
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+
+    // the files, caught instead of saved (as test/browser/exports.html does)
+    const files = [];
+    const blobs = new Map();
+    const create = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (b) => { const u = create(b); blobs.set(u, b); return u; };
+    HTMLAnchorElement.prototype.click = function () {
+        if (this.download) { files.push({name: this.download, blob: blobs.get(this.href)}); }
+    };
+    const menu = () => document.querySelector('.aptx-node-menu');
+    async function download(label) {
+        if (!menu()) { byId('dl_b').click(); await sleep(150); }
+        const b = menu() && [...menu().querySelectorAll('button')]
+            .find((x) => x.firstChild && x.firstChild.nodeValue === label);
+        if (!b) { return null; }
+        const before = files.length;
+        b.click();
+        const t0 = Date.now();
+        while (files.length <= before && Date.now() - t0 < 20000) { await sleep(50); }
+        return files.length > before ? files[files.length - 1].blob.text() : null;
+    }
+
+    const esc = (s) => s.replace(/\\/g, '\\\\').replace(/ /g, '\\_').replace(/\|/g, '\\p')
+        .replace(/~/g, '\\s').replace(/;/g, '\\c').replace(/=/g, '\\e');
+    const figureOf = (cols) => 'v1;foo=bar;columns=' + esc(cols.join('|'));
+    const FIGURE = figureOf(['pgfam:geneC~MATRIX~CIRCLE~false', 'pgfam:geneA~MATRIX~CIRCLE~false',
+        'pgfam:geneD~MATRIX~CIRCLE~false', 'pgfam:geneB~MATRIX~CIRCLE~false', 'pgfam:geneE~COLOR_STRIP~CIRCLE~false']);
+    const OLD = figureOf(['pgfam:geneA~MATRIX~CIRCLE~false', 'pgfam:geneB~MATRIX~CIRCLE~false']);
+    const prop = (ref, v, to, type) => '<property ref="' + ref + '" datatype="' + (type || 'xsd:integer')
+        + '" applies_to="' + (to || 'node') + '">' + v + '</property>';
+    const tip = (i) => '<clade><name>t' + i + '</name><branch_length>0.1</branch_length>'
+        + prop('pgfam:geneA', i % 3) + prop('pgfam:geneB', (i * 2) % 5) + prop('pgfam:geneC', 4 - (i % 4))
+        + prop('pgfam:geneD', 1) + prop('pgfam:geneE', i) + prop('pgfam:geneF', 10 + i) + '</clade>';
+    const clade = q.get('clade') === '1';
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<phyloxml xmlns="http://www.phyloxml.org">'
+        + '<phylogeny rooted="true"><clade>' + prop('aptx:figure', OLD, 'phylogeny', 'xsd:string')
+        + '<clade><branch_length>0.2</branch_length>' + tip(0) + tip(1) + tip(2) + '</clade>'
+        + '<clade><branch_length>0.2</branch_length>' + tip(3) + tip(4) + tip(5) + '</clade></clade>'
+        + (clade ? '' : prop('aptx:figure', FIGURE, 'phylogeny', 'xsd:string'))
+        + '</phylogeny></phyloxml>';
+    const labels = () => [...document.querySelectorAll('#p g.aptx-heatmap-strip text')]
+        .filter((t) => /rotate\(-90\)/.test(t.getAttribute('transform') || ''))
+        .map((t) => t.textContent.toLowerCase().replace(/[^a-z]/g, ''));
+    try {
+        const trees = archaeopteryx.parseTrees('figure.xml', xml);
+        const config = q.get('given') === '1' ? {showHeatmap: false} : {};
+        const viewer = archaeopteryx.launch('#p', trees, config);
+        await viewer.ready;
+        await sleep(2200);
+        const cb = byId('heatmap_cb');
+        const saved = await download('phyloXML');
+        const lines = (saved || '').split('\n');
+        const figLines = lines.filter((l) => l.indexOf('aptx:figure') >= 0);
+
+        if (clade) {
+            check('a figure only on the root clade: the heat map opens off', !!cb && !cb.checked
+                && !document.querySelector('#p g.aptx-heatmap'));
+            check('... still offered, over every numeric field', !!cb && !cb.disabled);
+            check('... and it is not saved', saved !== null && figLines.length === 0, figLines.length + ' figure lines');
+        } else if (q.get('given') === '1') {
+            check('showHeatmap: false wins over the figure', !!cb && !cb.checked && !document.querySelector('#p g.aptx-heatmap'));
+            cb.click(); await sleep(2200);
+            check('asked for, it shows the figure\'s columns in the figure\'s order',
+                labels().join(' ') === 'genec genea gened geneb', labels().join(' '));
+        } else {
+            check('the figure opens the heat map', !!cb && cb.checked && !!document.querySelector('#p g.aptx-heatmap'));
+            check('only its MATRIX columns, in its order -- the constant one kept',
+                labels().join(' ') === 'genec genea gened geneb', labels().join(' '));
+            const vs = viewer.getViewState();
+            check('the view says manual, in that order', vs.heatmapOrder === 'manual'
+                && JSON.stringify(vs.heatmapManual) === JSON.stringify(['pgfam:geneC', 'pgfam:geneA', 'pgfam:geneD', 'pgfam:geneB']),
+                vs.heatmapOrder + ' ' + JSON.stringify(vs.heatmapManual));
+            const want = '  ' + prop('aptx:figure', FIGURE, 'phylogeny', 'xsd:string');
+            const at = lines.indexOf(want);
+            check('saved: the figure once, unchanged, a direct child of <phylogeny>, after the clades',
+                figLines.length === 1 && at > 0 && lines[at - 1] === '  </clade>' && lines[at + 1] === ' </phylogeny>',
+                figLines.length + ' figure lines; at ' + at + ': ' + (at > 0 ? lines[at - 1] + ' / ' + lines[at + 1] : '-'));
+        }
+        check('saved: no clade carries a figure', saved !== null
+            && !/<clade>\s*(<[^c][^>]*>[^<]*<\/[^>]+>\s*)*<property ref="aptx:figure"/.test(saved.replace(/\n/g, ' '))
+            && figLines.every((l) => l.indexOf('applies_to="phylogeny"') > 0 && /^ {2}<property/.test(l)));
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

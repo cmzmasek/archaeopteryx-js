@@ -7,6 +7,23 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **A phyloXML file can open straight into its heat map.** The desktop
+  Archaeopteryx's figure setting — `<property ref="aptx:figure"
+  applies_to="phylogeny">` directly under `<phylogeny>` — is read: its
+  `MATRIX` columns open as the heat map, only those, in the file's order. So a
+  pipeline can write one file that opens as tree plus matrix. An `aptx:figure`
+  on a clade (where desktops 0.11.117 to 0.11.172 wrote it) is ignored and not
+  saved; the phylogeny's own is saved back unchanged. Config settings win.
+
+### Fixed
+- **A heat-map column with one value on every tip was left out** — a
+  single-copy core gene (1 in every genome) had no column. Colour-by still
+  has nothing to show in such a field; the matrix now keeps it.
+- **Saving as phyloXML dropped the properties of `<phylogeny>`** (the figure
+  setting among them). phyloxml 1.1.3 writes them back after the clades, as
+  the desktop does.
+
 ## 3.19.0 — 2026-09-30
 
 The desktop Archaeopteryx's Scale Axis and Scale Grid, on every phylogram,

@@ -635,6 +635,7 @@ function (root, d3, forester, phyloXml) {
     const HEATMAP_DENDRO_MAX_BAND = 72;
     let _heatmapReserve = 0;              // horizontal px reserved for the matrix, set with _w
     let _heatmapModel = null;             // forester.heatmapColumns of the WHOLE tree, cached per launch
+    let _figureMatrix = null;             // the MATRIX refs the file's aptx:figure names, when it draws a matrix
     let _heatmapColor = null;             // the one scale every column is painted on
     let _heatmapColOffset = 0;            // first shown column, while the matrix is windowed
     let _heatmapGeom = null;              // the last draw's geometry, for the hover readout
@@ -5860,8 +5861,9 @@ function (root, d3, forester, phyloXml) {
         // numeric per-tip fields, which is common enough that turning it on
         // by itself would be an opinion about the tree rather than a service
         // -- the alignment track, by contrast, is on when there IS one.
+        // A file whose figure draws a matrix opens showing it, in its order.
         if (_state.showHeatmap === undefined) {
-            _state.showHeatmap = false;
+            _state.showHeatmap = _figureMatrix !== null;
         }
         // The logo is a summary of the alignment, not a second view of the
         // tree, so it waits to be asked for: an alignment opens showing its
@@ -5876,7 +5878,7 @@ function (root, d3, forester, phyloXml) {
         // value always wins and is never re-derived -- including 'document',
         // which keeps the order the producer wrote the fields in.
         if (_state.heatmapColumnOrder === undefined) {
-            _state.heatmapColumnOrder = null;
+            _state.heatmapColumnOrder = _figureMatrix ? 'manual' : null;
         } else if (_state.heatmapColumnOrder !== null
             && forester.HEATMAP_ORDER_MODES.indexOf(_state.heatmapColumnOrder) < 0) {
             throw new Error(ERROR + '"heatmapColumnOrder" must be one of '
@@ -5887,7 +5889,7 @@ function (root, d3, forester, phyloXml) {
         // not got is ignored rather than fatal -- an order outliving one of
         // its columns is ordinary (see forester.heatmapManualOrder).
         if (_state.heatmapManualOrder === undefined) {
-            _state.heatmapManualOrder = null;
+            _state.heatmapManualOrder = _figureMatrix ? _figureMatrix.slice() : null;
         } else if (_state.heatmapManualOrder !== null
             && !(Array.isArray(_state.heatmapManualOrder)
                 && _state.heatmapManualOrder.every(function (r) {
@@ -6518,6 +6520,12 @@ function (root, d3, forester, phyloXml) {
         _treeData = phylo;
         _trees = trees;
         _treeIndex = index;
+        // The desktop's figure setting: its MATRIX columns open as the heat
+        // map, only those, in the file's order. Only the phylogeny's own
+        // aptx:figure counts; a copy on a clade (the old place) is dropped,
+        // so a tree saved from here carries none.
+        forester.dropCladeFigures(phylo);
+        _figureMatrix = figureMatrixOf(phylo);
         _launchConfig = config;
         _container = containerEl;
         assignViewIds(phylo);
@@ -8192,9 +8200,20 @@ function (root, d3, forester, phyloXml) {
 
     function heatmapModel() {
         if (!_heatmapModel && _treeData) {
-            _heatmapModel = forester.heatmapColumns(_treeData);
+            _heatmapModel = forester.heatmapColumns(_treeData, _figureMatrix);
         }
         return _heatmapModel;
+    }
+
+    // The file's MATRIX columns, when at least a heat map's worth of them are
+    // numeric fields this tree has; otherwise null, and the heat map offers
+    // every numeric field as it would without a figure.
+    function figureMatrixOf(tree) {
+        let refs = forester.figureMatrixRefs(tree);
+        if (refs.length < HEATMAP_MIN_COLUMNS) {
+            return null;
+        }
+        return forester.heatmapColumns(tree, refs).refs.length >= HEATMAP_MIN_COLUMNS ? refs : null;
     }
 
     // Offered when the tree holds at least two numeric per-tip refs that
@@ -17911,9 +17930,11 @@ function (root, d3, forester, phyloXml) {
         }
         let name = _root_const.name ? String(_root_const.name).trim() : '';
         // what the phylogeny itself states goes with the part: without its
-        // branch_length_unit a subtree saved from Div opened again as time
+        // branch_length_unit a subtree saved from Div opened again as time,
+        // and without its properties (the figure setting) the part opened
+        // without the heat map the whole tree opens with
         let part = Object.assign({}, _root, {name: name ? name + ' (subtree)' : undefined});
-        ['rooted', 'rerootable', 'type', 'branch_length_unit'].forEach(function (k) {
+        ['rooted', 'rerootable', 'type', 'branch_length_unit', 'properties'].forEach(function (k) {
             if (_root_const[k] !== undefined && _root_const[k] !== null) {
                 part[k] = _root_const[k];
             }

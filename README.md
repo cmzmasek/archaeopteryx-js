@@ -661,8 +661,10 @@ number wherever it appears — that is what makes a block of related columns
 readable as a block, and it is the point of a heat map rather than a row of
 independent stripes. The scale spans the whole tree, so entering a subtree
 narrows the rows and leaves the colours where they were. The columns that
-appear are exactly the numeric fields the **Color by** menu offers, so the two
-agree about what the tree holds; by default their left-to-right order follows
+appear are the numeric fields the **Color by** menu offers, so the two agree
+about what the tree holds — plus a field with **one value on every tip**, which
+has nothing to colour by but is a column all the same (a single-copy core gene
+is a column of 1s); by default their left-to-right order follows
 the order the file lists them in, which keeps a producer's grouping (core genes,
 then resistance, then prophages) intact even where some tips are missing a
 field — see **Order columns** below for the alternatives.
@@ -670,6 +672,23 @@ field — see **Order columns** below for the alternatives.
 A cell **nobody filled in** is drawn as an outlined empty box, never as the
 scale's low end: on a presence/absence matrix, reading a missing field as zero
 states the opposite of what the file says. The key beside the scale names it.
+
+**A file can open straight into its matrix.** The desktop Archaeopteryx
+stores its figure setting as one property of the phylogeny, directly under
+`<phylogeny>`:
+
+```xml
+<property ref="aptx:figure" datatype="xsd:string" applies_to="phylogeny">v1;columns=pgfam:PGF_00019355\sMATRIX\sCIRCLE\sfalse\ppgfam:PGF_00019313\sMATRIX\sCIRCLE\sfalse</property>
+```
+
+When it names two or more `MATRIX` columns the tree has, the tree opens with the
+heat map on, showing **only those columns, in that order** (the order is then
+`manual`, and **Order columns** can still change it). Other column types are
+the desktop's and are not drawn here. Only a property directly under
+`<phylogeny>` counts: an `aptx:figure` on a clade — where desktops
+0.11.117 to 0.11.172 wrote it — is ignored and left out of what is saved; the phylogeny's
+own is saved back unchanged. An explicit `showHeatmap`, `heatmapColumnOrder`
+or `heatmapManualOrder` in the config wins over the file.
 
 **Hover any cell** for its tip, the column and its value — or `not assessed` —
 and the scale it was coloured against. The column names stand under the matrix,
@@ -1354,7 +1373,7 @@ copy-pastable JSON.
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
 | `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: a stack of letters per column, as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
-| `showHeatmap` | `false` | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for: almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service. |
+| `showHeatmap` | tree-derived | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for — almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service — or unless the file's own figure setting (`aptx:figure`, see [Heat maps](#heat-maps)) draws them as a matrix. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
 | `heatmapManualOrder` | `null` | The heat map's columns in your own order, as an array of property refs (`['meta:recA', 'meta:gyrA', …]`). Only read while `heatmapColumnOrder` is `'manual'`. A ref the tree has not got is ignored, and a column the list does not name follows the ones it does. |
 | `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
@@ -2084,8 +2103,10 @@ bottom reserve the fit allows for follows that.
 
 Model (`forester.heatmapColumns(tree)` → `{refs:[{ref,label}], min, max}`,
 pure, in `test/heatmap_test.js`): a column is any candidate that
-`forester.visualizationCandidates` already calls a **numeric property** — so
-candidacy is not re-invented here and the refusal rules are inherited — carried
+`forester.visualizationCandidates(tree, {keepConstant: true})` calls a
+**numeric property** — so candidacy is not re-invented here and the refusal
+rules are inherited, except the one against a field with a single value, which
+suits colour-by and not a matrix — carried
 by at least one **tip**; an internal node has no row, so a ref only internal
 nodes hold is not a column and its values never reach the scale. `min`/`max`
 span every drawn cell of the whole tree. `forester.heatmapValue(node, ref)`
@@ -2188,8 +2209,16 @@ order the columns happened to be in. Measured: without it, the 6×6 linkage
 fixture fed in reverse clustered to `h6,h5,h3,h4,h2,h1` instead of R's
 `h6,h3,h5,h4,h1,h2` — the index order drives the tie-break and the leaf order,
 so the incoming order really does leak through. The normaliser deliberately does
-**not** go through `heatmapColumns`: that applies candidacy rules (a constant
-column is refused), and ordering must not move with them.
+**not** go through `heatmapColumns`: that applies candidacy rules, and
+ordering must not move with them.
+
+`forester.heatmapColumns(tree, only)` keeps just the refs in `only` — the
+figure's MATRIX columns (`forester.figureMatrixRefs(tree)`, from
+`forester.readFigure`, which reads the phylogeny's own `aptx:figure` only:
+`"v1;key=value;…"`, values escaped as the desktop's `PropertyTextCodec` does,
+`columns=` a `|` list of `ref~TYPE~SHAPE~normalized`; an unknown version is no
+figure, unknown keys are ignored). `forester.dropCladeFigures(tree)` removes
+the old clade-level copies at launch.
 
 Distances are `forester.heatmapEuclideanDistances` (R's `dist` convention for
 missing values: pairwise deletion, the squared sum scaled up by `tips / used`;

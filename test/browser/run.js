@@ -44,6 +44,7 @@ const CASES = {
     'suppdots': [''],
     'time_circular': ['', '?fossil=1'],
     'scale_axis': ['', '?old=1'],
+    'figure_heatmap': ['', '?clade=1', '?given=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'exports': ['', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };

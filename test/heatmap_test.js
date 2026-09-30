@@ -514,6 +514,55 @@ runTest("how far the input agrees with itself   : ", testInputOrderAgreement);
 runTest("blocks no tip shares stay whole        : ", testBlocksStayWhole);
 runTest("a loop in the votes loses no column    : ", testTheOrderSurvivesADisagreement);
 runTest("majority wins; where it is silent, mean: ", testTheRulesTheGraphRestsOn);
+runTest("a constant column is a column          : ", testConstantColumnKept);
+runTest("the desktop's figure: MATRIX refs      : ", testFigureMatrixRefs);
+
+// A single-copy core gene is a column of 1s. Colour-by has nothing to show in
+// it and still refuses it; the matrix keeps it.
+function testConstantColumnKept() {
+    var tips = [0, 1, 2, 3].map(function (i) {
+        return {name: 't' + i, properties: [
+            {ref: 'pg:core', datatype: 'xsd:integer', applies_to: 'node', value: '1'},
+            {ref: 'pg:var', datatype: 'xsd:integer', applies_to: 'node', value: String(i)},
+            {ref: 'pg:acc', datatype: 'xsd:integer', applies_to: 'node', value: String(i % 2)}]};
+    });
+    var tree = {children: [{children: [{children: [tips[0], tips[1]]}, {children: [tips[2], tips[3]]}]}]};
+    var cols = forester.heatmapColumns(tree).refs.map(function (c) { return c.ref; });
+    var colourBy = forester.visualizationCandidates(tree).map(function (c) { return c.ref; });
+    var only = forester.heatmapColumns(tree, ['pg:acc', 'pg:core']);
+    return cols.join(',') === 'pg:core,pg:var,pg:acc' && colourBy.indexOf('pg:core') < 0
+        && only.refs.map(function (c) { return c.ref; }).join(',') === 'pg:core,pg:acc'
+        && only.min === 0 && only.max === 1;
+}
+
+// aptx:figure, as the desktop writes it: "v1;key=value;...", every value
+// escaped (\\ \t \n \r \_ \p \s \c \e); columns= a "|" list of
+// ref~TYPE~SHAPE~normalized. Only the phylogeny's own property counts.
+function testFigureMatrixRefs() {
+    var esc = function (v) {
+        return v.replace(/\\/g, '\\\\').replace(/ /g, '\\_').replace(/\|/g, '\\p').replace(/~/g, '\\s')
+            .replace(/;/g, '\\c').replace(/=/g, '\\e');
+    };
+    var fig = function (value) {
+        return {children: [{properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
+            value: 'v1;columns=pg:x~MATRIX~CIRCLE~false'}]}],
+            properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string', value: value}]};
+    };
+    var cols = esc('pg:b~MATRIX~CIRCLE~false|pg:a~MATRIX~SQUARE~true|pg:c~COLOR_STRIP~CIRCLE~false|pg:b~MATRIX~CIRCLE~false');
+    var t = fig('v1;unknown=x;columns=' + cols);
+    var refs = forester.figureMatrixRefs(t);
+    var f = forester.readFigure(t);
+    var cladeOnly = fig('v1;columns=');
+    cladeOnly.properties = [];
+    var dropped = forester.dropCladeFigures(t);
+    return refs.join(',') === 'pg:b,pg:a'                 // MATRIX only, in order, once
+        && f.columns.length === 4 && f.columns[1].shape === 'SQUARE' && f.columns[1].normalized === true
+        && forester.unescapeFigureValue('a\\_b\\pc\\sd\\ce\\ef\\\\g\\th') === 'a b|c~d;e=f\\g\th'
+        && forester.figureMatrixRefs(fig('v2;columns=' + cols)).length === 0   // an unknown version is no figure
+        && forester.figureMatrixRefs(cladeOnly).length === 0                 // a clade's copy is not read
+        && dropped === 1 && t.children[0].properties.length === 0            // ... and is dropped
+        && t.properties.length === 1;                                        // the phylogeny's stays
+}
 console.log();
 
 if (_testFailures > 0) {

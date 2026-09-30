@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.1.2
+// v 1.1.3
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -1155,6 +1155,10 @@
         if (phy.children && phy.children.length === 1) {
             toPhyloXMLhelper(phy.children[0]);
         }
+        // The phylogeny's own properties -- a figure setting, say -- after the
+        // clade, where the schema puts them and the desktop writes them. They
+        // were read and then dropped on the way out.
+        addProperties(phy[PROPERTIES]);
         closePhylogeny();
         closePhyloXml();
         return x;
@@ -1308,24 +1312,7 @@
                 close(DATE);
             }
 
-            if (node[PROPERTIES] && node[PROPERTIES].length > 0) {
-                l = node[PROPERTIES].length;
-                for (i = 0; i < l; ++i) {
-                    var prop = node[PROPERTIES][i];
-                    if (!prop[PROPERTY_APPLIES_TO_ATTR]) {
-                        throw new PhyloXmlError("property applies-to is missing");
-                    }
-                    if (!prop[PROPERTY_DATATYPE_ATTR]) {
-                        throw new PhyloXmlError("property data-type is missing");
-                    }
-                    if (!prop[PROPERTY_REF_ATTR]) {
-                        throw new PhyloXmlError("property ref is missing");
-                    }
-                    addSingleElement(PROPERTY, prop.value, prop, [PROPERTY_REF_ATTR,
-                        PROPERTY_UNIT_ATTR, PROPERTY_DATATYPE_ATTR, PROPERTY_APPLIES_TO_ATTR,
-                        PROPERTY_ID_REF_ATTR]);
-                }
-            }
+            addProperties(node[PROPERTIES]);
 
             if (node.children) {
                 l = node.children.length;
@@ -1343,6 +1330,27 @@
             closeClade();
 
         } // toPhyloXMLhelper
+
+        function addProperties(props) {
+            if (!props || props.length < 1) {
+                return;
+            }
+            for (var i = 0; i < props.length; ++i) {
+                var prop = props[i];
+                if (!prop[PROPERTY_APPLIES_TO_ATTR]) {
+                    throw new PhyloXmlError("property applies-to is missing");
+                }
+                if (!prop[PROPERTY_DATATYPE_ATTR]) {
+                    throw new PhyloXmlError("property data-type is missing");
+                }
+                if (!prop[PROPERTY_REF_ATTR]) {
+                    throw new PhyloXmlError("property ref is missing");
+                }
+                addSingleElement(PROPERTY, prop.value, prop, [PROPERTY_REF_ATTR,
+                    PROPERTY_UNIT_ATTR, PROPERTY_DATATYPE_ATTR, PROPERTY_APPLIES_TO_ATTR,
+                    PROPERTY_ID_REF_ATTR]);
+            }
+        }
 
         function addSingleElement(elemName, elemValue, object, attributeNames) {
             if ((elemValue !== null) && (elemValue !== undefined)) {

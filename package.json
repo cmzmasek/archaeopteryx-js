@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
-    "phyloxml": "^1.1.2"
+    "phyloxml": "^1.1.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

@@ -2091,7 +2091,12 @@
         return p.applies_to === 'node' || p.applies_to === 'clade';
     };
 
-    forester.visualizationCandidates = function (tree) {
+    // options.keepConstant: also return a NUMERIC field that has one value on
+    // every tip. There is nothing to colour by in it, so the selection never
+    // asks for it -- but a matrix does: a single-copy core gene is a column
+    // of 1s, and dropping it from the heat map hid a gene the file lists.
+    forester.visualizationCandidates = function (tree, options) {
+        let keepConstant = !!(options && options.keepConstant);
         let total = 0;
         let stats = Object.create(null);   // id -> {kind, ref, label, nodes, values:Set, multi}; null-proto: ids embed file refs
 
@@ -2255,7 +2260,7 @@
             // The legend already carries the honest part: a "no value" row
             // with the uncovered count, at reduced opacity.
             let sparse = covered * VIS_MIN_COVERAGE_DEN < total * VIS_MIN_COVERAGE_NUM;
-            if (distinct < 2) {
+            if (distinct < 2 && !(keepConstant && numeric)) {
                 return;
             }
             let colorMode;
@@ -2883,11 +2888,18 @@
      * no numeric per-tip property. `min`/`max` are over every value of every
      * column and are `null` when there is nothing to scale.
      */
-    forester.heatmapColumns = function (tree) {
+    forester.heatmapColumns = function (tree, only) {
+        let wanted = null;               // the figure's columns, when a file names them
+        if (Array.isArray(only)) {
+            wanted = Object.create(null);
+            only.forEach(function (ref) {
+                wanted[ref] = true;
+            });
+        }
         let numeric = Object.create(null);
         let label = Object.create(null);
-        forester.visualizationCandidates(tree).forEach(function (c) {
-            if (c && c.kind === 'property' && c.numeric === true && c.ref) {
+        forester.visualizationCandidates(tree, {keepConstant: true}).forEach(function (c) {
+            if (c && c.kind === 'property' && c.numeric === true && c.ref && (!wanted || wanted[c.ref])) {
                 numeric[c.ref] = true;
                 label[c.ref] = c.label || c.ref;
             }
@@ -2931,6 +2943,88 @@
             min: min,
             max: max
         };
+    };
+
+    // --------------------------------------------------------------
+    // The desktop's figure setting (aptx:figure)
+    // --------------------------------------------------------------
+    // The desktop Archaeopteryx stores what a tree is to be drawn with in one
+    // property of the PHYLOGENY: <property ref="aptx:figure" applies_to=
+    // "phylogeny"> as a direct child of <phylogeny>. Its value (FigureSpec
+    // on the desktop) is "v1;key=value;..." with every value escaped
+    // (PropertyTextCodec): \\ \t \n \r, \_ a space, \p "|", \s "~",
+    // \c ";", \e "=". columns= is a "|" list of ref~TYPE~SHAPE~normalized.
+    // Only a direct child of <phylogeny> counts (Christian, 2026-09-30: "a
+    // hard break"): desktops 0.11.117 to 0.11.172 wrote it on the root clade,
+    // and such a copy is ignored here and dropped on the way out, as the
+    // desktop does. An unknown version is no figure; unknown keys are ignored.
+    forester.FIGURE_REF = 'aptx:figure';
+
+    forester.unescapeFigureValue = function (v) {
+        const map = {'\\': '\\', 't': '\t', 'n': '\n', 'r': '\r', '_': ' ', 'p': '|', 's': '~', 'c': ';', 'e': '='};
+        return String(v).replace(/\\(.)/g, function (all, c) {
+            return map[c] !== undefined ? map[c] : all;
+        });
+    };
+
+    // {columns: [{ref, type, shape, normalized}]} from the tree's figure, or
+    // null when it has none (or one this version cannot read).
+    forester.readFigure = function (tree) {
+        let props = tree && Array.isArray(tree.properties) ? tree.properties : [];
+        let p = props.find(function (q) {
+            return q && q.ref === forester.FIGURE_REF;
+        });
+        if (!p || typeof p.value !== 'string') {
+            return null;
+        }
+        let parts = p.value.trim().split(';');
+        if (parts[0] !== 'v1') {
+            return null;
+        }
+        let figure = {columns: []};
+        parts.slice(1).forEach(function (kv) {
+            let at = kv.indexOf('=');
+            if (at < 1 || kv.substring(0, at) !== 'columns') {
+                return;
+            }
+            forester.unescapeFigureValue(kv.substring(at + 1)).split('|').forEach(function (col) {
+                let f = col.split('~');
+                if (f[0] && f[0].length > 0) {
+                    figure.columns.push({ref: f[0], type: f[1] || '', shape: f[2] || 'CIRCLE',
+                        normalized: f[3] === 'true'});
+                }
+            });
+        });
+        return figure;
+    };
+
+    // The refs the figure draws as a MATRIX, in its order ([] without one).
+    forester.figureMatrixRefs = function (tree) {
+        let figure = forester.readFigure(tree);
+        let seen = Object.create(null);
+        return figure ? figure.columns.filter(function (c) {
+            let keep = c.type === 'MATRIX' && !seen[c.ref];
+            seen[c.ref] = true;
+            return keep;
+        }).map(function (c) {
+            return c.ref;
+        }) : [];
+    };
+
+    // Removes an aptx:figure from every clade (the old place, now ignored),
+    // so a tree saved from here carries no dead copy. Returns how many.
+    forester.dropCladeFigures = function (tree) {
+        let n = 0;
+        forester.preOrderTraversalAll(tree, function (node) {
+            if (node !== tree && Array.isArray(node.properties)) {
+                let kept = node.properties.filter(function (q) {
+                    return !(q && q.ref === forester.FIGURE_REF);
+                });
+                n += node.properties.length - kept.length;
+                node.properties = kept;
+            }
+        });
+        return n;
     };
 
     /**
