@@ -49,6 +49,12 @@ The rules of the Time | Div switch, now shared with the desktop.
 - **A recorded divergence (`nextstrain:div`) is a plain decimal number**, as
   a clock rate is: `0.005d`, `0x10` and `1,5` are not one. A negative one is a
   value, and its branch draws at 0.
+- **Saved phyloXML, byte for byte as the desktop writes it** (phyloxml 1.1.2):
+  the attributes of `<phylogeny>` in the order `rooted`, `branch_length_unit`,
+  `type`, `rerootable`, and a date without a unit written `<date>`, not
+  `<date unit="">`. Nine files written by the two programs for three trees
+  are now identical.
+- Depends on `phyloxml ^1.1.2`.
 - **The tree states what its branch lengths measure** (phyloXML's
   `branch_length_unit`): `subs/site` in Div; in Time the unit of its dates, or
   `time`. A Nextstrain build states `year`, or `subs/site` when it opens in

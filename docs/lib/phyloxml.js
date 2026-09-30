@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.1.1
+// v 1.1.2
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -1145,8 +1145,10 @@
         var x = '';
         var ind = '';
         openPhyloXml();
-        openPhylogeny(phy, [PHYLOGENY_ROOTED_ATTR, PHYLOGENY_REROOTABLE_ATTR,
-            PHYLOGENY_BRANCH_LENGTH_UNIT_ATTR, PHYLOGENY_TYPE_ATTR]);
+        // in the order the desktop (forester) writes them, so that the two
+        // programs' files agree to the byte and not only to an XML reader
+        openPhylogeny(phy, [PHYLOGENY_ROOTED_ATTR, PHYLOGENY_BRANCH_LENGTH_UNIT_ATTR,
+            PHYLOGENY_TYPE_ATTR, PHYLOGENY_REROOTABLE_ATTR]);
         addSingleElement(PHYLOGENY_NAME, phy.name);
         addSingleElement(PHYLOGENY_DESCRIPTION, phy.description);
         addSingleElement(PHYLOGENY_DATE, phy.date);
@@ -1287,12 +1289,17 @@
             // and written back out lost its entire time dimension, silently.
             if (node[DATE]) {
                 var date = node[DATE];
-                // `unit` is always emitted, empty when the date has none, as
-                // the desktop does; addAttributes would otherwise drop it
+                // `unit` is written when the date states one, and left out
+                // when it is absent or EMPTY: the desktop's writer skips an
+                // attribute with nothing in it, so a date without a unit is
+                // <date>, not <date unit="">. (This wrote the empty attribute
+                // until 1.1.1, in the belief that the desktop did; its own
+                // files, written by its released jar, said otherwise.)
                 var dateAttr = {};
-                dateAttr[DATE_UNIT_ATTR] =
-                    (date[DATE_UNIT_ATTR] === undefined || date[DATE_UNIT_ATTR] === null)
-                        ? '' : date[DATE_UNIT_ATTR];
+                if (date[DATE_UNIT_ATTR] !== undefined && date[DATE_UNIT_ATTR] !== null
+                    && String(date[DATE_UNIT_ATTR]).length > 0) {
+                    dateAttr[DATE_UNIT_ATTR] = date[DATE_UNIT_ATTR];
+                }
                 open(DATE, dateAttr, [DATE_UNIT_ATTR]);
                 addSingleElement(DATE_DESC, date[DATE_DESC]);
                 addSingleElement(DATE_VALUE, date[DATE_VALUE]);
