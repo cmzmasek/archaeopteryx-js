@@ -16,7 +16,15 @@ users see a change only when a version is cut.
   on a clade (where desktops 0.11.117 to 0.11.172 wrote it) is ignored and not
   saved; the phylogeny's own is saved back unchanged. Config settings win.
 
+- **Heat-map cells have borders**: where a cell is at least 5 px on screen,
+  each is outlined in its own hue, darker, 0.75 px at any zoom, so a block
+  still reads as a block and each cell can be counted. Smaller cells, or a
+  matrix of more than 60,000, stay merged into runs.
+
 ### Fixed
+- **Faint lines came and went between heat-map cells with the zoom** — seams
+  of background between cells at a fractional scale. Borders cover them, and
+  merged runs are stroked in their own colour.
 - **A heat-map column with one value on every tip was left out** — a
   single-copy core gene (1 in every genome) had no column. Colour-by still
   has nothing to show in such a field; the matrix now keeps it.

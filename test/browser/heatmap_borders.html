@@ -1,0 +1,108 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: heat-map cells, bordered in their own hue where they are big enough</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-09-30: faint lines came and went between heat-map cells with
+// the zoom (seams of background between rects at a fractional scale), and the
+// cells of a run merged into one bar. Now: where a cell is at least 5 px on
+// screen and the matrix is not huge, every cell is its own rect with a thin
+// border in its own hue, darker (0.75 px at any zoom); elsewhere runs stay
+// merged, each stroked in its own colour so no seam shows; and a zoom that
+// crosses the threshold redraws the heat map when it settles.
+//
+//   (no query)   40 tips x 6 columns, rectangular: bordered, one rect per cell
+//   ?many=1      5000 tips x 13 columns (65,000 cells), expanded until the rows
+//                are label-high: cells big enough for borders, too many for
+//                a node each -- merged, sealed
+//   ?radial=1    circular, 520 tips: bordered at zoom 1 (cells 5-7 px), merged again once fitted (0.68)
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const many = q.get('many') === '1';
+    const radial = q.get('radial') === '1';
+    const TIPS = +(q.get('tips') || (many ? 5000 : (radial ? 520 : 40)));
+    const COLS = many ? 13 : (radial ? 4 : 6);
+    // a caterpillar-free balanced tree, values 0-4 varying by tip and column,
+    // one blank cell (tip 3, column 2) so the missing-value outline is exercised
+    let k = 0;
+    const tip = () => { const i = k++;
+        let props = '';
+        for (let c = 0; c < COLS; ++c) {
+            if (i === 3 && c === 2) { continue; }
+            props += '<property ref="g:c' + c + '" datatype="xsd:integer" applies_to="node">' + ((i * 7 + c * 3) % 5) + '</property>';
+        }
+        return '<clade><name>t' + i + '</name><branch_length>0.1</branch_length>' + props + '</clade>'; };
+    const clade = (n) => n === 1 ? tip() : '<clade><branch_length>0.05</branch_length>' + clade(Math.floor(n / 2))
+        + clade(n - Math.floor(n / 2)) + '</clade>';
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+        + clade(TIPS) + '</phylogeny></phyloxml>';
+    const cells = () => [...document.querySelectorAll('#p g.aptx-heatmap > rect, #p g.aptx-heatmap > path')]
+        .filter((e) => e.getAttribute('vector-effect') === 'non-scaling-stroke');
+    const bordered = (els) => els.length > 0 && els.every((e) => e.getAttribute('stroke-width') === '0.75'
+        && e.getAttribute('stroke') === d3.color(e.getAttribute('fill')).darker(0.8).formatHex());
+    const sealed = (els) => els.length > 0 && els.every((e) => e.getAttribute('stroke-width') === '0.6'
+        && e.getAttribute('stroke') === e.getAttribute('fill'));
+    try {
+        const trees = archaeopteryx.parseTrees('cells.xml', xml);
+        const viewer = archaeopteryx.launch('#p', trees, radial ? {showHeatmap: true, layout: 'circular'} : {showHeatmap: true});
+        await viewer.ready;
+        await sleep(2400);
+        const drawn = cells();
+        const valueCells = TIPS * COLS - 1;
+        if (radial) {
+            // merged sectors are bled over their seams rather than sealed, so
+            // here every coloured sector counts, bordered or not
+            const sectors = [...document.querySelectorAll('#p g.aptx-heatmap > path')]
+                .filter((e) => e.getAttribute('stroke-opacity') !== '0.45' && e.getAttribute('fill-opacity') === null);
+            check('circular, at the fit: cells too small, runs merged, none bordered',
+                drawn.length === 0 && sectors.length > 0 && sectors.length < valueCells,
+                sectors.length + ' sectors for ' + valueCells + ' cells, ' + drawn.length + ' bordered');
+            // Checked at the FIT because that is where the zoom itself
+            // changes: zoomToFit draws the heat map at zoom 1, where these
+            // cells are big enough for borders, and then scales the circle
+            // down to the window. Only the zoom-follow redraw turns them back
+            // into merged runs there: without it this reads 2079 of 2079 bordered.
+            // The window is narrow -- 480 to 560 tips measured -- so the tip
+            // count is pinned.
+            // (The wheel and the zoom buttons resize the LAYOUT, which draws
+            // everything again anyway; a touch pinch takes the same path as
+            // the fit, but headless Chrome offers d3 no touch to listen to.)
+            const svg = document.querySelector('#p g.aptx-heatmap').ownerSVGElement;
+            const k = d3.zoomTransform(svg).k;
+            check('... at a zoom below 1, where the fit left it', k < 1, k.toFixed(3));
+        } else if (many) {
+            byId('zoomtoexpandy').click();
+            await sleep(3500);
+            const first = document.querySelector('#p g.aptx-heatmap > rect');
+            const hPx = first ? first.getBoundingClientRect().height : 0;
+            check('the rows are expanded past the border threshold', hPx >= 5, hPx.toFixed(1) + ' px');
+            const now = cells();
+            check('65,000 cells: runs merged, not one rect per cell', now.length < valueCells,
+                now.length + ' rects for ' + valueCells + ' cells');
+            check('... each run stroked in its own colour, over the seams', sealed(now));
+        } else {
+            check('one rect per cell, none merged into a run', drawn.length === valueCells,
+                drawn.length + ' of ' + valueCells);
+            check('each bordered in its own hue, darker, 0.75 px at any zoom', bordered(drawn),
+                drawn.slice(0, 2).map((e) => e.getAttribute('fill') + '/' + e.getAttribute('stroke')).join(' '));
+            const blanks = [...document.querySelectorAll('#p g.aptx-heatmap > rect')]
+                .filter((e) => !e.getAttribute('vector-effect') && e.getAttribute('stroke-opacity') === '0.45');
+            check('the missing cell keeps its grey outline', blanks.length === 1, blanks.length);
+        }
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

@@ -669,6 +669,13 @@ the order the file lists them in, which keeps a producer's grouping (core genes,
 then resistance, then prophages) intact even where some tips are missing a
 field — see **Order columns** below for the alternatives.
 
+Where a cell is at least 5 px on screen, each cell is drawn on its own with a
+**thin border in its own hue, darker** — a block of equal values still reads
+as a block, and each cell can be counted. The border stays 0.75 px at any
+zoom. Smaller cells, or a matrix of more than 60,000 cells, are drawn as merged
+runs of equal colour instead, and zooming across that threshold switches
+between the two.
+
 A cell **nobody filled in** is drawn as an outlined empty box, never as the
 scale's low end: on a presence/absence matrix, reading a missing field as zero
 states the opposite of what the file says. The key beside the scale names it.

@@ -630,11 +630,22 @@ function (root, d3, forester, phyloXml) {
     // within 1.2px of a ring boundary came out background-coloured.
     const HEATMAP_RING_BLEED = 1.2;
     const HEATMAP_BLANK = 'blank';        // the run-merger's stand-in for a cell nobody filled in
+    // Cell borders (Christian, 2026-09-30): each cell outlined in its own hue,
+    // darker, so a block of equal values still reads as a block while each
+    // cell can be counted. Only where a cell is big enough on SCREEN to carry
+    // one, and not on a matrix so large that a node per cell would drag.
+    const HEATMAP_BORDER_MIN_PX = 5;      // the cell's smaller side on screen
+    const HEATMAP_BORDER_MAX_CELLS = 60000;
+    const HEATMAP_BORDER_W = 0.75;        // screen px at any zoom (non-scaling stroke)
+    const HEATMAP_BORDER_DARKEN = 0.8;    // d3's darker(k): each step x0.7
+    const HEATMAP_SEAL_W = 0.6;           // a merged run's stroke in its own colour, over the seams
     const HEATMAP_DENDRO_GAP = 5;         // px between the dendrogram's leaves and the first row
     const HEATMAP_DENDRO_MIN_BAND = 24;   // the band it is drawn in, from the label font
     const HEATMAP_DENDRO_MAX_BAND = 72;
     let _heatmapReserve = 0;              // horizontal px reserved for the matrix, set with _w
     let _heatmapModel = null;             // forester.heatmapColumns of the WHOLE tree, cached per launch
+    let _heatmapCells = null;             // what was drawn: {cellMin (tree units), count, bordered}
+    let _heatmapBorderTimer = null;
     let _figureMatrix = null;             // the MATRIX refs the file's aptx:figure names, when it draws a matrix
     let _heatmapColor = null;             // the one scale every column is painted on
     let _heatmapColOffset = 0;            // first shown column, while the matrix is windowed
@@ -1332,6 +1343,7 @@ function (root, d3, forester, phyloXml) {
         _svgGroup.attr('transform', event.transform);
         placeFloatingOverlays();
         updateOverviewViewport();
+        heatmapBordersFollowZoom();
     }
 
     // A strip in the floating layer. Drawn in TREE coordinates like everything
@@ -8433,7 +8445,53 @@ function (root, d3, forester, phyloXml) {
         return heatmapTopReserve();
     }
 
+    // Whether cells of this size (tree units) and number are drawn one by one
+    // with borders at zoom scale k, or merged into runs.
+    function heatmapBordered(cellMin, count, k) {
+        return count <= HEATMAP_BORDER_MAX_CELLS && (cellMin * k) >= HEATMAP_BORDER_MIN_PX;
+    }
+
+    function heatmapBorderColor(fill) {
+        let c = d3.color(fill);
+        return c ? c.darker(HEATMAP_BORDER_DARKEN).formatHex() : fill;
+    }
+
+    // A cell (or a merged run) of colour `fill`: bordered, its edge a darker
+    // shade of itself; or sealed, stroked in its own colour so that no seam of
+    // background shows between two runs at a fractional zoom -- the faint lines
+    // that came and went with the zoom level. Both strokes are a constant
+    // screen width, so a zoom neither fattens nor loses them.
+    function paintHeatmapCell(el, fill, bordered) {
+        el.attr('fill', fill)
+            .attr('stroke', bordered ? heatmapBorderColor(fill) : fill)
+            .attr('stroke-width', bordered ? HEATMAP_BORDER_W : HEATMAP_SEAL_W)
+            .attr('vector-effect', 'non-scaling-stroke');
+        return el;
+    }
+
+    // Called on every zoom event: when the zoom has carried the cells across
+    // the border threshold, the heat map alone is drawn again once the zoom
+    // settles.
+    function heatmapBordersFollowZoom() {
+        if (!_heatmapCells || !_baseSvg) {
+            return;
+        }
+        let want = heatmapBordered(_heatmapCells.cellMin, _heatmapCells.count, currentZoomScale());
+        if (want === _heatmapCells.bordered) {
+            return;
+        }
+        if (_heatmapBorderTimer) {
+            clearTimeout(_heatmapBorderTimer);
+        }
+        _heatmapBorderTimer = setTimeout(function () {
+            _heatmapBorderTimer = null;
+            drawHeatmapTrack();
+            placeFloatingOverlays();
+        }, 120);
+    }
+
     function drawHeatmapTrack() {
+        _heatmapCells = null;
         if (!_svgGroup) {
             return;
         }
@@ -8516,6 +8574,9 @@ function (root, d3, forester, phyloXml) {
         // a run of CELLS, or its top and bottom edges read as a drawn rule
         // across the matrix rather than as missing data.
         let mergeBlanks = cw < HEATMAP_LABEL_MIN_COL_W;
+        let cellMin = Math.min(cw, n > 1 ? 2 * pad : cw);
+        let bordered = heatmapBordered(cellMin, n * visible, currentZoomScale());
+        _heatmapCells = {cellMin: cellMin, count: n * visible, bordered: bordered};
         for (let r = 0; r < n; ++r) {
             let d = tips[r];
             let cy = Math.round(bounds[r]);
@@ -8537,7 +8598,7 @@ function (root, d3, forester, phyloXml) {
                     rect.attr('fill', _state.backgroundColorDefault)
                         .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
                 } else {
-                    rect.attr('fill', runFill);
+                    paintHeatmapCell(rect, runFill, bordered);
                 }
                 runStart = -1;
                 runFill = null;
@@ -8548,7 +8609,8 @@ function (root, d3, forester, phyloXml) {
                 if (fill === HEATMAP_BLANK) {
                     blanks++;
                 }
-                if (runFill === fill && (mergeBlanks || fill !== HEATMAP_BLANK)) {
+                // bordered, every cell is its own: a run would hide the cells in it
+                if (!bordered && runFill === fill && (mergeBlanks || fill !== HEATMAP_BLANK)) {
                     continue;   // the run extends
                 }
                 flush(i);
@@ -8858,6 +8920,10 @@ function (root, d3, forester, phyloXml) {
         edge[n] = ang[n - 1] + pad;
 
         let blanks = 0;
+        // a cell's smaller side: its ring width, or its arc at the ring's inside
+        let cellMin = Math.min(ringW, n > 1 ? 2 * pad * start : ringW);
+        let bordered = heatmapBordered(cellMin, n * columns.length, currentZoomScale());
+        _heatmapCells = {cellMin: cellMin, count: n * columns.length, bordered: bordered};
         for (let c = 0; c < columns.length; ++c) {
             let r0 = start + (c * ringW);
             let r1 = r0 + ringW;
@@ -8876,15 +8942,19 @@ function (root, d3, forester, phyloXml) {
                 // A BLANK is not bled -- it is background-coloured, so a seam
                 // beside it shows nothing, and bleeding it would push its
                 // outward OUTLINE under the next ring and cost it an edge.
-                let bleed = (runFill === HEATMAP_BLANK) ? 0 : HEATMAP_RING_BLEED;
+                // (bordered, the border covers the seam and a bleed would push
+                // one cell's edge under its neighbour)
+                let bleed = (runFill === HEATMAP_BLANK || bordered) ? 0 : HEATMAP_RING_BLEED;
                 let a1 = edge[endI] + (bleed / Math.max(1, r1));
                 let path = g.append('path')
                     .attr('d', heatmapSector(edge[runStart], a1, r0, r1 + bleed));
                 if (runFill === HEATMAP_BLANK) {
                     path.attr('fill', _state.backgroundColorDefault)
                         .attr('stroke', ink).attr('stroke-opacity', 0.45).attr('stroke-width', 1);
+                } else if (bordered) {
+                    paintHeatmapCell(path, runFill, true);
                 } else {
-                    path.attr('fill', runFill);
+                    path.attr('fill', runFill);   // the bleed already closes the seams here
                 }
                 runStart = -1;
                 runFill = null;
@@ -8895,7 +8965,7 @@ function (root, d3, forester, phyloXml) {
                 if (fill === HEATMAP_BLANK) {
                     blanks++;
                 }
-                if (runFill === fill && (ringW < HEATMAP_LABEL_MIN_COL_W || fill !== HEATMAP_BLANK)) {
+                if (!bordered && runFill === fill && (ringW < HEATMAP_LABEL_MIN_COL_W || fill !== HEATMAP_BLANK)) {
                     continue;
                 }
                 flush(i);
