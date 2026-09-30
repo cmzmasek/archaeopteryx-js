@@ -722,66 +722,55 @@ Ages (`unit="mya"` and friends, or values that look like ages) get the
 **geologic axis**: two rows of ICS intervals in their official colours —
 Period over Epoch for most trees, coarser pairs for Precambrian-deep ones —
 plus a "Ma before present" ruler. Years (`unit="year"`, or values that look
-like calendar years) get a labelled **calendar axis** instead. The tree's
-layout itself never changes: time is an overlay calibrated by the dates, so
-it also works for a fossil-only tree, where the axis simply stops at the
-youngest tip and labels that age (the ammonite demo ends at the K-Pg, 66).
+like calendar years) get a labelled **calendar axis**. The layout itself
+never changes: time is an overlay calibrated by the dates, so it also works
+for a fossil-only tree, where the axis stops at the youngest tip and labels
+that age (the ammonite demo ends at the K-Pg, 66).
 
 Nodes with a date **range** (`minimum`/`maximum` — minimum is the younger
 bound) draw uncertainty bars: translucent blue **HPD age bars** on internal
-nodes, and on tips whatever the axis says the range means. On **geologic**
-time it is a fossil's observed range: sepia **fossil-range (FAD/LAD) bars with
-end caps**. On **calendar** time it is the uncertainty of a **sampling date**
-— a virus sample dated only to its month or year — drawn like an age bar,
-slimmer, and only when it has a width: a tip dated to the day draws nothing.
-Node
-tooltips show the date. The **Time Axis** checkbox under Display Data toggles
-everything; the axis needs a phylogram (branch lengths carry the time) and
-the rectangular or circular layout. In **circular** the bars run along each
-node's spoke — and on through the centre, onto the far side, where a range
-reaches back past the root's own age, as the desktop draws it — the ruler
-runs out from the root along the gap between the last tip and the first
-(turning with the tree), and a geologic axis lays its intervals down as
-coloured rings. **Time Grid** (off by default, like the
-desktop's "Time axis grid lines") adds faint lines behind the tree at the
-fine geologic-interval boundaries or the calendar year ticks (rings, in
-circular), so a node's position can be read against the axis.
+nodes, and on tips whatever the axis says the range means — on geologic
+time a fossil's observed range, sepia **FAD/LAD bars with end caps**; on
+calendar time the uncertainty of a **sampling date**, drawn like an age bar,
+slimmer, and only when it has a width. Node tooltips show the date. The
+**Time Axis** checkbox under Display Data toggles everything; the axis needs
+a phylogram and the rectangular or circular layout. In **circular** the bars
+run along each node's spoke — on through the centre where a range reaches
+back past the root's own age — the ruler runs out from the root along the
+gap between the last tip and the first, turning with the tree, and a
+geologic axis lays its intervals down as coloured rings. **Time Grid** (off
+by default) adds faint lines, or rings, at the fine interval boundaries or
+the calendar years.
+
+### Time | Div
 
 Where a tree can be laid out by **time** and by **divergence**, a
-**Time | Div** switch appears beside the phylogram buttons (⌘⇧X). The tree
-must state a divergence: recorded on its nodes (an Auspice build's `div`), or
-a clock `rate` on every branch (a BEAST clock-model tree, whose branch lengths
-are time and whose divergence is each length times its rate, in substitutions
-per site — whether its node ages were placed in calendar time or are still
-heights). A tree with neither has no second layout. A rate, and a recorded
-divergence, is a plain decimal number: `0.01abc` is not one; a negative
-divergence is a value, drawn at 0.
+**Time | Div** switch appears beside the phylogram buttons (⌘⇧X). Two kinds
+of tree state a divergence: an Auspice build, on its nodes (`div`), and a
+BEAST clock-model tree, as a clock `rate` on every branch — its branch
+lengths are time, and its divergence is each length times its rate, in
+substitutions per site. A tree with neither has no second layout. A rate or
+a recorded divergence is a plain decimal number (`0.01abc` is not one); a
+negative divergence is a value, drawn at 0.
 
-Both layouts must be able to state **every** branch: every node dated, every
-branch stating a length, and every node recording its divergence or every
-branch stating a rate. A value the file states is stated, whether zero or
-negative; where one is missing the switch is not offered, rather than a
-branch drawn at length 0 that the file never described. And each picture must
-have some depth: a tree whose divergence is 0 on every branch, or whose tips
-all carry the root's date, is not offered a switch to a point. Whether the
-two pictures differ is not asked — a strict clock's divergence is its time at
-another scale, and it is offered the switch like any other.
+The switch is offered only when both layouts can state **every** branch —
+every node dated, every branch with a length, and divergence on every node
+or a rate on every branch — and each picture has some depth. A value the
+file states counts, whether zero or negative; where one is missing the
+switch is withheld rather than a branch drawn at a length the file never
+gave. Whether the two pictures differ is not asked: a strict clock's
+divergence is its time at another scale, and it is offered like any other.
 
-Back in Time the tree has exactly the branch lengths it arrived with, so
-switching to Div and back changes no branch length (the tree's stated unit
-follows the layout, below). A span that runs **backwards** — a
-child dated before its parent, which real Nextstrain builds state — keeps its
-sign; it is drawn at length 0, as any negative branch length is. In Div a
-node recording less divergence than its parent draws at 0. The time axis is
-hidden while the branches show divergence. The switch acts on the whole
-tree, also from a subtree view.
-
-What the branch lengths measure is stated on the tree, as phyloXML's
-`branch_length_unit`, and each layout stamps its own: `subs/site` for
-divergence; for time the unit of the tree's own dates (`year`), or `time`
-where they state none. A tree saved while Div is on screen therefore says
-so, and opens again showing divergence, able to get back to its time. These
-rules are shared with the desktop.
+Back in Time the tree has exactly the lengths it arrived with. A span that
+runs backwards — a child dated before its parent, which real Nextstrain
+builds state — keeps its sign, and is drawn at length 0 like any negative
+branch length. The switch acts on the whole tree, also from a subtree view,
+and a node deleted meanwhile leaves the branch that takes its place spanning
+what both spanned, in either layout. The time axis is hidden while the
+branches show divergence. Each layout stamps the tree's `branch_length_unit`
+(`subs/site`; for time the dates' unit, or `time`), so a tree saved while
+Div is on screen says so and opens again showing divergence. All of this is
+shared with the desktop.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -2279,11 +2268,15 @@ loops). Calibration: the **largest** date value is the root age (geologic)
 or the present (calendar) — no unit conversion is done, so a Ga-valued tree
 is misbanded exactly as on the desktop.
 
-Rendering (phylogram + rectangular only; the layout never changes): age→x is
-`anchorX + (anchorAge − age) × corr` with `corr` the branch-length scale's
-slope, anchored at the **deepest dated tip** rather than the root — the root
-and its direct children carry a synthetic half-average branch length, which
-would shift every band. The geologic axis draws
+Rendering (phylogram, rectangular or circular; the layout never changes):
+age→x is `anchorX + (anchorAge − age) × corr` with `corr` the branch-length
+scale's slope, anchored at the **deepest dated tip** rather than the root,
+so the root's own branch, drawn to scale where the file states one, shifts
+no band. In circular the same arithmetic runs along each spoke: a bar is a
+segment of its node's spoke (a bound past the root's estimate a negative
+radius, continued through the centre), the ruler a ray along the gap between
+the last tip and the first, the grid and the geologic intervals rings. The
+geologic axis draws
 `forester.geoBandRanks(rootAge)` — the finest of Period/Epoch, Era/Period,
 Eon/Era that still covers the range — as two 13 px rows of ICS intervals
 (official colours; ink by the same luminance rule), clipped to
