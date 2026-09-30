@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.1.6
+// v 1.1.7
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -302,6 +302,9 @@
     var POINTS = 'points';
     // the style properties whose value the desktop writes as a colour
     var STYLE_COLOR_REFS = {'style:font_color': true, 'style:node_color': true};
+    // the node styles the desktop reads, in the order it writes them
+    var NODE_STYLE_ORDER = ['style:font', 'style:font_size', 'style:font_style', 'style:font_color',
+        'style:node_shape', 'style:node_size', 'style:node_color', 'style:node_fill_type'];
 
     // --------------------------------------------------------------
     // Instance variables
@@ -1344,7 +1347,7 @@
 
             addReferences(node[REFERENCES]);
 
-            addProperties(node[PROPERTIES]);
+            addProperties(inDesktopStyleOrder(node[PROPERTIES]));
 
             if (node.children) {
                 l = node.children.length;
@@ -1526,6 +1529,37 @@
             });
         }
 
+        // A clade's properties in the order the desktop writes them. It does not
+        // keep a node's style (a style: property that applies to the node) as a
+        // property: it reads it into the node's style and writes it back AFTER
+        // every other property, in one fixed order -- font, font size, font
+        // style, font colour, node shape, node size, node colour, fill. Every
+        // other property, a style: one about the clade included, keeps the
+        // file's order. (The desktop drops a node style it does not know, such
+        // as style:node_transparency; it is kept here, in the file's order.)
+        function inDesktopStyleOrder(props) {
+            if (!props || props.length < 2) {
+                return props;
+            }
+            var rest = [];
+            var styled = [];
+            props.forEach(function (p) {
+                var rank = p ? NODE_STYLE_ORDER.indexOf(p[PROPERTY_REF_ATTR]) : -1;
+                if (rank >= 0 && p[PROPERTY_APPLIES_TO_ATTR] === 'node') {
+                    styled.push({p: p, rank: rank});
+                }
+                else {
+                    rest.push(p);
+                }
+            });
+            styled.sort(function (a, b) {
+                return a.rank - b.rank;
+            });
+            return rest.concat(styled.map(function (e) {
+                return e.p;
+            }));
+        }
+
         function addProperties(props) {
             if (!props || props.length < 1) {
                 return;
@@ -1541,7 +1575,10 @@
                 if (!prop[PROPERTY_REF_ATTR]) {
                     throw new PhyloXmlError("property ref is missing");
                 }
-                var value = STYLE_COLOR_REFS[prop[PROPERTY_REF_ATTR]] ? styleColor(prop.value) : prop.value;
+                // only a NODE's style is the desktop's to rewrite; one about the
+                // clade is an ordinary property there, written as it stands
+                var value = (STYLE_COLOR_REFS[prop[PROPERTY_REF_ATTR]] && prop[PROPERTY_APPLIES_TO_ATTR] === 'node')
+                    ? styleColor(prop.value) : prop.value;
                 addSingleElement(PROPERTY, value, prop, [PROPERTY_REF_ATTR,
                     PROPERTY_UNIT_ATTR, PROPERTY_DATATYPE_ATTR, PROPERTY_APPLIES_TO_ATTR,
                     PROPERTY_ID_REF_ATTR]);

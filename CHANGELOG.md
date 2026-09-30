@@ -29,9 +29,10 @@ users see a change only when a version is cut.
   every element it reads, as the desktop writes it.
 - **Saved phyloXML is laid out as the desktop lays it out** (phyloxml 1.1.4):
   two spaces per level from `<phylogeny>` at the margin, and no newline after
-  `</phyloxml>`. With 1.1.6, which writes a node's style colour as the desktop
-  does (lower-case `#rrggbb`), all 22 demo files save byte for byte as the
-  desktop's 0.11.173 saves them, numbers aside.
+  `</phyloxml>`. With 1.1.7, which writes a node's style as the desktop does
+  (its colours lower-case `#rrggbb`, its properties after the clade's others in
+  the desktop's order), all 22 demo files save byte for byte as the desktop's
+  0.11.173 saves them, numbers aside.
 
 ## 3.19.0 — 2026-09-30
 
