@@ -7,6 +7,12 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.19.0 — 2026-09-30
+
+The desktop Archaeopteryx's Scale Axis and Scale Grid, on every phylogram,
+as one switch pair with the time axis; and a shared view that remembers
+whether the tree was shown in Time or Div.
+
 ### Added
 - **Scale Axis and Scale Grid, on every phylogram** — the desktop's Scale
   Axis and Scale Grid Lines. The time axis's two checkboxes are now one pair
@@ -15,8 +21,8 @@ users see a change only when a version is cut.
   labelled distance ruler from 0 at the root to the deepest tip, in the tree's
   units, with its unit at the end, and grid lines at its ticks. Rectangular
   and circular (the ruler in the gap, the grid as rings); none in unrooted or
-  a cladogram. Off by default on a tree that is not in time. The scale bar
-  gives way while the axis is on.
+  a cladogram. Off by default unless the tree opens shown in time. The scale
+  bar gives way while the axis is on.
 - **A shared view carries the Time | Div choice** (`scale=time` or
   `scale=divergence` in the hash, and in `getViewState` / `applyViewState`),
   on a tree that has both layouts. A link to a tree shown in Div opened in

@@ -20,7 +20,7 @@
  *
  */
 
-// v 3.18.0
+// v 3.19.0
 // 2026-09-17
 //
 // Archaeopteryx.js is a software tool for the visualization and
@@ -103,7 +103,7 @@ function (root, d3, forester, phyloXml) {
     // IIFE's own function name -- a plain object says what it is.)
     let archaeopteryx = {};
 
-    const VERSION = '3.18.0';
+    const VERSION = '3.19.0';
     const WEBSITE = 'https://cmzmasek.github.io/archaeopteryx-js/';
     const DESKTOP_WEBSITE = 'https://cmzmasek.github.io/archaeopteryx/';
     const SOURCE_WEBSITE = 'https://github.com/cmzmasek/archaeopteryx-js';
@@ -5442,7 +5442,7 @@ function (root, d3, forester, phyloXml) {
             },
             note: 'use \'confidence\' for what this flag did (\'auto\' is the new default, and does not promote mixed trees)'
         },
-        // Renamed after 3.18.0, when the axis stopped being time-only: a tree
+        // Renamed in 3.19.0, when the axis stopped being time-only: a tree
         // whose branches measure divergence gets a distance axis from the
         // same switch. The meaning on a time tree is unchanged.
         showTimeAxis: {

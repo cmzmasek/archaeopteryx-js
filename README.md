@@ -490,7 +490,7 @@ too.
 | ⌘⇧E | Ctrl+Shift+E | Expand vertically until the labels fit |
 | ⌘⇧L | Ctrl+Shift+L | Next layout: rectangular, circular, unrooted |
 | ⌘⇧D | Ctrl+Shift+D | Next display type: phylogram, aligned, cladogram |
-| ⌘⇧X | Ctrl+Shift+X | Time axis on / off |
+| ⌘⇧X | Ctrl+Shift+X | Time \| Div, where the tree offers it; the Scale Axis on / off otherwise |
 | ⌘⇧O | Ctrl+Shift+O | Ladderize |
 | ⌘⇧U | Ctrl+Shift+U | Uncollapse every clade |
 | ⌘F | Ctrl+F | Go to the search box |
@@ -779,7 +779,7 @@ builds state — keeps its sign, and is drawn at length 0 like any negative
 branch length. The switch acts on the whole tree, also from a subtree view,
 and a node deleted meanwhile leaves the branch that takes its place spanning
 what both spanned, in either layout. The time axis is hidden while the
-branches show divergence. Each layout stamps the tree's `branch_length_unit`
+branches show divergence, and the Scale Axis measures distance instead. Each layout stamps the tree's `branch_length_unit`
 (`subs/site`; for time the dates' unit, or `time`), so a tree saved while
 Div is on screen says so and opens again showing divergence. All of this is
 shared with the desktop.
@@ -1176,7 +1176,8 @@ developer spec below). The checkboxes are still there to override it.
 
 The same data-driven rule applies to the two big overlays: a tree whose tips
 carry an aligned `mol_seq` opens with its **sequence alignment** showing, and
-a tree with phyloXML `<date>` elements opens with its **time axis** drawn —
+a tree with phyloXML `<date>` elements that opens shown in time has its
+**time axis** drawn —
 each with a checkbox under Display Data to turn it off.
 
 Support and branch-length values draw **2 px smaller than the label font**
@@ -1360,7 +1361,7 @@ copy-pastable JSON.
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
 | `domainEvalueExponent` | `-3` | The E-value threshold's exponent at launch, an integer from `-20` to `3`: domains with an E-value at or under `10^exponent` are drawn. |
-| `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements, off otherwise — an explicit `true`/`false` overrides that. |
+| `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
