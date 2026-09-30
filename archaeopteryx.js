@@ -11931,9 +11931,6 @@ function (root, d3, forester, phyloXml) {
             ax.append('rect').attr('x', left - 2).attr('y', axisTop - 4)
                 .attr('width', Math.abs(x1 - x0) + 4).attr('height', scaleAxisBottomReserve() + 4)
                 .attr('fill', _state.backgroundColorDefault);
-            ax.append('line').attr('x1', left - 2).attr('x2', left - 2 + Math.abs(x1 - x0) + 4)
-                .attr('y1', axisTop - 4).attr('y2', axisTop - 4)
-                .attr('stroke', ink).attr('stroke-opacity', 0.25).attr('stroke-width', 1);
         }
         if (info.type === 'geologic') {
             let rootAge = info.rootAge;
@@ -12302,9 +12299,6 @@ function (root, d3, forester, phyloXml) {
         ax.append('rect').attr('x', x0 - 2).attr('y', axisTop - 4)
             .attr('width', (x1 - x0) + 4).attr('height', reserve + 4)
             .attr('fill', _state.backgroundColorDefault);
-        ax.append('line').attr('x1', x0 - 2).attr('x2', x1 + 2)
-            .attr('y1', axisTop - 4).attr('y2', axisTop - 4)
-            .attr('stroke', ink).attr('stroke-opacity', 0.25).attr('stroke-width', 1);
         let rulerY = axisTop + 4;
         ax.append('line').attr('x1', x0).attr('x2', x1)
             .attr('y1', rulerY).attr('y2', rulerY)
