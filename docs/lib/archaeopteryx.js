@@ -5861,7 +5861,16 @@ function (root, d3, forester, phyloXml) {
         // numeric per-tip fields, which is common enough that turning it on
         // by itself would be an opinion about the tree rather than a service
         // -- the alignment track, by contrast, is on when there IS one.
-        // A file whose figure draws a matrix opens showing it, in its order.
+        // The desktop's figure setting: its MATRIX columns open as the heat
+        // map, only those, in the file's order. Only the phylogeny's own
+        // aptx:figure counts; a copy on a clade (the old place) is dropped,
+        // so a tree saved from here carries none. Here and not in launchInto:
+        // telling whether the columns exist is a scan of every tip, which on
+        // a big tree belongs behind the working card, not in front of it.
+        if (_treeData) {
+            forester.dropCladeFigures(_treeData);
+        }
+        _figureMatrix = _treeData ? figureMatrixOf(_treeData) : null;
         if (_state.showHeatmap === undefined) {
             _state.showHeatmap = _figureMatrix !== null;
         }
@@ -6520,12 +6529,7 @@ function (root, d3, forester, phyloXml) {
         _treeData = phylo;
         _trees = trees;
         _treeIndex = index;
-        // The desktop's figure setting: its MATRIX columns open as the heat
-        // map, only those, in the file's order. Only the phylogeny's own
-        // aptx:figure counts; a copy on a clade (the old place) is dropped,
-        // so a tree saved from here carries none.
-        forester.dropCladeFigures(phylo);
-        _figureMatrix = figureMatrixOf(phylo);
+        _figureMatrix = null;   // read by initializeState, behind the working card
         _launchConfig = config;
         _container = containerEl;
         assignViewIds(phylo);
@@ -8208,12 +8212,18 @@ function (root, d3, forester, phyloXml) {
     // The file's MATRIX columns, when at least a heat map's worth of them are
     // numeric fields this tree has; otherwise null, and the heat map offers
     // every numeric field as it would without a figure.
+    // The model it builds is kept as the heat map's own, so the scan runs once.
     function figureMatrixOf(tree) {
         let refs = forester.figureMatrixRefs(tree);
         if (refs.length < HEATMAP_MIN_COLUMNS) {
             return null;
         }
-        return forester.heatmapColumns(tree, refs).refs.length >= HEATMAP_MIN_COLUMNS ? refs : null;
+        let model = forester.heatmapColumns(tree, refs);
+        if (model.refs.length < HEATMAP_MIN_COLUMNS) {
+            return null;
+        }
+        _heatmapModel = model;
+        return refs;
     }
 
     // Offered when the tree holds at least two numeric per-tip refs that
