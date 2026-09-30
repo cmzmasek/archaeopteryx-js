@@ -107,7 +107,7 @@
             const want = '  ' + prop('aptx:figure', FIGURE, 'phylogeny', 'xsd:string');
             const at = lines.indexOf(want);
             check('saved: the figure once, unchanged, a direct child of <phylogeny>, after the clades',
-                figLines.length === 1 && at > 0 && lines[at - 1] === '  </clade>' && lines[at + 1] === ' </phylogeny>',
+                figLines.length === 1 && at > 0 && lines[at - 1] === '  </clade>' && lines[at + 1] === '</phylogeny>',
                 figLines.length + ' figure lines; at ' + at + ': ' + (at > 0 ? lines[at - 1] + ' / ' + lines[at + 1] : '-'));
         }
         check('saved: no clade carries a figure', saved !== null

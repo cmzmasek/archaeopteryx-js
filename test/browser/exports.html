@@ -77,6 +77,40 @@ const tipNames = (root) => forester.getAllExternalNodes(root).map((n) => n.name)
 const tipLabelsIn = (svg) => [...svg.querySelectorAll('text.extlabel')]
     .filter((t) => t.textContent.trim() !== '').length;
 
+// What the tips carry comes back from a saved phyloXML file: until phyloxml
+// 1.1.5 a file lost every domain architecture, annotation and URI it had been
+// read with. apaf.xml has 202 domains; the default tree has none, so the
+// check there only says that nothing appears from nowhere.
+const carried = (t) => { const c = {domains: 0, annotations: 0, uris: 0};
+    forester.preOrderTraversalAll(t, (d) => {
+        (d.sequences || []).forEach((sq) => {
+            c.domains += sq.domain_architecture && sq.domain_architecture.domains ? sq.domain_architecture.domains.length : 0;
+            c.annotations += (sq.annotations || []).length;
+            c.uris += (sq.uris || []).length;
+        });
+        (d.taxonomies || []).forEach((tx) => { c.uris += (tx.uris || []).length; });
+    });
+    return c; };
+function checkCarried(tree, px) {
+    const had = carried(tree);
+    const kept = carried(px);
+    check('the phyloXML file keeps every domain, annotation and URI', JSON.stringify(had) === JSON.stringify(kept),
+        JSON.stringify(had) + ' -> ' + JSON.stringify(kept));
+    return had;
+}
+async function keptFile() {
+    const file = '../../docs/data/apaf.xml';
+    const trees = await launch(file, await (await fetch(file)).text());
+    const tree = Array.isArray(trees) ? trees[0] : trees;
+    const f = await download('phyloXML');
+    const px = f ? phyloXml.parse(await f.blob.text(), {trim: true, normalize: true})[0] : null;
+    check('apaf: the phyloXML download is written', !!px);
+    if (px) {
+        const had = checkCarried(tree, px);
+        check('... and the fixture has domains to lose', had.domains > 100, had.domains);
+    }
+}
+
 async function launch(file, text) {
     const trees = archaeopteryx.parseTrees(file, text);
     const viewer = archaeopteryx.launch('#phylogram1', trees);
@@ -99,6 +133,11 @@ async function launch(file, text) {
     }
     if (q.get('subtree') === 'div') {
         await subtreeFromDiv();
+        finish();
+        return;
+    }
+    if (q.get('keeps') === '1') {
+        await keptFile();
         finish();
         return;
     }
@@ -210,6 +249,9 @@ async function launch(file, text) {
     const px = f ? phyloXml.parse(await f.blob.text(), {trim: true, normalize: true})[0] : null;
     check('the phyloXML file reads back with every tip', px && tipNames(px).length === names.length,
         px ? tipNames(px).length + ' of ' + names.length : 'no file');
+    if (px) {
+        checkCarried(tree, px);
+    }
     f = await download('Nexus');
     const nexText = f ? await f.blob.text() : '';
     check('the Nexus file carries the tree', /Begin Trees;/.test(nexText) && f.name === 'fig_1.nexus',

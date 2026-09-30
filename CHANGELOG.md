@@ -23,6 +23,15 @@ users see a change only when a version is cut.
 - **Saving as phyloXML dropped the properties of `<phylogeny>`** (the figure
   setting among them). phyloxml 1.1.3 writes them back after the clades, as
   the desktop does.
+- **Saving as phyloXML dropped protein domain architectures** — and sequence
+  annotations, cross-references and URIs, taxonomy URIs, distributions,
+  references, and the phylogeny's id and confidence. phyloxml 1.1.5 writes
+  every element it reads, as the desktop writes it.
+- **Saved phyloXML is laid out as the desktop lays it out** (phyloxml 1.1.4):
+  two spaces per level from `<phylogeny>` at the margin, and no newline after
+  `</phyloxml>`. With 1.1.5, 21 of the 22 demo files save byte for byte as the
+  desktop saves them (numbers aside); the other differs only in the case of a
+  `style:font_color` value, which the desktop lowercases.
 
 ## 3.19.0 — 2026-09-30
 
