@@ -1,5 +1,5 @@
 <!doctype html>
-<meta charset="utf-8"><title>aptx: node properties in the label, and the figure's label choices</title>
+<meta charset="utf-8"><title>aptx: node metadata in the label, and the figure's label choices</title>
 <style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
 <script src="../../docs/lib/d3.v7.min.js"></script>
 <script src="../../docs/lib/sax.js"></script>
@@ -65,7 +65,31 @@
                 && labelOf('25542.3') === 'Brucella suis', labelOf('25540.3') + ' / ' + labelOf('25542.3'));
             check('the heat map still opens from the same figure', byId('heatmap_cb').checked);
         } else {
-            check('Properties is offered, and off by default', !!cb && !cb.checked);
+            check('Metadata is offered, and off by default', !!cb && !cb.checked);
+            // The word a user sees is "Metadata", never phyloXML's "properties"
+            // (Christian, 2026-10-01): the checkbox, the chooser's button, title
+            // and lead, and nothing else in the panel -- the tree-statistics
+            // button's "Tree properties" (the tree's own characteristics) aside.
+            const label = cb.closest('label');
+            check('the checkbox says Metadata', label && label.textContent.trim() === 'Metadata'
+                && /metadata/i.test(label.title) && !/propert[^)]*$/i.test(label.title.replace(/\(phyloXML properties[^)]*\)/, '')),
+            label && (label.textContent.trim() + ' / ' + label.title));
+            const fieldsBtn = byId('label_fields_b');
+            check('the chooser button says Metadata fields…', fieldsBtn && fieldsBtn.value === 'Metadata fields…'
+                && !/propert/i.test(fieldsBtn.title), fieldsBtn && (fieldsBtn.value + ' / ' + fieldsBtn.title));
+            const stray = [...document.querySelectorAll('.aptx-panel *')].filter((el) => {
+                const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('');
+                const text = own + ' ' + (el.title || '') + ' ' + (el.value || '');
+                return /propert/i.test(text.replace(/\(phyloXML properties[^)]*\)/g, '')) && !/Tree properties/.test(text);
+            }).map((el) => (el.textContent || el.value || '').trim().slice(0, 40) + ' | ' + (el.title || '').slice(0, 60));
+            check('no other panel text says "properties"', stray.length === 0, stray.join(' ;; '));
+            fieldsBtn.click(); await sleep(300);
+            const dlg = document.querySelector('dialog[open]');
+            check('the chooser is titled Metadata fields, and its lead says metadata fields', !!dlg
+                && /Metadata fields/.test(dlg.textContent) && /Tick the metadata fields/.test(dlg.textContent)
+                && !/propert/i.test(dlg.textContent), dlg && dlg.textContent.slice(0, 120));
+            [...dlg.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Cancel').click();
+            await sleep(200);
             check('... the labels are the names', labelOf('25540.3') === '25540.3', labelOf('25540.3'));
             cb.click(); await settle();
             // the heat map is off, so its columns are ordinary fields here

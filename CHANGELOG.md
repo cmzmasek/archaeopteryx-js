@@ -7,6 +7,15 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Changed
+- **"Properties" is now "Metadata"** wherever a user sees it — the Labels
+  checkbox, the **Metadata fields…** chooser, the node-data and
+  tree-statistics headings, the download and Color-by tooltips, the README.
+  "Properties" is phyloXML's word; "metadata" is what the tools these fields
+  come from call them. Config, view and figure keys are unchanged
+  (`showProperties`, `labelProperties`, `properties`, `labelprops`). The
+  desktop Archaeopteryx renames at the same time.
+
 ## 3.20.0 — 2026-09-30
 
 One phyloXML file can now carry a whole figure: the desktop Archaeopteryx's

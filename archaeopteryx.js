@@ -13810,10 +13810,10 @@ function (root, d3, forester, phyloXml) {
         }).map(function (w) {
             return w.ref;
         });
-        let shell = makeDialogShell(LABEL_FIELDS_DIALOG, 'Label fields', 340);
+        let shell = makeDialogShell(LABEL_FIELDS_DIALOG, 'Metadata fields', 340);
         let body = shell.body;
         repsElement(body, 'div', 'aptx-reps-lead',
-            'Tick the properties the labels show, and set their order with the arrows.');
+            'Tick the metadata fields the labels show, and set their order with the arrows.');
         let list = repsElement(body, 'div', 'aptx-reorder');
 
         function move(from, to) {
@@ -14100,7 +14100,7 @@ function (root, d3, forester, phyloXml) {
         }
         let part = subtreeExtentNote();
         items.push({heading: part ? 'Tree: ' + part : 'Tree'});
-        items.push({label: 'phyloXML', detail: 'keeps everything the tree carries: taxonomy, sequences, dates, properties',
+        items.push({label: 'phyloXML', detail: 'keeps everything the tree carries: taxonomy, sequences, dates, metadata',
             action: entry(PHYLOXML_EXPORT_FORMAT)});
         items.push({label: 'Newick', detail: 'names, branch lengths and support values only',
             action: entry(NH_EXPORT_FORMAT)});
@@ -14111,7 +14111,7 @@ function (root, d3, forester, phyloXml) {
         // Fasta entries) -- on any other tree the download would be empty
         items.push({heading: part ? 'Tip data: ' + part : 'Tip data'});
         items.push({label: 'TSV', detail: 'a table, one row per tip: names, taxonomy, sequence names, '
-            + 'branch lengths and every property', action: entry(TSV_EXPORT_FORMAT)});
+            + 'branch lengths and every metadata field', action: entry(TSV_EXPORT_FORMAT)});
         if (_basicTreeProperties && _basicTreeProperties.maxMolSeqLength > 0) {
             items.push({label: 'FASTA', detail: 'every molecular sequence the tips carry',
                 action: entry(FASTA_EXPORT_FORMAT)});
@@ -15874,7 +15874,7 @@ function (root, d3, forester, phyloXml) {
                 }
             }
             if (rows) {
-                text += 'Properties<br>' + rows;
+                text += 'Metadata<br>' + rows;
             }
         }
         return text;
@@ -16290,7 +16290,7 @@ function (root, d3, forester, phyloXml) {
             carries('Events', true, parts.join(', '));
         }
         st.propertyRefs.forEach(function (r) {
-            carries('Property ' + r.ref, true, statOf(r.nodes, st.nodes, 'nodes'));
+            carries('Metadata ' + r.ref, true, statOf(r.nodes, st.nodes, 'nodes'));
         });
         if (carried === 0) {
             treePropRow(box, 'Annotations', 'none, names and topology only');
@@ -17152,8 +17152,10 @@ function (root, d3, forester, phyloXml) {
                 labels.push(makeCheckboxItem('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
             }
             if (labelFields().length > 0) {
-                labels.push(makeCheckboxItem('Properties', PROPERTIES_CB, 'to show/hide the nodes\' property values'
-                    + ' (Label fields… chooses which, and in what order)'));
+                // "Metadata", not phyloXML's "properties" (Christian, 2026-10-01):
+                // the word the users' own tools use for these fields
+                labels.push(makeCheckboxItem('Metadata', PROPERTIES_CB, 'to show/hide the nodes\' metadata (phyloXML'
+                    + ' properties: species, host, …) in their labels; Metadata fields… chooses which, and in what order'));
             }
             if (_nodeLabels) {
                 for (const [key, value] of Object.entries(_nodeLabels)) {
@@ -17238,9 +17240,9 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeCheckboxGroup('Labels', labels));
             if (labelFields().length > 0) {
                 h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel"></span>'
-                    + '<input type="button" class="aptx-widebtn" value="Label fields…" name="' + LABEL_FIELDS_BUTTON
-                    + '" id="' + LABEL_FIELDS_BUTTON + '" title="choose which properties the labels show, and in what'
-                    + ' order"></div>');
+                    + '<input type="button" class="aptx-widebtn" value="Metadata fields…" name="' + LABEL_FIELDS_BUTTON
+                    + '" id="' + LABEL_FIELDS_BUTTON + '" title="choose which metadata fields the labels show, and in'
+                    + ' what order"></div>');
             }
             h = h.concat(makeCheckboxGroup('Nodes', nodes));
             h = h.concat(makeCheckboxGroup('Options', opts));
@@ -17500,12 +17502,12 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('<fieldset>');
             h = h.concat('<legend>Visualizations</legend>');
             if (hasColorVisualizations()) {
-                h = h.concat(makeSelectMenu('Color by:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself according to a property'));
+                h = h.concat(makeSelectMenu('Color by:', '<br>', LABEL_COLOR_SELECT_MENU, 'colorize the node label and the node itself by a field the tree carries'));
                 h = h.concat('<br>');
                 h = h.concat('<br>');
             }
             if (hasShapeVisualizations()) {
-                h = h.concat(makeSelectMenu('Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape according to a property'));
+                h = h.concat(makeSelectMenu('Shape:', '<br>', NODE_SHAPE_SELECT_MENU, 'change the node shape by a field the tree carries'));
                 h = h.concat('<br>');
             }
             h = h.concat('</fieldset>');

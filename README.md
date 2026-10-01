@@ -166,7 +166,7 @@ using `viewer.destroy()` to switch trees in place.
 ## Using the visualizations
 
 A tree opens **already coloured** by its most informative field — the viewer
-inspects what the tree carries (taxonomy, sequence fields, custom properties)
+inspects what the tree carries (taxonomy, sequence fields, metadata)
 and decides by itself what is worth showing. There is nothing to configure.
 
 * The **Color** and **Shape** menus (top of the control panel) list every
@@ -1072,7 +1072,7 @@ a popup any more, and nothing fails silently.
 | **Newick** / New Hampshire (`.nwk`, `.nh`, `.tre`) | in / out | The base tree: topology, names, branch lengths, and bracketed confidence values. | [1] |
 | **NHX** — New Hampshire eXtended | in | `[&&NHX:...]` tags riding on Newick: taxonomy (`S=`, `T=`), sequence (`GN=`, `AC=`), support (`B=`), duplication/speciation events (`D=`). | [2] |
 | **Nexus** (`.nex`, `.nexus`) | in / out | One file for the tree(s) and, in a `CHARACTERS`/`DATA` block, an aligned protein/DNA/RNA matrix (sequential or interleaved) — the tree and its alignment together. | [3] |
-| **phyloXML** (`.xml`) | in / out | The richest native format: taxonomy, sequences and alignments, dates, confidences, branch colours and arbitrary custom properties. | [4] |
+| **phyloXML** (`.xml`) | in / out | The richest native format: taxonomy, sequences and alignments, dates, confidences, branch colours and arbitrary metadata (custom properties). | [4] |
 | **Auspice / Nextstrain** `dataset.json` (v2) | in | Phylodynamic builds: sampling dates and their confidence, cumulative divergence, and discrete traits (country, clade, host, ...) with their posterior distributions. | [5] |
 | **BEAST** / BEAST 2 / TreeAnnotator annotations | in (embedded in Newick/Nexus) | `[&posterior=...,height_95%_HPD={lo,hi},rate=...]`-style blobs: posterior clade support, node-age confidence intervals, per-branch rates and other traits. FigTree's `!color` is read the same way. | [6, 7] |
 | **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
@@ -1379,8 +1379,8 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
-| `showProperties` | tree-derived | Open with the nodes' property values in their labels. Default: off, unless the file's figure setting (`show.SHOW_PROPERTIES=true`) says on. See [Properties in the label](#properties-in-the-label). |
-| `labelProperties` | tree-derived | Which properties the label shows, in order, as an array of refs (`['BVBRC:species', 'BVBRC:host_name']`). Default: the figure setting's `labelprops`, else `null` — every property but the heat map's columns. |
+| `showProperties` | tree-derived | Open with the nodes' metadata (their phyloXML properties) in their labels — the **Metadata** checkbox. Default: off, unless the file's figure setting (`show.SHOW_PROPERTIES=true`) says on. See [Metadata in the label](#metadata-in-the-label). |
+| `labelProperties` | tree-derived | Which metadata fields the label shows, in order, as an array of refs (`['BVBRC:species', 'BVBRC:host_name']`). Default: the figure setting's `labelprops`, else `null` — every property but the heat map's columns. |
 | `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: a stack of letters per column, as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
 | `showHeatmap` | tree-derived | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for — almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service — or unless the file's own figure setting (`aptx:figure`, see [Heat maps](#heat-maps)) draws them as a matrix. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
@@ -1877,24 +1877,24 @@ rather than 300 identical "Influenz.." labels).
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
 
-### Properties in the label
+### Metadata in the label
 
 A tip's other fields — a species, a host, a country, anything a node carries
-as a `<property>` — can go into its label, as on the desktop. **Properties**
-under Display Data (offered when nodes carry properties, off by default) adds
-their **values** after the rest of the label, joined by ` | ` as the rest of the
+as a `<property>` — are its **metadata**, and they can go into its label, as
+on the desktop. **Metadata** under Display Data (offered when nodes carry
+any, off by default) adds the **values** after the rest of the label, joined by ` | ` as the rest of the
 label is: `255457.3 | Brucella lupini | host`, or `Brucella lupini` alone with
 Node Name off. (The desktop joins them with `, `; a pipe was chosen here
 because values often contain commas — a host such as `Bottlenose dolphin,
-Tursiops truncatus`.) A unit follows its value. With nothing chosen, every property shows in the
-node's own order, except the heat map's columns while it is shown — a field
-has one display role. **Label fields…** picks which properties, and in what
-order; picking one turns Properties on. The checkbox and the fields travel in
+Tursiops truncatus`.) A unit follows its value. With nothing chosen, every
+field shows in the node's own order, except the heat map's columns while it is
+shown — a field has one display role. **Metadata fields…** picks which fields,
+and in what order; picking one turns Metadata on. The checkbox and the fields travel in
 a shared view (`show=…,properties`, `labelFields=`), and the config keys are
 `showProperties` and `labelProperties`.
 
 A file can choose for itself: the desktop's figure setting (`aptx:figure`,
-see [Heat maps](#heat-maps)) carries `labelprops=` (the properties, in order)
+see [Heat maps](#heat-maps)) carries `labelprops=` (the fields, in order)
 and the display switches `show.SHOW_PROPERTIES=true` and
 `show.SHOW_NODE_NAMES=false`, and a tree opens labelled that way in both
 programs. The config wins over the file.
