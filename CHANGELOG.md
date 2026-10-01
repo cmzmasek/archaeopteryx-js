@@ -7,6 +7,11 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.21.0 — 2026-10-01
+
+"Properties" is "Metadata" wherever a user sees it, in step with the desktop
+Archaeopteryx, and the Metadata fields chooser works as its cursor promised.
+
 ### Changed
 - **"Properties" is now "Metadata"** wherever a user sees it — the Labels
   checkbox, the **Metadata fields…** chooser, the node-data and

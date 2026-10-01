@@ -1888,9 +1888,11 @@ Node Name off. (The desktop joins them with `, `; a pipe was chosen here
 because values often contain commas — a host such as `Bottlenose dolphin,
 Tursiops truncatus`.) A unit follows its value. With nothing chosen, every
 field shows in the node's own order, except the heat map's columns while it is
-shown — a field has one display role. **Metadata fields…** picks which fields,
-and in what order; picking one turns Metadata on. The checkbox and the fields travel in
-a shared view (`show=…,properties`, `labelFields=`), and the config keys are
+shown — a field has one display role. **Metadata fields…** picks which fields
+(tick them; **All** and **None** tick and untick the lot) and in what order
+(drag a row, or use its arrows); Apply keeps the ticked ones in the order
+shown, and picking a field turns Metadata on. The checkbox and the fields
+travel in a shared view (`show=…,properties`, `labelFields=`), and the config keys are
 `showProperties` and `labelProperties`.
 
 A file can choose for itself: the desktop's figure setting (`aptx:figure`,
@@ -2178,7 +2180,7 @@ child arrangement and `ladderizeTree` rewrites it — measured, one file once ga
 only mode that is **not** normalised first — being left alone is the whole point
 of it. It is set by the **Reorder columns…** dialog, which drags or arrow-keys a
 list of the columns as drawn; applying it writes `heatmapManualOrder` and sets
-the mode, exactly as the desktop's Annotation Fields arrows switch a tab to
+the mode, exactly as the desktop's Metadata Fields arrows switch a tab to
 Manual. (Theirs also chooses which fields are columns and of what type; ours
 takes every numeric field automatically, so the dialog is about order alone.)
 Choosing Manual from the menu with nothing arranged yet freezes the order on
