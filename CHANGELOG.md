@@ -16,6 +16,12 @@ users see a change only when a version is cut.
   (`showProperties`, `labelProperties`, `properties`, `labelprops`). The
   desktop Archaeopteryx renames at the same time.
 
+### Fixed
+- **The Metadata fields… chooser's rows showed a grab cursor but could not be
+  dragged**; they drag now, as the heat map's Reorder columns rows do (one
+  shared drag). **All** closed the dialog at once; it now ticks every field
+  and stays open, and **None** unticks them.
+
 ## 3.20.0 — 2026-09-30
 
 One phyloXML file can now carry a whole figure: the desktop Archaeopteryx's

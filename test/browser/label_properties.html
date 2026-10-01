@@ -86,7 +86,7 @@
             fieldsBtn.click(); await sleep(300);
             const dlg = document.querySelector('dialog[open]');
             check('the chooser is titled Metadata fields, and its lead says metadata fields', !!dlg
-                && /Metadata fields/.test(dlg.textContent) && /Tick the metadata fields/.test(dlg.textContent)
+                && /Metadata fields/.test(dlg.textContent) && /Tick the metadata fields the labels show; drag/.test(dlg.textContent)
                 && !/propert/i.test(dlg.textContent), dlg && dlg.textContent.slice(0, 120));
             [...dlg.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Cancel').click();
             await sleep(200);
@@ -112,9 +112,39 @@
             check('... ticked as the label shows them by default (not the heat map\'s)', rows().filter((r) =>
                 r.querySelector('input').checked).map(nameOf).join(',') === 'BVBRC:host_name,BVBRC:species',
             rows().filter((r) => r.querySelector('input').checked).map(nameOf).join(','));
-            const sp = rows().findIndex((r) => nameOf(r) === 'BVBRC:species');
-            rows()[sp].querySelector('.aptx-reorder-move').click();   // up, above host
+            // Species above Host by DRAGGING its row to the top (the rows'
+            // grab cursor promised this; the chooser had only the arrows)
+            const drag = (row, toY, from) => {
+                const y0 = row.getBoundingClientRect().top + 4;
+                (from || row.querySelector('.aptx-reorder-name')).dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, clientY: y0, clientX: 5}));
+                window.dispatchEvent(new PointerEvent('pointermove', {clientY: toY, clientX: 5}));
+                window.dispatchEvent(new PointerEvent('pointerup', {clientY: toY, clientX: 5}));
+            };
+            const topY = () => rows()[0].getBoundingClientRect().top + 2;
+            let sp = rows().findIndex((r) => nameOf(r) === 'BVBRC:species');
+            check('Species starts below Host', sp === 1, sp);
+            drag(rows()[sp], topY());
             await sleep(100);
+            check('dragged to the top, it is first', nameOf(rows()[0]) === 'BVBRC:species', rows().map(nameOf).join(','));
+            // a press on the checkbox ticks it, it does not start a drag
+            const hostRow = rows()[1];
+            const hostBox = hostRow.querySelector('input');
+            const wasOn = hostBox.checked;
+            drag(hostRow, topY(), hostBox);
+            await sleep(100);
+            check('a press on a checkbox is not a drag', nameOf(rows()[0]) === 'BVBRC:species' && nameOf(rows()[1]) === 'BVBRC:host_name',
+                rows().map(nameOf).join(','));
+            if (hostBox.checked !== wasOn) { hostBox.click(); }
+            // All and None tick the boxes and keep the dialog open (All used
+            // to close it at once)
+            const action = (name) => [...document.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === name);
+            const ticked = () => rows().filter((r) => r.querySelector('input').checked).map(nameOf);
+            action('All').click(); await sleep(100);
+            check('All ticks every field and stays open', !!document.querySelector('dialog[open]') && ticked().length === rows().length,
+                ticked().length + ' of ' + rows().length + (document.querySelector('dialog[open]') ? '' : ', dialog closed'));
+            action('None').click(); await sleep(100);
+            check('None unticks every field and stays open', !!document.querySelector('dialog[open]') && ticked().length === 0, ticked().join(','));
+            rows().forEach((r) => { if (['BVBRC:species', 'BVBRC:host_name'].indexOf(nameOf(r)) >= 0) { r.querySelector('input').click(); } });
             [...document.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Apply').click();
             await settle();
             check('Apply: the chosen fields, in the chosen order', labelOf('25540.3') === '25540.3 | Brucella lupini | host0',

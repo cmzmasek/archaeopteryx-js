@@ -98,6 +98,29 @@
             const blanks = [...document.querySelectorAll('#p g.aptx-heatmap > rect')]
                 .filter((e) => !e.getAttribute('vector-effect') && e.getAttribute('stroke-opacity') === '0.45');
             check('the missing cell keeps its grey outline', blanks.length === 1, blanks.length);
+
+            // the Reorder columns dialog drags (its drag is shared with the
+            // metadata-fields chooser now): the last column dragged to the top
+            byId('heatmap_reorder').click(); await sleep(300);
+            const rows = () => [...document.querySelectorAll('.aptx-reorder-row')];
+            const refOf = (r) => r.querySelector('.aptx-reorder-name').title;
+            const before = rows().map(refOf);
+            const last = rows()[rows().length - 1];
+            const y0 = last.getBoundingClientRect().top + 4;
+            const topY = rows()[0].getBoundingClientRect().top + 2;
+            last.querySelector('.aptx-reorder-name').dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, clientY: y0, clientX: 5}));
+            window.dispatchEvent(new PointerEvent('pointermove', {clientY: topY, clientX: 5}));
+            window.dispatchEvent(new PointerEvent('pointerup', {clientY: topY, clientX: 5}));
+            await sleep(100);
+            check('Reorder columns: a dragged row lands where it was dropped', rows().length === before.length
+                && refOf(rows()[0]) === before[before.length - 1] && refOf(rows()[1]) === before[0],
+                before.join(',') + ' -> ' + rows().map(refOf).join(','));
+            [...document.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Apply').click();
+            await sleep(1600);
+            const heads = [...document.querySelectorAll('#p g.aptx-heatmap-strip text')]
+                .filter((t) => /rotate\(-90\)/.test(t.getAttribute('transform') || '')).map((t) => t.textContent);
+            check('... and Apply draws the columns in that order', heads.length === before.length
+                && heads[0] === forester.propertyDisplayName(before[before.length - 1]), heads.join(','));
         }
     } catch (e) {
         check('harness ran', false, e && e.stack);

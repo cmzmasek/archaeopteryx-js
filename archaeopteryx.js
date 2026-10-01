@@ -9227,6 +9227,63 @@ function (root, d3, forester, phyloXml) {
     // The same rule as the desktop's resolveEdited, minus its "did the order
     // actually change" test, which it needs only because its dialog does other
     // things too.
+    // Drag a row of a reorder list -- the heat map's columns, the label's
+    // metadata fields -- to a new place. The LIVE node is moved rather than
+    // the list redrawn (a redraw would replace the element the drag is
+    // following), its position read back from the DOM each time, and
+    // `working` moved with it; `draw` runs once the pointer is released. A
+    // press on a control in the row (an arrow, a checkbox) is not a drag.
+    // Shared, so that both dialogs drag the same way: the rows' cursor
+    // promised a drag the fields chooser did not have (Christian, 2026-10-01).
+    function attachReorderDrag(list, row, working, draw) {
+        function rowAt(y) {
+            let rows = Array.prototype.slice.call(list.children);
+            for (let i = 0; i < rows.length; ++i) {
+                let b = rows[i].getBoundingClientRect();
+                if (y < b.top + (b.height / 2)) {
+                    return i;
+                }
+            }
+            return rows.length;
+        }
+        row.addEventListener('pointerdown', function (event) {
+            if (event.target.closest('button, input')) {
+                return;
+            }
+            event.preventDefault();
+            row.classList.add('aptx-reorder-dragging');
+            let onMove = function (ev) {
+                let kids = Array.prototype.slice.call(list.children);
+                let from = kids.indexOf(row);
+                let to = rowAt(ev.clientY);
+                if (to > from) {
+                    to -= 1;   // taking the row out shifts everything after it up one
+                }
+                if (to === from || to < 0 || to >= kids.length) {
+                    return;
+                }
+                working.splice(to, 0, working.splice(from, 1)[0]);
+                let others = kids.filter(function (k) {
+                    return k !== row;
+                });
+                list.insertBefore(row, others[to] || null);
+                Array.prototype.slice.call(list.children).forEach(function (r, k) {
+                    let btns = r.querySelectorAll('.aptx-reorder-move');
+                    btns[0].disabled = (k === 0);
+                    btns[1].disabled = (k === list.children.length - 1);
+                });
+            };
+            let onUp = function () {
+                row.classList.remove('aptx-reorder-dragging');
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                draw();
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        });
+    }
+
     function showHeatmapReorderDialog() {
         let ordered = heatmapOrdered();
         if (!ordered || ordered.columns.length < 2) {
@@ -9238,17 +9295,6 @@ function (root, d3, forester, phyloXml) {
             'Drag a column, or use the arrows. Your order is kept until you choose another.');
         let list = repsElement(body, 'div', 'aptx-reorder');
         let working = ordered.columns.slice();
-
-        function rowAt(y) {
-            let rows = Array.prototype.slice.call(list.children);
-            for (let i = 0; i < rows.length; ++i) {
-                let b = rows[i].getBoundingClientRect();
-                if (y < b.top + (b.height / 2)) {
-                    return i;
-                }
-            }
-            return rows.length;
-        }
 
         function move(from, to) {
             if (to < 0 || to >= working.length || from === to) {
@@ -9296,49 +9342,7 @@ function (root, d3, forester, phyloXml) {
                         list.children[i + d].focus();
                     }
                 });
-                row.addEventListener('pointerdown', function (event) {
-                    if (event.target.classList.contains('aptx-reorder-move')) {
-                        return;   // the arrows are not a drag handle
-                    }
-                    event.preventDefault();
-                    row.classList.add('aptx-reorder-dragging');
-                    // The LIVE node is moved rather than the list redrawn: a
-                    // redraw would replace the element this drag is following.
-                    // Its position is read back from the DOM each time instead
-                    // of being tracked in a variable -- the first cut kept an
-                    // index, updated it, and then used it to work out where to
-                    // insert, by which point it no longer meant what the
-                    // calculation assumed.
-                    let onMove = function (ev) {
-                        let kids = Array.prototype.slice.call(list.children);
-                        let from = kids.indexOf(row);
-                        let to = rowAt(ev.clientY);
-                        if (to > from) {
-                            to -= 1;   // taking the row out shifts everything after it up one
-                        }
-                        if (to === from || to < 0 || to >= kids.length) {
-                            return;
-                        }
-                        working.splice(to, 0, working.splice(from, 1)[0]);
-                        let others = kids.filter(function (k) {
-                            return k !== row;
-                        });
-                        list.insertBefore(row, others[to] || null);
-                        Array.prototype.slice.call(list.children).forEach(function (r, k) {
-                            let btns = r.querySelectorAll('.aptx-reorder-move');
-                            btns[0].disabled = (k === 0);
-                            btns[1].disabled = (k === list.children.length - 1);
-                        });
-                    };
-                    let onUp = function () {
-                        row.classList.remove('aptx-reorder-dragging');
-                        window.removeEventListener('pointermove', onMove);
-                        window.removeEventListener('pointerup', onUp);
-                        draw();
-                    };
-                    window.addEventListener('pointermove', onMove);
-                    window.addEventListener('pointerup', onUp);
-                });
+                attachReorderDrag(list, row, working, draw);
             });
         }
         draw();
@@ -13777,7 +13781,7 @@ function (root, d3, forester, phyloXml) {
     }
 
     // Which properties the label shows, and in what order: each field ticked
-    // or not, and moved with the arrows (or the arrow keys). Apply keeps the ticked
+    // or not, and moved by dragging, with the arrows, or with the arrow keys. Apply keeps the ticked
     // ones in the order shown; picking a field that was not shown turns the
     // Properties label on, as the desktop does, since otherwise choosing it
     // would visibly do nothing. "All" goes back to every field.
@@ -13813,7 +13817,7 @@ function (root, d3, forester, phyloXml) {
         let shell = makeDialogShell(LABEL_FIELDS_DIALOG, 'Metadata fields', 340);
         let body = shell.body;
         repsElement(body, 'div', 'aptx-reps-lead',
-            'Tick the metadata fields the labels show, and set their order with the arrows.');
+            'Tick the metadata fields the labels show; drag a field, or use the arrows, to set their order.');
         let list = repsElement(body, 'div', 'aptx-reorder');
 
         function move(from, to) {
@@ -13830,6 +13834,7 @@ function (root, d3, forester, phyloXml) {
             working.forEach(function (w, i) {
                 let row = repsElement(list, 'div', 'aptx-reorder-row');
                 row.tabIndex = 0;
+                repsElement(row, 'span', 'aptx-reorder-grip', '≡');
                 let box = repsElement(row, 'input', 'aptx-reorder-check');
                 box.type = 'checkbox';
                 box.checked = w.on;
@@ -13871,15 +13876,26 @@ function (root, d3, forester, phyloXml) {
                         list.children[i + d].focus();
                     }
                 });
+                attachReorderDrag(list, row, working, draw);
             });
         }
         draw();
 
         let actions = repsElement(body, 'div', 'aptx-reps-actions');
+        // All and None tick the boxes and leave the dialog open for Apply --
+        // All used to mean "back to the default" and close at once, which
+        // read as the dialog vanishing (Christian, 2026-10-01)
+        let tickAll = function (on) {
+            working.forEach(function (w) {
+                w.on = on;
+            });
+            draw();
+        };
         repsButton(actions, 'All', false, function () {
-            _state.labelProperties = null;
-            shell.dialog.close();
-            scheduleUpdate();
+            tickAll(true);
+        });
+        repsButton(actions, 'None', false, function () {
+            tickAll(false);
         });
         repsButton(actions, 'Cancel', false, function () {
             shell.dialog.close();
