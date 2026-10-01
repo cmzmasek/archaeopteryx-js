@@ -7,6 +7,14 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.20.0 — 2026-09-30
+
+One phyloXML file can now carry a whole figure: the desktop Archaeopteryx's
+figure setting opens the heat map and chooses the labels, and node properties
+(a species, a host) can be shown in the labels at all. Heat-map cells get
+borders. And saved phyloXML loses nothing it read and is laid out byte for byte
+as the desktop's (phyloxml 1.1.3 to 1.1.7).
+
 ### Added
 - **A phyloXML file can open straight into its heat map.** The desktop
   Archaeopteryx's figure setting — `<property ref="aptx:figure"
@@ -15,12 +23,11 @@ users see a change only when a version is cut.
   pipeline can write one file that opens as tree plus matrix. An `aptx:figure`
   on a clade (where desktops 0.11.117 to 0.11.172 wrote it) is ignored and not
   saved; the phylogeny's own is saved back unchanged. Config settings win.
-
 - **Node properties in the label**, as on the desktop: **Properties** under
   Display Data adds the nodes' property values (a species, a host…) to their
-  labels, values only, joined by ` | ` (values often contain commas themselves);
-  **Label fields…** chooses which, and in
-  what order. Off by default; with nothing chosen, every property but the heat
+  labels, values only, joined by ` | ` (values often contain commas
+  themselves); **Label fields…** chooses which, and in what order. Off by
+  default; with nothing chosen, every property but the heat
   map's columns. A file's figure setting can choose for itself — `labelprops`,
   `show.SHOW_PROPERTIES`, `show.SHOW_NODE_NAMES` — so a BV-BRC tree named by
   accession can open labelled by species. Config `showProperties`,
