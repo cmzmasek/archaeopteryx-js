@@ -12,7 +12,7 @@
 // with accession numbers nobody uses, and the species -- a node property --
 // could not be turned on. Now, as on the desktop: a "Properties" label
 // checkbox (off by default, offered when nodes carry properties) and a Label
-// fields chooser; values only, comma-joined; with nothing chosen, every
+// fields chooser; values only, " | "-joined; with nothing chosen, every
 // property but the heat map's columns. And the desktop's figure setting can
 // say it: labelprops, show.SHOW_PROPERTIES, show.SHOW_NODE_NAMES.
 //
@@ -69,14 +69,14 @@
             check('... the labels are the names', labelOf('25540.3') === '25540.3', labelOf('25540.3'));
             cb.click(); await settle();
             // the heat map is off, so its columns are ordinary fields here
-            check('ticked: every property, values only, comma-joined, a unit without its namespace',
-                labelOf('25540.3') === '25540.3 | Brucella lupini, host0, 10 bp, 0, 0', labelOf('25540.3'));
-            check('... and a field a node lacks is simply skipped', labelOf('25542.3') === '25542.3 | Brucella suis, 12 bp, 2, 0',
+            check('ticked: every property, values only, " | "-joined, a unit without its namespace',
+                labelOf('25540.3') === '25540.3 | Brucella lupini | host0 | 10 bp | 0 | 0', labelOf('25540.3'));
+            check('... and a field a node lacks is simply skipped', labelOf('25542.3') === '25542.3 | Brucella suis | 12 bp | 2 | 0',
                 labelOf('25542.3'));
             byId('heatmap_cb').click(); await settle();
             // x:len is numeric too, so the heat map takes it as a third column
             check('with the heat map shown, its columns leave the default label',
-                labelOf('25540.3') === '25540.3 | Brucella lupini, host0', labelOf('25540.3'));
+                labelOf('25540.3') === '25540.3 | Brucella lupini | host0', labelOf('25540.3'));
 
             // the chooser: tick only Species and Host Name, Species first
             cb.click(); await settle();          // off again: picking a field must turn it on
@@ -93,7 +93,7 @@
             await sleep(100);
             [...document.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Apply').click();
             await settle();
-            check('Apply: the chosen fields, in the chosen order', labelOf('25540.3') === '25540.3 | Brucella lupini, host0',
+            check('Apply: the chosen fields, in the chosen order', labelOf('25540.3') === '25540.3 | Brucella lupini | host0',
                 labelOf('25540.3'));
             check('... and picking fields turned Properties on', cb.checked);
 

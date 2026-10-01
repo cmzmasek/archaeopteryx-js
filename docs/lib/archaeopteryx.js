@@ -13736,7 +13736,7 @@ function (root, d3, forester, phyloXml) {
 
     // ===================== Properties in the label =====================
     // The desktop's "Properties" option and its Annotation Fields chooser:
-    // a node's property values in its label, values only, comma-joined, in
+    // a node's property values in its label, values only, " | "-joined, in
     // the order chosen (forester.labelPropertiesText). Nothing chosen means
     // every user-visible property in the node's own order, less the heat
     // map's columns while it is shown -- a field has one display role.

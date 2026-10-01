@@ -1882,9 +1882,11 @@ the desktop puts them.
 A tip's other fields — a species, a host, a country, anything a node carries
 as a `<property>` — can go into its label, as on the desktop. **Properties**
 under Display Data (offered when nodes carry properties, off by default) adds
-their **values**, comma-joined, after the rest of the label:
-`255457.3 | Brucella lupini`, or just `Brucella lupini` with Node Name off. A
-unit follows its value. With nothing chosen, every property shows in the
+their **values** after the rest of the label, joined by ` | ` as the rest of the
+label is: `255457.3 | Brucella lupini | host`, or `Brucella lupini` alone with
+Node Name off. (The desktop joins them with `, `; a pipe was chosen here
+because values often contain commas — a host such as `Bottlenose dolphin,
+Tursiops truncatus`.) A unit follows its value. With nothing chosen, every property shows in the
 node's own order, except the heat map's columns while it is shown — a field
 has one display role. **Label fields…** picks which properties, and in what
 order; picking one turns Properties on. The checkbox and the fields travel in

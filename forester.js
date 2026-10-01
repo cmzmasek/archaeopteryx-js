@@ -3033,6 +3033,8 @@
 
     // A property a reader would want to see: not the viewer's own aptx:
     // metadata, not a style: instruction.
+    const LABEL_PROPERTY_SEPARATOR = ' | ';
+
     forester.isUserVisiblePropertyRef = function (ref) {
         return typeof ref === 'string' && ref.length > 0 && ref.indexOf('aptx:') !== 0 && ref.indexOf('style:') !== 0;
     };
@@ -3059,9 +3061,11 @@
         });
     };
 
-    // A node's properties as one line of label text, as the desktop writes
-    // it: values only, comma-joined, a unit after its value (without its
-    // namespace). `refs` picks and orders the fields; null is every
+    // A node's properties as one line of label text: values only, a unit
+    // after its value (without its namespace), joined by " | " as the rest of
+    // the label is. Not by ", " as on the desktop (Christian, 2026-09-30): a
+    // value often holds a comma itself -- a BV-BRC host "Bottlenose dolphin,
+    // Tursiops truncatus" -- and "host, species" then reads as three fields. `refs` picks and orders the fields; null is every
     // user-visible property in the node's own order, less `excluded` (the
     // heat map's columns: a field has one display role).
     forester.labelPropertiesText = function (node, refs, excluded) {
@@ -3095,7 +3099,7 @@
                 }
             });
         }
-        return parts.join(', ');
+        return parts.join(LABEL_PROPERTY_SEPARATOR);
     };
 
     // Removes an aptx:figure from every clade (the old place, now ignored),

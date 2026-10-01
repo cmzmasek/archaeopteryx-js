@@ -579,7 +579,7 @@ function testFigureLabelChoices() {
         && none.labelProps === null && Object.keys(none.show).length === 0;
 }
 
-// Values only, comma-joined, a unit without its namespace; aptx: and style:
+// Values only, " | "-joined (a value may hold a comma), a unit without its namespace; aptx: and style:
 // and empty values never; a chosen order wins; nothing chosen is every
 // property in the node's order less the excluded ones. The chooser offers
 // every visible ref of any node, internal ones included, by display name.
@@ -588,9 +588,9 @@ function testLabelPropertiesText() {
     var tip = {name: 't', properties: [p('b:species', 'Brucella suis'), p('aptx:x', 'no'), p('style:font_color', '#fff'),
         p('m:len', ' 12 ', 'METRIC:bp'), p('b:host', '  '), p('pg:a', '3')]};
     var tree = {children: [{properties: [p('z:clade', 'Alpha')], children: [tip, {name: 'u', properties: [p('a:first', 'x')]}]}]};
-    return forester.labelPropertiesText(tip, null, null) === 'Brucella suis, 12 bp, 3'
-        && forester.labelPropertiesText(tip, null, {'pg:a': true}) === 'Brucella suis, 12 bp'
-        && forester.labelPropertiesText(tip, ['m:len', 'b:species', 'nope'], null) === '12 bp, Brucella suis'
+    return forester.labelPropertiesText(tip, null, null) === 'Brucella suis | 12 bp | 3'
+        && forester.labelPropertiesText(tip, null, {'pg:a': true}) === 'Brucella suis | 12 bp'
+        && forester.labelPropertiesText(tip, ['m:len', 'b:species', 'nope'], null) === '12 bp | Brucella suis'
         && forester.labelPropertiesText(tip, [], null) === ''
         && forester.labelPropertyRefs(tree).join(',') === 'pg:a,z:clade,a:first,m:len,b:species';
 }

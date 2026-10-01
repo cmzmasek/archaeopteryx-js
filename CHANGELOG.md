@@ -18,7 +18,8 @@ users see a change only when a version is cut.
 
 - **Node properties in the label**, as on the desktop: **Properties** under
   Display Data adds the nodes' property values (a species, a host…) to their
-  labels, values only, comma-joined; **Label fields…** chooses which, and in
+  labels, values only, joined by ` | ` (values often contain commas themselves);
+  **Label fields…** chooses which, and in
   what order. Off by default; with nothing chosen, every property but the heat
   map's columns. A file's figure setting can choose for itself — `labelprops`,
   `show.SHOW_PROPERTIES`, `show.SHOW_NODE_NAMES` — so a BV-BRC tree named by
