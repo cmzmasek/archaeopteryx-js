@@ -516,6 +516,8 @@ runTest("a loop in the votes loses no column    : ", testTheOrderSurvivesADisagr
 runTest("majority wins; where it is silent, mean: ", testTheRulesTheGraphRestsOn);
 runTest("a constant column is a column          : ", testConstantColumnKept);
 runTest("the desktop's figure: MATRIX refs      : ", testFigureMatrixRefs);
+runTest("the figure's label choices             : ", testFigureLabelChoices);
+runTest("properties as label text               : ", testLabelPropertiesText);
 
 // A single-copy core gene is a column of 1s. Colour-by has nothing to show in
 // it and still refuses it; the matrix keeps it.
@@ -562,6 +564,35 @@ function testFigureMatrixRefs() {
         && forester.figureMatrixRefs(cladeOnly).length === 0                 // a clade's copy is not read
         && dropped === 1 && t.children[0].properties.length === 0            // ... and is dropped
         && t.properties.length === 1;                                        // the phylogeny's stays
+}
+
+// labelprops (a "|" list, escaped like every value) and the show.<OPTION>
+// switches, as the desktop's FigureSpec writes them; other keys ignored.
+function testFigureLabelChoices() {
+    var f = forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
+        value: 'v1;labelprops=BVBRC:species\\pBVBRC:host_name;show.SHOW_PROPERTIES=true;show.SHOW_NODE_NAMES=false;'
+            + 'show.BOGUS=maybe;colorby=x'}]});
+    var none = forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
+        value: 'v1;columns=a\\sMATRIX\\sCIRCLE\\sfalse'}]});
+    return JSON.stringify(f.labelProps) === '["BVBRC:species","BVBRC:host_name"]'
+        && f.show.SHOW_PROPERTIES === true && f.show.SHOW_NODE_NAMES === false && !('BOGUS' in f.show)
+        && none.labelProps === null && Object.keys(none.show).length === 0;
+}
+
+// Values only, comma-joined, a unit without its namespace; aptx: and style:
+// and empty values never; a chosen order wins; nothing chosen is every
+// property in the node's order less the excluded ones. The chooser offers
+// every visible ref of any node, internal ones included, by display name.
+function testLabelPropertiesText() {
+    var p = function (ref, v, unit) { return {ref: ref, value: v, unit: unit, applies_to: 'node', datatype: 'xsd:string'}; };
+    var tip = {name: 't', properties: [p('b:species', 'Brucella suis'), p('aptx:x', 'no'), p('style:font_color', '#fff'),
+        p('m:len', ' 12 ', 'METRIC:bp'), p('b:host', '  '), p('pg:a', '3')]};
+    var tree = {children: [{properties: [p('z:clade', 'Alpha')], children: [tip, {name: 'u', properties: [p('a:first', 'x')]}]}]};
+    return forester.labelPropertiesText(tip, null, null) === 'Brucella suis, 12 bp, 3'
+        && forester.labelPropertiesText(tip, null, {'pg:a': true}) === 'Brucella suis, 12 bp'
+        && forester.labelPropertiesText(tip, ['m:len', 'b:species', 'nope'], null) === '12 bp, Brucella suis'
+        && forester.labelPropertiesText(tip, [], null) === ''
+        && forester.labelPropertyRefs(tree).join(',') === 'pg:a,z:clade,a:first,m:len,b:species';
 }
 console.log();
 

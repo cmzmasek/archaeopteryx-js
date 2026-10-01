@@ -104,6 +104,10 @@ export interface ArchaeopteryxConfig {
      * bar: each column a stack of letters as tall as its information content,
      * over the tips currently on screen. Only drawn with the track shown. */
     showMsaLogo?: boolean;
+    /** The nodes' property values in their labels (the desktop's "Properties"). */
+    showProperties?: boolean;
+    /** Which properties the label shows, in order; null for all but the heat map's columns. */
+    labelProperties?: string[] | null;
     /** The scale axis under a phylogram: the time axis on a time tree whose
      * branches show time, a distance axis on any other. Default: on for a
      * time tree, off otherwise. */
@@ -169,6 +173,8 @@ export interface ViewState {
     heatmap?: boolean;
     heatmapOrder?: 'document' | 'clustered' | 'clustered-presence' | 'alphabetical' | 'frequency' | 'manual';
     heatmapManual?: string[];
+    /** The properties the label shows, in order (labelProperties). */
+    labelFields?: string[];
     domains?: boolean;
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;

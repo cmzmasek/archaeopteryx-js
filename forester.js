@@ -2981,13 +2981,31 @@
         if (parts[0] !== 'v1') {
             return null;
         }
-        let figure = {columns: []};
+        // labelProps: the properties the label shows, in order (null when the
+        // figure does not say, [] when it says none); show: the desktop's
+        // display switches by DisplayOption name ("show.SHOW_PROPERTIES=true")
+        let figure = {columns: [], labelProps: null, show: {}};
         parts.slice(1).forEach(function (kv) {
             let at = kv.indexOf('=');
-            if (at < 1 || kv.substring(0, at) !== 'columns') {
+            if (at < 1) {
                 return;
             }
-            forester.unescapeFigureValue(kv.substring(at + 1)).split('|').forEach(function (col) {
+            let key = kv.substring(0, at);
+            let value = forester.unescapeFigureValue(kv.substring(at + 1));
+            if (key === 'labelprops') {
+                figure.labelProps = value.split('|').filter(function (r) {
+                    return r.length > 0;
+                });
+                return;
+            }
+            if (key.indexOf('show.') === 0 && (value === 'true' || value === 'false')) {
+                figure.show[key.substring(5)] = value === 'true';
+                return;
+            }
+            if (key !== 'columns') {
+                return;
+            }
+            value.split('|').forEach(function (col) {
                 let f = col.split('~');
                 if (f[0] && f[0].length > 0) {
                     figure.columns.push({ref: f[0], type: f[1] || '', shape: f[2] || 'CIRCLE',
@@ -3009,6 +3027,75 @@
         }).map(function (c) {
             return c.ref;
         }) : [];
+    };
+
+    // ---- Properties in the tip label (the desktop's "Properties" option) ----
+
+    // A property a reader would want to see: not the viewer's own aptx:
+    // metadata, not a style: instruction.
+    forester.isUserVisiblePropertyRef = function (ref) {
+        return typeof ref === 'string' && ref.length > 0 && ref.indexOf('aptx:') !== 0 && ref.indexOf('style:') !== 0;
+    };
+
+    // Every user-visible property ref any node carries, internal nodes
+    // included, sorted by the name the reader sees (then by ref): what the
+    // label-field chooser offers. Deliberately BROADER than the colour-by
+    // candidates, which drop constant, per-tip-unique and internal-only fields
+    // -- all perfectly good label text (the desktop's userVisiblePropertyRefs).
+    forester.labelPropertyRefs = function (tree) {
+        let seen = Object.create(null);
+        forester.preOrderTraversalAll(tree, function (n) {
+            (n.properties || []).forEach(function (p) {
+                if (p && forester.isUserVisiblePropertyRef(p.ref)
+                    && p.value !== undefined && p.value !== null && String(p.value).trim().length > 0) {
+                    seen[p.ref] = true;
+                }
+            });
+        });
+        return Object.keys(seen).sort(function (a, b) {
+            let da = forester.propertyDisplayName(a).toLowerCase();
+            let db = forester.propertyDisplayName(b).toLowerCase();
+            return da < db ? -1 : (da > db ? 1 : (a < b ? -1 : (a > b ? 1 : 0)));
+        });
+    };
+
+    // A node's properties as one line of label text, as the desktop writes
+    // it: values only, comma-joined, a unit after its value (without its
+    // namespace). `refs` picks and orders the fields; null is every
+    // user-visible property in the node's own order, less `excluded` (the
+    // heat map's columns: a field has one display role).
+    forester.labelPropertiesText = function (node, refs, excluded) {
+        let props = (node && node.properties) || [];
+        let parts = [];
+        let add = function (p) {
+            if (!p || !forester.isUserVisiblePropertyRef(p.ref) || p.value === undefined || p.value === null) {
+                return;
+            }
+            let v = String(p.value).trim();
+            if (v.length < 1) {
+                return;
+            }
+            if (typeof p.unit === 'string' && p.unit.length > 0) {
+                v += ' ' + p.unit.substring(p.unit.lastIndexOf(':') + 1);
+            }
+            parts.push(v);
+        };
+        if (refs) {
+            refs.forEach(function (ref) {
+                props.forEach(function (p) {
+                    if (p && p.ref === ref) {
+                        add(p);
+                    }
+                });
+            });
+        } else {
+            props.forEach(function (p) {
+                if (!(excluded && p && excluded[p.ref])) {
+                    add(p);
+                }
+            });
+        }
+        return parts.join(', ');
     };
 
     // Removes an aptx:figure from every clade (the old place, now ignored),

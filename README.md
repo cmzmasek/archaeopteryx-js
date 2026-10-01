@@ -1379,6 +1379,8 @@ copy-pastable JSON.
 | `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
 | `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showProperties` | tree-derived | Open with the nodes' property values in their labels. Default: off, unless the file's figure setting (`show.SHOW_PROPERTIES=true`) says on. See [Properties in the label](#properties-in-the-label). |
+| `labelProperties` | tree-derived | Which properties the label shows, in order, as an array of refs (`['BVBRC:species', 'BVBRC:host_name']`). Default: the figure setting's `labelprops`, else `null` — every property but the heat map's columns. |
 | `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: a stack of letters per column, as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
 | `showHeatmap` | tree-derived | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for — almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service — or unless the file's own figure setting (`aptx:figure`, see [Heat maps](#heat-maps)) draws them as a matrix. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
@@ -1874,6 +1876,26 @@ rather than 300 identical "Influenz.." labels).
 
 Both menus live in the single control panel, above Display Data, which is where
 the desktop puts them.
+
+### Properties in the label
+
+A tip's other fields — a species, a host, a country, anything a node carries
+as a `<property>` — can go into its label, as on the desktop. **Properties**
+under Display Data (offered when nodes carry properties, off by default) adds
+their **values**, comma-joined, after the rest of the label:
+`255457.3 | Brucella lupini`, or just `Brucella lupini` with Node Name off. A
+unit follows its value. With nothing chosen, every property shows in the
+node's own order, except the heat map's columns while it is shown — a field
+has one display role. **Label fields…** picks which properties, and in what
+order; picking one turns Properties on. The checkbox and the fields travel in
+a shared view (`show=…,properties`, `labelFields=`), and the config keys are
+`showProperties` and `labelProperties`.
+
+A file can choose for itself: the desktop's figure setting (`aptx:figure`,
+see [Heat maps](#heat-maps)) carries `labelprops=` (the properties, in order)
+and the display switches `show.SHOW_PROPERTIES=true` and
+`show.SHOW_NODE_NAMES=false`, and a tree opens labelled that way in both
+programs. The config wins over the file.
 
 ### Initial label fields
 

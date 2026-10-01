@@ -16,6 +16,14 @@ users see a change only when a version is cut.
   on a clade (where desktops 0.11.117 to 0.11.172 wrote it) is ignored and not
   saved; the phylogeny's own is saved back unchanged. Config settings win.
 
+- **Node properties in the label**, as on the desktop: **Properties** under
+  Display Data adds the nodes' property values (a species, a host…) to their
+  labels, values only, comma-joined; **Label fields…** chooses which, and in
+  what order. Off by default; with nothing chosen, every property but the heat
+  map's columns. A file's figure setting can choose for itself — `labelprops`,
+  `show.SHOW_PROPERTIES`, `show.SHOW_NODE_NAMES` — so a BV-BRC tree named by
+  accession can open labelled by species. Config `showProperties`,
+  `labelProperties`; shared view `properties`, `labelFields`.
 - **Heat-map cells have borders**: where a cell is at least 5 px on screen,
   each is outlined in its own hue, darker, 0.75 px at any zoom, so a block
   still reads as a block and each cell can be counted. Smaller cells, or a

@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: node properties in the label, and the figure's label choices</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-09-30, on the BV-BRC Brucella file: the tips were labelled
+// with accession numbers nobody uses, and the species -- a node property --
+// could not be turned on. Now, as on the desktop: a "Properties" label
+// checkbox (off by default, offered when nodes carry properties) and a Label
+// fields chooser; values only, comma-joined; with nothing chosen, every
+// property but the heat map's columns. And the desktop's figure setting can
+// say it: labelprops, show.SHOW_PROPERTIES, show.SHOW_NODE_NAMES.
+//
+// The tree is built here: 6 tips named like accessions, each with a species,
+// a host (missing on one tip), a unit-bearing length, and two gene counts
+// (a heat map's worth).
+//
+//   (no query)   the checkbox, the default fields, the chooser, the view
+//   ?figure=1    the figure says: label with species, hide the names
+//   ?config=1    ... and the config says Properties off, which wins
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const figure = q.get('figure') === '1' || q.get('config') === '1';
+    const prop = (ref, v, extra) => '<property ref="' + ref + '" datatype="xsd:string" applies_to="node"' + (extra || '') + '>' + v + '</property>';
+    const SPECIES = ['Brucella lupini', 'Brucella ceti', 'Brucella suis', 'Brucella ovis', 'Brucella canis', 'Brucella suis'];
+    const tip = (i) => '<clade><name>2554' + i + '.3</name><branch_length>0.1</branch_length>'
+        + prop('BVBRC:species', SPECIES[i]) + (i === 2 ? '' : prop('BVBRC:host_name', 'host' + i))
+        + prop('x:len', String(10 + i), ' unit="METRIC:bp"')
+        + '<property ref="pg:a" datatype="xsd:integer" applies_to="node">' + (i % 3) + '</property>'
+        + '<property ref="pg:b" datatype="xsd:integer" applies_to="node">' + (i % 2) + '</property></clade>';
+    const fig = 'v1;labelprops=BVBRC:species;show.SHOW_PROPERTIES=true;show.SHOW_NODE_NAMES=false;columns='
+        + 'pg:a\\sMATRIX\\sCIRCLE\\sfalse\\ppg:b\\sMATRIX\\sCIRCLE\\sfalse';
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+        + '<clade><clade><branch_length>0.2</branch_length>' + tip(0) + tip(1) + tip(2) + '</clade>'
+        + '<clade><branch_length>0.2</branch_length>' + tip(3) + tip(4) + tip(5) + '</clade></clade>'
+        + (figure ? '<property ref="aptx:figure" datatype="xsd:string" applies_to="phylogeny">' + fig + '</property>' : '')
+        + '</phylogeny></phyloxml>';
+    const labelOf = (name) => { const t = [...document.querySelectorAll('#p g.node')].find((g) => g.__data__
+        && g.__data__.name === name); const x = t && t.querySelector('text.extlabel'); return x ? x.textContent : null; };
+    const settle = () => sleep(1600);
+    try {
+        const trees = archaeopteryx.parseTrees('props.xml', xml);
+        const viewer = archaeopteryx.launch('#p', trees, q.get('config') === '1' ? {showProperties: false} : {});
+        await viewer.ready;
+        await sleep(2200);
+        const cb = byId('props_cb');
+        if (q.get('config') === '1') {
+            check('the config\'s showProperties: false wins over the figure', !!cb && !cb.checked);
+            check('... the names stay off as the figure says, so nothing shows', labelOf('25540.3') === '' || labelOf('25540.3') === null,
+                JSON.stringify(labelOf('25540.3')));
+        } else if (figure) {
+            check('the figure turns Properties on', !!cb && cb.checked);
+            check('... and the names off', !byId('nn_cb').checked);
+            check('... and labels with the species alone', labelOf('25540.3') === 'Brucella lupini'
+                && labelOf('25542.3') === 'Brucella suis', labelOf('25540.3') + ' / ' + labelOf('25542.3'));
+            check('the heat map still opens from the same figure', byId('heatmap_cb').checked);
+        } else {
+            check('Properties is offered, and off by default', !!cb && !cb.checked);
+            check('... the labels are the names', labelOf('25540.3') === '25540.3', labelOf('25540.3'));
+            cb.click(); await settle();
+            // the heat map is off, so its columns are ordinary fields here
+            check('ticked: every property, values only, comma-joined, a unit without its namespace',
+                labelOf('25540.3') === '25540.3 | Brucella lupini, host0, 10 bp, 0, 0', labelOf('25540.3'));
+            check('... and a field a node lacks is simply skipped', labelOf('25542.3') === '25542.3 | Brucella suis, 12 bp, 2, 0',
+                labelOf('25542.3'));
+            byId('heatmap_cb').click(); await settle();
+            // x:len is numeric too, so the heat map takes it as a third column
+            check('with the heat map shown, its columns leave the default label',
+                labelOf('25540.3') === '25540.3 | Brucella lupini, host0', labelOf('25540.3'));
+
+            // the chooser: tick only Species and Host Name, Species first
+            cb.click(); await settle();          // off again: picking a field must turn it on
+            byId('label_fields_b').click(); await sleep(300);
+            const rows = () => [...document.querySelectorAll('.aptx-reorder-row')];
+            const nameOf = (r) => r.querySelector('.aptx-reorder-name').title;
+            check('the chooser offers every visible property', rows().length === 5,
+                rows().map(nameOf).join(','));
+            check('... ticked as the label shows them by default (not the heat map\'s)', rows().filter((r) =>
+                r.querySelector('input').checked).map(nameOf).join(',') === 'BVBRC:host_name,BVBRC:species',
+            rows().filter((r) => r.querySelector('input').checked).map(nameOf).join(','));
+            const sp = rows().findIndex((r) => nameOf(r) === 'BVBRC:species');
+            rows()[sp].querySelector('.aptx-reorder-move').click();   // up, above host
+            await sleep(100);
+            [...document.querySelectorAll('.aptx-reps-actions button')].find((b) => b.textContent === 'Apply').click();
+            await settle();
+            check('Apply: the chosen fields, in the chosen order', labelOf('25540.3') === '25540.3 | Brucella lupini, host0',
+                labelOf('25540.3'));
+            check('... and picking fields turned Properties on', cb.checked);
+
+            const vs = viewer.getViewState();
+            check('the view carries the checkbox and the fields', vs.show.indexOf('properties') >= 0
+                && JSON.stringify(vs.labelFields) === JSON.stringify(['BVBRC:species', 'BVBRC:host_name']),
+                JSON.stringify(vs.labelFields));
+            const hash = archaeopteryx.encodeViewState ? archaeopteryx.encodeViewState(vs) : null;
+            viewer.applyViewState({show: ['name', 'external'], labelFields: ['BVBRC:host_name']}); await settle();
+            check('an applied view turns it off', !cb.checked && labelOf('25540.3') === '25540.3', labelOf('25540.3'));
+            viewer.applyViewState({show: ['name', 'external', 'properties'], labelFields: ['BVBRC:host_name']}); await settle();
+            check('... and on, with its own fields', cb.checked && labelOf('25540.3') === '25540.3 | host0', labelOf('25540.3'));
+            if (hash !== null) {
+                check('the fields survive the hash', /labelFields=BVBRC:species,BVBRC:host_name/.test(hash), hash);
+            }
+        }
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

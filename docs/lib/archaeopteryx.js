@@ -456,6 +456,9 @@ function (root, d3, forester, phyloXml) {
     const SEARCH_COMBINE_SELECT = 'scmb';
     const SEARCH_COMBINE_ROW = 'scmb_row';
     const SEQUENCE_CB = 'seq_cb';
+    const PROPERTIES_CB = 'props_cb';
+    const LABEL_FIELDS_BUTTON = 'label_fields_b';
+    const LABEL_FIELDS_DIALOG = 'label_fields_dialog';
     const SHORTEN_NODE_NAME_CB = 'shortennodename_cb';
     const TAXONOMY_CB = 'tax_cb';
     const ZOOM_IN_X = 'zoomin_x';
@@ -647,6 +650,7 @@ function (root, d3, forester, phyloXml) {
     let _heatmapCells = null;             // what was drawn: {cellMin (tree units), count, bordered}
     let _heatmapBorderTimer = null;
     let _figureMatrix = null;             // the MATRIX refs the file's aptx:figure names, when it draws a matrix
+    let _labelFields = null;              // forester.labelPropertyRefs of the tree, cached until an edit
     let _heatmapColor = null;             // the one scale every column is painted on
     let _heatmapColOffset = 0;            // first shown column, while the matrix is windowed
     let _heatmapGeom = null;              // the last draw's geometry, for the hover readout
@@ -3404,7 +3408,7 @@ function (root, d3, forester, phyloXml) {
         _svgGroup.selectAll('g.aptx-align-ext').remove();
         let alignedRect = !radialDisplay() && _state.phylogram && _state.alignPhylogram;
         let tipGuides = alignedRect && _state.showExternalLabels
-            && (_state.showNodeName || _state.showTaxonomy || _state.showSequence);
+            && (_state.showNodeName || _state.showTaxonomy || _state.showSequence || _state.showProperties);
         // a collapsed clade's label always shows, so its guide does too: from
         // past the wedge's farthest tip to the label column
         let collapsedGuides = alignedRect ? nodes.filter(function (d) {
@@ -4674,6 +4678,10 @@ function (root, d3, forester, phyloXml) {
         }
 
 
+        if (_state.showProperties && phynode.properties) {
+            l = append(l, labelPropertiesOf(phynode));
+        }
+
         if (_nodeLabels && phynode.properties) {
             const props_length = phynode.properties.length;
             if (props_length > 0) {
@@ -5634,6 +5642,8 @@ function (root, d3, forester, phyloXml) {
         'layout',
         'showMsa',
         'showMsaLogo',
+        'showProperties',
+        'labelProperties',
         'showHeatmap',
         'heatmapColumnOrder',
         'heatmapManualOrder',
@@ -6081,6 +6091,27 @@ function (root, d3, forester, phyloXml) {
             console.log(MESSAGE + 'initial label fields: ' + (chosen.join(' + ') || 'none')
                 + ' (median combined label would be ' + Math.round(suggested.stats.medianCombinedLength)
                 + ' characters)');
+        }
+
+        // Properties in the tip label: off unless asked for, as on the desktop,
+        // in every user-visible property's own order unless a list says which.
+        // The file's figure setting (aptx:figure) can say both, and whether
+        // the names show: labelprops, show.SHOW_PROPERTIES and
+        // show.SHOW_NODE_NAMES, the desktop's own keys. The config wins.
+        let figure = _treeData ? forester.readFigure(_treeData) : null;
+        if (_state.showProperties === undefined) {
+            _state.showProperties = !!(figure && figure.show.SHOW_PROPERTIES === true);
+        }
+        if (_state.labelProperties === undefined) {
+            _state.labelProperties = (figure && figure.labelProps) ? figure.labelProps.slice() : null;
+        } else if (_state.labelProperties !== null && !(Array.isArray(_state.labelProperties)
+            && _state.labelProperties.every(function (r) {
+                return typeof r === 'string';
+            }))) {
+            throw new Error(ERROR + '"labelProperties" must be an array of property refs');
+        }
+        if (figure && typeof figure.show.SHOW_NODE_NAMES === 'boolean' && _basicTreeProperties.nodeNames) {
+            _state.showNodeName = figure.show.SHOW_NODE_NAMES;
         }
 
         // A small tree is drawn with a heavier stroke; hairlines are for trees
@@ -6542,6 +6573,7 @@ function (root, d3, forester, phyloXml) {
         _trees = trees;
         _treeIndex = index;
         _figureMatrix = null;   // read by initializeState, behind the working card
+        _labelFields = null;
         _launchConfig = config;
         _container = containerEl;
         assignViewIds(phylo);
@@ -7299,6 +7331,7 @@ function (root, d3, forester, phyloXml) {
             _domain.palette = null;   // the tree changed: the domain names are dealt their colours again
         }
         if (edited) {
+            _labelFields = null;      // the fields the labels can show, too
             _heatmapModel = null;     // ... and the heat map's columns and scale are derived from it again
             _heatmapColor = null;
         }
@@ -9726,6 +9759,7 @@ function (root, d3, forester, phyloXml) {
         ['name', NODE_NAME_CB, 'showNodeName'],
         ['taxonomy', TAXONOMY_CB, 'showTaxonomy'],
         ['sequence', SEQUENCE_CB, 'showSequence'],
+        ['properties', PROPERTIES_CB, 'showProperties'],
         ['confidence', CONFIDENCE_VALUES_CB, 'showConfidenceValues'],
         ['madValues', MAD_VALUES_CB, 'showMadValues'],
         ['branchLength', BRANCH_LENGTH_VALUES_CB, 'showBranchLengthValues'],
@@ -9848,6 +9882,9 @@ function (root, d3, forester, phyloXml) {
         if (heatmapAvailable()) {
             s.heatmap = _state.showHeatmap === true;
             s.heatmapOrder = heatmapMode();
+            if (_state.labelProperties) {
+                s.labelFields = _state.labelProperties.slice();
+            }
             if (_state.heatmapManualOrder) {
                 s.heatmapManual = _state.heatmapManualOrder.slice();
             }
@@ -9990,6 +10027,11 @@ function (root, d3, forester, phyloXml) {
         }
         if (typeof s.heatmap === 'boolean') {
             _state.showHeatmap = s.heatmap;
+        }
+        if (Array.isArray(s.labelFields) && s.labelFields.every(function (r) {
+            return typeof r === 'string';
+        })) {
+            _state.labelProperties = s.labelFields.slice();
         }
         if (Array.isArray(s.heatmapManual) && s.heatmapManual.every(function (r) {
             return typeof r === 'string';
@@ -10187,7 +10229,7 @@ function (root, d3, forester, phyloXml) {
         'scaleAxis', 'scaleGrid', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
     // Lists of strings, comma-joined. A property ref carries ':' but never a
     // comma, and encodeViewValue leaves both readable in a hash.
-    const VIEW_LIST_KEYS = ['heatmapManual'];
+    const VIEW_LIST_KEYS = ['heatmapManual', 'labelFields'];
     const VIEW_SEARCH_KEYS = [['searchA', 'a'], ['searchB', 'b']];
 
     function encodeViewValue(v) {
@@ -13692,6 +13734,182 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate();
     }
 
+    // ===================== Properties in the label =====================
+    // The desktop's "Properties" option and its Annotation Fields chooser:
+    // a node's property values in its label, values only, comma-joined, in
+    // the order chosen (forester.labelPropertiesText). Nothing chosen means
+    // every user-visible property in the node's own order, less the heat
+    // map's columns while it is shown -- a field has one display role.
+
+    function labelFields() {
+        if (_labelFields === null && _treeData) {
+            _labelFields = forester.labelPropertyRefs(_treeData);
+        }
+        return _labelFields || [];
+    }
+
+    // the heat map's columns while it is shown: left out of the default label
+    function labelFieldsExcluded() {
+        let excluded = Object.create(null);
+        if (heatmapShown()) {
+            let m = heatmapModel();
+            (m ? m.refs : []).forEach(function (c) {
+                excluded[c.ref] = true;
+            });
+        }
+        return excluded;
+    }
+
+    function labelPropertiesOf(node) {
+        return forester.labelPropertiesText(node, _state.labelProperties,
+            _state.labelProperties ? null : labelFieldsExcluded());
+    }
+
+    function propertiesCbClicked() {
+        _state.showProperties = getCheckboxValue(PROPERTIES_CB);
+        if (_state.showProperties) {
+            _state.showExternalLabels = true;
+            setCheckboxValue(EXTERNAL_LABEL_CB, true);
+        }
+        search0();
+        search1();
+        scheduleUpdate();
+    }
+
+    // Which properties the label shows, and in what order: each field ticked
+    // or not, and moved with the arrows (or the arrow keys). Apply keeps the ticked
+    // ones in the order shown; picking a field that was not shown turns the
+    // Properties label on, as the desktop does, since otherwise choosing it
+    // would visibly do nothing. "All" goes back to every field.
+    function showLabelFieldsDialog() {
+        let all = labelFields();
+        if (all.length < 1) {
+            return;
+        }
+        let chosen = _state.labelProperties ? _state.labelProperties.filter(function (r) {
+            return all.indexOf(r) >= 0;
+        }) : null;
+        // the chosen fields first, in their order, then the rest as offered;
+        // with none chosen, ticked is what the label shows by default
+        let excluded = chosen ? null : labelFieldsExcluded();
+        let working = (chosen || []).concat(all.filter(function (r) {
+            return !chosen || chosen.indexOf(r) < 0;
+        })).map(function (ref) {
+            return {ref: ref, on: chosen ? chosen.indexOf(ref) >= 0 : !excluded[ref]};
+        });
+        if (!chosen) {
+            // the ticked ones first, so the list reads as the label does
+            working = working.filter(function (w) {
+                return w.on;
+            }).concat(working.filter(function (w) {
+                return !w.on;
+            }));
+        }
+        let before = working.filter(function (w) {
+            return w.on && (chosen !== null || _state.showProperties);
+        }).map(function (w) {
+            return w.ref;
+        });
+        let shell = makeDialogShell(LABEL_FIELDS_DIALOG, 'Label fields', 340);
+        let body = shell.body;
+        repsElement(body, 'div', 'aptx-reps-lead',
+            'Tick the properties the labels show, and set their order with the arrows.');
+        let list = repsElement(body, 'div', 'aptx-reorder');
+
+        function move(from, to) {
+            if (to < 0 || to >= working.length || from === to) {
+                return false;
+            }
+            working.splice(to, 0, working.splice(from, 1)[0]);
+            draw();
+            return true;
+        }
+
+        function draw() {
+            list.textContent = '';
+            working.forEach(function (w, i) {
+                let row = repsElement(list, 'div', 'aptx-reorder-row');
+                row.tabIndex = 0;
+                let box = repsElement(row, 'input', 'aptx-reorder-check');
+                box.type = 'checkbox';
+                box.checked = w.on;
+                box.addEventListener('change', function () {
+                    w.on = box.checked;
+                });
+                repsElement(row, 'span', 'aptx-reorder-name', forester.propertyDisplayName(w.ref)).title = w.ref;
+                let up = repsElement(row, 'button', 'aptx-reorder-move', '↑');
+                let down = repsElement(row, 'button', 'aptx-reorder-move', '↓');
+                up.type = 'button';
+                down.type = 'button';
+                up.title = 'Move up';
+                down.title = 'Move down';
+                up.disabled = (i === 0);
+                down.disabled = (i === working.length - 1);
+                up.addEventListener('click', function () {
+                    if (move(i, i - 1)) {
+                        list.children[i - 1].focus();
+                    }
+                });
+                down.addEventListener('click', function () {
+                    if (move(i, i + 1)) {
+                        list.children[i + 1].focus();
+                    }
+                });
+                row.addEventListener('keydown', function (event) {
+                    if (event.key === ' ' && event.target === row) {
+                        event.preventDefault();
+                        box.checked = !box.checked;
+                        w.on = box.checked;
+                        return;
+                    }
+                    let d = (event.key === 'ArrowUp') ? -1 : ((event.key === 'ArrowDown') ? 1 : 0);
+                    if (d === 0) {
+                        return;
+                    }
+                    event.preventDefault();
+                    if (move(i, i + d)) {
+                        list.children[i + d].focus();
+                    }
+                });
+            });
+        }
+        draw();
+
+        let actions = repsElement(body, 'div', 'aptx-reps-actions');
+        repsButton(actions, 'All', false, function () {
+            _state.labelProperties = null;
+            shell.dialog.close();
+            scheduleUpdate();
+        });
+        repsButton(actions, 'Cancel', false, function () {
+            shell.dialog.close();
+        });
+        repsButton(actions, 'Apply', true, function () {
+            _state.labelProperties = working.filter(function (w) {
+                return w.on;
+            }).map(function (w) {
+                return w.ref;
+            });
+            let added = _state.labelProperties.some(function (r) {
+                return before.indexOf(r) < 0;
+            });
+            if (added && !_state.showProperties) {
+                _state.showProperties = true;
+                _state.showExternalLabels = true;
+                setCheckboxValue(PROPERTIES_CB, true);
+                setCheckboxValue(EXTERNAL_LABEL_CB, true);
+            }
+            shell.dialog.close();
+            search0();
+            search1();
+            scheduleUpdate();
+        });
+        shell.dialog.showModal();
+        if (list.firstChild) {
+            list.firstChild.focus();
+        }
+    }
+
     function sequenceCbClicked() {
         _state.showSequence = getCheckboxValue(SEQUENCE_CB);
         if (_state.showSequence) {
@@ -16403,6 +16621,8 @@ function (root, d3, forester, phyloXml) {
         on(TAXONOMY_CB, 'click', taxonomyCbClicked);
 
         on(SEQUENCE_CB, 'click', sequenceCbClicked);
+        on(PROPERTIES_CB, 'click', propertiesCbClicked);
+        on(LABEL_FIELDS_BUTTON, 'click', showLabelFieldsDialog);
 
         on(CONFIDENCE_VALUES_CB, 'click', confidenceValuesCbClicked);
         on(SUPPORT_DOTS_CB, 'click', supportDotsCbClicked);
@@ -16931,6 +17151,10 @@ function (root, d3, forester, phyloXml) {
             if (_basicTreeProperties.sequences) {
                 labels.push(makeCheckboxItem('Sequence', SEQUENCE_CB, 'to show/hide node sequence information'));
             }
+            if (labelFields().length > 0) {
+                labels.push(makeCheckboxItem('Properties', PROPERTIES_CB, 'to show/hide the nodes\' property values'
+                    + ' (Label fields… chooses which, and in what order)'));
+            }
             if (_nodeLabels) {
                 for (const [key, value] of Object.entries(_nodeLabels)) {
                     if (value.label && value.propertyRef && value.description) {
@@ -17012,6 +17236,12 @@ function (root, d3, forester, phyloXml) {
 
             let h = '<fieldset><legend>Display Data</legend>';
             h = h.concat(makeCheckboxGroup('Labels', labels));
+            if (labelFields().length > 0) {
+                h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel"></span>'
+                    + '<input type="button" class="aptx-widebtn" value="Label fields…" name="' + LABEL_FIELDS_BUTTON
+                    + '" id="' + LABEL_FIELDS_BUTTON + '" title="choose which properties the labels show, and in what'
+                    + ' order"></div>');
+            }
             h = h.concat(makeCheckboxGroup('Nodes', nodes));
             h = h.concat(makeCheckboxGroup('Options', opts));
             h = h.concat('</fieldset>');
@@ -17336,6 +17566,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(NODE_NAME_CB, _state.showNodeName);
         setCheckboxValue(TAXONOMY_CB, _state.showTaxonomy);
         setCheckboxValue(SEQUENCE_CB, _state.showSequence)
+        setCheckboxValue(PROPERTIES_CB, _state.showProperties);
         setCheckboxValue(CONFIDENCE_VALUES_CB, _state.showConfidenceValues);
         setCheckboxValue(SUPPORT_DOTS_CB, _state.showSupportDots);
         syncMadValuesCheckbox();
