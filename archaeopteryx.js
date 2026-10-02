@@ -11179,7 +11179,7 @@ function (root, d3, forester, phyloXml) {
 
         _clockPlot = {dialog: shell.dialog, svg: svg, axes: axes, internal: internal, line: line, tips: tips,
             ring: ring, box: box, stats: stats, note: note, deselect: deselect,
-            data: null, marks: [], shape: null, x: null, y: null};
+            data: null, marks: [], seen: null, hover: null, lays: 0, x: null, y: null};
         // the shell's close control, and anything else that closes the dialog
         let closed = function () {
             if (_clockPlot && _clockPlot.dialog === shell.dialog) {
@@ -11336,12 +11336,19 @@ function (root, d3, forester, phyloXml) {
 
     /**
      * Draws the open clock plot for the tree on view. Called at the end of
-     * every render: the points and the line are laid down again only when
-     * what they show has changed (another clade, a node deleted, a checkbox),
-     * and otherwise only the colours that differ are touched -- a zoom step
-     * costs one pass over the points and no DOM writes.
+     * every render, so it has to cost next to nothing when what it shows has
+     * not changed. The points are worked out and laid down again only for
+     * another tree, another clade, a tree on view with a different number of
+     * nodes (one deleted) or a checkbox; any other render -- a zoom step, a
+     * selection -- costs a count of the nodes and one pass over the points
+     * for their colours, with a DOM write only where one changed.
      *
-     * @param force lay everything down again
+     * Until review (2026-10-02) the points were worked out afresh on every
+     * render and only the DRAWING was skipped, while this comment claimed
+     * the opposite: 5 ms a render on a 7,199-node build, where the count
+     * takes 0.2.
+     *
+     * @param force work everything out and lay it down again
      */
     function renderClockPlot(force) {
         let cp = _clockPlot;
@@ -11352,23 +11359,33 @@ function (root, d3, forester, phyloXml) {
             _clockPlot = null;
             return;
         }
-        let data = _treeData ? forester.clockPlotData(_treeData, topNode()) : null;
-        if (!data) {
-            closeClockPlot();    // the tree no longer has a plot (a tip deleted)
-            return;
+        let top = _treeData ? (topNode() || forester.getTreeRoot(_treeData)) : null;
+        let count = 0;
+        if (top) {
+            forester.preOrderTraversalAll(top, function () {
+                ++count;
+            });
         }
-        let fit = data.fit;
-        let shape = {top: data.root.node, n: data.points.length, slope: fit ? fit.slope : null,
-            intercept: fit ? fit.intercept : null, line: _clockPlotOptions.line, internal: _clockPlotOptions.internal};
-        let same = !force && cp.shape !== null && Object.keys(shape).every(function (k) {
-            return shape[k] === cp.shape[k];
-        });
-        if (!same) {
-            cp.shape = shape;
+        let seen = cp.seen;    // (another tree is another top: no need to ask for both)
+        if (force || !seen || seen.top !== top || seen.count !== count) {
+            let data = top ? forester.clockPlotData(_treeData, top) : null;
+            if (!data) {
+                closeClockPlot();    // the tree no longer has a plot (a tip deleted)
+                return;
+            }
+            cp.seen = {top: top, count: count};
             cp.data = data;
             layClockPlot(cp, data);
         }
         colorClockPlot(cp);
+        // The render that brought us here put the tree's glow out (the node
+        // may have moved). The pointer is still on its point, so the node is
+        // lit again where it now is: a click on a point redraws the tree, and
+        // left the point ringed and its node dark until the pointer moved to
+        // another point and back.
+        if (cp.hover) {
+            showHoverGlow(clockTreeNode(cp.hover.p.node));
+        }
     }
 
     function layClockPlot(cp, data) {
@@ -11458,7 +11475,10 @@ function (root, d3, forester, phyloXml) {
         } else {
             cp.line.style.display = 'none';
         }
-        cp.ring.style.display = 'none';
+        // every point may have moved from under the pointer: what it is on
+        // now is known at its next move
+        cp.hover = null;
+        clockRing(cp, null);
 
         // --- what the line says
         while (cp.stats.firstChild) {
@@ -11485,7 +11505,7 @@ function (root, d3, forester, phyloXml) {
             + ' Click a point to select its node; drag to select the tips in a box.';
         // what was laid down, for the browser harness: read here, where it is
         // computed, not off the DOM
-        cp.dialog._aptxClockPlot = {data: data, shown: shown.length, calendar: calendar};
+        cp.dialog._aptxClockPlot = {data: data, shown: shown.length, calendar: calendar, lays: ++cp.lays};
     }
 
     // One pass: a point whose colour or highlight differs from what it wears
@@ -11618,12 +11638,12 @@ function (root, d3, forester, phyloXml) {
             _node_mouseover_div.interrupt().style('opacity', 0.95);
             placeHoverReadout(tip, e);
         };
-        let hover = null;
+        // cp.hover: the point the pointer is on, kept for the renders in between
         let point = function (e) {
             let xy = at(e);
             let mark = clockMarkAt(cp, xy[0], xy[1]);
-            if (mark !== hover) {
-                hover = mark;
+            if (mark !== cp.hover) {
+                cp.hover = mark;
                 clockRing(cp, mark);
                 if (mark) {
                     showHoverGlow(clockTreeNode(mark.p.node));
@@ -11658,7 +11678,7 @@ function (root, d3, forester, phyloXml) {
                 readout(e, null);
                 clockRing(cp, null);
                 hideHoverGlow();
-                hover = null;
+                cp.hover = null;
             }
             if (press.boxed) {
                 cp.box.setAttribute('x', Math.min(press.x, xy[0]));
@@ -11715,7 +11735,7 @@ function (root, d3, forester, phyloXml) {
         });
         svg.addEventListener('pointerleave', function (e) {
             if (!press) {
-                hover = null;
+                cp.hover = null;
                 clockRing(cp, null);
                 hideHoverGlow();
                 readout(e, null);

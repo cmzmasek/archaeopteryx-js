@@ -35,6 +35,10 @@
 //             right corner, above everything (the demo page's tree chooser
 //             does): the panel opens BELOW it, its close control in reach.
 //             Found on the live demo with a real mouse, 2026-10-02.
+// ?clades=1   from the view of one clade straight to the view of another with
+//             AS MANY NODES: the plot is the second clade's. (The plot is
+//             worked out again when the top of the view or its node count
+//             changes; every other case changes both at once.)
 // ?delete=1   a tip deleted with the panel open: the plot follows, with the
 //             line of the tips that are left; a second one deleted leaves two
 //             tips, no plot, and the panel and its button go.
@@ -135,6 +139,29 @@
             check('Rate is positive: 0.01, per unit of time', row('Rate') === '0.01 subs/site per unit of time', row('Rate'));
             check('Root date, by the line and in the tree: age 4', row('Root date, by the line') === '4' && row('Root date, in the tree') === '4',
                 row('Root date, by the line') + ' / ' + row('Root date, in the tree'));
+            finish();
+            return;
+        }
+        if (/clades=1/.test(location.search)) {
+            const T = {A: [2000, 0.001], B: [2001, 0.003], E: [2002.5, 0.0035], C: [2002, 0.002], D: [2003, 0.006], F: [2004, 0.005]};
+            const leaf = (n) => ({name: n, node_attrs: {num_date: {value: T[n][0]}, div: T[n][1]}});
+            const inner = (n, date, div, kids) => ({name: n, node_attrs: {num_date: {value: date}, div: div}, children: kids});
+            const trees = archaeopteryx.parseTrees('six.json', JSON.stringify({version: 'v2', meta: {title: 'two clades of three'},
+                tree: inner('ROOT', 1999, 0, [inner('X', 1999.5, 0.0005, ['A', 'B', 'E'].map(leaf)), inner('Y', 2000.5, 0.001, ['C', 'D', 'F'].map(leaf))])}));
+            const v = archaeopteryx.launch('#p', trees, {});
+            await v.ready; await sleep(1500);
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const X = forester.findByNodeName(forester.getTreeRoot(tree), 'X')[0], Y = forester.findByNodeName(forester.getTreeRoot(tree), 'Y')[0];
+            const count = (n) => { let c = 0; forester.preOrderTraversalAll(n, () => { ++c; }); return c; };
+            check('fixture: the two clades have as many nodes', count(X) === 4 && count(Y) === 4, count(X) + ' and ' + count(Y));
+            const fx = ols(['A', 'B', 'E'].map((n) => T[n])), fy = ols(['C', 'D', 'F'].map((n) => T[n]));
+            check('fixture: and different lines', sig3(fx.slope) !== sig3(fy.slope), sig3(fx.slope) + ' and ' + sig3(fy.slope));
+            byId('clock_plot_b').click(); await sleep(300);
+            const tipsShown = () => dialog()._aptxClockPlot.data.points.filter((p) => p.tip).map((p) => p.node.name).sort().join('');
+            v.applyViewState({subtree: X.viewId}); await sleep(1500);
+            check('in the view of the first clade: its tips, its line', tipsShown() === 'ABE' && row('Rate') === sig3(fx.slope) + ' subs/site per year', tipsShown() + ', ' + row('Rate'));
+            v.applyViewState({subtree: Y.viewId}); await sleep(1500);
+            check('straight to the second clade: its tips, its line', tipsShown() === 'CDF' && row('Rate') === sig3(fy.slope) + ' subs/site per year', tipsShown() + ', ' + row('Rate'));
             finish();
             return;
         }
@@ -333,8 +360,20 @@
         const hitMarks = () => [...document.querySelectorAll('#aptx_clock_plot circle.aptx-clock-hit')];
         const deselect = dlg.querySelector('.aptx-clock-deselect');
         check('nothing selected: Deselect all is disabled', selected().length === 0 && deselect.disabled);
+        // the pointer comes to rest on the point, as a mouse does before it clicks
+        pointer('pointermove', tp[0], tp[1]); await sleep(150);
+        const laysBefore = dialog()._aptxClockPlot.lays;
         pointer('pointerdown', tp[0], tp[1]); pointer('pointerup', tp[0], tp[1]); await sleep(500);
         check('a click on a point selects its node in the tree', selected().join() === target, selected().join());
+        // the selection redraws the tree, which puts the glow out: the pointer
+        // has not moved, so it has to come back (code review, 2026-10-02)
+        const g2 = glowAt();
+        check('...and its node is still lit, the pointer not having moved', !!g2 && Math.abs(g2[0] - node.y) < 0.5 && Math.abs(g2[1] - node.x) < 0.5
+            && ring.style.display !== 'none', g2 ? g2.map((v) => v.toFixed(1)).join(',') : 'no glow');
+        // ...and that redraw changed nothing the plot shows, so nothing is
+        // worked out or laid down again: only the colours are gone over
+        check('...and the plot was not laid down again for it', typeof laysBefore === 'number' && dialog()._aptxClockPlot.lays === laysBefore,
+            laysBefore + ' -> ' + dialog()._aptxClockPlot.lays);
         check('...the point wears the highlight', hitMarks().length === 1 && Math.abs(centre(hitMarks()[0])[0] - tp[0]) < 0.01,
             hitMarks().length + ' highlighted');
         check('...and Deselect all is enabled', !deselect.disabled);
@@ -391,8 +430,10 @@
         if (clade) {
             const cfit = ols(clade.tips.map((t) => want.get(t.name)));
             let inner = 0; forester.preOrderTraversalAll(clade.n, (n) => { if (n.children) { ++inner; } });
+            const laysWhole = dialog()._aptxClockPlot.lays;
             viewer.applyViewState({subtree: clade.n.viewId}); await sleep(1800);
             check('in the view of a clade the panel stays open', !!dialog() && dialog().open);
+            check('...and is laid down again, for the clade', dialog()._aptxClockPlot.lays > laysWhole, laysWhole + ' -> ' + dialog()._aptxClockPlot.lays);
             check('...with the clade\'s points only', tipMarks().length === clade.tips.length && circles('aptx-clock-internal').length === inner,
                 tipMarks().length + ' + ' + circles('aptx-clock-internal').length + ' of ' + clade.tips.length + ' + ' + inner);
             check('...and the clade\'s own line', row('Rate') === sig3(cfit.slope) + ' subs/site per year' && row('R²') === sig3(cfit.r2),
