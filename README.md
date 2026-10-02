@@ -886,6 +886,53 @@ branches show divergence, and the Scale Axis measures distance instead. Each lay
 Div is on screen says so and opens again showing divergence. All of this is
 shared with the desktop.
 
+### Clock plot
+
+Beside the switch, a **Clock plot** button opens a panel that plots every
+node's **date** against its **divergence** from the root, with a straight
+line through the tips — the root-to-tip plot of TempEst and TreeTime, and
+Auspice's clock view. Under the plot:
+
+- **Rate** — the slope of the line: substitutions per site per year (per
+  unit of the tree's dates where they are not calendar years). Negative
+  where the tips' divergence falls with time.
+- **Root date, by the line** — the date at which the line comes down to the
+  root's divergence — over **Root date, in the tree**, the one the tree
+  states. How far apart they are is the point of showing both.
+- **R²** and the number of **Tips** in the fit.
+
+The line is ordinary least squares over the **tips only**: a tip's date is
+an observation, an ancestor's was inferred (usually with a clock), and
+counting it would have the estimate confirm itself. It is not forced through
+the root. Tips share ancestry, so R² describes the fit and is no
+significance test. On a BEAST clock-model tree the divergence *is* each
+branch's time × its clock rate, so there the plot shows the model's rates,
+not a measurement of its own (a strict clock is a perfect line), and the
+panel says so.
+
+The panel is **linked to the tree** and stays open while you work in it
+(drag it by its title):
+
+- a point wears its node's colour in the tree — the Color visualization,
+  search hits, the selection;
+- pointing at a point lights its node in the tree (the collapsed clade
+  holding it, if it is hidden in one), and pointing at a node in the tree
+  rings its point;
+- **clicking** a point selects or deselects its node, and **dragging** a box
+  selects the tips in it — the tree's own selection, so an outlier found on
+  the plot is found in the tree. **Deselect all** clears it;
+- in a subtree view the plot is the clade's, with the clade's own line.
+
+**Regression line** and **Internal nodes** show and hide the line and the
+ancestors' points (a tree with a deep root crowds its tips into a corner
+until the ancestors are hidden).
+
+The button is offered on a tree that has **Time | Div** and whose line can
+be drawn: three tips or more, not all on one date. A tree sampled at one
+moment has no slope to estimate. (A tree whose branch lengths are divergence
+and whose tips alone are dated — the tree a root-to-tip plot is run on
+*before* dating — has no plot yet.)
+
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
 
@@ -1096,7 +1143,10 @@ pick them up. Both metrics are retained, and
 `forester.applyTimeBranchLengths(phy)` /
 `forester.applyDivergenceBranchLengths(phy)` /
 `forester.hasTimeAndDivergence(phy)` are the plumbing behind the
-**Time | Div** switch. The two `apply` functions answer `true` when they
+**Time | Div** switch (and `forester.clockPlotKind(phy)` /
+`forester.clockPlotData(phy, view)` / `forester.clockRegression(xs, ys)`
+behind the **Clock plot**: which trees have one, its points and its
+least-squares line). The two `apply` functions answer `true` when they
 laid the tree out, and `false` — leaving every branch length as it was —
 when their layout cannot state every branch.
 
@@ -2552,6 +2602,9 @@ var selected = archaeopteryx.getSelectedNodes();   // array of node objects
 
 Selected nodes are drawn in the selection colour, which is fixed so that it
 stays distinguishable from the two search colours.
+
+The **Clock plot** selects too, whatever this setting says: a click on a
+point, or a box dragged over tips, changes the same selection.
 
 There is no push mechanism (no button or event that announces "the user is done
 selecting") — the embedding application reads the selection whenever it wants,

@@ -7245,6 +7245,192 @@
         return bothPicturesHaveDepth(root);
     };
 
+    // ---- the CLOCK PLOT ---------------------------------------------------
+    // Every node as a point, its DATE against its DIVERGENCE from the root,
+    // and a straight line through the tips: the slope is the rate the tips
+    // accumulated divergence at, and where the line comes down to the root's
+    // divergence is the date it puts the root on. TempEst's and TreeTime's
+    // root-to-tip regression, Auspice's clock view. Christian, 2026-10-02:
+    // a panel linked to the tree, named "Clock plot"; JS only until the
+    // design is final.
+    //
+    // THE RULE, designed for two kinds of tree, the first of them built:
+    //
+    // 1. 'divergence' -- a tree with Time and Div (hasTimeAndDivergence): each
+    //    node states a date and a divergence from the root, recorded on it or
+    //    summed from each branch's time x its clock rate. Every node is a
+    //    point; which of the two layouts is on screen does not matter.
+    // 2. 'root-to-tip' (NOT BUILT) -- a tree whose branch lengths are
+    //    divergence and whose tips are dated, with no dates on its ancestors
+    //    (it is not a time tree): a tip's divergence is the sum of the stated
+    //    lengths from the root. Tips only. This is the tree a clock plot is
+    //    wanted for most -- is there a signal worth dating? -- and the one
+    //    whose answer depends on its root.
+    //
+    // In both, the plot is offered when its LINE can be drawn: three tips or
+    // more, and not all of them on one date. A tree sampled at one moment has
+    // no slope to estimate. Asked of the tree, never of the view: in the view
+    // of a clade too small or too uniform for a line the points are drawn and
+    // the line is not.
+    //
+    // The FIT is ordinary least squares over the TIPS alone. A tip's date is
+    // an observation; an ancestor's was inferred, usually with a clock, and
+    // counting it would have the estimate confirm itself. The line is not
+    // forced through the root, so the date it reaches the root's divergence
+    // at can be held against the date the tree states for the root.
+    const CLOCK_PLOT_MIN_TIPS = 3;
+
+    /**
+     * Which clock plot the tree has, or null for none (see THE RULE above).
+     *
+     * @param phy the tree
+     * @returns {string|null} 'divergence', or null
+     */
+    forester.clockPlotKind = function (phy) {
+        if (!phy || !forester.hasTimeAndDivergence(phy)) {
+            return null;
+        }
+        let tips = 0;
+        let first = null;
+        let differ = false;
+        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
+            if (n.children && n.children.length > 0) {
+                return;
+            }
+            ++tips;
+            let d = auspiceNodeDate(n);
+            if (first === null) {
+                first = d;
+            } else if (d !== first) {
+                differ = true;
+            }
+        });
+        return (tips >= CLOCK_PLOT_MIN_TIPS && differ) ? 'divergence' : null;
+    };
+
+    /**
+     * Ordinary least squares of y on x, computed about the means: a date is
+     * near 2020 and its spread a few months, and sums of raw squares would
+     * spend every digit on the 2020.
+     *
+     * @param xs the dates
+     * @param ys the divergences, as many
+     * @returns {{n, slope, intercept, r2, meanX, meanY}|null} null with fewer
+     *          than three points or every x the same; r2 is null where every
+     *          y is the same (no variance to explain)
+     */
+    forester.clockRegression = function (xs, ys) {
+        let n = xs.length;
+        if (n < CLOCK_PLOT_MIN_TIPS || ys.length !== n) {
+            return null;
+        }
+        let mx = 0;
+        let my = 0;
+        for (let i = 0; i < n; ++i) {
+            mx += xs[i];
+            my += ys[i];
+        }
+        mx /= n;
+        my /= n;
+        let sxx = 0;
+        let sxy = 0;
+        let syy = 0;
+        for (let i = 0; i < n; ++i) {
+            let dx = xs[i] - mx;
+            let dy = ys[i] - my;
+            sxx += dx * dx;
+            sxy += dx * dy;
+            syy += dy * dy;
+        }
+        if (!(sxx > 0) || !isFinite(sxx) || !isFinite(sxy) || !isFinite(syy)) {
+            return null;
+        }
+        let slope = sxy / sxx;
+        return {
+            n: n,
+            slope: slope,
+            intercept: my - (slope * mx),
+            r2: syy > 0 ? ((sxy * sxy) / (sxx * syy)) : null,
+            meanX: mx,
+            meanY: my
+        };
+    };
+
+    /**
+     * The clock plot of the tree, or of the clade on view.
+     *
+     * @param phy the tree: the RULE is asked of it
+     * @param view the tree or clade to plot (the tree, a node, or the
+     *        viewer's subtree root); the whole tree where none is given
+     * @returns {object|null} null where the tree has no clock plot; else
+     *   kind      'divergence'
+     *   forward   whether the dates increase toward the tips (calendar
+     *             dates); false for ages
+     *   unit      the dates' unit as the tree states it, or null
+     *   fromRates whether the divergence is time x clock rate
+     *   points    [{node, date, div, tip}] in preorder; the tips'
+     *             `residual` is their divergence less the line's
+     *   root      {node, date, div}: the top of the view
+     *   fit       forester.clockRegression over the tips, with
+     *             rate      the slope in the direction time runs: divergence
+     *                       per unit of time (negative where the tips'
+     *                       divergence falls with time)
+     *             rootDate  the date the line reaches the root's divergence
+     *                       at; null unless the rate is positive
+     *             or null where the view has no line
+     */
+    forester.clockPlotData = function (phy, view) {
+        let kind = forester.clockPlotKind(phy);
+        if (kind === null) {
+            return null;
+        }
+        let treeRoot = forester.getTreeRoot(phy);
+        // a node is its own top; the tree, or the viewer's holder of a clade,
+        // is a parentless wrapper around it
+        let top = treeRoot;
+        if (view) {
+            top = (!view.parent && view.children && view.children.length === 1) ? view.children[0] : view;
+        }
+        let points = [];
+        let xs = [];
+        let ys = [];
+        forester.preOrderTraversalAll(top, function (n) {
+            let date = auspiceNodeDate(n);
+            let div = auspiceNodeDiv(n);
+            if (date === null || div === null) {
+                return;    // not on a tree with Time and Div; a guard, not a rule
+            }
+            let tip = !(n.children && n.children.length > 0);
+            points.push({node: n, date: date, div: div, tip: tip});
+            if (tip) {
+                xs.push(date);
+                ys.push(div);
+            }
+        });
+        let forward = timeIncreasesTowardTips(treeRoot);
+        let root = {node: top, date: auspiceNodeDate(top), div: auspiceNodeDiv(top)};
+        let fit = forester.clockRegression(xs, ys);
+        if (fit) {
+            fit.rate = forward ? fit.slope : -fit.slope;
+            fit.rootDate = (fit.rate > 0 && root.div !== null)
+                ? ((root.div - fit.intercept) / fit.slope) : null;
+            for (let i = 0; i < points.length; ++i) {
+                if (points[i].tip) {
+                    points[i].residual = points[i].div - (fit.intercept + (fit.slope * points[i].date));
+                }
+            }
+        }
+        return {
+            kind: kind,
+            forward: forward,
+            unit: dateUnitOf(treeRoot),
+            fromRates: treeRoot._divergenceFromRates === true && !recordsDivergence(treeRoot),
+            points: points,
+            root: root,
+            fit: fit
+        };
+    };
+
     // A number that is not NaN. It used to test only for null, undefined and
     // NaN, and so answered TRUE for "hello", "", {}, [] and true -- which no
     // caller was hurt by, since all of them pass the result of parseFloat, but
@@ -10218,6 +10404,41 @@
             vals.push(y);
         }
         return vals;
+    };
+
+    // Month ticks over [from, to] in decimal years, for a span too short for
+    // whole years (an outbreak sampled over some months): the first of every
+    // 1st, 2nd, 3rd, 6th or 12th month, the smallest step leaving six ticks
+    // or fewer; none where even a tick a year is too many. {value, year,
+    // month}; month is 1-12, value the decimal year at which that month
+    // begins.
+    forester.calendarTickMonths = function (from, to) {
+        let span = to - from;
+        if (!(span > 0) || !isFinite(span) || !isFinite(from)) {
+            return [];
+        }
+        let steps = [1, 2, 3, 6, 12];
+        for (let s = 0; s < steps.length; ++s) {
+            let step = steps[s];
+            let ticks = [];
+            let year = Math.floor(from);
+            // month index = year * 12 + (month - 1); ticks where it divides
+            for (let k = year * 12; ticks.length <= 6; ++k) {
+                let y = Math.floor(k / 12);
+                let m = (k - (y * 12)) + 1;
+                let v = y + ((tipDateDayOfYear(y, m, 1) - 1) / tipDateYearLength(y));
+                if (v > to + 1e-9) {
+                    break;
+                }
+                if (v >= from - 1e-9 && (k % step) === 0) {
+                    ticks.push({value: v, year: y, month: m});
+                }
+            }
+            if (ticks.length <= 6) {
+                return ticks;
+            }
+        }
+        return [];
     };
 
 

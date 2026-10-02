@@ -436,6 +436,8 @@ function (root, d3, forester, phyloXml) {
     const BRANCH_SCALE_CONTROLGROUP = 'branch_scale_g';
     const BRANCH_SCALE_TIME_BUTTON = 'branch_scale_time_b';
     const BRANCH_SCALE_DIV_BUTTON = 'branch_scale_div_b';
+    const CLOCK_PLOT_BUTTON = 'clock_plot_b';
+    const CLOCK_PLOT_DIALOG = 'aptx_clock_plot';
     const ABOUT_DIALOG = 'aptx_about';
     const TREE_PROPERTIES_DIALOG = 'aptx_tree_props';
     const PROG_NAME = 'progname';
@@ -681,6 +683,7 @@ function (root, d3, forester, phyloXml) {
     let _timeInfo = null;                 // forester.timeAxisInfo, recomputed per render
     let _timeTree = false;                // forester.isTimeTree: never re-rooted
     let _branchScaleAvailable = false;    // the tree states time AND divergence, so the switch is offered
+    let _clockPlotKind = null;            // forester.clockPlotKind: which clock plot the tree has, if any
     let _clusterH = 0;                    // the cluster layout's vertical extent, set per render
     let _docListenersBound = false;       // page-level key/wheel handlers bind once, not per launch
     let _docListeners = [];               // ...and destroy() can take every one of them down again
@@ -1518,6 +1521,7 @@ function (root, d3, forester, phyloXml) {
 
     function mouseover(event, d) {
         showHoverGlow(d);
+        markClockPlot(d);
         // Start empty so the previous node's text cannot flash while this one
         // fades in; mousemove fills it in immediately after. Clearing here
         // rather than on the way out is what keeps the tooltip from collapsing
@@ -1831,6 +1835,7 @@ function (root, d3, forester, phyloXml) {
 
     function mouseout() {
         hideHoverGlow();
+        markClockPlot(null);
         // Fade only. Emptying the tooltip here collapsed it to nothing but its
         // padding and border -- a small rounded pill -- and THAT is what sat
         // there fading out afterwards. The content is cleared on the next
@@ -3514,6 +3519,7 @@ function (root, d3, forester, phyloXml) {
         drawTimeOverlays();
         rebuildOverview(); // measured AFTER the overlays, so the bbox is this frame's
         updateSearchHitNavigation();
+        renderClockPlot(false); // an open clock plot follows the view, the colours and the selection
         noteViewChange();
     }
 
@@ -6036,6 +6042,7 @@ function (root, d3, forester, phyloXml) {
         // it arrived showing. An Auspice build arrives in the time view; a
         // BEAST or Newick file arrives stating its own branch lengths.
         _branchScaleAvailable = _treeData ? forester.hasTimeAndDivergence(_treeData) : false;
+        _clockPlotKind = _treeData ? forester.clockPlotKind(_treeData) : null;
         _state.branchScale = _treeData ? forester.branchLengthScale(_treeData) : 'divergence';
         if (_state.showScaleAxis === undefined) {
             // on for a tree SHOWN in time; a dated tree that opens in
@@ -6479,6 +6486,8 @@ function (root, d3, forester, phyloXml) {
         document.querySelectorAll('dialog.aptx-dialog').forEach(function (dlg) {
             dlg.remove();
         });
+        _clockPlot = null;
+        _clockPlotKind = null;
         if (_msaNav) {
             _msaNav.remove();
             _msaNav = null;
@@ -10605,6 +10614,7 @@ function (root, d3, forester, phyloXml) {
         if (scaleGroup) {
             scaleGroup.style.display = _branchScaleAvailable ? '' : 'none';
         }
+        syncClockPlotControl();
     }
 
     // The tree was EDITED (a node deleted). Whether it has two layouts is asked
@@ -10623,6 +10633,7 @@ function (root, d3, forester, phyloXml) {
             forester.captureDivergence(_treeData);
         }
         _branchScaleAvailable = forester.hasTimeAndDivergence(_treeData);
+        _clockPlotKind = forester.clockPlotKind(_treeData);
         if (was && _branchScaleAvailable && _state.branchScale === 'divergence') {
             forester.applyDivergenceBranchLengths(_treeData);
         } else if (was) {
@@ -10998,6 +11009,669 @@ function (root, d3, forester, phyloXml) {
         note.textContent = 'The mouse wheel zooms; with Shift it zooms vertically only, with Shift+Alt horizontally, with Ctrl+Shift it sizes the font.';
         shell.body.appendChild(note);
         shell.dialog.showModal();
+    }
+
+    // ===================== Clock plot =====================
+    // Every node of the tree on view as a point, its date against its
+    // divergence from the root, with a least-squares line through the tips:
+    // the picture TempEst, TreeTime and Auspice's clock view draw, here as a
+    // panel beside the tree rather than a layout of it, so an outlier is seen
+    // on the plot and in the tree at once (Christian, 2026-10-02). What is
+    // plotted, which trees have a plot and what the line is fitted to are
+    // forester.clockPlotData's; this is the drawing and the link:
+    //
+    // - a point wears its node's colour in the tree (found, selected, the
+    //   Color visualization, the file's own styles);
+    // - pointing at one lights its node in the tree, and pointing at a node
+    //   in the tree rings its point;
+    // - a click selects or deselects the node, a drag selects the tips in
+    //   the box -- the tree's own selection, so everything that reads it
+    //   (the labels, the downloads, the host page) sees it.
+    //
+    // The plot follows the view: in a subtree it is the clade's, with the
+    // clade's own line. Modeless, and it can be dragged by its title: the
+    // point is to work in the tree with it open.
+    const CLOCK_PLOT_WHAT = 'clock plot: each node\'s date against its divergence from the root, with a'
+        + ' line through the tips (its slope is the rate); a panel linked to the tree';
+    const CLOCK_PLOT_W = 440;
+    const CLOCK_PLOT_H = 300;
+    const CLOCK_PLOT_PAD = {top: 10, right: 14, bottom: 38, left: 58};
+    const CLOCK_PLOT_HIT_PX = 7;     // how near the pointer has to be to a point
+    const CLOCK_PLOT_DRAG_PX = 4;    // a press that moves further than this is a box, not a click
+    const CLOCK_PLOT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    let _clockPlot = null;           // the open panel, or null
+    // what the two checkboxes said last, kept while the page lives
+    let _clockPlotOptions = {line: true, internal: true};
+
+    // The button is shown where the tree has a plot, and lit while the panel
+    // is open. (A tree that loses its plot -- the tip that made it deleted --
+    // loses the panel at its next render: see renderClockPlot.)
+    function syncClockPlotControl() {
+        let button = byId(CLOCK_PLOT_BUTTON);
+        if (button) {
+            button.style.display = _clockPlotKind ? '' : 'none';
+            button.classList.toggle('aptx-lit', !!_clockPlot);
+        }
+    }
+
+    function toggleClockPlot() {
+        if (_clockPlot) {
+            _clockPlot.dialog.close();
+        } else {
+            showClockPlot();
+        }
+    }
+
+    function clockSvg(parent, tag, cls) {
+        let el = document.createElementNS(SVG_NS, tag);
+        if (cls) {
+            el.setAttribute('class', cls);
+        }
+        parent.appendChild(el);
+        return el;
+    }
+
+    function showClockPlot() {
+        if (!_clockPlotKind || !_treeData) {
+            return;
+        }
+        let shell = makeDialogShell(CLOCK_PLOT_DIALOG, 'Clock plot', CLOCK_PLOT_W + 26);
+        let body = shell.body;
+        body.classList.add('aptx-clock');
+
+        let svg = clockSvg(body, 'svg', 'aptx-clock-svg');
+        svg.setAttribute('width', CLOCK_PLOT_W);
+        svg.setAttribute('height', CLOCK_PLOT_H);
+        svg.setAttribute('viewBox', '0 0 ' + CLOCK_PLOT_W + ' ' + CLOCK_PLOT_H);
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', 'Clock plot: each node\'s date against its divergence from the root');
+        let clip = clockSvg(clockSvg(svg, 'defs'), 'clipPath');
+        clip.id = CLOCK_PLOT_DIALOG + '_clip';
+        let clipRect = clockSvg(clip, 'rect');
+        clipRect.setAttribute('x', CLOCK_PLOT_PAD.left);
+        clipRect.setAttribute('y', CLOCK_PLOT_PAD.top);
+        clipRect.setAttribute('width', CLOCK_PLOT_W - CLOCK_PLOT_PAD.left - CLOCK_PLOT_PAD.right);
+        clipRect.setAttribute('height', CLOCK_PLOT_H - CLOCK_PLOT_PAD.top - CLOCK_PLOT_PAD.bottom);
+        // an opaque ground under the points: the dialog is frosted glass, and
+        // the tree's colours showing through would read as data
+        let ground = clockSvg(svg, 'rect', 'aptx-clock-ground');
+        ['x', 'y', 'width', 'height'].forEach(function (a) {
+            ground.setAttribute(a, clipRect.getAttribute(a));
+        });
+        let axes = clockSvg(svg, 'g', 'aptx-clock-axes');
+        let inside = clockSvg(svg, 'g');
+        inside.setAttribute('clip-path', 'url(#' + clip.id + ')');
+        let internal = clockSvg(inside, 'g', 'aptx-clock-internal');
+        let line = clockSvg(inside, 'line', 'aptx-clock-line');
+        let tips = clockSvg(inside, 'g', 'aptx-clock-tips');
+        let ring = clockSvg(svg, 'circle', 'aptx-clock-ring');
+        ring.setAttribute('r', 6.5);
+        ring.style.display = 'none';
+        let box = clockSvg(svg, 'rect', 'aptx-clock-box');
+        box.style.display = 'none';
+
+        let options = document.createElement('div');
+        options.className = 'aptx-clock-options';
+        body.appendChild(options);
+        let check = function (label, key, title) {
+            let row = document.createElement('label');
+            row.className = 'aptx-reps-choice';
+            row.title = title;
+            let input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = _clockPlotOptions[key];
+            input.addEventListener('change', function () {
+                _clockPlotOptions[key] = input.checked;
+                renderClockPlot(true);
+            });
+            let span = document.createElement('span');
+            span.textContent = label;
+            row.appendChild(input);
+            row.appendChild(span);
+            options.appendChild(row);
+            return input;
+        };
+        check('Regression line', 'line', 'to show/hide the least-squares line through the tips');
+        check('Internal nodes', 'internal', 'to show/hide the internal nodes: their dates were inferred,'
+            + ' and they take no part in the line');
+        let deselect = document.createElement('button');
+        deselect.type = 'button';
+        deselect.className = 'aptx-reps-button aptx-clock-deselect';
+        deselect.textContent = 'Deselect all';
+        deselect.title = 'deselect every selected node of the tree';
+        deselect.addEventListener('click', function () {
+            if (_selectedNodes.size > 0) {
+                _selectedNodes = new Set();
+                selectionChangedByClockPlot();
+            }
+        });
+        options.appendChild(deselect);
+
+        let stats = document.createElement('div');
+        stats.className = 'aptx-clock-stats';
+        body.appendChild(stats);
+        let note = document.createElement('p');
+        note.className = 'aptx-shortcuts-note aptx-clock-note';
+        body.appendChild(note);
+
+        _clockPlot = {dialog: shell.dialog, svg: svg, axes: axes, internal: internal, line: line, tips: tips,
+            ring: ring, box: box, stats: stats, note: note, deselect: deselect,
+            data: null, marks: [], shape: null, x: null, y: null};
+        shell.dialog.addEventListener('close', function () {
+            if (_clockPlot && _clockPlot.dialog === shell.dialog) {
+                _clockPlot = null;
+                hideHoverGlow();
+                syncClockPlotControl();
+            }
+        });
+        bindClockPlotPointer(_clockPlot);
+        // modeless, as the cheat sheet is: the tree stays in reach
+        shell.dialog.show();
+        renderClockPlot(true);
+        placeClockPlot(shell.dialog);
+        makeDialogDraggable(shell.dialog);
+        syncClockPlotControl();
+    }
+
+    // In the tree area's top right corner, clear of the control panel where
+    // there is room, and inside the window.
+    function placeClockPlot(dialog) {
+        let area = _container ? _container.getBoundingClientRect() : null;
+        let w = dialog.offsetWidth;
+        let h = dialog.offsetHeight;
+        let right = area ? Math.min(area.right, window.innerWidth) : window.innerWidth;
+        let top = area ? Math.max(area.top, 0) : 0;
+        setStyles(dialog, {
+            'position': 'fixed',
+            'margin': '0',
+            'left': Math.max(6, right - w - 14) + 'px',
+            'top': Math.max(6, Math.min(window.innerHeight - h - 6, top + 14)) + 'px'
+        });
+    }
+
+    // A modeless dialog moved by its title bar, kept inside the window.
+    function makeDialogDraggable(dialog) {
+        let bar = dialog.querySelector('.aptx-dialog-title');
+        if (!bar) {
+            return;
+        }
+        bar.classList.add('aptx-dialog-drag');
+        bar.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || (e.target.closest && e.target.closest('button'))) {
+                return;
+            }
+            let start = dialog.getBoundingClientRect();
+            let dx = e.clientX - start.left;
+            let dy = e.clientY - start.top;
+            let move = function (ev) {
+                setStyles(dialog, {
+                    'position': 'fixed',
+                    'margin': '0',
+                    'left': Math.max(0, Math.min(window.innerWidth - 40, ev.clientX - dx)) + 'px',
+                    'top': Math.max(0, Math.min(window.innerHeight - 30, ev.clientY - dy)) + 'px'
+                });
+            };
+            let up = function () {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                document.removeEventListener('pointercancel', up);
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+            document.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
+    }
+
+    // A number of the plot at three significant digits; very small or very
+    // large in exponent form, which is how a rate is usually written.
+    function clockNumber(v, digits) {
+        if (typeof v !== 'number' || !isFinite(v)) {
+            return '';
+        }
+        let sig = digits || 3;
+        let a = Math.abs(v);
+        if (a !== 0 && (a < 1e-4 || a >= 1e7)) {
+            return v.toExponential(sig - 1);
+        }
+        return String(Number(v.toPrecision(sig)));
+    }
+
+    // A date of the plot: a calendar year to two decimals (about four days),
+    // anything else as a number.
+    function clockDate(v, calendar) {
+        return calendar ? String(forester.roundNumber(v, 2)) : clockNumber(v, 5);
+    }
+
+    function clockTicksX(from, to, calendar) {
+        if (calendar) {
+            if ((to - from) >= 3) {
+                return forester.calendarTickYears(from, to).map(function (y) {
+                    return {value: y, label: String(y)};
+                });
+            }
+            let months = forester.calendarTickMonths(from, to);
+            if (months.length >= 2) {
+                return months.map(function (m) {
+                    return {value: m.value, label: CLOCK_PLOT_MONTHS[m.month - 1] + ' ' + m.year};
+                });
+            }
+        }
+        return d3.ticks(from, to, 6).map(function (v) {
+            return {value: v, label: String(Number(v.toPrecision(12)))};
+        });
+    }
+
+    // The colour a node wears in the tree, for its point; null where it wears
+    // none, and the point takes the panel's ink.
+    function clockPointColor(node, tip) {
+        let found = getFoundColor(node);
+        if (found || !tip) {
+            return found;
+        }
+        let vis = _state.showVisualizations ? visualizationColorFor(node) : null;
+        if (vis) {
+            return vis;
+        }
+        let style = nodeStyle(node);
+        if (style && (style.nodeColor || style.fontColor)) {
+            return style.nodeColor || style.fontColor;
+        }
+        if (_state.useVisualStyles && node.color) {
+            return 'rgb(' + node.color.red + ',' + node.color.green + ',' + node.color.blue + ')';
+        }
+        return null;
+    }
+
+    /**
+     * Draws the open clock plot for the tree on view. Called at the end of
+     * every render: the points and the line are laid down again only when
+     * what they show has changed (another clade, a node deleted, a checkbox),
+     * and otherwise only the colours that differ are touched -- a zoom step
+     * costs one pass over the points and no DOM writes.
+     *
+     * @param force lay everything down again
+     */
+    function renderClockPlot(force) {
+        let cp = _clockPlot;
+        if (!cp) {
+            return;
+        }
+        if (!cp.dialog.isConnected) {     // the viewer was torn down under it
+            _clockPlot = null;
+            return;
+        }
+        let data = _treeData ? forester.clockPlotData(_treeData, topNode()) : null;
+        if (!data) {
+            cp.dialog.close();    // the tree no longer has a plot (a tip deleted)
+            return;
+        }
+        let fit = data.fit;
+        let shape = {top: data.root.node, n: data.points.length, slope: fit ? fit.slope : null,
+            intercept: fit ? fit.intercept : null, line: _clockPlotOptions.line, internal: _clockPlotOptions.internal};
+        let same = !force && cp.shape !== null && Object.keys(shape).every(function (k) {
+            return shape[k] === cp.shape[k];
+        });
+        if (!same) {
+            cp.shape = shape;
+            cp.data = data;
+            layClockPlot(cp, data);
+        }
+        colorClockPlot(cp);
+    }
+
+    function layClockPlot(cp, data) {
+        let calendar = data.forward && !!_timeInfo && _timeInfo.type === 'calendar';
+        let shown = data.points.filter(function (p) {
+            return p.tip || _clockPlotOptions.internal;
+        });
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        shown.forEach(function (p) {
+            x0 = Math.min(x0, p.date);
+            x1 = Math.max(x1, p.date);
+            y0 = Math.min(y0, p.div);
+            y1 = Math.max(y1, p.div);
+        });
+        let padX = ((x1 - x0) * 0.04) || 0.5;
+        let padY = ((y1 - y0) * 0.06) || (Math.abs(y1) * 0.06) || 1e-6;
+        let left = CLOCK_PLOT_PAD.left;
+        let right = CLOCK_PLOT_W - CLOCK_PLOT_PAD.right;
+        let top = CLOCK_PLOT_PAD.top;
+        let bottom = CLOCK_PLOT_H - CLOCK_PLOT_PAD.bottom;
+        // time runs left to right, whichever way its numbers do
+        let x = d3.scaleLinear().domain([x0 - padX, x1 + padX]).range(data.forward ? [left, right] : [right, left]);
+        let y = d3.scaleLinear().domain([y0 - padY, y1 + padY]).range([bottom, top]);
+        cp.x = x;
+        cp.y = y;
+
+        // --- the frame, the ticks and what each axis measures
+        while (cp.axes.firstChild) {
+            cp.axes.removeChild(cp.axes.firstChild);
+        }
+        let seg = function (cls, xa, ya, xb, yb) {
+            let l = clockSvg(cp.axes, 'line', cls);
+            l.setAttribute('x1', xa);
+            l.setAttribute('y1', ya);
+            l.setAttribute('x2', xb);
+            l.setAttribute('y2', yb);
+        };
+        let text = function (cls, s, tx, ty, anchor) {
+            let t = clockSvg(cp.axes, 'text', cls);
+            t.setAttribute('x', tx);
+            t.setAttribute('y', ty);
+            t.setAttribute('text-anchor', anchor);
+            t.textContent = s;
+            return t;
+        };
+        clockTicksX(x.domain()[0], x.domain()[1], calendar).forEach(function (tick) {
+            let px = x(tick.value);
+            seg('aptx-clock-grid', px, top, px, bottom);
+            text('aptx-clock-tick', tick.label, px, bottom + 13, 'middle');
+        });
+        d3.ticks(y.domain()[0], y.domain()[1], 5).forEach(function (v) {
+            let py = y(v);
+            seg('aptx-clock-grid', left, py, right, py);
+            text('aptx-clock-tick', String(Number(v.toPrecision(12))), left - 6, py + 3.5, 'end');
+        });
+        seg('aptx-clock-frame', left, bottom, right, bottom);
+        seg('aptx-clock-frame', left, top, left, bottom);
+        let unit = data.unit && !calendar ? ' (' + data.unit + ')' : '';
+        text('aptx-clock-title', (data.forward ? 'Date' : 'Age') + unit, (left + right) / 2, CLOCK_PLOT_H - 6, 'middle');
+        let yt = text('aptx-clock-title', 'Divergence (subs/site)', 0, 0, 'middle');
+        yt.setAttribute('transform', 'translate(12,' + ((top + bottom) / 2) + ') rotate(-90)');
+
+        // --- the points: ancestors under the line, tips over it
+        cp.marks = [];
+        [cp.internal, cp.tips].forEach(function (g) {
+            while (g.firstChild) {
+                g.removeChild(g.firstChild);
+            }
+        });
+        shown.forEach(function (p) {
+            let c = clockSvg(p.tip ? cp.tips : cp.internal, 'circle');
+            c.setAttribute('cx', x(p.date));
+            c.setAttribute('cy', y(p.div));
+            c.setAttribute('r', p.tip ? 3 : 2);
+            cp.marks.push({p: p, el: c, px: x(p.date), py: y(p.div), key: ''});
+        });
+
+        // --- the line, across the frame (clipped to it)
+        let fit = data.fit;
+        if (fit && _clockPlotOptions.line) {
+            let d = x.domain();
+            cp.line.setAttribute('x1', x(d[0]));
+            cp.line.setAttribute('y1', y(fit.intercept + (fit.slope * d[0])));
+            cp.line.setAttribute('x2', x(d[1]));
+            cp.line.setAttribute('y2', y(fit.intercept + (fit.slope * d[1])));
+            cp.line.style.display = '';
+        } else {
+            cp.line.style.display = 'none';
+        }
+        cp.ring.style.display = 'none';
+
+        // --- what the line says
+        while (cp.stats.firstChild) {
+            cp.stats.removeChild(cp.stats.firstChild);
+        }
+        let tipCount = data.points.reduce(function (n, p) {
+            return n + (p.tip ? 1 : 0);
+        }, 0);
+        let per = ' subs/site per ' + (calendar ? 'year' : (data.unit || 'unit of time'));
+        if (fit) {
+            treePropRow(cp.stats, 'Rate', clockNumber(fit.rate) + per);
+            treePropRow(cp.stats, 'Root date, by the line', fit.rootDate === null
+                ? 'none: divergence does not rise with time' : clockDate(fit.rootDate, calendar));
+            treePropRow(cp.stats, 'Root date, in the tree', clockDate(data.root.date, calendar));
+            treePropRow(cp.stats, 'R²', fit.r2 === null ? 'none: every tip has one divergence' : clockNumber(fit.r2));
+        } else {
+            treePropRow(cp.stats, 'Line', 'none: it takes three tips, not all on one date');
+        }
+        treePropRow(cp.stats, 'Tips', countNumber(tipCount) + (_in_subtree ? ' (the clade on view)' : ''));
+        cp.note.textContent = (data.fromRates
+            ? 'Divergence here is each branch’s time × its clock rate: the points show the model’s rates, not a measurement of their own. '
+            : '')
+            + 'The line is fitted to the tips only. Tips share ancestry, so R² describes the fit and is no test.'
+            + ' Click a point to select its node; drag to select the tips in a box.';
+        // what was laid down, for the browser harness: read here, where it is
+        // computed, not off the DOM
+        cp.dialog._aptxClockPlot = {data: data, shown: shown.length, calendar: calendar};
+    }
+
+    // One pass: a point whose colour or highlight differs from what it wears
+    // is repainted, and a highlighted one is lifted over its neighbours.
+    function colorClockPlot(cp) {
+        for (let i = 0; i < cp.marks.length; ++i) {
+            let m = cp.marks[i];
+            let hit = getFoundColor(m.p.node) !== null;
+            let color = clockPointColor(m.p.node, m.p.tip);
+            let key = (color || '') + (hit ? '*' : '');
+            if (key === m.key) {
+                continue;
+            }
+            m.key = key;
+            m.el.style.fill = color || '';
+            m.el.style.stroke = hit ? makeFoundOutlineColor(m.p.node) : '';
+            m.el.setAttribute('r', hit ? 4 : (m.p.tip ? 3 : 2));
+            m.el.setAttribute('class', hit ? 'aptx-clock-hit' : '');
+            if (hit) {
+                m.el.parentNode.appendChild(m.el);
+            }
+        }
+        cp.deselect.disabled = _selectedNodes.size === 0;
+    }
+
+    // The node a point's node is seen AS in the tree: itself, or the
+    // collapsed clade that holds it (the highest one, which is the one drawn).
+    function clockTreeNode(node) {
+        let seen = node;
+        let top = topNode();
+        for (let n = node.parent; n && n !== _root; n = n.parent) {
+            if (isCollapsed(n)) {
+                seen = n;
+            }
+            if (n === top) {
+                break;
+            }
+        }
+        return seen;
+    }
+
+    function clockMarkAt(cp, px, py) {
+        let best = null;
+        let bestD = CLOCK_PLOT_HIT_PX * CLOCK_PLOT_HIT_PX;
+        for (let i = 0; i < cp.marks.length; ++i) {
+            let m = cp.marks[i];
+            let dx = m.px - px;
+            let dy = m.py - py;
+            let d = (dx * dx) + (dy * dy);
+            // a tip wins over an ancestor at the same distance: it is the datum
+            if (d < bestD || (d === bestD && best && m.p.tip && !best.p.tip)) {
+                best = m;
+                bestD = d;
+            }
+        }
+        return best;
+    }
+
+    function clockRing(cp, mark) {
+        if (!mark) {
+            cp.ring.style.display = 'none';
+            return;
+        }
+        cp.ring.setAttribute('cx', mark.px);
+        cp.ring.setAttribute('cy', mark.py);
+        cp.ring.style.display = '';
+    }
+
+    // A node pointed at IN THE TREE rings its point, where it has one.
+    function markClockPlot(node) {
+        let cp = _clockPlot;
+        if (!cp) {
+            return;
+        }
+        let mark = null;
+        if (node) {
+            for (let i = 0; i < cp.marks.length; ++i) {
+                if (cp.marks[i].p.node === node) {
+                    mark = cp.marks[i];
+                    break;
+                }
+            }
+        }
+        clockRing(cp, mark);
+    }
+
+    function clockPointText(p) {
+        let text = (p.node.name ? 'Name: ' + p.node.name : (p.tip ? 'Tip' : 'Internal node')) + '<br>';
+        let date = dateText(p.node.date);
+        if (date) {
+            text += 'Date: ' + date + '<br>';
+        }
+        text += 'Divergence: ' + clockNumber(p.div, 4) + '<br>';
+        if (typeof p.residual === 'number') {
+            text += 'Off the line: ' + (p.residual > 0 ? '+' : '') + clockNumber(p.residual, 3) + '<br>';
+        }
+        if (!p.tip) {
+            text += 'Tips below: ' + forester.getAllExternalNodes(p.node).length + '<br>';
+        }
+        return text;
+    }
+
+    function selectionChangedByClockPlot() {
+        update(null, 0, true);
+        document.dispatchEvent(new Event('selected_nodes_changed_event'));
+    }
+
+    function bindClockPlotPointer(cp) {
+        let svg = cp.svg;
+        let press = null;      // {x, y, boxed} while the button is down
+        let at = function (e) {
+            let r = svg.getBoundingClientRect();
+            return [(e.clientX - r.left) * (CLOCK_PLOT_W / (r.width || CLOCK_PLOT_W)),
+                (e.clientY - r.top) * (CLOCK_PLOT_H / (r.height || CLOCK_PLOT_H))];
+        };
+        let readout = function (e, mark) {
+            if (!_node_mouseover_div) {
+                return;
+            }
+            if (!mark) {
+                _node_mouseover_div.interrupt().style('opacity', 1e-6);
+                return;
+            }
+            let tip = _node_mouseover_div.node();
+            tip.classList.remove('aptx-light', 'aptx-dark');
+            if (_panelTheme) {
+                tip.classList.add('aptx-' + _panelTheme);
+            }
+            _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(clockPointText(mark.p))));
+            _node_mouseover_div.interrupt().style('opacity', 0.95);
+            placeHoverReadout(tip, e);
+        };
+        let hover = null;
+        let point = function (e) {
+            let xy = at(e);
+            let mark = clockMarkAt(cp, xy[0], xy[1]);
+            if (mark !== hover) {
+                hover = mark;
+                clockRing(cp, mark);
+                if (mark) {
+                    showHoverGlow(clockTreeNode(mark.p.node));
+                } else {
+                    hideHoverGlow();
+                }
+                svg.style.cursor = mark ? 'pointer' : '';
+            }
+            readout(e, mark);
+        };
+        svg.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0) {
+                return;
+            }
+            let xy = at(e);
+            press = {x: xy[0], y: xy[1], boxed: false};
+            try {
+                svg.setPointerCapture(e.pointerId);   // the box follows the pointer out of the drawing
+            } catch {
+                // no pointer capture available; a release outside is then missed
+            }
+            e.preventDefault();
+        });
+        svg.addEventListener('pointermove', function (e) {
+            if (!press) {
+                point(e);
+                return;
+            }
+            let xy = at(e);
+            if (!press.boxed && Math.hypot(xy[0] - press.x, xy[1] - press.y) > CLOCK_PLOT_DRAG_PX) {
+                press.boxed = true;
+                readout(e, null);
+                clockRing(cp, null);
+                hideHoverGlow();
+                hover = null;
+            }
+            if (press.boxed) {
+                cp.box.setAttribute('x', Math.min(press.x, xy[0]));
+                cp.box.setAttribute('y', Math.min(press.y, xy[1]));
+                cp.box.setAttribute('width', Math.abs(xy[0] - press.x));
+                cp.box.setAttribute('height', Math.abs(xy[1] - press.y));
+                cp.box.style.display = '';
+            }
+        });
+        let release = function (e, cancelled) {
+            if (!press) {
+                return;
+            }
+            let was = press;
+            press = null;
+            cp.box.style.display = 'none';
+            if (cancelled) {
+                return;
+            }
+            let xy = at(e);
+            if (was.boxed) {
+                // the tips in the box join the selection; an ancestor is
+                // selected by a click, where it is one node and meant
+                let xa = Math.min(was.x, xy[0]), xb = Math.max(was.x, xy[0]);
+                let ya = Math.min(was.y, xy[1]), yb = Math.max(was.y, xy[1]);
+                let added = 0;
+                cp.marks.forEach(function (m) {
+                    if (m.p.tip && m.px >= xa && m.px <= xb && m.py >= ya && m.py <= yb
+                        && !_selectedNodes.has(m.p.node)) {
+                        _selectedNodes.add(m.p.node);
+                        ++added;
+                    }
+                });
+                if (added > 0) {
+                    selectionChangedByClockPlot();
+                }
+                return;
+            }
+            let mark = clockMarkAt(cp, xy[0], xy[1]);
+            if (mark) {
+                if (_selectedNodes.has(mark.p.node)) {
+                    _selectedNodes.delete(mark.p.node);
+                } else {
+                    _selectedNodes.add(mark.p.node);
+                }
+                selectionChangedByClockPlot();
+            }
+        };
+        svg.addEventListener('pointerup', function (e) {
+            release(e, false);
+        });
+        svg.addEventListener('pointercancel', function (e) {
+            release(e, true);
+        });
+        svg.addEventListener('pointerleave', function (e) {
+            if (!press) {
+                hover = null;
+                clockRing(cp, null);
+                hideHoverGlow();
+                readout(e, null);
+                svg.style.cursor = '';
+            }
+        });
     }
 
     // ===================== Protein domain architectures =====================
@@ -15256,6 +15930,14 @@ function (root, d3, forester, phyloXml) {
         for (let i = 0; i < btns.length; ++i) {
             btns[i].innerHTML = panelThemeIcon(); // a drawn glyph, not a text character
         }
+        // a modeless dialog (the cheat sheet, the clock plot) stays open across
+        // the switch, and took the theme only when it was made
+        document.querySelectorAll('dialog.aptx-dialog').forEach(function (dlg) {
+            dlg.classList.remove('aptx-light', 'aptx-dark');
+            if (_panelTheme === 'light' || _panelTheme === 'dark') {
+                dlg.classList.add('aptx-' + _panelTheme);
+            }
+        });
         applyTreeTheme();
     }
 
@@ -16002,6 +16684,29 @@ function (root, d3, forester, phyloXml) {
             + '  color:var(--p-accent-ink); }'
             + '.aptx-reps-primary { font-weight:600; }'
             + '.aptx-reps-button:focus-visible { outline:none; box-shadow:0 0 0 3px var(--p-accent-weak); }'
+            + '.aptx-reps-button:disabled { opacity:0.4; cursor:default; pointer-events:none; }'
+            // the clock plot: a drawing in the panel's own inks, so it turns
+            // with the theme; a point's colour, where it has one, is the
+            // node's in the tree and is set on the point itself
+            + '.aptx-dialog-drag { cursor:move; touch-action:none; user-select:none; -webkit-user-select:none; }'
+            + '.aptx-clock.aptx-dialog-body { overflow:visible; }'
+            + '.aptx-clock-svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }'
+            + '.aptx-clock-svg text { font-size:10px; fill:var(--p-muted); font-variant-numeric:tabular-nums; }'
+            + '.aptx-clock-svg text.aptx-clock-title { font-size:10.5px; fill:var(--p-ink); }'
+            + '.aptx-clock-ground { fill:var(--p-surface2); }'
+            + '.aptx-clock-grid { stroke:var(--p-line); stroke-width:1; shape-rendering:crispEdges; }'
+            + '.aptx-clock-frame { stroke:var(--p-line-strong); stroke-width:1; shape-rendering:crispEdges; }'
+            + '.aptx-clock-line { stroke:var(--p-accent); stroke-width:1.6; }'
+            + '.aptx-clock-internal circle { fill:var(--p-faint); fill-opacity:0.55; }'
+            + '.aptx-clock-tips circle { fill:var(--p-ink); fill-opacity:0.8; }'
+            + '.aptx-clock-svg circle.aptx-clock-hit { fill-opacity:1; stroke-width:1.2; }'
+            + '.aptx-clock-ring { fill:none; stroke:var(--p-accent); stroke-width:1.8; pointer-events:none; }'
+            + '.aptx-clock-box { fill:var(--p-accent-weak); stroke:var(--p-accent); stroke-width:1;'
+            + '  shape-rendering:crispEdges; pointer-events:none; }'
+            + '.aptx-clock-options { display:flex; align-items:center; gap:14px; margin:6px 0 8px; }'
+            + '.aptx-clock-options .aptx-clock-deselect { margin-left:auto; height:22px; padding:0 9px; }'
+            + '.aptx-clock-stats .aptx-dialog-key { flex-basis:38%; }'
+            + '.aptx-clock-note { margin-top:8px; }'
             + '.aptx-dialog-mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;'
             + '  font-size:11px; white-space:pre-wrap; overflow-wrap:anywhere; }'
             // The hover tooltip, on the same palette.
@@ -16111,6 +16816,12 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .aptx-seg:hover { color:var(--p-accent-ink); background:var(--p-accent-weak); }'
             + '.aptx-panel .aptx-seg:has(> input:checked) { background:var(--p-accent); color:#fff; }'
             + '.aptx-panel .aptx-seg:has(> input:disabled) { opacity:0.4; cursor:default; }'
+            // the Clock plot button sits in the mode bar beside the segments
+            // and matches their height; lit while its panel is open
+            + '.aptx-panel .aptx-modebar input[type=button].aptx-clockbtn { height:auto; margin:0; padding:3px 8px;'
+            + '  font-weight:600; color:var(--p-muted); border-radius:7px; }'
+            + '.aptx-panel .aptx-modebar input[type=button].aptx-clockbtn.aptx-lit { background:var(--p-accent);'
+            + '  border-color:var(--p-accent); color:#fff; }'
             + '.aptx-panel .aptx-actions { margin-left:auto; display:flex; align-items:center; gap:5px; }'
             + '.aptx-panel .aptx-theme-btn, .aptx-panel .aptx-info-btn { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid var(--p-line-strong); border-radius:6px; background:var(--p-surface2); color:var(--p-muted); cursor:pointer; font-size:12px; line-height:1; }'
             + '.aptx-panel .aptx-theme-btn:hover { background:var(--p-accent-weak); color:var(--p-accent-ink); border-color:var(--p-accent); }'
@@ -17517,6 +18228,7 @@ function (root, d3, forester, phyloXml) {
         on(LAYOUT_RECT_BUTTON, 'click', layoutButtonClicked);
         on(BRANCH_SCALE_TIME_BUTTON, 'click', branchScaleButtonClicked);
         on(BRANCH_SCALE_DIV_BUTTON, 'click', branchScaleButtonClicked);
+        on(CLOCK_PLOT_BUTTON, 'click', toggleClockPlot);
 
         on(LAYOUT_CIRC_BUTTON, 'click', layoutButtonClicked);
         on(LAYOUT_UNROOTED_BUTTON, 'click', layoutButtonClicked);
@@ -17960,6 +18672,12 @@ function (root, d3, forester, phyloXml) {
             h = h.concat(makeSegment('Div', BRANCH_SCALE_DIV_BUTTON, 'branch_scale_radio',
                 'lay the tree out by DIVERGENCE (substitutions per site: as the tree records it, or on a BEAST tree each branch\'s time x its clock rate)'));
             h = h.concat('</div>');
+            // The clock plot, where the tree has one (forester.clockPlotKind).
+            // Beside the switch because it draws the same two quantities
+            // against each other; a button of its own because it opens a
+            // panel and leaves the layout alone.
+            h = h.concat('<input type="button" class="aptx-clockbtn" value="Clock plot" name="' + CLOCK_PLOT_BUTTON
+                + '" id="' + CLOCK_PLOT_BUTTON + '" title="' + CLOCK_PLOT_WHAT + '">');
             h = h.concat('</div>');
             h = h.concat('</fieldset>');
             return h;

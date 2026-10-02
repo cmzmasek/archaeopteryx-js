@@ -7,6 +7,27 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **Clock plot.** On a tree offered **Time | Div**, a **Clock plot** button
+  beside the switch opens a panel plotting every node's date against its
+  divergence from the root, with a least-squares line through the tips: its
+  slope is the **rate** (substitutions per site per year), and the date at
+  which it comes down to the root's divergence is shown over the root date
+  the tree states, with R². The line is fitted to the tips only and is not
+  forced through the root. The panel is modeless and linked to the tree: a
+  point wears its node's colour, pointing at a point lights its node (and
+  pointing at a node rings its point), a click selects the node, a dragged
+  box selects the tips in it, and in a subtree view the plot is the clade's
+  own. Offered where the line can be drawn — three tips or more, not all on
+  one date; a BEAST clock-model tree is told that its divergence is the
+  model's (time × rate). `forester.clockPlotKind`, `forester.clockPlotData`,
+  `forester.clockRegression`, `forester.calendarTickMonths`. New in this
+  form; the design is not final.
+
+### Fixed
+- **An open modeless dialog follows the light/dark switch.** The control-panel
+  cheat sheet (and now the clock plot) kept the theme it was opened in.
+
 ## 3.22.0 — 2026-10-02
 
 Genome regions: a tree whose tips are genomes draws each genome's genes as

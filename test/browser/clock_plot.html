@@ -1,0 +1,409 @@
+<!doctype html>
+<meta charset="utf-8"><title>The clock plot: a panel linked to the tree</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The CLOCK PLOT (Christian, 2026-10-02): every node's date against its
+// divergence from the root, a least-squares line through the tips, in a
+// modeless panel linked to the tree.
+//
+// What the plot should show is taken from the FILE's own numbers -- a
+// Nextstrain build's num_date and div, read off the JSON here -- and the line
+// is fitted here by the textbook sums, never by forester: the panel is then
+// held against that. Where a point should be on the drawing is not assumed
+// either: the drawing's own scale is recovered from two tips and every other
+// point, and the line, must agree with it.
+//
+// (default)   docs/data/nextstrain-ncov.json: the button, the panel, the
+//             points, the line and its numbers, the two checkboxes, pointing
+//             (plot -> tree and tree -> plot), a click, a drag, Deselect all,
+//             the view of a clade, the theme, the close control.
+// ?rates=1    a BEAST clock-model tree (test/data/beast/beast-tip-dates.nex):
+//             its divergence is time x rate, and the panel says so.
+// ?refused=1  trees with no plot are not offered one: a clock tree whose tips
+//             share one date (docs/data/beast-annotations.nex, which IS
+//             offered Time | Div), and a plain Newick tree.
+// ?ages=1     a clock tree stating heights (ages): time still runs left to
+//             right, so the OLDER tip is on the left, and the rate is
+//             positive though the divergence falls as the age rises.
+// ?delete=1   a tip deleted with the panel open: the plot follows, with the
+//             line of the tips that are left; a second one deleted leaves two
+//             tips, no plot, and the panel and its button go.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const near = (a, b, rel) => Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b), 1e-300) * (rel || 1e-9);
+    const shown = (el) => !!el && getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
+    const dialog = () => byId('aptx_clock_plot');
+    const circles = (cls) => [...document.querySelectorAll('#aptx_clock_plot g.' + cls + ' circle')];
+    const row = (key) => { const l = [...document.querySelectorAll('#aptx_clock_plot .aptx-clock-stats .aptx-dialog-line')]
+        .find((x) => x.querySelector('.aptx-dialog-key').textContent === key);
+        return l ? l.querySelector('.aptx-dialog-val').textContent : null; };
+    // ordinary least squares, by the raw sums
+    const ols = (pts) => { const n = pts.length; let sx = 0, sy = 0; pts.forEach((p) => { sx += p[0]; sy += p[1]; });
+        const mx = sx / n, my = sy / n; let sxx = 0, sxy = 0, syy = 0;
+        pts.forEach((p) => { sxx += (p[0] - mx) * (p[0] - mx); sxy += (p[0] - mx) * (p[1] - my); syy += (p[1] - my) * (p[1] - my); });
+        const slope = sxy / sxx; return {n, slope, intercept: my - slope * mx, r2: (sxy * sxy) / (sxx * syy)}; };
+    const sig3 = (v) => { const a = Math.abs(v); return (a !== 0 && (a < 1e-4 || a >= 1e7)) ? v.toExponential(2) : String(Number(v.toPrecision(3))); };
+    const svgEl = () => document.querySelector('#aptx_clock_plot svg.aptx-clock-svg');
+    const client = (cx, cy) => { const b = svgEl().getBoundingClientRect(); return {clientX: b.left + cx, clientY: b.top + cy}; };
+    const pointer = (type, cx, cy) => svgEl().dispatchEvent(new PointerEvent(type, Object.assign({bubbles: true, cancelable: true,
+        button: 0, pointerId: 1, view: window}, client(cx, cy))));
+    const centre = (c) => [parseFloat(c.getAttribute('cx')), parseFloat(c.getAttribute('cy'))];
+    const finish = () => { window.__benchResult = {report: out, failures: failures}; window.__benchDone = true; };
+    try {
+        const offered = () => shown(byId('clock_plot_b'));
+        if (/refused=1/.test(location.search)) {
+            const text = await (await fetch('../../docs/data/beast-annotations.nex')).text();
+            const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees('beast-annotations.nex', text), {});
+            await v.ready; await sleep(1500);
+            check('control: the clock tree IS offered Time | Div', shown(document.querySelector('#p .branch_scale_g')));
+            check('its tips share one date: no Clock plot button', !!byId('clock_plot_b') && !offered());
+            const v2 = archaeopteryx.launch('#p', archaeopteryx.parseTrees('plain.nwk', '((A:1,B:2):1,(C:1,D:3):2);'), {});
+            await v2.ready; await sleep(1200);
+            check('a plain Newick tree: no Clock plot button', !!byId('clock_plot_b') && !offered());
+            // and the build IS offered one, with the same page still up: the
+            // refusals above are not a button that never shows
+            const v3 = archaeopteryx.launch('#p', archaeopteryx.parseTrees('nextstrain-ncov.json',
+                await (await fetch('../../docs/data/nextstrain-ncov.json')).text()), {});
+            await v3.ready; await sleep(1200);
+            check('control: the Nextstrain build is offered the button', offered());
+            finish();
+            return;
+        }
+        if (/ages=1/.test(location.search)) {
+            // heights 0..4 and one rate, 0.01, on every branch: a tip's
+            // divergence is 0.01 x (4 - its height), so the tips lie on
+            // div = 0.04 - 0.01 x age
+            const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees('ages.nex', '#NEXUS\nBegin trees;\ntree T = [&R] '
+                + '((A[&rate=0.01,height=0]:2,B[&rate=0.01,height=1]:1)[&rate=0.01,height=2]:2,'
+                + '(C[&rate=0.01,height=0.5]:2.5,D[&rate=0.01,height=2]:1)[&rate=0.01,height=3]:1)[&height=4];\nEnd;\n'), {});
+            await v.ready; await sleep(1500);
+            check('a clock tree stating heights is offered the Clock plot', offered());
+            byId('clock_plot_b').click(); await sleep(300);
+            const laid = dialog()._aptxClockPlot;
+            const tl = laid.data.points.filter((p) => p.tip);
+            const at = {}; circles('aptx-clock-tips').forEach((c, i) => { at[tl[i].node.name] = centre(c); });
+            check('fixture: the tips are at ages 0, 1, 0.5 and 2', ['A', 'B', 'C', 'D'].map((n) => tl.find((p) => p.node.name === n).date).join() === '0,1,0.5,2');
+            check('time runs left to right: the older a tip, the further left', at.D[0] < at.B[0] && at.B[0] < at.C[0] && at.C[0] < at.A[0],
+                ['D', 'B', 'C', 'A'].map((n) => n + ' ' + at[n][0].toFixed(1)).join(', '));
+            check('...and the more diverged, the higher', at.A[1] < at.C[1] && at.C[1] < at.B[1] && at.B[1] < at.D[1]);
+            check('the axis is named Age', [...dialog().querySelectorAll('text.aptx-clock-title')].some((t) => t.textContent === 'Age'),
+                [...dialog().querySelectorAll('text.aptx-clock-title')].map((t) => t.textContent).join(' | '));
+            check('Rate is positive: 0.01, per unit of time', row('Rate') === '0.01 subs/site per unit of time', row('Rate'));
+            check('Root date, by the line and in the tree: age 4', row('Root date, by the line') === '4' && row('Root date, in the tree') === '4',
+                row('Root date, by the line') + ' / ' + row('Root date, in the tree'));
+            finish();
+            return;
+        }
+        if (/delete=1/.test(location.search)) {
+            const T = {A: [2000, 0.001], B: [2001, 0.003], C: [2002, 0.002], D: [2003, 0.006]};
+            const leaf = (n) => ({name: n, node_attrs: {num_date: {value: T[n][0]}, div: T[n][1]}});
+            const inner = (n, date, div, kids) => ({name: n, node_attrs: {num_date: {value: date}, div: div}, children: kids});
+            const trees = archaeopteryx.parseTrees('four.json', JSON.stringify({version: 'v2', meta: {title: 'four tips'},
+                tree: inner('ROOT', 1999, 0, [inner('X', 1999.5, 0.0005, [leaf('A'), leaf('B')]), inner('Y', 2000.5, 0.001, [leaf('C'), leaf('D')])])}));
+            const v = archaeopteryx.launch('#p', trees, {});
+            await v.ready; await sleep(1500);
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const tipsNow = () => forester.getAllExternalNodes(forester.getTreeRoot(tree));
+            const deleteTip = async (name) => {
+                const g = [...document.querySelectorAll('#p g.node')].find((x) => x.__data__ && x.__data__.name === name);
+                if (!g) { return false; }
+                const m = g.getScreenCTM();
+                const at = {clientX: m.e, clientY: m.f, bubbles: true, cancelable: true, view: window};
+                g.ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', at));
+                g.ownerSVGElement.dispatchEvent(new MouseEvent('click', at));
+                await sleep(400);
+                const item = [...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.textContent === 'Delete External Node');
+                if (!item) { return false; }
+                item.click(); await sleep(1800);
+                return true;
+            };
+            byId('clock_plot_b').click(); await sleep(300);
+            const f4 = ols(['A', 'B', 'C', 'D'].map((n) => T[n]));
+            check('four tips: four points and their line', circles('aptx-clock-tips').length === 4 && row('Rate') === sig3(f4.slope) + ' subs/site per year', row('Rate'));
+            check('tip D deleted from the node menu', await deleteTip('D') && tipsNow().length === 3, tipsNow().length + ' tips');
+            const f3 = ols(['A', 'B', 'C'].map((n) => T[n]));
+            check('fixture: the line of three is not the line of four', sig3(f3.slope) !== sig3(f4.slope), sig3(f3.slope) + ' vs ' + sig3(f4.slope));
+            check('the open plot follows: three points, the line of the three', !!dialog() && circles('aptx-clock-tips').length === 3
+                && row('Rate') === sig3(f3.slope) + ' subs/site per year' && row('Tips') === '3', dialog() ? circles('aptx-clock-tips').length + ' points, ' + row('Rate') : 'closed');
+            // (C now hangs off the root, and the menu deletes no child of the root)
+            check('tip B deleted', await deleteTip('B') && tipsNow().length === 2, tipsNow().length + ' tips');
+            check('two tips have no plot: the panel is gone, and its button', !dialog() && !offered());
+            finish();
+            return;
+        }
+        if (/rates=1/.test(location.search)) {
+            const text = await (await fetch('../data/beast/beast-tip-dates.nex')).text();
+            const trees = archaeopteryx.parseTrees('beast-tip-dates.nex', text);
+            const v = archaeopteryx.launch('#p', trees, {});
+            await v.ready; await sleep(1500);
+            check('a BEAST clock-model tree with dated tips is offered the Clock plot', offered());
+            byId('clock_plot_b').click(); await sleep(300);
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const tips = forester.getAllExternalNodes(forester.getTreeRoot(tree));
+            check('one point per tip', circles('aptx-clock-tips').length === tips.length, circles('aptx-clock-tips').length + ' of ' + tips.length);
+            check('the note says the divergence is the model\'s (time x rate)',
+                /time × its clock rate/.test(document.querySelector('#aptx_clock_plot .aptx-clock-note').textContent));
+            // every branch of this file states one rate, so the tips lie ON a
+            // line of that slope: the file's own number
+            const rates = new Set();
+            forester.preOrderTraversalAll(forester.getTreeRoot(tree), (n) => (n.properties || []).forEach((p) => { if (p.ref === 'beast:rate') { rates.add(parseFloat(p.value)); } }));
+            check('fixture: the file states one clock rate', rates.size === 1, [...rates].join(' '));
+            const rate = [...rates][0];
+            check('Rate is the file\'s clock rate', row('Rate') === sig3(rate) + ' subs/site per year', row('Rate'));
+            check('R² is 1', row('R²') === '1', row('R²'));
+            finish();
+            return;
+        }
+
+        // ---- the Nextstrain build -------------------------------------
+        const text = await (await fetch('../../docs/data/nextstrain-ncov.json')).text();
+        const doc = JSON.parse(text);
+        // the file's own numbers, by name
+        const want = new Map(); let internalCount = 0;
+        (function w(x) { const kids = x.children || [];
+            if (kids.length) { ++internalCount; kids.forEach(w); } else { want.set(x.name, [x.node_attrs.num_date.value, x.node_attrs.div]); } }(doc.tree));
+        const fit = ols([...want.values()]);
+        out.push('nextstrain-ncov.json: ' + want.size + ' tips, ' + internalCount + ' internal nodes; by the raw sums: slope '
+            + fit.slope.toExponential(6) + ', R2 ' + fit.r2.toFixed(6) + ', root at ' + ((doc.tree.node_attrs.div - fit.intercept) / fit.slope).toFixed(4));
+        const trees = archaeopteryx.parseTrees('nextstrain-ncov.json', text);
+        const tree = Array.isArray(trees) ? trees[0] : trees;
+        const viewer = archaeopteryx.launch('#p', trees, {});
+        await viewer.ready; await sleep(2000);
+
+        const button = byId('clock_plot_b');
+        check('the Clock plot button is shown, and says what it does', offered() && button.value === 'Clock plot'
+            && /divergence/.test(button.title));
+        check('no panel before it is asked for', !dialog());
+        button.click(); await sleep(400);
+        const dlg = dialog();
+        check('the button opens a panel titled "Clock plot"', !!dlg && dlg.open
+            && dlg.querySelector('.aptx-dialog-name').textContent === 'Clock plot');
+        if (!dlg) { finish(); return; }
+        check('it is modeless: the tree stays in reach', !dlg.matches(':modal'));
+        check('it has a close control', !!dlg.querySelector('.aptx-dialog-close'));
+        check('the button is lit while the panel is open', button.classList.contains('aptx-lit'));
+        const box = dlg.getBoundingClientRect();
+        check('the panel is inside the window', box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+            [box.left, box.top, box.right, box.bottom].map(Math.round).join(' ') + ' in ' + innerWidth + 'x' + innerHeight);
+        const body = dlg.querySelector('.aptx-dialog-body');
+        check('nothing in it scrolls', body.scrollWidth <= body.clientWidth && body.scrollHeight <= body.clientHeight,
+            body.scrollWidth + 'x' + body.scrollHeight + ' in ' + body.clientWidth + 'x' + body.clientHeight);
+
+        // ---- the points
+        const laid = dlg._aptxClockPlot;
+        const tipMarks = () => circles('aptx-clock-tips');
+        check('one point per tip, one per internal node', tipMarks().length === want.size && circles('aptx-clock-internal').length === internalCount,
+            tipMarks().length + ' + ' + circles('aptx-clock-internal').length);
+        // the drawing's own scale, from the two tips furthest apart in each
+        // direction; every other tip must then sit where it predicts
+        const tipsLaid = laid.data.points.filter((p) => p.tip);
+        const pos = new Map();   // tip name -> its circle's centre
+        tipMarks().forEach((c, i) => pos.set(tipsLaid[i].node.name, centre(c)));
+        const names = [...want.keys()];
+        const byDate = names.slice().sort((a, b) => want.get(a)[0] - want.get(b)[0]);
+        const byDiv = names.slice().sort((a, b) => want.get(a)[1] - want.get(b)[1]);
+        const lin = (a, b, k) => { const va = want.get(a)[k], vb = want.get(b)[k], pa = pos.get(a)[k], pb = pos.get(b)[k];
+            return (v) => pa + (v - va) * (pb - pa) / (vb - va); };
+        const X = lin(byDate[0], byDate[byDate.length - 1], 0), Y = lin(byDiv[0], byDiv[byDiv.length - 1], 1);
+        let worst = 0;
+        names.forEach((n) => { worst = Math.max(worst, Math.abs(pos.get(n)[0] - X(want.get(n)[0])), Math.abs(pos.get(n)[1] - Y(want.get(n)[1]))); });
+        check('every tip sits at its file date and divergence, on one linear scale', worst < 0.01, 'worst ' + worst.toFixed(4) + ' px');
+        check('later is to the right, more divergence is up', pos.get(byDate[byDate.length - 1])[0] > pos.get(byDate[0])[0]
+            && pos.get(byDiv[byDiv.length - 1])[1] < pos.get(byDiv[0])[1]);
+
+        // ---- the line and its numbers
+        const line = dlg.querySelector('line.aptx-clock-line');
+        const L = ['x1', 'y1', 'x2', 'y2'].map((a) => parseFloat(line.getAttribute(a)));
+        // back into data: dates from x, and where the raw-sums line would be there
+        const invX = (px) => { const a = byDate[0], b = byDate[byDate.length - 1];
+            return want.get(a)[0] + (px - pos.get(a)[0]) * (want.get(b)[0] - want.get(a)[0]) / (pos.get(b)[0] - pos.get(a)[0]); };
+        const offLine = Math.max(Math.abs(L[1] - Y(fit.intercept + fit.slope * invX(L[0]))), Math.abs(L[3] - Y(fit.intercept + fit.slope * invX(L[2]))));
+        check('the line drawn is the least-squares line of the tips', getComputedStyle(line).display !== 'none' && offLine < 0.01, 'off by ' + offLine.toFixed(4) + ' px');
+        check('Rate is its slope', row('Rate') === sig3(fit.slope) + ' subs/site per year', row('Rate'));
+        check('R²', row('R²') === sig3(fit.r2), row('R²'));
+        const rootFit = (doc.tree.node_attrs.div - fit.intercept) / fit.slope;
+        check('Root date, by the line: where it reaches the root\'s divergence', row('Root date, by the line') === String(Math.round(rootFit * 100) / 100), row('Root date, by the line'));
+        check('Root date, in the tree: the root\'s own', row('Root date, in the tree') === String(Math.round(doc.tree.node_attrs.num_date.value * 100) / 100), row('Root date, in the tree'));
+        check('Tips', row('Tips') === String(want.size), row('Tips'));
+        const noteText = dlg.querySelector('.aptx-clock-note').textContent;
+        check('the note: tips only, R\u00b2 no test; and nothing about clock rates on a tree that records its divergence',
+            /tips only/.test(noteText) && /no test/.test(noteText) && !/clock rate/.test(noteText), noteText.slice(0, 60));
+        check('the fit counts the tips only', laid.data.fit.n === want.size, laid.data.fit.n);
+
+        // ---- the two checkboxes
+        const boxes = [...dlg.querySelectorAll('.aptx-clock-options input[type=checkbox]')];
+        boxes[1].click(); await sleep(150);
+        check('Internal nodes off: only the tips are drawn', circles('aptx-clock-internal').length === 0 && tipMarks().length === want.size);
+        check('...and the numbers stand', row('Rate') === sig3(fit.slope) + ' subs/site per year');
+        boxes[1].click(); await sleep(150);
+        boxes[0].click(); await sleep(150);
+        check('Regression line off: no line', getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display === 'none');
+        boxes[0].click(); await sleep(150);
+        check('both back on', circles('aptx-clock-internal').length === internalCount
+            && getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display !== 'none');
+
+        // ---- pointing: plot -> tree
+        const tipNodes = new Map();
+        forester.getAllExternalNodes(forester.getTreeRoot(tree)).forEach((n) => tipNodes.set(n.name, n));
+        const glow = () => document.querySelector('#p g.aptx-hoverglow');
+        const glowAt = () => { const g = glow(); if (!g || g.style.display === 'none') { return null; }
+            const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(g.getAttribute('transform') || ''); return m ? [+m[1], +m[2]] : null; };
+        const target = byDiv[byDiv.length - 1];      // the most diverged tip: no neighbour on top of it
+        const tp = pos.get(target);
+        pointer('pointermove', tp[0] + 1, tp[1] + 1); await sleep(200);
+        const g1 = glowAt(), node = tipNodes.get(target);
+        check('pointing at a point lights its node in the tree', !!g1 && Math.abs(g1[0] - node.y) < 0.5 && Math.abs(g1[1] - node.x) < 0.5,
+            g1 ? g1.map((v) => v.toFixed(1)).join(',') + ' vs node ' + node.y.toFixed(1) + ',' + node.x.toFixed(1) : 'no glow');
+        const ring = dlg.querySelector('circle.aptx-clock-ring');
+        check('...and rings the point', ring.style.display !== 'none' && Math.abs(parseFloat(ring.getAttribute('cx')) - tp[0]) < 0.01);
+        const tipBox = document.querySelector('.node_mouseover_tooltip');
+        check('...and the readout names it, with its divergence', !!tipBox && tipBox.textContent.indexOf(target) >= 0
+            && tipBox.textContent.indexOf('Divergence') >= 0 && parseFloat(getComputedStyle(tipBox).opacity) > 0.5, tipBox ? tipBox.textContent.slice(0, 90) : 'none');
+        pointer('pointermove', 2, 2); await sleep(150);
+        check('pointing at nothing: no ring, no glow', ring.style.display === 'none' && glowAt() === null);
+
+        // ---- pointing: tree -> plot
+        const other = byDate[0];
+        const tipG = [...document.querySelectorAll('#p g.node')].find((x) => x.__data__ && !x.__data__.children);
+        const M = tipG.parentNode.getScreenCTM();
+        const on = tipNodes.get(other);
+        const at = {clientX: M.a * on.y + M.c * on.x + M.e, clientY: M.b * on.y + M.d * on.x + M.f, bubbles: true, cancelable: true, view: window};
+        tipG.ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', at)); await sleep(200);
+        check('pointing at a node in the tree rings its point', ring.style.display !== 'none'
+            && Math.abs(parseFloat(ring.getAttribute('cx')) - pos.get(other)[0]) < 0.01 && Math.abs(parseFloat(ring.getAttribute('cy')) - pos.get(other)[1]) < 0.01,
+            ring.style.display + ' ' + ring.getAttribute('cx') + ',' + ring.getAttribute('cy') + ' vs ' + pos.get(other).map((v) => v.toFixed(1)).join(','));
+        tipG.ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', {clientX: 3, clientY: innerHeight - 3, bubbles: true, cancelable: true, view: window})); await sleep(150);
+
+        // ---- a click selects, and again deselects
+        const selected = () => archaeopteryx.getSelectedNodes().map((n) => n.name).sort();
+        const hitMarks = () => [...document.querySelectorAll('#aptx_clock_plot circle.aptx-clock-hit')];
+        const deselect = dlg.querySelector('.aptx-clock-deselect');
+        check('nothing selected: Deselect all is disabled', selected().length === 0 && deselect.disabled);
+        pointer('pointerdown', tp[0], tp[1]); pointer('pointerup', tp[0], tp[1]); await sleep(500);
+        check('a click on a point selects its node in the tree', selected().join() === target, selected().join());
+        check('...the point wears the highlight', hitMarks().length === 1 && Math.abs(centre(hitMarks()[0])[0] - tp[0]) < 0.01,
+            hitMarks().length + ' highlighted');
+        check('...and Deselect all is enabled', !deselect.disabled);
+        pointer('pointerdown', tp[0], tp[1]); pointer('pointerup', tp[0], tp[1]); await sleep(500);
+        check('a second click deselects it', selected().length === 0 && hitMarks().length === 0, selected().join());
+
+        // ---- a drag selects the tips in the box. Four boxes, each bounded by ONE
+        // of its sides and running off the drawing on the other three, so each
+        // side is what decides: the later half and the earlier half by the
+        // file's dates, the more and the less diverged half by its divergences
+        const sb = svgEl().getBoundingClientRect();
+        const band = dlg.querySelector('rect.aptx-clock-box');
+        // a cut BETWEEN two values (several tips share a divergence): the gap
+        // nearest the middle of the sorted tips
+        const mid = (sorted, k) => { const v = (i) => want.get(sorted[i])[k]; const h = Math.floor(sorted.length / 2);
+            for (let off = 0; off < h; ++off) { for (const i of [h + off, h - off]) { if (i > 0 && i < sorted.length && v(i) > v(i - 1)) { return (v(i - 1) + v(i)) / 2; } } }
+            return NaN; };
+        const cutDate = mid(byDate, 0), cutDiv = mid(byDiv, 1);
+        check('fixture: each cut falls between two values, no tip on it', isFinite(cutDate) && isFinite(cutDiv)
+            && names.every((n) => want.get(n)[0] !== cutDate && want.get(n)[1] !== cutDiv), cutDate + ', ' + cutDiv);
+        const boxes4 = [
+            {what: 'the later half (the box\'s left side decides)', from: [X(cutDate), 1], to: [sb.width - 1, sb.height - 1], keep: (n) => want.get(n)[0] > cutDate},
+            {what: 'the earlier half (its right side)', from: [1, 1], to: [X(cutDate), sb.height - 1], keep: (n) => want.get(n)[0] < cutDate},
+            {what: 'the more diverged half (its bottom)', from: [1, 1], to: [sb.width - 1, Y(cutDiv)], keep: (n) => want.get(n)[1] > cutDiv},
+            {what: 'the less diverged half (its top)', from: [1, Y(cutDiv)], to: [sb.width - 1, sb.height - 1], keep: (n) => want.get(n)[1] < cutDiv}
+        ];
+        for (let b = 0; b < boxes4.length; ++b) {
+            const bx = boxes4[b];
+            const inBox = names.filter(bx.keep).sort();
+            pointer('pointerdown', bx.from[0], bx.from[1]);
+            pointer('pointermove', (bx.from[0] + bx.to[0]) / 2, (bx.from[1] + bx.to[1]) / 2);
+            if (b === 0) {
+                check('a drag draws its box', band.style.display !== 'none' && parseFloat(band.getAttribute('width')) > 15);
+            }
+            pointer('pointermove', bx.to[0], bx.to[1]); pointer('pointerup', bx.to[0], bx.to[1]); await sleep(600);
+            check('a drag selects exactly the tips in the box: ' + bx.what, inBox.length > 0 && inBox.length < names.length
+                && selected().join('|') === inBox.join('|'), selected().length + ' selected, ' + inBox.length + ' of ' + names.length + ' in the box');
+            if (b === 0) {
+                check('...no internal node with them', archaeopteryx.getSelectedNodes().every((n) => !n.children));
+                check('...each wearing the highlight', hitMarks().length === inBox.length, hitMarks().length);
+                check('...and the box is gone', band.style.display === 'none');
+            }
+            deselect.click(); await sleep(500);
+            check('Deselect all: nothing selected, no highlight, the button disabled again', selected().length === 0 && hitMarks().length === 0 && deselect.disabled);
+        }
+
+        // ---- the view of a clade: the clade's points, the clade's line
+        const all = []; forester.preOrderTraversalAll(forester.getTreeRoot(tree), (n) => all.push(n));
+        const clade = all.filter((n) => n.children && n.parent && n.parent.parent && n.parent.parent.parent)
+            .map((n) => ({n, tips: forester.getAllExternalNodes(n)}))
+            .filter((c) => c.tips.length >= 4 && c.tips.length < want.size && new Set(c.tips.map((t) => want.get(t.name)[0])).size > 1)
+            .sort((a, b) => b.tips.length - a.tips.length)[0];
+        check('fixture: a clade of four tips or more, not all on one date', !!clade, clade ? clade.tips.length + ' tips' : 'none');
+        if (clade) {
+            const cfit = ols(clade.tips.map((t) => want.get(t.name)));
+            let inner = 0; forester.preOrderTraversalAll(clade.n, (n) => { if (n.children) { ++inner; } });
+            viewer.applyViewState({subtree: clade.n.viewId}); await sleep(1800);
+            check('in the view of a clade the panel stays open', !!dialog() && dialog().open);
+            check('...with the clade\'s points only', tipMarks().length === clade.tips.length && circles('aptx-clock-internal').length === inner,
+                tipMarks().length + ' + ' + circles('aptx-clock-internal').length + ' of ' + clade.tips.length + ' + ' + inner);
+            check('...and the clade\'s own line', row('Rate') === sig3(cfit.slope) + ' subs/site per year' && row('R²') === sig3(cfit.r2),
+                row('Rate') + ', R2 ' + row('R²') + ' vs ' + sig3(cfit.slope) + ', ' + sig3(cfit.r2));
+            check('...and Tips says it is the clade', row('Tips') === clade.tips.length + ' (the clade on view)', row('Tips'));
+            check('fixture: the clade\'s line is not the tree\'s', sig3(cfit.slope) !== sig3(fit.slope) || sig3(cfit.r2) !== sig3(fit.r2));
+            viewer.applyViewState({subtree: null}); await sleep(1800);
+            check('back on the whole tree: the tree\'s points and line', tipMarks().length === want.size && row('Rate') === sig3(fit.slope) + ' subs/site per year',
+                tipMarks().length + ', ' + row('Rate'));
+        }
+
+        // ---- a collapsed clade: its tips keep their points, and one of them
+        // pointed at lights the clade, which is what the tree shows of it
+        if (clade) {
+            viewer.applyViewState({collapsed: [clade.n.viewId]}); await sleep(1500);
+            check('fixture: the clade is collapsed', clade.n.collapsed === true);
+            check('a collapsed clade\'s tips keep their points', tipMarks().length === want.size, tipMarks().length);
+            const inside = pos.get(clade.tips[0].name);
+            pointer('pointermove', inside[0], inside[1]); await sleep(200);
+            const gc = glowAt();
+            check('pointing at one of them lights the collapsed clade', !!gc && Math.abs(gc[0] - clade.n.y) < 0.5 && Math.abs(gc[1] - clade.n.x) < 0.5,
+                gc ? gc.map((v) => v.toFixed(1)).join(',') + ' vs clade ' + clade.n.y.toFixed(1) + ',' + clade.n.x.toFixed(1) : 'no glow');
+            pointer('pointermove', 2, 2);
+            viewer.applyViewState({collapsed: []}); await sleep(1500);
+        }
+
+        // ---- Time | Div leaves the plot alone: it draws both
+        const before = tipMarks().map((c) => centre(c).join()).join(' ');
+        byId('branch_scale_div_b').click(); await sleep(1500);
+        check('the tree in Div: the same points, the same line', tipMarks().map((c) => centre(c).join()).join(' ') === before
+            && row('Rate') === sig3(fit.slope) + ' subs/site per year');
+        byId('branch_scale_time_b').click(); await sleep(1500);
+
+        // ---- the theme, and the close control
+        const themeBtn = document.querySelector('#p .aptx-theme-btn');
+        if (themeBtn) {
+            const wasDark = dialog().classList.contains('aptx-dark');
+            themeBtn.click(); await sleep(200);
+            check('the open panel turns with the theme', dialog().classList.contains('aptx-dark') !== wasDark
+                && (dialog().classList.contains('aptx-dark') || dialog().classList.contains('aptx-light')));
+            themeBtn.click(); await sleep(200);
+        } else {
+            check('a theme switch to press', false);
+        }
+        if (/[?&]hold=1/.test(location.search)) { finish(); return; }   // for a screenshot
+        dialog().querySelector('.aptx-dialog-close').click(); await sleep(300);
+        check('the close control closes it, and the button goes dark', !dialog() && !byId('clock_plot_b').classList.contains('aptx-lit'));
+        byId('clock_plot_b').click(); await sleep(300);
+        check('the button opens it again', !!dialog() && dialog().open);
+        byId('clock_plot_b').click(); await sleep(300);
+        check('...and pressed again, closes it', !dialog());
+    } catch (e) {
+        failures++;
+        out.push('FAIL  the harness threw: ' + (e && e.stack ? e.stack : e));
+    }
+    finish();
+}());
+</script>
