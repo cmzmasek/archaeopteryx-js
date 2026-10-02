@@ -7,6 +7,14 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.22.0 — 2026-10-02
+
+Genome regions: a tree whose tips are genomes draws each genome's genes as
+arrows beside its tip, the rows lined up on one gene family so gene order
+compares down the tree. The track is new and has so far been drawn on
+synthetic data only; its defaults — the automatic anchor above all — may
+change as people who work with genome displays report on it.
+
 ### Added
 - **Genome regions: a gene track beside the tips.** A tree whose tips are
   genomes can carry (part of) each genome as phyloXML `<sequence>` elements,

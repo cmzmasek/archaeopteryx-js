@@ -1176,7 +1176,7 @@ when the sequences are of unequal length, why it cannot.
   size* (the default) is the whole tree, re-laid-out large enough that no tip
   name has to be hidden — in rows in the rectangular layout, around the ring in
   the circular one — and cropped to the drawing, with the legends (colour,
-  shape, domains, the heat-map ring's scale) stacked beside the tree rather
+  shape, domains, gene families, the heat-map ring's scale) stacked beside the tree rather
   than over it. The window itself is left exactly as it was. An unrooted fan
   is enlarged only while that still frees names: tips on very short branches
   can collide at any size. An alignment track is drawn as its window, the
@@ -2010,7 +2010,10 @@ Two rules, in order:
    of the current pick's (substantially more economical) takes it.
 
 A field with no printable values is never checked (apaf's sequences carry
-only domain architectures, so its Sequence box starts unchecked). The choice
+only domain architectures, so its Sequence box starts unchecked). On a tree
+of genomes the sequence field has none either: a tip's located sequences —
+its contig record and its genes — describe the region drawn beside it, not
+the tip, so the node name stands. The choice
 is logged to the console at launch, and the user can recheck anything — the
 rules only set the initial state.
 
@@ -2354,7 +2357,7 @@ the tree ≥ 220 px))`. It is budgeted **before** the alignment, and the
 alignment's own band then yields to it: the matrix wants a fixed, finite width
 while the alignment's band is a window that scrolls and so loses nothing by
 giving way. (Budgeted the other way round, an 18-column matrix got a 60 px
-sliver.) It sits between the domain tracks and the alignment, its right edge at
+sliver.) It sits between the domain and gene tracks and the alignment, its right edge at
 `displayWidth − rootOffset − msaReserve`. Rows tile the cluster height by the
 same once-derived midpoints the alignment uses. Column width is
 `clamp(band / columns, 3, 14)`; past `band / 3` columns the matrix shows a

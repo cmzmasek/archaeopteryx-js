@@ -448,7 +448,9 @@ async function launch(file, text) {
 async function legendCards() {
     const cases = [
         {file: '../../docs/data/apaf.xml', config: {}, domains: 'legend', circular: false},
-        {file: '../../docs/data/sparse-accessory-genome.xml', config: {showHeatmap: true}, circular: true}
+        {file: '../../docs/data/sparse-accessory-genome.xml', config: {showHeatmap: true}, circular: true},
+        // the gene track's families card, and the arrows themselves in the saved figure
+        {file: '../data/genome_regions.xml', config: {geneLabels: 'legend'}, genes: 116, circular: false}
     ];
     for (const c of cases) {
         const trees = archaeopteryx.parseTrees(c.file, await (await fetch(c.file)).text());
@@ -467,7 +469,7 @@ async function legendCards() {
         }
         const name = c.file.split('/').pop() + (c.circular ? ' circular' : '');
         const live = document.querySelector('rect.basebackground').ownerSVGElement;
-        const classes = ['legendLabelColor', 'legendNodeShape', 'legendDomains', 'aptx-heatmap-ringlegend']
+        const classes = ['legendLabelColor', 'legendNodeShape', 'legendDomains', 'legendGenes', 'aptx-heatmap-ringlegend']
             .filter((k) => live.querySelector(':scope > g.' + k));
         out.push(name + ': cards on screen: ' + classes.join(', '));
         const section = document.querySelector('fieldset.aptx-download');
@@ -495,7 +497,17 @@ async function legendCards() {
         }
         // the fixture has to carry the cards this is about, or it proves nothing
         check(name + ': the fixture shows the card under test', classes.includes(c.domains ? 'legendDomains'
-            : 'aptx-heatmap-ringlegend'), classes.join(', '));
+            : c.genes ? 'legendGenes' : 'aptx-heatmap-ringlegend'), classes.join(', '));
+        if (c.genes) {
+            // the track rides into the figure: every arrow, its backbones, and
+            // the arrows inside the page
+            const arrows = [...svg.querySelectorAll('g.aptx-genes > g:nth-child(2) > path')];
+            const inside = arrows.filter((a) => { const r = a.getBoundingClientRect();
+                return r.left >= page.left - 0.5 && r.right <= page.right + 0.5 && r.top >= page.top - 0.5 && r.bottom <= page.bottom + 0.5; });
+            check(name + ': the saved figure carries every gene arrow, on the page', arrows.length === c.genes && inside.length === c.genes,
+                arrows.length + ' arrows, ' + inside.length + ' on the page');
+            check(name + ': ... and their backbones', !!svg.querySelector('g.aptx-genes > g:nth-child(1) > path'));
+        }
         holder.remove();
     }
 }
