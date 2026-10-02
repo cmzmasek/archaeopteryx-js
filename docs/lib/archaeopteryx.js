@@ -11057,10 +11057,29 @@ function (root, d3, forester, phyloXml) {
 
     function toggleClockPlot() {
         if (_clockPlot) {
-            _clockPlot.dialog.close();
+            closeClockPlot();
         } else {
             showClockPlot();
         }
+    }
+
+    // Closes the panel NOW. A dialog's own `close` event arrives in a later
+    // task -- much later in a tab the browser is throttling -- and while the
+    // viewer still believed the panel open, a press of the button "closed"
+    // the closed panel again and did nothing (seen on the live demo,
+    // 2026-10-02). So nothing here waits for the event.
+    function closeClockPlot() {
+        let cp = _clockPlot;
+        if (!cp) {
+            return;
+        }
+        _clockPlot = null;
+        hideHoverGlow();
+        if (cp.dialog.open) {
+            cp.dialog.close();
+        }
+        cp.dialog.remove();
+        syncClockPlotControl();
     }
 
     function clockSvg(parent, tag, cls) {
@@ -11158,13 +11177,14 @@ function (root, d3, forester, phyloXml) {
         _clockPlot = {dialog: shell.dialog, svg: svg, axes: axes, internal: internal, line: line, tips: tips,
             ring: ring, box: box, stats: stats, note: note, deselect: deselect,
             data: null, marks: [], shape: null, x: null, y: null};
-        shell.dialog.addEventListener('close', function () {
+        // the shell's close control, and anything else that closes the dialog
+        let closed = function () {
             if (_clockPlot && _clockPlot.dialog === shell.dialog) {
-                _clockPlot = null;
-                hideHoverGlow();
-                syncClockPlotControl();
+                closeClockPlot();
             }
-        });
+        };
+        shell.dialog.querySelector('.aptx-dialog-close').addEventListener('click', closed);
+        shell.dialog.addEventListener('close', closed);
         bindClockPlotPointer(_clockPlot);
         // modeless, as the cheat sheet is: the tree stays in reach
         shell.dialog.show();
@@ -11331,7 +11351,7 @@ function (root, d3, forester, phyloXml) {
         }
         let data = _treeData ? forester.clockPlotData(_treeData, topNode()) : null;
         if (!data) {
-            cp.dialog.close();    // the tree no longer has a plot (a tip deleted)
+            closeClockPlot();    // the tree no longer has a plot (a tip deleted)
             return;
         }
         let fit = data.fit;

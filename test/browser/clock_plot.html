@@ -428,12 +428,21 @@
             check('a theme switch to press', false);
         }
         if (/[?&]hold=1/.test(location.search)) { finish(); return; }   // for a screenshot
-        dialog().querySelector('.aptx-dialog-close').click(); await sleep(300);
-        check('the close control closes it, and the button goes dark', !dialog() && !byId('clock_plot_b').classList.contains('aptx-lit'));
-        byId('clock_plot_b').click(); await sleep(300);
-        check('the button opens it again', !!dialog() && dialog().open);
-        byId('clock_plot_b').click(); await sleep(300);
-        check('...and pressed again, closes it', !dialog());
+        // Nothing below waits: a dialog's `close` event comes in a later task
+        // (much later in a throttled tab), and a viewer that waited for it
+        // swallowed the next press of the button.
+        dialog().querySelector('.aptx-dialog-close').click();
+        check('the close control closes it at once, and the button goes dark', !dialog() && !byId('clock_plot_b').classList.contains('aptx-lit'));
+        byId('clock_plot_b').click();
+        check('the button opens it again, at once', !!dialog() && dialog().open && byId('clock_plot_b').classList.contains('aptx-lit'));
+        byId('clock_plot_b').click();
+        check('...and pressed again, closes it at once', !dialog() && !byId('clock_plot_b').classList.contains('aptx-lit'));
+        byId('clock_plot_b').click();
+        check('...and a third press opens it again: no press is swallowed', !!dialog() && dialog().open);
+        await sleep(300);
+        check('...and it is still open once the old panel\'s close event has come', !!dialog() && dialog().open
+            && document.querySelectorAll('#aptx_clock_plot').length === 1);
+        byId('clock_plot_b').click();
     } catch (e) {
         failures++;
         out.push('FAIL  the harness threw: ' + (e && e.stack ? e.stack : e));
