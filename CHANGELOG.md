@@ -19,7 +19,8 @@ users see a change only when a version is cut.
   point wears its node's colour, pointing at a point lights its node (and
   pointing at a node rings its point), a click selects the node, a dragged
   box selects the tips in it, and in a subtree view the plot is the clade's
-  own. Offered where the line can be drawn — three tips or more, not all on
+  own. Tips drawn on one spot (one date, one divergence) are one dot that
+  answers for all of them: named, lit and selected together. Offered where the line can be drawn — three tips or more, not all on
   one date; a BEAST clock-model tree is told that its divergence is the
   model's (time × rate). `forester.clockPlotKind`, `forester.clockPlotData`,
   `forester.clockRegression`, `forester.calendarTickMonths`. New in this

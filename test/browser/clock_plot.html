@@ -39,6 +39,13 @@
 //             AS MANY NODES: the plot is the second clade's. (The plot is
 //             worked out again when the top of the view or its node count
 //             changes; every other case changes both at once.)
+// ?same=1     tips drawn on ONE SPOT are one dot, and the dot answers for all
+//             of them (code review; Christian, 2026-10-02): eight tips, seven
+//             with one date and divergence and one a third of a pixel off,
+//             are named together (the first five, "and 3 more"), lit
+//             together and selected together by a click -- all of them, or
+//             none where all were selected. A tip three pixels away is not
+//             of the dot, nor is the ancestor drawn on the same spot.
 // ?delete=1   a tip deleted with the panel open: the plot follows, with the
 //             line of the tips that are left; a second one deleted leaves two
 //             tips, no plot, and the panel and its button go.
@@ -139,6 +146,91 @@
             check('Rate is positive: 0.01, per unit of time', row('Rate') === '0.01 subs/site per unit of time', row('Rate'));
             check('Root date, by the line and in the tree: age 4', row('Root date, by the line') === '4' && row('Root date, in the tree') === '4',
                 row('Root date, by the line') + ' / ' + row('Root date, in the tree'));
+            finish();
+            return;
+        }
+        if (/same=1/.test(location.search)) {
+            const SAME = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'];
+            const T = {A: [2000, 0.001], C: [2002, 0.002], D: [2003, 0.006], E: [2001.03, 0.003], B8: [2001.004, 0.003]};
+            SAME.forEach((n) => { T[n] = [2001, 0.003]; });
+            const DOT = SAME.concat(['B8']).sort();
+            const leaf = (n) => ({name: n, node_attrs: {num_date: {value: T[n][0]}, div: T[n][1]}});
+            const inner = (n, date, div, kids) => ({name: n, node_attrs: {num_date: {value: date}, div: div}, children: kids});
+            // X, the ancestor of the eight, states their date and divergence: its point is on their spot
+            const trees = archaeopteryx.parseTrees('same.json', JSON.stringify({version: 'v2', meta: {title: 'eight tips on one spot'},
+                tree: inner('ROOT', 1999, 0, [leaf('A'), inner('X', 2001, 0.003, SAME.concat(['B8']).map(leaf)), inner('Y', 2000.5, 0.001, ['C', 'D', 'E'].map(leaf))])}));
+            const v = archaeopteryx.launch('#p', trees, {enableManualNodeSelection: true});
+            await v.ready; await sleep(1500);
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const nodeOf = (n) => forester.findByNodeName(forester.getTreeRoot(tree), n)[0];
+            byId('clock_plot_b').click(); await sleep(300);
+            const where = () => { const at = {}; const tl = dialog()._aptxClockPlot.data.points.filter((p) => p.tip);
+                circles('aptx-clock-tips').forEach((c, i) => { at[tl[i].node.name] = centre(c); }); return at; };
+            let at = where();
+            const dist = (a, b) => Math.hypot(at[a][0] - at[b][0], at[a][1] - at[b][1]);
+            check('fixture: seven tips on one spot exactly', SAME.every((n) => dist(n, 'B1') === 0));
+            check('fixture: an eighth a fraction of a pixel off it', dist('B8', 'B1') > 0.1 && dist('B8', 'B1') < 1, dist('B8', 'B1').toFixed(2) + ' px');
+            check('fixture: a ninth tip within reach of the pointer but off the spot', dist('E', 'B1') > 1.5 && dist('E', 'B1') < 7, dist('E', 'B1').toFixed(2) + ' px');
+            const selected = () => archaeopteryx.getSelectedNodes().map((n) => n.name).sort().join(' ');
+            const readout = () => document.querySelector('.node_mouseover_tooltip').textContent;
+            // every disc group of the glow, where it is in the tree's own coordinates
+            const lit = () => { const g = document.querySelector('#p g.aptx-hoverglow'); if (!g || g.style.display === 'none') { return []; }
+                const tr = (el) => { const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(el.getAttribute('transform') || ''); return [+m[1], +m[2]]; };
+                const o = tr(g); return [o].concat([...g.querySelectorAll('g.aptx-hoverglow-also')].map((x) => { const r = tr(x); return [o[0] + r[0], o[1] + r[1]]; })); };
+            const litIs = (names) => { const got = lit().map((p) => p.map((x) => x.toFixed(1)).join()).sort().join(' ');
+                const want = names.map((n) => [nodeOf(n).y, nodeOf(n).x].map((x) => x.toFixed(1)).join()).sort().join(' '); return got === want; };
+
+            // ---- pointing at the dot
+            pointer('pointermove', at.B1[0], at.B1[1]); await sleep(200);
+            const text = readout();
+            check('the readout says how many tips the dot stands for', text.indexOf('8 tips here') >= 0, text.slice(0, 80));
+            const namedHere = DOT.filter((n) => new RegExp('Name' + n + '(?!\\d)').test(text));
+            check('...names the first five of them, in the tree\'s order, and says three more', namedHere.join(' ') === 'B1 B2 B3 B4 B5'
+                && text.indexOf('NameB1NameB2NameB3NameB4NameB5Name\u2026 and 3 more') >= 0, namedHere.join(' ') + ' | ' + text.slice(0, 90));
+            check('...and not the tip three pixels away', !/NameE/.test(text));
+            check('...with the date they span and the divergence they share', text.indexOf('Date2001 \u2013 2001.004 year') >= 0 && text.indexOf('Divergence0.003') >= 0
+                && text.indexOf('Divergence0.003 \u2013') < 0, text.slice(text.indexOf('Date')));
+            check('all eight are lit in the tree', lit().length === 8 && litIs(DOT), lit().length + ' lit');
+
+            // ---- a click selects them all; again, deselects them all
+            pointer('pointerdown', at.B1[0], at.B1[1]); pointer('pointerup', at.B1[0], at.B1[1]); await sleep(500);
+            check('a click on the dot selects all eight, and nothing else', selected() === DOT.join(' '), selected());
+            check('...and all eight are still lit after the redraw', lit().length === 8 && litIs(DOT), lit().length + ' lit');
+            pointer('pointerdown', at.B1[0], at.B1[1]); pointer('pointerup', at.B1[0], at.B1[1]); await sleep(500);
+            check('a second click, all eight being selected, deselects all eight', selected() === '', selected());
+
+            // ---- one of them selected in the tree: a click selects the rest
+            const g = [...document.querySelectorAll('#p g.node')].find((x) => x.__data__ && x.__data__.name === 'B4');
+            const m = g.getScreenCTM();
+            const tat = {clientX: m.e, clientY: m.f, bubbles: true, cancelable: true, view: window};
+            g.ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', tat));
+            g.ownerSVGElement.dispatchEvent(new MouseEvent('click', tat)); await sleep(400);
+            const item = [...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.textContent === 'Select/Deselect Node');
+            if (item) { item.click(); await sleep(600); }
+            check('fixture: one tip of the dot selected from the node menu', selected() === 'B4', selected());
+            pointer('pointermove', at.B1[0], at.B1[1]);
+            pointer('pointerdown', at.B1[0], at.B1[1]); pointer('pointerup', at.B1[0], at.B1[1]); await sleep(500);
+            check('one of the eight being selected, a click selects all eight', selected() === DOT.join(' '), selected());
+            dialog().querySelector('.aptx-clock-deselect').click(); await sleep(400);
+
+            // ---- the tip beside the dot is a point of its own
+            pointer('pointermove', at.E[0] + 2, at.E[1]); await sleep(200);
+            check('the tip three pixels away is pointed at alone', /NameE/.test(readout()) && readout().indexOf('tips here') < 0 && lit().length === 1 && litIs(['E']),
+                readout().slice(0, 40) + ' | ' + lit().length + ' lit');
+            pointer('pointerdown', at.E[0] + 2, at.E[1]); pointer('pointerup', at.E[0] + 2, at.E[1]); await sleep(500);
+            check('...and selected alone', selected() === 'E', selected());
+            dialog().querySelector('.aptx-clock-deselect').click(); await sleep(400);
+
+            // ---- the ancestor on the same spot is not of the dot
+            dialog().querySelectorAll('.aptx-clock-options input[type=checkbox]')[1].click(); await sleep(200);
+            at = where();
+            const il = dialog()._aptxClockPlot.data.points.filter((p) => !p.tip);
+            const xc = centre(circles('aptx-clock-internal')[il.findIndex((p) => p.node.name === 'X')]);
+            check('fixture: with Internal nodes on, the ancestor X is drawn on the dot\'s spot', Math.hypot(xc[0] - at.B1[0], xc[1] - at.B1[1]) === 0);
+            pointer('pointermove', at.B1[0], at.B1[1]); await sleep(200);
+            check('the dot still stands for the eight tips', readout().indexOf('8 tips here') >= 0 && lit().length === 8, readout().slice(0, 30) + ' | ' + lit().length + ' lit');
+            pointer('pointerdown', at.B1[0], at.B1[1]); pointer('pointerup', at.B1[0], at.B1[1]); await sleep(500);
+            check('...and a click selects the eight tips, not the ancestor', selected() === DOT.join(' '), selected());
             finish();
             return;
         }

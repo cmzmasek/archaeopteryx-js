@@ -921,6 +921,11 @@ The panel is **linked to the tree** and stays open while you work in it
 - **clicking** a point selects or deselects its node, and **dragging** a box
   selects the tips in it — the tree's own selection, so an outlier found on
   the plot is found in the tree. **Deselect all** clears it;
+- tips with one date and one divergence — identical sequences sampled on one
+  day — are drawn on one spot, and that dot answers for all of them: the
+  readout says how many tips are there and names the first five, all of them
+  light up in the tree, and a click selects them all (or deselects them all,
+  where all were selected);
 - in a subtree view the plot is the clade's, with the clade's own line.
 
 **Regression line** shows and hides the line. **Internal nodes** adds the

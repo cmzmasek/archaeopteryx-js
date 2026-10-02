@@ -1486,7 +1486,24 @@ function (root, d3, forester, phyloXml) {
         return hsvToHex({h: hsv.h, s: Math.max(hsv.s, HOVER_GLOW_SAT_FLOOR), v: Math.max(hsv.v, HOVER_GLOW_VAL_FLOOR)});
     }
 
-    function showHoverGlow(d) {
+    // The glow's three discs, in `g`, in the colour of node d.
+    function paintHoverGlow(g, d) {
+        let dia = Math.max(HOVER_GLOW_MIN_DIA, (_state.nodeSizeDefault || 0) * 3);
+        let fill = hoverGlowColor(d);
+        HOVER_GLOW_RADII.forEach(function (radius, i) {
+            g.append('circle')
+                .attr('fill-opacity', HOVER_GLOW_ALPHAS[i])
+                .attr('stroke', 'none')
+                .attr('fill', fill)
+                .attr('r', (dia * radius) / 2);
+        });
+    }
+
+    // Lights node d. `also` lights more nodes with it: one point of the clock
+    // plot can stand for several tips. They are drawn INSIDE the one glow
+    // group, placed from d, so whatever hides, moves or strips the glow
+    // (hideHoverGlow, an export) takes all of them.
+    function showHoverGlow(d, also) {
         if (!_svgGroup || !d || d.x === undefined) {
             return;
         }
@@ -1494,23 +1511,21 @@ function (root, d3, forester, phyloXml) {
         if (g.empty()) {
             g = _svgGroup.append('g').attr('class', 'aptx-hoverglow')
                 .style('pointer-events', 'none');
-            HOVER_GLOW_RADII.forEach(function (unused, i) {
-                g.append('circle')
-                    .attr('fill-opacity', HOVER_GLOW_ALPHAS[i])
-                    .attr('stroke', 'none');
-            });
         }
-        let dia = Math.max(HOVER_GLOW_MIN_DIA, (_state.nodeSizeDefault || 0) * 3);
+        g.selectAll('*').remove();
         let p = layoutPointXY(d);
-        let fill = hoverGlowColor(d);
         g.attr('transform', 'translate(' + p[0] + ',' + p[1] + ')')
             .style('display', null)
             .raise();
-        g.selectAll('circle')
-            .attr('fill', fill)
-            .attr('r', function (unused, i) {
-                return (dia * HOVER_GLOW_RADII[i]) / 2;
-            });
+        paintHoverGlow(g, d);
+        (also || []).forEach(function (n) {
+            if (!n || n === d || n.x === undefined) {
+                return;
+            }
+            let q = layoutPointXY(n);
+            paintHoverGlow(g.append('g').attr('class', 'aptx-hoverglow-also')
+                .attr('transform', 'translate(' + (q[0] - p[0]) + ',' + (q[1] - p[1]) + ')'), n);
+        });
     }
 
     function hideHoverGlow() {
@@ -11027,7 +11042,9 @@ function (root, d3, forester, phyloXml) {
     //   in the tree rings its point;
     // - a click selects or deselects the node, a drag selects the tips in
     //   the box -- the tree's own selection, so everything that reads it
-    //   (the labels, the downloads, the host page) sees it.
+    //   (the labels, the downloads, the host page) sees it;
+    // - tips drawn on one spot are one dot, and the dot answers for all of
+    //   them: named together, lit together, selected together.
     //
     // The plot follows the view: in a subtree it is the clade's, with the
     // clade's own line. Modeless, and it can be dragged by its title: the
@@ -11038,6 +11055,8 @@ function (root, d3, forester, phyloXml) {
     const CLOCK_PLOT_H = 300;
     const CLOCK_PLOT_PAD = {top: 10, right: 14, bottom: 38, left: 58};
     const CLOCK_PLOT_HIT_PX = 7;     // how near the pointer has to be to a point
+    const CLOCK_PLOT_SAME_PX = 1;    // points nearer each other than this are one dot on the screen
+    const CLOCK_PLOT_NAMES_MAX = 5;  // how many of a dot's tips the readout names
     const CLOCK_PLOT_DRAG_PX = 4;    // a press that moves further than this is a box, not a click
     const CLOCK_PLOT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -11384,7 +11403,7 @@ function (root, d3, forester, phyloXml) {
         // left the point ringed and its node dark until the pointer moved to
         // another point and back.
         if (cp.hover) {
-            showHoverGlow(clockTreeNode(cp.hover.p.node));
+            lightClockNodes(cp.hover);
         }
     }
 
@@ -11547,7 +11566,21 @@ function (root, d3, forester, phyloXml) {
         return seen;
     }
 
-    function clockMarkAt(cp, px, py) {
+    /**
+     * The points under the pointer: the nearest one within reach, and every
+     * other of its kind drawn on the same spot. Tips with one date and one
+     * divergence -- identical sequences sampled on one day -- are one dot on
+     * the screen (778 of the 2,985 tips of a measles build share theirs with
+     * another), and a dot that answered for only the first of them left the
+     * rest beyond pointing, naming or deselecting (code review; Christian,
+     * 2026-10-02: the dot stands for all of them). The SAME SPOT, not
+     * everything within reach: in a dense cloud that is hundreds of tips,
+     * and a click meant for one dot would take them all.
+     *
+     * @returns {Array} the marks, in the tree's own order, top to bottom;
+     *          empty where the pointer is on none
+     */
+    function clockMarksAt(cp, px, py) {
         let best = null;
         let bestD = CLOCK_PLOT_HIT_PX * CLOCK_PLOT_HIT_PX;
         for (let i = 0; i < cp.marks.length; ++i) {
@@ -11561,7 +11594,37 @@ function (root, d3, forester, phyloXml) {
                 bestD = d;
             }
         }
-        return best;
+        if (!best) {
+            return [];
+        }
+        // (the points were laid down from a walk that takes the last child
+        // first, so the tree's order is theirs backwards)
+        return cp.marks.filter(function (m) {
+            return m.p.tip === best.p.tip && Math.abs(m.px - best.px) < CLOCK_PLOT_SAME_PX
+                && Math.abs(m.py - best.py) < CLOCK_PLOT_SAME_PX;
+        }).reverse();
+    }
+
+    function sameClockMarks(a, b) {
+        if (!a || !b || a.length !== b.length) {
+            return a === b;
+        }
+        return a.every(function (m, i) {
+            return m === b[i];
+        });
+    }
+
+    // Lights, in the tree, the nodes of the points under the pointer: each as
+    // the tree shows it (clockTreeNode), each once.
+    function lightClockNodes(marks) {
+        let nodes = [];
+        marks.forEach(function (m) {
+            let n = clockTreeNode(m.p.node);
+            if (nodes.indexOf(n) < 0) {
+                nodes.push(n);
+            }
+        });
+        showHoverGlow(nodes[0], nodes.slice(1));
     }
 
     function clockRing(cp, mark) {
@@ -11592,18 +11655,55 @@ function (root, d3, forester, phyloXml) {
         clockRing(cp, mark);
     }
 
-    function clockPointText(p) {
-        let text = (p.node.name ? 'Name: ' + p.node.name : (p.tip ? 'Tip' : 'Internal node')) + '<br>';
-        let date = dateText(p.node.date);
-        if (date) {
-            text += 'Date: ' + date + '<br>';
+    function clockSigned(v) {
+        return (v > 0 ? '+' : '') + clockNumber(v, 3);
+    }
+
+    // One value where the points agree, "least - greatest" where they do not
+    // (points a fraction of a pixel apart are one dot and may differ a hair).
+    function clockSpan(values, format) {
+        let lo = Math.min.apply(null, values);
+        let hi = Math.max.apply(null, values);
+        return lo === hi ? format(lo) : (format(lo) + ' \u2013 ' + format(hi));
+    }
+
+    // What the readout says of the points under the pointer: of one, what it
+    // is; of several on one spot, how many, the names of the first few, and
+    // what they share.
+    function clockPointText(marks) {
+        let p = marks[0].p;
+        if (marks.length === 1) {
+            let text = (p.node.name ? 'Name: ' + p.node.name : (p.tip ? 'Tip' : 'Internal node')) + '<br>';
+            let date = dateText(p.node.date);
+            if (date) {
+                text += 'Date: ' + date + '<br>';
+            }
+            text += 'Divergence: ' + clockNumber(p.div, 4) + '<br>';
+            if (typeof p.residual === 'number') {
+                text += 'Off the line: ' + clockSigned(p.residual) + '<br>';
+            }
+            if (!p.tip) {
+                text += 'Tips below: ' + forester.getAllExternalNodes(p.node).length + '<br>';
+            }
+            return text;
         }
-        text += 'Divergence: ' + clockNumber(p.div, 4) + '<br>';
-        if (typeof p.residual === 'number') {
-            text += 'Off the line: ' + (p.residual > 0 ? '+' : '') + clockNumber(p.residual, 3) + '<br>';
+        let text = marks.length + (p.tip ? ' tips here' : ' internal nodes here') + '<br>';
+        let named = marks.filter(function (m) {
+            return !!m.p.node.name;
+        });
+        named.slice(0, CLOCK_PLOT_NAMES_MAX).forEach(function (m) {
+            text += 'Name: ' + m.p.node.name + '<br>';
+        });
+        if (named.length > CLOCK_PLOT_NAMES_MAX) {
+            text += 'Name: \u2026 and ' + (named.length - CLOCK_PLOT_NAMES_MAX) + ' more<br>';
         }
-        if (!p.tip) {
-            text += 'Tips below: ' + forester.getAllExternalNodes(p.node).length + '<br>';
+        let unit = (p.node.date && p.node.date.unit) ? ' ' + p.node.date.unit : '';
+        text += 'Date: ' + clockSpan(marks.map(function (m) { return m.p.date; }), String) + unit + '<br>';
+        text += 'Divergence: ' + clockSpan(marks.map(function (m) { return m.p.div; }), function (v) {
+            return clockNumber(v, 4);
+        }) + '<br>';
+        if (marks.every(function (m) { return typeof m.p.residual === 'number'; })) {
+            text += 'Off the line: ' + clockSpan(marks.map(function (m) { return m.p.residual; }), clockSigned) + '<br>';
         }
         return text;
     }
@@ -11621,11 +11721,11 @@ function (root, d3, forester, phyloXml) {
             return [(e.clientX - r.left) * (CLOCK_PLOT_W / (r.width || CLOCK_PLOT_W)),
                 (e.clientY - r.top) * (CLOCK_PLOT_H / (r.height || CLOCK_PLOT_H))];
         };
-        let readout = function (e, mark) {
+        let readout = function (e, marks) {
             if (!_node_mouseover_div) {
                 return;
             }
-            if (!mark) {
+            if (!marks) {
                 _node_mouseover_div.interrupt().style('opacity', 1e-6);
                 return;
             }
@@ -11634,25 +11734,27 @@ function (root, d3, forester, phyloXml) {
             if (_panelTheme) {
                 tip.classList.add('aptx-' + _panelTheme);
             }
-            _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(clockPointText(mark.p))));
+            _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(clockPointText(marks))));
             _node_mouseover_div.interrupt().style('opacity', 0.95);
             placeHoverReadout(tip, e);
         };
-        // cp.hover: the point the pointer is on, kept for the renders in between
+        // cp.hover: the points the pointer is on (null for none), kept for the
+        // renders in between
         let point = function (e) {
             let xy = at(e);
-            let mark = clockMarkAt(cp, xy[0], xy[1]);
-            if (mark !== cp.hover) {
-                cp.hover = mark;
-                clockRing(cp, mark);
-                if (mark) {
-                    showHoverGlow(clockTreeNode(mark.p.node));
+            let found = clockMarksAt(cp, xy[0], xy[1]);
+            let marks = found.length > 0 ? found : null;
+            if (!sameClockMarks(marks, cp.hover)) {
+                cp.hover = marks;
+                clockRing(cp, marks ? marks[0] : null);
+                if (marks) {
+                    lightClockNodes(marks);
                 } else {
                     hideHoverGlow();
                 }
-                svg.style.cursor = mark ? 'pointer' : '';
+                svg.style.cursor = marks ? 'pointer' : '';
             }
-            readout(e, mark);
+            readout(e, marks);
         };
         svg.addEventListener('pointerdown', function (e) {
             if (e.button !== 0) {
@@ -11717,13 +11819,20 @@ function (root, d3, forester, phyloXml) {
                 }
                 return;
             }
-            let mark = clockMarkAt(cp, xy[0], xy[1]);
-            if (mark) {
-                if (_selectedNodes.has(mark.p.node)) {
-                    _selectedNodes.delete(mark.p.node);
-                } else {
-                    _selectedNodes.add(mark.p.node);
-                }
+            // a click selects every node of the dot; where all of them are
+            // selected already, it deselects them
+            let marks = clockMarksAt(cp, xy[0], xy[1]);
+            if (marks.length > 0) {
+                let all = marks.every(function (m) {
+                    return _selectedNodes.has(m.p.node);
+                });
+                marks.forEach(function (m) {
+                    if (all) {
+                        _selectedNodes.delete(m.p.node);
+                    } else {
+                        _selectedNodes.add(m.p.node);
+                    }
+                });
                 selectionChangedByClockPlot();
             }
         };
