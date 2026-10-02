@@ -7,6 +7,28 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **Genome regions: a gene track beside the tips.** A tree whose tips are
+  genomes can carry (part of) each genome as phyloXML `<sequence>` elements,
+  one per gene with a `<location>` (`contig:start-end(+)`) and its family in
+  an `<annotation ref="pgfam:…">`, plus a `<sequence type="dna">` record per
+  contig — nothing the schema has not got. The viewer draws an arrow per gene
+  on a backbone per genome, pointing by strand, coloured by family (grey when
+  unique to one genome), the rows **anchored** on one family so gene order
+  compares across genomes, a mirrored row for a genome carrying the anchor on
+  the other strand, two lanes for overlapping genes, a bar at a contig end, a
+  kb bar under the rows. The **Genes** checkbox under Display Data and the
+  **Genome regions** section (track width, Anchor, Family, Labels); hovering
+  an arrow reads the gene out, clicking opens its BV-BRC or NCBI page; a
+  families legend; the circular and unrooted layouts; the view link; config
+  `showGenes`, `geneAnchor`, `geneFamily`, `geneLabels`. The node-data dialog
+  lists a sequence's annotations and the tree statistics count the regions.
+  A synthetic demo (twelve genomes, one row per rule). On such a tree the tips
+  are labelled by node name, not by their first sequence.
+- The TypeScript declarations now list the domain track's config keys
+  (`showDomainArchitectures`, `domainLabels`, `domainGlow`,
+  `domainEvalueExponent`), which they had left out.
+
 ## 3.21.0 — 2026-10-01
 
 "Properties" is "Metadata" wherever a user sees it, in step with the desktop

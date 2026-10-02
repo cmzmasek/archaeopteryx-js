@@ -248,6 +248,7 @@ function (root, d3, forester, phyloXml) {
     const LEGEND_LABEL_COLOR = 'legendLabelColor';
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const LEGEND_DOMAINS = 'legendDomains';
+    const LEGEND_GENES = 'legendGenes';
     const NH_EXPORT_FORMAT = 'Newick';
     const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
@@ -380,6 +381,13 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_EVALUE_READOUT = 'domain_evalue';
     const DOMAIN_LABELS_SELECT = 'domain_labels';
     const DOMAIN_GLOW_CB = 'domain_glow_cb';
+    const GENES_CB = 'genes_cb';
+    const GENE_CONTROLS = 'gene_controls';
+    const GENE_WIDTH_DEC = 'gene_width_dec';
+    const GENE_WIDTH_INC = 'gene_width_inc';
+    const GENE_ANCHOR_SELECT = 'gene_anchor';
+    const GENE_FAMILY_SELECT = 'gene_family';
+    const GENE_LABELS_SELECT = 'gene_labels';
     const SCALE_AXIS_CB = 'scaleaxis_cb';
     const SCALE_GRID_CB = 'scalegrid_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
@@ -605,6 +613,15 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_LABEL_MODES = ['none', 'domains', 'legend'];
     let _domain = null;                   // {width, palette, next, legendFrac}, set per launch
     let _domainReserve = 0;               // horizontal px reserved for the tracks, set with _w
+    // The gene track (genome regions) shares the domain track's widths, box
+    // heights, backbone colour and legend geometry: the two are the same
+    // kind of thing, a backbone with boxes beside each tip.
+    const GENE_LABEL_MODES = ['none', 'genes', 'legend'];
+    const GENE_KB_BAR_TARGET_PX = 80;     // the track's own scale bar aims at this length
+    const GENE_CAP_W = 1.5;               // px: the bar that marks a contig end
+    const GENE_LANE_MIN_H = 3;            // px: a lane of two is never thinner
+    let _gene = null;                     // {width, radialWidth, palette, legendFrac, cache}, set per launch
+    let _geneReserve = 0;                 // horizontal px reserved for the gene track, set with _w
     // ------ heat map (the desktop's MATRIX annotation columns) ------
     const HEATMAP_TRACK_GAP = 8;          // px between what is left of the tree and the matrix
     const HEATMAP_PREF_COL_W = 14;        // a column never grows past this
@@ -1184,7 +1201,7 @@ function (root, d3, forester, phyloXml) {
         // the viewport: measured box=[0,13 1497x755] against
         // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
         // no by precisely 254px and the overview appeared after every Fit.
-        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve;
+        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve + _geneReserve;
         minY -= heatmapTopReserve();   // the dendrogram band stands above the first row
         if (scaleBarShown()) {
             maxY += SCALE_BAR_RESERVE;   // the bar sits under the last row
@@ -2900,8 +2917,10 @@ function (root, d3, forester, phyloXml) {
             // the alignment track reserves its window on the right, so the
             // tree and labels compress to make room rather than overlapping
             _msaReserve = 0;
-            // and the domain tracks reserve their column past the labels
+            // and the domain tracks reserve their column past the labels,
+            // the gene track its own past theirs
             _domainReserve = domainReserve();
+            _geneReserve = geneReserve();
             // The heat map is budgeted FIRST of the two right-hand tracks: it
             // wants a fixed, finite width (its columns at their preferred size
             // and no more), while the alignment's band is a WINDOW that scrolls
@@ -2913,7 +2932,7 @@ function (root, d3, forester, phyloXml) {
                 let vp0 = svgSize();
                 let vw0 = Math.min(_displayWidth, (vp0 && vp0.w) ? vp0.w : _displayWidth);
                 let hband = Math.max(HEATMAP_MIN_BAND_PX, Math.round(vw0 * HEATMAP_MAX_VIEWPORT_FRACTION));
-                let hmax = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve
+                let hmax = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - _geneReserve
                     - HEATMAP_TRACK_GAP - HEATMAP_MIN_TREE_PX;
                 hband = Math.max(HEATMAP_MIN_BAND_PX, Math.min(hband, hmax));
                 _heatmapReserve = HEATMAP_TRACK_GAP + Math.min(cols * HEATMAP_PREF_COL_W, hband);
@@ -2928,12 +2947,13 @@ function (root, d3, forester, phyloXml) {
                 let band = Math.max(MSA_MIN_BAND_PX, Math.round(vw * MSA_MAX_VIEWPORT_FRACTION));
                 // a wide alignment must not squeeze the tree itself away: the
                 // band yields until the tree keeps its minimum share
-                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve
+                let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - _geneReserve
                     - _heatmapReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
                 band = Math.max(MSA_MIN_BAND_PX, Math.min(band, maxBand));
                 _msaReserve = MSA_TRACK_GAP + Math.min(fullPx, band);
             }
-            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve - _heatmapReserve;
+            _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve - _geneReserve
+                - _heatmapReserve;
             if (_w < 1) {
                 _w = 1;
             }
@@ -3487,6 +3507,8 @@ function (root, d3, forester, phyloXml) {
         drawScaleBar();
         drawDomainArchitectures();
         drawDomainLegend();
+        drawGeneTrack();
+        drawGeneLegend();
         drawMsaTrack();
         drawHeatmapTrack();
         drawTimeOverlays();
@@ -5651,6 +5673,10 @@ function (root, d3, forester, phyloXml) {
         'domainLabels',
         'domainGlow',
         'domainEvalueExponent',
+        'showGenes',
+        'geneAnchor',
+        'geneFamily',
+        'geneLabels',
         'showScaleAxis',
         'showScaleGrid',
         'showSupportDots',
@@ -5961,6 +5987,43 @@ function (root, d3, forester, phyloXml) {
                     + ' with a missing or impossible from / to / E-value ignored');
             }
         }
+        // Likewise a tree whose tips carry genome regions -- genes as located
+        // sequences -- draws its gene track from the start, unless the caller
+        // decided. The anchor family and the family namespace are chosen from
+        // the tree ('auto') unless named; the label mode is the domain
+        // track's.
+        if (_state.showGenes === undefined) {
+            _state.showGenes = _basicTreeProperties.geneRegions === true;
+        }
+        if (_state.geneLabels === undefined) {
+            _state.geneLabels = 'genes';
+        } else if (GENE_LABEL_MODES.indexOf(_state.geneLabels) < 0) {
+            throw new Error(ERROR + '"geneLabels" must be "none", "genes" or "legend"');
+        }
+        if (_state.geneAnchor === undefined) {
+            _state.geneAnchor = 'auto';
+        } else if (typeof _state.geneAnchor !== 'string' || _state.geneAnchor.length === 0) {
+            throw new Error(ERROR + '"geneAnchor" must be a family ref such as "pgfam:PGF_00019355", "auto" or "none"');
+        }
+        if (_state.geneFamily === undefined) {
+            _state.geneFamily = 'auto';
+        } else if (typeof _state.geneFamily !== 'string' || _state.geneFamily.length === 0) {
+            throw new Error(ERROR + '"geneFamily" must be an annotation namespace such as "pgfam", or "auto"');
+        }
+        _gene = {width: null, radialWidth: null, palette: null, legendFrac: null, cache: new WeakMap()};
+        if (_basicTreeProperties.geneRegions) {
+            // a location outside the grammar and a gene on a second contig
+            // are left out, never fatal -- said once, here
+            let gs = forester.geneRegionStats(_treeData);
+            if (gs.ignored > 0) {
+                console.warn(MESSAGE + gs.ignored + ' sequence location' + (gs.ignored === 1 ? '' : 's')
+                    + ' not in the form contig:start-end(+) ignored');
+            }
+            if (gs.otherContigs > 0) {
+                console.warn(MESSAGE + gs.otherContigs + ' gene' + (gs.otherContigs === 1 ? '' : 's')
+                    + ' on a genome\'s other contigs not drawn: the gene track shows one contig per genome');
+            }
+        }
         // Likewise a dated tree draws its scale axis from the start -- a
         // time axis of geologic ICS bands or calendar years, decided from the
         // <date> elements by forester.timeAxisInfo -- again unless the caller
@@ -6059,6 +6122,14 @@ function (root, d3, forester, phyloXml) {
                         return null;
                     }
                     let s = n.sequences[0];
+                    // On a tree of genomes a tip's located sequences -- its
+                    // contig record and its genes -- describe the region drawn
+                    // beside it, not the tip: "S01 chromosome" is no name for
+                    // S01, and a gene's product even less so. They are no
+                    // label, so the node name stands.
+                    if (_basicTreeProperties.geneRegions && forester.parseSequenceLocation(s.location)) {
+                        return null;
+                    }
                     let l = '';
                     if (_state.showSequenceSymbol) {
                         l = joinFrag(l, s.symbol);
@@ -7374,7 +7445,7 @@ function (root, d3, forester, phyloXml) {
         // once flung the whole tree off-screen after three X+ presses).
         return {
             horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve
-                - _domainReserve - _heatmapReserve),
+                - _domainReserve - _geneReserve - _heatmapReserve),
             vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
                 - bottomOverlayReserve() - topOverlayReserve())
         };
@@ -8722,9 +8793,9 @@ function (root, d3, forester, phyloXml) {
         }
 
         // A faint dashed guide from each tip across to its row, as the
-        // alignment track draws -- skipped when the domain tracks are in
-        // between, where it would run straight through their boxes.
-        if (_domainReserve === 0) {
+        // alignment track draws -- skipped when the domain or gene tracks are
+        // in between, where it would run straight through their boxes.
+        if (_domainReserve === 0 && _geneReserve === 0) {
             let guideFont = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
             let guideGap = _state.nodeLabelGap;
             let guideEnd = originX - 3;
@@ -9899,6 +9970,14 @@ function (root, d3, forester, phyloXml) {
             s.domainGlow = _state.domainGlow === true;
             s.domainEvalue = _state.domainEvalueExponent;
         }
+        if (_basicTreeProperties.geneRegions === true) {
+            s.genes = _state.showGenes === true;
+            s.geneLabels = _state.geneLabels;
+            // the EFFECTIVE choices, so that a link reproduces the figure
+            // even where an automatic choice would have moved
+            s.geneAnchor = geneAnchor() || 'none';
+            s.geneFamily = geneFamilyNamespace() || 'auto';
+        }
         if (_basicTreeProperties.branchLengths === true) {
             s.scaleAxis = _state.showScaleAxis === true;
             s.scaleGrid = _state.showScaleGrid === true;
@@ -10061,6 +10140,21 @@ function (root, d3, forester, phyloXml) {
                 _domain.palette = null;   // the drawn set changed: the palette is dealt again
             }
         }
+        if (typeof s.genes === 'boolean') {
+            _state.showGenes = s.genes;
+        }
+        if (GENE_LABEL_MODES.indexOf(s.geneLabels) >= 0) {
+            _state.geneLabels = s.geneLabels;
+        }
+        if (typeof s.geneFamily === 'string' && s.geneFamily.length > 0 && s.geneFamily !== _state.geneFamily) {
+            _state.geneFamily = s.geneFamily;
+            if (_gene) {
+                _gene.palette = null;   // the families change with the namespace
+            }
+        }
+        if (typeof s.geneAnchor === 'string' && s.geneAnchor.length > 0) {
+            _state.geneAnchor = s.geneAnchor;
+        }
         // timeAxis / timeGrid: the names before the axis also measured
         // distance, still read so that older links keep their axis
         let axis = typeof s.scaleAxis === 'boolean' ? s.scaleAxis : s.timeAxis;
@@ -10073,8 +10167,9 @@ function (root, d3, forester, phyloXml) {
         }
         if (!radialDisplay()) {
             _radialLabelsHorizontal = false;
-        } else if (_state.showDomainArchitectures && _basicTreeProperties.domainArchitectures) {
-            _radialLabelsHorizontal = false;   // the domain boxes ride the spokes, so the labels must too
+        } else if ((_state.showDomainArchitectures && _basicTreeProperties.domainArchitectures)
+            || (_state.showGenes && _basicTreeProperties.geneRegions)) {
+            _radialLabelsHorizontal = false;   // the domain boxes and gene arrows ride the spokes, so the labels must too
         }
         if (_vis) {
             if (s.colorBy === 'none') {
@@ -10154,6 +10249,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
         setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
         syncDomainControls();
+        syncGeneControls();
         setSliderValue(FONT_SIZE_SLIDER, _state.externalNodeFontSize);
         setSliderValue(NODE_SIZE_SLIDER, _state.nodeSizeDefault);
         setSliderValue(BRANCH_WIDTH_SLIDER, _state.branchWidthDefault);
@@ -10226,10 +10322,10 @@ function (root, d3, forester, phyloXml) {
     // The heat map's four keys and the alignment logo went in exactly that
     // way, while the README promised a link reproduced the figure.
     const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine',
-        'heatmapOrder', 'scale'];
+        'heatmapOrder', 'scale', 'geneAnchor', 'geneFamily', 'geneLabels'];
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
-    const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow',
+    const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow', 'genes',
         'scaleAxis', 'scaleGrid', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
     // Lists of strings, comma-joined. A property ref carries ':' but never a
     // comma, and encodeViewValue leaves both readable in a hash.
@@ -11742,6 +11838,710 @@ function (root, d3, forester, phyloXml) {
         });
     }
 
+    // ===================== Genome regions (the gene track) =====================
+    // A tip that is a genome can carry a region of it: its genes as located
+    // sequences with their families, one per gene, plus the contig's record
+    // (forester's gene model, test/gene_test.js). Drawn as the domain track
+    // is drawn -- a backbone per tip in one aligned column past the labels in
+    // the rectangular layout, riding the tip's spoke in the radial ones --
+    // but each gene is an ARROW pointing by strand, coloured by family, and
+    // the rows are ANCHORED: the anchor family's gene sits at the same x in
+    // every row, pointing right, the neighbours following, so gene order
+    // compares across genomes (Christian, 2026-10-01). One scale for the
+    // whole tree -- f px per base pair, from the track width and the extent
+    // the rows share -- so distances compare too. A bar at the end of a
+    // backbone is a contig end; the track's own kb bar sits under the rows.
+
+    function genesShown() {
+        return _gene !== null
+            && _state.showGenes === true
+            && _basicTreeProperties.geneRegions === true
+            && _state.showExternalLabels
+            // in a radial layout the arrows ride the spokes, so only radial
+            // labels go with them
+            && (!radialDisplay() || !_radialLabelsHorizontal);
+    }
+
+    // The region a tip carries, computed once per node: its sequences never
+    // change after load, and a subtree view shows the same nodes.
+    function geneRegion(d) {
+        if (_gene.cache.has(d)) {
+            return _gene.cache.get(d);
+        }
+        let r = forester.geneRegionOf(d);
+        _gene.cache.set(d, r);
+        return r;
+    }
+
+    // Every region of the WHOLE tree, in its order. The anchor, the family
+    // namespace and the palette are decided on the tree, never on the view,
+    // so that entering a subtree moves nothing under the reader.
+    function geneTreeRegions() {
+        let out = [];
+        if (!_treeData) {
+            return out;
+        }
+        forester.preOrderTraversalAll(forester.getTreeRoot(_treeData), function (n) {
+            if (!n.children) {
+                let r = geneRegion(n);
+                if (r) {
+                    out.push(r);
+                }
+            }
+        });
+        return out;
+    }
+
+    // The namespace the colours and the anchor follow: the one named in the
+    // config or the view, else the one most of the genes carry.
+    function geneFamilyNamespace() {
+        if (_state.geneFamily && _state.geneFamily !== 'auto') {
+            return _state.geneFamily;
+        }
+        let all = forester.geneFamilyNamespaces(geneTreeRegions());
+        return all.length > 0 ? all[0].ns : null;
+    }
+
+    // The anchor family: 'none' is none, 'auto' the tree's best (single-copy
+    // in the most genomes, at least half of them), a ref is itself.
+    function geneAnchor() {
+        let a = _state.geneAnchor;
+        if (a === 'none') {
+            return null;
+        }
+        if (!a || a === 'auto') {
+            return forester.geneDefaultAnchor(geneTreeRegions(), geneFamilyNamespace());
+        }
+        return a;
+    }
+
+    // The track width: the domain track's rules (a quarter of the viewport
+    // at first use in the rectangular layouts, a width of the radial
+    // layouts' own, the same step buttons), kept apart from the domain
+    // track's so each is sized for what it draws.
+    function geneRectangularWidth() {
+        if (!_gene.width) {
+            let vp = svgSize();
+            let vw = Math.min(_displayWidth, (vp && vp.w) ? vp.w : _displayWidth);
+            _gene.width = Math.max(DOMAIN_WIDTH_MIN, Math.round(vw * DOMAIN_WIDTH_VIEWPORT_FRACTION));
+        }
+        return _gene.width;
+    }
+
+    function geneTrackWidth() {
+        if (!radialDisplay()) {
+            return geneRectangularWidth();
+        }
+        if (!_gene.radialWidth) {
+            let r = _state.circularDisplay ? (_radial ? _radial.maxRad : 0) : (_unroot ? _unroot.maxRad : 0);
+            if (!(r > 0)) {
+                return geneRectangularWidth();   // no radius yet (before the first radial draw)
+            }
+            _gene.radialWidth = Math.max(DOMAIN_WIDTH_MIN, Math.min(geneRectangularWidth(), DOMAIN_RADIAL_WIDTH_FRACTION * r));
+        }
+        return _gene.radialWidth;
+    }
+
+    function setGeneTrackWidth(w) {
+        if (radialDisplay()) {
+            _gene.radialWidth = w;
+        } else {
+            _gene.width = w;
+        }
+    }
+
+    // The rectangular layout reserves the track's column past the domain
+    // tracks' (both counted wherever _w is); the radial layouts fit it into
+    // the ring (fitRadialExtent).
+    function geneReserve() {
+        if (!genesShown() || radialDisplay()) {
+            return 0;
+        }
+        return DOMAIN_TRACK_START_GAP + geneTrackWidth() + DOMAIN_TRACK_END_GAP;
+    }
+
+    function geneRadialExtent() {
+        if (!genesShown() || !radialDisplay()) {
+            return 0;
+        }
+        return DOMAIN_RADIAL_GAP + geneTrackWidth() + DOMAIN_TRACK_END_GAP;
+    }
+
+    // Colours: the families SHARED over the whole tree (in two genomes or
+    // more), sorted by code unit, take the palette in order -- dealt at load
+    // and when the namespace changes. A family met in one genome only is
+    // grey, so conserved order stands out; a gene with no family is lighter
+    // grey.
+    function genePalette() {
+        if (!_gene.palette) {
+            let names = forester.geneFamilySummary(geneTreeRegions(), geneFamilyNamespace()).names;
+            _gene.palette = Object.create(null);
+            names.forEach(function (name, i) {
+                _gene.palette[name] = i;
+            });
+        }
+        return _gene.palette;
+    }
+
+    function geneColor(family) {
+        if (!family) {
+            return forester.GENE_NO_FAMILY_COLOR;
+        }
+        let palette = genePalette();
+        if (palette[family] === undefined) {
+            return forester.GENE_SINGLETON_COLOR;
+        }
+        return forester.domainQualitativeColor(palette[family]);
+    }
+
+    // What a gene is called where there is room for one word: its symbol,
+    // else its gene name.
+    function geneLabel(g) {
+        return g.symbol || g.geneName || '';
+    }
+
+    // ---- hover and click: the readout the domains, heat map and alignment use
+    function geneInfoAt(event) {
+        let t = event.target;
+        return (t && t.__aptxGene) ? t.__aptxGene : null;
+    }
+
+    let _geneHovered = null;
+
+    function geneHover(event) {
+        let info = geneInfoAt(event);
+        if (!info) {
+            geneHoverOut();
+            return;
+        }
+        let tip_el = _node_mouseover_div.node();
+        if (info === _geneHovered) {
+            placeHoverReadout(tip_el, event);   // follows the pointer; the text is unchanged
+            return;
+        }
+        _geneHovered = info;
+        let g = info.gene;
+        let title = geneLabel(g) || g.product || '(unnamed)';
+        let txt = 'Gene: ' + title + '<br>';
+        if (g.product && g.product !== title) {
+            txt += 'Product: ' + g.product + '<br>';
+        }
+        if (info.family) {
+            txt += 'Family: ' + info.family + '<br>';
+        }
+        txt += 'Location: ' + forester.geneLocationText(g) + (info.flipped ? ' (the row is mirrored)' : '') + '<br>';
+        txt += 'Length: ' + countNumber(g.length) + ' bp<br>';
+        if (info.tip) {
+            txt += 'Tip: ' + info.tip + '<br>';
+        }
+        if (g.accession) {
+            txt += 'Accession' + (g.accession.source ? ' [' + g.accession.source + ']' : '') + ': ' + g.accession.value + '<br>';
+        }
+        let ref = forester.geneReference(g);
+        if (ref) {
+            // the readout follows the pointer, so the ARROW is the link and
+            // the readout says so (a "label: value" row, as the domains do it)
+            txt += 'Click: the ' + ref.site + ' entry';
+        }
+        tip_el.classList.remove('aptx-light', 'aptx-dark');
+        if (_panelTheme) {
+            tip_el.classList.add('aptx-' + _panelTheme);
+        }
+        _node_mouseover_div.html(markUpDataLabels(escapeHtmlKeepBreaks(txt)));
+        placeHoverReadout(tip_el, event);
+        _node_mouseover_div.transition().duration(100).style('opacity', 0.95);
+    }
+
+    function geneHoverOut() {
+        _geneHovered = null;
+        _node_mouseover_div.transition().duration(300).style('opacity', 1e-6);
+    }
+
+    let _geneOpenedAt = 0;
+
+    function geneClicked(event) {
+        let info = geneInfoAt(event);
+        if (!info) {
+            return;
+        }
+        event.stopPropagation();   // the arrow's click, linked or not: never the node menu behind it
+        let ref = forester.geneReference(info.gene);
+        if (!ref) {
+            return;
+        }
+        let now = Date.now();
+        if ((now - _geneOpenedAt) < 500) {   // a double click arrives as two clicks
+            return;
+        }
+        _geneOpenedAt = now;
+        openExternal(ref.url);
+    }
+
+    function geneDblClicked(event) {
+        if (geneInfoAt(event)) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+    }
+
+    // ---- the track
+    function drawGeneTrack() {
+        if (!_svgGroup) {
+            return;
+        }
+        let existing = _svgGroup.select('g.aptx-genes');
+        // A region goes WITH ITS NAME, and is left out when the crowding rule
+        // took the name (the domain track's rule, for the same reason)
+        let tips = (genesShown() && _root) ? displayedTips().filter(function (d) {
+            if (d._labelDropped) {
+                return false;
+            }
+            return _state.unrootedDisplay ? (d.ux !== undefined) : (d.x !== undefined);
+        }) : [];
+        if (tips.length > 0 && !radialDisplay()) {
+            tips.sort(function (p, q) {
+                return p.x - q.x;
+            });
+        }
+        let regions = tips.map(geneRegion);
+        let ns = tips.length > 0 ? geneFamilyNamespace() : null;
+        let anchor = tips.length > 0 ? geneAnchor() : null;
+        let laid = tips.length > 0 ? forester.geneTrackRows(regions, anchor, ns) : null;
+        let W = tips.length > 0 ? geneTrackWidth() : 0;
+        let f = (laid && laid.extent && laid.extent.max > laid.extent.min)
+            ? (W / (laid.extent.max - laid.extent.min)) * DOMAIN_SCALE_HEADROOM : 0;
+        if (!laid || !(f > 0) || !isFinite(f)) {
+            existing.remove();
+            geneHoverOut();   // the arrow under the pointer just stopped existing
+            return;
+        }
+        // [the backbones and caps, the arrows, the symbols, the kb bar], kept
+        // between redraws and moved to the end of the tree group
+        let g = existing.node();
+        if (!g) {
+            g = document.createElementNS(d3.namespaces.svg, 'g');
+            g.setAttribute('class', 'aptx-genes');
+            g.style.pointerEvents = 'none';
+            ['g', 'g', 'g', 'g'].forEach(function (tag) {
+                g.appendChild(document.createElementNS(d3.namespaces.svg, tag));
+            });
+        }
+        _svgGroup.node().appendChild(g);
+        let underLayer = g.children[0];
+        let bodyLayer = g.children[1];
+        let labelLayer = g.children[2];
+        let rulerLayer = g.children[3];
+        // the group ignores the mouse so the tree underneath stays clickable;
+        // the ARROWS alone take it back
+        bodyLayer.style.pointerEvents = 'auto';
+        if (!bodyLayer.__aptxWired) {
+            bodyLayer.__aptxWired = true;
+            bodyLayer.addEventListener('mousemove', geneHover);
+            bodyLayer.addEventListener('mouseout', geneHoverOut);
+            bodyLayer.addEventListener('click', geneClicked);
+            bodyLayer.addEventListener('dblclick', geneDblClicked);
+        }
+
+        // Where each tip's region goes: the start of the track along the
+        // row, the top and height of its arrows, and in the radial layouts
+        // the transform that turns it onto its spoke. Past the domain tracks
+        // when those are shown.
+        let labelSpace = tipLabelSpace();
+        let rows = [];
+        let columnStart = null;
+        if (_state.circularDisplay) {
+            let r0 = _radial.maxRad + labelSpace + domainRadialExtent() + DOMAIN_RADIAL_GAP;
+            let h = domainBoxHeight((r0 * 2 * Math.PI) / tips.length);
+            tips.forEach(function (d) {
+                rows.push({d: d, start: r0, y1: -h / 2, h: h,
+                    transform: 'rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
+            });
+        } else if (_state.unrootedDisplay) {
+            let h = domainBoxHeight((Math.PI * 2 * _unroot.maxRad) / tips.length);
+            let start = labelSpace + domainRadialExtent() + DOMAIN_RADIAL_GAP;
+            tips.forEach(function (d) {
+                rows.push({d: d, start: start, y1: -h / 2, h: h,
+                    transform: 'translate(' + d.ux + ',' + d.uy + ') rotate(' + labelAngleDeg(d) + ')', labelsOn: false});
+            });
+        } else {
+            let n = tips.length;
+            let pitch = n > 1 ? (tips[n - 1].x - tips[0].x) / (n - 1) : _state.externalNodeFontSize;
+            let h = domainBoxHeight(pitch / 2);
+            columnStart = _w + _state.nodeLabelGap + labelSpace + _domainReserve + DOMAIN_TRACK_START_GAP;
+            let labelsOn = _state.geneLabels === 'genes';
+            tips.forEach(function (d) {
+                rows.push({d: d, start: columnStart, y1: d.x - (h / 2), h: h, transform: null, labelsOn: labelsOn});
+            });
+        }
+
+        // ---- collect: the backbones and caps as path data (one path for the
+        // whole track in the rectangular layout, one per row in the radial
+        // ones, each in its row's turned frame -- the domain track's lesson
+        // about turned coordinates and PDF size), one path element per
+        // arrow (it is what the mouse finds), the symbols that fit
+        let under = [];   // {d, transform}
+        let trackParts = [];
+        let bodies = [];  // {d, fill, stroke, transform, info, link}
+        let names = [];
+        let lowest = -Infinity;
+        rows.forEach(function (row, i) {
+            let lr = laid.rows[i];
+            if (!lr) {
+                return;
+            }
+            let geo = forester.geneRowGeometry(lr, row.start, f, laid.extent.min);
+            let h = row.h;
+            let y1 = row.y1;
+            let parts = row.transform ? [] : trackParts;
+            parts.push(roundRectPath(geo.backbone.x, y1 + (h / 2) - 0.5, geo.backbone.w, 1, 0));
+            if (geo.capLeft) {
+                parts.push(roundRectPath(geo.backbone.x - (GENE_CAP_W / 2), y1, GENE_CAP_W, h, 0));
+            }
+            if (geo.capRight) {
+                parts.push(roundRectPath(geo.backbone.x + geo.backbone.w - (GENE_CAP_W / 2), y1, GENE_CAP_W, h, 0));
+            }
+            if (row.transform) {
+                under.push({d: parts.join(''), transform: row.transform});
+            }
+            if (y1 + h > lowest) {
+                lowest = y1 + h;
+            }
+            // once per ROW: displayNodeName walks the node's properties when
+            // a label-ref visualization is on
+            let rowTip = displayNodeName(row.d) || '';
+            // two lanes share the height where genes overlap
+            let laneH = lr.lanes > 1 ? Math.max(GENE_LANE_MIN_H, h / 2) : h;
+            let fs = Math.min(_state.externalNodeFontSize, laneH - 2);
+            let font = fs + 'px ' + FONT_DEFAULTS;
+            geo.genes.forEach(function (b) {
+                let fam = forester.geneFamilyOf(b.gene, ns);
+                let base = geneColor(fam);
+                let y = (lr.lanes > 1 && b.lane === 1) ? (y1 + h - laneH) : y1;
+                let d = forester.geneArrowPath(b.x, y, b.w, laneH, b.dir);
+                if (d === '') {
+                    return;
+                }
+                let info = {gene: b.gene, family: fam, tip: rowTip, flipped: lr.flip};
+                bodies.push({d: d, fill: base, stroke: forester.domainDarken(base, 0.3), transform: row.transform,
+                    info: info, link: !!forester.geneReference(b.gene)});
+                let label = geneLabel(b.gene);
+                let head = Math.min(laneH / 2, b.w);
+                if (row.labelsOn && label && fs > 4 && legendTextWidth(label, font) <= b.w - head - 4) {
+                    // centred on the body, which the head is not part of
+                    names.push({x: b.x + ((b.dir > 0 ? 0 : head) + ((b.w - head) / 2)), y: y + (laneH / 2), font: font,
+                        fill: forester.domainLabelInk(base), text: label});
+                }
+            });
+        });
+        if (trackParts.length > 0) {
+            under.push({d: trackParts.join(''), transform: null});
+        }
+
+        // ---- draw: bottom to top, reusing the elements already there
+        let paths = sizeLayer(underLayer, 'path', under.length);
+        under.forEach(function (u, k) {
+            paths[k].setAttribute('d', u.d);
+            if (u.transform) {
+                paths[k].setAttribute('transform', u.transform);
+            } else {
+                paths[k].removeAttribute('transform');
+            }
+            paths[k].style.fill = DOMAIN_BACKBONE_COLOR;
+        });
+        geneHoverOut();   // a redraw can take the hovered arrow away without a mouseout
+        let arrows = sizeLayer(bodyLayer, 'path', bodies.length);
+        bodies.forEach(function (b, k) {
+            let el = arrows[k];
+            el.setAttribute('d', b.d);
+            if (b.transform) {
+                el.setAttribute('transform', b.transform);
+            } else {
+                el.removeAttribute('transform');
+            }
+            el.style.fill = b.fill;
+            el.style.stroke = b.stroke;
+            el.style.strokeWidth = 1;
+            el.style.strokeLinejoin = 'round';
+            el.__aptxGene = b.info;
+            el.style.cursor = b.link ? 'pointer' : 'default';   // a hand only where the click goes somewhere
+        });
+        let texts = sizeLayer(labelLayer, 'text', names.length);
+        names.forEach(function (t, k) {
+            let el = texts[k];
+            el.setAttribute('x', t.x);
+            el.setAttribute('y', t.y);
+            el.setAttribute('dy', '0.35em');
+            el.setAttribute('text-anchor', 'middle');
+            el.style.font = t.font;
+            el.style.fill = t.fill;
+            el.textContent = t.text;
+        });
+
+        // the kb bar under the rows, rectangular only: a round number of base
+        // pairs at this scale, with end ticks, the label after it
+        let ruler = d3.select(rulerLayer);
+        ruler.selectAll('*').remove();
+        let bar = (columnStart !== null && isFinite(lowest)) ? forester.geneScaleBar(f, GENE_KB_BAR_TARGET_PX) : null;
+        if (bar) {
+            let ink = _state.labelColorDefault;
+            let y = lowest + 12;
+            let x0 = columnStart;
+            let x1 = columnStart + bar.px;
+            let fs = Math.max(9, Math.min(_state.externalNodeFontSize, 12));
+            ruler.append('path')
+                .attr('d', 'M' + x0 + ',' + (y - 3) + 'v6M' + x0 + ',' + y + 'H' + x1 + 'M' + x1 + ',' + (y - 3) + 'v6')
+                .style('fill', 'none').style('stroke', ink).style('stroke-width', 1);
+            ruler.append('text')
+                .attr('x', x1 + 5).attr('y', y).attr('dy', '0.35em')
+                .style('font', fs + 'px ' + FONT_DEFAULTS).style('fill', ink)
+                .text(bar.label);
+        }
+    }
+
+    // The gene legend, in "Legend" mode only: the shared families drawn in
+    // the view, in first-appearance order, each with its commonest product
+    // and the number of genomes carrying it; then, when there are any, the
+    // grey rows for the families unique to one genome and the genes without
+    // a family. Its own card with the domain legend's manners: home
+    // bottom-right, a drag keeps its place, a double-click sends it home.
+    function drawGeneLegend() {
+        if (!_baseSvg) {
+            return;
+        }
+        _baseSvg.selectAll('g.' + LEGEND_GENES).remove();
+        if (!_root || !genesShown() || _state.geneLabels !== 'legend') {
+            return;
+        }
+        let tips = displayedTips().filter(function (d) {
+            return d.x !== undefined;
+        }).sort(function (p, q) {
+            return p.x - q.x;
+        });
+        let ns = geneFamilyNamespace();
+        let summary = forester.geneFamilySummary(tips.map(geneRegion), ns, new Set(Object.keys(genePalette())));
+        let size = svgSize();
+        if ((summary.legend.length === 0 && summary.singletons === 0 && summary.unfamilied === 0) || !size) {
+            return;
+        }
+        const FS = Math.max(11, _state.externalNodeFontSize || 11);
+        const PAD = 9;
+        const ROW = FS + 6;
+        const SWATCH = 10;
+        const GAP = 6;
+        const rowFont = FS + 'px ' + FONT_DEFAULTS;
+        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
+        const ink = _state.labelColorDefault;
+        const frame = _state.branchColorDefault;
+        let title = 'Gene families' + (ns ? ' (' + ns + ')' : '');
+        let rows = summary.legend.map(function (r) {
+            let what = r.product || r.symbol || r.family;
+            return {
+                text: clipTextToWidth(what + ' (' + r.tips + ')', rowFont, DOMAIN_LEGEND_ROW_MAX_PX),
+                color: geneColor(r.family)
+            };
+        });
+        if (summary.singletons > 0) {
+            rows.push({text: 'unique to one genome (' + summary.singletons + ')', color: forester.GENE_SINGLETON_COLOR});
+        }
+        if (summary.unfamilied > 0) {
+            rows.push({text: 'no family (' + summary.unfamilied + ')', color: forester.GENE_NO_FAMILY_COLOR});
+        }
+        let width = legendTextWidth(title, titleFont);
+        rows.forEach(function (r) {
+            width = Math.max(width, SWATCH + GAP + legendTextWidth(r.text, rowFont));
+        });
+        width += 2 * PAD;
+        let height = PAD + ROW + (rows.length * ROW) + PAD - 2;
+        let x, y;
+        if (_gene.legendFrac) {
+            x = _gene.legendFrac.fx * size.w;
+            y = _gene.legendFrac.fy * size.h;
+        } else {
+            x = size.w - width - DOMAIN_LEGEND_INSET;
+            y = size.h - height - DOMAIN_LEGEND_INSET;
+        }
+        x = Math.max(0, Math.min(size.w - 20, x));
+        y = Math.max(0, Math.min(size.h - 20, y));
+
+        let g = _baseSvg.append('g').attr('class', LEGEND_GENES)
+            .style('cursor', 'move')
+            .call(d3.drag()
+                .on('start', function (event) {
+                    if (event.sourceEvent) {
+                        event.sourceEvent.stopPropagation();   // not a pan of the tree
+                    }
+                })
+                .on('drag', function (event) {
+                    x += event.dx;
+                    y += event.dy;
+                    _gene.legendFrac = {fx: x / size.w, fy: y / size.h};
+                    drawGeneLegend();
+                }))
+            .on('dblclick', function (event) {
+                event.stopPropagation();
+                _gene.legendFrac = null;
+                drawGeneLegend();
+            });
+        g.append('title').text('drag to move; double-click to send it back to the corner');
+        g.append('rect')
+            .attr('x', x).attr('y', y)
+            .attr('width', width).attr('height', height)
+            .attr('rx', 5)
+            .style('fill', _state.backgroundColorDefault)
+            .style('fill-opacity', 0.92)
+            .style('stroke', frame)
+            .style('stroke-opacity', 0.5);
+        let baseline = y + PAD + FS;
+        g.append('text')
+            .attr('x', x + PAD).attr('y', baseline)
+            .style('font', titleFont)
+            .style('fill', ink)
+            .text(title);
+        rows.forEach(function (r) {
+            baseline += ROW;
+            g.append('rect')
+                .attr('x', x + PAD).attr('y', baseline - SWATCH + 1)
+                .attr('width', SWATCH).attr('height', SWATCH)
+                .attr('rx', 2)
+                .style('fill', r.color);
+            g.append('text')
+                .attr('x', x + PAD + SWATCH + GAP).attr('y', baseline)
+                .style('font', rowFont)
+                .style('fill', ink)
+                .text(r.text);
+        });
+    }
+
+    // ---- the controls follow the toggle: hidden without it; while shown the
+    // step buttons, the two selects and the label mode say where things stand
+    function fillSelect(sel, options, value) {
+        sel.textContent = '';
+        options.forEach(function (o) {
+            let opt = document.createElement('option');
+            opt.value = o.value;
+            opt.textContent = o.text;
+            if (o.title) {
+                opt.title = o.title;
+            }
+            sel.appendChild(opt);
+        });
+        sel.value = value;
+    }
+
+    function geneFamilyShortName(c) {
+        return c.symbol || c.product || c.family;
+    }
+
+    function syncGeneControls() {
+        let fs = byId(GENE_CONTROLS);
+        if (!fs) {
+            return;
+        }
+        let on = _state.showGenes === true && _basicTreeProperties.geneRegions === true && _gene !== null;
+        setCheckboxValue(GENES_CB, _state.showGenes === true);
+        fs.style.display = on ? '' : 'none';
+        if (!on) {
+            return;
+        }
+        let w = geneTrackWidth();
+        (w > DOMAIN_WIDTH_MIN ? enableButton : disableButton)(byId(GENE_WIDTH_DEC));
+        (w < DOMAIN_WIDTH_MAX ? enableButton : disableButton)(byId(GENE_WIDTH_INC));
+        let regions = geneTreeRegions();
+        let ns = geneFamilyNamespace();
+        // the anchor: Auto (naming its pick), every family that can anchor
+        // two genomes or more -- most first -- and None
+        let sel = byId(GENE_ANCHOR_SELECT);
+        if (sel) {
+            let auto = forester.geneDefaultAnchor(regions, ns);
+            let cands = forester.geneAnchorCandidates(regions, ns);
+            let byFamily = Object.create(null);
+            cands.forEach(function (c) {
+                byFamily[c.family] = c;
+            });
+            let options = [{value: 'auto', text: 'Auto' + (auto ? ' (' + geneFamilyShortName(byFamily[auto]) + ')' : ' (none)'),
+                title: auto ? auto : 'no family is single-copy in half the genomes'}];
+            cands.forEach(function (c) {
+                if (c.single >= 2 || c.family === _state.geneAnchor) {
+                    options.push({value: c.family, text: geneFamilyShortName(c) + ' (' + c.single + '/' + regions.length + ')',
+                        title: c.family + (c.product && c.symbol ? ' — ' + c.product : '')});
+                }
+            });
+            if (_state.geneAnchor !== 'auto' && _state.geneAnchor !== 'none' && !byFamily[_state.geneAnchor]) {
+                options.push({value: _state.geneAnchor, text: _state.geneAnchor + ' (not in this tree)', title: _state.geneAnchor});
+            }
+            options.push({value: 'none', text: 'None (left-aligned)', title: 'no anchor: every row starts at its left end'});
+            fillSelect(sel, options, _state.geneAnchor);
+        }
+        // the namespace: offered when the genes carry more than one
+        let nss = forester.geneFamilyNamespaces(regions);
+        let row = byId(GENE_FAMILY_SELECT + '_row');
+        let fsel = byId(GENE_FAMILY_SELECT);
+        if (fsel && row) {
+            let options = nss.map(function (x) {
+                return {value: x.ns, text: x.ns + ' (' + countNumber(x.genes) + ' genes)', title: 'annotations with the prefix ' + x.ns + ':'};
+            });
+            if (ns && !nss.some(function (x) {
+                return x.ns === ns;
+            })) {
+                options.push({value: ns, text: ns + ' (not in this tree)', title: ns});
+            }
+            fillSelect(fsel, options, ns || '');
+            row.style.display = options.length > 1 ? '' : 'none';
+        }
+        setValue(GENE_LABELS_SELECT, _state.geneLabels);
+    }
+
+    function genesCbClicked() {
+        _state.showGenes = getCheckboxValue(GENES_CB);
+        if (_state.showGenes && radialDisplay()) {
+            _radialLabelsHorizontal = false;   // the arrows ride the spokes, so the labels must too
+            syncZoomRowButtons();
+        }
+        syncGeneControls();
+        scheduleUpdate(null, 0);
+    }
+
+    function geneWidthStep(grow) {
+        let w = geneTrackWidth();
+        if (grow ? w >= DOMAIN_WIDTH_MAX : w <= DOMAIN_WIDTH_MIN) {
+            return;
+        }
+        setGeneTrackWidth(w * (grow ? DOMAIN_WIDTH_GROW : DOMAIN_WIDTH_SHRINK));
+        syncGeneControls();
+        if (radialDisplay()) {
+            scheduleUpdate(null, 0, true);
+            afterUpdate(zoomToFit);
+        } else {
+            scheduleUpdate(null, 0);
+        }
+    }
+
+    function geneAnchorChanged() {
+        let v = getValue(GENE_ANCHOR_SELECT);
+        if (!v || v === _state.geneAnchor) {
+            return;
+        }
+        _state.geneAnchor = v;
+        scheduleUpdate(null, 0, true);
+    }
+
+    function geneFamilyChanged() {
+        let v = getValue(GENE_FAMILY_SELECT);
+        if (!v || v === geneFamilyNamespace()) {
+            return;
+        }
+        _state.geneFamily = v;
+        _state.geneAnchor = 'auto';   // the old anchor was a family of the old namespace
+        _gene.palette = null;         // the families change with the namespace
+        syncGeneControls();
+        scheduleUpdate(null, 0, true);
+    }
+
+    function geneLabelsChanged() {
+        _state.geneLabels = getValue(GENE_LABELS_SELECT);
+        scheduleUpdate(null, 0, true);
+    }
+
     // ===================== Time axis =====================
     // The desktop's time overlays, drawn beneath a rectangular PHYLOGRAM of
     // a dated tree: the two-band ICS geologic axis with a "Ma before
@@ -12506,7 +13306,7 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
-        let outer = maxRad + labelSpace + domainRadialExtent() + heatmapRadialExtent();
+        let outer = maxRad + labelSpace + domainRadialExtent() + geneRadialExtent() + heatmapRadialExtent();
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
         if (!isFinite(scale) || scale <= 0) {
@@ -13565,12 +14365,14 @@ function (root, d3, forester, phyloXml) {
             search0();
             search1();
         }
-        if (radialDisplay() && _state.showDomainArchitectures && _basicTreeProperties.domainArchitectures) {
-            // the domain boxes ride the tips' spokes, so the labels must too
+        if (radialDisplay() && ((_state.showDomainArchitectures && _basicTreeProperties.domainArchitectures)
+            || (_state.showGenes && _basicTreeProperties.geneRegions))) {
+            // the domain boxes and gene arrows ride the tips' spokes, so the labels must too
             _radialLabelsHorizontal = false;
         }
         syncZoomRowButtons();
         afterUpdate(syncDomainControls);   // the track width buttons follow the layout's own width
+        afterUpdate(syncGeneControls);
         zoomToFit();
     }
 
@@ -14502,7 +15304,7 @@ function (root, d3, forester, phyloXml) {
     const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
     // Download too (Christian, 2026-09-28): four rows, and not something a
     // session uses often.
-    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['View & Tools', 'Sizes', 'Domain Architectures', 'Download'];
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['View & Tools', 'Sizes', 'Domain Architectures', 'Genome regions', 'Download'];
 
     function loadPanelSections() {
         if (_panelSections) {
@@ -15832,6 +16634,15 @@ function (root, d3, forester, phyloXml) {
                 if (s.type) {
                     text += '- Type: ' + s.type + '<br>';
                 }
+                // The annotations, which this dialog never listed and which a
+                // gene's family lives in (<annotation ref="pgfam:...">): the
+                // ref, with the description when there is one.
+                (s.annotations || []).forEach(function (an) {
+                    if (!an || (!an.ref && !an.desc)) {
+                        return;
+                    }
+                    text += '- Annotation: ' + (an.ref ? an.ref + (an.desc ? ' (' + an.desc + ')' : '') : an.desc) + '<br>';
+                });
                 // The domain architecture, which phyloXML has always carried
                 // and this dialog has never shown: a reader could find a node
                 // by searching for one of its domains -- forester indexes them
@@ -16287,6 +17098,10 @@ function (root, d3, forester, phyloXml) {
             statOf(st.tipsWithDomains, st.tips, 'tips')
             + (bp.maxDomainArchitectureLength > 0
                 ? (', up to ' + countNumber(bp.maxDomainArchitectureLength) + ' residues') : ''));
+        carries('Genome regions', st.tipsWithGenes > 0,
+            statOf(st.tipsWithGenes, st.tips, 'tips')
+            + (bp.maxGeneRegionLength > 0
+                ? (', up to ' + countNumber(bp.maxGeneRegionLength) + ' bp') : ''));
         carries('Dates', st.nodesWithDate > 0, statOf(st.nodesWithDate, st.nodes, 'nodes'));
         carries('Distributions', st.tipsWithDistribution > 0,
             statOf(st.tipsWithDistribution, st.tips, 'tips'));
@@ -16559,6 +17374,8 @@ function (root, d3, forester, phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeDomainControls());
 
+            c0.insertAdjacentHTML('beforeend',makeGeneControls());
+
             c0.insertAdjacentHTML('beforeend',makeHeatmapControls());
 
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
@@ -16688,6 +17505,12 @@ function (root, d3, forester, phyloXml) {
         on(DOMAIN_EVALUE_INC, 'click', function () { domainEvalueStep(1); });
         on(DOMAIN_LABELS_SELECT, 'change', domainLabelsChanged);
         on(DOMAIN_GLOW_CB, 'click', domainGlowCbClicked);
+        on(GENES_CB, 'click', genesCbClicked);
+        onHoldRepeat(GENE_WIDTH_DEC, function () { geneWidthStep(false); });
+        onHoldRepeat(GENE_WIDTH_INC, function () { geneWidthStep(true); });
+        on(GENE_ANCHOR_SELECT, 'change', geneAnchorChanged);
+        on(GENE_FAMILY_SELECT, 'change', geneFamilyChanged);
+        on(GENE_LABELS_SELECT, 'change', geneLabelsChanged);
         on(SCALE_AXIS_CB, 'click', scaleAxisCbClicked);
         on(SCALE_GRID_CB, 'click', scaleGridCbClicked);
 
@@ -17237,6 +18060,9 @@ function (root, d3, forester, phyloXml) {
             if (_basicTreeProperties.domainArchitectures) {
                 opts.push(makeCheckboxItem('Domain Architectures', DOMAINS_CB, 'to show/hide the protein domain architectures beside the tips', true));
             }
+            if (_basicTreeProperties.geneRegions) {
+                opts.push(makeCheckboxItem('Genes', GENES_CB, 'to show/hide the genome regions beside the tips: each gene an arrow on a backbone, coloured by family, the rows lined up on one family'));
+            }
             if (heatmapAvailable()) {
                 opts.push(makeCheckboxItem('Heat Map', HEATMAP_CB, 'to show/hide a cell per tip and numeric field beside the tree, every column on one color scale; concentric rings in the circular layout (not in the unrooted one, where a column has no ring to be)'));
             }
@@ -17371,6 +18197,40 @@ function (root, d3, forester, phyloXml) {
             h = h.concat('</select></div>');
             h = h.concat('<div class="aptx-checkgrid">'
                 + makeCheckboxItem('Glow', DOMAIN_GLOW_CB, 'a soft glow in each domain\'s own colour around its box') + '</div>');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
+        // The gene track's controls, shown only while the Genes toggle is on
+        // (syncGeneControls): the track width, the anchor family, the family
+        // namespace the colours follow (shown when the genes carry more than
+        // one), and the label mode. The two selects are filled per tree by
+        // syncGeneControls, since their options come from the genes.
+        function makeGeneControls() {
+            let h = '<fieldset id="' + GENE_CONTROLS + '" style="display:none">';
+            h = h.concat('<legend>Genome regions</legend>');
+            h = h.concat('<div class="aptx-domrow"><span class="aptx-domlabel">Track width</span>');
+            h = h.concat(makeButton('−', GENE_WIDTH_DEC, 'narrow the gene track (hold to repeat)'));
+            h = h.concat(makeButton('+', GENE_WIDTH_INC, 'widen the gene track (hold to repeat)'));
+            h = h.concat('</div>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + GENE_ANCHOR_SELECT + '">Anchor</label>');
+            h = h.concat('<select name="' + GENE_ANCHOR_SELECT + '" id="' + GENE_ANCHOR_SELECT
+                + '" title="the family the rows line up on: its gene sits at the same place in every genome, pointing'
+                + ' right, and the neighbours follow (a genome with it on the other strand is mirrored). Auto picks the'
+                + ' family single-copy in the most genomes; None left-aligns the rows"></select></div>');
+            h = h.concat('<div class="aptx-domrow" id="' + GENE_FAMILY_SELECT + '_row"><label class="aptx-domlabel" for="'
+                + GENE_FAMILY_SELECT + '">Family</label>');
+            h = h.concat('<select name="' + GENE_FAMILY_SELECT + '" id="' + GENE_FAMILY_SELECT
+                + '" title="which family annotation colours the genes and anchors the rows (a BV-BRC export carries'
+                + ' both PGfams and PLfams)"></select></div>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + GENE_LABELS_SELECT + '">Labels</label>');
+            h = h.concat('<select name="' + GENE_LABELS_SELECT + '" id="' + GENE_LABELS_SELECT
+                + '" title="where the gene symbols go: on the arrows (rectangular layout only), in a legend of the'
+                + ' families, or nowhere">');
+            h = h.concat('<option value="genes">On genes</option>');
+            h = h.concat('<option value="legend">Legend</option>');
+            h = h.concat('<option value="none">None</option>');
+            h = h.concat('</select></div>');
             h = h.concat('</fieldset>');
             return h;
         }
@@ -17621,6 +18481,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
+        syncGeneControls();
         syncHeatmapControls();
         setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis);
         setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid);
@@ -18083,7 +18944,8 @@ function (root, d3, forester, phyloXml) {
     // colour and shape legends, the domain legend, the heat-map ring's scale.
     // On screen they sit where the window has room; in a full-size figure the
     // window is gone, so they are stacked beside the tree instead.
-    const WINDOW_LEGEND_CLASSES = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE, LEGEND_DOMAINS, 'aptx-heatmap-ringlegend'];
+    const WINDOW_LEGEND_CLASSES = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE, LEGEND_DOMAINS, LEGEND_GENES,
+        'aptx-heatmap-ringlegend'];
     const FULL_SIZE_LEGEND_STACK_GAP = 12;
 
     // The enlarged drawing, cropped to what is actually drawn: the tree

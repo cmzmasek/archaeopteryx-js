@@ -1,0 +1,300 @@
+<!doctype html>
+<meta charset="utf-8"><title>the gene track: genome regions beside the tips</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-10-01: a tip that is a genome carries (part of) it as
+// located <sequence> elements, one per gene with its family; the viewer draws
+// them as ARROWS on a backbone beside the tip, the rows ANCHORED on one
+// family. The fixture is test/data/genome_regions.xml (twelve synthetic
+// genomes, one row per rule; test/gene_test.js pins its numbers), and this
+// harness reads what the SVG shows -- never what the code meant.
+//
+//   (no query)    the track, anchoring, colours, lanes, caps, labels, the kb
+//                 bar, the reserve, the legend, the controls, the view state,
+//                 hover and click
+//   ?config=1     launch config: off, named anchor / namespace / labels, bad values throw
+//   ?radial=1     circular and unrooted: the arrows ride the spokes, upright labels hide them
+//   ?domains=1    a tree with domain architectures AND genes: two columns, genes past domains
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const settle = () => sleep(1800);
+    const byId = (id) => document.getElementById(id);
+    const q = (s) => document.querySelector('#p ' + s);
+    const qa = (s) => [...document.querySelectorAll('#p ' + s)];
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const finish = () => { window.__benchResult = {report: out, failures: failures}; window.__benchDone = true; };
+    const params = new URLSearchParams(location.search);
+    const track = () => q('g.aptx-genes');
+    const arrows = () => track() ? [...track().children[1].children] : [];
+    const labels = () => track() ? [...track().children[2].children].map((t) => t.textContent) : [];
+    const underPath = () => track() ? [...track().children[0].children].map((p) => p.getAttribute('d')).join('') : '';
+    const kbText = () => track() ? [...track().children[3].querySelectorAll('text')].map((t) => t.textContent).join('') : '';
+    const arrow = (nn, symbol, which) => { const hits = arrows().filter((a) => a.__aptxGene
+        && a.__aptxGene.tip === 'Synthobacter sp. S' + nn && a.__aptxGene.gene.symbol === symbol);
+        return hits[which || 0] || null; };
+    const bbox = (el) => el.getBBox();
+    const center = (el) => { const b = bbox(el); return b.x + (b.width / 2); };
+    const fill = (el) => el.style.fill;
+    const screenX = (el, x, y) => { const p = el.ownerSVGElement.createSVGPoint(); p.x = x; p.y = y;
+        return p.matrixTransform(el.getScreenCTM()).x; };
+    const tip = (name) => qa('g.node').find((g) => g.__data__ && g.__data__.name === name && !g.__data__.children);
+    const xOnly = (d) => d.replace(/^M([-\d.]+),[-\d.]+/, 'M$1,Y');   // the path with its first y blanked
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
+    const opened = [];
+    window.open = function (url) { opened.push(url); return null; };
+    const readout = () => document.querySelector('.node_mouseover_tooltip');
+    const hover = (el) => { const b = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('mousemove', {bubbles: true, clientX: b.left + (b.width / 2), clientY: b.top + (b.height / 2)})); };
+    const click = (el) => { const b = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: b.left + (b.width / 2), clientY: b.top + (b.height / 2)})); };
+    const choose = (id, value) => { const sel = byId(id); sel.value = value; sel.dispatchEvent(new Event('change', {bubbles: true})); };
+    const S = (nn) => 'Synthobacter sp. S' + nn;
+    try {
+        const xml = await (await fetch('../data/genome_regions.xml')).text();
+        const mode = params.get('config') ? 'config' : params.get('radial') ? 'radial' : params.get('domains') ? 'domains' : '';
+
+        if (mode === 'config') {
+            const bad = [[{geneLabels: 'boxes'}, /geneLabels/], [{geneAnchor: 3}, /geneAnchor/], [{geneFamily: ''}, /geneFamily/]];
+            for (const [cfg, re] of bad) {
+                let threw = null;
+                try { archaeopteryx.launch('#p', archaeopteryx.parseTrees('g.xml', xml), cfg); } catch (e) { threw = String(e); }
+                check('throws on ' + JSON.stringify(cfg), threw !== null && re.test(threw), threw);
+            }
+            document.body.insertAdjacentHTML('beforeend', '<div id="p2" style="position:absolute;inset:0"></div>');
+            let viewer = archaeopteryx.launch('#p2', archaeopteryx.parseTrees('g.xml', xml), {showGenes: false});
+            await viewer.ready; await settle();
+            check('showGenes: false opens without the track', !document.querySelector('#p2 g.aptx-genes') && !byId('genes_cb').checked);
+            check('... and the controls are hidden', byId('gene_controls').style.display === 'none');
+            check('... but the checkbox is offered', !!byId('genes_cb'));
+            document.body.insertAdjacentHTML('beforeend', '<div id="p3" style="position:absolute;inset:0"></div>');
+            viewer = archaeopteryx.launch('#p3', archaeopteryx.parseTrees('g.xml', xml),
+                {geneAnchor: 'none', geneLabels: 'legend', geneFamily: 'plf'});
+            await viewer.ready; await settle();
+            check('named: the track is on', !!document.querySelector('#p3 g.aptx-genes'));
+            check('named: the anchor select says None', byId('gene_anchor').value === 'none');
+            check('named: the namespace select says plf', byId('gene_family').value === 'plf');
+            check('named: the labels select says Legend', byId('gene_labels').value === 'legend');
+            const lg = document.querySelector('#p3 g.legendGenes');
+            const texts = lg ? [...lg.querySelectorAll('text')].map((t) => t.textContent) : [];
+            check('named: the legend card is up, titled by the namespace', texts[0] === 'Gene families (plf)', texts.join(' | '));
+            const vs = viewer.getViewState();
+            check('named: the view state says so', vs.genes === true && vs.geneAnchor === 'none' && vs.geneFamily === 'plf'
+                && vs.geneLabels === 'legend', JSON.stringify(vs));
+            finish();
+            return;
+        }
+
+        let trees = archaeopteryx.parseTrees('genome_regions.xml', xml);
+        if (mode === 'domains') {
+            // a protein domain architecture on S01's first sequence (the
+            // record): the domain track takes the first sequence carrying one
+            const t = Array.isArray(trees) ? trees[0] : trees;
+            forester.preOrderTraversalAll(t, (n) => {
+                if (!n.children && (n.name === S('01') || n.name === S('02'))) {
+                    n.sequences[0].domain_architecture = {length: 400, domains: [{name: 'Dom', from: 20, to: 200, confidence: 1e-9}]};
+                }
+            });
+        }
+        const viewer = archaeopteryx.launch('#p', trees, {});
+        await viewer.ready; await settle();
+
+        if (mode === 'domains') {
+            check('both tracks are drawn', !!q('g.aptx-domains') && !!track());
+            check('both checkboxes are on', byId('domains_cb').checked && byId('genes_cb').checked);
+            const dom = q('g.aptx-domains').children[2].children[0];   // the first domain body
+            const domRight = bbox(dom).x + bbox(dom).width;
+            const a = arrow('01', 'synA');
+            check('the gene column starts past the domain column', a && bbox(a).x > domRight + 10,
+                a ? (bbox(a).x - domRight).toFixed(1) : 'no arrow');
+            // the gap from a tip's label to its first arrow holds the domain
+            // column while that is shown, and shrinks by it when it goes
+            const gap = () => { const t = tip(S('01')).querySelector('text'); const el = arrow('01', 'synA');
+                return screenX(el, bbox(el).x, 0) - screenX(t, bbox(t).x + bbox(t).width, 0); };
+            const withDomains = gap();
+            byId('domains_cb').click(); await settle();
+            check('without the domains the gene column moves in to the labels', gap() < withDomains - 50,
+                withDomains.toFixed(0) + ' -> ' + gap().toFixed(0));
+            finish();
+            return;
+        }
+
+        if (mode === 'radial') {
+            byId('layout_circ_b').click(); await settle();
+            check('circular: the track is drawn', !!track());
+            const circ = arrows();
+            check('circular: 116 arrows, each turned onto its spoke', circ.length === 116
+                && circ.every((a) => /^rotate\(/.test(a.getAttribute('transform') || '')), circ.length);
+            check('circular: no symbols on the arrows', labels().length === 0, labels().length);
+            check('circular: no kb bar', kbText() === '', kbText());
+            check('circular: the width buttons work', !byId('gene_width_inc').disabled);
+            byId('fitwidth').click(); await settle();   // upright labels
+            check('circular, upright labels: the track gives way', !track());
+            byId('fitwidth').click(); await settle();
+            check('circular, radial labels again: the track returns', !!track());
+            byId('layout_unrooted_b').click(); await settle();
+            const un = arrows();
+            check('unrooted: the arrows are moved to their tips and turned', un.length === 116
+                && un.every((a) => /^translate\([^)]+\) rotate\(/.test(a.getAttribute('transform') || '')), un.length);
+            byId('layout_rect_b').click(); await settle();
+            check('rectangular again: no transforms', arrows().length === 116 && arrows().every((a) => !a.getAttribute('transform')));
+            finish();
+            return;
+        }
+
+        // ---- the default: everything in the rectangular layout
+        check('the track is drawn from the start', !!track());
+        check('116 arrows: the drawn genes of eleven regions', arrows().length === 116, arrows().length);
+        check('the Genes checkbox is on and its section is shown', byId('genes_cb').checked && byId('gene_controls').style.display !== 'none');
+        check('the anchor select is on Auto and names F', byId('gene_anchor').value === 'auto'
+            && byId('gene_anchor').options[0].textContent === 'Auto (synF)', byId('gene_anchor').options[0].textContent);
+        check('the namespace row is shown with fam and plf', byId('gene_family_row').style.display !== 'none'
+            && [...byId('gene_family').options].map((o) => o.value).join(' ') === 'fam plf' && byId('gene_family').value === 'fam',
+        [...byId('gene_family').options].map((o) => o.value).join(' '));
+        check('the warnings name the prose location and the other contig', warnings.some((w) => /1 sequence location not in the form/.test(w))
+            && warnings.some((w) => /5 genes on a genome's other contigs/.test(w)), warnings.join(' / '));
+
+        // anchoring: F at the same x in every row; S06 (minus strand) flipped onto S01
+        const f01 = arrow('01', 'synF'), f06 = arrow('06', 'synF'), f09 = arrow('09', 'synF'), f08 = arrow('08', 'synF');
+        check('the anchor gene is centred on one x in every row', f01 && f06 && f09 && f08
+            && Math.abs(center(f01) - center(f06)) < 0.05 && Math.abs(center(f01) - center(f09)) < 0.05
+            && Math.abs(center(f01) - center(f08)) < 0.05, [f01, f06, f09, f08].map((a) => a && center(a).toFixed(2)).join(' '));
+        check('S06 is mirrored and S01 is not', f06.__aptxGene.flipped === true && f01.__aptxGene.flipped === false);
+        const a01 = arrow('01', 'synA'), a06 = arrow('06', 'synA'), k06 = arrow('06', 'synK');
+        check('flipped, S06 lands on S01: the same outline, gene for gene', xOnly(a01.getAttribute('d')) === xOnly(a06.getAttribute('d'))
+            && xOnly(arrow('01', 'synK').getAttribute('d')) === xOnly(k06.getAttribute('d')), xOnly(a01.getAttribute('d')) + ' vs ' + xOnly(a06.getAttribute('d')));
+        check('every arrow of S06 points right after the flip', arrows().filter((a) => a.__aptxGene.tip === S('06'))
+            .every((a) => /^M[-\d.]+,[-\d.]+h\d/.test(a.getAttribute('d'))));
+        const e05 = arrow('05', 'synE'), e01 = arrow('01', 'synE');
+        check('S05: the inverted block points left', /^M[-\d.]+,[-\d.]+h-/.test(e05.getAttribute('d')) && /^M[-\d.]+,[-\d.]+h\d/.test(e01.getAttribute('d')),
+            e05.getAttribute('d'));
+        check('S05: E, D, C in that order between B and F', center(arrow('05', 'synB')) < center(e05) && center(e05) < center(arrow('05', 'synD'))
+            && center(arrow('05', 'synD')) < center(arrow('05', 'synC')) && center(arrow('05', 'synC')) < center(arrow('05', 'synF')));
+        check('S03: B on the minus strand points left in an unflipped row', /h-/.test(arrow('03', 'synB').getAttribute('d'))
+            && arrow('03', 'synB').__aptxGene.flipped === false);
+
+        // colours
+        check('the anchor family has one colour in every row', fill(f01) === fill(f06) && fill(f01) === fill(f09) && fill(f01) !== fill(a01), fill(f01) + ' / ' + fill(a01));
+        check('X, a family of its own, is grey', fill(arrow('08', 'intX')) === 'rgb(158, 158, 158)', fill(arrow('08', 'intX')));
+        const y08 = arrows().find((a) => a.__aptxGene.tip === S('08') && a.__aptxGene.gene.symbol === '' && a.__aptxGene.gene.product === 'Hypothetical protein');
+        check('Y, with no family, is lighter grey', y08 && fill(y08) === 'rgb(207, 207, 207)' && y08.__aptxGene.family === null, y08 && fill(y08));
+        check('a linked arrow shows a hand, Y does not', a01.style.cursor === 'pointer' && y08.style.cursor === 'default',
+            a01.style.cursor + ' / ' + y08.style.cursor);
+        // the labels: the node names, not the record's "... chromosome" nor,
+        // for S07 (no record), its first gene's product
+        const labelOf = (nn) => { const g = tip(S(nn)); const t = g && g.querySelector('text'); return t ? t.textContent : ''; };
+        check('the tips are labelled by node name (shortened), not by the record or the first gene', /S01$/.test(labelOf('01'))
+            && /S07$/.test(labelOf('07')) && /S04$/.test(labelOf('04')) && !/chromosome|Replication/.test(labelOf('01') + labelOf('07')),
+        labelOf('01') + ' / ' + labelOf('07'));
+
+        // lanes, caps
+        const e11 = [arrow('11', 'synE', 0), arrow('11', 'synE', 1)];
+        check('S11: two E arrows, one per lane, half the height', e11[0] && e11[1] && Math.abs(bbox(e11[0]).y - bbox(e11[1]).y) > 1
+            && bbox(e11[0]).height < bbox(e01).height - 1, e11.map((a) => a && bbox(a).y.toFixed(1)).join(' '));
+        const caps = (underPath().match(/h1\.5v/g) || []).length;
+        check('two contig-end caps: S09 starts and ends with its contig', caps === 2, caps);
+        const b09 = bbox(arrow('09', 'synD')); const d01 = bbox(a01);
+        check('S09\'s row begins at its first gene (the cap), S01\'s a pad before', Math.abs((d01.x - b09.x) - 0) > 1, (d01.x - b09.x).toFixed(1));
+
+        // the kb bar and the reserve
+        check('the kb bar reads a round number', /^\d+(\.\d+)? (kb|bp)$/.test(kbText()), kbText());
+        const svgW = arrows()[0].ownerSVGElement.getBoundingClientRect().width;
+        const right = Math.max(...arrows().map((a) => screenX(a, bbox(a).x + bbox(a).width, 0)));
+        check('the whole track sits inside the window after the fit', right < svgW, right.toFixed(0) + ' of ' + svgW);
+        const tipX = screenX(tip(S('01')), 0, 0);
+        byId('genes_cb').click(); await settle();
+        check('off: the track goes', !track() && byId('gene_controls').style.display === 'none');
+        check('off: the tree takes the room back', screenX(tip(S('01')), 0, 0) > tipX + 20, (screenX(tip(S('01')), 0, 0) - tipX).toFixed(0));
+        byId('genes_cb').click(); await settle();
+        check('on again', !!track() && arrows().length === 116);
+
+        // labels: none fit at a quarter of this window; widen the track and they appear
+        check('hardly a symbol fits at the first width (the two-lane row\'s small font aside)', labels().length < 14, labels().length);
+        for (let i = 0; i < 5; ++i) { byId('gene_width_inc').dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+            byId('gene_width_inc').dispatchEvent(new MouseEvent('mouseup', {bubbles: true})); await sleep(60); }
+        await settle();
+        check('widened five times: the symbols fit', labels().includes('synF') && labels().includes('synA') && !labels().includes('intX'),
+            labels().slice(0, 6).join(' ') + ' (' + labels().length + ')');
+        check('... and the anchor still lines up', Math.abs(center(arrow('01', 'synF')) - center(arrow('06', 'synF'))) < 0.05);
+
+        // the legend
+        choose('gene_labels', 'legend'); await settle();
+        const lg = q('g.legendGenes');
+        const lt = lg ? [...lg.querySelectorAll('text')].map((t) => t.textContent) : [];
+        check('Legend: the card is up, the symbols gone', !!lg && labels().length === 0);
+        // rows in screen order (the top tip is S09, so D leads), eleven
+        // families by product with genome counts, then the two grey rows
+        check('Legend: title, eleven families by product with genome counts, the two grey rows', lt[0] === 'Gene families (fam)'
+            && lt.length === 14 && lt[1] === 'Type II topoisomerase subunit (10)' && lt.includes('Replication initiation protein (10)')
+            && lt.includes('Molecular chaperone (11)') && lt[12] === 'unique to one genome (1)' && lt[13] === 'no family (1)', lt.join(' | '));
+        const sw = lg ? [...lg.querySelectorAll('rect')].slice(1).map((r) => r.style.fill) : [];
+        check('Legend: the swatches are the arrows\' colours', sw[lt.indexOf('Molecular chaperone (11)') - 1] === fill(arrow('01', 'synF'))
+            && sw[lt.indexOf('Replication initiation protein (10)') - 1] === fill(arrow('01', 'synA'))
+            && sw[11] === 'rgb(158, 158, 158)' && sw[12] === 'rgb(207, 207, 207)', sw.join(' '));
+
+        // the anchor: None left-aligns; a named family
+        choose('gene_anchor', 'none'); await settle();
+        check('None: the rows start together', Math.abs(bbox(arrow('01', 'synA')).x - bbox(arrow('06', 'synK')).x) < 0.05
+            && bbox(arrow('09', 'synD')).x < bbox(arrow('01', 'synA')).x - 1, [bbox(arrow('01', 'synA')).x, bbox(arrow('06', 'synK')).x, bbox(arrow('09', 'synD')).x].map((v) => v.toFixed(2)).join(' '));
+        check('None: F no longer lines up', Math.abs(center(arrow('01', 'synF')) - center(arrow('09', 'synF'))) > 5);
+        check('None: nothing is mirrored', arrows().every((a) => a.__aptxGene.flipped === false));
+        choose('gene_anchor', 'fam:F001'); await settle();
+        check('on A: S01 and S06 line up on A', Math.abs(center(arrow('01', 'synA')) - center(arrow('06', 'synA'))) < 0.05);
+        check('on A: S09 (no A) and S12 (two) are left-aligned together', Math.abs(bbox(arrow('09', 'synD')).x - bbox(arrow('12', 'synA')).x + (262 * 0)) < 50
+            && bbox(arrow('09', 'synD')).x < bbox(arrow('01', 'synA')).x, [bbox(arrow('09', 'synD')).x, bbox(arrow('12', 'synA')).x, bbox(arrow('01', 'synA')).x].map((v) => v.toFixed(1)).join(' '));
+
+        // the namespace: plf merges A and B
+        choose('gene_family', 'plf'); await settle();
+        check('plf: A and B share a colour', fill(arrow('01', 'synA')) === fill(arrow('01', 'synB')), fill(arrow('01', 'synA')) + ' / ' + fill(arrow('01', 'synB')));
+        check('plf: the anchor went back to Auto, which is F again', byId('gene_anchor').value === 'auto'
+            && byId('gene_anchor').options[0].textContent === 'Auto (synF)' && Math.abs(center(arrow('01', 'synF')) - center(arrow('06', 'synF'))) < 0.05,
+        byId('gene_anchor').options[0].textContent);
+        const lt2 = [...q('g.legendGenes').querySelectorAll('text')].map((t) => t.textContent);
+        check('plf: the legend follows: ten families, X and Y without one', lt2[0] === 'Gene families (plf)' && lt2.length === 12
+            && lt2[11] === 'no family (2)', lt2.join(' | '));
+
+        // the view state
+        let vs = viewer.getViewState();
+        check('the view state carries the four', vs.genes === true && vs.geneAnchor === 'plf:P005' && vs.geneFamily === 'plf' && vs.geneLabels === 'legend',
+            JSON.stringify({g: vs.genes, a: vs.geneAnchor, f: vs.geneFamily, l: vs.geneLabels}));
+        const enc = archaeopteryx.encodeViewState(vs);
+        check('... and the link too', /(^|&)genes=1(&|$)/.test(enc) && /geneAnchor=plf:P005/.test(enc) && /geneFamily=plf/.test(enc) && /geneLabels=legend/.test(enc), enc);
+        const dec = archaeopteryx.decodeViewState(enc);
+        check('... read back', dec.genes === true && dec.geneAnchor === 'plf:P005' && dec.geneFamily === 'plf' && dec.geneLabels === 'legend', JSON.stringify(dec));
+        viewer.applyViewState({geneFamily: 'fam', geneAnchor: 'fam:F006', geneLabels: 'genes', genes: true}); await settle();
+        check('applied: fam, F, symbols', byId('gene_family').value === 'fam' && byId('gene_anchor').value === 'fam:F006'
+            && byId('gene_labels').value === 'genes' && !q('g.legendGenes') && labels().includes('synF'));
+        viewer.applyViewState({genes: false}); await settle();
+        check('applied: off', !track() && !byId('genes_cb').checked);
+        viewer.applyViewState({genes: true}); await settle();
+
+        // hover and click
+        const f01b = arrow('01', 'synF');
+        hover(f01b); await sleep(300);
+        const rt = readout() ? readout().textContent : '';
+        check('hover: the readout names the gene, its family, location, length, tip and link', /synF/.test(rt) && /Molecular chaperone/.test(rt)
+            && /fam:F006/.test(rt) && /ctg01:6501-7500\(\+\)/.test(rt) && /1,000 bp|1000 bp/.test(rt) && /S01/.test(rt) && /fig\|1000\.1\.peg\.6/.test(rt)
+            && /BV-BRC entry/.test(rt), rt.replace(/\s+/g, ' '));
+        hover(arrow('06', 'synF')); await sleep(300);
+        check('hover on a mirrored row says so', /mirrored/.test(readout().textContent));
+        click(arrow('01', 'synA')); await sleep(600);   // past the double-click guard before the next
+        check('click: the BV-BRC feature page', opened.length === 1 && opened[0] === 'https://www.bv-brc.org/view/Feature/fig|1000.1.peg.1', opened.join(' '));
+        click(arrow('02', 'synA')); await sleep(600);
+        check('click: a RefSeq accession goes to NCBI', opened.length === 2 && opened[1] === 'https://www.ncbi.nlm.nih.gov/protein/WP_100002001.1', opened.join(' '));
+        click(y08.isConnected ? y08 : arrows().find((a) => a.__aptxGene.family === null)); await sleep(600);
+        check('click: a gene with no link opens nothing', opened.length === 2, opened.length);
+    } catch (e) {
+        check('no exception', false, (e && e.stack) ? e.stack : String(e));
+    }
+    finish();
+})();
+</script>

@@ -81,12 +81,14 @@ const tipLabelsIn = (svg) => [...svg.querySelectorAll('text.extlabel')]
 // 1.1.5 a file lost every domain architecture, annotation and URI it had been
 // read with. apaf.xml has 202 domains; the default tree has none, so the
 // check there only says that nothing appears from nowhere.
-const carried = (t) => { const c = {domains: 0, annotations: 0, uris: 0};
+const carried = (t) => { const c = {domains: 0, annotations: 0, uris: 0, locations: 0, sequences: 0};
     forester.preOrderTraversalAll(t, (d) => {
         (d.sequences || []).forEach((sq) => {
+            c.sequences += 1;
             c.domains += sq.domain_architecture && sq.domain_architecture.domains ? sq.domain_architecture.domains.length : 0;
             c.annotations += (sq.annotations || []).length;
             c.uris += (sq.uris || []).length;
+            c.locations += sq.location ? 1 : 0;
         });
         (d.taxonomies || []).forEach((tx) => { c.uris += (tx.uris || []).length; });
     });
@@ -94,20 +96,25 @@ const carried = (t) => { const c = {domains: 0, annotations: 0, uris: 0};
 function checkCarried(tree, px) {
     const had = carried(tree);
     const kept = carried(px);
-    check('the phyloXML file keeps every domain, annotation and URI', JSON.stringify(had) === JSON.stringify(kept),
+    check('the phyloXML file keeps every sequence, domain, annotation, URI and location', JSON.stringify(had) === JSON.stringify(kept),
         JSON.stringify(had) + ' -> ' + JSON.stringify(kept));
     return had;
 }
-async function keptFile() {
-    const file = '../../docs/data/apaf.xml';
+async function keptFile(file, what, enough) {
     const trees = await launch(file, await (await fetch(file)).text());
     const tree = Array.isArray(trees) ? trees[0] : trees;
     const f = await download('phyloXML');
     const px = f ? phyloXml.parse(await f.blob.text(), {trim: true, normalize: true})[0] : null;
-    check('apaf: the phyloXML download is written', !!px);
+    check(what + ': the phyloXML download is written', !!px);
     if (px) {
         const had = checkCarried(tree, px);
-        check('... and the fixture has domains to lose', had.domains > 100, had.domains);
+        check('... and the fixture has something to lose', enough(had), JSON.stringify(had));
+        // and the regions themselves, read from the SAVED file, are the same
+        const regionsOf = (t) => { const out = []; forester.preOrderTraversalAll(t, (d) => {
+            if (!d.children) { const r = forester.geneRegionOf(d);
+                out.push(r ? r.genes.map((g) => [g.symbol, g.start, g.end, g.strand, g.refs.join(','), g.accession && g.accession.value]) : null); } });
+            return JSON.stringify(out); };
+        check('... and the saved file gives back the same genome regions', regionsOf(tree) === regionsOf(px));
     }
 }
 
@@ -137,7 +144,13 @@ async function launch(file, text) {
         return;
     }
     if (q.get('keeps') === '1') {
-        await keptFile();
+        await keptFile('../../docs/data/apaf.xml', 'apaf', (had) => had.domains > 100);
+        finish();
+        return;
+    }
+    if (q.get('keeps') === 'genes') {
+        // every sequence of the genome-regions fixture has a location, 133 of them
+        await keptFile('../data/genome_regions.xml', 'genome regions', (had) => had.locations === 133 && had.annotations > 200);
         finish();
         return;
     }

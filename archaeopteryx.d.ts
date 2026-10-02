@@ -60,12 +60,25 @@ export interface ArchaeopteryxConfig {
     collapseControlPanel?: boolean;
     displayHeight?: number;
     displayWidth?: number;
+    /** The domain tracks' E-value threshold at launch, as an exponent: -20 to 3. */
+    domainEvalueExponent?: number;
+    domainGlow?: boolean;
+    domainLabels?: 'none' | 'domains' | 'legend';
     enableAccessToDatabases?: boolean;
     enableDownloads?: boolean;
     enableDynamicSizing?: boolean;
     enableManualNodeSelection?: boolean;
     enableSubtreeDeletion?: boolean;
     enableVisualizations?: boolean;
+    /** The family the gene track's rows line up on: 'auto' (the family
+     * single-copy in the most genomes), 'none' (left-aligned rows), or a
+     * family ref such as 'pgfam:PGF_00019355'. */
+    geneAnchor?: string;
+    /** The annotation namespace that colours the genes and anchors the rows:
+     * 'auto' (the one most genes carry) or a prefix such as 'pgfam'. */
+    geneFamily?: string;
+    /** Where gene symbols go: on the arrows, in a legend of the families, or nowhere. */
+    geneLabels?: 'none' | 'genes' | 'legend';
     initialVisualization?: string | null;
     ladderizeTree?: boolean;
     layout?: Layout;
@@ -98,6 +111,11 @@ export interface ArchaeopteryxConfig {
      * while heatmapColumnOrder is 'manual'. A ref the tree has not got is
      * ignored; a column this does not name follows the ones it does. */
     heatmapManualOrder?: string[] | null;
+    /** The domain tracks. Default: on when any tip carries a domain architecture. */
+    showDomainArchitectures?: boolean;
+    /** The gene track (genome regions). Default: on when any tip carries two
+     * or more located genes. */
+    showGenes?: boolean;
     showHeatmap?: boolean;
     showMsa?: boolean;
     /** Summarize the alignment as a sequence logo instead of a conservation
@@ -179,6 +197,12 @@ export interface ViewState {
     domainLabels?: 'none' | 'domains' | 'legend';
     domainGlow?: boolean;
     domainEvalue?: number;
+    genes?: boolean;
+    /** The anchor family in effect: a ref, or 'none'. */
+    geneAnchor?: string;
+    /** The family namespace in effect. */
+    geneFamily?: string;
+    geneLabels?: 'none' | 'genes' | 'legend';
     scaleAxis?: boolean;
     scaleGrid?: boolean;
     /** @deprecated the name of scaleAxis in older links; still read. */

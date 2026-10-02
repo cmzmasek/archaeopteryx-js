@@ -48,7 +48,8 @@ const CASES = {
     'heatmap_borders': ['', '?many=1', '?radial=1'],
     'label_properties': ['', '?figure=1', '?config=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
-    'exports': ['', '?keeps=1', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
+    'genes': ['', '?config=1', '?radial=1', '?domains=1'],
+    'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',

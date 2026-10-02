@@ -3828,6 +3828,10 @@
         // one, and the longest (Lmax, the scale every track shares)
         properties.domainArchitectures = false;
         properties.maxDomainArchitectureLength = 0;
+        // genome regions on the tips (genes as located sequences): whether
+        // any tip carries one, and the longest span in base pairs
+        properties.geneRegions = false;
+        properties.maxGeneRegionLength = 0;
         properties.externalNodesCount = 0;
         properties.nodeCount = 0;
         // Branches that carry a length AT ALL -- an explicit zero is a real
@@ -3916,6 +3920,17 @@
                         properties.domainArchitectures = true;
                         if (Number(da.length) > properties.maxDomainArchitectureLength) {
                             properties.maxDomainArchitectureLength = Number(da.length);
+                        }
+                    }
+                    // a tree carries genome regions when some tip carries
+                    // TWO genes or more: a gene-family tree whose tips each
+                    // locate their one gene is not a tree of genomes
+                    let gr = forester.geneRegionOf(n);
+                    if (gr && gr.genes.length >= 2) {
+                        properties.geneRegions = true;
+                        let L = gr.span.end - gr.span.start + 1;
+                        if (L > properties.maxGeneRegionLength) {
+                            properties.maxGeneRegionLength = L;
                         }
                     }
                 }
@@ -4446,7 +4461,7 @@
             support: [],
             ultrametric: false,
             tipsWithTaxonomy: 0, distinctTaxonomies: 0, tipsWithTaxonomyId: 0,
-            tipsWithSequence: 0, tipsWithMolSeq: 0, tipsWithDomains: 0,
+            tipsWithSequence: 0, tipsWithMolSeq: 0, tipsWithDomains: 0, tipsWithGenes: 0,
             nodesWithDate: 0, tipsWithDistribution: 0, namedInternal: 0,
             duplications: 0, speciations: 0, nodesWithEvents: 0,
             propertyRefs: []
@@ -4565,6 +4580,9 @@
                 }
                 if (forester.domainArchitectureOf(n)) {
                     ++stats.tipsWithDomains;
+                }
+                if (forester.geneRegionOf(n)) {
+                    ++stats.tipsWithGenes;
                 }
             }
             if (n.distributions && n.distributions.length > 0) {
@@ -7941,6 +7959,527 @@
                 evalue: d.evalue, id: d.id});
         });
         return {backbone: {x: start, w: Number(da.length) * f}, boxes: boxes};
+    };
+
+    // --------------------------------------------------------------
+    // Genome regions (the gene track)
+    // --------------------------------------------------------------
+    // A tip that is a genome can carry (part of) that genome as phyloXML
+    // <sequence> elements: one per gene, each with a <location> on a contig
+    // and its family in an <annotation ref="...">, plus one record per
+    // contig. The viewer draws them as arrows on a backbone beside the tip,
+    // the rows anchored on one family so gene order compares across genomes
+    // (Christian, 2026-10-01: the encoding, the location grammar, anchoring
+    // by default, the words "Genes" and "Genome regions"). Nothing in the
+    // schema changes: <location> is phyloXML's "location of a sequence on a
+    // genome/chromosome", an annotation's ref its "colon-separated reference
+    // to an external database".
+    //
+    // Everything that can be tested without a DOM lives here: the grammar,
+    // which sequences are genes and which the contig record, the anchor, the
+    // mapping of every row onto one shared coordinate (flips, lanes, contig
+    // ends), the arrow outline, the families, the legend rows and the links.
+    // test/gene_test.js pins the numbers. The SVG and the controls are
+    // archaeopteryx.js's.
+
+    // contig:start-end(+) -- 1-based, inclusive, the strand optional. Split
+    // on the LAST colon so a contig id with a colon of its own survives.
+    // A located sequence WITH a strand is a gene; one WITHOUT is the record
+    // of the contig itself (its accession, name and length), which is how
+    // the drawing knows where a contig ends.
+    const SEQUENCE_LOCATION_RE = /^(.+):(\d+)-(\d+)(?:\(([+-])\))?$/;
+
+    forester.parseSequenceLocation = function (text) {
+        if (typeof text !== 'string') {
+            return null;
+        }
+        let m = SEQUENCE_LOCATION_RE.exec(text.trim());
+        if (!m) {
+            return null;
+        }
+        let start = Number(m[2]);
+        let end = Number(m[3]);
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) {
+            return null;
+        }
+        let contig = m[1].trim();
+        if (contig.length === 0) {
+            return null;
+        }
+        return {contig: contig, start: start, end: end, strand: m[4] || null};
+    };
+
+    // The namespace of an annotation ref: "pgfam" of "pgfam:PGF_00019355".
+    // A ref without a colon has none and names no family.
+    forester.annotationNamespace = function (ref) {
+        if (typeof ref !== 'string') {
+            return null;
+        }
+        let c = ref.indexOf(':');
+        return c > 0 ? ref.substring(0, c) : null;
+    };
+
+    function textOf(v) {
+        return (v === null || v === undefined) ? '' : String(v);
+    }
+
+    // Every located sequence of a node, sorted into genes, contig records
+    // and the ones whose location is not in the grammar (counted, never
+    // fatal: <location> is free text in phyloXML, and an older file may say
+    // "chromosome 3" there).
+    function locatedSequences(node) {
+        let out = {genes: [], records: [], ignored: 0};
+        if (!node.sequences) {
+            return out;
+        }
+        node.sequences.forEach(function (s, i) {
+            if (!s || s.location === undefined || s.location === null || s.location === '') {
+                return;
+            }
+            let loc = forester.parseSequenceLocation(s.location);
+            if (!loc) {
+                out.ignored++;
+                return;
+            }
+            let acc = (s.accession && s.accession.value !== undefined && s.accession.value !== null
+                && s.accession.value !== '')
+                ? {source: textOf(s.accession.source), value: textOf(s.accession.value)} : null;
+            if (loc.strand === null) {
+                out.records.push({contig: loc.contig, start: loc.start, end: loc.end, accession: acc,
+                    name: textOf(s.name)});
+                return;
+            }
+            let refs = [];
+            (s.annotations || []).forEach(function (a) {
+                if (a && forester.annotationNamespace(a.ref) !== null) {
+                    refs.push(a.ref);
+                }
+            });
+            out.genes.push({index: i, contig: loc.contig, start: loc.start, end: loc.end, strand: loc.strand,
+                length: loc.end - loc.start + 1, symbol: textOf(s.symbol), geneName: textOf(s.gene_name),
+                product: textOf(s.name), accession: acc, refs: refs});
+        });
+        return out;
+    }
+
+    // The region a tip carries: its genes on ONE contig -- the contig with
+    // the most genes (ties: the first listed) -- in position order, with
+    // that contig's record when there is one, the span of the genes, and
+    // how many genes on other contigs were left out. Null for a tip with no
+    // genes (a record alone is not a region).
+    forester.geneRegionOf = function (node) {
+        let found = locatedSequences(node);
+        if (found.genes.length === 0) {
+            return null;
+        }
+        let counts = new Map();
+        found.genes.forEach(function (g) {
+            counts.set(g.contig, (counts.get(g.contig) || 0) + 1);
+        });
+        let contig = null;
+        let best = 0;
+        counts.forEach(function (n, c) {
+            if (n > best) {
+                best = n;
+                contig = c;
+            }
+        });
+        let genes = found.genes.filter(function (g) {
+            return g.contig === contig;
+        }).sort(function (a, b) {
+            return (a.start - b.start) || (a.end - b.end) || (a.index - b.index);
+        });
+        let record = null;
+        for (let i = 0; i < found.records.length; ++i) {
+            if (found.records[i].contig === contig) {
+                record = found.records[i];
+                break;
+            }
+        }
+        let span = {start: genes[0].start, end: genes[0].end};
+        genes.forEach(function (g) {
+            if (g.end > span.end) {
+                span.end = g.end;
+            }
+        });
+        return {contig: contig, genes: genes, record: record, span: span,
+            otherContigs: found.genes.length - genes.length, contigs: counts.size};
+    };
+
+    // The tree's gene facts: tips with a region, genes drawn, genes on other
+    // contigs left out, the longest span, and locations not in the grammar.
+    forester.geneRegionStats = function (tree) {
+        let stats = {tips: 0, genes: 0, otherContigs: 0, maxSpan: 0, ignored: 0};
+        forester.preOrderTraversalAll(tree, function (n) {
+            if (n.children) {
+                return;
+            }
+            stats.ignored += locatedSequences(n).ignored;
+            let r = forester.geneRegionOf(n);
+            if (!r) {
+                return;
+            }
+            stats.tips++;
+            stats.genes += r.genes.length;
+            stats.otherContigs += r.otherContigs;
+            let L = r.span.end - r.span.start + 1;
+            if (L > stats.maxSpan) {
+                stats.maxSpan = L;
+            }
+        });
+        return stats;
+    };
+
+    // The family namespaces the genes carry, most-used first (ties by code
+    // unit): a BV-BRC export has both pgfam and plfam on every gene, and the
+    // track colours by ONE of them.
+    forester.geneFamilyNamespaces = function (regions) {
+        let counts = new Map();
+        regions.forEach(function (r) {
+            if (!r) {
+                return;
+            }
+            r.genes.forEach(function (g) {
+                let seen = new Set();
+                g.refs.forEach(function (ref) {
+                    let ns = forester.annotationNamespace(ref);
+                    if (ns !== null && !seen.has(ns)) {
+                        seen.add(ns);
+                        counts.set(ns, (counts.get(ns) || 0) + 1);
+                    }
+                });
+            });
+        });
+        let out = [];
+        counts.forEach(function (genes, ns) {
+            out.push({ns: ns, genes: genes});
+        });
+        out.sort(function (a, b) {
+            return (b.genes - a.genes) || (a.ns < b.ns ? -1 : (a.ns > b.ns ? 1 : 0));
+        });
+        return out;
+    };
+
+    // A gene's family in a namespace: its first annotation ref there, in
+    // full ("pgfam:PGF_00019355"), or null.
+    forester.geneFamilyOf = function (gene, ns) {
+        if (!ns) {
+            return null;
+        }
+        for (let i = 0; i < gene.refs.length; ++i) {
+            if (forester.annotationNamespace(gene.refs[i]) === ns) {
+                return gene.refs[i];
+            }
+        }
+        return null;
+    };
+
+    // Which families could anchor the rows: for each, the regions carrying
+    // it exactly once (where it CAN anchor) and the regions carrying it at
+    // all; most single-copy regions first, ties by code unit. A product and
+    // symbol ride along for the control's labels.
+    forester.geneAnchorCandidates = function (regions, ns) {
+        let fams = new Map();
+        regions.forEach(function (r) {
+            if (!r) {
+                return;
+            }
+            let here = new Map();
+            r.genes.forEach(function (g) {
+                let fam = forester.geneFamilyOf(g, ns);
+                if (fam === null) {
+                    return;
+                }
+                here.set(fam, (here.get(fam) || 0) + 1);
+                if (!fams.has(fam)) {
+                    fams.set(fam, {family: fam, single: 0, tips: 0, product: g.product, symbol: g.symbol});
+                }
+            });
+            here.forEach(function (n, fam) {
+                let f = fams.get(fam);
+                f.tips++;
+                if (n === 1) {
+                    f.single++;
+                }
+            });
+        });
+        let out = [];
+        fams.forEach(function (f) {
+            out.push(f);
+        });
+        out.sort(function (a, b) {
+            return (b.single - a.single) || (a.family < b.family ? -1 : (a.family > b.family ? 1 : 0));
+        });
+        return out;
+    };
+
+    // The anchor a tree opens with: the family single-copy in the most
+    // regions, provided that is at least half of them. Otherwise none, and
+    // the rows are left-aligned.
+    forester.geneDefaultAnchor = function (regions, ns) {
+        let n = 0;
+        regions.forEach(function (r) {
+            if (r) {
+                n++;
+            }
+        });
+        let c = forester.geneAnchorCandidates(regions, ns);
+        return (c.length > 0 && c[0].single > 0 && c[0].single * 2 >= n) ? c[0].family : null;
+    };
+
+    // The backbone reaches this far past the first and last gene, as a share
+    // of the span -- unless the contig record says the contig ends first.
+    forester.GENE_REGION_PAD = 0.02;
+
+    // Every row onto one shared coordinate, in base pairs. A row whose
+    // anchor family occurs exactly once puts that gene's midpoint at 0 and,
+    // when the gene is on the minus strand, is MIRRORED so the anchor points
+    // right and the neighbours flip with it (the Compare Region convention).
+    // Any other row -- no anchor, no such gene, two of them -- is left-
+    // aligned at the leftmost edge of the anchored rows (at 0 when there are
+    // none). Overlapping genes take a second lane. `regions` is per
+    // displayed tip, in display order, null where a tip has none; the result
+    // has a row (or null) per entry and the extent over all rows.
+    forester.geneTrackRows = function (regions, anchor, ns) {
+        let rows = regions.map(function (region) {
+            if (!region) {
+                return null;
+            }
+            let span = region.span;
+            let pad = forester.GENE_REGION_PAD * (span.end - span.start + 1);
+            let b0 = span.start - pad;
+            let b1 = span.end + pad;
+            let capStart = false;
+            let capEnd = false;
+            if (region.record) {
+                if (b0 <= region.record.start) {
+                    b0 = region.record.start;
+                    capStart = true;
+                }
+                if (b1 >= region.record.end) {
+                    b1 = region.record.end;
+                    capEnd = true;
+                }
+            }
+            let anchors = anchor ? region.genes.filter(function (g) {
+                return forester.geneFamilyOf(g, ns) === anchor;
+            }) : [];
+            let anchored = anchors.length === 1;
+            let flip = anchored && anchors[0].strand === '-';
+            return {region: region, b0: b0, b1: b1, capStart: capStart, capEnd: capEnd, anchored: anchored, flip: flip,
+                origin: anchored ? (anchors[0].start + anchors[0].end) / 2 : null};
+        });
+        let min = Infinity;
+        let max = -Infinity;
+        let place = function (row) {
+            let o = row.origin;
+            let map = row.flip
+                ? function (a, b) {
+                    return [o - b, o - a];
+                }
+                : function (a, b) {
+                    return [a - o, b - o];
+                };
+            let bb = map(row.b0, row.b1);
+            let genes = row.region.genes.map(function (g) {
+                let x = map(g.start, g.end);
+                let dir = g.strand === '+' ? 1 : -1;
+                return {gene: g, x0: x[0], x1: x[1], dir: row.flip ? -dir : dir, lane: 0};
+            });
+            genes.sort(function (p, q) {
+                return (p.x0 - q.x0) || (p.x1 - q.x1);
+            });
+            // greedy lanes: the first lane that is free, else the one that
+            // frees first; two lanes at most
+            let ends = [-Infinity, -Infinity];
+            genes.forEach(function (g) {
+                let lane = g.x0 >= ends[0] ? 0 : (g.x0 >= ends[1] ? 1 : (ends[0] <= ends[1] ? 0 : 1));
+                g.lane = lane;
+                ends[lane] = Math.max(ends[lane], g.x1);
+            });
+            if (bb[0] < min) {
+                min = bb[0];
+            }
+            if (bb[1] > max) {
+                max = bb[1];
+            }
+            return {backbone: {x0: bb[0], x1: bb[1]}, capLeft: row.flip ? row.capEnd : row.capStart,
+                capRight: row.flip ? row.capStart : row.capEnd, anchored: row.anchored, flip: row.flip,
+                lanes: genes.some(function (g) {
+                    return g.lane === 1;
+                }) ? 2 : 1, genes: genes, region: row.region};
+        };
+        let out = new Array(rows.length);
+        rows.forEach(function (row, i) {
+            if (row && row.anchored) {
+                out[i] = place(row);
+            }
+        });
+        let left = isFinite(min) ? min : 0;
+        rows.forEach(function (row, i) {
+            if (row && !row.anchored) {
+                row.origin = row.b0 - left;   // its backbone starts at the left edge
+                out[i] = place(row);
+            } else if (!row) {
+                out[i] = null;
+            }
+        });
+        return {rows: out, extent: isFinite(min) ? {min: min, max: max} : null};
+    };
+
+    // One row in pixels: the backbone and each gene's box, given the track's
+    // start x, the px per base pair f and the extent's left edge.
+    forester.geneRowGeometry = function (row, start, f, min) {
+        let px = function (x) {
+            return start + ((x - min) * f);
+        };
+        return {
+            backbone: {x: px(row.backbone.x0), w: (row.backbone.x1 - row.backbone.x0) * f},
+            capLeft: row.capLeft,
+            capRight: row.capRight,
+            genes: row.genes.map(function (g) {
+                return {x: px(g.x0), w: (g.x1 - g.x0) * f, dir: g.dir, lane: g.lane, gene: g.gene};
+            })
+        };
+    };
+
+    // The arrow: a box whose leading end tapers to a point in the strand's
+    // direction, the head half the height long; a gene shorter than the head
+    // is a triangle and still shows its direction. Path data to a hundredth
+    // of a pixel; '' for a degenerate box.
+    forester.geneArrowPath = function (x, y, w, h, dir) {
+        if (!isFinite(x) || !isFinite(y) || !(w > 0) || !isFinite(w) || !(h > 0) || !isFinite(h)) {
+            return '';
+        }
+        let num = function (n) {
+            return Math.round(n * 100) / 100;
+        };
+        let head = Math.min(h / 2, w);
+        let body = w - head;
+        let hh = h / 2;
+        if (dir < 0) {
+            // the point on the left
+            return 'M' + num(x + w) + ',' + num(y)
+                + (body > 0 ? 'h' + num(-body) : '')
+                + 'l' + num(-head) + ',' + num(hh)
+                + 'l' + num(head) + ',' + num(hh)
+                + (body > 0 ? 'h' + num(body) : '') + 'Z';
+        }
+        return 'M' + num(x) + ',' + num(y)
+            + (body > 0 ? 'h' + num(body) : '')
+            + 'l' + num(head) + ',' + num(hh)
+            + 'l' + num(-head) + ',' + num(hh)
+            + (body > 0 ? 'h' + num(-body) : '') + 'Z';
+    };
+
+    forester.GENE_SINGLETON_COLOR = '#9e9e9e';    // a family met in one region only
+    forester.GENE_NO_FAMILY_COLOR = '#cfcfcf';    // a gene with no family at all
+
+    // The families over the regions given (display order): the SHARED ones
+    // -- in two regions or more, or, when `shared` (a Set of family refs) is
+    // given, the ones in it -- sorted by code unit (the palette's order),
+    // the legend rows in first-appearance order with each family's region
+    // and gene counts and its commonest product and symbol, and how many
+    // drawn genes are singletons or carry no family. The viewer passes the
+    // TREE's shared families as `shared` when it summarizes a view, so a
+    // family shown once in a subtree keeps the colour it has on the tree.
+    forester.geneFamilySummary = function (regions, ns, shared) {
+        let fams = new Map();
+        let singles = 0;
+        let unfamilied = 0;
+        regions.forEach(function (r) {
+            if (!r) {
+                return;
+            }
+            let here = new Set();
+            r.genes.forEach(function (g) {
+                let fam = forester.geneFamilyOf(g, ns);
+                if (fam === null) {
+                    unfamilied++;
+                    return;
+                }
+                let f = fams.get(fam);
+                if (!f) {
+                    f = {family: fam, tips: 0, genes: 0, products: new Map(), symbols: new Map()};
+                    fams.set(fam, f);
+                }
+                f.genes++;
+                if (g.product) {
+                    f.products.set(g.product, (f.products.get(g.product) || 0) + 1);
+                }
+                if (g.symbol) {
+                    f.symbols.set(g.symbol, (f.symbols.get(g.symbol) || 0) + 1);
+                }
+                here.add(fam);
+            });
+            here.forEach(function (fam) {
+                fams.get(fam).tips++;
+            });
+        });
+        let commonest = function (m) {
+            let best = '';
+            let n = 0;
+            m.forEach(function (count, text) {
+                if (count > n) {
+                    n = count;
+                    best = text;
+                }
+            });
+            return best;
+        };
+        let legend = [];
+        let names = [];
+        fams.forEach(function (f) {
+            if (shared ? !shared.has(f.family) : f.tips < 2) {
+                singles += f.genes;
+                return;
+            }
+            names.push(f.family);
+            legend.push({family: f.family, tips: f.tips, genes: f.genes,
+                product: commonest(f.products), symbol: commonest(f.symbols)});
+        });
+        names.sort();
+        return {names: names, legend: legend, singletons: singles, unfamilied: unfamilied};
+    };
+
+    // Where a click on a gene goes: its BV-BRC feature page for a BV-BRC /
+    // PATRIC accession (fig|...), NCBI's protein page for a GenBank / RefSeq
+    // one; nowhere otherwise.
+    const BVBRC_FEATURE = 'https://www.bv-brc.org/view/Feature/';
+    const NCBI_PROTEIN = 'https://www.ncbi.nlm.nih.gov/protein/';
+
+    forester.geneReference = function (gene) {
+        if (!gene || !gene.accession) {
+            return null;
+        }
+        let v = gene.accession.value.trim();
+        let src = gene.accession.source.toLowerCase();
+        if (v.length === 0) {
+            return null;
+        }
+        if (/^fig\|/.test(v) || /bv-?brc|patric/.test(src)) {
+            return {url: BVBRC_FEATURE + encodeURIComponent(v).replace(/%7C/gi, '|'), site: 'BV-BRC'};
+        }
+        if (/ncbi|genbank|refseq|uniprot/.test(src)) {
+            return {url: NCBI_PROTEIN + encodeURIComponent(v), site: 'NCBI'};
+        }
+        return null;
+    };
+
+    // The track's own scale bar: a round number of base pairs about
+    // targetPx long, labelled in kb from 1000 up.
+    forester.geneScaleBar = function (pxPerBp, targetPx) {
+        let bar = forester.scaleBarLength(pxPerBp, targetPx);
+        if (!bar) {
+            return null;
+        }
+        let bp = bar.length;
+        return {bp: bp, px: bar.px, label: bp >= 1000 ? (bp / 1000) + ' kb' : bp + ' bp'};
+    };
+
+    // A location as the readout and the node-data dialog show it.
+    forester.geneLocationText = function (gene) {
+        return gene.contig + ':' + gene.start + '-' + gene.end + '(' + gene.strand + ')';
     };
 
     // --------------------------------------------------------------

@@ -33,6 +33,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Caliciviridae (186 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500)
 * [Adenoviridae (321 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=adenoviridae)
 * [Apaf-1 gene family (domain architectures)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=apaf)
+* [Genome regions (gene arrows, anchored)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=genome_regions)
 * [Clustergram (heat map + column clustering)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=clustergram)
 * [Nucleotide alignment (600 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=alignment_nt)
 * [Genome alignment (150 × 30,000 columns)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=genome_alignment)
@@ -588,6 +589,81 @@ impossible position or E-value — is skipped and counted in a console
 warning, never fatal. The tracks ride into the SVG, PDF and PNG exports.
 This is the desktop's domain display, drawn to the same numbers
 (`test/domain_test.js` holds them).
+
+## Genome regions
+
+A tree whose tips are genomes can carry (part of) each genome: its genes as
+`<sequence>` elements, one per gene, each with a `<location>` on a contig and
+its family in an `<annotation ref="…">`, plus one `<sequence type="dna">`
+record per contig. The viewer draws them as a **gene track** beside the
+tips: a thin backbone per genome with an **arrow per gene**, pointing by
+strand, coloured by family, on one scale shared by the whole tree so
+distances compare across genomes. The rows are **anchored**: the anchor
+family's gene sits at the same place in every row, pointing right, and the
+neighbours follow — a genome carrying it on the other strand is mirrored —
+so gene order, inversions, insertions and deletions read down the tree, as
+in BV-BRC's Compare Region Viewer. A family met in one genome only is grey,
+a gene with no family lighter grey, so conserved order stands out. A bar at
+the end of a backbone marks a contig end; the track's own scale bar under
+the rows reads in kb. The track appears from the start whenever a tree
+carries regions; the **Genes** checkbox under Display Data toggles it, and
+the **Genome regions** section holds the controls:
+
+* **Track width** `−` / `+` — the widest row starts at a quarter of the
+  window and scales by 0.8 / 1.2 per press (hold to repeat).
+* **Anchor** — `Auto` (the family single-copy in the most genomes, at least
+  half of them; the choice is named), any family that can anchor two
+  genomes or more, or `None`, which left-aligns the rows.
+* **Family** — which annotation namespace colours the genes and anchors the
+  rows, offered when the genes carry more than one (a BV-BRC export carries
+  both PGfams and PLfams).
+* **Labels** — `On genes` (the symbol, when it fits), `Legend` (a card of
+  the families with their commonest product and genome counts, draggable,
+  double-click to send it home), or `None`.
+
+**Hovering an arrow** reads the gene out: symbol, product, family, location,
+length, the genome it belongs to and its accession; **clicking** opens its
+BV-BRC feature page for a BV-BRC accession (`fig|…`) or NCBI's protein page
+for a GenBank / RefSeq one. In the circular and unrooted layouts the arrows
+ride each named tip's spoke, as the domain tracks do, and both tracks can
+show at once, the genes past the domains. Whole genomes are for viruses; a
+bacterial genome is shown as a window of a few dozen genes around a gene of
+interest, chosen by whoever writes the file. The tree is labelled by node
+name: a genome's sequences describe the region beside the tip, not the tip.
+
+The file needs nothing phyloXML has not got — `<location>` is the schema's
+"location of a sequence on a genome/chromosome", an annotation's `ref` its
+reference to an external database:
+
+```xml
+<clade>
+  <name>Brucella melitensis bv. 1 str. 16M</name>
+  <sequence type="dna">                      <!-- the contig record, FIRST -->
+    <accession source="RefSeq">NC_003317.1</accession>
+    <name>chromosome I</name>
+    <location>NC_003317.1:1-2117144</location>
+  </sequence>
+  <sequence type="protein">                  <!-- one per gene, any order -->
+    <accession source="BV-BRC">fig|224914.11.peg.1021</accession>
+    <symbol>dnaK</symbol>
+    <name>Chaperone protein DnaK</name>
+    <location>NC_003317.1:1055720-1057636(-)</location>
+    <annotation ref="pgfam:PGF_00019355"></annotation>
+  </sequence>
+</clade>
+```
+
+A location is `contig:start-end(+)`, 1-based and inclusive, split on its
+last colon; a located sequence **with** a strand is a gene, one **without**
+is the contig's record, whose span says where the contig ends. The record
+comes first because a tip's first sequence is "the" sequence to every other
+reader. A tip's genes on a second contig are not drawn (one contig per
+genome: the one with the most genes) and a location not in the grammar is
+skipped; both are counted in a console warning. The demo is synthetic
+([Genome regions](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=genome_regions),
+twelve genomes with one row per rule: an inversion, a deletion, two
+insertions, a mirrored genome, a contig end, two contigs, overlapping genes,
+a doubled anchor); `test/gene_test.js` pins its numbers.
 
 ## Sequence alignments
 
@@ -1389,6 +1465,10 @@ copy-pastable JSON.
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
 | `domainEvalueExponent` | `-3` | The E-value threshold's exponent at launch, an integer from `-20` to `3`: domains with an E-value at or under `10^exponent` are drawn. |
+| `showGenes` | tree-derived | Open with the gene track shown. Default: on when any tip carries a genome region (two or more located genes), off otherwise — an explicit `true`/`false` overrides that. |
+| `geneAnchor` | `'auto'` | The family the gene track's rows line up on: `'auto'` (the family single-copy in the most genomes), `'none'` (left-aligned rows), or a family ref such as `'pgfam:PGF_00019355'`. |
+| `geneFamily` | `'auto'` | The annotation namespace that colours the genes and anchors the rows: `'auto'` (the one most genes carry) or a prefix such as `'pgfam'`. |
+| `geneLabels` | `'genes'` | Where gene symbols go: `'genes'` (on the arrows), `'legend'` (a card of the families), or `'none'`. |
 | `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
@@ -2062,6 +2142,68 @@ track group's own `<defs>`, so exports match the screen. The acceptance
 numbers — apaf.xml: 31 tips, `Lmax` 2080, 202 domains; 9 names / 166 boxes
 at 1e−3; the palette; 22_MOUSE's box offsets at `W = 300` — are the
 desktop's, in `test/domain_test.js`.
+
+### The gene track
+
+Data model (forester): a tip's `sequences` with a `location` the grammar
+reads (`forester.parseSequenceLocation`: `contig:start-end(+)`, split on the
+last colon, 1-based, `end ≥ start`) are genes when the strand is given and
+contig records when not; `forester.geneRegionOf(node)` is the tip's genes
+on ONE contig (the most genes, ties to the first listed) in position order,
+that contig's record, the span and the count left out; null without a gene.
+A gene's family in a namespace is its first annotation ref with that prefix
+(`geneFamilyOf`); `geneFamilyNamespaces` ranks the prefixes by use.
+`collectBasicTreeProperties` sets `geneRegions` when some tip carries two
+genes or more (a gene-family tree locating one gene per tip is not a tree
+of genomes) and `maxGeneRegionLength`; `treeStatistics` counts
+`tipsWithGenes`. Anchor: `geneAnchorCandidates` counts per family the
+regions carrying it exactly once (`single`) and at all; `geneDefaultAnchor`
+is the top one when `single` is at least half the regions, ties by code
+unit. Rows: `geneTrackRows(regions, anchor, ns)` maps every row onto one
+coordinate in bp — an anchored row's anchor midpoint at 0, mirrored
+(`x → −x`, directions flipped) when the anchor is on `−`; a row with no
+anchor gene, or two, left-aligned at the anchored rows' leftmost edge (0
+without any). The backbone is the span padded by 2% (`GENE_REGION_PAD`),
+clamped to the record's span with a cap where it was clamped (caps swap
+with the flip). Lanes: greedy by start, the first of two that is free, else
+the one that frees first. Scale: `f = W / (extent.max − extent.min) × 0.9`
+px per bp, `W` by the domain track's rules (a quarter of the viewport,
+−/+ by 0.8/1.2, 20…2000; radial `min(W, 0.2 × radius)`), kept apart from
+the domain track's width. Placement as the domain tracks and past them when
+both show: rectangular `start = _w + nodeLabelGap + labelSpace +
+_domainReserve + 20`, reserve `20 + W + 10` in `_geneReserve` (counted
+wherever `_w` is); circular `r0 = maxRad + labelSpace + domainRadialExtent
++ 4`; unrooted `start = labelSpace + domainRadialExtent + 4`; the radial fit
+adds `4 + W + 10`. Arrow: `geneArrowPath(x, y, w, h, dir)`, head
+`min(h/2, w)`, a triangle when shorter than its head; two lanes share the
+height (`max(3, h/2)` each); each arrow is its own path carrying
+`__aptxGene` for the readout, with a 1 px `darken(base, 0.3)` border; the
+backbone (1 px) and the caps (1.5 px bars) are one path per track, one per
+row in the radial layouts. Symbol (or gene name) on the body in `min(font,
+h − 2)` px when over 4 px and at most `w − head − 4` wide, rectangular
+only. Colours: the families SHARED over the tree (two regions or more),
+sorted by code unit, take the domain palette (`domainQualitativeColor`) in
+order; a singleton `#9e9e9e`, no family `#cfcfcf`; dealt at load and on a
+namespace change. The kb bar: `geneScaleBar(f, 80)`, a round number of bp
+labelled in kb from 1000 up, 12 px under the lowest row. Legend
+(`'legend'`): title `Gene families (<ns>)`, rows `product (regions)` in
+screen order over the view (`geneFamilySummary` with the tree's shared set,
+so a family shown once in a subtree keeps its colour), then `unique to one
+genome (n)` and `no family (n)`; home bottom-right, drag keeps its place as
+a fraction of the view, double-click sends it home. Links: `geneReference`
+— BV-BRC's feature page for `fig|…` or a BV-BRC / PATRIC source, NCBI's
+protein page for GenBank / RefSeq / UniProt. State: `showGenes` (auto-on
+with `geneRegions`), `geneAnchor` (`'auto'` | `'none'` | a ref),
+`geneFamily` (`'auto'` | a namespace), `geneLabels`; the view carries
+`genes`, `geneLabels`, and `geneAnchor` / `geneFamily` as the EFFECTIVE
+values. Labels: on a tree with `geneRegions`, a tip whose first sequence is
+located contributes no sequence text to the label suggestion
+(`suggestLabelFields`), so the node name stands. Gates as the domain
+tracks (external labels on, radial labels in a radial layout, a name the
+crowding rule left). Fixture `test/data/genome_regions.xml`, generated by
+`test/make_genome_regions_fixture.js` (the demo copy is byte-identical and
+a test says so); the numbers in `test/gene_test.js`, the SVG in
+`test/browser/genes.html`.
 
 ### The alignment track
 
