@@ -7,28 +7,40 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.23.0 — 2026-10-02
+
+The clock plot: on a tree that states both time and divergence, a panel
+plots each tip's date against its divergence from the root with a regression
+line through the tips, linked to the tree in both directions. The plot is
+new; its design may still change as people use it.
+
 ### Added
 - **Clock plot.** On a tree offered **Time | Div**, a **Clock plot** button
   beside the switch opens a panel plotting each tip's date against its
-  divergence from the root (the internal nodes too, when asked for), with a
-  least-squares line through the tips: its
-  slope is the **rate** (substitutions per site per year), and the date at
-  which it comes down to the root's divergence is shown over the root date
-  the tree states, with R². The line is fitted to the tips only and is not
-  forced through the root. The panel is modeless and linked to the tree: a
-  point wears its node's colour, pointing at a point lights its node (and
-  pointing at a node rings its point), a click selects the node, a dragged
-  box selects the tips in it, and in a subtree view the plot is the clade's
-  own. Tips drawn on one spot (one date, one divergence) are one dot that
-  answers for all of them: named, lit and selected together. Offered where the line can be drawn — three tips or more, not all on
-  one date; a BEAST clock-model tree is told that its divergence is the
-  model's (time × rate). `forester.clockPlotKind`, `forester.clockPlotData`,
-  `forester.clockRegression`, `forester.calendarTickMonths`. New in this
-  form; the design is not final.
+  divergence from the root (the internal nodes too, when **Internal nodes**
+  is ticked), with a least-squares line through the tips. Under the plot:
+  the **rate** (the slope, substitutions per site per year), the root date
+  the line gives over the one the tree states, R² and the number of tips.
+  The line is fitted to the tips only and is not forced through the root.
+- **The panel is linked to the tree.** It is modeless and can be dragged by
+  its title. A point wears its node's colour; pointing at a point lights its
+  node, and pointing at a node rings its point; a click selects the node, a
+  dragged box selects the tips in it; in a subtree view the plot and the
+  line are the clade's own. Tips drawn on one spot (one date, one
+  divergence) are one dot that answers for all of them: named, lit and
+  selected together.
+- **Where it is offered.** Where the line can be drawn: three tips or more,
+  not all on one date. On a BEAST clock-model tree the panel says that the
+  divergence is the model's (time × rate).
+- `forester.clockPlotKind`, `forester.clockPlotData`,
+  `forester.clockRegression`, `forester.calendarTickMonths`.
 
 ### Fixed
 - **An open modeless dialog follows the light/dark switch.** The control-panel
   cheat sheet (and now the clock plot) kept the theme it was opened in.
+- **README: a selection does announce itself.** "Node selection" said no
+  event exists; `selected_nodes_changed_event` is dispatched on `document`
+  at every change, and always was from the node menu.
 
 ## 3.22.0 — 2026-10-02
 

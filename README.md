@@ -24,7 +24,7 @@ nothing is uploaded. Its **Expert options** panel exercises every launch
 config key live and shows the exact config JSON to copy into your own
 `launch()` call.
 
-* [Auspice / Nextstrain JSON](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
+* [Auspice / Nextstrain JSON (Time | Div, Clock plot)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
 * [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
 * [BEAST annotations (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=beast)
 * [Flavivirus mature peptides (10 trees)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flavivirus)
@@ -2596,6 +2596,46 @@ figure never carries an artefact of where the view happened to be scrolled.
 (The desktop pins its axes to the viewport bottom always; sticky is a
 deliberate difference.)
 
+### The clock plot
+
+**Model** (`forester.js`, pure). `forester.clockPlotKind(phy)` answers
+`'divergence'` or `null`: the tree has Time and Div
+(`forester.hasTimeAndDivergence`) and three tips or more, not all on one
+date. It is asked of the **tree**, never of the view. A second kind,
+`'root-to-tip'` — divergence branch lengths, dated tips, no dated ancestors —
+is described beside the function and not built. `forester.clockPlotData(phy,
+view)` returns `{kind, forward, unit, fromRates, points, root, fit}`: a point
+`{node, date, div, tip}` per node of the view (a tip also carries its
+`residual`), `forward` false where the dates are ages, `fromRates` true where
+the divergence is time × clock rate, and `fit` =
+`forester.clockRegression(dates, divergences)` over the tips — ordinary least
+squares about the means, `{n, slope, intercept, r2}` — plus `rate` (the slope
+in the direction time runs) and `rootDate` (where the line reaches the view
+root's divergence; `null` unless the rate is positive). `fit` is `null` for a
+view with fewer than three tips or one date. `forester.calendarTickMonths`
+gives month ticks for a span too short for whole years.
+
+**Panel** (`archaeopteryx.js`, the "Clock plot" section). A modeless
+`makeDialogShell` dialog, dragged by its title, placed in the tree area's top
+right corner and below anything the host page keeps there. The drawing is one
+SVG in the panel's own `--p-*` inks. `renderClockPlot` runs at the end of
+every `update()`: it works the points out and lays them down again only when
+the top of the view or its node count changed, or a checkbox did; otherwise
+it only goes over the points' colours. A point's colour is its node's in the
+tree (found, selected, the Color visualization, the file's styles).
+
+**The link.** Pointer events on the SVG: the nearest point within 7 px, and
+with it every point of its kind within 1 px of it — one dot for tips that
+share a date and a divergence. The dot's nodes are lit through
+`showHoverGlow(node, also)` (each as the tree shows it: a tip hidden in a
+collapsed clade lights the clade); a click toggles them in `_selectedNodes`,
+a dragged box adds the tips inside it; `mouseover` on a tree node rings its
+point. Closing is synchronous: nothing waits for the dialog's `close` event.
+
+There is no config key and no view key for the panel yet, and it is not part
+of any download. The numbers are pinned in `test/clock_test.js` (computed by
+hand), the panel in `test/browser/clock_plot.html`.
+
 ## Node selection
 
 With `enableManualNodeSelection` on, the node menu gains **Select/Deselect Node**
@@ -2612,7 +2652,9 @@ stays distinguishable from the two search colours.
 The **Clock plot** selects too, whatever this setting says: a click on a
 point, or a box dragged over tips, changes the same selection.
 
-There is no push mechanism (no button or event that announces "the user is done
-selecting") — the embedding application reads the selection whenever it wants,
-typically from its own button. (Versions before 3.0 carried a dormant,
-never-rendered "Submit Selected" button in the source; it was removed.)
+Every change of the selection — from the node menu or from the clock plot —
+dispatches a `selected_nodes_changed_event` on `document`, so the embedding
+application can read the selection then, or whenever it wants from its own
+button. Nothing announces "the user is done selecting". (Versions before 3.0
+carried a dormant, never-rendered "Submit Selected" button in the source; it
+was removed.)
