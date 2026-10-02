@@ -9,8 +9,9 @@ users see a change only when a version is cut.
 
 ### Added
 - **Clock plot.** On a tree offered **Time | Div**, a **Clock plot** button
-  beside the switch opens a panel plotting every node's date against its
-  divergence from the root, with a least-squares line through the tips: its
+  beside the switch opens a panel plotting each tip's date against its
+  divergence from the root (the internal nodes too, when asked for), with a
+  least-squares line through the tips: its
   slope is the **rate** (substitutions per site per year), and the date at
   which it comes down to the root's divergence is shown over the root date
   the tree states, with R². The line is fitted to the tips only and is not

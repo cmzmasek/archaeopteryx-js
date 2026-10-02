@@ -11012,9 +11012,10 @@ function (root, d3, forester, phyloXml) {
     }
 
     // ===================== Clock plot =====================
-    // Every node of the tree on view as a point, its date against its
-    // divergence from the root, with a least-squares line through the tips:
-    // the picture TempEst, TreeTime and Auspice's clock view draw, here as a
+    // The tips of the tree on view as points, each one's date against its
+    // divergence from the root, with a least-squares line through them (and
+    // the ancestors' points too, when asked for): the picture TempEst,
+    // TreeTime and Auspice's clock view draw, here as a
     // panel beside the tree rather than a layout of it, so an outlier is seen
     // on the plot and in the tree at once (Christian, 2026-10-02). What is
     // plotted, which trees have a plot and what the line is fitted to are
@@ -11031,7 +11032,7 @@ function (root, d3, forester, phyloXml) {
     // The plot follows the view: in a subtree it is the clade's, with the
     // clade's own line. Modeless, and it can be dragged by its title: the
     // point is to work in the tree with it open.
-    const CLOCK_PLOT_WHAT = 'clock plot: each node\'s date against its divergence from the root, with a'
+    const CLOCK_PLOT_WHAT = 'clock plot: each tip\'s date against its divergence from the root, with a'
         + ' line through the tips (its slope is the rate); a panel linked to the tree';
     const CLOCK_PLOT_W = 440;
     const CLOCK_PLOT_H = 300;
@@ -11041,8 +11042,10 @@ function (root, d3, forester, phyloXml) {
     const CLOCK_PLOT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const SVG_NS = 'http://www.w3.org/2000/svg';
     let _clockPlot = null;           // the open panel, or null
-    // what the two checkboxes said last, kept while the page lives
-    let _clockPlotOptions = {line: true, internal: true};
+    // What the two checkboxes said last, kept while the page lives. Tips only
+    // to begin with (Christian, 2026-10-02): the line is theirs, and a deep
+    // root crowds them into a corner (dengue: a root in 1319, tips from 1944).
+    let _clockPlotOptions = {line: true, internal: false};
 
     // The button is shown where the tree has a plot, and lit while the panel
     // is open. (A tree that loses its plot -- the tip that made it deleted --
@@ -11104,7 +11107,7 @@ function (root, d3, forester, phyloXml) {
         svg.setAttribute('height', CLOCK_PLOT_H);
         svg.setAttribute('viewBox', '0 0 ' + CLOCK_PLOT_W + ' ' + CLOCK_PLOT_H);
         svg.setAttribute('role', 'img');
-        svg.setAttribute('aria-label', 'Clock plot: each node\'s date against its divergence from the root');
+        svg.setAttribute('aria-label', 'Clock plot: each tip\'s date against its divergence from the root');
         let clip = clockSvg(clockSvg(svg, 'defs'), 'clipPath');
         clip.id = CLOCK_PLOT_DIALOG + '_clip';
         let clipRect = clockSvg(clip, 'rect');

@@ -888,8 +888,8 @@ shared with the desktop.
 
 ### Clock plot
 
-Beside the switch, a **Clock plot** button opens a panel that plots every
-node's **date** against its **divergence** from the root, with a straight
+Beside the switch, a **Clock plot** button opens a panel that plots each
+tip's **date** against its **divergence** from the root, with a straight
 line through the tips — the root-to-tip plot of TempEst and TreeTime, and
 Auspice's clock view. Under the plot:
 
@@ -923,9 +923,10 @@ The panel is **linked to the tree** and stays open while you work in it
   the plot is found in the tree. **Deselect all** clears it;
 - in a subtree view the plot is the clade's, with the clade's own line.
 
-**Regression line** and **Internal nodes** show and hide the line and the
-ancestors' points (a tree with a deep root crowds its tips into a corner
-until the ancestors are hidden).
+**Regression line** shows and hides the line. **Internal nodes** adds the
+ancestors' points, each at its own date and divergence; the panel opens
+without them, since the line is the tips' and a deep root would crowd them
+into a corner.
 
 The button is offered on a tree that has **Time | Div** and whose line can
 be drawn: three tips or more, not all on one date. A tree sampled at one

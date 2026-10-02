@@ -233,6 +233,28 @@
         check('nothing in it scrolls', body.scrollWidth <= body.clientWidth && body.scrollHeight <= body.clientHeight,
             body.scrollWidth + 'x' + body.scrollHeight + ' in ' + body.clientWidth + 'x' + body.clientHeight);
 
+        // ---- the two checkboxes. The panel opens on the tips alone (Christian,
+        // 2026-10-02); the ancestors are asked for, and stay on for the rest
+        // of this case, which needs them (a box must not take one).
+        const boxes = [...dlg.querySelectorAll('.aptx-clock-options input[type=checkbox]')];
+        check('the panel opens on the tips only: Internal nodes unticked, Regression line ticked', !boxes[1].checked && boxes[0].checked
+            && circles('aptx-clock-internal').length === 0 && circles('aptx-clock-tips').length === want.size,
+            circles('aptx-clock-tips').length + ' + ' + circles('aptx-clock-internal').length);
+        check('...with the line and its numbers', getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display !== 'none'
+            && row('Rate') === sig3(fit.slope) + ' subs/site per year', row('Rate'));
+        boxes[1].click(); await sleep(150);
+        check('Internal nodes on: a point per internal node, the tips still there', circles('aptx-clock-internal').length === internalCount
+            && circles('aptx-clock-tips').length === want.size, circles('aptx-clock-tips').length + ' + ' + circles('aptx-clock-internal').length);
+        check('...and the numbers stand: the ancestors take no part', row('Rate') === sig3(fit.slope) + ' subs/site per year' && row('R\u00b2') === sig3(fit.r2));
+        boxes[1].click(); await sleep(150);
+        check('Internal nodes off again: only the tips', circles('aptx-clock-internal').length === 0 && circles('aptx-clock-tips').length === want.size);
+        boxes[1].click(); await sleep(150);
+        boxes[0].click(); await sleep(150);
+        check('Regression line off: no line', getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display === 'none');
+        boxes[0].click(); await sleep(150);
+        check('both on', circles('aptx-clock-internal').length === internalCount
+            && getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display !== 'none');
+
         // ---- the points
         const laid = dlg._aptxClockPlot;
         const tipMarks = () => circles('aptx-clock-tips');
@@ -273,18 +295,6 @@
         check('the note: tips only, R\u00b2 no test; and nothing about clock rates on a tree that records its divergence',
             /tips only/.test(noteText) && /no test/.test(noteText) && !/clock rate/.test(noteText), noteText.slice(0, 60));
         check('the fit counts the tips only', laid.data.fit.n === want.size, laid.data.fit.n);
-
-        // ---- the two checkboxes
-        const boxes = [...dlg.querySelectorAll('.aptx-clock-options input[type=checkbox]')];
-        boxes[1].click(); await sleep(150);
-        check('Internal nodes off: only the tips are drawn', circles('aptx-clock-internal').length === 0 && tipMarks().length === want.size);
-        check('...and the numbers stand', row('Rate') === sig3(fit.slope) + ' subs/site per year');
-        boxes[1].click(); await sleep(150);
-        boxes[0].click(); await sleep(150);
-        check('Regression line off: no line', getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display === 'none');
-        boxes[0].click(); await sleep(150);
-        check('both back on', circles('aptx-clock-internal').length === internalCount
-            && getComputedStyle(dlg.querySelector('line.aptx-clock-line')).display !== 'none');
 
         // ---- pointing: plot -> tree
         const tipNodes = new Map();
@@ -439,6 +449,8 @@
         check('...and pressed again, closes it at once', !dialog() && !byId('clock_plot_b').classList.contains('aptx-lit'));
         byId('clock_plot_b').click();
         check('...and a third press opens it again: no press is swallowed', !!dialog() && dialog().open);
+        check('...with Internal nodes as it was left: the choice is kept while the page lives',
+            dialog().querySelectorAll('.aptx-clock-options input[type=checkbox]')[1].checked && circles('aptx-clock-internal').length === internalCount);
         await sleep(300);
         check('...and it is still open once the old panel\'s close event has come', !!dialog() && dialog().open
             && document.querySelectorAll('#aptx_clock_plot').length === 1);
