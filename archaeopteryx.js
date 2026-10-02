@@ -11176,18 +11176,45 @@ function (root, d3, forester, phyloXml) {
 
     // In the tree area's top right corner, clear of the control panel where
     // there is room, and inside the window.
+    //
+    // The page around the viewer may keep something of its own in that corner,
+    // above everything -- the demo page's tree chooser sits there -- and the
+    // panel opened under it, its close control out of reach (seen on the live
+    // demo, 2026-10-02; no harness has a host page). So the panel's top edge is
+    // asked what is on it, and the panel goes below whatever is not ours.
     function placeClockPlot(dialog) {
         let area = _container ? _container.getBoundingClientRect() : null;
         let w = dialog.offsetWidth;
         let h = dialog.offsetHeight;
         let right = area ? Math.min(area.right, window.innerWidth) : window.innerWidth;
         let top = area ? Math.max(area.top, 0) : 0;
-        setStyles(dialog, {
-            'position': 'fixed',
-            'margin': '0',
-            'left': Math.max(6, right - w - 14) + 'px',
-            'top': Math.max(6, Math.min(window.innerHeight - h - 6, top + 14)) + 'px'
+        let lowest = Math.max(6, window.innerHeight - h - 6);
+        let put = function (y) {
+            setStyles(dialog, {
+                'position': 'fixed',
+                'margin': '0',
+                'left': Math.max(6, right - w - 14) + 'px',
+                'top': Math.max(6, Math.min(lowest, y)) + 'px'
+            });
+        };
+        put(top + 14);
+        let box = dialog.getBoundingClientRect();
+        let under = 0;
+        [box.left + 12, (box.left + box.right) / 2, box.right - 14].forEach(function (px) {
+            let over = document.elementFromPoint(px, box.top + 14);
+            if (!over || dialog.contains(over) || (_container && _container.contains(over))) {
+                return;
+            }
+            // the whole of what is in the way, not the link or label inside it
+            while (over.parentElement && over.parentElement !== document.body
+                && !over.parentElement.contains(dialog)) {
+                over = over.parentElement;
+            }
+            under = Math.max(under, over.getBoundingClientRect().bottom);
         });
+        if (under > 0) {
+            put(under + 8);
+        }
     }
 
     // A modeless dialog moved by its title bar, kept inside the window.

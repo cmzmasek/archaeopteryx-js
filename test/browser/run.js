@@ -49,7 +49,7 @@ const CASES = {
     'label_properties': ['', '?figure=1', '?config=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'genes': ['', '?config=1', '?radial=1', '?domains=1'],
-    'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1'],
+    'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1', '?host=1'],
     'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };
 

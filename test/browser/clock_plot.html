@@ -31,6 +31,10 @@
 // ?ages=1     a clock tree stating heights (ages): time still runs left to
 //             right, so the OLDER tip is on the left, and the rate is
 //             positive though the divergence falls as the age rises.
+// ?host=1     the page around the viewer keeps a box of its own in the top
+//             right corner, above everything (the demo page's tree chooser
+//             does): the panel opens BELOW it, its close control in reach.
+//             Found on the live demo with a real mouse, 2026-10-02.
 // ?delete=1   a tip deleted with the panel open: the plot follows, with the
 //             line of the tips that are left; a second one deleted leaves two
 //             tips, no plot, and the panel and its button go.
@@ -76,6 +80,36 @@
                 await (await fetch('../../docs/data/nextstrain-ncov.json')).text()), {});
             await v3.ready; await sleep(1200);
             check('control: the Nextstrain build is offered the button', offered());
+            finish();
+            return;
+        }
+        if (/host=1/.test(location.search)) {
+            const text = await (await fetch('../../docs/data/nextstrain-ncov.json')).text();
+            const v = archaeopteryx.launch('#p', archaeopteryx.parseTrees('nextstrain-ncov.json', text), {});
+            await v.ready; await sleep(1500);
+            const topmostIsClose = () => { const c = dialog().querySelector('.aptx-dialog-close').getBoundingClientRect();
+                const el = document.elementFromPoint((c.left + c.right) / 2, (c.top + c.bottom) / 2); return !!el && dialog().contains(el); };
+            // control: nothing in the corner, the panel is in it
+            byId('clock_plot_b').click(); await sleep(300);
+            const free = dialog().getBoundingClientRect();
+            check('control: with the corner free the panel opens in it', free.top < 30 && innerWidth - free.right < 30 && topmostIsClose(),
+                Math.round(free.top) + ' from the top, ' + Math.round(innerWidth - free.right) + ' from the right');
+            byId('clock_plot_b').click(); await sleep(300);
+            const host = document.createElement('div');
+            host.style.cssText = 'position:fixed;top:10px;right:10px;width:260px;height:90px;z-index:5000;background:#888';
+            // a link across its top, where the panel's edge would be: what has
+            // to be cleared is the box, not the link in it
+            host.innerHTML = '<a href="#" style="display:block;padding:12px">a link of the page\'s own</a>';
+            document.body.appendChild(host);
+            const link = host.querySelector('a').getBoundingClientRect();
+            check('fixture: the link lies across the top of the box and ends well above its bottom', link.top < 20 && link.bottom < 70 && link.width > 200,
+                Math.round(link.top) + '..' + Math.round(link.bottom) + ', ' + Math.round(link.width) + ' wide');
+            byId('clock_plot_b').click(); await sleep(300);
+            const box = dialog().getBoundingClientRect(), hb = host.getBoundingClientRect();
+            check('with the page\'s own box in the corner the panel opens below it', box.top >= hb.bottom, Math.round(box.top) + ' vs the box\'s bottom ' + Math.round(hb.bottom));
+            check('...its close control on top and in reach', topmostIsClose());
+            check('...still at the right, and inside the window', innerWidth - box.right < 30 && box.bottom <= innerHeight,
+                Math.round(innerWidth - box.right) + ' from the right, bottom ' + Math.round(box.bottom) + ' of ' + innerHeight);
             finish();
             return;
         }
