@@ -55,6 +55,11 @@
 //             tips only, so Internal nodes is not offered; Rate in no unit,
 //             since the file states none; the tree states no root date; a
 //             click selects; the view of a clade has the clade's own line.
+// ?names=1    tips dated by their NAMES count (Christian, 2026-10-03):
+//             docs/data/swH1-HA1.nexus, 50 strains with their year in the
+//             name and no date anywhere else, is a root-to-tip tree: every
+//             tip at its year (mid-year) and its path from the root, the
+//             axis in calendar years, the note saying what was read.
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const byId = (id) => document.getElementById(id);
@@ -307,6 +312,56 @@
             check('...and the tree still states no root date', /^none/.test(row('Root date, in the tree') || ''), row('Root date, in the tree'));
             v.applyViewState({subtree: null}); await sleep(1500);
             check('back on the whole tree: five tips, the tree\'s line', tipsShown() === 'ABCDE' && row('Rate') === sig3(fit.slope) + ' per year', tipsShown() + ', ' + row('Rate'));
+            finish();
+            return;
+        }
+        if (/names=1/.test(location.search)) {
+            // docs/data/swH1-HA1.nexus: 50 swine H1 strains, a divergence tree
+            // with no date anywhere but the year in every tip's name
+            // ("A/swine/Iowa/A02524571/2020|1A.3.3.3"): a root-to-tip tree
+            // since names count (Christian, 2026-10-03)
+            const text = await (await fetch('../../docs/data/swH1-HA1.nexus')).text();
+            const trees = archaeopteryx.parseTrees('swH1-HA1.nexus', text);
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const v = archaeopteryx.launch('#p', trees, {});
+            await v.ready; await sleep(2000);
+            check('control: the tree has no Time | Div', !shown(document.querySelector('#p .branch_scale_g')));
+            check('years in the tip names over divergence lengths: the Clock plot is offered', offered());
+            // the file's own numbers: the year before the "|" of each name,
+            // mid-year; the path from the root summed here from the lengths
+            const want = new Map();
+            (function w(n, d) {   // d: the path to n; the root's own length is no part of any path
+                if (n.children && n.children.length) { n.children.forEach((c) => w(c, d + c.branch_length)); }
+                else { const m = n.name.match(/\/(\d{4})\|/); want.set(n.name, [m ? Number(m[1]) + 0.5 : NaN, d]); } }(forester.getTreeRoot(tree), 0));
+            check('fixture: 50 tips, a year in every name, a length on every branch', want.size === 50
+                && [...want.values()].every((p) => p[0] >= 2009.5 && p[0] <= 2022.5 && isFinite(p[1])),
+                want.size + ' tips; ' + [...want.values()].filter((p) => !(p[0] > 0) || !isFinite(p[1])).length + ' short of a year or a length');
+            const fit = ols([...want.values()]);
+            check('fixture: the raw sums give a positive slope', fit.slope > 0, fit.slope);
+            byId('clock_plot_b').click(); await sleep(500);
+            const dlg = dialog();
+            check('the panel opens', !!dlg && dlg.open);
+            if (!dlg) { finish(); return; }
+            check('one point per tip, none for the ancestors', circles('aptx-clock-tips').length === 50 && circles('aptx-clock-internal').length === 0,
+                circles('aptx-clock-tips').length + ' + ' + circles('aptx-clock-internal').length);
+            const laid = dlg._aptxClockPlot;
+            check('the kind; every tip dated by its name, none ambiguous; a calendar axis from the names',
+                laid.data.kind === 'root-to-tip' && laid.data.fromNames === 50 && laid.data.ambiguousNames === 0 && laid.calendar === true,
+                laid.data.kind + ' ' + laid.data.fromNames + ' ' + laid.data.ambiguousNames + ' ' + laid.calendar);
+            const got = new Map(laid.data.points.map((p) => [p.node.name, [p.date, p.div]]));
+            let worst = 0;
+            want.forEach((val, n) => { const g = got.get(n); worst = Math.max(worst, g ? Math.max(Math.abs(g[0] - val[0]), Math.abs(g[1] - val[1])) : Infinity); });
+            check('every tip at its name\'s year, mid-year, and at its path from the root', worst < 1e-9, 'worst ' + worst);
+            check('Rate is the raw-sums slope, per year, in no unit (the file states none)', row('Rate') === sig3(fit.slope) + ' per year', row('Rate') + ' vs ' + sig3(fit.slope));
+            check('R²', row('R²') === sig3(fit.r2), row('R²'));
+            check('Root date, by the line', row('Root date, by the line') === String(Math.round((-fit.intercept / fit.slope) * 100) / 100), row('Root date, by the line'));
+            check('Root date, in the tree: none', /^none/.test(row('Root date, in the tree') || ''), row('Root date, in the tree'));
+            check('Tips 50', row('Tips') === '50', row('Tips'));
+            const ticks = [...dlg.querySelectorAll('text.aptx-clock-tick')].map((t) => t.textContent);
+            check('the x axis is in whole years', ticks.some((t) => /^20\d\d$/.test(t)), ticks.join(' '));
+            const noteText = dlg.querySelector('.aptx-clock-note').textContent;
+            check('the note says 50 tips are dated by their names, a year alone mid-year', /50 tips are dated by their names/.test(noteText) && /mid-year/.test(noteText)
+                && !/ambiguous/.test(noteText), noteText.slice(0, 160));
             finish();
             return;
         }

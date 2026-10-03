@@ -25,7 +25,7 @@ config key live and shows the exact config JSON to copy into your own
 `launch()` call.
 
 * [Auspice / Nextstrain JSON (Time | Div, Clock plot)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=auspice)
-* [Swine H1 HA1 + alignment (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
+* [Swine H1 HA1 + alignment (Nexus; Clock plot from the years in the names)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=swh1)
 * [BEAST annotations (Nexus)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=beast)
 * [Flavivirus mature peptides (10 trees)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flavivirus)
 * [SARS-CoV-2 time tree (calendar)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=sarscov2)
@@ -946,10 +946,15 @@ no slope to estimate):
   ancestor is dated); **Root date, in the tree** says `none`, since the tree
   states no root date, and **Rate** is in the tree's own branch length unit,
   where it states one. A tip's date is what the file states for it (a
-  phyloXML `<date>`, a `num_date` annotation); a date written into a tip's
-  name does not count. Every tip must be dated and every branch must have a
-  length: a tree with a gap is not offered the plot, rather than plotted with
-  tips missing.
+  phyloXML `<date>`, a `num_date` annotation) or, failing that, the date in
+  its **name**, as TempEst reads it: the rightmost date the label carries
+  (`A/swine/Iowa/A02524571/2020|1A.3.3.3` is 2020; a year alone is taken as
+  mid-year, 2020.5; a day/month-ambiguous `03/04/2020` is read day first),
+  and the panel's note says how many names it read and how many were
+  ambiguous. An ancestor is never dated by its name. Every tip must be
+  dated, by the file or by its name, and every branch must have a length: a
+  tree with a gap is not offered the plot, rather than plotted with tips
+  missing.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -2613,8 +2618,9 @@ deliberate difference.)
 **Model** (`forester.js`, pure). `forester.clockPlotKind(phy)` answers
 `'divergence'`, `'root-to-tip'` or `null`: `'divergence'` where the tree has
 Time and Div (`forester.hasTimeAndDivergence`); `'root-to-tip'` where every
-tip states a date, no ancestor does, every branch states a length and no
-branch states a clock rate (a clock-model tree's lengths are time) — and in
+tip is dated (by the file, or by the date in its name:
+`forester.parseTipLabelDate`), no ancestor is, every branch states a length
+and no branch states a clock rate (a clock-model tree's lengths are time) — and in
 both cases three tips or more, not all on one date. It is asked of the
 **tree**, never of the view. `forester.clockPlotData(phy, view)` returns
 `{kind, forward, unit, divUnit, fromRates, points, root, fit}`: a point
@@ -2624,7 +2630,11 @@ branch lengths from the tree's root), `forward` false where the dates are
 ages (on a root-to-tip tree: where their unit is geologic), `divUnit` the
 divergence's unit (`subs/site` on a Time | Div tree, a root-to-tip tree's
 stated branch length unit, or `null`), `fromRates` true where the divergence
-is time × clock rate, `root.date` `null` on a root-to-tip tree, and `fit` =
+is time × clock rate, `calendar` true where the dates are calendar years
+(their unit says so, or they were read off the tips' names), `fromNames` and
+`ambiguousNames` how many tips a root-to-tip tree dates by their names and
+how many of those are day/month-ambiguous (read day first), `root.date`
+`null` on a root-to-tip tree, and `fit` =
 `forester.clockRegression(dates, divergences)` over the tips — ordinary least
 squares about the means, `{n, slope, intercept, r2}` — plus `rate` (the slope
 in the direction time runs) and `rootDate` (where the line reaches the view

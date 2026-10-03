@@ -200,11 +200,12 @@ function testRule() {
     if (forester.clockPlotKind(gap) !== null || forester.clockPlotData(gap) !== null) {
         return fail('no Time | Div: no plot, whatever the tips state', forester.clockPlotKind(gap));
     }
-    // a plain Newick tree: the years in its tip names date nothing
-    var plain = forester.parseNewHampshire('((A_2000:1,B_2001:2):1,(C_2002:1,D_2003:3):2);');
+    // a plain Newick tree with no date anywhere: no plot (one with years in
+    // its tip names has a root-to-tip plot: testRootToTipNames)
+    var plain = forester.parseNewHampshire('((A:1,B:2):1,(C:1,D:3):2);');
     forester.captureDivergence(plain);
     if (forester.clockPlotKind(plain) !== null || forester.clockPlotData(plain) !== null) {
-        return fail('a plain Newick tree: no plot');
+        return fail('a plain Newick tree without dates: no plot');
     }
     if (forester.clockPlotKind(null) !== null) {
         return fail('no tree: no plot');
@@ -518,8 +519,8 @@ function testRootToTipAges() {
         n.date = {value: ages[n.name], unit: 'mya'};
     });
     var d = forester.clockPlotData(t);
-    if (!d || d.kind !== 'root-to-tip' || d.forward !== false || d.unit !== 'mya') {
-        return fail('ages: the dates run the other way', d && [d.kind, d.forward, d.unit]);
+    if (!d || d.kind !== 'root-to-tip' || d.forward !== false || d.unit !== 'mya' || d.calendar !== false) {
+        return fail('ages: the dates run the other way, and are no calendar', d && [d.kind, d.forward, d.unit, d.calendar]);
     }
     var f = d.fit;
     if (!close(f.slope, -0.0105) || !close(f.rate, 0.0105) || !close(f.r2, 0.63) || !close(f.intercept, 0.061)) {
@@ -531,11 +532,77 @@ function testRootToTipAges() {
     return true;
 }
 
+// Christian, 2026-10-03: a tip dated only by its NAME counts. The same tree
+// with its dates in the names: a year alone is read as mid-year (2000 ->
+// 2000.5), and B's full date, 2 July 2001, is the middle of a non-leap year
+// exactly. Every date shifts by 0.5, so the slope and R2 stand, the
+// intercept moves by 0.0105 x 0.5 and the root by the line by 0.5:
+//
+//   intercept 0.04 - 0.0105 x 2002.5 = -20.98625
+//   the line reaches the root (0) at 20.98625 / 0.0105 = 1998.690476...
+function testRootToTipNames() {
+    var t = forester.parseNewHampshire('((A_2000:0.01,B|2001-07-02:0.03)X:0.005,(C_2002:0.02,D_2003:0.06,E_2004:0.04)Y:0.01);');
+    forester.captureDivergence(t);
+    if (forester.clockPlotKind(t) !== 'root-to-tip') {
+        return fail('dates in the tip names: a root-to-tip plot', forester.clockPlotKind(t));
+    }
+    var d = forester.clockPlotData(t);
+    if (d.fromNames !== 5 || d.ambiguousNames !== 0 || d.calendar !== true || d.forward !== true || d.unit !== null) {
+        return fail('five tips dated by their names, none ambiguous, calendar years, no stated unit',
+            [d.fromNames, d.ambiguousNames, d.calendar, d.forward, d.unit]);
+    }
+    var dates = d.points.map(function (p) { return p.node.name.charAt(0) + ' ' + p.date; }).sort().join(', ');
+    if (dates !== 'A 2000.5, B 2001.5, C 2002.5, D 2003.5, E 2004.5') {
+        return fail('a year alone is mid-year; 2 July 2001 is mid-year exactly', dates);
+    }
+    var f = d.fit;
+    if (!f || !close(f.slope, 0.0105) || !close(f.r2, 0.63) || !close(f.intercept, -20.98625) || !close(f.rootDate, 20.98625 / 0.0105)) {
+        return fail('slope 0.0105, R2 0.63, intercept -20.98625, the root by the line at 1998.690', f && [f.slope, f.r2, f.intercept, f.rootDate]);
+    }
+    // a date the file states wins over the one in the name
+    var stated = forester.parseNexus('#NEXUS\nBegin trees;\ntree T = [&R] ((A_2000[&num_date=1999]:0.01,B_2001:0.03)X:0.005,'
+        + '(C_2002:0.02,D_2003:0.06,E_2004:0.04)Y:0.01);\nEnd;\n')[0];
+    forester.captureDivergence(stated);
+    var s = forester.clockPlotData(stated);
+    var a = s && s.points.filter(function (p) { return p.node.name === 'A_2000'; })[0];
+    if (!s || s.fromNames !== 4 || !a || a.date !== 1999) {
+        return fail('A: the stated 1999, not the name\'s 2000.5; the other four by their names', s && [s.fromNames, a && a.date]);
+    }
+    // an ancestor's name dates nothing
+    var xn = forester.parseNewHampshire('((A_2000:0.01,B_2001:0.03)X_1999:0.005,(C_2002:0.02,D_2003:0.06,E_2004:0.04)Y:0.01);');
+    forester.captureDivergence(xn);
+    if (forester.clockPlotKind(xn) !== 'root-to-tip' || forester.clockPlotData(xn).points.length !== 5) {
+        return fail('an ancestor named with a year is not dated by it', forester.clockPlotKind(xn));
+    }
+    // one tip with no date in the file and none in its name: refused, not dropped
+    var gap = forester.parseNewHampshire('((A_2000:0.01,B_2001:0.03)X:0.005,(C:0.02,D_2003:0.06,E_2004:0.04)Y:0.01);');
+    forester.captureDivergence(gap);
+    if (forester.clockPlotKind(gap) !== null) {
+        return fail('one tip undated by file and name: no plot', forester.clockPlotKind(gap));
+    }
+    // a day/month-ambiguous numeric date is read day first and counted:
+    // 03/04/2002 is 3 April, day 93 of a non-leap year
+    var amb = forester.parseNewHampshire('((A_2000:0.01,B_2001:0.03)X:0.005,(C_03/04/2002:0.02,D_2003:0.06,E_2004:0.04)Y:0.01);');
+    forester.captureDivergence(amb);
+    var ad = forester.clockPlotData(amb);
+    var c = ad && ad.points.filter(function (p) { return p.node.name === 'C_03/04/2002'; })[0];
+    if (!ad || ad.fromNames !== 5 || ad.ambiguousNames !== 1 || !c || !close(c.date, 2002 + (92.5 / 365))) {
+        return fail('one ambiguous name, read day first: 3 April 2002', ad && [ad.fromNames, ad.ambiguousNames, c && c.date]);
+    }
+    // a tree with Time and Div reads no names
+    var k1 = forester.clockPlotData(build());
+    if (k1.fromNames !== 0 || k1.ambiguousNames !== 0 || k1.calendar !== true) {
+        return fail('kind 1: no names read, calendar years by the unit', [k1.fromNames, k1.ambiguousNames, k1.calendar]);
+    }
+    return true;
+}
+
 console.log('clock plot');
 runTest('which trees have one        : ', testRule);
 runTest('root-to-tip: which trees    : ', testRootToTipRule);
 runTest('root-to-tip, by hand        : ', testRootToTipData);
 runTest('root-to-tip ages            : ', testRootToTipAges);
+runTest('root-to-tip by the names    : ', testRootToTipNames);
 runTest('the whole tree, by hand     : ', testWholeTree);
 runTest('ancestors take no part      : ', testAncestorsTakeNoPart);
 runTest('the view of a clade         : ', testClade);

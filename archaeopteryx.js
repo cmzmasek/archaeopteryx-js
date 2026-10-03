@@ -11410,7 +11410,7 @@ function (root, d3, forester, phyloXml) {
     }
 
     function layClockPlot(cp, data) {
-        let calendar = data.forward && !!_timeInfo && _timeInfo.type === 'calendar';
+        let calendar = data.calendar;
         let rootToTip = data.kind === 'root-to-tip';
         cp.internalRow.style.display = rootToTip ? 'none' : '';
         let shown = data.points.filter(function (p) {
@@ -11527,6 +11527,12 @@ function (root, d3, forester, phyloXml) {
             : '')
             + (rootToTip
                 ? 'Divergence here is each tip’s distance from the root along the branch lengths the file states; only the tips are dated. '
+                : '')
+            + (data.fromNames > 0
+                ? (data.fromNames === 1 ? 'One tip is dated by its name' : countNumber(data.fromNames) + ' tips are dated by their names')
+                    + ' (a year alone is taken as mid-year'
+                    + (data.ambiguousNames > 0 ? '; ' + countNumber(data.ambiguousNames) + ' with day and month ambiguous, read day first' : '')
+                    + '). '
                 : '')
             + 'The line is fitted to the tips only. Tips share ancestry, so R² describes the fit and is no test.'
             + ' Click a point to select its node; drag to select the tips in a box.';

@@ -7267,12 +7267,15 @@
     //    root. Tips only. This is the tree a clock plot is wanted for most --
     //    is there a signal worth dating? -- and the one whose answer depends
     //    on its root. TempEst's plot. A tip is dated by what the file STATES
-    //    for it (a phyloXML <date>, a num_date annotation); a date in its
-    //    name does not count, here as nowhere else in the model. Every tip
-    //    must be dated and every branch must state a length: a tip with
-    //    either missing has no point, and a plot that drops tips silently
-    //    answers a different question than it was asked. A clock-model tree
-    //    (a rate on every branch) is never this kind: its lengths are time.
+    //    for it (a phyloXML <date>, a num_date annotation), or else by the
+    //    date its NAME carries, read by the label-date parser both programs
+    //    anchor BEAST heights with (Christian, 2026-10-03: names count, as
+    //    TempEst reads them; a year alone is mid-year). An ancestor is never
+    //    dated by its name. Every tip must be dated and every branch must
+    //    state a length: a tip with either missing has no point, and a plot
+    //    that drops tips silently answers a different question than it was
+    //    asked. A clock-model tree (a rate on every branch) is never this
+    //    kind: its lengths are time.
     //
     // In both, the plot is offered when its LINE can be drawn: three tips or
     // more, and not all of them on one date. A tree sampled at one moment has
@@ -7289,8 +7292,22 @@
     // date is the only estimate.
     const CLOCK_PLOT_MIN_TIPS = 3;
 
-    // Kind 2 of THE RULE, before the tips are counted: dated tips, undated
-    // ancestors, a length on every branch, no clock rates.
+    // A tip's date on a root-to-tip tree: the one the file states, else the
+    // one its name carries (forester.parseTipLabelDate: the rightmost date in
+    // the label; a year alone is mid-year; an ambiguous numeric date is read
+    // day first). {value, fromName, ambiguous}, or null for no date at all.
+    function rootToTipDate(n) {
+        let d = auspiceNodeDate(n);
+        if (d !== null) {
+            return {value: d, fromName: false, ambiguous: false};
+        }
+        let m = (typeof n.name === 'string' && n.name.length > 0) ? forester.parseTipLabelDate(n.name) : null;
+        return m ? {value: m.decimalYear, fromName: true, ambiguous: m.ambiguous === true} : null;
+    }
+
+    // Kind 2 of THE RULE, before the tips are counted: dated tips (by the
+    // file or by their names), undated ancestors (by the file; a name dates
+    // no ancestor), a length on every branch, no clock rates.
     function isRootToTipTree(root) {
         if (!root || root._divergenceFromRates === true || !everyLengthWasStated(root)) {
             return false;
@@ -7300,8 +7317,7 @@
             if (!ok) {
                 return;
             }
-            let dated = auspiceNodeDate(n) !== null;
-            ok = (n.children && n.children.length > 0) ? !dated : dated;
+            ok = (n.children && n.children.length > 0) ? auspiceNodeDate(n) === null : rootToTipDate(n) !== null;
         });
         return ok;
     }
@@ -7338,6 +7354,9 @@
         if (kind === null) {
             return null;
         }
+        let dateOf = kind === 'root-to-tip' ? function (n) {
+            return rootToTipDate(n).value;    // every tip has one: the kind says so
+        } : auspiceNodeDate;
         let tips = 0;
         let first = null;
         let differ = false;
@@ -7346,7 +7365,7 @@
                 return;
             }
             ++tips;
-            let d = auspiceNodeDate(n);
+            let d = dateOf(n);
             if (first === null) {
                 first = d;
             } else if (d !== first) {
@@ -7419,6 +7438,12 @@
      *             and Div, a root-to-tip tree's stated branch length unit,
      *             or null
      *   fromRates whether the divergence is time x clock rate
+     *   calendar  whether the dates are calendar years: their unit says so,
+     *             or they were read off the tips' names
+     *   fromNames how many tips are dated by their names (a root-to-tip
+     *             tree; 0 otherwise)
+     *   ambiguousNames how many of those names carry a day/month-ambiguous
+     *             numeric date, read day first
      *   points    [{node, date, div, tip}] in preorder; the tips'
      *             `residual` is their divergence less the line's. On a
      *             root-to-tip tree the tips only: no ancestor has a date
@@ -7454,23 +7479,38 @@
         let points = [];
         let xs = [];
         let ys = [];
+        let fromNames = 0;
+        let ambiguousNames = 0;
         forester.preOrderTraversalAll(top, function (n) {
+            let tip = !(n.children && n.children.length > 0);
             let date = auspiceNodeDate(n);
+            if (rootToTip && tip && date === null) {
+                let named = rootToTipDate(n);    // every tip has one: the kind says so
+                date = named ? named.value : null;
+                if (named && named.fromName) {
+                    ++fromNames;
+                    if (named.ambiguous) {
+                        ++ambiguousNames;
+                    }
+                }
+            }
             let div = divOf(n);
             if (date === null || div === null) {
                 return;    // an undated ancestor (root-to-tip), or a guard, not a rule
             }
-            let tip = !(n.children && n.children.length > 0);
             points.push({node: n, date: date, div: div, tip: tip});
             if (tip) {
                 xs.push(date);
                 ys.push(div);
             }
         });
+        let info = forester.timeAxisInfo(treeRoot);
         // a root-to-tip tree has no dated pair to read the direction off:
         // its dates are calendar dates unless their unit says ages
-        let forward = rootToTip ? forester.timeAxisInfo(treeRoot).type !== 'geologic'
-            : timeIncreasesTowardTips(treeRoot);
+        let forward = rootToTip ? info.type !== 'geologic' : timeIncreasesTowardTips(treeRoot);
+        // calendar years: the dates' unit says so, or they were read off the
+        // tips' names, which carry no other kind of date
+        let calendar = forward && (info.type === 'calendar' || (rootToTip && info.type === null && fromNames > 0));
         let root = {node: top, date: auspiceNodeDate(top), div: divOf(top)};
         let fit = forester.clockRegression(xs, ys);
         if (fit) {
@@ -7491,6 +7531,9 @@
             unit: dateUnitOf(treeRoot),
             divUnit: rootToTip ? lengthUnit : DIVERGENCE_LENGTH_UNIT,
             fromRates: !rootToTip && treeRoot._divergenceFromRates === true && !recordsDivergence(treeRoot),
+            calendar: calendar,
+            fromNames: fromNames,
+            ambiguousNames: ambiguousNames,
             points: points,
             root: root,
             fit: fit

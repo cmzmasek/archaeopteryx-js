@@ -15,10 +15,13 @@ users see a change only when a version is cut.
   tips only (**Internal nodes** is not offered), **Root date, in the tree**
   says `none`, since the tree states no root date, and **Rate** is in the
   tree's own branch length unit, where it states one. Every tip must be dated
-  and every branch must state a length; a date in a tip's name does not
-  count. `forester.clockPlotKind` answers `'root-to-tip'` for such a tree;
-  `forester.clockPlotData` gains `divUnit` (the divergence's unit, or `null`)
-  and its `root.date` is `null` there.
+  — by the file, or by the date in its **name**, read as TempEst reads it:
+  the rightmost date in the label, a year alone taken as mid-year — and
+  every branch must state a length. The swine H1 demo (`?tree=swh1`), whose
+  strain names carry their years, has the plot. `forester.clockPlotKind`
+  answers `'root-to-tip'` for such a tree; `forester.clockPlotData` gains
+  `divUnit` (the divergence's unit, or `null`), `calendar`, `fromNames` and
+  `ambiguousNames`, and its `root.date` is `null` there.
 
 ## 3.23.0 — 2026-10-02
 
