@@ -5,8 +5,9 @@
 // the auto-hide work was wiring, not arithmetic, and the arithmetic is the
 // only part node can test today.
 //
-//   node test/browser/run.js            every case
-//   node test/browser/run.js --quick    one case per harness
+//   node test/browser/run.js                 every case
+//   node test/browser/run.js --quick         one case per harness
+//   node test/browser/run.js clock_plot ...  the named harnesses, every case
 //   CHROME=<path> node test/browser/run.js
 const {spawn} = require('child_process');
 const http = require('http');
@@ -15,6 +16,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const QUICK = process.argv.includes('--quick');
+const ONLY = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 
 // harness -> the query strings to run it with. The first of each is the one
 // --quick keeps, so it must be the case that exercises the most.
@@ -49,7 +51,7 @@ const CASES = {
     'label_properties': ['', '?figure=1', '?config=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'genes': ['', '?config=1', '?radial=1', '?domains=1'],
-    'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1', '?host=1', '?clades=1', '?same=1'],
+    'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1', '?host=1', '?clades=1', '?same=1', '?rtt=1'],
     'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };
 
@@ -110,7 +112,15 @@ async function main() {
     const server = await serve();
     const port = server.address().port;
     let ran = 0, bad = 0;
+    const unknown = ONLY.filter((h) => !CASES[h]);
+    if (unknown.length) {
+        console.log('no such harness: ' + unknown.join(', '));
+        process.exit(2);
+    }
     for (const harness of Object.keys(CASES)) {
+        if (ONLY.length && !ONLY.includes(harness)) {
+            continue;
+        }
         const queries = QUICK ? CASES[harness].slice(0, 1) : CASES[harness];
         for (const q of queries) {
             const label = harness + (q || '');

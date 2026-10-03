@@ -933,11 +933,23 @@ ancestors' points, each at its own date and divergence; the panel opens
 without them, since the line is the tips' and a deep root would crowd them
 into a corner.
 
-The button is offered on a tree that has **Time | Div** and whose line can
-be drawn: three tips or more, not all on one date. A tree sampled at one
-moment has no slope to estimate. (A tree whose branch lengths are divergence
-and whose tips alone are dated — the tree a root-to-tip plot is run on
-*before* dating — has no plot yet.)
+The button is offered on two kinds of tree, whenever the line can be drawn
+(three tips or more, not all on one date; a tree sampled at one moment has
+no slope to estimate):
+
+- a tree that has **Time | Div**: every node is dated and has a divergence,
+  so the ancestors can be shown too;
+- a tree whose **branch lengths are its divergence and whose tips alone are
+  dated** — the tree a root-to-tip plot is run on *before* dating, TempEst's
+  case. A tip's divergence is the sum of the branch lengths from the root;
+  the plot has tips only (**Internal nodes** is not offered, since no
+  ancestor is dated); **Root date, in the tree** says `none`, since the tree
+  states no root date, and **Rate** is in the tree's own branch length unit,
+  where it states one. A tip's date is what the file states for it (a
+  phyloXML `<date>`, a `num_date` annotation); a date written into a tip's
+  name does not count. Every tip must be dated and every branch must have a
+  length: a tree with a gap is not offered the plot, rather than plotted with
+  tips missing.
 
 # forester.js
 forester.js is a general suite for dealing with phylogenetic trees.
@@ -2599,15 +2611,20 @@ deliberate difference.)
 ### The clock plot
 
 **Model** (`forester.js`, pure). `forester.clockPlotKind(phy)` answers
-`'divergence'` or `null`: the tree has Time and Div
-(`forester.hasTimeAndDivergence`) and three tips or more, not all on one
-date. It is asked of the **tree**, never of the view. A second kind,
-`'root-to-tip'` — divergence branch lengths, dated tips, no dated ancestors —
-is described beside the function and not built. `forester.clockPlotData(phy,
-view)` returns `{kind, forward, unit, fromRates, points, root, fit}`: a point
+`'divergence'`, `'root-to-tip'` or `null`: `'divergence'` where the tree has
+Time and Div (`forester.hasTimeAndDivergence`); `'root-to-tip'` where every
+tip states a date, no ancestor does, every branch states a length and no
+branch states a clock rate (a clock-model tree's lengths are time) — and in
+both cases three tips or more, not all on one date. It is asked of the
+**tree**, never of the view. `forester.clockPlotData(phy, view)` returns
+`{kind, forward, unit, divUnit, fromRates, points, root, fit}`: a point
 `{node, date, div, tip}` per node of the view (a tip also carries its
-`residual`), `forward` false where the dates are ages, `fromRates` true where
-the divergence is time × clock rate, and `fit` =
+`residual`; on a root-to-tip tree the tips only, their `div` the sum of the
+branch lengths from the tree's root), `forward` false where the dates are
+ages (on a root-to-tip tree: where their unit is geologic), `divUnit` the
+divergence's unit (`subs/site` on a Time | Div tree, a root-to-tip tree's
+stated branch length unit, or `null`), `fromRates` true where the divergence
+is time × clock rate, `root.date` `null` on a root-to-tip tree, and `fit` =
 `forester.clockRegression(dates, divergences)` over the tips — ordinary least
 squares about the means, `{n, slope, intercept, r2}` — plus `rate` (the slope
 in the direction time runs) and `rootDate` (where the line reaches the view

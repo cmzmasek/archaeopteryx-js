@@ -7,6 +7,19 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+- **Clock plot on a divergence tree with dated tips** — the root-to-tip plot
+  of TempEst, run *before* dating. A tree whose branch lengths are its
+  divergence and whose tips alone carry a date (a phyloXML `<date>`, a
+  `num_date` annotation) is now offered the **Clock plot**: a tip's
+  divergence is the sum of the branch lengths from the root, the plot has
+  tips only (**Internal nodes** is not offered), **Root date, in the tree**
+  says `none`, since the tree states no root date, and **Rate** is in the
+  tree's own branch length unit, where it states one. Every tip must be dated
+  and every branch must state a length; a date in a tip's name does not
+  count. `forester.clockPlotKind` answers `'root-to-tip'` for such a tree;
+  `forester.clockPlotData` gains `divUnit` (the divergence's unit, or `null`)
+  and its `root.date` is `null` there.
+
 ## 3.23.0 — 2026-10-02
 
 The clock plot: on a tree that states both time and divergence, a panel

@@ -11171,10 +11171,12 @@ function (root, d3, forester, phyloXml) {
             row.appendChild(input);
             row.appendChild(span);
             options.appendChild(row);
-            return input;
+            return row;
         };
         check('Regression line', 'line', 'to show/hide the least-squares line through the tips');
-        check('Internal nodes', 'internal', 'to show/hide the internal nodes: their dates were inferred,'
+        // on a root-to-tip tree no ancestor is dated: nothing to show, so the
+        // choice is not offered (layClockPlot hides it by the data's kind)
+        let internalRow = check('Internal nodes', 'internal', 'to show/hide the internal nodes: their dates were inferred,'
             + ' and they take no part in the line');
         let deselect = document.createElement('button');
         deselect.type = 'button';
@@ -11197,7 +11199,7 @@ function (root, d3, forester, phyloXml) {
         body.appendChild(note);
 
         _clockPlot = {dialog: shell.dialog, svg: svg, axes: axes, internal: internal, line: line, tips: tips,
-            ring: ring, box: box, stats: stats, note: note, deselect: deselect,
+            ring: ring, box: box, stats: stats, note: note, deselect: deselect, internalRow: internalRow,
             data: null, marks: [], seen: null, hover: null, lays: 0, x: null, y: null};
         // the shell's close control, and anything else that closes the dialog
         let closed = function () {
@@ -11409,6 +11411,8 @@ function (root, d3, forester, phyloXml) {
 
     function layClockPlot(cp, data) {
         let calendar = data.forward && !!_timeInfo && _timeInfo.type === 'calendar';
+        let rootToTip = data.kind === 'root-to-tip';
+        cp.internalRow.style.display = rootToTip ? 'none' : '';
         let shown = data.points.filter(function (p) {
             return p.tip || _clockPlotOptions.internal;
         });
@@ -11464,7 +11468,7 @@ function (root, d3, forester, phyloXml) {
         seg('aptx-clock-frame', left, top, left, bottom);
         let unit = data.unit && !calendar ? ' (' + data.unit + ')' : '';
         text('aptx-clock-title', (data.forward ? 'Date' : 'Age') + unit, (left + right) / 2, CLOCK_PLOT_H - 6, 'middle');
-        let yt = text('aptx-clock-title', 'Divergence (subs/site)', 0, 0, 'middle');
+        let yt = text('aptx-clock-title', 'Divergence' + (data.divUnit ? ' (' + data.divUnit + ')' : ''), 0, 0, 'middle');
         yt.setAttribute('transform', 'translate(12,' + ((top + bottom) / 2) + ') rotate(-90)');
 
         // --- the points: ancestors under the line, tips over it
@@ -11506,12 +11510,13 @@ function (root, d3, forester, phyloXml) {
         let tipCount = data.points.reduce(function (n, p) {
             return n + (p.tip ? 1 : 0);
         }, 0);
-        let per = ' subs/site per ' + (calendar ? 'year' : (data.unit || 'unit of time'));
+        let per = (data.divUnit ? ' ' + data.divUnit : '') + ' per ' + (calendar ? 'year' : (data.unit || 'unit of time'));
         if (fit) {
             treePropRow(cp.stats, 'Rate', clockNumber(fit.rate) + per);
             treePropRow(cp.stats, 'Root date, by the line', fit.rootDate === null
                 ? 'none: divergence does not rise with time' : clockDate(fit.rootDate, calendar));
-            treePropRow(cp.stats, 'Root date, in the tree', clockDate(data.root.date, calendar));
+            treePropRow(cp.stats, 'Root date, in the tree', data.root.date === null
+                ? 'none: only the tips are dated' : clockDate(data.root.date, calendar));
             treePropRow(cp.stats, 'R²', fit.r2 === null ? 'none: every tip has one divergence' : clockNumber(fit.r2));
         } else {
             treePropRow(cp.stats, 'Line', 'none: it takes three tips, not all on one date');
@@ -11520,6 +11525,9 @@ function (root, d3, forester, phyloXml) {
         cp.note.textContent = (data.fromRates
             ? 'Divergence here is each branch’s time × its clock rate: the points show the model’s rates, not a measurement of their own. '
             : '')
+            + (rootToTip
+                ? 'Divergence here is each tip’s distance from the root along the branch lengths the file states; only the tips are dated. '
+                : '')
             + 'The line is fitted to the tips only. Tips share ancestry, so R² describes the fit and is no test.'
             + ' Click a point to select its node; drag to select the tips in a box.';
         // what was laid down, for the browser harness: read here, where it is

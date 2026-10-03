@@ -7254,18 +7254,25 @@
     // a panel linked to the tree, named "Clock plot"; JS only until the
     // design is final.
     //
-    // THE RULE, designed for two kinds of tree, the first of them built:
+    // THE RULE, designed for two kinds of tree (both built; the second on
+    // Christian's word, 2026-10-03):
     //
     // 1. 'divergence' -- a tree with Time and Div (hasTimeAndDivergence): each
     //    node states a date and a divergence from the root, recorded on it or
     //    summed from each branch's time x its clock rate. Every node is a
     //    point; which of the two layouts is on screen does not matter.
-    // 2. 'root-to-tip' (NOT BUILT) -- a tree whose branch lengths are
-    //    divergence and whose tips are dated, with no dates on its ancestors
-    //    (it is not a time tree): a tip's divergence is the sum of the stated
-    //    lengths from the root. Tips only. This is the tree a clock plot is
-    //    wanted for most -- is there a signal worth dating? -- and the one
-    //    whose answer depends on its root.
+    // 2. 'root-to-tip' -- a tree whose branch lengths are its divergence and
+    //    whose tips are dated, with no date on any ancestor (it is not a time
+    //    tree): a tip's divergence is the sum of the stated lengths from the
+    //    root. Tips only. This is the tree a clock plot is wanted for most --
+    //    is there a signal worth dating? -- and the one whose answer depends
+    //    on its root. TempEst's plot. A tip is dated by what the file STATES
+    //    for it (a phyloXML <date>, a num_date annotation); a date in its
+    //    name does not count, here as nowhere else in the model. Every tip
+    //    must be dated and every branch must state a length: a tip with
+    //    either missing has no point, and a plot that drops tips silently
+    //    answers a different question than it was asked. A clock-model tree
+    //    (a rate on every branch) is never this kind: its lengths are time.
     //
     // In both, the plot is offered when its LINE can be drawn: three tips or
     // more, and not all of them on one date. A tree sampled at one moment has
@@ -7277,17 +7284,58 @@
     // an observation; an ancestor's was inferred, usually with a clock, and
     // counting it would have the estimate confirm itself. The line is not
     // forced through the root, so the date it reaches the root's divergence
-    // at can be held against the date the tree states for the root.
+    // at can be held against the date the tree states for the root -- where
+    // the tree states one; a root-to-tip tree does not, and there the line's
+    // date is the only estimate.
     const CLOCK_PLOT_MIN_TIPS = 3;
+
+    // Kind 2 of THE RULE, before the tips are counted: dated tips, undated
+    // ancestors, a length on every branch, no clock rates.
+    function isRootToTipTree(root) {
+        if (!root || root._divergenceFromRates === true || !everyLengthWasStated(root)) {
+            return false;
+        }
+        let ok = true;
+        forester.preOrderTraversalAll(root, function (n) {
+            if (!ok) {
+                return;
+            }
+            let dated = auspiceNodeDate(n) !== null;
+            ok = (n.children && n.children.length > 0) ? !dated : dated;
+        });
+        return ok;
+    }
+
+    // Each node's distance from the root along the stated branch lengths:
+    // a root-to-tip tree's divergence.
+    function rootToTipDistances(root) {
+        let dist = new Map();
+        (function walk(n, d) {
+            dist.set(n, d);
+            let children = n.children;
+            if (children) {
+                for (let i = 0; i < children.length; ++i) {
+                    let len = children[i].branch_length;
+                    walk(children[i], d + ((typeof len === 'number' && isFinite(len)) ? len : 0));
+                }
+            }
+        }(root, 0));
+        return dist;
+    }
 
     /**
      * Which clock plot the tree has, or null for none (see THE RULE above).
      *
      * @param phy the tree
-     * @returns {string|null} 'divergence', or null
+     * @returns {string|null} 'divergence', 'root-to-tip', or null
      */
     forester.clockPlotKind = function (phy) {
-        if (!phy || !forester.hasTimeAndDivergence(phy)) {
+        if (!phy) {
+            return null;
+        }
+        let kind = forester.hasTimeAndDivergence(phy) ? 'divergence'
+            : (isRootToTipTree(forester.getTreeRoot(phy)) ? 'root-to-tip' : null);
+        if (kind === null) {
             return null;
         }
         let tips = 0;
@@ -7305,7 +7353,7 @@
                 differ = true;
             }
         });
-        return (tips >= CLOCK_PLOT_MIN_TIPS && differ) ? 'divergence' : null;
+        return (tips >= CLOCK_PLOT_MIN_TIPS && differ) ? kind : null;
     };
 
     /**
@@ -7363,14 +7411,19 @@
      * @param view the tree or clade to plot (the tree, a node, or the
      *        viewer's subtree root); the whole tree where none is given
      * @returns {object|null} null where the tree has no clock plot; else
-     *   kind      'divergence'
+     *   kind      'divergence' or 'root-to-tip'
      *   forward   whether the dates increase toward the tips (calendar
      *             dates); false for ages
      *   unit      the dates' unit as the tree states it, or null
+     *   divUnit   the divergence's unit: 'subs/site' for a tree with Time
+     *             and Div, a root-to-tip tree's stated branch length unit,
+     *             or null
      *   fromRates whether the divergence is time x clock rate
      *   points    [{node, date, div, tip}] in preorder; the tips'
-     *             `residual` is their divergence less the line's
-     *   root      {node, date, div}: the top of the view
+     *             `residual` is their divergence less the line's. On a
+     *             root-to-tip tree the tips only: no ancestor has a date
+     *   root      {node, date, div}: the top of the view; `date` null on a
+     *             root-to-tip tree
      *   fit       forester.clockRegression over the tips, with
      *             rate      the slope in the direction time runs: divergence
      *                       per unit of time (negative where the tips'
@@ -7391,14 +7444,21 @@
         if (view) {
             top = (!view.parent && view.children && view.children.length === 1) ? view.children[0] : view;
         }
+        // a root-to-tip tree's divergence is the path from the TREE's root,
+        // in the view of a clade too: the clade's top then has one as well
+        let rootToTip = kind === 'root-to-tip';
+        let dist = rootToTip ? rootToTipDistances(treeRoot) : null;
+        let divOf = rootToTip ? function (n) {
+            return dist.get(n);
+        } : auspiceNodeDiv;
         let points = [];
         let xs = [];
         let ys = [];
         forester.preOrderTraversalAll(top, function (n) {
             let date = auspiceNodeDate(n);
-            let div = auspiceNodeDiv(n);
+            let div = divOf(n);
             if (date === null || div === null) {
-                return;    // not on a tree with Time and Div; a guard, not a rule
+                return;    // an undated ancestor (root-to-tip), or a guard, not a rule
             }
             let tip = !(n.children && n.children.length > 0);
             points.push({node: n, date: date, div: div, tip: tip});
@@ -7407,8 +7467,11 @@
                 ys.push(div);
             }
         });
-        let forward = timeIncreasesTowardTips(treeRoot);
-        let root = {node: top, date: auspiceNodeDate(top), div: auspiceNodeDiv(top)};
+        // a root-to-tip tree has no dated pair to read the direction off:
+        // its dates are calendar dates unless their unit says ages
+        let forward = rootToTip ? forester.timeAxisInfo(treeRoot).type !== 'geologic'
+            : timeIncreasesTowardTips(treeRoot);
+        let root = {node: top, date: auspiceNodeDate(top), div: divOf(top)};
         let fit = forester.clockRegression(xs, ys);
         if (fit) {
             fit.rate = forward ? fit.slope : -fit.slope;
@@ -7420,11 +7483,14 @@
                 }
             }
         }
+        let lengthUnit = (phy !== treeRoot && typeof phy.branch_length_unit === 'string'
+            && phy.branch_length_unit.trim().length > 0) ? phy.branch_length_unit.trim() : null;
         return {
             kind: kind,
             forward: forward,
             unit: dateUnitOf(treeRoot),
-            fromRates: treeRoot._divergenceFromRates === true && !recordsDivergence(treeRoot),
+            divUnit: rootToTip ? lengthUnit : DIVERGENCE_LENGTH_UNIT,
+            fromRates: !rootToTip && treeRoot._divergenceFromRates === true && !recordsDivergence(treeRoot),
             points: points,
             root: root,
             fit: fit

@@ -129,6 +129,38 @@ function agesTree() {
     return t;
 }
 
+// Kind 2 of the rule, TempEst's case: a tree whose branch lengths are its
+// divergence and whose TIPS alone are dated (a num_date on each, as Auspice
+// writes one; nothing on the ancestors). A tip's divergence is the sum of
+// the lengths from the root:
+//
+//   tip   date   path from the root
+//   A     2000   0.005 + 0.01 = 0.015
+//   B     2001   0.005 + 0.03 = 0.035
+//   C     2002   0.01 + 0.02 = 0.03
+//   D     2003   0.01 + 0.06 = 0.07
+//   E     2004   0.01 + 0.04 = 0.05
+//
+//   means 2002 and 0.04; Sxx = 10, Sxy = 0.105, Syy = 0.00175
+//   slope 0.0105, intercept 0.04 - 0.0105 x 2002 = -20.981
+//   R2 = 0.105^2 / (10 x 0.00175) = 0.63
+//   the line reaches the root (0) at 20.981 / 0.0105 = 1998.190476...
+//
+// and for the clade Y = (C, D, E), itself 0.01 from the root:
+//
+//   means 2003 and 0.05; Sxx = 2, Sxy = 0.02, Syy = 0.0008
+//   slope 0.01, intercept 0.05 - 0.01 x 2003 = -19.98; R2 = 0.0004 / 0.0016 = 0.25
+//   the line reaches Y's divergence (0.01) at (19.98 + 0.01) / 0.01 = 1999
+var ROOT_TO_TIP_NEXUS = '#NEXUS\nBegin trees;\ntree T = [&R] ((A[&num_date=2000]:0.01,B[&num_date=2001]:0.03)X:0.005,'
+    + '(C[&num_date=2002]:0.02,D[&num_date=2003]:0.06,E[&num_date=2004]:0.04)Y:0.01);\nEnd;\n';
+
+function rootToTipTree(nexus) {
+    var t = forester.parseNexus(nexus || ROOT_TO_TIP_NEXUS)[0];
+    forester.captureDivergence(t);
+    forester.convertLoadedHeightsToDates([t]);
+    return t;
+}
+
 function testRule() {
     var whole = build();
     if (!forester.hasTimeAndDivergence(whole) || forester.clockPlotKind(whole) !== 'divergence') {
@@ -168,6 +200,7 @@ function testRule() {
     if (forester.clockPlotKind(gap) !== null || forester.clockPlotData(gap) !== null) {
         return fail('no Time | Div: no plot, whatever the tips state', forester.clockPlotKind(gap));
     }
+    // a plain Newick tree: the years in its tip names date nothing
     var plain = forester.parseNewHampshire('((A_2000:1,B_2001:2):1,(C_2002:1,D_2003:3):2);');
     forester.captureDivergence(plain);
     if (forester.clockPlotKind(plain) !== null || forester.clockPlotData(plain) !== null) {
@@ -369,8 +402,140 @@ function testMonthTicks() {
     return true;
 }
 
+// Which trees are kind 2: dated tips, undated ancestors, a length on every
+// branch, no clock rates -- and the line's own rule on top.
+function testRootToTipRule() {
+    var t = rootToTipTree();
+    if (forester.hasTimeAndDivergence(t)) {
+        return fail('control: the ancestors are undated, so no Time | Div');
+    }
+    if (forester.clockPlotKind(t) !== 'root-to-tip') {
+        return fail('dated tips over divergence lengths: a root-to-tip plot', forester.clockPlotKind(t));
+    }
+    // one ancestor dated: neither kind (not a time tree, and not tips-only)
+    var dated = rootToTipTree();
+    named(dated, 'X').date = {value: 1999, unit: 'year'};
+    if (forester.clockPlotKind(dated) !== null || forester.clockPlotData(dated) !== null) {
+        return fail('one ancestor dated: no plot', forester.clockPlotKind(dated));
+    }
+    // one tip undated: refused, not dropped from the plot
+    var undated = rootToTipTree();
+    delete named(undated, 'C').date;
+    if (forester.clockPlotKind(undated) !== null || forester.clockPlotData(undated) !== null) {
+        return fail('one tip undated: no plot', forester.clockPlotKind(undated));
+    }
+    // one branch without a length
+    var gap = rootToTipTree(ROOT_TO_TIP_NEXUS.replace('C[&num_date=2002]:0.02', 'C[&num_date=2002]'));
+    if (named(gap, 'C').branch_length !== undefined) {
+        return fail('fixture: C has no length', named(gap, 'C').branch_length);
+    }
+    if (forester.clockPlotKind(gap) !== null) {
+        return fail('a branch without a length: no plot', forester.clockPlotKind(gap));
+    }
+    // the line's own rule: three tips, not all on one date
+    var two = rootToTipTree('#NEXUS\nBegin trees;\ntree T = [&R] (A[&num_date=2000]:0.01,B[&num_date=2001]:0.03);\nEnd;\n');
+    if (forester.clockPlotKind(two) !== null) {
+        return fail('two tips: no plot');
+    }
+    var same = rootToTipTree(ROOT_TO_TIP_NEXUS.replace(/num_date=200\d/g, 'num_date=2000'));
+    if (forester.clockPlotKind(same) !== null) {
+        return fail('every tip on one date: no plot');
+    }
+    // a clock-model tree is kind 1 and never this one: its lengths are time
+    if (forester.clockPlotKind(agesTree()) !== 'divergence') {
+        return fail('a clock-model tree keeps its Time | Div plot', forester.clockPlotKind(agesTree()));
+    }
+    // ...and one with a rate on every branch but no heights -- dated tips,
+    // undated ancestors -- is neither kind: not a time tree, and its lengths
+    // are still time, not divergence
+    var rated = rootToTipTree('#NEXUS\nBegin trees;\ntree T = [&R] ((A[&rate=0.01,num_date=2000]:2,B[&rate=0.01,num_date=2001]:1)[&rate=0.01]:2,'
+        + '(C[&rate=0.01,num_date=2002]:2.5,D[&rate=0.01,num_date=2003]:1)[&rate=0.01]:1);\nEnd;\n');
+    if (forester.getTreeRoot(rated)._divergenceFromRates !== true || forester.hasTimeAndDivergence(rated)) {
+        return fail('fixture: a rate on every branch, and no Time | Div', [forester.getTreeRoot(rated)._divergenceFromRates, forester.hasTimeAndDivergence(rated)]);
+    }
+    if (forester.clockPlotKind(rated) !== null) {
+        return fail('a clock rate on every branch: the lengths are time, so no root-to-tip plot', forester.clockPlotKind(rated));
+    }
+    return true;
+}
+
+function testRootToTipData() {
+    var t = rootToTipTree();
+    var d = forester.clockPlotData(t);
+    if (!d || d.kind !== 'root-to-tip' || d.forward !== true || d.unit !== 'year' || d.fromRates !== false || d.divUnit !== null) {
+        return fail('what the plot is: root-to-tip, calendar dates, no divergence unit stated', d && [d.kind, d.forward, d.unit, d.fromRates, d.divUnit]);
+    }
+    if (d.points.length !== 5 || !d.points.every(function (p) { return p.tip; })) {
+        return fail('the tips only: no ancestor is dated', d.points.length);
+    }
+    var byName = {};
+    d.points.forEach(function (p) { byName[p.node.name] = p; });
+    var want = [['A', 2000, 0.015], ['B', 2001, 0.035], ['C', 2002, 0.03], ['D', 2003, 0.07], ['E', 2004, 0.05]];
+    for (var i = 0; i < want.length; ++i) {
+        var p = byName[want[i][0]];
+        if (!p || p.date !== want[i][1] || !close(p.div, want[i][2])) {
+            return fail('tip ' + want[i][0] + ' at ' + want[i][1] + ', ' + want[i][2] + ' from the root', p && [p.date, p.div]);
+        }
+    }
+    if (d.root.node !== forester.getTreeRoot(t) || d.root.date !== null || d.root.div !== 0) {
+        return fail('the root: no date of its own, divergence 0', [d.root.date, d.root.div]);
+    }
+    var f = d.fit;
+    if (!f || f.n !== 5 || !close(f.slope, 0.0105) || !close(f.intercept, -20.981) || !close(f.r2, 0.63)) {
+        return fail('slope 0.0105, intercept -20.981, R2 0.63', f && [f.n, f.slope, f.intercept, f.r2]);
+    }
+    if (!close(f.rate, 0.0105) || !close(f.rootDate, 20.981 / 0.0105)) {
+        return fail('rate 0.0105; the root by the line at 1998.190', [f.rate, f.rootDate]);
+    }
+    // E: the line at 2004 is -20.981 + 21.042 = 0.061, and E is 0.05
+    if (!close(byName.E.residual, -0.011)) {
+        return fail('E lies 0.011 under the line', byName.E.residual);
+    }
+    // the view of Y: its own line, and its divergence is its path from the TREE's root
+    var c = forester.clockPlotData(t, named(t, 'Y'));
+    if (!c || c.points.length !== 3 || c.root.node !== named(t, 'Y') || c.root.div !== 0.01 || c.root.date !== null) {
+        return fail('the view of Y: three tips, Y 0.01 from the root and undated', c && [c.points.length, c.root.div, c.root.date]);
+    }
+    var cf = c.fit;
+    if (!cf || cf.n !== 3 || !close(cf.slope, 0.01) || !close(cf.intercept, -19.98) || !close(cf.r2, 0.25)) {
+        return fail('the clade\'s line: slope 0.01, intercept -19.98, R2 0.25', cf && [cf.n, cf.slope, cf.intercept, cf.r2]);
+    }
+    if (!close(cf.rootDate, 1999)) {
+        return fail('the clade\'s root by the line at 1999', cf.rootDate);
+    }
+    return true;
+}
+
+// Tips dated by AGE (a geologic unit, no dated pair to read the direction
+// off): time still runs toward the youngest tip, so the slope is negative
+// and the rate is reported positive.
+function testRootToTipAges() {
+    var t = rootToTipTree();
+    // A..E at 4, 3, 2, 1, 0 million years: 2000..2004 reflected, so the same
+    // sums with Sxy's sign flipped; intercept 0.04 + 0.0105 x 2 = 0.061
+    var ages = {A: 4, B: 3, C: 2, D: 1, E: 0};
+    forester.getAllExternalNodes(forester.getTreeRoot(t)).forEach(function (n) {
+        n.date = {value: ages[n.name], unit: 'mya'};
+    });
+    var d = forester.clockPlotData(t);
+    if (!d || d.kind !== 'root-to-tip' || d.forward !== false || d.unit !== 'mya') {
+        return fail('ages: the dates run the other way', d && [d.kind, d.forward, d.unit]);
+    }
+    var f = d.fit;
+    if (!close(f.slope, -0.0105) || !close(f.rate, 0.0105) || !close(f.r2, 0.63) || !close(f.intercept, 0.061)) {
+        return fail('slope -0.0105, rate +0.0105, R2 0.63, intercept 0.061', [f.slope, f.rate, f.r2, f.intercept]);
+    }
+    if (!close(f.rootDate, 0.061 / 0.0105)) {
+        return fail('the root by the line at 5.81 Ma', f.rootDate);
+    }
+    return true;
+}
+
 console.log('clock plot');
 runTest('which trees have one        : ', testRule);
+runTest('root-to-tip: which trees    : ', testRootToTipRule);
+runTest('root-to-tip, by hand        : ', testRootToTipData);
+runTest('root-to-tip ages            : ', testRootToTipAges);
 runTest('the whole tree, by hand     : ', testWholeTree);
 runTest('ancestors take no part      : ', testAncestorsTakeNoPart);
 runTest('the view of a clade         : ', testClade);
