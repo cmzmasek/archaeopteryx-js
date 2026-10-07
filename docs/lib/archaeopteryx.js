@@ -18239,15 +18239,9 @@ function (root, d3, forester, phyloXml) {
         // live. Injecting twice is a no-op.
         injectPanelStyles();
 
-        // REMOVED (2026-10-07): the 2.x class name "node_mouseover_tooltip"
-        // on this popup. It was the hook a host page's OLD stylesheet styled
-        // the popup by, and "div.node_mouseover_tooltip" outranks ".aptx-tip":
-        // BV-BRC's p3.css, written for 2.x, still carries
-        // "div.node_mouseover_tooltip { text-align:center; font:12px
-        // sans-serif; background:#ddd; border:1px solid #aaa; ... }", and on
-        // alpha.bv-brc.org it centred every value of the 3.x popup and
-        // greyed it. The popup is styled by injectPanelStyles alone; a host
-        // has no part in it.
+        // REMOVED (2026-10-07): the 2.x class "node_mouseover_tooltip" beside
+        // "aptx-tip". A host's old stylesheet outranked .aptx-tip through it
+        // (div.X beats .Y) and restyled the popup; see CHANGELOG, Unreleased.
         if (!_node_mouseover_div) {
             _node_mouseover_div = d3.select("body").append("div")
                 .attr("class", "aptx-tip")
