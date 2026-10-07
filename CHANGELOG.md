@@ -7,6 +7,12 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+- **The node popup no longer carries the 2.x class name `node_mouseover_tooltip`.**
+  A host page's old stylesheet could restyle the 3.x popup through it, since
+  `div.node_mouseover_tooltip` outranks `.aptx-tip`: BV-BRC's page CSS,
+  written for 2.x, centred every value of the popup and painted it grey. The
+  popup is styled by the viewer alone now; a host that still styles that class
+  styles nothing.
 - **Clock plot on a divergence tree with dated tips** — the root-to-tip plot
   of TempEst, run *before* dating. A tree whose branch lengths are its
   divergence and whose tips alone carry a date (a phyloXML `<date>`, a

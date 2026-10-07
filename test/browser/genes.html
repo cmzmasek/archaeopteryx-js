@@ -52,7 +52,7 @@
     console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
     const opened = [];
     window.open = function (url) { opened.push(url); return null; };
-    const readout = () => document.querySelector('.node_mouseover_tooltip');
+    const readout = () => document.querySelector('.aptx-tip');
     const hover = (el) => { const b = el.getBoundingClientRect();
         el.dispatchEvent(new MouseEvent('mousemove', {bubbles: true, clientX: b.left + (b.width / 2), clientY: b.top + (b.height / 2)})); };
     const click = (el) => { const b = el.getBoundingClientRect();

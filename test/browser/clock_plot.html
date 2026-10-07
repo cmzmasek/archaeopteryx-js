@@ -183,7 +183,7 @@
             check('fixture: an eighth a fraction of a pixel off it', dist('B8', 'B1') > 0.1 && dist('B8', 'B1') < 1, dist('B8', 'B1').toFixed(2) + ' px');
             check('fixture: a ninth tip within reach of the pointer but off the spot', dist('E', 'B1') > 1.5 && dist('E', 'B1') < 7, dist('E', 'B1').toFixed(2) + ' px');
             const selected = () => archaeopteryx.getSelectedNodes().map((n) => n.name).sort().join(' ');
-            const readout = () => document.querySelector('.node_mouseover_tooltip').textContent;
+            const readout = () => document.querySelector('.aptx-tip').textContent;
             // every disc group of the glow, where it is in the tree's own coordinates
             const lit = () => { const g = document.querySelector('#p g.aptx-hoverglow'); if (!g || g.style.display === 'none') { return []; }
                 const tr = (el) => { const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec(el.getAttribute('transform') || ''); return [+m[1], +m[2]]; };
@@ -560,7 +560,7 @@
             g1 ? g1.map((v) => v.toFixed(1)).join(',') + ' vs node ' + node.y.toFixed(1) + ',' + node.x.toFixed(1) : 'no glow');
         const ring = dlg.querySelector('circle.aptx-clock-ring');
         check('...and rings the point', ring.style.display !== 'none' && Math.abs(parseFloat(ring.getAttribute('cx')) - tp[0]) < 0.01);
-        const tipBox = document.querySelector('.node_mouseover_tooltip');
+        const tipBox = document.querySelector('.aptx-tip');
         check('...and the readout names it, with its divergence', !!tipBox && tipBox.textContent.indexOf(target) >= 0
             && tipBox.textContent.indexOf('Divergence') >= 0 && parseFloat(getComputedStyle(tipBox).opacity) > 0.5, tipBox ? tipBox.textContent.slice(0, 90) : 'none');
         pointer('pointermove', 2, 2); await sleep(150);
