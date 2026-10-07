@@ -7,12 +7,14 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
-- **The node popup no longer carries the 2.x class name `node_mouseover_tooltip`.**
-  A host page's old stylesheet could restyle the 3.x popup through it, since
-  `div.node_mouseover_tooltip` outranks `.aptx-tip`: BV-BRC's page CSS,
-  written for 2.x, centred every value of the popup and painted it grey. Rules
-  written against that class no longer reach the popup; the viewer's own
-  `.aptx-tip` styles are what a host page sees unless it targets them itself.
+## 3.24.0 — 2026-10-07
+
+The clock plot's second kind of tree: the root-to-tip plot of a divergence
+tree whose tips are dated, by the file or by their names, run before dating;
+and the node popup no longer carries its 2.x class name, which let a host
+page's old stylesheet restyle it.
+
+### Added
 - **Clock plot on a divergence tree with dated tips** — the root-to-tip plot
   of TempEst, run *before* dating. A tree whose branch lengths are its
   divergence and whose tips alone carry a date (a phyloXML `<date>`, a
@@ -28,6 +30,16 @@ users see a change only when a version is cut.
   answers `'root-to-tip'` for such a tree; `forester.clockPlotData` gains
   `divUnit` (the divergence's unit, or `null`), `calendar`, `fromNames` and
   `ambiguousNames`, and its `root.date` is `null` there.
+
+### Changed
+- **The node popup no longer carries the 2.x class name `node_mouseover_tooltip`.**
+  A host page's old stylesheet could restyle the 3.x popup through it, since
+  `div.node_mouseover_tooltip` outranks `.aptx-tip`: BV-BRC's page CSS,
+  written for 2.x, centred every value of the popup and painted it grey. Rules
+  written against that class no longer reach the popup; the viewer's own
+  `.aptx-tip` styles are what a host page sees unless it targets them itself.
+- Development dependencies: `brace-expansion` 1.1.21 (Dependabot alert 44;
+  the published package carries none of it).
 
 ## 3.23.0 — 2026-10-02
 
