@@ -1734,6 +1734,21 @@ All 118 of them, alphabetically:
 | `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
 | `visualizationsLegendYposOrig` | Internal bookkeeping; set visualizationsLegendYpos. |
 
+### Removed from `forester` — calling these throws `TypeError`
+
+3.0.0 also dropped twelve exports of `forester.js` that the viewer no longer
+used. They are gone, not stubbed, so a 2.x embedding that calls one fails with
+`TypeError: forester.<name> is not a function` — inside its own parse step, if
+that is where it called it.
+
+| Function | Why, and what to do instead |
+| --- | --- |
+| `collectPropertyRefs` | Nothing to call. The viewer derives the Color-by candidates (`forester.visualizationCandidates(tree)`, below) and the label-field chooser's list from the tree itself, and substitutes a readable name property (`genome_name`) for identifier-like tip names on its own. A 2.x embedding that built `nodeLabels` from this function's result should delete that block together with the `nodeLabels` key; `labelProperties` sets the starting label fields where the automatic choice is not wanted. |
+| `collapse`, `unCollapse` | The subtree-collapse feature was removed; they were its only writers. |
+| `getChildren` | Only meant something while collapse existed; read `node.children`. |
+| `findByTaxonomyCode`, `findByTaxonomyScientificName` | Superseded by the search (the panel's search fields). |
+| `calcAverageTreeHeight`, `calcMaxDepth`, `calcBranchLengthSimpleStatistics`, `removeMaxBranchLength`, `isHasNodeData`, `getOneDistinctTaxonomy` | Never used by the viewer; nothing replaces them. |
+
 ## The automatic visualization system (developer spec)
 
 This section, together with **Value grouping** below, is written to be

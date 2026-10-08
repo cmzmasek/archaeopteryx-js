@@ -15,6 +15,10 @@ users see a change only when a version is cut.
   its value count. On BV-BRC a site-wide `Host` coloured family trees by 39 to
   168 hosts while Genus sat in the file, and nothing said so. A clean field
   that merely ranks below the automatic pick warns nothing.
+- **README: the twelve `forester` exports removed in 3.0.0 are listed in the
+  migration section with what to use instead.** The one an embedding is likely
+  to have called is `collectPropertyRefs` (BV-BRC's 2.x pages built their label
+  checkboxes from it); on 3.x the call throws inside the page's own parse step.
 
 ## 3.24.0 — 2026-10-07
 
