@@ -7,6 +7,14 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.25.0 — 2026-10-08
+
+The first days of testing on BV-BRC: the colour picker placed where any page
+can show it, a classic-script canvg build so a bundled page can export PNG,
+a console warning when an embedder forces a visualization the viewer would
+not have chosen, the retirement of `nodeLabels`, and the README's list of the
+forester functions 3.0.0 removed.
+
 ### Added
 - **A classic-script build of canvg, `docs/lib/canvg.global.js`.** canvg 4
   publishes ES modules only, so a page had to bridge it with a module script
