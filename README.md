@@ -81,6 +81,11 @@ menu only when `window.Canvg` is present):
    self-contained build (npm's `canvg@4.0.3` bundled into one file, e.g. via
    `esm.sh/canvg@4?bundle`, with its one unnecessary Node-environment shim
    import removed — see the file's own header comment).
+   **Or skip the bridge:** `docs/lib/canvg.global.js` is the same build wrapped
+   for a plain `<script src="canvg.global.js"></script>`, or for one more file
+   in a site's concatenated bundle: it defines `window.Canvg` itself.
+   (Generated from `canvg.js` by `test/make_canvg_global.js`; a unit test
+   keeps the two in step.)
 
 For **vector PDF export** (optional — the PDF entry appears in the Download
 menu only when both are loaded before archaeopteryx.js):
