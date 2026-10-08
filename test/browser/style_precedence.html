@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: an active Color visualization owns every node's colour; the file's styles wait</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-10-08: BV-BRC's trees carry style:font_color on every tip
+// (their pipeline's colouring by genus). Under Color by Host the tips with a
+// host wore Host colours and the tips without wore the file's colours on
+// their dots, two palettes under one legend. The desktop's rule, adopted on
+// his word: while a Color visualization is active the style colours are not
+// consulted for any node; a node without a value shows the default label
+// colour and the hollow "no value" dot; clearing the Color menu brings the
+// file's colours back; shapes stay.
+//
+// The tree is built here: six tips, every one with style:font_color red;
+// four with a Host (two Human, two Pig), two without; the fifth also carries
+// style:node_color green and style:node_shape diamond.
+//
+//   (no query)   opens coloured by Host: the rule, then Color by default, then Visual Styles off
+//   ?plain=1     no Host anywhere, so no visualization opens: the file's colours show from the start
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const settle = () => sleep(1800);
+    const byId = (id) => document.getElementById(id);
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const plain = new URLSearchParams(location.search).get('plain') === '1';
+    const RED = 'rgb(255, 0, 0)', GREEN = 'rgb(0, 255, 0)';
+    const prop = (ref, v) => '<property ref="' + ref + '" datatype="xsd:string" applies_to="node">' + v + '</property>';
+    const HOST = ['Human', 'Human', 'Pig', 'Pig', null, null];
+    const tip = (i) => '<clade><name>t' + i + '</name><branch_length>0.1</branch_length>' + prop('style:font_color', '#ff0000')
+        + (!plain && HOST[i] ? prop('vipr:Host', HOST[i]) : '')
+        + (i === 4 ? prop('style:node_color', '#00ff00') + prop('style:node_shape', 'diamond') : '') + '</clade>';
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+        + '<clade><clade><branch_length>0.1</branch_length>' + tip(0) + tip(1) + tip(2) + '</clade>'
+        + '<clade><branch_length>0.1</branch_length>' + tip(3) + tip(4) + tip(5) + '</clade></clade></phylogeny></phyloxml>';
+    const node = (name) => [...document.querySelectorAll('#p g.node')].find((g) => g.__data__ && g.__data__.name === name);
+    const labelFill = (name) => { const g = node(name); const t = g && g.querySelector('text.extlabel'); return t ? getComputedStyle(t).fill : null; };
+    // Node dots and style shapes are batched into a few <path>s per style in
+    // the geometry layers (no element per node), so a node's mark is found by
+    // asking each path of the layer whether the node's point lies in it.
+    const pos = (name) => { const g = node(name); const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec((g && g.getAttribute('transform')) || '');
+        return m ? [+m[1], +m[2]] : null; };
+    const markIn = (layer, name) => { const p = pos(name); if (!p) { return null; } const pt = new DOMPoint(p[0], p[1]);
+        return [...document.querySelectorAll('#p g.' + layer + ' path')].find((el) => el.isPointInFill(pt) || el.isPointInStroke(pt)) || null; };
+    const dotOf = (name) => markIn('aptx-node-dots', name);
+    const shapeOf = (name) => markIn('aptx-node-shapes', name);
+    const fillOf = (el) => el ? getComputedStyle(el).fill : null;
+    const strokeOf = (el) => el ? getComputedStyle(el).stroke : null;
+    const setColorBy = async (text) => { const sel = byId('lcs_menu'); const opt = [...sel.options].find((o) => o.text === text);
+        sel.value = opt.value; sel.dispatchEvent(new Event('change', {bubbles: true})); await settle(); };
+    try {
+        const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('styles.xml', xml), {});
+        await viewer.ready;
+        await settle();
+        const vs = viewer.getViewState();
+        if (plain) {
+            check('no field to colour by: no visualization opens', vs.colorBy === 'none', vs.colorBy);
+            check('the file\'s font colour paints every label', ['t0', 't3', 't5'].every((n) => labelFill(n) === RED), labelFill('t5'));
+            check('the tip with style:node_color has a green diamond', fillOf(shapeOf('t4')) === GREEN, fillOf(shapeOf('t4')));
+            check('Visual Styles is offered and on', byId('vstyles_cb') && byId('vstyles_cb').checked);
+            byId('vstyles_cb').click(); await settle();
+            check('Visual Styles off: the default label colour', labelFill('t0') !== RED && labelFill('t0') === labelFill('t5'), labelFill('t0'));
+        } else {
+            check('opens coloured by Host', vs.colorBy !== 'none' && /Host/.test(vs.colorBy), vs.colorBy);
+            check('Visual Styles stays on (it also governs shapes and fonts)', byId('vstyles_cb') && byId('vstyles_cb').checked);
+            // valued tips: the visualization's colour on label and dot, never the file's
+            check('a valued tip\'s label and dot share the visualization colour', !!dotOf('t0') && labelFill('t0') === fillOf(dotOf('t0'))
+                && !!dotOf('t2') && labelFill('t2') === fillOf(dotOf('t2')), labelFill('t0') + ' / ' + fillOf(dotOf('t0')));
+            check('... Human and Pig differ, and neither is the file\'s red', fillOf(dotOf('t0')) !== fillOf(dotOf('t2')) && fillOf(dotOf('t0')) !== RED
+                && fillOf(dotOf('t2')) !== RED, fillOf(dotOf('t0')) + ' vs ' + fillOf(dotOf('t2')));
+            // valueless tips: NOT the file's colour, on label, dot fill or outline
+            check('a tip without a value: label in the default colour, not the file\'s red', labelFill('t5') !== RED && labelFill('t4') !== RED, labelFill('t5'));
+            check('... and no dot at all, as on the desktop (the file\'s colour used to paint one)', !dotOf('t5') && !dotOf('t4'),
+                fillOf(dotOf('t5')) + ' / ' + fillOf(dotOf('t4')));
+            check('... the two valueless labels look alike', labelFill('t4') === labelFill('t5'));
+            check('the style shape stays: the fifth tip is still a diamond, not in the file\'s green', !!shapeOf('t4') && fillOf(shapeOf('t4')) !== GREEN
+                && strokeOf(shapeOf('t4')) !== GREEN, fillOf(shapeOf('t4')) + ' / ' + strokeOf(shapeOf('t4')));
+            // clearing the Color menu brings the file's colours back
+            await setColorBy('default');
+            check('Color by default: the file\'s red on every label', ['t0', 't2', 't4', 't5'].every((n) => labelFill(n) === RED), labelFill('t0') + ' ' + labelFill('t5'));
+            check('... and the green diamond on the fifth tip', fillOf(shapeOf('t4')) === GREEN, fillOf(shapeOf('t4')));
+            await setColorBy('Host');
+            check('Host again: the rule returns', labelFill('t5') !== RED && fillOf(shapeOf('t4')) !== GREEN && !dotOf('t5') && labelFill('t0') === fillOf(dotOf('t0')));
+            byId('vstyles_cb').click(); await settle();
+            check('Visual Styles off under Host: nothing changes for the valued tips', labelFill('t0') === fillOf(dotOf('t0')) && fillOf(dotOf('t0')) !== RED);
+            check('... and the diamond is gone (shapes are styles too)', !shapeOf('t4'));
+        }
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

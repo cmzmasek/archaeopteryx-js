@@ -15,6 +15,17 @@ users see a change only when a version is cut.
   switch: in a cladogram, and while the scale axis has taken the bar's place.
   A BV-BRC user asked (2026-10-08).
 
+### Fixed
+- **A file's style colours no longer mix with an active Color visualization.**
+  A node without a value for the chosen field took the file's `style:` colour
+  on its dot and outline, so a tree whose tips all carry a `style:font_color`
+  (BV-BRC's, coloured by genus by its pipeline) showed two palettes under
+  Color by Host, and the legend described neither. Now, as on the desktop, the
+  style colours are not consulted for any node while a Color visualization is
+  active: a node without a value draws no dot and takes the default label
+  colour. Clearing the Color menu brings the file's colours
+  back; shapes, font styles and branch colours are unaffected.
+
 ### Changed
 - **The scale bar prints the tree's unit.** After its number, the unit the
   file states (`branch_length_unit`, e.g. `0.05 subs/site`), as the distance

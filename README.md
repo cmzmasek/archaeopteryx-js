@@ -1924,12 +1924,21 @@ exists, and clears the per-legend chip states.
 Highest first, at each paint:
 
 * **Label colour**: search/selection highlight → active Color visualization
-  → `style:font_color` → phyloXML branch colour → theme ink.
+  (its colour; the theme ink for a node without a value) → `style:font_color`
+  → phyloXML branch colour → theme ink.
 * **Node fill**: highlight → duplication/speciation event colour → active
-  Color visualization → `style:node_color` (else `style:font_color`) →
-  background.
+  Color visualization (its colour; a node without a value draws no dot) →
+  `style:node_color` (else `style:font_color`) → background.
 * **Node outline**: darkened highlight → event colour → visualization fill
   → style colour → branch colour → branch default.
+
+While a Color visualization is active the style colours are **not consulted
+for any node**, valued or not, on the label, the dot and its outline alike:
+the visualization owns the colours and its legend explains them, and a node
+without a value draws no dot and takes the default label colour. That is
+the desktop's rule (its TreePanel.setColor). Clearing the Color menu brings
+the file's colours back. Branch colours, shapes, font sizes and styles are
+not colours of the visualization's kind and stay.
 * **Node shape path**: suppressed for highlighted/event nodes; chosen Shape
   visualization → `style:node_shape`. A node earns its default dot when a
   Color visualization is active (and no shape was drawn), or when it
@@ -2131,8 +2140,9 @@ honoured: `style:font_color`, `style:node_color`, `style:node_shape`
 The **Visual Styles** checkbox — the desktop's "Visual Styles/Branch Colors",
 shown when the tree carries either, on by default — turns them off and on,
 and gates phyloXML `<color>` branch colours too, exactly as on the desktop.
-An active Color visualization outranks `style:font_color`, also as on the
-desktop: set the Color menu to default to see the tree as its file styled it.
+An active Color visualization outranks the style colours for every node,
+valued or not, on labels and node dots alike, as on the desktop: set the
+Color menu to default to see the tree as its file styled it.
 `style:` never appears in the Color / Shape menus — it is rendering, not data.
 
 ### Moving the legends

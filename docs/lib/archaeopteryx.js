@@ -1462,7 +1462,7 @@ function (root, d3, forester, phyloXml) {
         if (vis && vis !== _state.backgroundColorDefault) {
             c = vis;
         }
-        if (!c) {
+        if (!c && !colorVisActive()) {   // a style colour yields to an active Color-by, as the node itself does
             let style = nodeStyle(d);
             if (style && (style.nodeColor || style.fontColor)) {
                 c = style.nodeColor || style.fontColor;
@@ -2429,6 +2429,13 @@ function (root, d3, forester, phyloXml) {
 
     function currentColorVis() {
         return ((_vis && _vis.colorId) ? _vis.byId[_vis.colorId] : null) || null;
+    }
+
+    // A Color visualization is on screen: it owns every node's colour, and the
+    // file's style colours wait until the Color menu is cleared (the desktop's
+    // rule; see makeLabelColor and makeNodeFillColor).
+    function colorVisActive() {
+        return _state.showVisualizations === true && !!currentColorVis();
     }
 
     function currentShapeVis() {
@@ -3677,6 +3684,17 @@ function (root, d3, forester, phyloXml) {
         if (visColor !== _state.backgroundColorDefault) {
             return visColor;
         }
+        // While a Color visualization is active a node without a value gets
+        // the background here, which drawTreeGeometry turns into NO dot at all
+        // (as on the desktop); the file's style colour is not consulted.
+        // Until 2026-10-08 it was, so BV-BRC's trees -- style:font_color on
+        // every tip, following Genus -- showed two palettes under Color by
+        // Host: Host colours on the valued tips, the file's Genus colours
+        // on the rest, and the legend described neither (Christian: adopt
+        // the desktop's precedence).
+        if (colorVisActive()) {
+            return visColor;
+        }
         let style = nodeStyle(phynode);
         if (style && (style.nodeColor || style.fontColor)) {
             return style.nodeColor || style.fontColor;
@@ -3714,7 +3732,9 @@ function (root, d3, forester, phyloXml) {
                 return v;
             }
         }
-        let style = nodeStyle(phynode);
+        // the style colour steps aside while a Color visualization is active
+        // (see makeNodeFillColor); the branch colour, as on the desktop, does not
+        let style = colorVisActive() ? null : nodeStyle(phynode);
         if (style && (style.nodeColor || style.fontColor)) {
             return style.nodeColor || style.fontColor;
         }
@@ -3730,14 +3750,14 @@ function (root, d3, forester, phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        if (_state.showVisualizations && currentColorVis()) {
-            let color = makeVisLabelColor(phynode);
-            if (color) {
-                return color;
-            }
+        // An active Color visualization owns the colours, as on the desktop
+        // (TreePanel.setColor): its colour where the node has a value, the
+        // default ink where it has none -- style:font_color is not consulted
+        // for any node while one is active. Clear the Color menu to see the
+        // tree as its file styled it.
+        if (colorVisActive()) {
+            return makeVisLabelColor(phynode);
         }
-        // an active Color visualization outranks style:font_color, as on the
-        // desktop; clear the Color menu to see the tree as its file styled it
         let style = nodeStyle(phynode);
         if (style && style.fontColor) {
             return style.fontColor;
