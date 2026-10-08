@@ -1551,7 +1551,7 @@ copy-pastable JSON.
 | `onViewChange` | `null` | `function (state, encoded)`, called once per settled redraw when the view changed: `state` as `getViewState()` returns it, `encoded` its hash-ready string. The demo pages write it into the URL. |
 | `searchBinitialValue` | `null` | Prefill search box B. |
 | `enableVisualizations` | `true` | Offer the Color / Shape visualizations (which fields they cover is decided from the tree). |
-| `initialVisualization` | `null` | The visualization to open with, by its Color-menu name (e.g. `'Host'`; case-insensitive). A name the tree cannot honour logs a console warning and falls back to the automatic choice, so a site-wide value is safe on trees without that field. Default: Archaeopteryx.js picks the most informative field itself. |
+| `initialVisualization` | `null` | The visualization to open with, by its Color-menu name (e.g. `'Host'`; case-insensitive). A name the tree cannot honour logs a console warning and falls back to the automatic choice, so a site-wide value is safe on trees without that field. A name the tree *can* honour is always honoured, but when it is a field the automatic choice would not have opened with -- more than 20 values, or a value on fewer than two thirds of the tips -- a console warning says so and names the field the viewer would have chosen. Default: Archaeopteryx.js picks the most informative field itself. |
 | `visualizationsLegendXpos` | `254` | Legend position, x. |
 | `visualizationsLegendYpos` | `30` | Legend position, y. |
 | `enableDownloads` | `true` | Offer the download buttons. |

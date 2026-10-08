@@ -606,6 +606,7 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_SCALE_HEADROOM = 0.9;    // drawn length over reserved length
     const DOMAIN_BOX_MIN_H = 6;
     const DOMAIN_BOX_MAX_H = 16;
+    const LEGEND_MAX_ROWS = 20;           // value rows a legend lists before "n more"; the rest fold
     const DOMAIN_BACKBONE_COLOR = 'rgb(100,100,100)';   // the same in both themes and in exports
     const DOMAIN_SHADOW_COLOR = 'rgb(8,18,21)';
     const DOMAIN_SHADOWS = [[0.4, 0.7, 40], [0.9, 1.5, 28], [1.6, 2.5, 17]];   // dx, dy, alpha of 255, in drawing order
@@ -1948,7 +1949,32 @@ function (root, d3, forester, phyloXml) {
             // an explicit request is honoured even for a wide field (21+
             // values) the automatic path would only offer, never impose;
             // autoColorId too, so it survives subtree views like the
-            // automatic pick does
+            // automatic pick does.
+            //
+            // Honoured, but not in silence. A request for a field the
+            // automatic choice would not open with -- wide, or sparse (on
+            // fewer than 2/3 of the tips; it opens only when nothing denser
+            // exists) -- says so in the console and names the field the
+            // viewer would have chosen. BV-BRC's virus trees carried a
+            // site-wide 'Host' from the influenza days: family trees opened
+            // coloured by 39 to 168 hosts while Genus (4 to 15 values) sat
+            // in the file, and nothing anywhere said the viewer had been
+            // overruled (Christian, 2026-10-08: a console warning when a
+            // sub-optimal visualization is forced is needed). A request for
+            // a clean field that merely ranks below the automatic pick is a
+            // site's taste and warns nothing; nor does a sparse field that
+            // is the automatic pick itself.
+            let auto = forester.openingVisualization(_vis.candidates);
+            if ((requested.wide || requested.sparse) && !(auto && auto.id === requested.id)) {
+                let why = requested.wide
+                    ? requested.values.length + ' distinct values on this tree, more than the '
+                        + LEGEND_MAX_ROWS + ' the legend lists'
+                    : 'a value on ' + requested.coverage + ' of the tree\'s ' + requested.total + ' tips';
+                console.warn(WARNING + ': initialVisualization "' + _settings.initialVisualization
+                    + '" names a field with ' + why + '; left to itself the viewer would '
+                    + (auto ? 'open with "' + auto.label + '" (' + auto.values.length + ' values)'
+                        : 'open uncoloured'));
+            }
             _vis.autoColorId = requested.id;
             _vis.colorId = requested.id;
             _state.showVisualizations = true;
@@ -2521,7 +2547,6 @@ function (root, d3, forester, phyloXml) {
         // is then just its "no value" row
         const isRange = kind === 'color' && colorModeOf(vis) === 'range' && vis.values.length > 0;
 
-        const LEGEND_MAX_ROWS = 20;
         let rows = [];
         let hidden = 0;
         if (!isRange) {

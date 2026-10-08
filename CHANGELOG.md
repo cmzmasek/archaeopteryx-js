@@ -7,6 +7,15 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Changed
+- **A forced `initialVisualization` is still honoured, but no longer in silence.**
+  When the name is a field the automatic choice would not have opened with --
+  more than 20 distinct values, or a value on fewer than two thirds of the tips
+  -- the console warns and names the field the viewer would have chosen, with
+  its value count. On BV-BRC a site-wide `Host` coloured family trees by 39 to
+  168 hosts while Genus sat in the file, and nothing said so. A clean field
+  that merely ranks below the automatic pick warns nothing.
+
 ## 3.24.0 — 2026-10-07
 
 The clock plot's second kind of tree: the root-to-tip plot of a divergence

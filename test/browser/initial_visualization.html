@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a forced initialVisualization warns when the viewer would not have opened with it</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// An embedder may name the visualization to open with (initialVisualization).
+// It is honoured; but when it names a field the automatic choice would not
+// have opened with -- wide (21+ values) or sparse (under 2/3 of the tips) --
+// the console says so and names the field the viewer would have chosen. On
+// BV-BRC a site-wide 'Host' coloured family trees by 39-168 hosts with Genus
+// in the file, and nothing said so (2026-10-08).
+//
+// Cases:   ''           wide request (Host on Caliciviridae_500): honoured, one warning naming Genus
+//          ?sparse=1    sparse request (State Province on herpes_dnapol): honoured, one warning with the coverage
+//          ?fine=1      a clean field below the automatic pick (Isolation Country): honoured, NO warning
+//          ?last=1      a sparse field that IS the automatic pick (Year on flavivirus peptides): NO warning
+//          ?missing=1   a name the tree lacks: the older "names no visualization" warning, automatic pick
+//          ?auto=1      no request: no warning, automatic pick
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const CASES = {
+        wide:    {file: '../../docs/data/Caliciviridae_500.xml', want: 'Host', auto: 'Genus', warns: 'wide'},
+        sparse:  {file: '../../docs/data/herpes_dnapol.xml', want: 'State Province', auto: 'Geographic Group', warns: 'sparse'},
+        fine:    {file: '../../docs/data/herpes_dnapol.xml', want: 'Isolation Country', auto: 'Geographic Group', warns: null},
+        last:    {file: '../../docs/data/flavivirus-mature-peptides.xml', want: 'Year', auto: 'Year', warns: null},
+        missing: {file: '../../docs/data/Caliciviridae_500.xml', want: 'Nonesuch', auto: 'Genus', warns: 'missing'},
+        auto:    {file: '../../docs/data/Caliciviridae_500.xml', want: null, auto: 'Genus', warns: null}
+    };
+    const name = ['sparse', 'fine', 'last', 'missing', 'auto'].find((k) => q.get(k)) || 'wide';
+    const C = CASES[name];
+    out.push('case ' + name + ': ' + C.file.replace(/.*\//, '') + ', initialVisualization '
+        + (C.want === null ? 'unset' : JSON.stringify(C.want)));
+
+    const text = await (await fetch(C.file)).text();
+    const trees = archaeopteryx.parseTrees(C.file, text);
+    // the classifier's own verdicts, so the expectations are not hand-typed
+    const cands = forester.visualizationCandidates(trees[0]);
+    const byLabel = (l) => cands.find((c) => c.label === l) || null;
+    const autoC = forester.openingVisualization(cands);
+    check('the automatic choice on this tree is "' + C.auto + '"', autoC && autoC.label === C.auto, autoC && autoC.label);
+    const wantC = C.want === null ? null : byLabel(C.want);
+    if (C.warns === 'wide') { check('the requested field is wide', wantC && wantC.wide && !wantC.sparse, wantC && wantC.values.length + ' values'); }
+    if (C.warns === 'sparse') { check('the requested field is sparse and not wide', wantC && wantC.sparse && !wantC.wide, wantC && wantC.coverage + '/' + wantC.total); }
+    if (name === 'fine') { check('the requested field is clean (not wide, not sparse) and not the automatic pick', wantC && !wantC.wide && !wantC.sparse && wantC.id !== autoC.id); }
+    if (name === 'last') { check('the requested field is sparse AND the automatic pick', wantC && wantC.sparse && autoC && autoC.id === wantC.id); }
+    if (name === 'missing') { check('the tree has no such field', wantC === null); }
+
+    // capture every warning the launch emits
+    const warned = [];
+    const realWarn = console.warn;
+    console.warn = function () { warned.push(Array.from(arguments).join(' ')); realWarn.apply(console, arguments); };
+    const config = C.want === null ? {} : {initialVisualization: C.want};
+    const viewer = archaeopteryx.launch('#phylogram1', trees, config);
+    await viewer.ready;
+    await sleep(600);
+    console.warn = realWarn;
+    const ours = warned.filter((w) => /initialVisualization/.test(w));
+    out.push('warnings about initialVisualization: ' + ours.length + (ours.length ? '  -> ' + ours.join(' || ') : ''));
+
+    const colorBy = viewer.getViewState().colorBy;
+    if (C.warns === 'wide' || C.warns === 'sparse') {
+        check('the request is honoured: the view colours by the requested field', colorBy === wantC.id, colorBy);
+        check('exactly one warning about initialVisualization', ours.length === 1, ours.length);
+        const w = ours[0] || '';
+        check('the warning names the request', w.indexOf('initialVisualization "' + C.want + '"') >= 0);
+        check('the warning names the automatic choice and its value count',
+            w.indexOf('open with "' + autoC.label + '" (' + autoC.values.length + ' values)') >= 0);
+        if (C.warns === 'wide') {
+            check('the warning states the distinct-value count', w.indexOf(wantC.values.length + ' distinct values') >= 0);
+        } else {
+            check('the warning states the coverage', w.indexOf('a value on ' + wantC.coverage + ' of the tree\'s ' + wantC.total + ' tips') >= 0);
+        }
+    } else if (C.warns === 'missing') {
+        check('the automatic choice colours the view', colorBy === autoC.id, colorBy);
+        check('exactly one warning, the older one: the name matches no visualization',
+            ours.length === 1 && /names no visualization of this tree/.test(ours[0] || ''), ours.join(' || '));
+    } else {
+        check('the view colours by ' + (C.want === null ? 'the automatic choice' : 'the requested field'),
+            colorBy === (C.want === null ? autoC.id : wantC.id), colorBy);
+        check('no warning about initialVisualization', ours.length === 0, ours.join(' || '));
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
