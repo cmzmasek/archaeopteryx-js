@@ -18,6 +18,17 @@ users see a change only when a version is cut.
   is not wanted. A view hash that still carries a `custom:<key>` flag is read
   without complaint and the flag ignored.
 
+### Fixed
+- **The colour picker opens beside the legend on any page.** A click on a
+  legend swatch opens a modeless dialog, and a dialog appended to the page
+  body sits at the end of the document until it is moved; the picker moved
+  itself only when that spot overlapped the legend card. On the demo page the
+  end of the body is the top of the window, so it looked placed; in a page
+  that flows, such as BV-BRC's, it opened below everything, off the bottom of
+  the window. It is now placed outright on opening, viewport-fixed, beside the
+  card and inside the window, and moves afterwards only when the card grows
+  under it.
+
 ### Changed
 - **A forced `initialVisualization` is still honoured, but no longer in silence.**
   When the name is a field the automatic choice would not have opened with --

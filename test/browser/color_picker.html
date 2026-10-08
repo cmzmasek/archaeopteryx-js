@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the colour picker opens beside the legend, inside the window, on any page</title>
+<style>
+  html,body{margin:0}
+  /* A page like BV-BRC's: content above and below the tree, the container in
+     the normal flow, the document taller than the window. The demo page has
+     none of that (its container is absolutely positioned and fills the
+     window), which is why the picker looked placed there and was not. */
+  .filler{height:900px;background:repeating-linear-gradient(#f4f4f4 0 20px,#e8e8e8 20px 40px)}
+  #p{height:640px;position:relative;border:1px solid #ccc}
+  body.demo .filler{display:none}
+  body.demo #p{position:absolute;inset:0;height:auto;border:0}
+</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div class="filler"></div>
+<div id="p"></div>
+<div class="filler"></div>
+<script>
+// Christian, 2026-10-08, on alpha.bv-brc.org: the colour picker (a click on a
+// legend swatch) appeared BELOW the BV-BRC page, under the tree and the site's
+// own bars. A non-modal <dialog> appended to the body sits at its static
+// position -- the end of the document -- and the picker only moved itself when
+// that spot overlapped the legend card. On the demo page the end of the body
+// is the top of the window (the container is out of flow), so it was never
+// seen; in a page that flows, the end of the body is below everything.
+//
+//   (no query)    the BV-BRC shape: content above and below, document scrolled so the tree is in view
+//   ?top=1        ... the same page, not scrolled (the tree is below the first screen)
+//   ?demo=1       the demo page's shape: the container fills the window
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const mode = q.get('demo') === '1' ? 'demo' : (q.get('top') === '1' ? 'top' : 'scrolled');
+    if (mode === 'demo') { document.body.classList.add('demo'); }
+    out.push('case ' + mode + ': window ' + innerWidth + 'x' + innerHeight);
+    try {
+        const file = '../../docs/data/Caliciviridae_100.xml';
+        const text = await (await fetch(file)).text();
+        const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {});
+        await viewer.ready;
+        await sleep(1500);
+        if (mode === 'scrolled') {
+            document.getElementById('p').scrollIntoView({block: 'start'});
+            await sleep(300);
+        }
+        const area = document.getElementById('p').getBoundingClientRect();
+        out.push('container in viewport coordinates: top ' + Math.round(area.top) + ', bottom ' + Math.round(area.bottom) + ', scrollY ' + Math.round(scrollY));
+        check('the tree opens coloured (a legend exists to click)', viewer.getViewState().colorBy !== 'none', viewer.getViewState().colorBy);
+        // the clickable hit rect of a legend row, found by its own title
+        const title = [...document.querySelectorAll('#p svg title')].find((t) => /click to change the color for/.test(t.textContent));
+        check('a legend row offers the colour picker', !!title, title && title.textContent);
+        const hit = title.parentNode;             // the transparent rect
+        const card = hit.parentNode;              // the legend card's group, what the picker anchors to
+        const cardBox = card.getBoundingClientRect();
+        out.push('legend card: left ' + Math.round(cardBox.left) + ' right ' + Math.round(cardBox.right) + ' top ' + Math.round(cardBox.top) + ' bottom ' + Math.round(cardBox.bottom));
+        hit.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: cardBox.left + 10, clientY: cardBox.top + 20}));
+        await sleep(400);
+        const dlg = document.getElementById('color_picker_dialog');
+        check('the picker opened', !!dlg && dlg.open);
+        const value = (title.textContent.match(/for "(.*)"$/) || [])[1];
+        check('... titled with the value', !!dlg && !!value && dlg.querySelector('.aptx-dialog-name').textContent === value,
+            (dlg && dlg.querySelector('.aptx-dialog-name').textContent) + ' vs ' + value);
+        const box = dlg.getBoundingClientRect();
+        out.push('picker: left ' + Math.round(box.left) + ' right ' + Math.round(box.right) + ' top ' + Math.round(box.top) + ' bottom ' + Math.round(box.bottom));
+        check('the picker is inside the window', box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+            Math.round(box.left) + ',' + Math.round(box.top) + ' - ' + Math.round(box.right) + ',' + Math.round(box.bottom) + ' in ' + innerWidth + 'x' + innerHeight);
+        const overlapsCard = !(box.left >= cardBox.right || box.right <= cardBox.left || box.top >= cardBox.bottom || box.bottom <= cardBox.top);
+        check('... beside the legend card, not over it', !overlapsCard);
+        check('... level with the card\'s top (within 8 px, or pinned to the window edge)', Math.abs(box.top - cardBox.top) <= 8 || box.top <= 6 || box.bottom >= innerHeight - 6,
+            Math.round(box.top) + ' vs ' + Math.round(cardBox.top));
+        check('... with viewport-fixed positioning, so a scrolling page cannot carry it away', getComputedStyle(dlg).position === 'fixed', getComputedStyle(dlg).position);
+        // a pick repaints the swatch it belongs to -- the picker is live
+        const hex = dlg.querySelector('input');
+        // the visible swatch sits just before its hit rect; the legend is REBUILT on every redraw, so it is found again after the pick
+        const before = getComputedStyle(hit.previousElementSibling).fill;
+        hex.value = '#123456'; hex.dispatchEvent(new Event('input', {bubbles: true}));
+        await sleep(500);
+        const hit2 = [...document.querySelectorAll('#p svg title')].find((t) => t.textContent === title.textContent).parentNode;
+        const after = getComputedStyle(hit2.previousElementSibling).fill;
+        check('a typed colour repaints the legend swatch', before !== after && /18, 52, 86/.test(after), before + ' -> ' + after);
+        // the picker stays put through the redraw a pick causes (it only moves when the card grows under it)
+        const box2 = document.getElementById('color_picker_dialog').getBoundingClientRect();
+        check('the picker is still inside the window after the pick', box2.left >= 0 && box2.top >= 0 && box2.right <= innerWidth && box2.bottom <= innerHeight,
+            Math.round(box2.left) + ',' + Math.round(box2.top) + ' - ' + Math.round(box2.right) + ',' + Math.round(box2.bottom));
+        dlg.querySelector('.aptx-dialog-close').click();
+        await sleep(200);
+        check('the close control removes it', !document.getElementById('color_picker_dialog'));
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

@@ -52,6 +52,7 @@ const CASES = {
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'genes': ['', '?config=1', '?radial=1', '?domains=1'],
     'initial_visualization': ['', '?sparse=1', '?fine=1', '?last=1', '?missing=1', '?auto=1'],
+    'color_picker': ['', '?top=1', '?demo=1'],
     'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1', '?host=1', '?clades=1', '?same=1', '?rtt=1', '?names=1'],
     'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };

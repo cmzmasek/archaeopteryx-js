@@ -2169,6 +2169,7 @@ function (root, d3, forester, phyloXml) {
         }
         dialog.addEventListener('close', close);
 
+        let placed = false;   // set by place() once the picker has been put somewhere
         render(false);
         dialog.show();
         place();
@@ -2176,40 +2177,67 @@ function (root, d3, forester, phyloXml) {
         // Beside the legend it edits, never on top of it -- a picker that hides
         // the swatch it is changing defeats the live preview.
         //
-        // Re-measured rather than remembered, for two reasons: every redraw
-        // DESTROYS and rebuilds the legend group, so a held reference goes
-        // stale and measures zero; and the card grows when the [reset colors]
-        // chip appears on the first pick, which would leave a
-        // positioned-once picker sitting over the counts. It only MOVES when
-        // it would otherwise overlap, so the dialog does not chase the legend
-        // around while the user drags.
+        // Placed OUTRIGHT the first time, viewport-fixed. A non-modal <dialog>
+        // appended to the body sits at its static position, the end of the
+        // document: on the demo page that is the top of the window (the
+        // container is out of flow), on a page that flows, such as BV-BRC's,
+        // it is below everything on it. Until 2026-10-08 the picker moved
+        // only when that spot overlapped the card, so on BV-BRC it opened
+        // under the site's own bars, off the bottom of the window
+        // (Christian's screenshot). Fixed positioning also keeps a scrolling
+        // page from carrying it away.
+        //
+        // Re-measured rather than remembered afterwards, for two reasons:
+        // every redraw DESTROYS and rebuilds the legend group, so a held
+        // reference goes stale and measures zero; and the card grows when the
+        // [reset colors] chip appears on the first pick, which would leave a
+        // positioned-once picker sitting over the counts. Once placed it only
+        // MOVES when it would otherwise overlap, so the dialog does not chase
+        // the legend around while the user drags.
         function place() {
             let el = anchorClass ? document.querySelector('g.' + anchorClass) : null;
             let box = el ? el.getBoundingClientRect() : null;
-            if (!box || !box.width) {
-                return;
+            if (box && !box.width) {
+                box = null;
             }
-            let now = dialog.getBoundingClientRect();
-            let overlaps = now.width > 0
-                && !(now.left >= box.right || now.right <= box.left
-                    || now.top >= box.bottom || now.bottom <= box.top);
-            if (now.width > 0 && !overlaps) {
-                return;
+            if (placed) {
+                if (!box) {
+                    return;
+                }
+                let now = dialog.getBoundingClientRect();
+                let overlaps = now.width > 0
+                    && !(now.left >= box.right || now.right <= box.left
+                        || now.top >= box.bottom || now.bottom <= box.top);
+                if (!overlaps) {
+                    return;
+                }
             }
             let w = dialog.offsetWidth;
             let h = dialog.offsetHeight;
-            // to the right of the card, or to its left when that would leave
-            // the viewport
-            let left = box.right + 10;
-            if (left + w > window.innerWidth - 6) {
-                left = box.left - w - 10;
+            let left;
+            let top;
+            if (box) {
+                // to the right of the card, or to its left when that would
+                // leave the viewport
+                left = box.right + 10;
+                if (left + w > window.innerWidth - 6) {
+                    left = box.left - w - 10;
+                }
+                top = box.top;
+            } else {
+                // no card to sit beside (the view has no swatch for the value):
+                // the tree area's top left corner, inside the window
+                let area = _container ? _container.getBoundingClientRect() : null;
+                left = area ? area.left + 14 : 10;
+                top = area ? Math.max(area.top, 0) + 14 : 10;
             }
             setStyles(dialog, {
                 'position': 'fixed',
                 'margin': '0',
                 'left': Math.max(6, Math.min(window.innerWidth - w - 6, left)) + 'px',
-                'top': Math.max(6, Math.min(window.innerHeight - h - 6, box.top)) + 'px'
+                'top': Math.max(6, Math.min(window.innerHeight - h - 6, top)) + 'px'
             });
+            placed = true;
         }
         setTimeout(function () {
             document.addEventListener('pointerdown', onOutside, true);
