@@ -390,6 +390,7 @@ function (root, d3, forester, phyloXml) {
     const GENE_LABELS_SELECT = 'gene_labels';
     const SCALE_AXIS_CB = 'scaleaxis_cb';
     const SCALE_GRID_CB = 'scalegrid_cb';
+    const SCALE_BAR_CB = 'scalebar_cb';
     const MSA_SCROLL_ID = 'aptxmsascroll';
     const FONT_SIZE_SLIDER = 'fs_sl';
     const EXTERNAL_LABEL_CB = 'extl_cb';
@@ -5747,6 +5748,7 @@ function (root, d3, forester, phyloXml) {
         'geneFamily',
         'geneLabels',
         'showScaleAxis',
+        'showScaleBar',
         'showScaleGrid',
         'showSupportDots',
         'searchAinitialValue',
@@ -6113,6 +6115,8 @@ function (root, d3, forester, phyloXml) {
             _state.showScaleAxis = !!(_timeInfo && _timeInfo.type) && !branchesShowDivergence();
         }
         _state.showScaleGrid = _state.showScaleGrid === true; // desktop default: off
+        // the scale bar is on unless the caller says no; it gives way to the axis anyway
+        _state.showScaleBar = _state.showScaleBar !== false;
         _state.showSupportDots = _state.showSupportDots === true;
         _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
@@ -10018,6 +10022,7 @@ function (root, d3, forester, phyloXml) {
         if (_basicTreeProperties.branchLengths === true) {
             s.scaleAxis = _state.showScaleAxis === true;
             s.scaleGrid = _state.showScaleGrid === true;
+            s.scaleBar = _state.showScaleBar === true;
         }
         if (_branchScaleAvailable) {
             s.scale = _state.branchScale;   // time or divergence: which layout the branches show
@@ -10199,6 +10204,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof grid === 'boolean') {
             _state.showScaleGrid = grid;
         }
+        if (typeof s.scaleBar === 'boolean') {
+            _state.showScaleBar = s.scaleBar;
+        }
         if (!radialDisplay()) {
             _radialLabelsHorizontal = false;
         } else if ((_state.showDomainArchitectures && _basicTreeProperties.domainArchitectures)
@@ -10275,6 +10283,7 @@ function (root, d3, forester, phyloXml) {
         syncHeatmapControls();
         setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis === true);
         setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid === true);
+        setCheckboxValue(SCALE_BAR_CB, _state.showScaleBar === true);
         setCheckboxValue(DOMAIN_GLOW_CB, _state.domainGlow === true);
         setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
         syncDomainControls();
@@ -10355,7 +10364,7 @@ function (root, d3, forester, phyloXml) {
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
     const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow', 'genes',
-        'scaleAxis', 'scaleGrid', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+        'scaleAxis', 'scaleGrid', 'scaleBar', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
     // Lists of strings, comma-joined. A property ref carries ':' but never a
     // comma, and encodeViewValue leaves both readable in a hash.
     const VIEW_LIST_KEYS = ['heatmapManual', 'labelFields'];
@@ -13501,7 +13510,8 @@ function (root, d3, forester, phyloXml) {
     const SCALE_BAR_RESERVE = 30;
 
     function scaleBarShown() {
-        return _state.phylogram === true && _basicTreeProperties.branchLengths === true && !scaleAxisShown();
+        return _state.phylogram === true && _basicTreeProperties.branchLengths === true && !scaleAxisShown()
+            && _state.showScaleBar !== false;
     }
 
     // pixels per branch-length unit in the current layout's own coordinates
@@ -13527,7 +13537,9 @@ function (root, d3, forester, phyloXml) {
         if (!scaleBarShown()) {
             return;
         }
-        let bar = forester.scaleBarLength(branchLengthPixelsPerUnit(), SCALE_BAR_TARGET_PX);
+        // the unit the file states, as the distance axis prints it; none when it states none
+        let unit = _treeData && typeof _treeData.branch_length_unit === 'string' ? _treeData.branch_length_unit.trim() : '';
+        let bar = forester.scaleBarLength(branchLengthPixelsPerUnit(), SCALE_BAR_TARGET_PX, unit);
         if (!bar) {
             return;
         }
@@ -14158,6 +14170,11 @@ function (root, d3, forester, phyloXml) {
 
     function scaleGridCbClicked() {
         _state.showScaleGrid = getCheckboxValue(SCALE_GRID_CB);
+        scheduleUpdate(null, 0);
+    }
+
+    function scaleBarCbClicked() {
+        _state.showScaleBar = getCheckboxValue(SCALE_BAR_CB);
         scheduleUpdate(null, 0);
     }
 
@@ -15318,6 +15335,12 @@ function (root, d3, forester, phyloXml) {
             // grid lines hang off the scale axis: no axis, nothing to grid
             gridCb.disabled = _state.unrootedDisplay === true || _state.phylogram !== true
                 || _state.showScaleAxis !== true;
+        }
+        let barCb = byId(SCALE_BAR_CB);
+        if (barCb) {
+            // a cladogram has nothing to measure, and under the axis the bar
+            // has given way; every layout can carry it otherwise
+            barCb.disabled = _state.phylogram !== true || scaleAxisShown();
         }
         let minus = byId(ZOOM_OUT_X);
         let plus = byId(ZOOM_IN_X);
@@ -18407,6 +18430,7 @@ function (root, d3, forester, phyloXml) {
         on(GENE_ANCHOR_SELECT, 'change', geneAnchorChanged);
         on(GENE_FAMILY_SELECT, 'change', geneFamilyChanged);
         on(GENE_LABELS_SELECT, 'change', geneLabelsChanged);
+        on(SCALE_BAR_CB, 'click', scaleBarCbClicked);
         on(SCALE_AXIS_CB, 'click', scaleAxisCbClicked);
         on(SCALE_GRID_CB, 'click', scaleGridCbClicked);
 
@@ -18944,6 +18968,9 @@ function (root, d3, forester, phyloXml) {
                 let timeAxis = _timeInfo && _timeInfo.type
                     ? (_timeInfo.type === 'geologic' ? 'the geologic (ICS) time axis' : 'the calendar time axis')
                     : null;
+                // "Scale", the desktop's label for the same switch (its Settings > Overlays > Scale & Grid)
+                opts.push(makeCheckboxItem('Scale', SCALE_BAR_CB, 'to show/hide the scale bar at the bottom left of a'
+                    + ' phylogram: a round length in the tree\'s branch-length unit (it gives way while the scale axis is on)'));
                 opts.push(makeCheckboxItem('Scale Axis', SCALE_AXIS_CB, 'to show/hide '
                     + (timeAxis ? timeAxis + ' and node-age bars (a distance axis while the branches show divergence)'
                         : 'a labeled distance axis from the root to the deepest tip')
@@ -19359,6 +19386,7 @@ function (root, d3, forester, phyloXml) {
         syncHeatmapControls();
         setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis);
         setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid);
+        setCheckboxValue(SCALE_BAR_CB, _state.showScaleBar);
         setCheckboxValue(SHORTEN_NODE_NAME_CB, _state.shortenNodeNames);
         populateVisualizationMenus();
         initializeSearchOptions();

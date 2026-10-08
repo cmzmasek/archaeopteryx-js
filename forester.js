@@ -8784,7 +8784,11 @@
     // -- 1, 2 or 5 times a power of ten -- chosen so the bar comes out about
     // targetPx long at pxPerUnit pixels per unit. Returns {length, label,
     // px}, or null when the scale is unusable (zero, negative or infinite).
-    forester.scaleBarLength = function (pxPerUnit, targetPx) {
+    // The label carries the tree's stated unit after the number ("0.05
+    // subs/site"), as the distance axis does at its end, and nothing when
+    // the file states none: a tree that does not say what its lengths
+    // measure gets no guess (a BV-BRC user asked for units, 2026-10-08).
+    forester.scaleBarLength = function (pxPerUnit, targetPx, unit) {
         if (!(pxPerUnit > 0) || !isFinite(pxPerUnit)) {
             return null;
         }
@@ -8793,7 +8797,8 @@
         let base = raw / Math.pow(10, k);
         let nice = base < 1.5 ? 1 : (base < 3.5 ? 2 : (base < 7.5 ? 5 : 10));
         let length = Number((nice * Math.pow(10, k)).toPrecision(2));
-        return {length: length, label: String(length), px: length * pxPerUnit};
+        let u = typeof unit === 'string' ? unit.trim() : '';
+        return {length: length, label: String(length) + (u ? ' ' + u : ''), px: length * pxPerUnit};
     };
 
     // --------------------------------------------------------------

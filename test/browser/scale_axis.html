@@ -19,6 +19,11 @@
 //
 //   (no query)   the switch, the ruler's calibration, grid, circular, unrooted
 //   ?old=1       the renamed config keys still work, with a warning
+//   ?bar=1       the Scale switch, named as the desktop names it (Christian, 2026-10-08, on a BV-BRC user's ask): the bar
+//                prints the file's unit, the checkbox hides it, the view carries it, cladogram
+//                and the axis disable it
+//   ?bar=plain   a tree that states no unit: the number alone
+//   ?bar=off     config showScaleBar: false opens without the bar
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const settle = () => sleep(2200);
@@ -42,13 +47,57 @@
     try {
         const trees = archaeopteryx.parseTrees('t.nwk', '((A:0.1,B:0.2):0.05,(C:0.3,D:0.15):0.1);');
         const tree = Array.isArray(trees) ? trees[0] : trees;
-        tree.branch_length_unit = 'subs/site';
+        const bar = (new URLSearchParams(location.search)).get('bar');
+        if (bar !== 'plain') { tree.branch_length_unit = 'subs/site'; }
         const old = /[?&]old=1/.test(location.search);
-        const viewer = archaeopteryx.launch('#p', trees, old ? {showTimeAxis: true, timeAxisGrid: true} : {});
+        const viewer = archaeopteryx.launch('#p', trees, old ? {showTimeAxis: true, timeAxisGrid: true}
+            : (bar === 'off' ? {showScaleBar: false} : {}));
         await viewer.ready;
         await settle();
         const strip = () => q('g.aptx-distance-axis');
         const gridLines = () => qa('g.aptx-distance-grid line');
+        const barLabel = () => { const t = q('g.aptx-scalebar text'); return t ? t.textContent : null; };
+
+        if (bar) {
+            const cb = byId('scalebar_cb');
+            check('a Scale checkbox is offered', !!cb);
+            if (bar === 'off') {
+                check('config showScaleBar: false opens without the bar', !q('g.aptx-scalebar') && cb && !cb.checked);
+                check('... and the view says so', viewer.getViewState().scaleBar === false);
+                cb.click(); await settle();
+                check('ticked: the bar appears', !!q('g.aptx-scalebar') && viewer.getViewState().scaleBar === true);
+                finish();
+                return;
+            }
+            check('on by default, enabled', cb.checked && !cb.disabled && !!q('g.aptx-scalebar'));
+            if (bar === 'plain') {
+                check('no unit stated: the number alone', /^(0\.0*)?[125]0*$/.test(barLabel() || '') && !/[a-z]/i.test(barLabel() || ''), barLabel());
+                finish();
+                return;
+            }
+            check('the bar prints the file\'s unit after its number', /^(0\.0*)?[125]0* subs\/site$/.test(barLabel() || ''), barLabel());
+            cb.click(); await settle();
+            check('unticked: the bar is gone', !q('g.aptx-scalebar'));
+            check('... the view carries scaleBar: false', viewer.getViewState().scaleBar === false);
+            const hash = archaeopteryx.encodeViewState(viewer.getViewState());
+            check('... and the hash says scaleBar=0 (booleans travel as 0/1)', /(^|&)scaleBar=0(&|$)/.test(hash), hash);
+            viewer.applyViewState({scaleBar: true}); await settle();
+            check('an applied view brings it back, ticked', !!q('g.aptx-scalebar') && cb.checked);
+            byId('cla_b').click(); await settle();
+            check('cladogram: no bar, the switch disabled', !q('g.aptx-scalebar') && cb.disabled);
+            byId('phy_b').click(); await settle();
+            check('phylogram: the bar and the switch return', !!q('g.aptx-scalebar') && !cb.disabled);
+            byId('scaleaxis_cb').click(); await settle();
+            check('axis on: the bar gives way and the switch is disabled, still ticked', !q('g.aptx-scalebar') && cb.disabled && cb.checked);
+            byId('scaleaxis_cb').click(); await settle();
+            check('axis off: the bar is back', !!q('g.aptx-scalebar') && !cb.disabled);
+            byId('layout_unrooted_b').click(); await settle();
+            check('unrooted: the bar is drawn and the switch enabled', !!q('g.aptx-scalebar') && !cb.disabled);
+            cb.click(); await settle();
+            check('unrooted: unticked, gone', !q('g.aptx-scalebar'));
+            finish();
+            return;
+        }
 
         if (old) {
             check('old keys: the axis is on', !!strip() && byId('scaleaxis_cb').checked);

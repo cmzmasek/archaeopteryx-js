@@ -45,7 +45,7 @@ const CASES = {
     'mark_ink_covered': ['', '?tree=../../docs/data/apaf.xml'],
     'suppdots': [''],
     'time_circular': ['', '?fossil=1'],
-    'scale_axis': ['', '?old=1'],
+    'scale_axis': ['', '?old=1', '?bar=1', '?bar=plain', '?bar=off'],
     'figure_heatmap': ['', '?clade=1', '?given=1'],
     'heatmap_borders': ['', '?many=1', '?radial=1'],
     'label_properties': ['', '?figure=1', '?config=1', '?nodeLabels=1'],

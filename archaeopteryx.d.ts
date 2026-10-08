@@ -138,6 +138,8 @@ export interface ArchaeopteryxConfig {
      * branches show time, a distance axis on any other. Default: on for a
      * time tree, off otherwise. */
     showScaleAxis?: boolean;
+    /** The scale bar at the bottom left of a phylogram; on unless false. */
+    showScaleBar?: boolean;
     /** Grid lines (rings, in circular) at the scale axis's ticks. */
     showScaleGrid?: boolean;
     showSupportDots?: boolean;
@@ -213,6 +215,7 @@ export interface ViewState {
     geneLabels?: 'none' | 'genes' | 'legend';
     scaleAxis?: boolean;
     scaleGrid?: boolean;
+    scaleBar?: boolean;
     /** @deprecated the name of scaleAxis in older links; still read. */
     timeAxis?: boolean;
     /** @deprecated the name of scaleGrid in older links; still read. */

@@ -7,6 +7,20 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **Scale switch.** Display Data > Options gains "Scale", the desktop's name for
+  the same switch, on by default (the desktop's is off), so the bar at the
+  bottom left of a phylogram can be hidden (config
+  `showScaleBar`, view key `scaleBar`). It is disabled where there is nothing to
+  switch: in a cladogram, and while the scale axis has taken the bar's place.
+  A BV-BRC user asked (2026-10-08).
+
+### Changed
+- **The scale bar prints the tree's unit.** After its number, the unit the
+  file states (`branch_length_unit`, e.g. `0.05 subs/site`), as the distance
+  axis already did at its end; nothing when the file states none, so a tree
+  that does not say what its lengths measure gets no guess.
+
 ## 3.25.0 — 2026-10-08
 
 The first days of testing on BV-BRC: the colour picker placed where any page

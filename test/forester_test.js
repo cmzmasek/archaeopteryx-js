@@ -1239,6 +1239,12 @@ function testScaleBarLength() {
     if (!g || g.length !== 200 || g.label !== '200' || !h || h.length !== 0.00005 || h.label !== '0.00005') { console.log('    g ' + JSON.stringify(g) + ' h ' + JSON.stringify(h)); return false; }
     // the default target is 100 px
     if (JSON.stringify(s(1000)) !== JSON.stringify(s(1000, 100))) { return false; }
+    // the tree's stated unit follows the number; none stated, none printed
+    var u = s(1000, 100, 'subs/site'), v = s(1000, 100, '  My '), w = s(1000, 100, ''), x = s(1000, 100, undefined);
+    if (!u || u.label !== '0.1 subs/site' || u.length !== 0.1 || Math.abs(u.px - 100) > 1e-9
+        || !v || v.label !== '0.1 My' || !w || w.label !== '0.1' || !x || x.label !== '0.1') {
+        console.log('    unit ' + JSON.stringify([u, v, w, x])); return false;
+    }
     return s(0, 100) === null && s(-1, 100) === null && s(Infinity, 100) === null && s(NaN, 100) === null;
 }
 

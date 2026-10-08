@@ -255,10 +255,14 @@ program's.
 
 A phylogram carries a **scale bar** at the bottom left: a round number of
 branch-length units (1, 2 or 5 × 10ᵏ, whichever makes the bar about 100 px)
-with its length written above it. It is drawn with the tree, so it zooms and
-exports with it and its label always holds. A cladogram has nothing to
-measure and shows none, and a tree under a scale axis leaves the measuring to
-the axis.
+with its length written above it, followed by the unit the tree states
+(phyloXML's `branch_length_unit`, e.g. `0.05 subs/site`) and by nothing when
+it states none: a tree that does not say what its lengths measure gets no
+guess. It is drawn with the tree, so it zooms and exports with it and its
+label always holds. A cladogram has nothing to measure and shows none, and a
+tree under a scale axis leaves the measuring to the axis. **Scale** under
+Display Data > Options hides it (on by default; config `showScaleBar`, view
+key `scaleBar`; the desktop's switch has the same name and defaults to off).
 
 **Scale Axis** under Display Data (off by default, as on the desktop) draws a
 labelled ruler under a phylogram, from 0 at the root out to the deepest tip, in
@@ -1552,6 +1556,7 @@ copy-pastable JSON.
 | `geneFamily` | `'auto'` | The annotation namespace that colours the genes and anchors the rows: `'auto'` (the one most genes carry) or a prefix such as `'pgfam'`. |
 | `geneLabels` | `'genes'` | Where gene symbols go: `'genes'` (on the arrows), `'legend'` (a card of the families), or `'none'`. |
 | `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
+| `showScaleBar` | `true` | Open with the scale bar at the bottom left of a phylogram (a round length in the tree's branch-length unit). It gives way while the scale axis is shown either way. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
 | `supportDotMinimum` | `95` | Support Dots threshold, as a percentage. On a tree whose confidences top out at 1 (posterior probabilities) it is read on the 0–1 scale, so the default means ≥ 0.95 there and ≥ 95 on a bootstrap tree. |
