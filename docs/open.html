@@ -16,13 +16,9 @@
     <script src="lib/forester.js"></script>
     <script src="lib/archaeopteryx.js"></script>
     <script src="draggable-toolbar.js"></script>
-    <!-- canvg 4.x publishes only ES modules, so PNG export needs this small
-         bridge (archaeopteryx.js looks for window.Canvg). -->
-    <script type="module">
-        import {Canvg} from './lib/canvg.js';
-
-        window.Canvg = Canvg;
-    </script>
+    <!-- canvg, for PNG export and Copy PNG (archaeopteryx.js looks for
+         window.Canvg): the classic-script build, before launch(). -->
+    <script src="lib/canvg.global.js"></script>
 
     <style>
         html, body {

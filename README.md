@@ -64,28 +64,32 @@ Archaeopteryx.js has the following dependencies:
  * d3.js (version 7): https://www.npmjs.com/package/d3
  * sax.js (1.6.1): https://www.npmjs.com/package/sax/v/1.6.1
  
-For **raster PNG export** (optional — the PNG entry appears in the Download
-menu only when `window.Canvg` is present):
- * canvg (4.x): https://www.npmjs.com/package/canvg — publishes ES modules
-   only (no classic-script global build), so bridge it yourself:
-   ```html
-   <script type="module">
-       import {Canvg} from 'http://path/to/canvg.js'; // a self-contained build; see below
-       window.Canvg = Canvg;
-   </script>
-   ```
-   A module script is deferred regardless of where it sits in the page, and
-   PNG export only runs later from a Download click, so this can go anywhere
-   before the click — it does not need to precede archaeopteryx.js's own
-   `<script>` tag. `docs/lib/canvg.js` in this repository is one such
-   self-contained build (npm's `canvg@4.0.3` bundled into one file, e.g. via
-   `esm.sh/canvg@4?bundle`, with its one unnecessary Node-environment shim
-   import removed — see the file's own header comment).
-   **Or skip the bridge:** `docs/lib/canvg.global.js` is the same build wrapped
-   for a plain `<script src="canvg.global.js"></script>`, or for one more file
-   in a site's concatenated bundle: it defines `window.Canvg` itself.
-   (Generated from `canvg.js` by `test/make_canvg_global.js`; a unit test
-   keeps the two in step.)
+For **raster PNG export** (optional — the PNG entry, the Copy PNG button and
+the PNG-scale row appear only when `window.Canvg` is present):
+ * canvg (4.x): https://www.npmjs.com/package/canvg. **Load it before
+   `launch()` is called:** the Download menu looks for it at click time, but
+   the Copy PNG button and the PNG-scale row are built with the control
+   panel at launch, so a page that provides it later gets a PNG entry and
+   nothing else. canvg publishes ES modules only (no classic-script global
+   build); this repository ships two ready-made files:
+   * `docs/lib/canvg.global.js` — a classic-script build for a plain
+     `<script src="canvg.global.js"></script>`, or for one more file in a
+     site's concatenated bundle; it defines `window.Canvg` itself. This is
+     what the demo pages use. (Generated from `canvg.js` by
+     `test/make_canvg_global.js`; a unit test keeps the two in step.)
+   * `docs/lib/canvg.js` — the self-contained ES module build (npm's
+     `canvg@4.0.3` bundled into one file via `esm.sh/canvg@4?bundle`, with
+     its one unnecessary Node-environment shim import removed — see the
+     file's own header), for a page that prefers a module bridge of its own:
+     ```html
+     <script type="module">
+         import {Canvg} from 'http://path/to/canvg.js';
+         window.Canvg = Canvg;
+     </script>
+     ```
+     A module script runs after the document is parsed, so a page that calls
+     `launch()` from an inline script during parsing must use the classic
+     build instead.
 
 For **vector PDF export** (optional — the PDF entry appears in the Download
 menu only when both are loaded before archaeopteryx.js):

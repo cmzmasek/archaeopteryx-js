@@ -11,3 +11,7 @@ test/data/
 # (expect a very large one-time formatting commit if you do).
 archaeopteryx.js
 forester.js
+
+# Synced copies of the two libraries, vendored third-party libs, and the
+# generated canvg.global.js (test/canvg_global_test.js pins it byte for byte).
+docs/lib/

@@ -3,13 +3,14 @@
  * from docs/lib/canvg.js (the self-contained ES module build; see its header).
  * Do not edit: regenerate.
  *
- * The module's body in a function, its export statement replaced by one
- * assignment, so a plain <script src="canvg.global.js"> -- or this file
- * concatenated into a site's bundle -- defines window.Canvg, which is
+ * The module's body in a strict-mode function, its export statement replaced
+ * by one assignment, so a plain <script src="canvg.global.js"> -- or this
+ * file concatenated into a site's bundle -- defines window.Canvg, which is
  * what Archaeopteryx.js looks for to offer PNG export and Copy PNG.
  * Licence: canvg's (MIT).
  */
 (function () {
+'use strict';
 /*
  * canvg 4.0.3 -- self-contained ES module build.
  *

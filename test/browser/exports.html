@@ -8,11 +8,10 @@
 <script src="../../docs/lib/phyloxml.js"></script>
 <script src="../../docs/lib/forester.js"></script>
 <script src="../../docs/lib/archaeopteryx.js"></script>
+<!-- the classic-script canvg build, as the demo pages load it and as a bundling site would -->
+<script src="../../docs/lib/canvg.global.js"></script>
 <div id="phylogram1"></div>
 <script type="module">
-import {Canvg} from '../../docs/lib/canvg.js';
-window.Canvg = Canvg;
-
 // Every download, driven the way a user drives it -- the Download button, the
 // menu it opens, the section's choices -- with the file caught on its way to
 // the disk and then READ: parsed back, measured, decoded. Nothing here asks
