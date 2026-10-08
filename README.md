@@ -1056,8 +1056,8 @@ Both entry points take **exactly** the arguments shown — a call with the old
 trailing arguments (the separate settings bag, `nodeVisualizations`,
 `nodeLabels`, `specialVisualizations`, or the positional Newick parse
 options) **throws** with a message saying where each one went: everything now
-lives in the **one config object** (`nodeLabels` and
-`internalNumericLabels` are config keys). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
+lives in the **one config object** (`internalNumericLabels` is a config key;
+`nodeLabels` is retired, see the deprecated keys below). `config` itself is optional — `archaeopteryx.launch('#phylogram1',
 tree)` works.
 
 `container` is a **CSS selector or the DOM element itself** (frameworks hand
@@ -1558,7 +1558,6 @@ copy-pastable JSON.
 | `pngExportScale` | `4` | The PNG resolution the Download section starts on: 2, 4 or 8 (any other value is snapped to the nearest, with a console warning). |
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
-| `nodeLabels` | `null` | Custom label-field checkboxes: `{key: {label, description, propertyRef, showButton, selected}}` — each adds a panel checkbox labelling nodes with the named property's value. (Was `launch()`'s sixth positional argument.) |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
 | `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |
 | `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
@@ -1581,7 +1580,7 @@ whatever it names.
 
 ### Accepted, with a warning
 
-Four keys are neither current nor removed: they are accepted so an existing
+Five keys are neither current nor removed: they are accepted so an existing
 embed keeps working, and warn on the console.
 
 | Key | What happens |
@@ -1590,6 +1589,7 @@ embed keeps working, and warn on the console.
 | `nhConfidenceValuesInBrackets` | Retired: ignored. It gated whether `[95]` is read as a confidence, but setting it `false` never reinterpreted the bracket — it *discarded* it, so the option's only effect was to throw support values away. A bracket that is not a number is a Newick comment and was ignored either way, and NHX / BEAST blobs go through a different path. Bracketed values are now always read as confidences. |
 | `showTimeAxis` | Translated to `showScaleAxis`, value unchanged: the switch now also draws a distance axis on a tree that is not in time. An explicit `showScaleAxis` always wins. |
 | `timeAxisGrid` | Translated to `showScaleGrid`, value unchanged. |
+| `nodeLabels` | Retired in 3.25.0: ignored, with a warning. The custom label checkboxes it declared predate the Metadata checkbox and its "Metadata fields…" chooser, which offer exactly the fields the tree carries; a fixed site-wide list put checkboxes for absent fields on every tree. `labelProperties` sets the starting fields where the automatic choice is not wanted. Removed in a later release. |
 
 ### What replaced the rest
 

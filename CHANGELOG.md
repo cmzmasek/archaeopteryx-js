@@ -7,6 +7,17 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Deprecated
+- **`nodeLabels` is retired: accepted with a console warning, no effect; removed
+  in a later release.** The custom label checkboxes it declared, a fixed list
+  of metadata fields with one panel checkbox each, predate the Metadata
+  checkbox and its "Metadata fields…" chooser, which offer exactly the fields
+  the tree carries. On BV-BRC the list, written for influenza, put eight
+  checkboxes on every virus tree, six of them for fields the tree did not
+  have. `labelProperties` sets the starting fields where the automatic choice
+  is not wanted. A view hash that still carries a `custom:<key>` flag is read
+  without complaint and the flag ignored.
+
 ### Changed
 - **A forced `initialVisualization` is still honoured, but no longer in silence.**
   When the name is a field the automatic choice would not have opened with --

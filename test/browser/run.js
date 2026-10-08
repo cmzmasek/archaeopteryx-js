@@ -48,7 +48,7 @@ const CASES = {
     'scale_axis': ['', '?old=1'],
     'figure_heatmap': ['', '?clade=1', '?given=1'],
     'heatmap_borders': ['', '?many=1', '?radial=1'],
-    'label_properties': ['', '?figure=1', '?config=1'],
+    'label_properties': ['', '?figure=1', '?config=1', '?nodeLabels=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'genes': ['', '?config=1', '?radial=1', '?domains=1'],
     'initial_visualization': ['', '?sparse=1', '?fine=1', '?last=1', '?missing=1', '?auto=1'],

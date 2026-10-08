@@ -23,6 +23,7 @@
 //   (no query)   the checkbox, the default fields, the chooser, the view
 //   ?figure=1    the figure says: label with species, hide the names
 //   ?config=1    ... and the config says Properties off, which wins
+//   ?nodeLabels=1 the retired key: one warning, no checkbox, no effect
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const byId = (id) => document.getElementById(id);
@@ -48,13 +49,41 @@
     const labelOf = (name) => { const t = [...document.querySelectorAll('#p g.node')].find((g) => g.__data__
         && g.__data__.name === name); const x = t && t.querySelector('text.extlabel'); return x ? x.textContent : null; };
     const settle = () => sleep(1600);
+    // what the old BV-BRC virus widget passed, cut to two: one field the tree
+    // has (ticked from the start), one it lacks
+    const NODE_LABELS = {Host: {label: 'Host', description: 'to use the host as part of node names',
+        propertyRef: 'BVBRC:host_name', selected: true, showButton: true},
+        Region: {label: 'Region', description: 'to use the region as part of node names',
+        propertyRef: 'vipr:Region', selected: false, showButton: true}};
+    const warned = [];
+    const realWarn = console.warn;
+    console.warn = function () { warned.push(Array.from(arguments).join(' ')); realWarn.apply(console, arguments); };
     try {
         const trees = archaeopteryx.parseTrees('props.xml', xml);
-        const viewer = archaeopteryx.launch('#p', trees, q.get('config') === '1' ? {showProperties: false} : {});
+        const viewer = archaeopteryx.launch('#p', trees, q.get('config') === '1' ? {showProperties: false}
+            : (q.get('nodeLabels') === '1' ? {nodeLabels: NODE_LABELS} : {}));
         await viewer.ready;
         await sleep(2200);
+        console.warn = realWarn;
         const cb = byId('props_cb');
-        if (q.get('config') === '1') {
+        if (q.get('nodeLabels') === '1') {
+            // nodeLabels retired (3.25.0): the key is accepted with one warning
+            // and declares nothing -- no checkbox, no label text, no view flag.
+            // BV-BRC passed a fixed list of eight on every virus tree, six of
+            // them for fields the tree did not have.
+            const ours = warned.filter((w) => /"nodeLabels"/.test(w));
+            check('exactly one warning, naming the key as retired and pointing at Metadata',
+                ours.length === 1 && /retired and has no effect/.test(ours[0]) && /Metadata/.test(ours[0]), ours.join(' || '));
+            check('no custom checkbox is offered', !byId('Host__cb') && !byId('Region__cb')
+                && document.querySelectorAll('.aptx-panel input[id$="__cb"]').length === 0,
+                [...document.querySelectorAll('.aptx-panel input[id$="__cb"]')].map((i) => i.id).join(','));
+            check('Metadata is offered, and off', !!cb && !cb.checked);
+            check('a selected entry labels nothing: the label is the name alone', labelOf('25540.3') === '25540.3', labelOf('25540.3'));
+            const vs = viewer.getViewState();
+            check('the view carries no custom: flag', !vs.show.some((f) => /^custom:/.test(f)), vs.show.join(','));
+            viewer.applyViewState({show: ['name', 'external', 'custom:Host'], labelFields: ['BVBRC:host_name']}); await settle();
+            check('a 3.24.0 hash with a custom: flag is read, the flag ignored', labelOf('25540.3') === '25540.3', labelOf('25540.3'));
+        } else if (q.get('config') === '1') {
             check('the config\'s showProperties: false wins over the figure', !!cb && !cb.checked);
             check('... the names stay off as the figure says, so nothing shows', labelOf('25540.3') === '' || labelOf('25540.3') === null,
                 JSON.stringify(labelOf('25540.3')));

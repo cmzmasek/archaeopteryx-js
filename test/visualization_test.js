@@ -2201,7 +2201,7 @@ function testLaunchApiValidation() {
     // the new config keys route through readConfig (reaching the container
     // check means the keys were accepted)
     m = thrown(function () {
-        aptx.launch('#x', tree, {nodeLabels: {}, nhConfidenceValuesInBrackets: false});
+        aptx.launch('#x', tree, {internalNumericLabels: 'auto', nhConfidenceValuesInBrackets: false});
     });
     if (!m || m.indexOf('container not found') < 0) {
         console.log('    new config keys: ' + m);
@@ -2297,6 +2297,43 @@ function testBracketsFlagRetired() {
     }
     if (!warned.some(function (m) { return /nhConfidenceValuesInBrackets/.test(m) && /retired/.test(m); })) {
         console.log('    no retirement warning: ' + JSON.stringify(warned));
+        return false;
+    }
+    return true;
+}
+
+// nodeLabels is retired (3.25.0): accepted, warned about, ignored. The custom
+// label checkboxes it declared are gone with it; the Metadata checkbox offers
+// the tree's own fields. Pinned here so the key can neither throw (an upgrade
+// must not break a working embed over it) nor quietly work again.
+function testNodeLabelsRetired() {
+    global.d3 = global.d3 || {};
+    global.forester = global.forester || forester;
+    global.phyloXml = global.phyloXml || px;
+    var aptx = require('../archaeopteryx').archaeopteryx;
+    var tree = forester.parseNewHampshire('((A:1,B:1):0.5,(C:1,D:1):0.5);', true, false);
+    var warned = [];
+    var realWarn = console.warn;
+    console.warn = function (m) { warned.push(String(m)); };
+    var threw = false;
+    try {
+        try {
+            aptx.launch('#no-such-container', tree, {nodeLabels: {Host: {label: 'Host', description: 'the host',
+                propertyRef: 'vipr:Host', showButton: true, selected: true}}});
+        } catch (e) {
+            // the container is what fails, not the retired key
+            threw = /container/.test(e.message);
+        }
+    } finally {
+        console.warn = realWarn;
+    }
+    if (!threw) {
+        console.log('    expected the container error, not a config error');
+        return false;
+    }
+    var ours = warned.filter(function (m) { return /"nodeLabels"/.test(m); });
+    if (ours.length !== 1 || !/retired and has no effect/.test(ours[0]) || !/Metadata/.test(ours[0])) {
+        console.log('    expected one retirement warning naming Metadata: ' + JSON.stringify(warned));
         return false;
     }
     return true;
@@ -2999,6 +3036,7 @@ runTest("audit: underscore fold     : ", testAuditUnderscoreFold);
 runTest("audit: nodeVis stays dead  : ", testNodeVisualizationsStayRemoved);
 runTest("audit: launch API guards   : ", testLaunchApiValidation);
 runTest("brackets flag retired   : ", testBracketsFlagRetired);
+runTest("nodeLabels retired       : ", testNodeLabelsRetired);
 runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);

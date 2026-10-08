@@ -29,9 +29,13 @@ export interface Phylogeny extends PhylogenyNode {
 
 export type Layout = 'rectangular' | 'circular' | 'unrooted';
 
-/** One custom label-field entry (the config's nodeLabels values).
+/** @deprecated Retired in 3.25.0 with `nodeLabels`: accepted with a console
+ * warning, no effect; removed in a later release. The Metadata checkbox and
+ * its "Metadata fields…" chooser offer the tree's own fields.
  *
- * Two modes:
+ * One custom label-field entry (the config's nodeLabels values).
+ *
+ * Two modes (3.0.0 to 3.24.0):
  *  - a PANEL CHECKBOX needs label, description AND propertyRef set, plus
  *    showButton: true -- omit showButton (or any of the three) and no
  *    checkbox appears;
@@ -85,6 +89,10 @@ export interface ArchaeopteryxConfig {
     nhConfidenceValuesAsInternalNames?: boolean;
     nhConfidenceValuesInBrackets?: boolean;
     nhExportWriteConfidences?: boolean;
+    /** @deprecated Retired in 3.25.0: accepted with a console warning, no
+     * effect; removed in a later release. The Metadata checkbox and its
+     * "Metadata fields…" chooser offer the tree's own fields; labelProperties
+     * sets the starting fields. */
     nodeLabels?: Record<string, NodeLabelSpec> | null;
     /** Called once per settled redraw when the view changed: the state as
      * getViewState() returns it, and its hash-ready string. */
@@ -176,8 +184,8 @@ export interface ViewState {
     shapeBy?: string;
     /** The panel's checked boxes: name, taxonomy, sequence, confidence,
      * madValues, branchLength, external, internal, nodeEvents, branchEvents,
-     * supportDots, shortNames, autoHide, visualizations, visualStyles, and
-     * custom:<key> for a nodeLabels checkbox. */
+     * supportDots, shortNames, autoHide, visualizations, visualStyles. (A
+     * custom:<key> flag from a 3.24.0 hash is read and ignored.) */
     show?: string[];
     font?: number;
     node?: number;

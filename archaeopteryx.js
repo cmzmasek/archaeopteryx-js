@@ -539,7 +539,6 @@ function (root, d3, forester, phyloXml) {
     let _container = null;            // the resolved container ELEMENT (never a selector string)
     let _intervalId = 0;
     let _maxLabelLength = 0;
-    let _nodeLabels = null;
     let _state = null;      // live display state: what the control panel writes to
     let _root = null;
     let _root_const = null;
@@ -4750,25 +4749,6 @@ function (root, d3, forester, phyloXml) {
             l = append(l, labelPropertiesOf(phynode));
         }
 
-        if (_nodeLabels && phynode.properties) {
-            const props_length = phynode.properties.length;
-            if (props_length > 0) {
-                for (const value of Object.values(_nodeLabels)) {
-                    if (value.selected === true && value.propertyRef) {
-                        let prop_text = '';
-                        for (let pm = 0; pm < props_length; ++pm) {
-                            if (phynode.properties[pm].ref === value.propertyRef && phynode.properties[pm].datatype === 'xsd:string' && forester.isNodeScopedProperty(phynode.properties[pm])) {
-                                if (prop_text.length > 0) {
-                                    prop_text += ', '
-                                }
-                                prop_text += phynode.properties[pm].value;
-                            }
-                        }
-                        l = append(l, prop_text);
-                    }
-                }
-            }
-        }
 
 
         if (_state.showDistributions && phynode.distributions && phynode.distributions.length > 0) {
@@ -5547,6 +5527,21 @@ function (root, d3, forester, phyloXml) {
                 return v;
             },
             note: 'the grid follows the scale axis, time or distance'
+        },
+        // Retired in 3.25.0 (Christian, 2026-10-08: "go with the deprecation").
+        // The custom label checkboxes it declared -- a site's fixed list of
+        // property refs, one panel checkbox each, labelling nodes with the
+        // property's value -- predate the Metadata checkbox and its
+        // "Metadata fields…" chooser, which offer exactly the fields the tree
+        // carries and replace identifier-like tip names with a name property
+        // on their own. On BV-BRC the list, written for influenza, put eight
+        // checkboxes on every virus tree, six of them for fields the tree
+        // did not have. The checkbox code went with the key (the label
+        // text, the panel rows, the view state's custom:<key> flags, which
+        // an old hash may still carry and the reader now ignores). Accepted
+        // with this warning for one release cycle, then REMOVED_CONFIG.
+        nodeLabels: {
+            note: 'the Metadata checkbox and its "Metadata fields…" chooser offer the tree\'s own fields; labelProperties sets the starting fields'
         }
     };
 
@@ -5746,7 +5741,6 @@ function (root, d3, forester, phyloXml) {
         'internalNumericLabels',
         'ladderizeTree',
         'nhExportWriteConfidences',
-        'nodeLabels',
         'onViewChange',
         'panelDensity',
         'pngExportScale',
@@ -6346,19 +6340,6 @@ function (root, d3, forester, phyloXml) {
         } else if (typeof _settings.onViewChange !== 'function') {
             throw new Error(ERROR + '"onViewChange" must be a function (state, encoded) or null');
         }
-        if (_settings.nodeLabels === undefined) {
-            _settings.nodeLabels = null;
-        } else if (_settings.nodeLabels !== null && typeof _settings.nodeLabels !== 'object') {
-            throw new Error('nodeLabels must be an object (see the README) or null');
-        }
-        if (_settings.nodeLabels) {
-            // a DEEP copy: the viewer writes runtime state into these specs
-            // (the checkbox element id, the live checked state), and the
-            // caller's config object must stay declarative -- an embedder
-            // reusing one nodeLabels constant across launches must not
-            // inherit the previous session's checkbox state
-            _settings.nodeLabels = JSON.parse(JSON.stringify(_settings.nodeLabels));
-        }
         if (_settings.pngExportScale === undefined) {
             _settings.pngExportScale = 4;
         } else if (typeof _settings.pngExportScale !== 'number'
@@ -6618,7 +6599,7 @@ function (root, d3, forester, phyloXml) {
                 + ' trailing arguments were removed. The separate settings bag merged into the one'
                 + ' config object; "nodeVisualizations" and "specialVisualizations" are gone for good'
                 + ' (visualizations are derived automatically from the tree itself); "nodeLabels"'
-                + ' moved into the config as its "nodeLabels" key.');
+                + ' is retired (the Metadata checkbox offers the tree\'s own fields).');
         }
         if (phylo === undefined || phylo === null) {
             throw new Error(ERROR + 'input tree is undefined or null');
@@ -6709,9 +6690,8 @@ function (root, d3, forester, phyloXml) {
             .on('zoom', zoom);
         _basicTreeProperties = forester.collectBasicTreeProperties(_treeData);
 
-        // Every launch starts from a clean slate: _vis is rebuilt below and
-        // _nodeLabels reassigned, never inherited from a previous launch in
-        // the same page.
+        // Every launch starts from a clean slate: _vis is rebuilt below, never
+        // inherited from a previous launch in the same page.
         _radialRotation = 0;
         _radialLabelsHorizontal = false;
         _msaColOffset = 0;
@@ -6729,7 +6709,6 @@ function (root, d3, forester, phyloXml) {
         // candidate ranking over 13k tips before the card could even paint.
         checkLayoutValue(cfg.state ? cfg.state.layout : undefined);
         initializeSettings(cfg.settings);
-        _nodeLabels = _settings.nodeLabels || null;
 
         // whatever a previous launch left in this container (or in the
         // container before it) goes now, so the old tree does not sit under
@@ -9921,20 +9900,6 @@ function (root, d3, forester, phyloXml) {
         return found;
     }
 
-    // The config's custom label checkboxes (nodeLabels) that are offered
-    function customLabelEntries() {
-        let out = [];
-        if (_nodeLabels) {
-            Object.keys(_nodeLabels).forEach(function (key) {
-                let v = _nodeLabels[key];
-                if (v && v.label && v.showButton === true && v.propertyRef && v.description) {
-                    out.push({key: key, entry: v});
-                }
-            });
-        }
-        return out;
-    }
-
     function searchStateOf(idx) {
         let spec = currentSearchSpec(idx);
         let value = (spec.value === null || spec.value === undefined) ? '' : String(spec.value);
@@ -9981,11 +9946,6 @@ function (root, d3, forester, phyloXml) {
             return _state[f[2]] === true;
         }).map(function (f) {
             return f[0];
-        });
-        customLabelEntries().forEach(function (c) {
-            if (c.entry.selected === true) {
-                s.show.push('custom:' + c.key);
-            }
         });
         s.font = _state.externalNodeFontSize;
         s.node = _state.nodeSizeDefault;
@@ -10131,9 +10091,6 @@ function (root, d3, forester, phyloXml) {
             let on = new Set(s.show);
             VIEW_SHOW_FLAGS.forEach(function (f) {
                 _state[f[2]] = on.has(f[0]);
-            });
-            customLabelEntries().forEach(function (c) {
-                c.entry.selected = on.has('custom:' + c.key);
             });
         }
         if (isFinite(s.font)) {
@@ -10283,11 +10240,6 @@ function (root, d3, forester, phyloXml) {
         syncBranchScaleControls();
         VIEW_SHOW_FLAGS.forEach(function (f) {
             setCheckboxValue(f[1], _state[f[2]] === true);
-        });
-        customLabelEntries().forEach(function (c) {
-            if (c.entry.cb_id) {
-                setCheckboxValue(c.entry.cb_id, c.entry.selected === true);
-            }
         });
         setCheckboxValue(MSA_CB, _state.showMsa === true);
         setCheckboxValue(MSA_LOGO_CB, _state.showMsaLogo === true);
@@ -15405,22 +15357,6 @@ function (root, d3, forester, phyloXml) {
     }
 
 
-    function customCbClicked(cb_id) {
-        if (_nodeLabels) {
-            const cb_value = getCheckboxValue(cb_id);
-            for (const value of Object.values(_nodeLabels)) {
-                if (value.label && value.showButton === true && value.propertyRef && value.description) {
-                    if (value.cb_id === cb_id) {
-                        value.selected = cb_value;
-                    }
-                }
-            }
-            search0();
-            search1();
-            update();
-        }
-    }
-
     function taxonomyCbClicked() {
         _state.showTaxonomy = getCheckboxValue(TAXONOMY_CB);
         if (_state.showTaxonomy) {
@@ -18456,20 +18392,6 @@ function (root, d3, forester, phyloXml) {
 
         on(SHORTEN_NODE_NAME_CB, 'click', shortenCbClicked);
 
-        if (_nodeLabels) {
-            for (const [key, value] of Object.entries(_nodeLabels)) {
-                if (value.label && value.showButton === true && value.propertyRef && value.description) {
-                    const cb_id = makeIdForCustomCheckboxButton(key);
-                    on(cb_id, 'click', function () {
-                        customCbClicked(cb_id);
-                    });
-                    if (value.selected === true) {
-                        setCheckboxValue(cb_id, true);
-                    }
-                }
-            }
-        }
-
         on(LABEL_COLOR_SELECT_MENU, 'change', function () {
             let v = this.value;
             if (v && v !== DEFAULT && _vis && _vis.byId[v]) {
@@ -18910,10 +18832,6 @@ function (root, d3, forester, phyloXml) {
             return '<label class="aptx-seg" title="' + tooltip + '"><input type="radio" name="' + radioGroup + '" id="' + id + '">' + content + '</label>';
         }
 
-        function makeIdForCustomCheckboxButton(key) {
-            return key + '__cb';
-        }
-
         function makeDisplayControl() {
             let labels = [];
             let nodes = [];
@@ -18934,17 +18852,6 @@ function (root, d3, forester, phyloXml) {
                 // the word the users' own tools use for these fields
                 labels.push(makeCheckboxItem('Metadata', PROPERTIES_CB, 'to show/hide the nodes\' metadata (phyloXML'
                     + ' properties: species, host, …) in their labels; Metadata fields… chooses which, and in what order'));
-            }
-            if (_nodeLabels) {
-                for (const [key, value] of Object.entries(_nodeLabels)) {
-                    if (value.label && value.propertyRef && value.description) {
-                        const cb_id = makeIdForCustomCheckboxButton(key);
-                        if (value.showButton === true) {
-                            labels.push(makeCheckboxItem(value.label, cb_id, value.description));
-                        }
-                        value.cb_id = cb_id;
-                    }
-                }
             }
             if (_basicTreeProperties.confidences) {
                 labels.push(makeCheckboxItem('Confidence', CONFIDENCE_VALUES_CB, 'to show/hide confidence values'));
