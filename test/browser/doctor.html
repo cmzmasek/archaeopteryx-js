@@ -1,0 +1,266 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the diagnostics report, its dialog, and the dot on the program name</title>
+<style>
+  html,body{margin:0}
+  /* a page that flows, like an embedding site's: content above and below */
+  .filler{height:300px;background:repeating-linear-gradient(#f4f4f4 0 20px,#e8e8e8 20px 40px)}
+  #p{height:640px;position:relative;border:1px solid #ccc}
+</style>
+<div class="filler"></div>
+<div id="p"></div>
+<div class="filler"></div>
+<script>
+// Christian, 2026-10-09: the viewer runs half-equipped without a word (on
+// BV-BRC: no PDF, no PNG, a retired config key, a forced visualization, all
+// found by reading the site's source). archaeopteryx.doctor() reports the
+// state of the page; the About box gets a "Diagnostics" row; and a small dot
+// after the program name is lit only by what nobody chooses.
+//
+//   (no query)     everything loaded, a plain launch: nothing to report, no dot; the dialog; Copy report
+//   ?absent=1      no canvg, no jspdf, no svg2pdf: a site's choice -- stated, NOT flagged, no dot
+//   ?nodeLabels=1  a retired config key: the dot, the About row, the dialog's list
+//   ?forced=1      initialVisualization naming nothing on this tree
+//   ?half=1        jspdf without svg2pdf.js
+//   ?order=1       svg2pdf.js loaded BEFORE jspdf (the real files): present, not attached
+//   ?old=1         the 2.x-era globals: window.canvg and window.jsPDF
+//   ?forester=1    forester.js from another release
+//   ?phyloxml=1    a phyloxml that writes differently from 1.1.7
+//   ?d3=1          a d3 that is not version 7
+//   ?notes=1       a d3 7 older than 7.9 and a jspdf that is not 4: notes, NOT problems, no dot
+//   ?failed=1      a launch that throws: no panel, and doctor() still tells
+//   ?legacy=1      Copy report without the async clipboard (the textarea path, under a modal dialog)
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const mode = ['absent', 'nodeLabels', 'forced', 'half', 'order', 'old', 'forester', 'phyloxml', 'd3', 'notes', 'failed', 'legacy']
+        .find((k) => q.get(k) === '1') || 'clean';
+    out.push('case ' + mode);
+    const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
+        s.src = '../../docs/lib/' + src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+    try {
+        const libs = ['d3.v7.min.js', 'sax.js', 'phyloxml.js', 'forester.js', 'archaeopteryx.js'];
+        if (mode !== 'absent' && mode !== 'old') {
+            // ?order=1 loads the real pair the wrong way round: svg2pdf.js attaches itself to the jspdf it finds at load
+            libs.push('canvg.global.js');
+            if (mode === 'order') { libs.push('svg2pdf.umd.min.js'); }
+            libs.push('jspdf.umd.min.js');
+            if (mode !== 'half' && mode !== 'order') { libs.push('svg2pdf.umd.min.js'); }
+        }
+        for (const l of libs) { await load(l); }
+        // ---- what each case does to the page before the launch ----
+        let config = {};
+        // what the case must produce: [number of problems, a pattern each problem list must match]
+        let want = {problems: 0, patterns: []};
+        if (mode === 'nodeLabels') { config = {nodeLabels: [{label: 'Name', showButton: true, selected: true}]};
+            want = {problems: 1, patterns: [/"nodeLabels" is retired/]}; }
+        if (mode === 'forced') { config = {initialVisualization: 'No such field'};
+            want = {problems: 1, patterns: [/initialVisualization "No such field" names no visualization/]}; }
+        if (mode === 'half') { want = {problems: 1, patterns: [/^jspdf: loaded without svg2pdf\.js/]}; }
+        if (mode === 'order') { out.push('window.svg2pdf after loading it first: ' + typeof window.svg2pdf + ', jsPDF.API.svg: ' + typeof window.jspdf.jsPDF.API.svg);
+            want = {problems: 1, patterns: [/^svg2pdf\.js: loaded, but not attached to jspdf/]}; }
+        if (mode === 'old') { window.canvg = function () {}; window.jsPDF = function () {};
+            want = {problems: 2, patterns: [/^canvg: loaded under its old global "canvg"/, /^jspdf: loaded under its old global "jsPDF"/]}; }
+        if (mode === 'forester') { forester.VERSION = '3.0.0';
+            want = {problems: 1, patterns: [/^forester\.js: forester\.js is 3\.0\.0, archaeopteryx\.js is \d+\.\d+\.\d+: the two must come from the same release/]}; }
+        if (mode === 'phyloxml') { const write = phyloXml.toPhyloXML;
+            phyloXml.toPhyloXML = function () { return write.apply(this, arguments).replace('#ce1616', '#CE1616'); };
+            want = {problems: 1, patterns: [/^phyloxml: does not write phyloXML as phyloxml 1\.1\.7 does/]}; }
+        if (mode === 'd3') { window.d3 = Object.assign({}, window.d3, {version: '5.16.0'});
+            want = {problems: 1, patterns: [/^d3: Archaeopteryx\.js needs d3 version 7/]}; }
+        if (mode === 'notes') { window.d3 = Object.assign({}, window.d3, {version: '7.4.0'}); window.jspdf.jsPDF.version = '2.5.1';
+            config = {displayWidth: 800}; }    // ignored while dynamic sizing is on: the launch SAYS so, as a note
+        if (mode === 'failed') { config = {noSuchKey: 1};
+            want = {problems: 1, patterns: [/^launch failed: unknown config key\(s\) passed to launch: "noSuchKey"/]}; }
+
+        // before any launch the report already works, and says no tree is on view
+        const before = archaeopteryx.doctor();
+        check('doctor() works before a launch', before && before.launch === null && /no tree is on view/.test(before.text), before && before.summary);
+
+        const file = '../../docs/data/Caliciviridae_100.xml';
+        const text = await (await fetch(file)).text();
+        // counted on a second parse, by the model's own function, before the viewer sees a tree
+        const tipCount = forester.getAllExternalNodes(archaeopteryx.parseTrees(file, text)[0]).length;
+        let viewer = null, thrown = null;
+        try {
+            // ?nodeLabels=1 launches the tree twice over, as a two-tree list: showTree(1) re-reads the config
+            const trees = archaeopteryx.parseTrees(file, text).concat(mode === 'nodeLabels' ? archaeopteryx.parseTrees(file, text) : []);
+            viewer = archaeopteryx.launch('#p', trees, config);
+            await viewer.ready;
+        } catch (e) { thrown = e; }
+        await sleep(1200);
+        document.getElementById('p').scrollIntoView({block: 'start'});
+        await sleep(200);
+        check(mode === 'failed' ? 'the launch threw' : 'the launch did not throw', (mode === 'failed') === !!thrown, thrown && thrown.message);
+
+        // ---- the report ----
+        const rep = archaeopteryx.doctor();
+        out.push(...rep.text.split('\n').map((l) => '    | ' + l));
+        check('the report counts ' + want.problems + ' problem(s)', rep.problems.length === want.problems, rep.problems.join(' || '));
+        check('ok is ' + (want.problems === 0), rep.ok === (want.problems === 0));
+        check('the summary says so', rep.summary === (want.problems === 0 ? 'nothing to report'
+            : want.problems + (want.problems === 1 ? ' thing' : ' things') + ' to check'), rep.summary);
+        want.patterns.forEach((p) => check('a problem matches ' + p, rep.problems.some((x) => p.test(x))));
+        check('the text carries every problem', rep.problems.every((x) => rep.text.includes('  ! ' + x)));
+        check('seven libraries are listed', rep.libraries.map((l) => l.name).join() === 'forester.js,d3,phyloxml,sax,canvg,jspdf,svg2pdf.js', rep.libraries.map((l) => l.name).join());
+        check('four functions are listed', rep.functions.map((f) => f.name).join() === 'Read and save phyloXML,PNG export,Copy PNG,PDF export', rep.functions.map((f) => f.name).join());
+        const lib = (n) => rep.libraries.find((l) => l.name === n);
+        const fn = (n) => rep.functions.find((f) => f.name === n);
+        if (mode === 'notes') {
+            check('an older d3 7 is a note', lib('d3').status === 'note' && lib('d3').version === '7.4.0' && rep.notes.includes('d3 7.4.0: older than the 7.9 this release is tested with'), rep.notes.join(' || '));
+            check('a jspdf that is not 4 is a note', lib('jspdf').status === 'note' && rep.notes.includes('jspdf 2.5.1: this release is tested with jspdf 4'), rep.notes.join(' || '));
+            check('what the launch only remarked on is a note too, not a problem', rep.notes.includes('dynamic sizing is turned on, will ignore displayWidth setting'), rep.notes.join(' || '));
+            check('three notes, and the text lists them', rep.notes.length === 3 && rep.notes.every((n) => rep.text.includes('  - ' + n)), rep.notes.length);
+            check('PDF export stays on', fn('PDF export').available);
+        }
+        if (mode !== 'd3' && mode !== 'notes') { check('d3 states its version', lib('d3').version === '7.9.0' && lib('d3').status === 'ok', lib('d3').version + ' ' + lib('d3').status); }
+        if (mode !== 'forester') { check('forester.js states the viewer\'s version', lib('forester.js').version === rep.version && lib('forester.js').status === 'ok', lib('forester.js').version + ' vs ' + rep.version); }
+        if (mode !== 'phyloxml') { check('phyloxml passes the round trip', lib('phyloxml').status === 'ok', lib('phyloxml').detail); }
+        // the functions row must agree with what the Download menu really offers
+        const menuItem = (label) => [...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.firstChild.textContent === label);
+        if (mode !== 'failed') {
+            document.getElementById('dl_b').click(); await sleep(200);
+            check('the Download menu opened', !!menuItem('SVG'));
+            check('"PNG export" agrees with the Download menu', fn('PNG export').available === !!menuItem('PNG'), fn('PNG export').available + ' vs menu ' + !!menuItem('PNG'));
+            check('"PDF export" agrees with the Download menu', fn('PDF export').available === !!menuItem('PDF'), fn('PDF export').available + ' vs menu ' + !!menuItem('PDF'));
+            document.getElementById('dl_b').click(); await sleep(200);
+        }
+        if (mode === 'clean' || mode === 'legacy') {
+            check('everything loaded: PNG and PDF export are on', fn('PNG export').available && fn('PDF export').available);
+            check('jspdf states its version', /^\d+\.\d+\.\d+$/.test(lib('jspdf').version || ''), lib('jspdf').version);
+            check('no library is absent or a problem', rep.libraries.every((l) => l.status === 'ok'), rep.libraries.map((l) => l.name + '=' + l.status).join());
+        }
+        if (mode === 'absent') {
+            check('the three export libraries are absent, not problems', ['canvg', 'jspdf', 'svg2pdf.js'].every((n) => lib(n).status === 'absent' && !lib(n).loaded));
+            check('PNG and PDF export are off, each with its reason', !fn('PNG export').available && fn('PNG export').detail === 'canvg is not loaded' && fn('Copy PNG').detail === 'canvg is not loaded'
+                && !fn('PDF export').available && fn('PDF export').detail === 'jspdf and svg2pdf.js are not loaded', fn('PNG export').detail + ' | ' + fn('PDF export').detail);
+        }
+        if (mode === 'half' || mode === 'order' || mode === 'old') { check('PDF export is off, with the reason', !fn('PDF export').available && fn('PDF export').detail.length > 10, fn('PDF export').detail); }
+        if (mode === 'old') { check('PNG export is off, with the reason', !fn('PNG export').available && /old global/.test(fn('PNG export').detail), fn('PNG export').detail); }
+        if (mode === 'nodeLabels' || mode === 'forced') {
+            check('the launch section names the config key passed', Object.keys(rep.launch.config).join() === Object.keys(config).join(), JSON.stringify(rep.launch.config));
+        }
+        if (mode === 'nodeLabels') { check('a list in the config is summarised, not copied', rep.launch.config.nodeLabels === '(list of 1)', rep.launch.config.nodeLabels); }
+        if (mode !== 'failed') {
+            check('the launch section counts the tips', rep.launch && rep.launch.tips === tipCount && tipCount > 50, (rep.launch && rep.launch.tips) + ' vs ' + tipCount);
+            check('... and measures the container', rep.launch.container && rep.launch.container.height === 640, JSON.stringify(rep.launch.container));
+        }
+
+        // ---- the dot on the program name ----
+        const name = document.querySelector('#p .aptx-panel .prognamelink');
+        if (mode === 'failed') {
+            check('no panel was built', !name);
+            // a later, good launch starts the diagnostics afresh
+            const v2 = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {}); await v2.ready; await sleep(800);
+            const rep2 = archaeopteryx.doctor();
+            check('the next launch starts afresh: nothing to report', rep2.ok && rep2.problems.length === 0, rep2.problems.join(' || '));
+            const dot2 = document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot');
+            check('... and shows no dot', !!dot2 && getComputedStyle(dot2).display === 'none');
+        } else {
+            const dot = name.querySelector('.aptx-doctor-dot');
+            check('the program name carries the dot element', !!dot);
+            const shown = !!dot && getComputedStyle(dot).display !== 'none';
+            const box = dot.getBoundingClientRect();
+            check(want.problems ? 'the dot is lit' : 'the dot is NOT lit', shown === (want.problems > 0), getComputedStyle(dot).display + ' ' + Math.round(box.width) + 'x' + Math.round(box.height));
+            if (want.problems) {
+                check('... a 6 px disc, painted', Math.round(box.width) === 6 && Math.round(box.height) === 6 && getComputedStyle(dot).backgroundColor !== 'rgba(0, 0, 0, 0)', getComputedStyle(dot).backgroundColor);
+                const nb = name.getBoundingClientRect();
+                check('... on the name\'s own line, inside the button', box.left >= nb.left && box.right <= nb.right + 0.5 && box.top >= nb.top && box.bottom <= nb.bottom, Math.round(box.left) + '-' + Math.round(box.right) + ' in ' + Math.round(nb.left) + '-' + Math.round(nb.right));
+                check('... and the name\'s tooltip says how many', name.title === 'About Archaeopteryx.js: ' + rep.summary, name.title);
+            } else {
+                check('... and the tooltip is the plain one', name.title === 'About Archaeopteryx.js', name.title);
+            }
+            check('the button still reads name and version only', name.textContent === 'Archaeopteryx.js ' + rep.version, name.textContent);
+
+            // ---- About -> Diagnostics ----
+            name.click(); await sleep(300);
+            const about = document.getElementById('aptx_about');
+            check('the About box opened', !!about && about.open);
+            const line = [...about.querySelectorAll('.aptx-dialog-line')].find((l) => l.querySelector('.aptx-dialog-key').textContent === 'Diagnostics');
+            check('it has a Diagnostics row, the last', !!line && line === [...about.querySelectorAll('.aptx-dialog-line')].pop());
+            const link = line.querySelector('a');
+            check('... reading the summary', link.textContent === rep.summary, link.textContent);
+            check('... with a dot only when something is wrong', !!line.querySelector('.aptx-doctor-dot') === (want.problems > 0));
+            check('the other two in-place rows still open their own dialogs', (function () {
+                const rows = [...about.querySelectorAll('.aptx-dialog-line')].map((l) => l.querySelector('.aptx-dialog-key').textContent);
+                return rows.join() === 'Website,Desktop version,Source code,License,Keyboard,Control panel,Diagnostics'; })());
+            link.click(); await sleep(300);
+            const dlg = document.getElementById('aptx_doctor');
+            check('the row closes About and opens Diagnostics', !document.getElementById('aptx_about') && !!dlg && dlg.open);
+            check('... titled "Diagnostics", with a close control', dlg.querySelector('.aptx-dialog-name').textContent === 'Diagnostics' && !!dlg.querySelector('.aptx-dialog-close'));
+            check('... headed by the version and the summary', dlg.querySelector('.aptx-doctor-status').textContent === 'Archaeopteryx.js ' + rep.version + ': ' + rep.summary, dlg.querySelector('.aptx-doctor-status').textContent);
+            const items = [...dlg.querySelectorAll('.aptx-doctor-item.aptx-doctor-bad')].map((i) => i.textContent);
+            check('... listing each problem', items.join('||') === rep.problems.join('||'), items.length + ' item(s)');
+            const rows = [...dlg.querySelectorAll('.aptx-dialog-line')].map((l) => l.querySelector('.aptx-dialog-key').textContent);
+            check('... then the seven libraries and the four functions', rows.join() === rep.libraries.map((l) => l.name).concat(rep.functions.map((f) => f.name)).join(), rows.join());
+            const badRows = [...dlg.querySelectorAll('.aptx-dialog-line.aptx-doctor-bad')].map((l) => l.querySelector('.aptx-dialog-key').textContent);
+            check('... the faulty libraries marked', badRows.join() === rep.libraries.filter((l) => l.status === 'problem').map((l) => l.name).join(), badRows.join() || 'none');
+            check('... no row saying "not loaded" twice', [...dlg.querySelectorAll('.aptx-dialog-val')].every((v) => (v.textContent.match(/not loaded/g) || []).length <= 1));
+            const copyBox = dlg.querySelector('.aptx-doctor-copy').getBoundingClientRect(), bodyBox = dlg.querySelector('.aptx-dialog-body').getBoundingClientRect();
+            check('... "Copy report" in view without scrolling', copyBox.top >= bodyBox.top && copyBox.bottom <= bodyBox.bottom && copyBox.bottom <= innerHeight, Math.round(copyBox.top) + '-' + Math.round(copyBox.bottom) + ' in ' + Math.round(bodyBox.top) + '-' + Math.round(bodyBox.bottom));
+            const noteItems = [...dlg.querySelectorAll('.aptx-doctor-item.aptx-doctor-note')].map((i) => i.textContent);
+            check('... the notes under their own heading, when there are any', noteItems.join('||') === rep.notes.join('||')
+                && [...dlg.querySelectorAll('.aptx-doctor-section')].map((x) => x.textContent).join() === (rep.notes.length ? 'Libraries,Functions,Notes' : 'Libraries,Functions'), noteItems.length + ' note(s)');
+            const b = dlg.getBoundingClientRect();
+            check('the dialog is inside the window', b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight, Math.round(b.left) + ',' + Math.round(b.top) + ' - ' + Math.round(b.right) + ',' + Math.round(b.bottom) + ' in ' + innerWidth + 'x' + innerHeight);
+            const body = dlg.querySelector('.aptx-dialog-body');
+            check('... with no sideways scrollbar', body.scrollWidth <= body.clientWidth, body.scrollWidth + ' vs ' + body.clientWidth);
+            check('... themed by the panel tokens (no hard-coded colours)', getComputedStyle(dlg.querySelector('.aptx-doctor-section')).color === getComputedStyle(dlg.querySelector('.aptx-dialog-key')).color);
+
+            // ---- Copy report ----
+            const copy = dlg.querySelector('.aptx-doctor-copy');
+            check('a "Copy report" button', !!copy && copy.textContent === 'Copy report');
+            let copied = null;
+            if (mode === 'legacy') {
+                // no async clipboard: the textarea path, which has to work UNDER a modal dialog
+                Object.defineProperty(navigator, 'clipboard', {value: undefined, configurable: true});
+                document.addEventListener('copy', function () { const a = document.activeElement; copied = a && a.value; });
+                const realExec = document.execCommand.bind(document);
+                let host = null;
+                document.execCommand = function (c) { host = document.activeElement && document.activeElement.parentNode;
+                    try { realExec(c); } catch (e) { /* headless may refuse the clipboard itself */ } return true; };
+                copy.click(); await sleep(300);
+                check('the textarea was put INSIDE the modal dialog, where it can be selected', host === dlg, host && (host.id || host.tagName));
+                check('... and removed again', !dlg.querySelector('textarea') && !document.body.querySelector(':scope > textarea'));
+            } else {
+                Object.defineProperty(navigator, 'clipboard', {value: {writeText: (t) => { copied = t; return Promise.resolve(); }}, configurable: true});
+                copy.click(); await sleep(300);
+                check('it copies the whole text report', copied === rep.text, copied === null ? 'nothing copied' : copied.length + ' chars');
+            }
+            check('the button says "Copied" for a moment', /^Copied/.test(copy.textContent), copy.textContent);
+            dlg.querySelector('.aptx-dialog-close').click(); await sleep(200);
+            check('the close control removes the dialog', !document.getElementById('aptx_doctor'));
+
+            // ---- the same warning again is one entry, counted ----
+            if (mode === 'nodeLabels') {
+                await viewer.showTree(1); await sleep(1500);     // the launch proper again: reads the config, so warns again
+                check('the second tree is on view', viewer.getTreeIndex() === 1, viewer.getTreeIndex());
+                const rep4 = archaeopteryx.doctor();
+                check('a repeated warning stays one entry, with its count', rep4.problems.length === 1 && /"nodeLabels" is retired.* \(2 times\)$/.test(rep4.problems[0]), rep4.problems.join(' || '));
+                const dot4 = document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot');
+                check('... and the rebuilt panel still shows the dot', !!dot4 && getComputedStyle(dot4).display !== 'none');
+            }
+            // ---- a problem that arrives later lights the dot at once ----
+            if (mode === 'clean') {
+                // the PDF library goes missing while the menu that offered it is open
+                document.getElementById('dl_b').click(); await sleep(200);
+                const pdf = menuItem('PDF');
+                check('the open menu offers PDF', !!pdf);
+                window.jspdf = undefined;
+                pdf.click(); await sleep(600);
+                const rep3 = archaeopteryx.doctor();
+                out.push('    after the failed PDF export: ' + rep3.problems.join(' || '));
+                check('with jspdf gone, svg2pdf.js alone is a problem of its own', rep3.problems.some((x) => /^svg2pdf\.js: loaded without jspdf/.test(x)), rep3.problems.join(' || '));
+                check('a failed export is recorded as a problem', rep3.problems.some((x) => /PDF export needs the optional jspdf and svg2pdf\.js/.test(x)), rep3.problems.join(' || '));
+                check('... and lights the dot without a relaunch', getComputedStyle(dot).display !== 'none');
+            }
+        }
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

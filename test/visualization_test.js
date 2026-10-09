@@ -3069,9 +3069,11 @@ if (_testFailures > 0) {
     console.log("\nAll tests passed");
 }
 
-// The version appears in FOUR places and they must agree: package.json, the
-// VERSION constant the About box and the control-panel button display, and
-// the header comment of each library file. 3.2.0 shipped to npm with VERSION
+// The version appears in FIVE places and they must agree: package.json, the
+// VERSION constant the About box and the control-panel button display, the
+// header comment of each library file, and forester.VERSION (2026-10-09: what
+// archaeopteryx.doctor compares the viewer's own against, so a forester.js
+// left one release behind would light the diagnostics dot on every page). 3.2.0 shipped to npm with VERSION
 // still reading '3.1.0' because the release bumped the headers and missed the
 // constant, and nothing failed. This is that check.
 function testVersionsAgree() {
@@ -3088,6 +3090,15 @@ function testVersionsAgree() {
     }
     if (m[1] !== expected) {
         console.log('    archaeopteryx.js VERSION is ' + m[1] + ', package.json says ' + expected);
+        return false;
+    }
+    var fv = fs.readFileSync(pth.join(root, 'forester.js'), 'utf8').match(/^ {4}forester\.VERSION = '([^']+)';$/m);
+    if (!fv) {
+        console.log('    no forester.VERSION assignment found in forester.js');
+        return false;
+    }
+    if (fv[1] !== expected) {
+        console.log('    forester.VERSION is ' + fv[1] + ', package.json says ' + expected);
         return false;
     }
     var files = ['archaeopteryx.js', 'forester.js'];

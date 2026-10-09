@@ -297,7 +297,8 @@ The card button in the panel header opens **Control panel**: one row for every
 control the panel is currently showing, in the order it shows them, each with
 the control's own glyph or name and the sentence that explains it — the layout
 and display-type buttons included, drawn with the very glyph they carry in the
-panel. The About box has a row for it too.
+panel. The About box has a row for it too, and one for
+[Diagnostics](#diagnostics).
 
 The display types say what they do and when they are greyed, whether or not
 they are greyed in the view you are looking at: *"phylogram: branch lengths
@@ -1147,6 +1148,57 @@ Dependencies are checked when used, never at load time, and every failure
 names exactly what is missing (including "the loaded d3 is not usable as d3
 version 7"). The optional export libraries stay page-level globals in every
 loading style: `window.Canvg` (PNG), `window.jspdf` + svg2pdf.js (PDF).
+
+### Diagnostics
+
+Checking at use rather than at load makes the viewer hard to break — and lets
+it run half-equipped without a word: no PDF in the Download menu, a retired
+config key ignored, a forced visualization overruled, each mentioned only in a
+console nobody has open. **`archaeopteryx.doctor()`** says what state the
+program is in on this page:
+
+```javascript
+var report = archaeopteryx.doctor();
+report.ok;          // false when something is wrong that nobody chooses
+report.summary;     // "nothing to report", or "2 things to check"
+report.problems;    // ['jspdf: loaded without svg2pdf.js: PDF export needs both, so it is off', ...]
+report.notes;       // stated, not flagged
+report.libraries;   // [{name, role, loaded, version, status, detail}, ...]
+report.functions;   // [{name: 'PDF export', available: false, detail: 'jspdf and svg2pdf.js are not loaded'}, ...]
+report.launch;      // {config, tips, tree, trees, container}, or null when no tree is on view
+report.text;        // all of it as plain text, to paste into an issue
+console.log(archaeopteryx.doctor().text);
+```
+
+It works before a launch, after a launch that threw, and in Node, and it never
+throws. The same report is in the viewer: the **About** box (a click on the
+program name) has a **Diagnostics** row that opens it, with a **Copy report**
+button — the copied text adds the keys passed to `launch()` (a string or a
+number as given, anything else as its kind: a tree or a callback is never
+copied) and the browser.
+
+What is a **problem** and what is only stated:
+
+| | |
+|---|---|
+| An optional library that is not loaded (canvg, jspdf, svg2pdf.js) | **stated**: "PNG export: off". Leaving one out is a site's choice. |
+| Half of a pair: jspdf without svg2pdf.js, or the other way round; svg2pdf.js loaded before jspdf | **problem** |
+| A library under its 2.x-era global (`window.canvg`, `window.jsPDF`) and not under the one this version reads | **problem** |
+| A d3 that is not version 7 (d3 4 to 6 have `d3.zoom` and `d3.cluster` too, so the launch check lets them through) | **problem**; a d3 7 older than 7.9 is a note |
+| `forester.js` and `archaeopteryx.js` from different releases (`forester.VERSION`) | **problem** |
+| A phyloxml that does not write what phyloxml 1.1.7 writes | **problem** |
+| phyloxml or sax not loaded | **problem** |
+| Every warning or error the last `launch()` printed about its config or its exports: a deprecated key, an `initialVisualization` the tree cannot honour or that was overruled, a failed export, a thrown `onViewChange`, and why a launch threw | **problem** |
+| What the viewer left out of a tree (a domain or a gene it could not place), a size setting ignored | **note** |
+
+Only d3, jsPDF and forester state a version; the others are judged by what
+they do — phyloxml by writing a small tree and comparing it byte for byte.
+
+**While the report has a problem, a small dot follows the program name** in
+the panel header, and the name's tooltip says how many. It is neutral, not a
+warning colour: most of the people who see it are a site's visitors, who can
+do nothing about it. Nothing appears when an optional library is merely
+absent. A launch starts the list afresh.
 
 The parser is picked from the data and the `location`: content starting with
 `#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, JSON content

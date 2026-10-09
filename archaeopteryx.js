@@ -303,6 +303,36 @@ function (root, d3, forester, phyloXml) {
     const MESSAGE = 'ArchaeopteryxJS: ';
     const ERROR = 'ArchaeopteryxJS: ERROR: ';
 
+    // What this launch had to say, kept as well as printed. The console is
+    // where a warning goes and where nobody embedding the viewer looks: a
+    // site passed a retired key for a month and a forced visualization for
+    // longer (BV-BRC, 2026-10-08), each announced on every page load. The
+    // Diagnostics report (archaeopteryx.doctor, further down) reads this
+    // list; 'problem' entries are somebody's mistake and light the dot on
+    // the program name, 'note' entries are only stated. Started afresh by
+    // every launch(); the same line twice is one entry with a count.
+    const DIAGNOSTICS_MAX = 40;
+    let _diagnostics = [];
+    function recordDiagnostic(level, line) {
+        let text = String(line).replace(/^ArchaeopteryxJS: (WARNING: |ERROR: )?/, '');
+        let seen = _diagnostics.find(function (d) {
+            return d.level === level && d.text === text;
+        });
+        if (seen) {
+            seen.count += 1;
+        } else if (_diagnostics.length < DIAGNOSTICS_MAX) {
+            _diagnostics.push({level: level, text: text, count: 1});
+        }
+        if (level === 'problem') {
+            syncDoctorDot();
+        }
+    }
+    // Print as before (same console method, same line) and keep it.
+    function say(level, method, line) {
+        console[method](line);
+        recordDiagnostic(level, line);
+    }
+
     // Call-time dependency guards (the UMD header explains why they are not
     // load-time): each failure names exactly what is missing.
     function requireD3() {
@@ -440,6 +470,7 @@ function (root, d3, forester, phyloXml) {
     const CLOCK_PLOT_BUTTON = 'clock_plot_b';
     const CLOCK_PLOT_DIALOG = 'aptx_clock_plot';
     const ABOUT_DIALOG = 'aptx_about';
+    const DOCTOR_DIALOG = 'aptx_doctor';
     const TREE_PROPERTIES_DIALOG = 'aptx_tree_props';
     const PROG_NAME = 'progname';
     const PROGNAMELINK = 'prognamelink';
@@ -1938,7 +1969,7 @@ function (root, d3, forester, phyloXml) {
                     || (c.label && String(c.label).toLowerCase() === want);
             }) || null;
             if (!requested) {
-                console.warn(WARNING + ': initialVisualization "'
+                say('problem', 'warn', WARNING + ': initialVisualization "'
                     + _settings.initialVisualization
                     + '" names no visualization of this tree; using the automatic choice');
             }
@@ -1968,7 +1999,7 @@ function (root, d3, forester, phyloXml) {
                     ? requested.values.length + ' distinct values on this tree, more than the '
                         + LEGEND_MAX_ROWS + ' the legend lists'
                     : 'a value on ' + requested.coverage + ' of the tree\'s ' + requested.total + ' tips';
-                console.warn(WARNING + ': initialVisualization "' + _settings.initialVisualization
+                say('problem', 'warn', WARNING + ': initialVisualization "' + _settings.initialVisualization
                     + '" names a field with ' + why + '; left to itself the viewer would '
                     + (auto ? 'open with "' + auto.label + '" (' + auto.values.length + ' values)'
                         : 'open uncoloured'));
@@ -5825,14 +5856,14 @@ function (root, d3, forester, phyloXml) {
                 return;
             }
             if (dep.to) {
-                console.warn(WARNING + ': "' + k + '" was replaced by "' + dep.to
+                say('problem', 'warn', WARNING + ': "' + k + '" was replaced by "' + dep.to
                     + '": ' + dep.note);
                 // An explicit new key always wins over the old alias.
                 if (given[dep.to] === undefined) {
                     given[dep.to] = dep.map(given[k]);
                 }
             } else {
-                console.warn(WARNING + ': "' + k + '" is retired and has no effect: ' + dep.note);
+                say('problem', 'warn', WARNING + ': "' + k + '" is retired and has no effect: ' + dep.note);
             }
             delete given[k];
         });
@@ -6078,7 +6109,7 @@ function (root, d3, forester, phyloXml) {
             // malformed domains are skipped, never fatal -- said once, here
             let ignored = forester.domainArchitectureStats(_treeData).ignored;
             if (ignored > 0) {
-                console.warn(MESSAGE + ignored + ' protein domain' + (ignored === 1 ? '' : 's')
+                say('note', 'warn', MESSAGE + ignored + ' protein domain' + (ignored === 1 ? '' : 's')
                     + ' with a missing or impossible from / to / E-value ignored');
             }
         }
@@ -6111,11 +6142,11 @@ function (root, d3, forester, phyloXml) {
             // are left out, never fatal -- said once, here
             let gs = forester.geneRegionStats(_treeData);
             if (gs.ignored > 0) {
-                console.warn(MESSAGE + gs.ignored + ' sequence location' + (gs.ignored === 1 ? '' : 's')
+                say('note', 'warn', MESSAGE + gs.ignored + ' sequence location' + (gs.ignored === 1 ? '' : 's')
                     + ' not in the form contig:start-end(+) ignored');
             }
             if (gs.otherContigs > 0) {
-                console.warn(MESSAGE + gs.otherContigs + ' gene' + (gs.otherContigs === 1 ? '' : 's')
+                say('note', 'warn', MESSAGE + gs.otherContigs + ' gene' + (gs.otherContigs === 1 ? '' : 's')
                     + ' on a genome\'s other contigs not drawn: the gene track shows one contig per genome');
             }
         }
@@ -6347,11 +6378,11 @@ function (root, d3, forester, phyloXml) {
             _settings.enableDynamicSizing = true;
         }
         if (_settings.displayWidth && _settings.enableDynamicSizing === true) {
-            console.log(WARNING + ': dynamic sizing is turned on, will ignore displayWidth setting');
+            say('note', 'log', WARNING + ': dynamic sizing is turned on, will ignore displayWidth setting');
             _settings.displayWidth = 0;
         }
         if (_settings.displayHeight && _settings.enableDynamicSizing === true) {
-            console.log(WARNING + ': dynamic sizing is turned on, will ignore displayHeight setting');
+            say('note', 'log', WARNING + ': dynamic sizing is turned on, will ignore displayHeight setting');
             _settings.displayHeight = 0;
         }
         if ((!_settings.displayWidth) && (!_settings.enableDynamicSizing)) {
@@ -6640,7 +6671,22 @@ function (root, d3, forester, phyloXml) {
 
     // launch(container, tree, config) -> a viewer handle {getSelectedNodes,
     // destroy}. Exactly three arguments; config is THE one config object.
-    archaeopteryx.launch = function (container, phylo, config) {
+    // launch() proper is launchChecked below. This shell starts the
+    // diagnostics afresh and keeps what a rejected launch said: the thrown
+    // message reaches whoever called, which on an embedding site is often a
+    // catch block nobody reads, and archaeopteryx.doctor() can still tell.
+    archaeopteryx.launch = function () {
+        _diagnostics = [];
+        try {
+            return launchChecked.apply(null, arguments);
+        } catch (e) {
+            recordDiagnostic('problem', 'launch failed: '
+                + String(e && e.message ? e.message : e).replace(/^ArchaeopteryxJS: ERROR: /, ''));
+            throw e;
+        }
+    };
+
+    function launchChecked(container, phylo, config) {
 
         // Bad input is the caller's bug, so it is thrown at the caller. It used
         // to pop a browser alert and return, which blocks the whole tab and
@@ -6715,7 +6761,7 @@ function (root, d3, forester, phyloXml) {
         let view = config && config.view;
         let start = (view && Number.isInteger(view.tree) && view.tree > 0 && view.tree < trees.length) ? view.tree : 0;
         return launchInto(container, trees, start, config);
-    };
+    }
 
     // The launch proper, for one tree of the list: launch() validates and
     // starts at the first, showTree() re-enters here for another.
@@ -10370,7 +10416,7 @@ function (root, d3, forester, phyloXml) {
         try {
             _settings.onViewChange(state, encoded);
         } catch (e) {
-            console.error(ERROR + 'onViewChange threw: ' + (e && e.message ? e.message : e));
+            say('problem', 'error', ERROR + 'onViewChange threw: ' + (e && e.message ? e.message : e));
         }
     }
 
@@ -15904,14 +15950,17 @@ function (root, d3, forester, phyloXml) {
     // The async clipboard API where the page allows it (a secure context);
     // otherwise the old select-and-copy, so a page served over plain http
     // still copies. Resolves to whether the text made it.
-    function copyText(text) {
+    //
+    // `host` is the open modal dialog the copy is made from, if any: under a
+    // modal everything outside it is inert, a textarea on the body included.
+    function copyText(text, host) {
         let legacy = function () {
             let ta = document.createElement('textarea');
             ta.value = text;
             ta.setAttribute('readonly', '');
             ta.style.position = 'fixed';
             ta.style.left = '-10000px';
-            document.body.appendChild(ta);
+            (host || document.body).appendChild(ta);
             ta.select();
             let ok = false;
             try {
@@ -16817,6 +16866,11 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-close:hover { background:var(--p-accent-weak); color:var(--p-accent-ink);'
             + '  border-color:var(--p-accent); }'
             + '.aptx-dialog-body { padding:10px 13px 12px; overflow:auto; }'
+            // a dialog that scrolls gets the panel's own scrollbar: the
+            // browser's default track is white in the dark theme too
+            + '.aptx-dialog-body::-webkit-scrollbar { width:9px; height:9px; }'
+            + '.aptx-dialog-body::-webkit-scrollbar-thumb { background:var(--p-line-strong); border-radius:9px; border:2px solid var(--p-bg); }'
+            + '.aptx-dialog-body::-webkit-scrollbar-track, .aptx-dialog-body::-webkit-scrollbar-corner { background:transparent; }'
             + '.aptx-cp-sv { position:relative; width:100%; box-sizing:border-box; height:104px; border-radius:7px;'
             + '  border:1px solid var(--p-line-strong); cursor:crosshair; touch-action:none; }'
             + '.aptx-cp-hue { position:relative; width:100%; box-sizing:border-box; height:13px; margin-top:9px;'
@@ -16974,6 +17028,22 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel .' + PROGNAMELINK + ' { background:none; padding:0; margin:0; cursor:pointer;'
             + '  font-family:inherit; font-weight:inherit; letter-spacing:inherit; }'
             + '.aptx-panel .' + PROGNAMELINK + ':hover { text-decoration:underline; }'
+            + '.aptx-doctor-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--p-muted); vertical-align:middle; }'
+            + '.aptx-doctor-dot[hidden] { display:none; }'
+            + '.aptx-panel .' + PROGNAMELINK + ' .aptx-doctor-dot { margin-left:6px; }'
+            + '.aptx-about .aptx-doctor-dot { margin-right:6px; }'
+            + '.aptx-dialog-body.aptx-doctor { max-height:min(70vh,560px); }'
+            + '.aptx-doctor .aptx-dialog-key { flex-basis:34%; }'
+            + '.aptx-doctor-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }'
+            + '.aptx-doctor-status { flex:1 1 auto; min-width:0; font-weight:650; }'
+            + '.aptx-doctor-item { position:relative; padding:2px 0 2px 14px; line-height:1.35; overflow-wrap:anywhere; }'
+            + '.aptx-doctor-item::before { content:""; position:absolute; left:2px; top:0.62em; width:6px; height:6px; border-radius:50%; background:var(--p-faint); }'
+            + '.aptx-doctor-item.aptx-doctor-bad::before { background:var(--p-warn); }'
+            + '.aptx-doctor-item.aptx-doctor-note { color:var(--p-muted); }'
+            + '.aptx-doctor-section { margin:11px 0 3px; font-size:10.5px; font-weight:650; letter-spacing:0.05em; text-transform:uppercase; color:var(--p-muted); }'
+            + '.aptx-doctor-detail { display:block; color:var(--p-muted); line-height:1.35; }'
+            + '.aptx-doctor .aptx-dialog-line.aptx-doctor-bad .aptx-doctor-value { color:var(--p-warn); font-weight:600; }'
+            + '.aptx-doctor-copy { flex:none; }'
             + '.aptx-dialog-body.aptx-about { padding-top:13px; }'
             // the label column is narrower here than for node data: these values
             // are URLs, and they should not have to wrap mid-word
@@ -17255,6 +17325,8 @@ function (root, d3, forester, phyloXml) {
                     e.stopPropagation();
                     showAboutDialog();
                 });
+                // config warnings are recorded before this header exists
+                syncDoctorDot();
 
                 let themeBtn = document.createElement('button');
                 themeBtn.type = 'button';
@@ -18088,10 +18160,579 @@ function (root, d3, forester, phyloXml) {
         shell.dialog.showModal();
     }
 
+    // ===================== Diagnostics =====================
+    // "Dependencies are checked when used, never at load time" makes the
+    // viewer hard to break and easy to run half-equipped without knowing: on
+    // BV-BRC it ran for weeks with no PDF or PNG export, a retired config key
+    // and a forced visualization, and every one of those was found by reading
+    // the site's source (Christian, 2026-10-09: a "check engine light" and a
+    // doctor behind it). This is the one place that says what is loaded, what
+    // that switches off, and what the launch complained about.
+    //
+    // Two rules decide what is a PROBLEM (lights the dot) and what is only
+    // stated:
+    //   * an optional library that is simply absent is a site's choice, and
+    //     is stated ("PDF export: off"), never flagged;
+    //   * something nobody chooses is a problem: half of a pair (jspdf
+    //     without svg2pdf.js), a library from the 2.x days under its old
+    //     global, a d3 that is not 7, forester.js from another release, a
+    //     phyloxml that no longer writes what this release expects, and every
+    //     warning or error the launch printed about its config.
+    // Only d3, jsPDF and forester state a version, so everything else is
+    // judged by what it can do.
+    //
+    // Nothing in here may throw: every check runs in its own try, and a check
+    // that fails says so in its own row.
+
+    // phyloxml states no version. What separates 1.1.7 (which package.json
+    // asks for) from every earlier release is what it WRITES, so a small tree
+    // goes through it: 1.0.2 to 1.1.6 each fail this (measured on the six
+    // published files), by layout (1.1.4), by the domain architecture
+    // (1.1.5), or by the style colour's case and place (1.1.7).
+    const PHYLOXML_PROBE_IN = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+        + '<clade><name>a</name><branch_length>1</branch_length>'
+        + '<sequence><domain_architecture length="9"><domain from="1" to="5" confidence="0.1">D</domain>'
+        + '</domain_architecture></sequence>'
+        + '<property ref="style:font_color" datatype="xsd:token" applies_to="node">#CE1616</property>'
+        + '<property ref="x:y" datatype="xsd:string" applies_to="node">v</property></clade>'
+        + '<clade><name>b</name><branch_length>2</branch_length></clade></clade>'
+        + '<property ref="p:q" datatype="xsd:string" applies_to="phylogeny">w</property></phylogeny></phyloxml>';
+    const PHYLOXML_PROBE_OUT = ['<?xml version="1.0" encoding="UTF-8"?>',
+        '<phyloxml xmlns="http://www.phyloxml.org">',
+        '<phylogeny rooted="true" rerootable="true">',
+        '  <clade>',
+        '    <clade>',
+        '      <name>a</name>',
+        '      <branch_length>1</branch_length>',
+        '      <sequence>',
+        '        <domain_architecture length="9">',
+        '          <domain from="1" to="5" confidence="0.1">D</domain>',
+        '        </domain_architecture>',
+        '      </sequence>',
+        '      <property ref="x:y" datatype="xsd:string" applies_to="node">v</property>',
+        '      <property ref="style:font_color" datatype="xsd:token" applies_to="node">#ce1616</property>',
+        '    </clade>',
+        '    <clade>',
+        '      <name>b</name>',
+        '      <branch_length>2</branch_length>',
+        '    </clade>',
+        '  </clade>',
+        '  <property ref="p:q" datatype="xsd:string" applies_to="phylogeny">w</property>',
+        '</phylogeny>',
+        '</phyloxml>'].join('\n');
+    const PHYLOXML_EXPECTED = '1.1.7';
+    const D3_TESTED_MINOR = 9;       // package.json: d3 ^7.9.0
+    const JSPDF_TESTED_MAJOR = 4;    // package.json: jspdf ^4.2.1
+
+    // The probe's answer for the library object it was asked about: the
+    // dot asks on every recorded problem, and the answer cannot change.
+    let _phyloXmlProbe = null;
+    function probePhyloXml(px) {
+        if (_phyloXmlProbe && _phyloXmlProbe.lib === px) {
+            return _phyloXmlProbe.result;
+        }
+        let result;
+        try {
+            let written = px.toPhyloXML(px.parse(PHYLOXML_PROBE_IN, {trim: true, normalize: true})[0], 9);
+            result = {same: written === PHYLOXML_PROBE_OUT, threw: null};
+        } catch (e) {
+            result = {same: false, threw: String(e && e.message ? e.message : e)};
+        }
+        _phyloXmlProbe = {lib: px, result: result};
+        return result;
+    }
+
+    // One library's row. `judge` returns {loaded, version, status, detail};
+    // status is 'ok', 'absent' (optional and not there: stated), 'note' or
+    // 'problem'.
+    function doctorLibrary(name, role, judge) {
+        let row = {name: name, role: role, loaded: false, version: null, status: 'problem', detail: ''};
+        try {
+            let j = judge();
+            row.loaded = !!j.loaded;
+            row.version = j.version || null;
+            row.status = j.status;
+            row.detail = j.detail || '';
+        } catch (e) {
+            row.detail = 'this check failed: ' + (e && e.message ? e.message : e);
+        }
+        return row;
+    }
+
+    function doctorLibraries() {
+        let g = root || {};
+        // without a document there is nothing to launch into: the parsers
+        // work with no d3 at all, so its absence there is not a fault
+        let inBrowser = typeof g.document !== 'undefined';
+        let libs = [];
+
+        libs.push(doctorLibrary('forester.js', 'required', function () {
+            let f = forester || g.forester;
+            if (!f) {
+                return {loaded: false, status: 'problem', detail: 'not loaded: nothing can be read or drawn'};
+            }
+            if (f.VERSION === VERSION) {
+                return {loaded: true, version: f.VERSION, status: 'ok'};
+            }
+            return {loaded: true, version: f.VERSION || null, status: 'problem',
+                detail: (f.VERSION ? 'forester.js is ' + f.VERSION : 'forester.js states no version, so it is an older file')
+                    + ', archaeopteryx.js is ' + VERSION + ': the two must come from the same release'};
+        }));
+
+        libs.push(doctorLibrary('d3', 'required', function () {
+            let d = (g.d3 && typeof g.d3.zoom === 'function') ? g.d3 : (d3 || g.d3);
+            if (!d) {
+                return inBrowser
+                    ? {loaded: false, status: 'problem', detail: 'not loaded: launch() fails without d3 version 7'}
+                    : {loaded: false, status: 'absent', detail: 'not loaded: only launch() needs it'};
+            }
+            let version = typeof d.version === 'string' ? d.version : null;
+            let parts = version ? version.split('.').map(Number) : [];
+            if (parts[0] !== 7 || typeof d.zoom !== 'function' || typeof d.cluster !== 'function') {
+                return {loaded: true, version: version, status: inBrowser ? 'problem' : 'absent',
+                    detail: inBrowser ? 'Archaeopteryx.js needs d3 version 7'
+                        : 'not usable here as d3 version 7: only launch() needs it'};
+            }
+            if (parts[1] < D3_TESTED_MINOR) {
+                return {loaded: true, version: version, status: 'note',
+                    detail: 'older than the 7.' + D3_TESTED_MINOR + ' this release is tested with'};
+            }
+            return {loaded: true, version: version, status: 'ok'};
+        }));
+
+        // phyloxml finds sax as a global on a page and by require() in Node,
+        // where no global says so: a parse that worked is the evidence
+        let px = null;
+        let probe = null;
+        let saxLoaded = false;
+        libs.push(doctorLibrary('phyloxml', 'required', function () {
+            px = phyloXml || g.phyloXml;
+            probe = px ? probePhyloXml(px) : null;
+            saxLoaded = !!g.sax || !!(probe && !probe.threw);
+            if (!px) {
+                return {loaded: false, status: 'problem',
+                    detail: 'not loaded: phyloXML cannot be read, and the phyloXML download fails'};
+            }
+            if (probe.same) {
+                return {loaded: true, status: 'ok', detail: 'writes phyloXML as ' + PHYLOXML_EXPECTED + ' does'};
+            }
+            if (probe.threw) {
+                return {loaded: true, status: 'problem', detail: saxLoaded
+                    ? 'reading and writing a small tree failed: ' + probe.threw
+                    : 'cannot read phyloXML: sax.js is not loaded'};
+            }
+            return {loaded: true, status: 'problem', detail: 'does not write phyloXML as phyloxml '
+                + PHYLOXML_EXPECTED + ' does (an older copy): a saved tree can lose data, or differ from the'
+                + ' desktop program\'s file'};
+        }));
+        libs.push(doctorLibrary('sax', 'required', function () {
+            saxLoaded = saxLoaded || !!g.sax;
+            return saxLoaded ? {loaded: true, status: 'ok'}
+                : {loaded: false, status: 'problem', detail: 'not loaded: phyloxml needs it to read phyloXML'};
+        }));
+
+        libs.push(doctorLibrary('canvg', 'optional', function () {
+            if (g.Canvg && typeof g.Canvg.fromString === 'function') {
+                return {loaded: true, status: 'ok'};
+            }
+            if (g.Canvg) {
+                return {loaded: true, status: 'problem',
+                    detail: 'window.Canvg has no fromString: not canvg 4, so PNG export is off'};
+            }
+            if (g.canvg) {
+                return {loaded: true, status: 'problem', detail: 'loaded under its old global "canvg" (canvg 1 to 3);'
+                    + ' PNG export needs canvg 4 as window.Canvg, so it is off'};
+            }
+            return {loaded: false, status: 'absent', detail: 'not loaded: PNG export and Copy PNG are off'};
+        }));
+
+        // read once for both rows of the pair, and inside each row's own
+        // guard: whatever a page has put under these names, a lookup that
+        // throws costs its row and no other
+        let pdfPair = function () {
+            let J = g.jspdf && g.jspdf.jsPDF;
+            return {J: J, attached: !!(J && J.API && J.API.svg), svg2pdf: !!g.svg2pdf};
+        };
+        libs.push(doctorLibrary('jspdf', 'optional', function () {
+            let J = pdfPair().J;
+            let attached = pdfPair().attached;
+            if (J) {
+                let version = typeof J.version === 'string' ? J.version : null;
+                if (!attached && !g.svg2pdf) {
+                    return {loaded: true, version: version, status: 'problem',
+                        detail: 'loaded without svg2pdf.js: PDF export needs both, so it is off'};
+                }
+                if (version && Number(version.split('.')[0]) !== JSPDF_TESTED_MAJOR) {
+                    return {loaded: true, version: version, status: 'note',
+                        detail: 'this release is tested with jspdf ' + JSPDF_TESTED_MAJOR};
+                }
+                return {loaded: true, version: version, status: 'ok'};
+            }
+            if (g.jsPDF) {
+                return {loaded: true, status: 'problem', detail: 'loaded under its old global "jsPDF" (jsPDF 1);'
+                    + ' PDF export needs jspdf ' + JSPDF_TESTED_MAJOR + ' as window.jspdf, so it is off'};
+            }
+            return {loaded: false, status: 'absent', detail: 'not loaded: PDF export is off'};
+        }));
+        libs.push(doctorLibrary('svg2pdf.js', 'optional', function () {
+            let J = pdfPair().J;
+            let attached = pdfPair().attached;
+            if (attached) {
+                return {loaded: true, status: 'ok'};
+            }
+            if (g.svg2pdf && J) {
+                return {loaded: true, status: 'problem', detail: 'loaded, but not attached to jspdf (jsPDF.API.svg'
+                    + ' is missing): load jspdf first. PDF export is off'};
+            }
+            if (g.svg2pdf) {
+                return {loaded: true, status: 'problem',
+                    detail: 'loaded without jspdf: PDF export needs both, so it is off'};
+            }
+            return {loaded: false, status: 'absent',
+                detail: J ? 'not loaded' : 'not loaded: PDF export is off'};
+        }));
+        return libs;
+    }
+
+    // What the user gets or does not get, each with the reason.
+    function doctorFunctions(libs) {
+        let lib = function (name) {
+            return libs.find(function (l) {
+                return l.name === name;
+            });
+        };
+        let inBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+        let fn = function (name, test, whyNot) {
+            let available = false;
+            let detail = '';
+            try {
+                available = inBrowser && !!test();
+                detail = available ? '' : (inBrowser ? whyNot() : 'needs a browser');
+            } catch (e) {
+                detail = 'this check failed: ' + (e && e.message ? e.message : e);
+            }
+            return {name: name, available: available, detail: detail};
+        };
+        // why a function is off, in the library's name: its row's reason
+        // reads "not loaded: ..." under its own name and needs the subject here
+        let why = function (l) {
+            return l.status === 'absent' ? l.name + ' is not loaded' : l.name + ': ' + l.detail;
+        };
+        let out = [];
+        try {
+            let px = lib('phyloxml');
+            out.push({name: 'Read and save phyloXML', available: px.status === 'ok',
+                detail: px.status === 'ok' ? '' : why(px)});
+        } catch (e) {
+            out.push({name: 'Read and save phyloXML', available: false,
+                detail: 'this check failed: ' + (e && e.message ? e.message : e)});
+        }
+        out.push(fn('PNG export', pngExportAvailable, function () {
+            return why(lib('canvg'));
+        }));
+        out.push(fn('Copy PNG', pngCopyAvailable, function () {
+            if (!pngExportAvailable()) {
+                return why(lib('canvg'));
+            }
+            return window.isSecureContext ? 'this browser cannot write an image to the clipboard'
+                : 'needs a secure page (https, or localhost)';
+        }));
+        out.push(fn('PDF export', pdfExportAvailable, function () {
+            let pair = [lib('jspdf'), lib('svg2pdf.js')];
+            let bad = pair.find(function (l) {
+                return l.status === 'problem';
+            });
+            if (bad) {
+                return why(bad);
+            }
+            return pair.every(function (l) {
+                return l.status === 'absent';
+            }) ? 'jspdf and svg2pdf.js are not loaded' : why(pair.find(function (l) {
+                return l.status !== 'ok';
+            }) || pair[0]);
+        }));
+        return out;
+    }
+
+    // A config value as one short word or number: enough to see what a site
+    // passed, never the value itself where that could be a tree or a callback.
+    function doctorConfigValue(v) {
+        if (v === null || typeof v === 'boolean' || typeof v === 'number') {
+            return v;
+        }
+        if (typeof v === 'string') {
+            return v.length > 80 ? v.substring(0, 77) + '...' : v;
+        }
+        if (typeof v === 'function') {
+            return '(function)';
+        }
+        if (Array.isArray(v)) {
+            return '(list of ' + v.length + ')';
+        }
+        return '(' + typeof v + ')';
+    }
+
+    function doctorLaunch() {
+        if (!_container || !_treeData) {
+            return null;
+        }
+        let launch = {config: {}, tips: null, tree: null, trees: null, container: null};
+        try {
+            Object.keys(_launchConfig || {}).sort().forEach(function (k) {
+                launch.config[k] = doctorConfigValue(_launchConfig[k]);
+            });
+        } catch {
+            launch.config = {};
+        }
+        try {
+            launch.tips = forester.getAllExternalNodes(_root_const || _treeData).length;
+            launch.tree = _treeIndex + 1;
+            launch.trees = _trees.length;
+        } catch {
+            launch.tips = null;
+        }
+        try {
+            launch.container = {width: _container.clientWidth, height: _container.clientHeight};
+        } catch {
+            launch.container = null;
+        }
+        return launch;
+    }
+
+    function doctorText(rep) {
+        let pad = function (text, n) {
+            text = String(text);
+            return text + ' '.repeat(Math.max(1, n - text.length));
+        };
+        let lines = [NAME + ' ' + rep.version + ' diagnostics', ''];
+        lines.push('Status: ' + rep.summary);
+        rep.problems.forEach(function (p) {
+            lines.push('  ! ' + p);
+        });
+        lines.push('', 'Libraries');
+        rep.libraries.forEach(function (l) {
+            lines.push('  ' + pad(l.name, 13) + pad(l.version || (l.loaded ? 'loaded' : 'not loaded'), 12)
+                + pad(l.status === 'absent' ? l.role : l.status, 9) + l.detail);
+        });
+        lines.push('', 'Functions');
+        rep.functions.forEach(function (f) {
+            lines.push('  ' + pad(f.name, 24) + (f.available ? 'on' : 'off') + (f.detail ? '   ' + f.detail : ''));
+        });
+        if (rep.notes.length > 0) {
+            lines.push('', 'Notes');
+            rep.notes.forEach(function (n) {
+                lines.push('  - ' + n);
+            });
+        }
+        lines.push('', 'Launch');
+        if (rep.launch) {
+            lines.push('  config: ' + JSON.stringify(rep.launch.config));
+            if (rep.launch.tips !== null) {
+                lines.push('  tree: ' + rep.launch.tips + ' tips' + (rep.launch.trees > 1
+                    ? ' (tree ' + rep.launch.tree + ' of ' + rep.launch.trees + ')' : ''));
+            }
+            if (rep.launch.container) {
+                lines.push('  container: ' + rep.launch.container.width + ' x ' + rep.launch.container.height + ' px');
+            }
+        } else {
+            lines.push('  no tree is on view');
+        }
+        lines.push('', 'Environment');
+        lines.push('  ' + (rep.environment.userAgent || 'no browser'));
+        if (rep.environment.secureContext !== null) {
+            lines.push('  secure page: ' + (rep.environment.secureContext ? 'yes' : 'no'));
+        }
+        return lines.join('\n');
+    }
+
+    function doctorReport() {
+        let libs;
+        try {
+            libs = doctorLibraries();
+        } catch (e) {
+            libs = [{name: 'libraries', role: 'required', loaded: false, version: null, status: 'problem',
+                detail: 'the checks failed: ' + (e && e.message ? e.message : e)}];
+        }
+        let functions;
+        try {
+            functions = doctorFunctions(libs);
+        } catch {
+            functions = [];
+        }
+        let problems = [];
+        let notes = [];
+        libs.forEach(function (l) {
+            if (l.status === 'problem') {
+                problems.push(l.name + ': ' + l.detail);
+            } else if (l.status === 'note') {
+                notes.push(l.name + (l.version ? ' ' + l.version : '') + ': ' + l.detail);
+            }
+        });
+        _diagnostics.forEach(function (d) {
+            (d.level === 'problem' ? problems : notes).push(d.text + (d.count > 1 ? ' (' + d.count + ' times)' : ''));
+        });
+        let launch = null;
+        try {
+            launch = doctorLaunch();
+        } catch {
+            launch = null;
+        }
+        let nav = (typeof navigator !== 'undefined') ? navigator : null;
+        let rep = {
+            program: NAME,
+            version: VERSION,
+            ok: problems.length === 0,
+            summary: problems.length === 0 ? 'nothing to report'
+                : problems.length + (problems.length === 1 ? ' thing' : ' things') + ' to check',
+            problems: problems,
+            notes: notes,
+            libraries: libs,
+            functions: functions,
+            launch: launch,
+            environment: {
+                userAgent: nav && nav.userAgent ? nav.userAgent : null,
+                secureContext: (typeof window !== 'undefined' && typeof window.isSecureContext === 'boolean')
+                    ? window.isSecureContext : null
+            }
+        };
+        try {
+            rep.text = doctorText(rep);
+        } catch (e) {
+            rep.text = NAME + ' ' + VERSION + ' diagnostics: the report could not be written ('
+                + (e && e.message ? e.message : e) + ')';
+        }
+        return rep;
+    }
+
+    /**
+     * The state of the program on this page: which libraries are loaded (and
+     * their versions, where a library states one), which functions that
+     * switches off, and what the last launch() warned about. Works before a
+     * launch and after a failed one, and in Node. Never throws.
+     *
+     * @returns {{program: string, version: string, ok: boolean, summary: string,
+     *   problems: string[], notes: string[], libraries: Object[], functions: Object[],
+     *   launch: Object|null, environment: Object, text: string}} `ok` is false when
+     *   something is wrong that nobody chooses (see README "Diagnostics");
+     *   `text` is the whole report as plain text, for pasting into an issue.
+     */
+    archaeopteryx.doctor = function () {
+        return doctorReport();
+    };
+
+    // The "check engine light": a small dot after the program name in the
+    // panel header, there only while the report has a problem. Neutral, not
+    // a warning colour: the people who see it are mostly the site's users,
+    // who can do nothing about it, and it is for the one who can.
+    function syncDoctorDot() {
+        try {
+            if (!_container || typeof _container.querySelector !== 'function') {
+                return;
+            }
+            let button = _container.querySelector('.aptx-panel .' + PROGNAMELINK);
+            let dot = button && button.querySelector('.aptx-doctor-dot');
+            if (!dot) {
+                return;
+            }
+            let rep = doctorReport();
+            dot.hidden = rep.ok;
+            button.title = 'About ' + NAME + (rep.ok ? '' : ': ' + rep.summary);
+        } catch {
+            // a light that cannot be lit must not take the viewer with it
+        }
+    }
+
+    function showDoctorDialog() {
+        let rep = doctorReport();
+        let shell = makeDialogShell(DOCTOR_DIALOG, 'Diagnostics', 500);
+        shell.body.classList.add('aptx-doctor');
+
+        // The summary and Copy report share the first line: the report is
+        // longer than a small window, and the one button must not be the
+        // thing scrolled out of sight.
+        let head = document.createElement('div');
+        head.className = 'aptx-doctor-head';
+        let status = document.createElement('div');
+        status.className = 'aptx-doctor-status' + (rep.ok ? '' : ' aptx-doctor-bad');
+        status.textContent = NAME + ' ' + rep.version + ': ' + rep.summary;
+        let copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'aptx-reps-button aptx-doctor-copy';
+        copy.textContent = 'Copy report';
+        copy.title = 'copy this report as text, with the launch configuration and the browser added,'
+            + ' to paste into an issue or an e-mail';
+        copy.addEventListener('click', function () {
+            copyText(rep.text, shell.dialog).then(function (ok) {
+                flashButton(copy, ok ? 'Copied \u2713' : 'Copy failed');
+            });
+        });
+        head.appendChild(status);
+        head.appendChild(copy);
+        shell.body.appendChild(head);
+
+        let list = function (items, cls) {
+            items.forEach(function (text) {
+                let item = document.createElement('div');
+                item.className = 'aptx-doctor-item ' + cls;
+                item.textContent = text;   // may quote a config value: never markup
+                shell.body.appendChild(item);
+            });
+        };
+        let section = function (title) {
+            let h = document.createElement('div');
+            h.className = 'aptx-doctor-section';
+            h.textContent = title;
+            shell.body.appendChild(h);
+        };
+        let row = function (key, value, detail, bad) {
+            let line = document.createElement('div');
+            line.className = 'aptx-dialog-line' + (bad ? ' aptx-doctor-bad' : '');
+            let k = document.createElement('span');
+            k.className = 'aptx-dialog-key';
+            k.textContent = key;
+            let v = document.createElement('span');
+            v.className = 'aptx-dialog-val';
+            let main = document.createElement('span');
+            main.className = 'aptx-doctor-value';
+            main.textContent = value;
+            v.appendChild(main);
+            if (detail) {
+                let d = document.createElement('span');
+                d.className = 'aptx-doctor-detail';
+                d.textContent = detail;
+                v.appendChild(d);
+            }
+            line.appendChild(k);
+            line.appendChild(v);
+            shell.body.appendChild(line);
+        };
+        list(rep.problems, 'aptx-doctor-bad');
+
+        section('Libraries');
+        rep.libraries.forEach(function (l) {
+            // "not loaded" is the value: the reason under it does not say it again
+            let value = l.version || (l.loaded ? 'loaded' : 'not loaded');
+            let detail = l.detail.indexOf(value) === 0 ? l.detail.substring(value.length).replace(/^: /, '') : l.detail;
+            row(l.name, value, detail, l.status === 'problem');
+        });
+        section('Functions');
+        rep.functions.forEach(function (f) {
+            row(f.name, f.available ? 'on' : 'off', f.detail, false);
+        });
+        if (rep.notes.length > 0) {
+            section('Notes');
+            list(rep.notes, 'aptx-doctor-note');
+        }
+
+        shell.dialog.showModal();
+    }
+
     // The About box behind the panel's title. Everything here is fixed text and
     // fixed URLs -- no tree data reaches it -- so the links are built as real
-    // elements rather than markup.
+    // elements rather than markup. (The Diagnostics row's text is the doctor's
+    // own summary: a count, never a value.)
     function showAboutDialog() {
+        let rep = doctorReport();
         let shell = makeDialogShell(ABOUT_DIALOG, 'About', 380);
         shell.body.classList.add('aptx-about');
 
@@ -18123,8 +18764,9 @@ function (root, d3, forester, phyloXml) {
             ['Desktop version', DESKTOP_WEBSITE, 'cmzmasek.github.io/archaeopteryx'],
             ['Source code', SOURCE_WEBSITE, 'github.com/cmzmasek/archaeopteryx-js'],
             ['License', LICENSE_WEBSITE, LICENSE_NAME],
-            ['Keyboard', null, 'shortcuts (' + (IS_MAC ? '\u2318 /' : 'Ctrl+/') + ')'],
-            ['Control panel', null, 'what each control does']].forEach(function (row) {
+            ['Keyboard', null, 'shortcuts (' + (IS_MAC ? '\u2318 /' : 'Ctrl+/') + ')', showShortcutsDialog],
+            ['Control panel', null, 'what each control does', showCheatSheetDialog],
+            ['Diagnostics', null, rep.summary, showDoctorDialog]].forEach(function (row) {
             let line = document.createElement('div');
             line.className = 'aptx-dialog-line';
             let key = document.createElement('span');
@@ -18138,9 +18780,9 @@ function (root, d3, forester, phyloXml) {
                 a.target = '_blank';
                 a.rel = 'noopener noreferrer';
             } else {
-                // the two rows with no URL open another dialog in place of
-                // this one: the key list, and the control-panel sheet
-                let opener = row[0] === 'Control panel' ? showCheatSheetDialog : showShortcutsDialog;
+                // the rows with no URL open another dialog in place of this
+                // one: the key list, the control-panel sheet, the diagnostics
+                let opener = row[3];
                 a.href = '#';
                 a.addEventListener('click', function (e) {
                     e.preventDefault();
@@ -18149,6 +18791,14 @@ function (root, d3, forester, phyloXml) {
                 });
             }
             a.textContent = row[2];
+            if (row[0] === 'Diagnostics') {
+                a.className = 'aptx-doctor-link';
+                if (!rep.ok) {
+                    let dot = document.createElement('span');
+                    dot.className = 'aptx-doctor-dot';
+                    val.appendChild(dot);
+                }
+            }
             val.appendChild(a);
             line.appendChild(key);
             line.appendChild(val);
@@ -18720,7 +19370,8 @@ function (root, d3, forester, phyloXml) {
             // by this, and a version is a value -- it belongs in the About box
             // it opens, not in a row that says what the button is
             h = h.concat('<button type="button" class="' + PROGNAMELINK + '" aria-label="' + NAME
-                + '" title="About ' + NAME + '">' + NAME + ' ' + VERSION + '</button>');
+                + '" title="About ' + NAME + '">' + NAME + ' ' + VERSION
+                + '<span class="aptx-doctor-dot" hidden></span></button>');
             h = h.concat('</div>');
             return h;
         }
@@ -19397,7 +20048,7 @@ function (root, d3, forester, phyloXml) {
             // 2x, 4x and 8x, and the setting is now the one it starts on
             // (Christian, 2026-09-28) -- said, not done silently
             if (_pngScale !== _settings.pngExportScale) {
-                console.warn(WARNING + ': pngExportScale ' + _settings.pngExportScale + ' is not one of '
+                say('problem', 'warn', WARNING + ': pngExportScale ' + _settings.pngExportScale + ' is not one of '
                     + DOWNLOAD_PNG_SCALES.join(', ') + ': the PNG starts at ' + _pngScale + 'x');
             }
             setRadioButtonValue(_downloadFullSize ? DOWNLOAD_FULL_SIZE_BUTTON : DOWNLOAD_AS_SHOWN_BUTTON, true);
@@ -20139,7 +20790,7 @@ function (root, d3, forester, phyloXml) {
 
     function downloadAsPdf(graphic) {
         if (!pdfExportAvailable()) {
-            console.error(ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
+            say('problem', 'error', ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
             return;
         }
         let el = new DOMParser().parseFromString(graphic.text, 'image/svg+xml').documentElement;
@@ -20188,7 +20839,7 @@ function (root, d3, forester, phyloXml) {
             holder.remove();
         }, function (err) {
             holder.remove();
-            console.error(ERROR + 'PDF export failed: ' + err);
+            say('problem', 'error', ERROR + 'PDF export failed: ' + err);
         });
     }
 
@@ -20234,7 +20885,7 @@ function (root, d3, forester, phyloXml) {
         renderPng(graphic).then(function (blob) {
             saveAs(blob, downloadFileName(PNG_SUFFIX));
         }, function (err) {
-            console.error(ERROR + 'PNG export failed: ' + err);
+            say('problem', 'error', ERROR + 'PNG export failed: ' + err);
         });
     }
 
@@ -20252,7 +20903,7 @@ function (root, d3, forester, phyloXml) {
             return Promise.reject(new Error('this browser cannot paint a canvas of that size'));
         }
         if (target.scale < _pngScale) {
-            console.warn(WARNING + ': PNG exported at ' + target.scale.toFixed(2) + 'x rather than ' + _pngScale
+            say('note', 'warn', WARNING + ': PNG exported at ' + target.scale.toFixed(2) + 'x rather than ' + _pngScale
                 + 'x: the largest image this browser can paint');
         }
         let canvas = target.canvas;
@@ -20313,7 +20964,7 @@ function (root, d3, forester, phyloXml) {
         written.then(function () {
             flashButton(btn, 'Copied ✓');
         }, function (err) {
-            console.error(ERROR + 'copying the PNG failed: ' + err);
+            say('problem', 'error', ERROR + 'copying the PNG failed: ' + err);
             flashButton(btn, 'Copy failed');
         });
     }

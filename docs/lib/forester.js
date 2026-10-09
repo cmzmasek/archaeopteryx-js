@@ -102,6 +102,13 @@
 
     const NUMBERS_ONLY_PATTERN = /^[-+]?[0-9\\.]+$/;
 
+    // The release this file belongs to. archaeopteryx.js compares it with its
+    // own (archaeopteryx.doctor): the two are separate files, a site that
+    // concatenates its own bundle can pair them from different releases, and
+    // until this constant nothing could tell. Bumped with the other four
+    // places; test/visualization_test.js holds all five together.
+    forester.VERSION = '3.26.0';
+
 
     /**
      * Sets links to parent nodes for all nodes in a

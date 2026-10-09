@@ -7,6 +7,31 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **Diagnostics: `archaeopteryx.doctor()`, and a dot on the program name when
+  something is wrong.** The viewer checks its dependencies when they are used,
+  never at load, so it runs half-equipped without a word: on a site it had no
+  PDF or PNG export, a retired config key and an overruled
+  `initialVisualization` for weeks, each said only in the console.
+  `archaeopteryx.doctor()` returns the state of the program on the page: the
+  seven libraries (with a version where the library states one), which
+  functions that switches off and why, what the last `launch()` warned about,
+  the config keys it was given, and all of it as plain text. It works before a
+  launch, after one that threw, and in Node, and never throws. The About box
+  has a **Diagnostics** row that opens the same report, with **Copy report**.
+  While the report holds a *problem* — half of the jspdf / svg2pdf.js pair, a
+  library under its 2.x-era global, a d3 that is not 7, `forester.js` from
+  another release, a phyloxml that does not write what 1.1.7 writes, or any
+  config warning or export error — a small neutral dot follows the program
+  name in the panel header. An optional library that is simply not loaded is
+  stated ("PDF export: off"), never flagged. README "Diagnostics".
+- **`forester.VERSION`**: forester.js now states its release, so a page that
+  pairs it with an `archaeopteryx.js` from another one can be told.
+
+### Changed
+- Warnings and errors are printed exactly as before (same console method, same
+  words) and are now also kept for the diagnostics report.
+
 ## 3.26.0 — 2026-10-08
 
 Two answers to BV-BRC users: the scale bar prints the tree's unit and can be
