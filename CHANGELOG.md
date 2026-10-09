@@ -21,10 +21,14 @@ users see a change only when a version is cut.
   has a **Diagnostics** row that opens the same report, with **Copy report**.
   While the report holds a *problem* — half of the jspdf / svg2pdf.js pair, a
   library under its 2.x-era global, a d3 that is not 7, `forester.js` from
-  another release, a phyloxml that does not write what 1.1.7 writes, or any
-  config warning or export error — a small neutral dot follows the program
-  name in the panel header. An optional library that is simply not loaded is
-  stated ("PDF export: off"), never flagged. README "Diagnostics".
+  another release, a phyloxml older than 1.1.7 (one that drops something when
+  saving, or writes a node's style as the earlier releases did), or any
+  warning about the config — a small neutral dot follows the program name in
+  the panel header. An optional library that is simply not loaded is stated
+  ("PDF export: off"), never flagged; an export the browser refused and a
+  phyloxml that merely lays its file out differently are notes. The warnings
+  belong to the tree on view. README "Diagnostics"; typed in
+  `archaeopteryx.d.ts` (`DoctorReport`).
 - **`forester.VERSION`**: forester.js now states its release, so a page that
   pairs it with an `archaeopteryx.js` from another one can be told.
 

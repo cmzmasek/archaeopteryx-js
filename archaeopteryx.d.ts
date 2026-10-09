@@ -259,6 +259,57 @@ export interface ViewerHandle {
  * value, 'label' keeps them as names. */
 export type InternalNumericLabels = 'auto' | 'confidence' | 'label';
 
+/** One library's row in the diagnostics report. `status`: 'ok'; 'absent'
+ * (not loaded, and that is no fault: an optional library, or d3 outside a
+ * page); 'note' (stated, not flagged); 'problem' (lights the dot). */
+export interface DoctorLibrary {
+    name: 'forester.js' | 'd3' | 'phyloxml' | 'sax' | 'canvg' | 'jspdf' | 'svg2pdf.js' | string;
+    role: 'required' | 'optional';
+    loaded: boolean;
+    /** Only d3 (its script build), jsPDF and forester state one. */
+    version: string | null;
+    status: 'ok' | 'absent' | 'note' | 'problem';
+    detail: string;
+}
+
+/** What the user gets or does not get, with the reason when it is off. */
+export interface DoctorFunction {
+    name: 'Read and save phyloXML' | 'PNG export' | 'Copy PNG' | 'PDF export' | string;
+    available: boolean;
+    detail: string;
+}
+
+/** The tree on view. A config value is given as passed when it is a
+ * string, a number, a boolean or null, and otherwise as its kind:
+ * '(function)', '(list of 3)', '(object)'. */
+export interface DoctorLaunch {
+    config: Record<string, string | number | boolean | null>;
+    tips: number | null;
+    /** 1-based, of `trees`. */
+    tree: number;
+    trees: number;
+    container: { width: number; height: number } | null;
+}
+
+/** archaeopteryx.doctor(): the state of the program on this page. */
+export interface DoctorReport {
+    program: string;
+    version: string;
+    /** false when something is wrong that nobody chooses. */
+    ok: boolean;
+    /** 'nothing to report', or '2 things to check'. */
+    summary: string;
+    problems: string[];
+    notes: string[];
+    libraries: DoctorLibrary[];
+    functions: DoctorFunction[];
+    /** null while no tree is on view. */
+    launch: DoctorLaunch | null;
+    environment: { userAgent: string | null; secureContext: boolean | null };
+    /** The whole report as plain text, for pasting into an issue. */
+    text: string;
+}
+
 export interface Archaeopteryx {
     /** Launch the viewer into a container (a CSS selector or the element
      * itself; an unresolvable container throws). Exactly three arguments.
@@ -296,6 +347,11 @@ export interface Archaeopteryx {
 
     /** Module-level twin of the handle's getSelectedNodes. */
     getSelectedNodes(): PhylogenyNode[];
+
+    /** The state of the program on this page: the libraries, the functions
+     * they switch off, what the launch on view warned about. Works before a
+     * launch, after one that threw, and in Node; never throws. */
+    doctor(): DoctorReport;
 
     /** A view as a "key=value&..." string for a URL hash, and back. decode
      * accepts a leading '#', ignores what it does not know, and returns

@@ -24,18 +24,22 @@
 //   ?order=1       svg2pdf.js loaded BEFORE jspdf (the real files): present, not attached
 //   ?old=1         the 2.x-era globals: window.canvg and window.jsPDF
 //   ?forester=1    forester.js from another release
-//   ?phyloxml=1    a phyloxml that writes differently from 1.1.7
-//   ?d3=1          a d3 that is not version 7
+//   ?phyloxml=1    a phyloxml that writes a style as releases before 1.1.7 did: a problem, and phyloXML still ON
+//   ?newer=1       a phyloxml that only lays the file out differently (a newer one): a note, no dot
+//   ?d3=1          a d3 that is not version 7 (handed to the viewer at load)
+//   ?esm=1         a d3 with no `version` (the ES-module build), and a v5 put on window AFTER load: ok, no dot
+//   ?trees=1       two trees, the forced visualization only on the second: each tree's problems are its own
 //   ?notes=1       a d3 7 older than 7.9 and a jspdf that is not 4: notes, NOT problems, no dot
 //   ?failed=1      a launch that throws: no panel, and doctor() still tells
 //   ?legacy=1      Copy report without the async clipboard (the textarea path, under a modal dialog)
+// Each case goes on past the dialog: another tree, a rejected launch, a library arriving late, a host bug.
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const out = []; let failures = 0;
     const check = (l, ok, d) => { if (!ok) { failures++; }
         out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
     const q = new URLSearchParams(location.search);
-    const mode = ['absent', 'nodeLabels', 'forced', 'half', 'order', 'old', 'forester', 'phyloxml', 'd3', 'notes', 'failed', 'legacy']
+    const mode = ['absent', 'nodeLabels', 'forced', 'half', 'order', 'old', 'forester', 'phyloxml', 'newer', 'd3', 'esm', 'trees', 'notes', 'failed', 'legacy']
         .find((k) => q.get(k) === '1') || 'clean';
     out.push('case ' + mode);
     const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
@@ -49,7 +53,16 @@
             libs.push('jspdf.umd.min.js');
             if (mode !== 'half' && mode !== 'order') { libs.push('svg2pdf.umd.min.js'); }
         }
-        for (const l of libs) { await load(l); }
+        for (const l of libs) {
+            await load(l);
+            // The viewer keeps the d3 it is handed when it loads, so a page whose d3 is wrong is made HERE,
+            // before archaeopteryx.js (replacing window.d3 afterwards tests a d3 the viewer does not use).
+            if (l === 'd3.v7.min.js') {
+                if (mode === 'd3') { window.d3 = Object.assign({}, window.d3, {version: '5.16.0'}); }
+                if (mode === 'notes') { window.d3 = Object.assign({}, window.d3, {version: '7.4.0'}); }
+                if (mode === 'esm') { const m = Object.assign({}, window.d3); delete m.version; window.d3 = m; }
+            }
+        }
         // ---- what each case does to the page before the launch ----
         let config = {};
         // what the case must produce: [number of problems, a pattern each problem list must match]
@@ -67,13 +80,22 @@
             want = {problems: 1, patterns: [/^forester\.js: forester\.js is 3\.0\.0, archaeopteryx\.js is \d+\.\d+\.\d+: the two must come from the same release/]}; }
         if (mode === 'phyloxml') { const write = phyloXml.toPhyloXML;
             phyloXml.toPhyloXML = function () { return write.apply(this, arguments).replace('#ce1616', '#CE1616'); };
-            want = {problems: 1, patterns: [/^phyloxml: does not write phyloXML as phyloxml 1\.1\.7 does/]}; }
-        if (mode === 'd3') { window.d3 = Object.assign({}, window.d3, {version: '5.16.0'});
+            want = {problems: 1, patterns: [/^phyloxml: an older copy: it writes a style colour as it came, not in lower case, so a saved tree differs from the desktop program's file/]}; }
+        if (mode === 'newer') { const write = phyloXml.toPhyloXML;
+            phyloXml.toPhyloXML = function () { return write.apply(this, arguments).replace(/\n {2}<clade>/, '\n    <clade>'); }; }
+        // after the viewer has loaded, another script puts an old d3 on the page: the viewer goes on with its own
+        if (mode === 'esm') { window.d3 = Object.assign({}, window.d3, {version: '5.16.0'}); }
+        if (mode === 'trees') { config = {initialVisualization: 'Genus'};
+            want = {problems: 1, patterns: [/^initialVisualization "Genus" names no visualization of this tree/]}; }
+        // the plain case passes a callback that throws when told to: the host's own bug, arriving late
+        if (mode === 'clean') { config = {onViewChange: function () { if (window.__hostBug) { throw new Error('host bug'); } }}; }
+        if (mode === 'd3') {
             want = {problems: 1, patterns: [/^d3: Archaeopteryx\.js needs d3 version 7/]}; }
-        if (mode === 'notes') { window.d3 = Object.assign({}, window.d3, {version: '7.4.0'}); window.jspdf.jsPDF.version = '2.5.1';
+        if (mode === 'notes') { window.jspdf.jsPDF.version = '2.5.1';
             config = {displayWidth: 800}; }    // ignored while dynamic sizing is on: the launch SAYS so, as a note
-        if (mode === 'failed') { config = {noSuchKey: 1};
-            want = {problems: 1, patterns: [/^launch failed: unknown config key\(s\) passed to launch: "noSuchKey"/]}; }
+        // rejected AFTER launch() has written its working state (the layout is checked late): no tree is on view
+        if (mode === 'failed') { config = {layout: 'radial'};
+            want = {problems: 1, patterns: [/^launch failed: .*layout/]}; }
 
         // before any launch the report already works, and says no tree is on view
         const before = archaeopteryx.doctor();
@@ -82,11 +104,13 @@
         const file = '../../docs/data/Caliciviridae_100.xml';
         const text = await (await fetch(file)).text();
         // counted on a second parse, by the model's own function, before the viewer sees a tree
-        const tipCount = forester.getAllExternalNodes(archaeopteryx.parseTrees(file, text)[0]).length;
+        const tipCount = mode === 'trees' ? 4 : forester.getAllExternalNodes(archaeopteryx.parseTrees(file, text)[0]).length;
         let viewer = null, thrown = null;
         try {
             // ?nodeLabels=1 launches the tree twice over, as a two-tree list: showTree(1) re-reads the config
-            const trees = archaeopteryx.parseTrees(file, text).concat(mode === 'nodeLabels' ? archaeopteryx.parseTrees(file, text) : []);
+            let trees = archaeopteryx.parseTrees(file, text).concat(mode === 'nodeLabels' ? archaeopteryx.parseTrees(file, text) : []);
+            // ?trees=1: a bare tree first (no Genus to colour by), the annotated one second
+            if (mode === 'trees') { trees = [archaeopteryx.parseNewHampshire('((a:1,b:1):1,(c:1,d:1):1);')].concat(trees); }
             viewer = archaeopteryx.launch('#p', trees, config);
             await viewer.ready;
         } catch (e) { thrown = e; }
@@ -95,6 +119,11 @@
         await sleep(200);
         check(mode === 'failed' ? 'the launch threw' : 'the launch did not throw', (mode === 'failed') === !!thrown, thrown && thrown.message);
 
+        // The dot is read BEFORE anything asks for the report: doctor() itself brings the dot up to date, and a
+        // check made after it could not tell whether the panel had lit it unasked (sabotage, 2026-10-09).
+        const dotUnasked = document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot');
+        const litUnasked = !!dotUnasked && getComputedStyle(dotUnasked).display !== 'none';
+        const titleUnasked = dotUnasked && dotUnasked.parentNode.title;
         // ---- the report ----
         const rep = archaeopteryx.doctor();
         out.push(...rep.text.split('\n').map((l) => '    | ' + l));
@@ -115,9 +144,23 @@
             check('three notes, and the text lists them', rep.notes.length === 3 && rep.notes.every((n) => rep.text.includes('  - ' + n)), rep.notes.length);
             check('PDF export stays on', fn('PDF export').available);
         }
-        if (mode !== 'd3' && mode !== 'notes') { check('d3 states its version', lib('d3').version === '7.9.0' && lib('d3').status === 'ok', lib('d3').version + ' ' + lib('d3').status); }
+        if (mode === 'esm') {
+            check('a d3 with no version is ok, judged by what d3 7 has', lib('d3').status === 'ok' && lib('d3').version === null && /states no version/.test(lib('d3').detail), JSON.stringify(lib('d3')));
+            check('... and the old d3 put on window after load is not what the row is about', window.d3.version === '5.16.0' && rep.ok);
+        }
+        if (mode === 'd3') { check('the d3 row states the version the viewer was handed', lib('d3').version === '5.16.0' && lib('d3').status === 'problem', JSON.stringify(lib('d3'))); }
+        if (mode === 'phyloxml' || mode === 'newer') {
+            check('phyloXML stays ON: the library still reads and saves', fn('Read and save phyloXML').available === true && fn('Read and save phyloXML').detail === lib('phyloxml').detail, JSON.stringify(fn('Read and save phyloXML')));
+            document.getElementById('dl_b').click(); await sleep(200);
+            check('... as the Download menu agrees', !![...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.firstChild.textContent === 'phyloXML'));
+            document.getElementById('dl_b').click(); await sleep(200);
+        }
+        if (mode === 'newer') {
+            check('a different layout alone is a note', lib('phyloxml').status === 'note' && rep.notes.length === 1 && /^phyloxml: writes a small tree differently from phyloxml 1\.1\.7, losing nothing/.test(rep.notes[0]), rep.notes.join(' || '));
+        }
+        if (mode !== 'd3' && mode !== 'notes' && mode !== 'esm') { check('d3 states its version', lib('d3').version === '7.9.0' && lib('d3').status === 'ok', lib('d3').version + ' ' + lib('d3').status); }
         if (mode !== 'forester') { check('forester.js states the viewer\'s version', lib('forester.js').version === rep.version && lib('forester.js').status === 'ok', lib('forester.js').version + ' vs ' + rep.version); }
-        if (mode !== 'phyloxml') { check('phyloxml passes the round trip', lib('phyloxml').status === 'ok', lib('phyloxml').detail); }
+        if (mode !== 'phyloxml' && mode !== 'newer') { check('phyloxml passes the round trip', lib('phyloxml').status === 'ok', lib('phyloxml').detail); }
         // the functions row must agree with what the Download menu really offers
         const menuItem = (label) => [...document.querySelectorAll('.aptx-node-menu button')].find((b) => b.firstChild.textContent === label);
         if (mode !== 'failed') {
@@ -127,10 +170,11 @@
             check('"PDF export" agrees with the Download menu', fn('PDF export').available === !!menuItem('PDF'), fn('PDF export').available + ' vs menu ' + !!menuItem('PDF'));
             document.getElementById('dl_b').click(); await sleep(200);
         }
+        if (mode === 'clean') { check('a callback in the config is named by its kind, never copied', rep.launch.config.onViewChange === '(function)', JSON.stringify(rep.launch.config)); }
         if (mode === 'clean' || mode === 'legacy') {
             check('everything loaded: PNG and PDF export are on', fn('PNG export').available && fn('PDF export').available);
             check('jspdf states its version', /^\d+\.\d+\.\d+$/.test(lib('jspdf').version || ''), lib('jspdf').version);
-            check('no library is absent or a problem', rep.libraries.every((l) => l.status === 'ok'), rep.libraries.map((l) => l.name + '=' + l.status).join());
+            check('no library is absent or a problem', rep.libraries.every((l) => l.status === 'ok') && rep.notes.length === 0, rep.libraries.map((l) => l.name + '=' + l.status).join());
         }
         if (mode === 'absent') {
             check('the three export libraries are absent, not problems', ['canvg', 'jspdf', 'svg2pdf.js'].every((n) => lib(n).status === 'absent' && !lib(n).loaded));
@@ -144,7 +188,7 @@
         }
         if (mode === 'nodeLabels') { check('a list in the config is summarised, not copied', rep.launch.config.nodeLabels === '(list of 1)', rep.launch.config.nodeLabels); }
         if (mode !== 'failed') {
-            check('the launch section counts the tips', rep.launch && rep.launch.tips === tipCount && tipCount > 50, (rep.launch && rep.launch.tips) + ' vs ' + tipCount);
+            check('the launch section counts the tips', rep.launch && rep.launch.tips === tipCount && (tipCount > 50 || mode === 'trees'), (rep.launch && rep.launch.tips) + ' vs ' + tipCount);
             check('... and measures the container', rep.launch.container && rep.launch.container.height === 640, JSON.stringify(rep.launch.container));
         }
 
@@ -152,15 +196,26 @@
         const name = document.querySelector('#p .aptx-panel .prognamelink');
         if (mode === 'failed') {
             check('no panel was built', !name);
+            check('no tree is on view, and the report describes none', rep.launch === null && /\n {2}no tree is on view\n/.test(rep.text), JSON.stringify(rep.launch));
             // a later, good launch starts the diagnostics afresh
             const v2 = archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {}); await v2.ready; await sleep(800);
             const rep2 = archaeopteryx.doctor();
             check('the next launch starts afresh: nothing to report', rep2.ok && rep2.problems.length === 0, rep2.problems.join(' || '));
+            check('... and now there is a tree on view', rep2.launch && rep2.launch.tips === tipCount, JSON.stringify(rep2.launch));
             const dot2 = document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot');
             check('... and shows no dot', !!dot2 && getComputedStyle(dot2).display === 'none');
+            // launchArchaeopteryx fails on its own, before launch(): recorded, and the viewer on the page keeps its report
+            let msg = null;
+            try { archaeopteryx.launchArchaeopteryx('#p', 't.nwk', '((a,b', {}); } catch (e) { msg = e.message; }
+            const rep5 = archaeopteryx.doctor();
+            check('a file that does not parse is recorded as a failed launch', /could not parse tree/.test(msg || '') && rep5.problems.length === 1 && /^launch failed: could not parse tree: /.test(rep5.problems[0]), rep5.problems.join(' || '));
+            check('... the tree on view is still described', rep5.launch && rep5.launch.tips === tipCount);
+            check('... and the dot is lit for it at once', getComputedStyle(document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot')).display !== 'none');
         } else {
             const dot = name.querySelector('.aptx-doctor-dot');
             check('the program name carries the dot element', !!dot);
+            check('before anyone asked, the dot was already ' + (want.problems ? 'lit' : 'dark'), litUnasked === (want.problems > 0), litUnasked);
+            check('... with its tooltip', titleUnasked === 'About Archaeopteryx.js' + (want.problems ? ': ' + rep.summary : ''), titleUnasked);
             const shown = !!dot && getComputedStyle(dot).display !== 'none';
             const box = dot.getBoundingClientRect();
             check(want.problems ? 'the dot is lit' : 'the dot is NOT lit', shown === (want.problems > 0), getComputedStyle(dot).display + ' ' + Math.round(box.width) + 'x' + Math.round(box.height));
@@ -197,6 +252,11 @@
             check('... then the seven libraries and the four functions', rows.join() === rep.libraries.map((l) => l.name).concat(rep.functions.map((f) => f.name)).join(), rows.join());
             const badRows = [...dlg.querySelectorAll('.aptx-dialog-line.aptx-doctor-bad')].map((l) => l.querySelector('.aptx-dialog-key').textContent);
             check('... the faulty libraries marked', badRows.join() === rep.libraries.filter((l) => l.status === 'problem').map((l) => l.name).join(), badRows.join() || 'none');
+            const details = [...dlg.querySelectorAll('.aptx-doctor-detail')].map((d) => d.textContent);
+            check('... no reason starting mid-sentence', details.every((d) => /^[A-Za-z"]/.test(d)), details.filter((d) => !/^[A-Za-z"]/.test(d)).join(' || ') || details.length + ' reason(s)');
+            if (mode === 'order') { check('... "loaded, but not attached" keeps its first word', details.some((d) => /^loaded, but not attached to jspdf/.test(d)), details.join(' || ')); }
+            const mark = getComputedStyle(dlg.querySelector('.aptx-doctor-status')).boxShadow;
+            check('... the status line is marked only when something is wrong', (mark !== 'none') === (want.problems > 0), mark);
             check('... no row saying "not loaded" twice', [...dlg.querySelectorAll('.aptx-dialog-val')].every((v) => (v.textContent.match(/not loaded/g) || []).length <= 1));
             const copyBox = dlg.querySelector('.aptx-doctor-copy').getBoundingClientRect(), bodyBox = dlg.querySelector('.aptx-dialog-body').getBoundingClientRect();
             check('... "Copy report" in view without scrolling', copyBox.top >= bodyBox.top && copyBox.bottom <= bodyBox.bottom && copyBox.bottom <= innerHeight, Math.round(copyBox.top) + '-' + Math.round(copyBox.bottom) + ' in ' + Math.round(bodyBox.top) + '-' + Math.round(bodyBox.bottom));
@@ -214,47 +274,118 @@
             check('a "Copy report" button', !!copy && copy.textContent === 'Copy report');
             let copied = null;
             if (mode === 'legacy') {
-                // no async clipboard: the textarea path, which has to work UNDER a modal dialog
+                // No async clipboard: the textarea path, which has to work UNDER a modal dialog. The browser's own
+                // copy command is watched, not replaced: what it is asked to copy is read at the moment it is
+                // asked, and the button has to say what the browser answered -- headless Chrome may refuse the
+                // clipboard itself, and a stub that always said yes could not fail on anything (review, 2026-10-09).
                 Object.defineProperty(navigator, 'clipboard', {value: undefined, configurable: true});
-                document.addEventListener('copy', function () { const a = document.activeElement; copied = a && a.value; });
                 const realExec = document.execCommand.bind(document);
-                let host = null;
-                document.execCommand = function (c) { host = document.activeElement && document.activeElement.parentNode;
-                    try { realExec(c); } catch (e) { /* headless may refuse the clipboard itself */ } return true; };
+                let seen = null, answer = null;
+                document.execCommand = function (c) {
+                    const a = document.activeElement;
+                    seen = {host: a && a.parentNode, tag: a && a.tagName, value: a && a.value, from: a && a.selectionStart, to: a && a.selectionEnd};
+                    try { answer = realExec(c); } catch (e) { answer = false; }
+                    return answer;
+                };
                 copy.click(); await sleep(300);
-                check('the textarea was put INSIDE the modal dialog, where it can be selected', host === dlg, host && (host.id || host.tagName));
+                check('the textarea was put INSIDE the modal dialog, where it can be selected', !!seen && seen.tag === 'TEXTAREA' && seen.host === dlg, seen && (seen.tag + ' in ' + (seen.host && (seen.host.id || seen.host.tagName))));
+                check('... holding the whole report, all of it selected', !!seen && seen.value === rep.text && seen.from === 0 && seen.to === rep.text.length, seen && ((seen.value || '').length + ' chars, selected ' + seen.from + '-' + seen.to + ' of ' + rep.text.length));
                 check('... and removed again', !dlg.querySelector('textarea') && !document.body.querySelector(':scope > textarea'));
+                out.push('the browser\'s own copy command answered ' + answer);
+                check('the button says what the browser answered', copy.textContent === (answer ? 'Copied ✓' : 'Copy failed'), copy.textContent);
             } else {
-                Object.defineProperty(navigator, 'clipboard', {value: {writeText: (t) => { copied = t; return Promise.resolve(); }}, configurable: true});
+                Object.defineProperty(navigator, 'clipboard', {value: {writeText: (t) => { copied = t; return Promise.resolve(); },
+                    write: () => Promise.reject(new Error('denied'))}, configurable: true});
                 copy.click(); await sleep(300);
                 check('it copies the whole text report', copied === rep.text, copied === null ? 'nothing copied' : copied.length + ' chars');
+                check('the button says "Copied" for a moment', /^Copied/.test(copy.textContent), copy.textContent);
             }
-            check('the button says "Copied" for a moment', /^Copied/.test(copy.textContent), copy.textContent);
             dlg.querySelector('.aptx-dialog-close').click(); await sleep(200);
             check('the close control removes the dialog', !document.getElementById('aptx_doctor'));
+            const lit = () => getComputedStyle(document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot')).display !== 'none';
 
-            // ---- the same warning again is one entry, counted ----
+            // ---- another tree of the file: its report is its own; a rejected launch leaves the viewer's report alone ----
             if (mode === 'nodeLabels') {
                 await viewer.showTree(1); await sleep(1500);     // the launch proper again: reads the config, so warns again
                 check('the second tree is on view', viewer.getTreeIndex() === 1, viewer.getTreeIndex());
                 const rep4 = archaeopteryx.doctor();
-                check('a repeated warning stays one entry, with its count', rep4.problems.length === 1 && /"nodeLabels" is retired.* \(2 times\)$/.test(rep4.problems[0]), rep4.problems.join(' || '));
-                const dot4 = document.querySelector('#p .aptx-panel .prognamelink .aptx-doctor-dot');
-                check('... and the rebuilt panel still shows the dot', !!dot4 && getComputedStyle(dot4).display !== 'none');
+                check('the config warning is said for this tree too, once: not counted up across trees', rep4.problems.length === 1 && /"nodeLabels" is retired/.test(rep4.problems[0]) && !/ times\)$/.test(rep4.problems[0]), rep4.problems.join(' || '));
+                check('... the report says which tree', rep4.launch.tree === 2 && rep4.launch.trees === 2 && /\(tree 2 of 2\)/.test(rep4.text), JSON.stringify(rep4.launch));
+                check('... and the rebuilt panel still shows the dot', lit());
+                // a launch that is REJECTED: the viewer stays, and so does what was said about it
+                let msg = null;
+                try { archaeopteryx.launch('#p', archaeopteryx.parseTrees(file, text), {noSuchKey: 1}); } catch (e) { msg = e.message; }
+                await sleep(300);
+                const rep6 = archaeopteryx.doctor();
+                check('a rejected launch throws, and the viewer is still on the page', /unknown config key/.test(msg || '') && !!document.querySelector('#p .aptx-panel') && viewer.getTreeIndex() === 1, msg);
+                check('... the viewer\'s own problem is kept, and the failure added', rep6.problems.length === 2 && /"nodeLabels" is retired/.test(rep6.problems[0]) && /^launch failed: unknown config key\(s\) passed to launch: "noSuchKey"$/.test(rep6.problems[1]), rep6.problems.join(' || '));
+                check('... the launch section still describes the tree on view', Object.keys(rep6.launch.config).join() === 'nodeLabels' && rep6.launch.tree === 2, JSON.stringify(rep6.launch));
+                check('... and the dot counts both', lit() && document.querySelector('#p .aptx-panel .prognamelink').title === 'About Archaeopteryx.js: 2 things to check', document.querySelector('#p .aptx-panel .prognamelink').title);
             }
-            // ---- a problem that arrives later lights the dot at once ----
+            if (mode === 'trees') {
+                const annotated = forester.getAllExternalNodes(archaeopteryx.parseTrees(file, text)[0]).length;
+                await viewer.showTree(1); await sleep(1800);
+                const r1 = archaeopteryx.doctor();
+                check('the second tree HAS the field: coloured by it', viewer.getTreeIndex() === 1 && viewer.getViewState().colorBy !== 'none', viewer.getViewState().colorBy);
+                check('... and the first tree\'s problem is not carried over', r1.ok && r1.problems.length === 0, r1.problems.join(' || '));
+                check('... the report is about this tree', r1.launch.tree === 2 && r1.launch.tips === annotated, JSON.stringify(r1.launch));
+                check('... no dot', !lit());
+                await viewer.showTree(0); await sleep(1800);
+                const r2 = archaeopteryx.doctor();
+                check('back on the bare tree the problem is its own again, once', r2.problems.length === 1 && /names no visualization of this tree/.test(r2.problems[0]) && !/ times\)$/.test(r2.problems[0]), r2.problems.join(' || '));
+                check('... with the dot', lit());
+            }
+            // ---- the library that was missing arrives: the dot follows without a relaunch ----
+            if (mode === 'half') {
+                await load('svg2pdf.umd.min.js'); await sleep(200);
+                check('svg2pdf.js arrived and attached itself', typeof window.jspdf.jsPDF.API.svg === 'function');
+                check('nothing announced it: the dot is still lit', lit());
+                const r7 = archaeopteryx.doctor();
+                check('asking doctor() brings the dot up to date: off, as the answer says', r7.ok && !lit() && r7.functions.find((f) => f.name === 'PDF export').available, r7.problems.join(' || '));
+                check('... and the tooltip', document.querySelector('#p .aptx-panel .prognamelink').title === 'About Archaeopteryx.js', document.querySelector('#p .aptx-panel .prognamelink').title);
+                // and the other way: it goes again
+                const J = window.jspdf; window.jspdf = undefined;
+                check('a library that goes missing lights nothing by itself', !lit());
+                document.querySelector('#p .aptx-panel').dispatchEvent(new PointerEvent('pointerenter'));
+                check('... until the panel is pointed at', lit());
+                window.jspdf = J;
+                check('... and it stays lit when the library is back, until something looks', lit());
+                name.click(); await sleep(300);
+                const about2 = document.getElementById('aptx_about');
+                check('opening About brings it up to date as well', !!about2 && !lit() && [...about2.querySelectorAll('a')].pop().textContent === 'nothing to report');
+                about2.querySelector('.aptx-dialog-close').click(); await sleep(200);
+            }
             if (mode === 'clean') {
-                // the PDF library goes missing while the menu that offered it is open
+                // ---- the host's own bug, arriving late: lights the dot at once, and a repeat is one entry ----
+                const count = (r) => { const m = (r.problems[0] || '').match(/^onViewChange threw: host bug(?: \((\d+) times\))?$/); return m ? Number(m[1] || 1) : 0; };
+                window.__hostBug = true;
+                document.getElementById('layout_circ_b').click(); await sleep(2500);
+                check('a thrown onViewChange lights the dot at once, unasked', lit());
+                check('... and the tooltip counts it', document.querySelector('#p .aptx-panel .prognamelink').title === 'About Archaeopteryx.js: 1 thing to check', document.querySelector('#p .aptx-panel .prognamelink').title);
+                const rep3 = archaeopteryx.doctor();
+                const first = count(rep3);
+                check('... recorded as a problem', rep3.problems.length === 1 && first >= 1, rep3.problems.join(' || '));
+                document.getElementById('layout_rect_b').click(); await sleep(2500);
+                const rep8 = archaeopteryx.doctor();
+                check('the same failure again stays ONE entry, with its count', rep8.problems.length === 1 && count(rep8) > first && count(rep8) >= 2, rep8.problems.join(' || '));
+                window.__hostBug = false;
+                // ---- what the visitor's own browser refuses is a note, not the site's problem ----
+                const png = document.getElementById('copy_png_b');
+                check('a Copy PNG button', !!png);
+                png.click(); await sleep(3000);
+                const rep9 = archaeopteryx.doctor();
+                out.push('    after the refused Copy PNG: notes ' + rep9.notes.join(' || '));
+                check('a refused clipboard is a note', rep9.notes.some((x) => /^copying the PNG failed: /.test(x)) && rep9.problems.length === 1, rep9.problems.join(' || '));
+                // ---- the PDF library goes missing while the menu that offered it is open ----
                 document.getElementById('dl_b').click(); await sleep(200);
                 const pdf = menuItem('PDF');
                 check('the open menu offers PDF', !!pdf);
                 window.jspdf = undefined;
                 pdf.click(); await sleep(600);
-                const rep3 = archaeopteryx.doctor();
-                out.push('    after the failed PDF export: ' + rep3.problems.join(' || '));
-                check('with jspdf gone, svg2pdf.js alone is a problem of its own', rep3.problems.some((x) => /^svg2pdf\.js: loaded without jspdf/.test(x)), rep3.problems.join(' || '));
-                check('a failed export is recorded as a problem', rep3.problems.some((x) => /PDF export needs the optional jspdf and svg2pdf\.js/.test(x)), rep3.problems.join(' || '));
-                check('... and lights the dot without a relaunch', getComputedStyle(dot).display !== 'none');
+                const rep10 = archaeopteryx.doctor();
+                out.push('    after the failed PDF export: problems ' + rep10.problems.join(' || ') + '; notes ' + rep10.notes.join(' || '));
+                check('with jspdf gone, svg2pdf.js alone is a problem of its own', rep10.problems.length === 2 && rep10.problems.some((x) => /^svg2pdf\.js: loaded without jspdf/.test(x)), rep10.problems.join(' || '));
+                check('the export that failed is a note', rep10.notes.some((x) => /PDF export needs the optional jspdf and svg2pdf\.js/.test(x)), rep10.notes.join(' || '));
             }
         }
     } catch (e) {

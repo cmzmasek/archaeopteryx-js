@@ -1183,120 +1183,35 @@ What is a **problem** and what is only stated:
 |---|---|
 | An optional library that is not loaded (canvg, jspdf, svg2pdf.js) | **stated**: "PNG export: off". Leaving one out is a site's choice. |
 | Half of a pair: jspdf without svg2pdf.js, or the other way round; svg2pdf.js loaded before jspdf | **problem** |
-| A library under its 2.x-era global (`window.canvg`, `window.jsPDF`) and not under the one this version reads | **problem** |
+| A library under its 2.x-era global (`window.canvg`, `window.jsPDF`) and not under the one this version reads; a `window.Canvg` without `fromString` | **problem** |
 | A d3 that is not version 7 (d3 4 to 6 have `d3.zoom` and `d3.cluster` too, so the launch check lets them through) | **problem**; a d3 7 older than 7.9 is a note |
 | `forester.js` and `archaeopteryx.js` from different releases (`forester.VERSION`) | **problem** |
-| A phyloxml that does not write what phyloxml 1.1.7 writes | **problem** |
-| phyloxml or sax not loaded | **problem** |
-| Every warning or error the last `launch()` printed about its config or its exports: a deprecated key, an `initialVisualization` the tree cannot honour or that was overruled, a failed export, a thrown `onViewChange`, and why a launch threw | **problem** |
-| What the viewer left out of a tree (a domain or a gene it could not place), a size setting ignored | **note** |
+| A phyloxml older than 1.1.7: one that drops something when saving, or writes a node's style as the earlier releases did | **problem** — and "Read and save phyloXML" stays **on**, since it still reads and saves |
+| A phyloxml that only lays the file out differently from 1.1.7 (a newer release) | **note** |
+| phyloxml or sax not loaded, or a phyloxml that cannot read or write at all | **problem** |
+| What the last launch printed about its **config**: a deprecated key, an `initialVisualization` the tree cannot honour or that was overruled, a bad `pngExportScale`, a thrown `onViewChange`, and why a launch threw (`launchArchaeopteryx` included) | **problem** |
+| An export that failed (a clipboard the browser refused, a canvas too large), what the viewer left out of a tree (a domain or a gene it could not place), a size setting ignored | **note**: nothing a site's configuration decides |
 
-Only d3, jsPDF and forester state a version; the others are judged by what
-they do — phyloxml by writing a small tree and comparing it byte for byte.
+Only forester, jsPDF and d3's script build state a version; the others are
+judged by what they do. The d3 the viewer was handed at load is the one
+reported, as `launch()` uses it — a d3 with no `version` (the ES-module build
+a bundler imports) is recognised by what only d3 7 has. phyloxml is given a
+small tree to write, and the result is read for what the older releases are
+known to do.
 
 **While the report has a problem, a small dot follows the program name** in
 the panel header, and the name's tooltip says how many. It is neutral, not a
 warning colour: most of the people who see it are a site's visitors, who can
 do nothing about it. Nothing appears when an optional library is merely
-absent. A launch starts the list afresh.
+absent. The dot is brought up to date when a problem is recorded, when the
+page finishes loading, when the pointer enters the panel, when the About box
+opens and when `doctor()` is called — so a library that arrives after the
+launch puts it out without a relaunch.
 
-The parser is picked from the data and the `location`: content starting with
-`#NEXUS` (or a name ending in `.nex`/`.nexus`) is read as Nexus, JSON content
-(or a name ending in `.json`) as an **Auspice/Nextstrain v2** `dataset.json`,
-a name ending in `xml` as phyloXML, anything else as New Hampshire (Newick).
-A file holding **several trees** — a Nexus TREES block, a Newick file with one
-tree per `;`, a phyloXML with several phylogenies — opens on the first, and a
-picker with previous / next buttons at the top of the control panel moves
-between them (also ⌘⇧< / ⌘⇧>). **Each tree is its own workspace:** you leave
-a tree as you had it — layout, display type, labels, colours, sizes, tracks,
-both searches, the clade you switched to and the ones you collapsed — and it
-comes back that way. A tree you have not opened yet starts on its own
-presets, read from its own content, in the layout and sizes you are already
-using: stepping through ten trees of one file keeps them all circular, while
-each still labels and colours itself its own way. Zoom and pan are not kept
-(a tree opens fitted), and the views last as long as the page.
-A protein/DNA/RNA characters matrix in a Nexus file
-(sequential or interleaved) lands on the tips as an aligned `mol_seq`, so the
-alignment track appears just as it does for phyloXML.
-
-An Auspice dataset has no branch lengths of its own, so it opens in the
-metric it states completely: the **time view** when every node states a
-`num_date` (branch lengths are the `num_date` differences, sign kept), else
-the divergence view when every node states a `div`, else time if any node is
-dated. In the time view the calendar time axis and node-age bars come from
-`num_date` and its confidence interval, and every trait (country, host,
-clade, ...) becomes a
-`nextstrain:<trait>` node property — so Color-by, search and the node dialog
-pick them up. Both metrics are retained, and
-`forester.applyTimeBranchLengths(phy)` /
-`forester.applyDivergenceBranchLengths(phy)` /
-`forester.hasTimeAndDivergence(phy)` are the plumbing behind the
-**Time | Div** switch (and `forester.clockPlotKind(phy)` /
-`forester.clockPlotData(phy, view)` / `forester.clockRegression(xs, ys)`
-behind the **Clock plot**: which trees have one, its points and its
-least-squares line). The two `apply` functions answer `true` when they
-laid the tree out, and `false` — leaving every branch length as it was —
-when their layout cannot state every branch.
-
-**BEAST-style and NHX annotations** in Newick/Nexus input are always parsed
-(they used to be discarded): in a `[&key=value,...]` blob — as written by
-BEAST, BEAST 2, TreeAnnotator, FigTree and MrBayes — `posterior`, `prob`
-(+`prob_stddev`) and `bootstrap` become confidences, node `height`
-(median/mean) with its `95%_HPD` (or range) becomes the node date the age
-bars draw, FigTree's `!color` becomes the branch colour, and every other
-field (`rate`, traits, ...) becomes a `beast:<key>` node property for
-Color-by and search (`mutations`, `mcc` and FigTree's `!`-prefixed display
-directives are always text, never a gradient). **TreeTime**'s trees open as
-what they are: its `timetree.nexus` carries dates only as `date=` annotations,
-and those become node dates — calendar axis and all — where the date
-differences reproduce the branch lengths, which is true of the time tree and
-not of `divergence_tree.nexus`, though both carry the same annotations. Its
-annotations land as `treetime:<key>` rather than `beast:<key>`, and its
-`auspice_tree.json` opens as the Auspice dataset it is. FigTree's colour on a **taxon** — `'name'[&!color=...]` in the
-TAXLABELS block — is that tip's **label** colour, carried as the desktop's
-`style:font_color` property and drawn by Visual Styles. A number is a plain
-decimal with an optional exponent: `0x1A` and `3f` are text.
-**Auspice's "download Nexus"** annotations land where the
-Auspice JSON reader puts the same dataset, so one Nextstrain build opens the
-same way in either format: `num_date` is the node's date in years (and a
-`nextstrain:num_date` property), `num_date_CI={lo,hi}` its interval — on a tip
-too, where it is the sampling-date uncertainty — and `div` a
-`nextstrain:div` property — but only on a tree that is actually time-scaled,
-since Auspice writes the same annotations on its divergence tree: where the
-year differences do not reproduce the branch lengths the dates stay properties
-and no calendar axis is drawn. Inside an annotation a quote opens a string
-only where a value starts, so a bare `country=Côte d'Ivoire` is one field with
-an apostrophe in it. Classic `[&&NHX:...]` tags map to their phyloXML
-equivalents (`S=` taxonomy, `T=` taxonomy id, `B=` support, `D=`
-duplication/speciation event, `GN=`/`AC=` sequence name/accession), read as
-the desktop reads them: unquoted whitespace is formatting noise (`S=Homo
-sapiens` is `Homosapiens`), a quoted value keeps its content
-(`S="Homo sapiens"` is `Homo sapiens`), and the quotes themselves are never
-part of the value. Plain
-`[number]` brackets keep their old meaning (confidence values).
-
-Both entry points **throw** on bad input — an undefined or empty tree, an
-unparseable file, or a config key that no longer exists. Nothing is reported by
-a popup any more, and nothing fails silently.
-
-## Supported file formats
-
-| Format | I/O | What Archaeopteryx.js does with it | Ref. |
-|---|---|---|---|
-| **Newick** / New Hampshire (`.nwk`, `.nh`, `.tre`) | in / out | The base tree: topology, names, branch lengths, and bracketed confidence values. | [1] |
-| **NHX** — New Hampshire eXtended | in | `[&&NHX:...]` tags riding on Newick: taxonomy (`S=`, `T=`), sequence (`GN=`, `AC=`), support (`B=`), duplication/speciation events (`D=`). | [2] |
-| **Nexus** (`.nex`, `.nexus`) | in / out | One file for the tree(s) and, in a `CHARACTERS`/`DATA` block, an aligned protein/DNA/RNA matrix (sequential or interleaved) — the tree and its alignment together. | [3] |
-| **phyloXML** (`.xml`) | in / out | The richest native format: taxonomy, sequences and alignments, dates, confidences, branch colours and arbitrary metadata (custom properties). | [4] |
-| **Auspice / Nextstrain** `dataset.json` (v2) | in | Phylodynamic builds: sampling dates and their confidence, cumulative divergence, and discrete traits (country, clade, host, ...) with their posterior distributions. | [5] |
-| **BEAST** / BEAST 2 / TreeAnnotator annotations | in (embedded in Newick/Nexus) | `[&posterior=...,height_95%_HPD={lo,hi},rate=...]`-style blobs: posterior clade support, node-age confidence intervals, per-branch rates and other traits. FigTree's `!color` is read the same way. | [6, 7] |
-| **MrBayes** annotations | in (embedded in Newick/Nexus) | `prob=`/`prob.stddev=` blobs: posterior-probability clade support. | [8] |
-| **Metadata table** (`.tsv`, `.csv`) | in (beside a tree) | A header row and one row per tip, the first column naming the tip: every other column is joined onto the tips as a property, so it is offered for Color-by and Shape, searched, shown in the node data and written into phyloXML exports. See [Metadata tables](#metadata-tables). | — |
-| **FASTA** | out | The molecular sequence(s) of the selected tip(s), or every sequence the tree carries. Offered in the Download menu only when the tree actually carries molecular sequences (aligned or not). | [9] |
-| SVG · PNG · vector PDF | out | The drawn tree for publication or further editing — vector (SVG, PDF) or raster (PNG), either as shown on screen or the whole tree at full size (see [Downloads](#downloads)). General-purpose graphics formats, not phylogenetic data, so no literature reference applies. | — |
-
-The parser for a given input is auto-detected (see **The entry points**
-above); the Download menu offers whichever output formats the current tree
-can carry.
+The warnings belong to **the tree on view**: `showTree()` starts them afresh
+for the tree it moves to, and so does a new launch. A launch that is rejected
+while an earlier viewer is still on the page leaves that viewer's report as
+it was and adds one line saying what failed.
 
 ### Downloads
 

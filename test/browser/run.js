@@ -56,7 +56,7 @@ const CASES = {
     'canvg_global': ['', '?none=1'],
     'style_precedence': ['', '?plain=1'],
     'doctor': ['', '?absent=1', '?nodeLabels=1', '?forced=1', '?half=1', '?order=1', '?old=1', '?forester=1',
-        '?phyloxml=1', '?d3=1', '?notes=1', '?failed=1', '?legacy=1'],
+        '?phyloxml=1', '?newer=1', '?d3=1', '?esm=1', '?trees=1', '?notes=1', '?failed=1', '?legacy=1'],
     'clock_plot': ['', '?rates=1', '?refused=1', '?ages=1', '?delete=1', '?host=1', '?clades=1', '?same=1', '?rtt=1', '?names=1'],
     'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
 };

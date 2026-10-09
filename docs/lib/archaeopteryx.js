@@ -309,10 +309,26 @@ function (root, d3, forester, phyloXml) {
     // longer (BV-BRC, 2026-10-08), each announced on every page load. The
     // Diagnostics report (archaeopteryx.doctor, further down) reads this
     // list; 'problem' entries are somebody's mistake and light the dot on
-    // the program name, 'note' entries are only stated. Started afresh by
-    // every launch(); the same line twice is one entry with a count.
+    // the program name, 'note' entries are only stated. The same line twice
+    // is one entry with a count.
+    //
+    // The list belongs to the tree on view. It starts afresh whenever the
+    // launch proper (launchInto) begins for a tree -- a new launch, or
+    // showTree() moving to another tree of the file, whose config warnings
+    // are then said again and whose per-tree ones are its own. A launch that
+    // is REJECTED while an earlier viewer is still on the page gives that
+    // viewer its list back and adds one line saying what failed (the shell
+    // round launch()): the page still shows the earlier tree, and the report
+    // describes the page.
     const DIAGNOSTICS_MAX = 40;
     let _diagnostics = [];
+    // What is on view, noted at the moment a launch takes the page over (it
+    // clears the container): the report's "launch" section and the dot read
+    // this, never the module's working state, which a launch writes to
+    // before the checks that can still reject it.
+    let _onView = null;
+    let _tookOver = false;
+    let _recordedErrors = (typeof WeakSet === 'function') ? new WeakSet() : null;
     function recordDiagnostic(level, line) {
         let text = String(line).replace(/^ArchaeopteryxJS: (WARNING: |ERROR: )?/, '');
         let seen = _diagnostics.find(function (d) {
@@ -6671,17 +6687,35 @@ function (root, d3, forester, phyloXml) {
 
     // launch(container, tree, config) -> a viewer handle {getSelectedNodes,
     // destroy}. Exactly three arguments; config is THE one config object.
-    // launch() proper is launchChecked below. This shell starts the
-    // diagnostics afresh and keeps what a rejected launch said: the thrown
-    // message reaches whoever called, which on an embedding site is often a
-    // catch block nobody reads, and archaeopteryx.doctor() can still tell.
+    // launch() proper is launchChecked below. This shell keeps what a
+    // rejected launch said: the thrown message reaches whoever called, which
+    // on an embedding site is often a catch block nobody reads, and
+    // archaeopteryx.doctor() can still tell. (launchArchaeopteryx has its own
+    // failures -- a file that does not parse -- and reports them through the
+    // same function; an error is recorded once, whoever catches it first.)
+    function recordLaunchFailure(e) {
+        if (_recordedErrors && e && typeof e === 'object') {
+            if (_recordedErrors.has(e)) {
+                return;
+            }
+            _recordedErrors.add(e);
+        }
+        recordDiagnostic('problem', 'launch failed: '
+            + String(e && e.message ? e.message : e).replace(/^ArchaeopteryxJS: ERROR: /, ''));
+    }
     archaeopteryx.launch = function () {
-        _diagnostics = [];
+        let before = _diagnostics;
+        let wasOnView = _onView;
+        _tookOver = false;
         try {
             return launchChecked.apply(null, arguments);
         } catch (e) {
-            recordDiagnostic('problem', 'launch failed: '
-                + String(e && e.message ? e.message : e).replace(/^ArchaeopteryxJS: ERROR: /, ''));
+            if (wasOnView && !_tookOver) {
+                // rejected before it touched the page: the earlier viewer is
+                // still there, and so is everything said about it
+                _diagnostics = before;
+            }
+            recordLaunchFailure(e);
             throw e;
         }
     };
@@ -6767,6 +6801,8 @@ function (root, d3, forester, phyloXml) {
     // starts at the first, showTree() re-enters here for another.
     function launchInto(container, trees, index, config) {
         let phylo = trees[index];
+        // what is said from here on is said about THIS tree (see _diagnostics)
+        _diagnostics = [];
         let cfg = readConfig(config);
         requireForester();
         requireD3();
@@ -6813,6 +6849,11 @@ function (root, d3, forester, phyloXml) {
         checkLayoutValue(cfg.state ? cfg.state.layout : undefined);
         initializeSettings(cfg.settings);
 
+        // From here the page is this launch's: nothing below is expected to
+        // throw, and what a previous one drew goes now.
+        _tookOver = true;
+        _onView = {config: config, container: containerEl, tips: _basicTreeProperties.externalNodesCount,
+            tree: index + 1, trees: trees.length};
         // whatever a previous launch left in this container (or in the
         // container before it) goes now, so the old tree does not sit under
         // the card while the new one is prepared
@@ -7023,6 +7064,11 @@ function (root, d3, forester, phyloXml) {
         cfg.view = view || viewForTree(_trees[index]);
         let handle = launchInto(_container, _trees, index, cfg);
         _launchConfig = launchConfig;
+        // the report shows the config the SITE passed, not this copy with
+        // the tree's own view added
+        if (_onView) {
+            _onView.config = launchConfig;
+        }
         return handle;
     }
 
@@ -17036,6 +17082,7 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-doctor .aptx-dialog-key { flex-basis:34%; }'
             + '.aptx-doctor-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }'
             + '.aptx-doctor-status { flex:1 1 auto; min-width:0; font-weight:650; }'
+            + '.aptx-doctor-status.aptx-doctor-bad { box-shadow:inset 3px 0 0 var(--p-warn); padding-left:9px; }'
             + '.aptx-doctor-item { position:relative; padding:2px 0 2px 14px; line-height:1.35; overflow-wrap:anywhere; }'
             + '.aptx-doctor-item::before { content:""; position:absolute; left:2px; top:0.62em; width:6px; height:6px; border-radius:50%; background:var(--p-faint); }'
             + '.aptx-doctor-item.aptx-doctor-bad::before { background:var(--p-warn); }'
@@ -17327,6 +17374,14 @@ function (root, d3, forester, phyloXml) {
                 });
                 // config warnings are recorded before this header exists
                 syncDoctorDot();
+                // ... and a library can arrive after it (see syncDoctorDot)
+                let panel = header.closest('.aptx-panel');
+                if (panel) {
+                    panel.addEventListener('pointerenter', syncDoctorDot);
+                }
+                if (document.readyState !== 'complete') {
+                    window.addEventListener('load', syncDoctorDot, {once: true});
+                }
 
                 let themeBtn = document.createElement('button');
                 themeBtn.type = 'button';
@@ -18184,11 +18239,22 @@ function (root, d3, forester, phyloXml) {
     // Nothing in here may throw: every check runs in its own try, and a check
     // that fails says so in its own row.
 
-    // phyloxml states no version. What separates 1.1.7 (which package.json
-    // asks for) from every earlier release is what it WRITES, so a small tree
-    // goes through it: 1.0.2 to 1.1.6 each fail this (measured on the six
-    // published files), by layout (1.1.4), by the domain architecture
-    // (1.1.5), or by the style colour's case and place (1.1.7).
+    // phyloxml states no version, so a small tree goes through it and what
+    // comes back is read for what an OLDER release is known to do. Each of
+    // these is a named fault, and each published release before 1.1.7 shows
+    // at least one (measured on 1.0.2, 1.1.3, 1.1.4, 1.1.5 and 1.1.6):
+    //   * it drops the domain architecture, or a <phylogeny>'s own property
+    //     (before 1.1.5 / 1.1.3): a saved tree LOSES data;
+    //   * it writes a style colour as it came, or the style property before
+    //     the node's other properties (before 1.1.7): the saved file differs
+    //     from the desktop program's.
+    // Whether the output is byte for byte what 1.1.7 writes is looked at too,
+    // but a difference there alone is only a NOTE. package.json admits any
+    // 1.1.x from 1.1.7 up, a release of this viewer cannot be corrected
+    // after it is published, and a newer phyloxml that lays a file out
+    // differently must not light a dot on every page that has it. (A first
+    // version demanded the bytes and called every difference "an older
+    // copy".)
     const PHYLOXML_PROBE_IN = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
         + '<clade><name>a</name><branch_length>1</branch_length>'
         + '<sequence><domain_architecture length="9"><domain from="1" to="5" confidence="0.1">D</domain>'
@@ -18225,18 +18291,58 @@ function (root, d3, forester, phyloXml) {
     const JSPDF_TESTED_MAJOR = 4;    // package.json: jspdf ^4.2.1
 
     // The probe's answer for the library object it was asked about: the
-    // dot asks on every recorded problem, and the answer cannot change.
+    // dot asks often, and the answer cannot change.
+    //   threw / stage   reading ('read') or writing ('write') failed, with the message
+    //   lost            what a saved tree no longer has
+    //   old             what is written as releases before 1.1.7 wrote it
+    //   same            the output is byte for byte 1.1.7's
     let _phyloXmlProbe = null;
     function probePhyloXml(px) {
         if (_phyloXmlProbe && _phyloXmlProbe.lib === px) {
             return _phyloXmlProbe.result;
         }
-        let result;
+        let result = {threw: null, stage: null, lost: [], old: [], same: false};
+        let message = function (e) {
+            return String(e && e.message ? e.message : e);
+        };
+        let tree = null;
         try {
-            let written = px.toPhyloXML(px.parse(PHYLOXML_PROBE_IN, {trim: true, normalize: true})[0], 9);
-            result = {same: written === PHYLOXML_PROBE_OUT, threw: null};
+            tree = px.parse(PHYLOXML_PROBE_IN, {trim: true, normalize: true})[0];
         } catch (e) {
-            result = {same: false, threw: String(e && e.message ? e.message : e)};
+            result.threw = message(e);
+            result.stage = 'read';
+        }
+        let written = null;
+        if (!result.threw) {
+            try {
+                written = String(px.toPhyloXML(tree, 9));
+            } catch (e) {
+                result.threw = message(e);
+                result.stage = 'write';
+            }
+        }
+        if (written !== null) {
+            result.same = written === PHYLOXML_PROBE_OUT;
+            if (!/<domain from="1" to="5"[^>]*>D<\/domain>/.test(written)) {
+                result.lost.push('protein domains');
+            }
+            if (written.indexOf('ref="p:q"') < 0) {
+                result.lost.push('a tree\'s own properties');
+            }
+            if (written.indexOf('ref="x:y"') < 0) {
+                result.lost.push('node properties');
+            }
+            let style = written.indexOf('ref="style:font_color"');
+            if (style < 0) {
+                result.lost.push('node styles');
+            } else {
+                if (written.indexOf('>#ce1616<') < 0) {
+                    result.old.push('a style colour as it came, not in lower case');
+                }
+                if (written.indexOf('ref="x:y"') > style) {
+                    result.old.push('a node\'s style before its other properties');
+                }
+            }
         }
         _phyloXmlProbe = {lib: px, result: result};
         return result;
@@ -18280,15 +18386,33 @@ function (root, d3, forester, phyloXml) {
         }));
 
         libs.push(doctorLibrary('d3', 'required', function () {
-            let d = (g.d3 && typeof g.d3.zoom === 'function') ? g.d3 : (d3 || g.d3);
+            // THE d3 THE VIEWER USES, chosen as requireD3 chooses it: the one
+            // it was handed at load, and the page's global only where that
+            // one is missing or unusable. (A first version looked at the
+            // global first and could report on a d3 nothing was drawn with.)
+            let d = (g.d3 && (!d3 || typeof d3.zoom !== 'function')) ? g.d3 : d3;
             if (!d) {
                 return inBrowser
                     ? {loaded: false, status: 'problem', detail: 'not loaded: launch() fails without d3 version 7'}
                     : {loaded: false, status: 'absent', detail: 'not loaded: only launch() needs it'};
             }
+            let usable = typeof d.zoom === 'function' && typeof d.cluster === 'function';
             let version = typeof d.version === 'string' ? d.version : null;
-            let parts = version ? version.split('.').map(Number) : [];
-            if (parts[0] !== 7 || typeof d.zoom !== 'function' || typeof d.cluster !== 'function') {
+            if (version === null) {
+                // d3's ES-module build exports no `version`: a bundler's
+                // `import * as d3`, jsdelivr's +esm, Node's require('d3'). It
+                // is judged by what only d3 7 has -- InternMap arrived with
+                // d3-array 3, which is d3 7.0.0 -- and never called outdated
+                // for not saying its number.
+                if (usable && typeof d.InternMap === 'function') {
+                    return {loaded: true, status: 'ok', detail: 'states no version (an ES-module build); has what d3 7 has'};
+                }
+                return {loaded: true, status: inBrowser ? 'problem' : 'absent',
+                    detail: inBrowser ? 'states no version and lacks what d3 7 has: Archaeopteryx.js needs d3 version 7'
+                        : 'not usable here as d3 version 7: only launch() needs it'};
+            }
+            let parts = version.split('.').map(Number);
+            if (parts[0] !== 7 || !usable) {
                 return {loaded: true, version: version, status: inBrowser ? 'problem' : 'absent',
                     detail: inBrowser ? 'Archaeopteryx.js needs d3 version 7'
                         : 'not usable here as d3 version 7: only launch() needs it'};
@@ -18300,35 +18424,49 @@ function (root, d3, forester, phyloXml) {
             return {loaded: true, version: version, status: 'ok'};
         }));
 
-        // phyloxml finds sax as a global on a page and by require() in Node,
-        // where no global says so: a parse that worked is the evidence
         let px = null;
         let probe = null;
-        let saxLoaded = false;
         libs.push(doctorLibrary('phyloxml', 'required', function () {
             px = phyloXml || g.phyloXml;
             probe = px ? probePhyloXml(px) : null;
-            saxLoaded = !!g.sax || !!(probe && !probe.threw);
             if (!px) {
                 return {loaded: false, status: 'problem',
                     detail: 'not loaded: phyloXML cannot be read, and the phyloXML download fails'};
             }
-            if (probe.same) {
-                return {loaded: true, status: 'ok', detail: 'writes phyloXML as ' + PHYLOXML_EXPECTED + ' does'};
-            }
             if (probe.threw) {
-                return {loaded: true, status: 'problem', detail: saxLoaded
-                    ? 'reading and writing a small tree failed: ' + probe.threw
-                    : 'cannot read phyloXML: sax.js is not loaded'};
+                // on a page phyloxml takes sax from the global, and a missing
+                // one is the usual reason reading fails; anywhere else, and
+                // for any other failure, the message itself is the finding
+                return {loaded: true, status: 'problem', detail: (probe.stage === 'read' && inBrowser && !g.sax)
+                    ? 'cannot read phyloXML: sax.js is not loaded'
+                    : (probe.stage === 'read' ? 'reading' : 'writing') + ' a small tree failed: ' + probe.threw};
             }
-            return {loaded: true, status: 'problem', detail: 'does not write phyloXML as phyloxml '
-                + PHYLOXML_EXPECTED + ' does (an older copy): a saved tree can lose data, or differ from the'
-                + ' desktop program\'s file'};
+            if (probe.lost.length > 0) {
+                return {loaded: true, status: 'problem', detail: 'an older copy: saving a tree as phyloXML drops '
+                    + probe.lost.join(', ') + ' (phyloxml ' + PHYLOXML_EXPECTED + ' keeps them)'};
+            }
+            if (probe.old.length > 0) {
+                return {loaded: true, status: 'problem', detail: 'an older copy: it writes ' + probe.old.join(', and ')
+                    + ', so a saved tree differs from the desktop program\'s file (phyloxml ' + PHYLOXML_EXPECTED
+                    + ' does not)'};
+            }
+            if (!probe.same) {
+                return {loaded: true, status: 'note', detail: 'writes a small tree differently from phyloxml '
+                    + PHYLOXML_EXPECTED + ', losing nothing: a newer release, or an altered copy'};
+            }
+            return {loaded: true, status: 'ok', detail: 'writes phyloXML as ' + PHYLOXML_EXPECTED + ' does'};
         }));
         libs.push(doctorLibrary('sax', 'required', function () {
-            saxLoaded = saxLoaded || !!g.sax;
-            return saxLoaded ? {loaded: true, status: 'ok'}
-                : {loaded: false, status: 'problem', detail: 'not loaded: phyloxml needs it to read phyloXML'};
+            // A page hands sax over as a global. Anywhere else (Node, a
+            // bundler) phyloxml gets it by require() when it loads, so a
+            // phyloxml that loaded has it, and a tree it read proves it.
+            if (g.sax || (probe && probe.stage !== 'read')) {
+                return {loaded: true, status: 'ok'};
+            }
+            if (!inBrowser && px) {
+                return {loaded: true, status: 'ok', detail: 'taken by phyloxml when it loaded'};
+            }
+            return {loaded: false, status: 'problem', detail: 'not loaded: phyloxml needs it to read phyloXML'};
         }));
 
         libs.push(doctorLibrary('canvg', 'optional', function () {
@@ -18346,16 +18484,17 @@ function (root, d3, forester, phyloXml) {
             return {loaded: false, status: 'absent', detail: 'not loaded: PNG export and Copy PNG are off'};
         }));
 
-        // read once for both rows of the pair, and inside each row's own
-        // guard: whatever a page has put under these names, a lookup that
-        // throws costs its row and no other
+        // The pair is read inside each row's own guard: whatever a page has
+        // put under these names, a lookup that throws costs its row and no
+        // other.
         let pdfPair = function () {
             let J = g.jspdf && g.jspdf.jsPDF;
             return {J: J, attached: !!(J && J.API && J.API.svg), svg2pdf: !!g.svg2pdf};
         };
         libs.push(doctorLibrary('jspdf', 'optional', function () {
-            let J = pdfPair().J;
-            let attached = pdfPair().attached;
+            let pair = pdfPair();
+            let J = pair.J;
+            let attached = pair.attached;
             if (J) {
                 let version = typeof J.version === 'string' ? J.version : null;
                 if (!attached && !g.svg2pdf) {
@@ -18375,8 +18514,9 @@ function (root, d3, forester, phyloXml) {
             return {loaded: false, status: 'absent', detail: 'not loaded: PDF export is off'};
         }));
         libs.push(doctorLibrary('svg2pdf.js', 'optional', function () {
-            let J = pdfPair().J;
-            let attached = pdfPair().attached;
+            let pair = pdfPair();
+            let J = pair.J;
+            let attached = pair.attached;
             if (attached) {
                 return {loaded: true, status: 'ok'};
             }
@@ -18420,9 +18560,14 @@ function (root, d3, forester, phyloXml) {
         };
         let out = [];
         try {
+            // ON whenever phyloxml reads and writes at all -- which is what
+            // the Download menu's phyloXML entry does, and it is always
+            // offered. An older copy still works: its row above says what a
+            // saved file loses, and this row repeats it without turning off.
             let px = lib('phyloxml');
-            out.push({name: 'Read and save phyloXML', available: px.status === 'ok',
-                detail: px.status === 'ok' ? '' : why(px)});
+            let works = px.loaded && !/(cannot read phyloXML|a small tree failed|this check failed)/.test(px.detail);
+            out.push({name: 'Read and save phyloXML', available: works,
+                detail: px.status === 'ok' ? '' : (works ? px.detail : why(px))});
         } catch (e) {
             out.push({name: 'Read and save phyloXML', available: false,
                 detail: 'this check failed: ' + (e && e.message ? e.message : e)});
@@ -18472,27 +18617,24 @@ function (root, d3, forester, phyloXml) {
         return '(' + typeof v + ')';
     }
 
+    // The tree on view, as noted when its launch took the page over
+    // (_onView): null until one has, so a first launch that was rejected
+    // describes no tree. The tip count is the one the launch computed.
     function doctorLaunch() {
-        if (!_container || !_treeData) {
+        if (!_onView) {
             return null;
         }
-        let launch = {config: {}, tips: null, tree: null, trees: null, container: null};
+        let launch = {config: {}, tips: null, tree: _onView.tree, trees: _onView.trees, container: null};
         try {
-            Object.keys(_launchConfig || {}).sort().forEach(function (k) {
-                launch.config[k] = doctorConfigValue(_launchConfig[k]);
+            Object.keys(_onView.config || {}).sort().forEach(function (k) {
+                launch.config[k] = doctorConfigValue(_onView.config[k]);
             });
         } catch {
             launch.config = {};
         }
+        launch.tips = (typeof _onView.tips === 'number') ? _onView.tips : null;
         try {
-            launch.tips = forester.getAllExternalNodes(_root_const || _treeData).length;
-            launch.tree = _treeIndex + 1;
-            launch.trees = _trees.length;
-        } catch {
-            launch.tips = null;
-        }
-        try {
-            launch.container = {width: _container.clientWidth, height: _container.clientHeight};
+            launch.container = {width: _onView.container.clientWidth, height: _onView.container.clientHeight};
         } catch {
             launch.container = null;
         }
@@ -18545,19 +18687,16 @@ function (root, d3, forester, phyloXml) {
         return lines.join('\n');
     }
 
-    function doctorReport() {
+    // The problems and the notes: the libraries' and what the launch said.
+    // This is all the dot needs, so it is kept apart from the report, which
+    // also works out the functions, the launch section and the text.
+    function doctorFindings() {
         let libs;
         try {
             libs = doctorLibraries();
         } catch (e) {
             libs = [{name: 'libraries', role: 'required', loaded: false, version: null, status: 'problem',
                 detail: 'the checks failed: ' + (e && e.message ? e.message : e)}];
-        }
-        let functions;
-        try {
-            functions = doctorFunctions(libs);
-        } catch {
-            functions = [];
         }
         let problems = [];
         let notes = [];
@@ -18571,6 +18710,22 @@ function (root, d3, forester, phyloXml) {
         _diagnostics.forEach(function (d) {
             (d.level === 'problem' ? problems : notes).push(d.text + (d.count > 1 ? ' (' + d.count + ' times)' : ''));
         });
+        return {libraries: libs, problems: problems, notes: notes,
+            summary: problems.length === 0 ? 'nothing to report'
+                : problems.length + (problems.length === 1 ? ' thing' : ' things') + ' to check'};
+    }
+
+    function doctorReport() {
+        let found = doctorFindings();
+        let libs = found.libraries;
+        let problems = found.problems;
+        let notes = found.notes;
+        let functions;
+        try {
+            functions = doctorFunctions(libs);
+        } catch {
+            functions = [];
+        }
         let launch = null;
         try {
             launch = doctorLaunch();
@@ -18582,8 +18737,7 @@ function (root, d3, forester, phyloXml) {
             program: NAME,
             version: VERSION,
             ok: problems.length === 0,
-            summary: problems.length === 0 ? 'nothing to report'
-                : problems.length + (problems.length === 1 ? ' thing' : ' things') + ' to check',
+            summary: found.summary,
             problems: problems,
             notes: notes,
             libraries: libs,
@@ -18617,26 +18771,37 @@ function (root, d3, forester, phyloXml) {
      *   `text` is the whole report as plain text, for pasting into an issue.
      */
     archaeopteryx.doctor = function () {
-        return doctorReport();
+        let rep = doctorReport();
+        syncDoctorDot();   // whoever asks sees a dot that agrees with the answer
+        return rep;
     };
 
     // The "check engine light": a small dot after the program name in the
     // panel header, there only while the report has a problem. Neutral, not
     // a warning colour: the people who see it are mostly the site's users,
     // who can do nothing about it, and it is for the one who can.
+    //
+    // What a page has loaded can change under a viewer that is already up (a
+    // library arriving late, a script replacing a global) and nothing
+    // announces it, so the dot is brought up to date whenever it could be
+    // looked at or asked about: when a problem is recorded, when the header
+    // is built, when the page finishes loading, when the pointer enters the
+    // panel, when the About box opens and when doctor() is called.
     function syncDoctorDot() {
         try {
-            if (!_container || typeof _container.querySelector !== 'function') {
+            let host = _onView && _onView.container;
+            if (!host || typeof host.querySelector !== 'function') {
                 return;
             }
-            let button = _container.querySelector('.aptx-panel .' + PROGNAMELINK);
+            let button = host.querySelector('.aptx-panel .' + PROGNAMELINK);
             let dot = button && button.querySelector('.aptx-doctor-dot');
             if (!dot) {
                 return;
             }
-            let rep = doctorReport();
-            dot.hidden = rep.ok;
-            button.title = 'About ' + NAME + (rep.ok ? '' : ': ' + rep.summary);
+            let found = doctorFindings();
+            let ok = found.problems.length === 0;
+            dot.hidden = ok;
+            button.title = 'About ' + NAME + (ok ? '' : ': ' + found.summary);
         } catch {
             // a light that cannot be lit must not take the viewer with it
         }
@@ -18710,9 +18875,12 @@ function (root, d3, forester, phyloXml) {
 
         section('Libraries');
         rep.libraries.forEach(function (l) {
-            // "not loaded" is the value: the reason under it does not say it again
+            // "not loaded" is the value: a reason that opens with the same
+            // two words and a colon does not say them again. (Only that
+            // exact opening: "loaded, but not attached..." keeps its start.)
             let value = l.version || (l.loaded ? 'loaded' : 'not loaded');
-            let detail = l.detail.indexOf(value) === 0 ? l.detail.substring(value.length).replace(/^: /, '') : l.detail;
+            let detail = l.detail === value ? ''
+                : (l.detail.indexOf('not loaded: ') === 0 && value === 'not loaded' ? l.detail.substring(12) : l.detail);
             row(l.name, value, detail, l.status === 'problem');
         });
         section('Functions');
@@ -18733,6 +18901,7 @@ function (root, d3, forester, phyloXml) {
     // own summary: a count, never a value.)
     function showAboutDialog() {
         let rep = doctorReport();
+        syncDoctorDot();
         let shell = makeDialogShell(ABOUT_DIALOG, 'About', 380);
         shell.body.classList.add('aptx-about');
 
@@ -20790,7 +20959,7 @@ function (root, d3, forester, phyloXml) {
 
     function downloadAsPdf(graphic) {
         if (!pdfExportAvailable()) {
-            say('problem', 'error', ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
+            say('note', 'error', ERROR + 'PDF export needs the optional jspdf and svg2pdf.js libraries on the page');
             return;
         }
         let el = new DOMParser().parseFromString(graphic.text, 'image/svg+xml').documentElement;
@@ -20839,7 +21008,7 @@ function (root, d3, forester, phyloXml) {
             holder.remove();
         }, function (err) {
             holder.remove();
-            say('problem', 'error', ERROR + 'PDF export failed: ' + err);
+            say('note', 'error', ERROR + 'PDF export failed: ' + err);
         });
     }
 
@@ -20885,7 +21054,7 @@ function (root, d3, forester, phyloXml) {
         renderPng(graphic).then(function (blob) {
             saveAs(blob, downloadFileName(PNG_SUFFIX));
         }, function (err) {
-            say('problem', 'error', ERROR + 'PNG export failed: ' + err);
+            say('note', 'error', ERROR + 'PNG export failed: ' + err);
         });
     }
 
@@ -20964,7 +21133,7 @@ function (root, d3, forester, phyloXml) {
         written.then(function () {
             flashButton(btn, 'Copied ✓');
         }, function (err) {
-            say('problem', 'error', ERROR + 'copying the PNG failed: ' + err);
+            say('note', 'error', ERROR + 'copying the PNG failed: ' + err);
             flashButton(btn, 'Copy failed');
         });
     }
@@ -21131,7 +21300,17 @@ function (root, d3, forester, phyloXml) {
         return undefined;
     }
 
-    archaeopteryx.launchArchaeopteryx = function (container, fileName, data, config) {
+    archaeopteryx.launchArchaeopteryx = function () {
+        try {
+            return parseAndLaunch.apply(null, arguments);
+        } catch (e) {
+            // its own failures -- a fifth argument, a file that does not
+            // parse -- happen before launch() and its shell are reached
+            recordLaunchFailure(e);
+            throw e;
+        }
+    };
+    function parseAndLaunch(container, fileName, data, config) {
         if (arguments.length > 4) {
             throw new Error(ERROR + 'launchArchaeopteryx() takes exactly (container, fileName,'
                 + ' data, config); the old trailing arguments were removed. The separate settings'
@@ -21159,7 +21338,7 @@ function (root, d3, forester, phyloXml) {
         // added nothing but a prefix, and swallowing them left the caller with
         // a blank page and no way to find out why.
         return archaeopteryx.launch(container, trees, config);
-    };
+    }
 
 
 // --------------------------------------------------------------
