@@ -20,7 +20,7 @@
  *
  */
 
-// v 3.26.0
+// v 3.27.0
 // 2026-09-17
 //
 // forester.js is a general suite for dealing with phylogenetic trees.
@@ -107,7 +107,7 @@
     // concatenates its own bundle can pair them from different releases, and
     // until this constant nothing could tell. Bumped with the other four
     // places; test/visualization_test.js holds all five together.
-    forester.VERSION = '3.26.0';
+    forester.VERSION = '3.27.0';
 
 
     /**

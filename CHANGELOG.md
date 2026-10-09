@@ -7,6 +7,8 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.27.0 — 2026-10-09
+
 ### Added
 - **Diagnostics: `archaeopteryx.doctor()`, and a dot on the program name when
   something is wrong.** The viewer checks its dependencies when they are used,
