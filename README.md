@@ -1927,22 +1927,25 @@ Highest first, at each paint:
   (its colour; the theme ink for a node without a value) → `style:font_color`
   → phyloXML branch colour → theme ink.
 * **Node fill**: highlight → duplication/speciation event colour → active
-  Color visualization (its colour; a node without a value draws no dot) →
-  `style:node_color` (else `style:font_color`) → background.
+  Color visualization (its colour; a node without a value draws no dot,
+  or a hollow one while Node events are shown) → `style:node_color` (else
+  `style:font_color`) → background.
 * **Node outline**: darkened highlight → event colour → visualization fill
-  → style colour → branch colour → branch default.
-
-While a Color visualization is active the style colours are **not consulted
-for any node**, valued or not, on the label, the dot and its outline alike:
-the visualization owns the colours and its legend explains them, and a node
-without a value draws no dot and takes the default label colour. That is
-the desktop's rule (its TreePanel.setColor). Clearing the Color menu brings
-the file's colours back. Branch colours, shapes, font sizes and styles are
-not colours of the visualization's kind and stay.
+  → style colour (not while a Color visualization is active) → branch colour
+  → branch default.
 * **Node shape path**: suppressed for highlighted/event nodes; chosen Shape
   visualization → `style:node_shape`. A node earns its default dot when a
   Color visualization is active (and no shape was drawn), or when it
   carries `style:node_color` — `font_color` alone paints only the label.
+
+While a Color visualization is active the style colours are **not consulted
+for any node**, valued or not: not for the label, the dot, its outline, the
+hover glow or the clock plot's points. The visualization owns the colours and
+its legend explains them; a node without a value takes the default label
+colour and draws no dot. That is the desktop's rule (its TreePanel.setColor).
+Clearing the Color menu brings the file's colours back. Branch colours,
+shapes, font sizes and styles are not colours of the visualization's kind
+and stay.
 
 ### Legend anatomy
 

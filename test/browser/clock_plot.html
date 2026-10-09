@@ -693,10 +693,19 @@
         // ---- the theme, and the close control
         const themeBtn = document.querySelector('#p .aptx-theme-btn');
         if (themeBtn) {
-            const wasDark = dialog().classList.contains('aptx-dark');
+            // The switch goes to light while dark is active and to dark while
+            // light is, and "active" starts from the SYSTEM theme -- this
+            // used to assume a light system and went red the evening macOS
+            // switched to dark (2026-10-08). Measured against the effective
+            // theme before the click, and against the panel after it.
+            const themeOf = (el) => el.classList.contains('aptx-dark') ? 'dark' : (el.classList.contains('aptx-light') ? 'light' : null);
+            const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
+            const effective = (el) => themeOf(el) || (systemDark ? 'dark' : 'light');
+            const was = effective(dialog());
             themeBtn.click(); await sleep(200);
-            check('the open panel turns with the theme', dialog().classList.contains('aptx-dark') !== wasDark
-                && (dialog().classList.contains('aptx-dark') || dialog().classList.contains('aptx-light')));
+            const panel = document.querySelector('#p .aptx-panel');
+            check('the open panel turns with the theme', themeOf(dialog()) !== null && effective(dialog()) !== was
+                && themeOf(dialog()) === themeOf(panel), was + ' -> ' + themeOf(dialog()) + ' (panel ' + themeOf(panel) + ')');
             themeBtn.click(); await sleep(200);
         } else {
             check('a theme switch to press', false);

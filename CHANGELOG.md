@@ -22,9 +22,10 @@ users see a change only when a version is cut.
   (BV-BRC's, coloured by genus by its pipeline) showed two palettes under
   Color by Host, and the legend described neither. Now, as on the desktop, the
   style colours are not consulted for any node while a Color visualization is
-  active: a node without a value draws no dot and takes the default label
-  colour. Clearing the Color menu brings the file's colours
-  back; shapes, font styles and branch colours are unaffected.
+  active, on the label, the dot, its outline, the hover glow and the clock
+  plot's points: a node without a value draws no dot and takes the default
+  label colour. Clearing the Color menu brings the file's colours back;
+  shapes, font styles and branch colours are unaffected.
 
 ### Changed
 - **The scale bar prints the tree's unit.** After its number, the unit the

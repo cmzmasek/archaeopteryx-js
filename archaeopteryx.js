@@ -1448,8 +1448,9 @@ function (root, d3, forester, phyloXml) {
     // a node coloured by Host Group glows in its host colour -- and the UI
     // accent otherwise. As on the desktop (TreePanel.hoverGlowColor). The
     // precedence is the one the node itself is painted by: the Color-by
-    // value, then a per-node visual style, then an event colour, then a
-    // colourised clade's branch colour. NEVER the found/search colour: a
+    // value, then a per-node visual style (not while a Color-by is active,
+    // see nodeStyleColor), then an event colour, then a colourised clade's
+    // branch colour. NEVER the found/search colour: a
     // focus ring must not read as a selection state.
     //
     // The glow is a 13-23% alpha wash, so a dark or a pale colour would
@@ -1462,11 +1463,8 @@ function (root, d3, forester, phyloXml) {
         if (vis && vis !== _state.backgroundColorDefault) {
             c = vis;
         }
-        if (!c && !colorVisActive()) {   // a style colour yields to an active Color-by, as the node itself does
-            let style = nodeStyle(d);
-            if (style && (style.nodeColor || style.fontColor)) {
-                c = style.nodeColor || style.fontColor;
-            }
+        if (!c) {
+            c = nodeStyleColor(d);
         }
         if (!c && _state.showNodeEvents && d.events && d.children) {
             c = makeNodeEventsDependentColor(d.events);
@@ -2435,7 +2433,30 @@ function (root, d3, forester, phyloXml) {
     // file's style colours wait until the Color menu is cleared (the desktop's
     // rule; see makeLabelColor and makeNodeFillColor).
     function colorVisActive() {
-        return _state.showVisualizations === true && !!currentColorVis();
+        return !!_state.showVisualizations && !!currentColorVis();
+    }
+
+    // The colour a node's style gives it, or null: style:node_color (else
+    // style:font_color) for the node's mark, style:font_color for its label.
+    // Null while a Color visualization is active -- the desktop's rule
+    // (TreePanel.setColor): the visualization owns every node's colour and
+    // its legend explains them; a node without a value takes the default ink
+    // and no dot rather than the file's colour. Until 2026-10-08 the valueless
+    // nodes fell through to the file's colour on their dots, so BV-BRC's
+    // trees -- style:font_color on every tip, following Genus -- showed two
+    // palettes under Color by Host (Christian: adopt the desktop's rule).
+    // EVERY reader of a style colour goes through here, so none can forget
+    // the rule: the label, the dot, its outline, the hover glow, the clock
+    // plot's points (which a first version of the rule missed).
+    function nodeStyleColor(node, forLabel) {
+        if (colorVisActive()) {
+            return null;
+        }
+        let style = nodeStyle(node);
+        if (!style) {
+            return null;
+        }
+        return (forLabel ? style.fontColor : (style.nodeColor || style.fontColor)) || null;
     }
 
     function currentShapeVis() {
@@ -3684,22 +3705,9 @@ function (root, d3, forester, phyloXml) {
         if (visColor !== _state.backgroundColorDefault) {
             return visColor;
         }
-        // While a Color visualization is active a node without a value gets
-        // the background here, which drawTreeGeometry turns into NO dot at all
-        // (as on the desktop); the file's style colour is not consulted.
-        // Until 2026-10-08 it was, so BV-BRC's trees -- style:font_color on
-        // every tip, following Genus -- showed two palettes under Color by
-        // Host: Host colours on the valued tips, the file's Genus colours
-        // on the rest, and the legend described neither (Christian: adopt
-        // the desktop's precedence).
-        if (colorVisActive()) {
-            return visColor;
-        }
-        let style = nodeStyle(phynode);
-        if (style && (style.nodeColor || style.fontColor)) {
-            return style.nodeColor || style.fontColor;
-        }
-        return visColor;
+        // the style colour, or the background -- which, under an active Color
+        // visualization, drawTreeGeometry turns into no dot at all
+        return nodeStyleColor(phynode) || visColor;
     };
 
     // A darker shade of a node's found/selected highlight color, used as a thin
@@ -3732,12 +3740,11 @@ function (root, d3, forester, phyloXml) {
                 return v;
             }
         }
-        // the style colour steps aside while a Color visualization is active
-        // (see makeNodeFillColor); the branch colour, as on the desktop, does not
-        let style = colorVisActive() ? null : nodeStyle(phynode);
-        if (style && (style.nodeColor || style.fontColor)) {
-            return style.nodeColor || style.fontColor;
+        let styleColor = nodeStyleColor(phynode);
+        if (styleColor) {
+            return styleColor;
         }
+        // the branch colour, unlike a style colour, holds under a Color-by (desktop)
         if (_state.useVisualStyles && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
@@ -3750,17 +3757,15 @@ function (root, d3, forester, phyloXml) {
         if (foundColor) {
             return foundColor;
         }
-        // An active Color visualization owns the colours, as on the desktop
-        // (TreePanel.setColor): its colour where the node has a value, the
-        // default ink where it has none -- style:font_color is not consulted
-        // for any node while one is active. Clear the Color menu to see the
-        // tree as its file styled it.
+        // an active Color visualization owns the colours: its colour where
+        // the node has a value, the default ink where it has none (and
+        // nodeStyleColor is null meanwhile, see there)
         if (colorVisActive()) {
             return makeVisLabelColor(phynode);
         }
-        let style = nodeStyle(phynode);
-        if (style && style.fontColor) {
-            return style.fontColor;
+        let fontColor = nodeStyleColor(phynode, true);
+        if (fontColor) {
+            return fontColor;
         }
         if (_state.useVisualStyles && phynode.color) {
             let c = phynode.color;
@@ -11379,9 +11384,9 @@ function (root, d3, forester, phyloXml) {
         if (vis) {
             return vis;
         }
-        let style = nodeStyle(node);
-        if (style && (style.nodeColor || style.fontColor)) {
-            return style.nodeColor || style.fontColor;
+        let styleColor = nodeStyleColor(node);   // null under an active Color-by, as in the tree
+        if (styleColor) {
+            return styleColor;
         }
         if (_state.useVisualStyles && node.color) {
             return 'rgb(' + node.color.red + ',' + node.color.green + ',' + node.color.blue + ')';

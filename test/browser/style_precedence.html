@@ -48,8 +48,10 @@
     const pos = (name) => { const g = node(name); const m = /translate\(([-\d.e]+)[ ,]+([-\d.e]+)\)/.exec((g && g.getAttribute('transform')) || '');
         return m ? [+m[1], +m[2]] : null; };
     const markIn = (layer, name) => { const p = pos(name); if (!p) { return null; } const pt = new DOMPoint(p[0], p[1]);
-        return [...document.querySelectorAll('#p g.' + layer + ' path')].find((el) => el.isPointInFill(pt) || el.isPointInStroke(pt)) || null; };
-    const dotOf = (name) => markIn('aptx-node-dots', name);
+        return [...document.querySelectorAll('#p g.' + layer + ' path, #p g.' + layer + ' circle')].find((el) => el.isPointInFill(pt) || el.isPointInStroke(pt)) || null; };
+    // a dot whose outline differs from its fill is its own <circle> in the
+    // outlined layer (search hits, and any dot a regression gives an odd fill)
+    const dotOf = (name) => markIn('aptx-node-dots', name) || markIn('aptx-node-outlined', name);
     const shapeOf = (name) => markIn('aptx-node-shapes', name);
     const fillOf = (el) => el ? getComputedStyle(el).fill : null;
     const strokeOf = (el) => el ? getComputedStyle(el).stroke : null;
