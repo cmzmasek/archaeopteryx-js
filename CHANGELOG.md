@@ -7,6 +7,12 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.26.0 — 2026-10-08
+
+Two answers to BV-BRC users: the scale bar prints the tree's unit and can be
+hidden with a "Scale" switch, and a file's own colours no longer mix with an
+active Color visualization -- the desktop's precedence, for every node.
+
 ### Added
 - **Scale switch.** Display Data > Options gains "Scale", the desktop's name for
   the same switch, on by default (the desktop's is off), so the bar at the
