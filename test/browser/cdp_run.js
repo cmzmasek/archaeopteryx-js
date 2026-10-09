@@ -10,7 +10,11 @@ const url = process.argv[2];
 const timeoutSec = parseInt(process.argv[3] || '300', 10);
 const W = parseInt(process.argv[4] || '1600', 10);
 const H = parseInt(process.argv[5] || '1000', 10);
-const port = 9300 + Math.floor(Math.random() * 500);
+// The runner hands each case a port the system has just said is free
+// (CDP_PORT): it runs several Chromes at once, and two of them drawing the
+// same number from a range of 500 was only a matter of time. Run by hand,
+// a random one will do.
+const port = parseInt(process.env.CDP_PORT || '', 10) || (9300 + Math.floor(Math.random() * 500));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'aptx-cdp-'));
 // Chrome, wherever this machine keeps it. Hardcoding the macOS path made the
 // runner useless on any other machine, which is most of the reason these
