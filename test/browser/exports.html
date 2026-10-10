@@ -303,6 +303,17 @@ async function launch(file, text) {
         && +shown.getAttribute('height') === live.height.baseVal.value,
         shown && shown.getAttribute('width') + 'x' + shown.getAttribute('height'));
     out.push('as shown: ' + shownNames + ' of ' + tips + ' tip names in the SVG');
+    // The live svg says some things only for the page it is drawn in (a class the viewer's sheet knows it by, its
+    // size a second time, inline, against a page's rule for a bare "svg"): a file has no page, and an inline size
+    // would hold a full-size drawing to the window's. Its font is the file's as well: a text that states only a
+    // size would otherwise be drawn in whatever the program opening the file thinks best.
+    const pageOnly = (svg) => (svg.getAttribute('class') === null && !svg.style.width && !svg.style.height) ? ''
+        : 'class "' + svg.getAttribute('class') + '", style "' + svg.getAttribute('style') + '"';
+    check('the live svg has its class and its size inline', live.classList.contains('aptx-tree')
+        && live.style.width === live.width.baseVal.value + 'px' && live.style.height === live.height.baseVal.value + 'px',
+        live.getAttribute('class') + ' / ' + live.style.width + ' x ' + live.style.height);
+    check('as shown: the file carries neither', !!shown && pageOnly(shown) === '', shown && pageOnly(shown));
+    check('as shown: the file states the tree\'s font', !!shown && /system-ui/.test(shown.style.fontFamily), shown && shown.getAttribute('style'));
 
     // ---- graphics: full size ------------------------------------------------
     byId('dl_full_b').closest('label').click();
@@ -312,6 +323,8 @@ async function launch(file, text) {
     const ms = performance.now() - t0;
     const full = f ? await svgOf(f) : null;
     const fullNames = full ? tipLabelsIn(full) : 0;
+    check('full size: the file carries no class and no inline size of the page\'s', !!full && pageOnly(full) === '', full && pageOnly(full));
+    check('full size: the file states the tree\'s font', !!full && /system-ui/.test(full.style.fontFamily), full && full.getAttribute('style'));
     if (q.get('shot') === 'full' && full) {
         // the exported picture itself, fitted to the window, for a human to look at
         document.body.innerHTML = '';

@@ -7,6 +7,72 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Fixed
+- **A host page's stylesheet no longer restyles the viewer.** The viewer is
+  drawn inside somebody else's page, and a rule of that page's won wherever
+  the viewer's own stylesheet said nothing. On the BV-BRC website,
+  `.Phylogeny svg { background: #FFFFFF }`, written when the tree was the only
+  svg in that box, put a white square behind every icon of the control panel:
+  over the two selected ones in the light theme (a white icon on white), over
+  all of them in the dark theme; and `body.patric :focus { outline: 0 }` took
+  the keyboard focus ring off every button. Measured on other pages after
+  that: a page set in capitals, centred or in a serif face set the dialogs,
+  the menus and the tooltip that way; under `* { box-sizing: border-box }`,
+  which most pages have, the tooltip was 22 px narrower and every dialog 2 px;
+  Bootstrap 3 made the panel's labels bold and clipped them; `svg { fill:
+  currentColor }` turned three icons into blots; and a page whose only svgs
+  were icons, with `svg { width: 24px; height: 24px }`, drew the tree 24 px
+  square. The viewer's stylesheet now opens by saying what it left unsaid:
+  everything the viewer puts on a page (panel, dialogs, menus, tooltip,
+  "working" card, alignment bar) starts from the browser's own defaults,
+  whatever the page says with element names alone and whichever stylesheet
+  comes first; what a page hands down by inheritance stops there; the icons
+  state their paint, and a rule for a bare `svg` inside a container of the
+  page's no longer reaches them; the tree's svg states its size and its font
+  inline; and the browser's focus ring is given back to every control that
+  does not draw its own. In a page that says nothing, nothing changes: every
+  state compared is pixel for pixel what 3.27.0 drew, with the one exception
+  below. **Still not possible from inside the host's document:** a rule that
+  names a class of the page's and an element (`.content button { ... }`)
+  still reaches the viewer's buttons, labels and fields where the viewer's
+  own rule does not state the same property; the tree's shapes that state
+  their colour as an svg attribute still give way to a rule for a bare
+  `path`, `rect`, `line`, `circle` or `text`; and nothing outranks a rule
+  scoped by an `id` or marked `!important`. See "The host page's stylesheet"
+  in the README.
+- **The alignment strip's ruler numbers and caption, and the heat map
+  strip's scale numbers and caption, were drawn in the host page's font**, in
+  boxes measured for the viewer's own: in a page with a serif default they
+  came out in Times, the alignment caption's box too wide for it; and in an
+  exported file they were drawn in whatever font the program opening it
+  chose. The tree's svg states the tree's font now, in the page and in the
+  file. (A full-size export of an alignment tree can be a pixel wider or
+  narrower for it.)
+
+### Changed
+- The tree's svg carries the class `aptx-tree`, so that a page can style it
+  without also reaching the panel's icons (`.my-page svg.aptx-tree { ... }`),
+  and it is `box-sizing: border-box`: a border given to it fits inside its
+  size. Exported files do not carry the class; their svg now states the
+  tree's `font-family`, and is otherwise byte for byte what 3.27.0 wrote.
+
+### Tests
+- `test/browser/host_css.html`, eight cases: the viewer launched under the
+  BV-BRC website's stylesheet (light and dark), Bootstrap 3, Bootstrap 5,
+  Tailwind's reset and a sheet of single rules of kinds found on real pages,
+  each added after the viewer's own (where it wins every tie), and compared
+  with a launch in a clean page in thirteen states (the panel and the tree,
+  two controls holding the focus, six dialogs, the colour picker, a menu, the
+  search suggestions, the tooltip); and, for what only they put on a page, a
+  dated tree (the clock plot) and a tree with an alignment (the alignment
+  bar). Any difference in what an element computes to, or in where it sits,
+  fails. The stylesheets are saved copies in `test/data/host_css/`. Not
+  measured: the "working" card, which is on the page only while a large tree
+  is drawn.
+- The browser runner pins the page's colour scheme to light. It was the
+  machine's, and a machine that changes its appearance at sunset ran the same
+  case light in the afternoon and dark in the evening.
+
 ## 3.27.0 — 2026-10-09
 
 ### Added

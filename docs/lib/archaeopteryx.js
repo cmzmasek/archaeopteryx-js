@@ -272,6 +272,9 @@ function (root, d3, forester, phyloXml) {
     const PHYLOGRAM_MIN_BRANCH_FRACTION = 0.5;
     const SHORTEN_NAME_MAX_LENGTH = 18;
     const PANEL_STYLE_ID = 'aptx-panel-styles';
+    // The tree's own <svg>: named so that the stylesheet can say what a host
+    // page's rules for a bare "svg" would otherwise decide (hostProofCss).
+    const TREE_SVG_CLASS = 'aptx-tree';
     // How wide a legend row is treated as, for grabbing it with the mouse.
     const PANEL_WIDTH = 214; // fixed control-panel width; shared by the .aptx-panel CSS and leftPanelClearance() so the two can't drift
     const PANEL_WIDTH_COMPACT = 196; // the same, at panelDensity 'compact'; panelWidth() picks between them
@@ -6892,8 +6895,15 @@ function (root, d3, forester, phyloXml) {
             createGui();
 
             _baseSvg = d3.select(containerEl).append('svg')
-                .attr('width', _displayWidth)
-                .attr('height', _displayHeight)
+                .attr('class', TREE_SVG_CLASS)
+                .call(sizeTreeSvg, _displayWidth, _displayHeight)
+                // The tree's font, for the texts that state only a size (the
+                // alignment strip's ruler and caption, the heat map strip's
+                // numbers and caption): they were drawn in the PAGE's font,
+                // in boxes measured for this one, and in an exported file in
+                // whatever the program that opened it thought best. Inline,
+                // so that the file has it too.
+                .style('font-family', FONT_DEFAULTS)
                 // an inline svg sits on a text baseline, and the room left
                 // under it for descenders makes a container sized to the
                 // svg a few pixels taller than the svg itself -- enough to
@@ -6916,8 +6926,7 @@ function (root, d3, forester, phyloXml) {
                         }
                         _displayWidth = size.w;
                         _displayHeight = size.h;
-                        _baseSvg.attr('width', size.w);
-                        _baseSvg.attr('height', size.h);
+                        sizeTreeSvg(_baseSvg, size.w, size.h);
                         rebuildOverview();
                         if ((_settings.zoomToFitUponWindowResize === true) && (_zoomed_x_or_y === false) && (Math.abs(currentZoomScale() - 1.0) < 0.001)) {
                             zoomToFit();
@@ -11255,6 +11264,9 @@ function (root, d3, forester, phyloXml) {
         let svg = clockSvg(body, 'svg', 'aptx-clock-svg');
         svg.setAttribute('width', CLOCK_PLOT_W);
         svg.setAttribute('height', CLOCK_PLOT_H);
+        // inline as well: an attribute gives way to a page's rule for a bare "svg" (sizeTreeSvg)
+        svg.style.width = CLOCK_PLOT_W + 'px';
+        svg.style.height = CLOCK_PLOT_H + 'px';
         svg.setAttribute('viewBox', '0 0 ' + CLOCK_PLOT_W + ' ' + CLOCK_PLOT_H);
         svg.setAttribute('role', 'img');
         svg.setAttribute('aria-label', 'Clock plot: each tip\'s date against its divergence from the root');
@@ -14855,8 +14867,7 @@ function (root, d3, forester, phyloXml) {
                 _displayHeight = size.h;
                 // the canvas has to follow, or the layout is computed for one
                 // size and drawn on another
-                _baseSvg.attr('width', size.w);
-                _baseSvg.attr('height', size.h);
+                sizeTreeSvg(_baseSvg, size.w, size.h);
             }
         }
         // Where the user dragged the legend to is their choice; a resize is no
@@ -16428,6 +16439,16 @@ function (root, d3, forester, phyloXml) {
 
     let _glyphUid = 0;
 
+    // A glyph's paint is stated three times over, and on purpose. As
+    // attributes, which is all an svg needs anywhere else; and again in the
+    // stylesheet and inline (hostProofCss, makeGlyph), because an attribute
+    // gives way to ANY rule of the page the viewer is drawn in: BV-BRC's
+    // ".Phylogeny svg { background:#FFFFFF }" put a white box behind every
+    // one of them, and an icon system's "svg { fill: currentColor }" turned
+    // the outlined ones into blots. The filled parts carry this class, so
+    // the sheet can tell them from the outlines.
+    const GLYPH_SOLID = 'aptx-glyph-solid';
+
     function glyphNum(v) {
         return Math.round(v * 100) / 100;
     }
@@ -16441,11 +16462,11 @@ function (root, d3, forester, phyloXml) {
         for (let i = 0; i < points.length; i += 2) {
             p.push(glyphNum(points[i]) + ',' + glyphNum(points[i + 1]));
         }
-        return '<polygon points="' + p.join(' ') + '" stroke="none" fill="currentColor"/>';
+        return '<polygon class="' + GLYPH_SOLID + '" points="' + p.join(' ') + '" stroke="none" fill="currentColor"/>';
     }
 
     function glyphDot(cx, cy, r) {
-        return '<circle cx="' + glyphNum(cx) + '" cy="' + glyphNum(cy) + '" r="' + glyphNum(r) + '" stroke="none" fill="currentColor"/>';
+        return '<circle class="' + GLYPH_SOLID + '" cx="' + glyphNum(cx) + '" cy="' + glyphNum(cy) + '" r="' + glyphNum(r) + '" stroke="none" fill="currentColor"/>';
     }
 
     // An arc of the circle (cx,cy,r) from `start` through `sweep` degrees, in
@@ -16629,7 +16650,7 @@ function (root, d3, forester, phyloXml) {
             b1y = sy;
         }
         return s + '<line x1="' + glyphNum(b0x) + '" y1="' + glyphNum(b0y) + '" x2="' + glyphNum(b1x)
-            + '" y2="' + glyphNum(b1y) + '" stroke-width="17"/>';
+            + '" y2="' + glyphNum(b1y) + '" stroke-width="17" style="stroke-width:17"/>';
     }
 
     // Back toward the root: an arrow pointing LEFT (in a root-left tree that is
@@ -16685,10 +16706,10 @@ function (root, d3, forester, phyloXml) {
         let id = 'aptx_moon_' + (++_glyphUid);
         let a = -35 * Math.PI / 180;
         return '<defs><mask id="' + id + '">'
-            + '<rect x="0" y="0" width="100" height="100" fill="white"/>'
-            + '<circle cx="' + glyphNum(50 + Math.cos(a) * 33) + '" cy="' + glyphNum(50 + Math.sin(a) * 33) + '" r="40" fill="black"/>'
+            + '<rect x="0" y="0" width="100" height="100" fill="white" style="fill:#fff"/>'
+            + '<circle cx="' + glyphNum(50 + Math.cos(a) * 33) + '" cy="' + glyphNum(50 + Math.sin(a) * 33) + '" r="40" fill="black" style="fill:#000"/>'
             + '</mask></defs>'
-            + '<circle cx="50" cy="50" r="44" stroke="none" fill="currentColor" mask="url(#' + id + ')"/>';
+            + '<circle class="' + GLYPH_SOLID + '" cx="50" cy="50" r="44" stroke="none" fill="currentColor" mask="url(#' + id + ')"/>';
     }
 
     // Midpoint re-root: the longest tip-to-tip path with its MIDPOINT marked --
@@ -16747,7 +16768,9 @@ function (root, d3, forester, phyloXml) {
         }
         return '<svg class="aptx-glyph" viewBox="0 0 ' + w + ' 100" aria-hidden="true" focusable="false"'
             + ' fill="none" stroke="currentColor" stroke-width="' + sw + '"'
-            + ' stroke-linecap="' + cap + '" stroke-linejoin="' + join + '">' + body + '</svg>';
+            + ' stroke-linecap="' + cap + '" stroke-linejoin="' + join + '"'
+            // the three that differ from glyph to glyph, where no page rule reaches
+            + ' style="stroke-width:' + sw + ';stroke-linecap:' + cap + ';stroke-linejoin:' + join + '">' + body + '</svg>';
     }
 
     // The desktop's UNCOLLAPSE_ALL glyph (ControlButtonIcon.paintUncollapse),
@@ -16760,8 +16783,113 @@ function (root, d3, forester, phyloXml) {
     }
 
     function glyphUncollapseAll() {
-        return '<path d="M6,50 L44,16 L44,84 Z" fill="currentColor" stroke="none"/>'
+        return '<path class="' + GLYPH_SOLID + '" d="M6,50 L44,16 L44,84 Z" fill="currentColor" stroke="none"/>'
             + '<path d="M56,20 H94 M56,50 H94 M56,80 H94"/>';
+    }
+
+    // ===================== A host page's stylesheet =====================
+    // The viewer is drawn inside somebody else's page, under that page's
+    // stylesheet, and a rule of the host's wins wherever this sheet says
+    // nothing. BV-BRC, 2026-10-09: ".Phylogeny svg { background:#FFFFFF }",
+    // written when the only svg in that widget was the tree, put a white box
+    // behind every icon of the panel. Measured after that, on pages nobody
+    // had tried: a page set in capitals, or centred, set the dialogs and the
+    // tooltip that way too; and under "* { box-sizing: border-box }", which
+    // most pages have, the tooltip came out 22 px narrower.
+    //
+    // So the sheet opens by saying what it used to leave unsaid. These rules
+    // come FIRST, and the general ones carry as little weight as will do:
+    // every rule after them still has the last word. What they cannot do is
+    // outrank a rule of the host's that is heavier still: one scoped by an
+    // id, or by more classes than the rule here has, or marked !important.
+    //
+    // test/browser/host_css.html launches the viewer under real host sheets
+    // and fails on any difference from a clean page. Something new that the
+    // viewer hangs on the page goes into HOST_PROOF_ROOTS, and through it.
+    const HOST_PROOF_ROOTS = ['.aptx-panel', '.aptx-dialog', '.aptx-node-menu', '.aptx-suggest', '.aptx-tip',
+        '.aptx-busy', '.aptx-msa-nav'];
+    // Weight without rank. A selector made of element names alone weighs less
+    // than one class however many names it has, so eight names that are no
+    // element's, inside a ":not", make a rule outweigh every rule a page
+    // writes with element names only ("label", "fieldset > legend", "*"),
+    // whichever sheet came first, and still give way to any rule for a class.
+    const ELEMENT_WEIGHT = ':not(' + new Array(8).fill('aptx-none').join(' ') + ')';
+    // Where the browser's own focus ring is what shows the focus (the menus
+    // light the entry instead), and the controls there that draw their own.
+    const FOCUS_RING_ROOTS = ['.aptx-panel', '.aptx-dialog', '.aptx-msa-nav'];
+    // (Every rule of this sheet that sets an outline has its control here: the
+    // rule that gives the ring back outweighs them all, so one left out gets
+    // the browser's ring on top of its own. A colour swatch draws an outline
+    // under the pointer, and keeps the browser's ring otherwise.)
+    const OWN_FOCUS = ['.aptx-cp-hex', '.aptx-reps-input', '.aptx-reorder-row', '.aptx-reps-button',
+        '.aptx-msa-nav-jump', '.aptx-clampable', '.aptx-cp-sw:hover', 'input[type=text]', 'select'];
+
+    function hostProofCss() {
+        let roots = HOST_PROOF_ROOTS.join(', ');
+        // (the weight: BV-BRC's rule is ".Phylogeny svg", exactly as heavy as "svg.aptx-tree")
+        let tree = 'svg.' + TREE_SVG_CLASS + ELEMENT_WEIGHT;
+        // Every root and all that is in it (":where" adds no weight), svgs
+        // apart: their shapes are drawn with attributes, which a rule saying
+        // "revert" would undo. The part about the element itself stands last,
+        // where a browser tries it first: a shape of the tree is turned away
+        // at "svg *". (Measured, a whole page's styles worked out again: 8 ms
+        // became 10 on a page of 20,000 elements around the viewer.)
+        let everything = ':where(' + roots + ')' + ELEMENT_WEIGHT
+            + ', :where(' + roots + ') :not(svg, svg *)' + ELEMENT_WEIGHT;
+        let glyph = ':is(' + roots + ') .aptx-glyph';
+        return ''
+            // 1. Everything starts from the browser's own defaults, as in a
+            //    page that says nothing: a reset's "* { box-sizing:border-box }"
+            //    or "button { font: inherit }", a framework's "label { font-
+            //    weight: 700 }". In a page that does say nothing this rule
+            //    changes nothing; and every rule of this sheet for a class,
+            //    here or below, still wins (ELEMENT_WEIGHT).
+            + everything + ' { all:revert; }'
+            //    An svg's own element likewise (its shapes are left alone),
+            //    and with the weight of a class: BV-BRC's rule was a class of
+            //    the page's and "svg". So an svg of the viewer's states its
+            //    size in the sheet or inline, never as attributes alone, and
+            //    its own rule names two classes (or it loses to this one).
+            + ':is(' + roots + ') svg' + ELEMENT_WEIGHT + ' { all:revert; fill:#000; stroke:none; }'
+            //    Bootstrap 3 names tick boxes by their type, which outweighs
+            //    the rule above: the one tick box here that states no margin
+            //    of its own keeps the browser's, and a disabled one its cursor.
+            + '.aptx-dialog .aptx-reorder-check { margin:revert; }'
+            + '.aptx-dialog input[type=checkbox]:disabled, .aptx-dialog input[type=radio]:disabled { cursor:default; }'
+            // 2. What a page hands down by inheritance stops at each root. The
+            //    values are the ones a page that says nothing has; a root's
+            //    own rule, further down, states its font, size and colour.
+            //    (Left to the page on purpose: direction, cursor, visibility,
+            //    pointer-events.)
+            + roots + ', ' + tree + ' {'
+            + '  color-scheme:light; accent-color:auto; caret-color:auto;'
+            + '  font:400 11px system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
+            + '  letter-spacing:normal; word-spacing:normal; text-align:start; text-align-last:auto; text-indent:0;'
+            + '  text-transform:none; text-shadow:none; text-rendering:auto;'
+            + '  -webkit-text-size-adjust:auto; text-size-adjust:auto;'
+            + '  white-space:normal; word-break:normal; overflow-wrap:normal; hyphens:manual; tab-size:8;'
+            + '  quotes:auto; list-style:disc outside none; }'
+            // 3. The tree's own svg. Its shapes carry their paint inline; what
+            //    they inherit, and what a rule for a bare "svg" would set, is
+            //    said here. (Its width, height and font are inline: they are
+            //    the file's as well as the page's, see sizeTreeSvg and where
+            //    the svg is made. The background is the viewer's own rect.)
+            //    border-box, so that a border a page gives it on purpose fits
+            //    inside the size stated, in a page with a reset and without.
+            + tree + ' { color:#000; fill:#000; stroke:none; background:none; max-width:none;'
+            + '  box-sizing:border-box; vertical-align:baseline; }'
+            // "node" is every d3 example's class as well: ".node { font: 10px sans-serif; cursor: pointer }"
+            + tree + ' g.node { font:inherit; cursor:inherit; }'
+            // 4. The icons. Their paint is in their attributes too, and an
+            //    attribute gives way to any rule of the page, the one above
+            //    included: so it is said here.
+            + glyph + ' { fill:none; stroke:currentColor; }'
+            + glyph + ' * { fill:inherit; stroke:inherit; stroke-width:inherit; stroke-linecap:inherit; stroke-linejoin:inherit; }'
+            + glyph + ' .' + GLYPH_SOLID + ' { fill:currentColor; stroke:none; }'
+            // 5. The browser's own focus ring, back on whatever does not draw
+            //    one of its own: ":focus { outline:0 }" is in many a sheet.
+            + ':is(' + FOCUS_RING_ROOTS.join(', ') + ') :focus-visible:not(' + OWN_FOCUS.join(', ') + ')'
+            + ' { outline:revert; outline-offset:revert; }';
     }
 
     function injectPanelStyles() {
@@ -16775,7 +16903,7 @@ function (root, d3, forester, phyloXml) {
             + '  --p-line:#27343f; --p-line-strong:#35434f; --p-surface2:#202d38;'
             + '  --p-accent:#57a6ff; --p-accent-ink:#9cc7ff; --p-accent-weak:rgba(87,166,255,0.18);'
             + '  --p-shadow-sm:0 1px 2px rgba(0,0,0,0.4);';
-        let css = ''
+        let css = hostProofCss()
             + '.aptx-panel {'
             + '  --p-bg: rgba(255,255,255,0.86); --p-ink:#1e2a35; --p-muted:#6b7a89; --p-faint:#93a3b2; --p-warn:#b15a0b;'
             + '  --p-line:#e3e9f0; --p-line-strong:#cad6e1; --p-surface2:#f3f6fa;'
@@ -16971,7 +17099,8 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-reps { line-height:1.35; }'
             + '.aptx-reps-lead { margin:0 0 4px; }'
             + '.aptx-reps-choice { display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; }'
-            + '.aptx-reps-choice input { accent-color:var(--p-accent); width:13px; height:13px; margin:0; flex:none; }'
+            // (".aptx-dialog": Bootstrap 3's rule for a tick box weighs as much as ".aptx-reps-choice input")
+            + '.aptx-dialog .aptx-reps-choice input { accent-color:var(--p-accent); width:13px; height:13px; margin:0; flex:none; }'
             + '.aptx-reps-disabled { color:var(--p-faint); cursor:default; }'
             + '.aptx-reps-input { display:block; box-sizing:border-box; width:100%; font:inherit; color:var(--p-ink);'
             + '  background:var(--p-surface2); border:1px solid var(--p-line-strong); border-radius:6px; padding:4px 7px; }'
@@ -17020,7 +17149,7 @@ function (root, d3, forester, phyloXml) {
             // node's in the tree and is set on the point itself
             + '.aptx-dialog-drag { cursor:move; touch-action:none; user-select:none; -webkit-user-select:none; }'
             + '.aptx-clock.aptx-dialog-body { overflow:visible; }'
-            + '.aptx-clock-svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }'
+            + '.aptx-dialog .aptx-clock-svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }'
             + '.aptx-clock-svg text { font-size:10px; fill:var(--p-muted); font-variant-numeric:tabular-nums; }'
             + '.aptx-clock-svg text.aptx-clock-title { font-size:10.5px; fill:var(--p-ink); }'
             + '.aptx-clock-ground { fill:var(--p-surface2); }'
@@ -17097,7 +17226,7 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-about .aptx-dialog-key { flex-basis:31%; }'
             + '.aptx-about-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; }'
             + '.aptx-about-logo { flex:none; width:56px; height:56px; }'
-            + '.aptx-about-logo svg { width:100%; height:100%; display:block; }'
+            + '.aptx-dialog .aptx-about-logo svg { width:100%; height:100%; display:block; }'
             + '.aptx-about-name { font-size:15px; font-weight:650; letter-spacing:-0.01em; }'
             + '.aptx-about-version { color:var(--p-muted); }'
             + '.aptx-about-blurb { margin:0 0 11px; color:var(--p-muted); }'
@@ -17123,6 +17252,7 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-panel legend { float:none; width:auto; padding:0; margin:0 0 5px; font-size:9px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--p-faint); }'
             + '.aptx-panel label { cursor:pointer; }'
             + '.aptx-panel input[type=checkbox],.aptx-panel input[type=radio] { accent-color:var(--p-accent); width:13px; height:13px; vertical-align:-2px; margin:0 4px 0 0; }'
+            + '.aptx-panel input[type=checkbox]:disabled,.aptx-panel input[type=radio]:disabled { cursor:default; }'
             // checkbox/radio + label as one item (used by the Display Data grid and the inline P/A/C and search-option rows)
             // every item carries an invisible box, so the one that lights up
             // (Auto-hide Labels while it is hiding) does not shift its neighbours
@@ -20450,6 +20580,19 @@ function (root, d3, forester, phyloXml) {
         return _baseSvg ? _baseSvg.node() : null;
     }
 
+    // The tree svg's size, said twice. The attributes are what an export and
+    // the layout read; but an attribute gives way to any rule of the page the
+    // viewer is drawn in: under "svg { width: 24px; height: 24px }", a page
+    // whose only svgs were icons, the tree was 24 px square. (A rule that says
+    // "height: auto" changes nothing: the attributes still give the svg its
+    // own size.) The inline style does not give way.
+    function sizeTreeSvg(svg, w, h) {
+        svg.attr('width', w)
+            .attr('height', h)
+            .style('width', w + 'px')
+            .style('height', h + 'px');
+    }
+
     // An export is always light, whatever the screen is set to: a dark PNG or
     // SVG is wrong on paper, in a slide and in a paper figure, and it is the
     // file that outlives the session. Only the four theme colours are swapped,
@@ -20493,6 +20636,15 @@ function (root, d3, forester, phyloXml) {
     }
 
     function cleanExportCopy(copy) {
+        // What the live svg carries only for the page it is drawn in (its
+        // class, its size said a second time): a file has no page, and an
+        // inline size would hold a full-size drawing to the window's.
+        copy.classList.remove(TREE_SVG_CLASS);
+        if (!copy.getAttribute('class')) {
+            copy.removeAttribute('class');
+        }
+        copy.style.removeProperty('width');
+        copy.style.removeProperty('height');
         // Serialize a COPY with the overview taken out of it: the overview is
         // an on-screen navigation aid, not part of the tree, and working on a
         // copy leaves the live display untouched.

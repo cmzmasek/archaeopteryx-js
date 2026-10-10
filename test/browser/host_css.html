@@ -1,0 +1,543 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a host page's stylesheet must not restyle the viewer</title>
+<!-- The shape BV-BRC's p3/widget/Phylogeny.js builds around the viewer; rules such as ".Phylogeny svg" only apply
+     inside it. Its place and size are inline and fixed in the window, so no host sheet moves or resizes the
+     container: a host laying out its own page is no leak (BV-BRC's sheet moved the page, and with it the cheat
+     sheet that stands beside the panel, by 15 px). -->
+<body class="claro patric" style="margin:0;padding:0">
+<div class="Phylogeny" style="position:fixed;left:0;top:60px;width:1040px;height:700px;margin:0;padding:0;border:0">
+  <div class="size archaeopteryxClass" style="height:100%;margin:0;padding:0;border:0">
+    <div id="phylogram1" style="height:100%;min-height:400px;margin:0;padding:0;border:0"></div>
+  </div>
+</div>
+<script>
+// Christian, 2026-10-09 (a BV-BRC coworker's screenshot): white rectangles over the two selected icons of the
+// panel. BV-BRC's stylesheet has ".Phylogeny svg { background:#FFFFFF }", written when the only svg in that widget
+// was the tree; the panel's icons are svgs too, and the viewer's own sheet said nothing about their background.
+// His worry: "something like this might happen again".
+//
+// A host rule wins wherever the viewer's sheet says nothing. So this launches the viewer in a clean page, records
+// EVERY computed property of EVERY element it puts on the page, launches it again under a host's stylesheet, and
+// fails on any difference: in what an element computes to, and in where it sits.
+//
+//   ?host=bvbrc        BV-BRC's own sheet (Dojo's claro inside it), in the wrapper its widget builds
+//   ?host=bvbrc&theme=dark   the same, in the dark theme (where the white boxes covered EVERY icon)
+//   ?host=bootstrap3   Bootstrap 3: opinions about bare label, legend and input
+//   ?host=bootstrap5   Bootstrap 5
+//   ?host=tailwind     Tailwind's preflight
+//   ?host=wild         single rules of kinds found on real pages: what a page hands down by inheritance,
+//                      "svg { fill: currentColor }", an icon page's "svg { width: 24px; height: 24px }",
+//                      the d3 tree examples' sheet, ":focus { outline: 0 }"
+//   ?host=wild&tree=time        a dated tree, and only what it adds: the clock plot (an svg of its own, in a dialog)
+//   ?host=wild&tree=alignment   a tree with an alignment, and only what it adds: the alignment bar
+//
+// The host's sheet is put AFTER the viewer's own, where it wins every tie: a rule of the viewer's that merely
+// weighs the same as the host's is found out (Bootstrap 3 found one). A page whose sheet comes first, the usual
+// case, can only do less: the order decides nothing but ties.
+//
+// NOT measured here: the "working" card (.aptx-busy), which is on the page only while a large tree is drawn.
+//
+// The sheets are saved copies in test/data/host_css/ (README.md there says where each is from).
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined || d === null || d === '' ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const SHEETS = {bvbrc: 'bvbrc-p3.css', bootstrap3: 'bootstrap-3.4.1.css', bootstrap5: 'bootstrap-5.3.3.css',
+        tailwind: 'tailwind-preflight-3.4.17.css', wild: 'wild.css'};
+    const host = q.get('host') || 'bvbrc';
+    const dark = q.get('theme') === 'dark';
+    // (the alignment bar is on the page only while the alignment is wider than its window: this one is)
+    const TREES = {time: 'nextstrain-ncov.json', alignment: 'alignment_nt.xml'};
+    const kind = q.get('tree') || '';
+    out.push('case ' + host + (dark ? ', dark theme' : '') + (kind ? ', the ' + kind + ' tree' : ''));
+    const container = document.getElementById('phylogram1');
+    const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
+        s.src = '../../docs/lib/' + src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+    try {
+        for (const l of ['d3.v7.min.js', 'sax.js', 'phyloxml.js', 'forester.js', 'archaeopteryx.js',
+            'canvg.global.js', 'jspdf.umd.min.js', 'svg2pdf.umd.min.js']) { await load(l); }
+        if (!SHEETS[host]) { throw new Error('no such host sheet: ' + host); }
+
+        if (kind && !TREES[kind]) { throw new Error('no such tree: ' + kind); }
+        // The host's sheet is loaded once now, for its rules (to say whose rule did it), and taken out again:
+        // the first launch is in a clean page. It comes back, last in the head, at its turn.
+        const hostSheet = () => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '../data/host_css/' + SHEETS[host]; return l; };
+        const arrive = (l, where) => new Promise((res, rej) => { l.onload = res; l.onerror = () => rej(new Error('could not load ' + l.href));
+            document.head.insertBefore(l, where); });
+        const link = hostSheet();
+        await arrive(link, document.head.firstChild);
+        const hostRules = [];
+        // a selector list split at its top-level commas
+        const parts = (selText) => { const out = []; let depth = 0, start = 0, quote = null;
+            for (let i = 0; i < selText.length; ++i) { const c = selText[i];
+                if (quote) { if (c === quote) { quote = null; } continue; }
+                if (c === '"' || c === "'") { quote = c; } else if (c === '(' || c === '[') { depth++; } else if (c === ')' || c === ']') { depth--; }
+                else if (c === ',' && depth === 0) { out.push(selText.slice(start, i)); start = i + 1; } }
+            out.push(selText.slice(start));
+            return out; };
+        // a rule for a state (":focus") is tried as if the state held: the question is whose rule it is
+        const STATE = /:(hover|focus-visible|focus-within|focus|active|visited|link|target)\b/g;
+        const PSEUDO_EL = /::?(before|after|first-line|first-letter|placeholder|selection|marker|backdrop|-webkit-[a-z-]+|-moz-[a-z-]+)/g;
+        (function walk(rules) { for (const r of rules) {
+            if (r.type === CSSRule.MEDIA_RULE) { if (matchMedia(r.conditionText).matches) { walk(r.cssRules); } }
+            else if (r.type === CSSRule.SUPPORTS_RULE) { walk(r.cssRules); }
+            else if (r.type === CSSRule.STYLE_RULE) {
+                // "*, ::before, ::after": each alternative on its own; one left empty spoke of pseudo-elements only
+                const sel = parts(r.selectorText).map((x) => x.replace(PSEUDO_EL, '').replace(STATE, ':not(.aptx-no-such)').trim())
+                    .filter((x) => x && !/[>+~]$/.test(x)).join(', ');
+                if (sel) { hostRules.push({rule: r, sel: sel}); } }
+        } })(link.sheet.cssRules);
+        link.remove();
+        // the viewer follows the page's colour scheme until its switch is used: a machine in its dark
+        // appearance would run the light cases dark, and measure the dark theme twice
+        check('the page\'s own colour scheme is light', !matchMedia('(prefers-color-scheme: dark)').matches);
+        out.push('the host sheet: ' + SHEETS[host] + ', ' + hostRules.length + ' rules');
+        check('the host sheet has rules', hostRules.length > 0, hostRules.length);
+
+        const file = '../../docs/data/' + (TREES[kind] || 'Caliciviridae_100.xml');
+        const text = await (await fetch(file)).text();
+        // the config BV-BRC's widget passes (from the coworker's diagnostics report)
+        const config = {enableAccessToDatabases: true, enableDownloads: true, enableManualNodeSelection: true,
+            enableVisualizations: true, ladderizeTree: true, nhExportWriteConfidences: true};
+
+        // ---- what is measured ----
+        // Every property the browser computes, less two kinds that say nothing of their own: the logical twins of
+        // the physical ones (inline-size is width, here), and the prefixed ones, which are either aliases or hints
+        // a page gives its whole self (-webkit-font-smoothing, -webkit-tap-highlight-color).
+        const PROPS = (function () { const cs = getComputedStyle(document.body); const a = [];
+            for (let i = 0; i < cs.length; ++i) { const p = cs[i];
+                if (!p.startsWith('--') && !p.startsWith('-webkit-') && !/(^|-)(block|inline)(-|$)/.test(p)) { a.push(p); } }
+            return a; })();
+        const PSEUDO = [['::before', 'content'], ['::before', 'display'], ['::before', 'color'], ['::before', 'background-color'],
+            ['::before', 'width'], ['::before', 'height'], ['::before', 'font-size'], ['::before', 'font-weight'],
+            ['::after', 'content'], ['::after', 'display'], ['::after', 'color'], ['::after', 'background-color'],
+            ['::after', 'width'], ['::after', 'height'], ['::after', 'font-size'], ['::after', 'font-weight'],
+            ['::backdrop', 'background-color']];
+        const NAMES = PROPS.concat(PSEUDO.map((p) => p[0] + ' ' + p[1]), ['class']);
+        out.push(PROPS.length + ' computed properties of each element, ' + PSEUDO.length + ' of its pseudo-elements, and its class');
+        const canon = new Map();
+        // the moon icon's mask is numbered as icons are made, so its number is the launch's, not the page's
+        const intern = (v) => { let c = canon.get(v);
+            if (c === undefined) { c = v.indexOf('aptx_moon_') >= 0 ? v.replace(/aptx_moon_\d+/g, 'aptx_moon_N') : v; canon.set(v, c); }
+            return c; };
+
+        // everything the viewer put on the page: the container's subtree, and whatever it hung on <body>
+        const mine = new Set(Array.from(document.body.children));
+        const ours = () => {
+            const list = [];
+            const push = (root) => { list.push(root); root.querySelectorAll('*').forEach((e) => list.push(e)); };
+            // the container is the HOST's element, and what it inherits is the host's business: what is in it is ours
+            Array.from(container.children).forEach(push);
+            Array.from(document.body.children).filter((e) => !mine.has(e)).forEach(push);
+            return list;
+        };
+        const homeOf = (el) => el === container ? 'container'
+            : el.closest('.aptx-panel') ? 'panel' : el.closest('dialog') ? 'dialog' : el.closest('.aptx-node-menu') ? 'menu'
+                : el.closest('.aptx-tip') ? 'tooltip' : container.contains(el) && el.closest('svg') ? 'tree' : 'other';
+        const nameOf = (el) => {
+            const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter((c) => c && !/^aptx-(light|dark)$/.test(c)).slice(0, 2).join('.');
+            return homeOf(el) + ' > ' + el.tagName.toLowerCase() + (cls ? '.' + cls : '')
+                + (el.tagName === 'INPUT' ? '[' + el.type + ']' : '');
+        };
+        const snap = (el, origin) => {
+            const vals = new Array(NAMES.length);
+            const cs = getComputedStyle(el);
+            for (let i = 0; i < PROPS.length; ++i) { vals[i] = intern(cs.getPropertyValue(PROPS[i])); }
+            const ps = {};
+            for (let i = 0; i < PSEUDO.length; ++i) { const pe = PSEUDO[i][0];
+                ps[pe] = ps[pe] || getComputedStyle(el, pe);
+                vals[PROPS.length + i] = intern(ps[pe].getPropertyValue(PSEUDO[i][1])); }
+            vals[NAMES.length - 1] = intern(el.getAttribute('class') || '');
+            const r = el.getBoundingClientRect();
+            // a modal dialog is placed in the window; everything else is placed from the container
+            const o = el.closest('dialog') ? [0, 0] : origin;
+            // (an element with no box, in a folded section, is nowhere: its zero rectangle is not moved to the
+            // container's corner, or it "moves" whenever the container does -- a margin on the tree's svg
+            // collapses through the container and takes it 3 px down)
+            const boxed = el.getClientRects().length > 0;
+            return {tag: el.tagName, vals: vals, boxed: boxed,
+                rect: !boxed || el.closest(STORED) ? [0, 0, 0, 0] : [r.x - o[0], r.y - o[1], r.width, r.height]};
+        };
+        // `roots`: what a state adds or changes (a dialog, a menu, the focused control); none = everything
+        const snapAll = (roots) => { const c = container.getBoundingClientRect(); const o = [c.x, c.y];
+            let els = ours();
+            if (roots) { els = els.filter((el) => roots.some((r) => r === el || r.contains(el))); }
+            return els.map((el) => ({el: el, s: snap(el, o)})); };
+        // ---- differences that are none ----
+        // a colour left at currentColor follows `color`, and says nothing `color` has not
+        const COLOR = PROPS.indexOf('color');
+        const follows = (name, a, b, A, B) => name !== 'color' && /color$/.test(name) && a === A.vals[COLOR] && b === B.vals[COLOR];
+        // a border style counts with a border: "none" and "solid" at no width draw the same nothing
+        // (Tailwind's reset says "* { border-width:0; border-style:solid }")
+        const SIDE = {};
+        ['top', 'right', 'bottom', 'left'].forEach((side) => { SIDE['border-' + side + '-style'] = PROPS.indexOf('border-' + side + '-width'); });
+        const noBorder = (name, A, B) => SIDE[name] !== undefined && A.vals[SIDE[name]] === '0px' && B.vals[SIDE[name]] === '0px';
+        // ...and so with an outline: its width, colour and offset count where there is one
+        const OUTLINE = PROPS.indexOf('outline-style');
+        const noOutline = (name, A, B) => (name === 'outline-width' || name === 'outline-color' || name === 'outline-offset')
+            && A.vals[OUTLINE] === 'none' && B.vals[OUTLINE] === 'none';
+        // on a button, the appearances "auto" and "button" are one and the same
+        const sameLook = (name, a, b, el) => name === 'appearance' && (a === 'auto' || a === 'button') && (b === 'auto' || b === 'button')
+            && (el.tagName === 'BUTTON' || (el.tagName === 'INPUT' && el.type === 'button'));
+        // box-sizing does nothing to a shape of an svg
+        const noBox = (name, el) => name === 'box-sizing' && el.namespaceURI === 'http://www.w3.org/2000/svg' && el.tagName.toLowerCase() !== 'svg';
+        // Where an element has a box, these report the box, and under border-box they report it by another
+        // convention: where it sits is compared as such (its rectangle), which is the better measure. Where it
+        // has no box (a folded section) they are what the sheet says, and are compared.
+        const BOXED = new Set(['width', 'height', 'top', 'right', 'bottom', 'left', 'perspective-origin', 'transform-origin']);
+        // What an svg keeps in its defs (a mask, a gradient) is not on the page, and the rectangle a browser
+        // reports for it is no place: the moon icon's mask "moved" 3 px when the TREE's svg was given a margin.
+        const STORED = 'defs, mask, clipPath, linearGradient, radialGradient, pattern, marker, symbol';
+        // which rule of the host's did it: the last one that fits the element and sets the property
+        const blame = (el, name) => {
+            if (name.indexOf(' ') >= 0 || name === 'class') { return ''; }
+            for (let i = hostRules.length - 1; i >= 0; --i) { const h = hostRules[i];
+                if (h.rule.style.getPropertyValue(name) === '') { continue; }
+                let m = false; try { m = el.matches(h.sel); } catch (e) { m = false; }
+                if (m) { return '  <- ' + h.rule.selectorText.slice(0, 70) + ' { ' + name + ': ' + h.rule.style.getPropertyValue(name).slice(0, 40) + ' }'; } }
+            return '  <- inherited from the page';
+        };
+        // compare two walks of one state: {styles: Map(group -> n), moved: Map(name -> px), paired}
+        const compare = (before, now) => {
+            const res = {styles: new Map(), moved: new Map(), paired: before.length === now.length, elements: now.length};
+            const n = Math.min(before.length, now.length);
+            for (let i = 0; i < n; ++i) {
+                const a = before[i].s, b = now[i].s, el = now[i].el;
+                if (a.tag !== b.tag) { res.paired = false; res.unpaired = 'element ' + i + ': ' + a.tag + ' in the clean page, ' + b.tag + ' here'; break; }
+                for (let k = 0; k < NAMES.length; ++k) {
+                    if (a.vals[k] === b.vals[k]) { continue; }
+                    const nm = NAMES[k];
+                    if (follows(nm, a.vals[k], b.vals[k], a, b) || noBorder(nm, a, b) || noOutline(nm, a, b) || sameLook(nm, a.vals[k], b.vals[k], el)
+                        || noBox(nm, el) || (BOXED.has(nm) && a.boxed && b.boxed)) { continue; }
+                    const key = nameOf(el) + '  ' + NAMES[k] + ':  ' + String(a.vals[k]).slice(0, 60) + '  =>  ' + String(b.vals[k]).slice(0, 60);
+                    const g = res.styles.get(key);
+                    if (g) { g.n++; } else { res.styles.set(key, {n: 1, why: blame(el, NAMES[k])}); }
+                }
+                const d = Math.max(Math.abs(a.rect[0] - b.rect[0]), Math.abs(a.rect[1] - b.rect[1]),
+                    Math.abs(a.rect[2] - b.rect[2]), Math.abs(a.rect[3] - b.rect[3]));
+                if (d > 0.5) { const nm = nameOf(el); res.moved.set(nm, Math.max(res.moved.get(nm) || 0, Math.round(d * 10) / 10)); }
+            }
+            if (!res.paired && !res.unpaired) { res.unpaired = before.length + ' elements in the clean page, ' + now.length + ' here'; }
+            return res;
+        };
+
+        // ---- the states the viewer is measured in ----
+        const tidy = async () => {
+            document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+            document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+            container.querySelectorAll('.aptx-search-row input[type=text]').forEach((i) => {
+                if (i.value !== '') { i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); } });
+            if (document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); }
+            const svg = container.querySelector(':scope > svg');
+            if (svg) { svg.dispatchEvent(new MouseEvent('mousemove', {clientX: 2, clientY: 2, bubbles: true, cancelable: true, view: window})); }
+            await sleep(150);
+        };
+        // Each state says what went wrong setting it up ('' = nothing) and which elements it is about: the whole
+        // page is measured once, and after that only what a state adds or changes (a full walk of every state
+        // read 2.6 million properties and took a minute). A third entry is checks of the viewer's OWN look in
+        // that state, [what, holds, detail]: clean page and host page agreeing proves nothing about a look that
+        // is wrong in both.
+        const focusOn = (el) => { el.focus(); return [el.matches(':focus-visible') ? '' : 'the element took no visible focus', [el]]; };
+        const topDialog = () => { const d = document.querySelectorAll('dialog[open]'); return d.length ? d[d.length - 1] : null; };
+        const paintOf = (el) => { const cs = getComputedStyle(el); return cs.fill + ' / ' + cs.stroke; };
+        // A rule for a bare svg under a class of the page's, the shape of BV-BRC's, tried on the svgs of a dialog
+        // (which hangs on <body>, whose class this is): the About box's logo, the cheat sheet's icons, the clock
+        // plot. It says what BV-BRC's did and what it did not.
+        const svgProof = async (root) => {
+            const svgs = root ? Array.from(root.querySelectorAll('svg')) : [];
+            if (!svgs.length) { return ['there is an svg here to try a page\'s rule on', false, '']; }
+            const before = snapAll(svgs);
+            const rule = document.createElement('style');
+            rule.textContent = '.claro svg { border:2px solid rgb(255,0,0); margin:3px; padding:2px; opacity:0.5; display:inline; width:30px; height:30px;'
+                + ' background:rgb(255,255,255); fill:rgb(0,0,255); stroke:rgb(0,255,0); }';
+            document.head.appendChild(rule);
+            await sleep(150);
+            const inForce = getComputedStyle(container.querySelector(':scope > svg')).opacity === '0.5';
+            const r = compare(before, snapAll(svgs));
+            rule.remove();
+            await sleep(150);
+            return ['a rule for a bare svg under a class of the page\'s reaches no svg here (' + svgs.length + ' of them)',
+                inForce && r.styles.size === 0 && r.moved.size === 0,
+                (inForce ? '' : 'the rule was not in force; ') + Array.from(r.styles.keys()).concat(Array.from(r.moved.keys())).slice(0, 3).join(' || ')];
+        };
+        const ALL = [
+            ['the panel and the tree', async () => {
+                // an icon's filled parts are filled and its outlines are not: the sheet tells them apart by a class
+                const icons = Array.from(container.querySelectorAll('.aptx-panel svg.aptx-glyph')).filter((x) => x.getClientRects().length);
+                const solid = icons.map((i) => i.querySelector('.aptx-glyph-solid')).find((x) => x);
+                const line = icons.map((i) => i.querySelector('line:not(.aptx-glyph-solid)')).find((x) => x);
+                const col = solid ? getComputedStyle(solid).color : '';
+                return ['', null, [
+                    ['an icon\'s filled part is filled with the button\'s colour, and has no outline', !!solid && getComputedStyle(solid).fill === col
+                        && getComputedStyle(solid).stroke === 'none', solid ? paintOf(solid) + ' on ' + col : 'no filled part'],
+                    ['an icon\'s line is a stroke in the button\'s colour, and is not filled', !!line && getComputedStyle(line).fill === 'none'
+                        && getComputedStyle(line).stroke === getComputedStyle(line).color, line ? paintOf(line) : 'no line']]]; }],
+            ['a panel button holding the keyboard focus', async () => {
+                const b = container.querySelector('.aptx-panel .aptx-theme-btn');
+                return b && b.offsetParent ? focusOn(b) : ['no theme button on view', []]; }],
+            ['a checkbox holding the keyboard focus', async () => {
+                const b = Array.from(container.querySelectorAll('.aptx-panel input[type=checkbox]')).find((x) => x.offsetParent && !x.disabled);
+                return b ? focusOn(b) : ['no checkbox on view', []]; }],
+            ['the About box', async () => { container.querySelector('.aptx-panel .prognamelink').click(); await sleep(250);
+                const d = topDialog();
+                // the rule that starts every svg from the browser's defaults outweighs a rule of ours with one class:
+                // the logo's own rule has two, or the logo would be the browser's 300 x 150
+                const logo = d ? d.querySelector('.aptx-about-logo svg') : null;
+                const lr = logo ? logo.getBoundingClientRect() : null;
+                return [d && d.querySelector('.aptx-about') ? '' : 'no About box', d ? [d] : [], [await svgProof(d),
+                    ['the logo keeps its own rule (a block the size of its box)', !!lr && Math.abs(lr.width - 56) < 0.5 && Math.abs(lr.height - 56) < 0.5
+                        && getComputedStyle(logo).display === 'block', lr ? Math.round(lr.width) + ' x ' + Math.round(lr.height) + ', ' + getComputedStyle(logo).display : 'no logo']]]; }],
+            ['the Diagnostics dialog', async () => { container.querySelector('.aptx-panel .prognamelink').click(); await sleep(250);
+                const row = Array.from(document.querySelectorAll('dialog[open] button, dialog[open] a')).find((b) => /nothing to report|to check/.test(b.textContent));
+                if (!row) { return ['no Diagnostics row', []]; }
+                row.click(); await sleep(250);
+                const d = topDialog();
+                return [d && d.querySelector('.aptx-doctor') ? '' : 'no Diagnostics dialog', d ? [d] : []]; }],
+            ['the cheat sheet', async () => {
+                const b = container.querySelector('.aptx-panel .aptx-info-btn[aria-label="Control panel cheat sheet"]');
+                if (!b) { return ['no cheat-sheet button', []]; }
+                b.click(); await sleep(250);
+                const d = topDialog();
+                return [d && d.querySelector('.aptx-cheat svg.aptx-glyph') ? '' : 'no cheat sheet with icons', d ? [d] : [], [await svgProof(d)]]; }],
+            ['the tree properties', async () => {
+                const b = container.querySelector('.aptx-panel .aptx-info-btn[aria-label="Tree properties and statistics"]');
+                if (!b) { return ['no tree-properties button', []]; }
+                b.click(); await sleep(250);
+                const d = topDialog();
+                return [d && d.querySelector('.aptx-dialog-line') ? '' : 'no tree properties', d ? [d] : []]; }],
+            // checkboxes and labels in a dialog: what Bootstrap 3 has opinions about
+            ['the Metadata fields dialog', async () => { const b = document.getElementById('label_fields_b');
+                if (!b) { return ['no Metadata fields button', []]; }
+                b.click(); await sleep(250);
+                const d = topDialog();
+                return [d && d.querySelector('input[type=checkbox]') && d.querySelector('button') ? '' : 'no dialog with checkboxes', d ? [d] : []]; }],
+            // a number field and buttons in a dialog
+            ['the representatives dialog', async () => { const b = document.getElementById('reps_b');
+                if (!b) { return ['no representatives button', []]; }
+                b.click(); await sleep(250);
+                const d = topDialog();
+                return [d && d.querySelector('input') && d.querySelector('button.aptx-reps-button') ? '' : 'no dialog with a field', d ? [d] : []]; }],
+            ['the colour picker', async () => {
+                const t = Array.from(container.querySelectorAll('svg title')).find((x) => /click to change the color for/.test(x.textContent));
+                if (!t) { return ['no legend row to click', []]; }
+                const box = t.parentNode.parentNode.getBoundingClientRect();
+                t.parentNode.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: box.left + 10, clientY: box.top + 20}));
+                await sleep(300);
+                const d = document.getElementById('color_picker_dialog');
+                return [d && d.open && d.querySelector('.aptx-cp-hex') ? '' : 'no colour picker', d ? [d] : []]; }],
+            ['the Download menu', async () => { const b = document.getElementById('dl_b');
+                if (!b) { return ['no Download button', []]; }
+                b.click(); await sleep(250);
+                const m = document.querySelector('.aptx-node-menu');
+                // a menu lights the entry that has the focus; the browser's ring is not given back to it
+                const f = document.activeElement;
+                return [m && m.querySelector('button') ? '' : 'no menu', m ? [m] : [], [
+                    ['the menu\'s first entry has the focus, and no ring of the browser\'s', !!m && !!f && m.contains(f) && f.tagName === 'BUTTON'
+                        && f.matches(':focus-visible') && getComputedStyle(f).outlineStyle === 'none',
+                    f ? f.tagName + ' ' + getComputedStyle(f).outlineStyle : 'nothing focused']]]; }],
+            // the suggestions under a search box: a list of the values of the field searched
+            ['the search suggestions', async () => {
+                const field = container.querySelector('.aptx-search-menus select');
+                const opt = field ? Array.from(field.options).find((o) => /(^|:)Genus$/.test(o.textContent.trim())) : null;
+                if (!opt) { return ['no Genus field to search', []]; }
+                field.value = opt.value; field.dispatchEvent(new Event('change', {bubbles: true}));
+                await sleep(150);
+                const input = container.querySelector('.aptx-search-row input[type=text]');
+                input.focus(); input.value = 'o'; input.dispatchEvent(new Event('input', {bubbles: true}));
+                await sleep(350);
+                const box = document.querySelector('.aptx-suggest');
+                return [box && box.querySelector('button') ? '' : 'no suggestions', box ? [box] : []]; }],
+            ['the hover tooltip', async () => {
+                const tipG = Array.from(container.querySelectorAll('g.node')).find((x) => x.__data__ && !x.__data__.children);
+                if (!tipG) { return ['no tip drawn', []]; }
+                const M = tipG.parentNode.getScreenCTM(); const d = tipG.__data__;
+                tipG.ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', {clientX: M.a * d.y + M.c * d.x + M.e,
+                    clientY: M.b * d.y + M.d * d.x + M.f, bubbles: true, cancelable: true, view: window}));
+                await sleep(450);
+                const t = document.querySelector('.aptx-tip');
+                return [t && parseFloat(getComputedStyle(t).opacity) > 0.5 && t.textContent.length > 0 ? '' : 'no tooltip', t ? [t] : []]; }]
+        ];
+        // what only a dated tree, or one with an alignment, puts on the page
+        const EXTRA = {
+            time: ['the clock plot', async () => { const b = document.getElementById('clock_plot_b');
+                if (!b || !b.offsetParent) { return ['no Clock plot button on view', []]; }
+                b.click(); await sleep(500);
+                const d = topDialog();
+                const svg = d ? d.querySelector('svg.aptx-clock-svg') : null;
+                const r = svg ? svg.getBoundingClientRect() : null;
+                return [svg && d.querySelectorAll('circle').length > 20 ? '' : 'no clock plot', d ? [d] : [], [await svgProof(d),
+                    ['the plot\'s svg keeps its own rule (a block, not to be scrolled by touch)', !!svg && getComputedStyle(svg).display === 'block'
+                        && getComputedStyle(svg).touchAction === 'none', svg ? getComputedStyle(svg).display + ' / ' + getComputedStyle(svg).touchAction : ''],
+                    ['the plot is the size its svg states', !!svg && Math.abs(r.width - parseFloat(svg.getAttribute('width'))) < 0.5
+                        && Math.abs(r.height - parseFloat(svg.getAttribute('height'))) < 0.5, r ? Math.round(r.width) + ' x ' + Math.round(r.height) : '']]]; }],
+            alignment: ['the alignment bar', async () => { const nav = document.querySelector('.aptx-msa-nav');
+                return [nav && nav.getClientRects().length && nav.querySelector('button') ? '' : 'no alignment bar on view', nav ? [nav] : []]; }]
+        };
+        // a tree of another kind is asked only for the page itself and what it adds (the tooltip stays: it primes a walk)
+        const STATES = kind ? [ALL[0], EXTRA[kind], ALL[ALL.length - 1]] : ALL;
+        // one launch, walked through every state; `each(state name, snapshot, what went wrong setting it up)`
+        const walk = async (each) => {
+            const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees(file, text), config);
+            await viewer.ready;
+            await sleep(1500);
+            const panel = container.querySelector('.aptx-panel');
+            for (let i = 0; dark && i < 3 && !panel.classList.contains('aptx-dark'); ++i) {
+                container.querySelector('.aptx-panel .aptx-theme-btn').click(); await sleep(300); }
+            if (dark !== panel.classList.contains('aptx-dark')) { throw new Error('the theme is not the one asked for'); }
+            // The tooltip is one element kept across launches, and what it last said, and where, stays in it,
+            // hidden: a second launch had forty elements the first had not. So every walk starts by using it once.
+            await STATES[STATES.length - 1][1]();
+            await tidy();
+            for (const st of STATES) {
+                await tidy();
+                const got = await st[1]();
+                await sleep(200);
+                each(st[0], snapAll(got[1]), got[0], got[2] || []);
+            }
+            await tidy();
+        };
+
+        // ---- 1. a clean page ----
+        const clean = new Map();
+        await walk((name, s, wrong, own) => { check('clean page, ' + name + ': set up', wrong === '', wrong);
+            own.forEach((c) => check('clean page, ' + name + ': ' + c[0], c[1], c[2]));
+            clean.set(name, s); });
+        out.push('the viewer puts ' + clean.get(STATES[0][0]).length + ' elements on the page, and '
+            + STATES.slice(1).reduce((n, st) => n + clean.get(st[0]).length, 0) + ' more over the ' + (STATES.length - 1) + ' other states');
+
+        // ---- 2. the same again: two clean launches must agree, or a difference under a host means nothing.
+        //         Once, in the first case: it costs a whole walk. ----
+        if (host === 'bvbrc' && !dark && !kind) {
+            let still = true;
+            await walk((name, s) => { const r = compare(clean.get(name), s);
+                if (!r.paired || r.styles.size > 0 || r.moved.size > 0) { still = false;
+                    out.push('    two clean launches differ in "' + name + '": ' + (r.unpaired || Array.from(r.styles.keys()).concat(Array.from(r.moved.keys())).slice(0, 4).join(' || '))); } });
+            check('two launches in a clean page agree in every state', still);
+        }
+
+        // ---- 3. the instrument sees a leak when there is one ----
+        {
+            const before = snapAll();
+            const canary = document.createElement('style');
+            canary.textContent = '.aptx-panel .aptx-seg { margin-left:1px; } .Phylogeny text { letter-spacing:1px; }';
+            document.head.appendChild(canary);
+            await sleep(200);
+            const r = compare(before, snapAll());
+            canary.remove();
+            await sleep(200);
+            const keys = Array.from(r.styles.keys());
+            check('a rule that does reach the panel is seen', keys.some((k) => /panel > label\.aptx-seg {2}margin-left:/.test(k)), keys.slice(0, 3).join(' || '));
+            check('...and one that reaches the tree', keys.some((k) => /^tree > text.* letter-spacing:/.test(k)));
+            check('...and what it moves', r.moved.size > 0, r.moved.size + ' kinds of element moved');
+        }
+
+        // ---- 3b. the icons keep their paint under rules for bare shapes. An icon's lines state nothing of their
+        //          own, and a rule for "line" or "path" outranks whatever they inherit. The TREE's shapes are not
+        //          all proof against such a rule (some state their paint as attributes, which give way to any
+        //          rule): how many are not is counted and reported here, and is not a check. ----
+        {
+            const icons = Array.from(container.querySelectorAll('.aptx-panel svg.aptx-glyph'));
+            const treeSvg = container.querySelector(':scope > svg');
+            const before = snapAll(icons);
+            const treeBefore = snapAll([treeSvg]);
+            const shapes = document.createElement('style');
+            shapes.textContent = 'line, path, circle, rect, polygon, text { fill:rgb(255,0,0); stroke:rgb(0,255,0); stroke-width:1px;'
+                + ' stroke-linecap:square; stroke-linejoin:bevel; }';
+            document.head.insertBefore(shapes, document.head.firstChild);
+            await sleep(200);
+            const r = compare(before, snapAll(icons));
+            const t = compare(treeBefore, snapAll([treeSvg]));
+            const hit = new Map();
+            t.styles.forEach((g, key) => { const m = /^tree > ((?:line|path|circle|rect|polygon|text)\S*) {2}(fill|stroke|stroke-width|stroke-linecap|stroke-linejoin):/.exec(key);
+                if (m) { const tag = m[1].split('.')[0]; hit.set(tag, Math.max(hit.get(tag) || 0, g.n)); } });
+            out.push('under a page\'s rules for bare shapes, in the TREE (not proofed, a count only): '
+                + (hit.size ? Array.from(hit.entries()).map((e) => e[1] + ' ' + e[0]).join(', ') + ' of ' + treeBefore.length + ' elements change their paint'
+                    : 'nothing of ' + treeBefore.length + ' elements changes its paint'));
+            shapes.remove();
+            await sleep(200);
+            check('the panel has icons', icons.length > 5 && before.length > icons.length * 2, icons.length + ' icons, ' + before.length + ' elements');
+            check('an icon keeps its paint under a page\'s rules for bare shapes', r.styles.size === 0, Array.from(r.styles.keys()).slice(0, 4).join(' || '));
+        }
+
+        // ---- 3c. ...and under a rule for a bare svg inside the page's own container, the shape of BV-BRC's, saying
+        //          things BV-BRC's did not. (Such a rule does reach the TREE's svg, by design: a page may give the
+        //          tree a border. So this is asked of the icons alone, and is not in a host sheet.) ----
+        {
+            const icons = Array.from(container.querySelectorAll('.aptx-panel svg.aptx-glyph'));
+            const before = snapAll(icons);
+            const boxed = document.createElement('style');
+            boxed.textContent = '.Phylogeny svg { border:2px solid rgb(255,0,0); margin:3px; padding:2px; opacity:0.5; position:relative; top:3px;'
+                + ' display:inline; width:30px; height:30px; background:rgb(255,255,255); fill:rgb(0,0,255); }';
+            document.head.appendChild(boxed);     // last: it wins every tie
+            await sleep(200);
+            const hitTree = getComputedStyle(container.querySelector(':scope > svg')).opacity === '0.5';
+            const r = compare(before, snapAll(icons));
+            boxed.remove();
+            await sleep(200);
+            check('a rule for a bare svg in the page\'s container is in force (it reaches the tree\'s svg)', hitTree);
+            check('...and reaches no icon: neither what it computes to', r.styles.size === 0, Array.from(r.styles.keys()).slice(0, 4).join(' || '));
+            check('...nor where it sits', r.moved.size === 0, Array.from(r.moved.entries()).slice(0, 4).map((m) => m[0] + ' by ' + m[1] + ' px').join(' || '));
+        }
+
+        // ---- 3d. a page that styles the tree's svg on purpose: the README says how (its class, inside a container
+        //          of the page's), and that a border fits inside the tree's size, with a reset or without ----
+        {
+            const tree = container.querySelector(':scope > svg');
+            const border = document.createElement('style');
+            border.textContent = '.Phylogeny svg.aptx-tree { border:5px solid rgb(200,0,0); }';
+            document.head.appendChild(border);
+            await sleep(250);
+            const t = tree.getBoundingClientRect(), c = container.getBoundingClientRect();
+            check('a page can give the tree\'s svg a border by its class', getComputedStyle(tree).borderTopWidth === '5px');
+            check('...and it fits inside the container', Math.abs(t.width - c.width) < 0.5 && Math.abs(t.height - c.height) < 0.5,
+                Math.round(t.width) + ' x ' + Math.round(t.height) + ' in ' + Math.round(c.width) + ' x ' + Math.round(c.height));
+            border.remove();
+            await sleep(250);
+        }
+
+        // ---- 4. under the host's sheet, put LAST (see the top) ----
+        {
+            const page = () => { const cs = getComputedStyle(document.body); return PROPS.map((p) => cs.getPropertyValue(p)); };
+            const before = page();
+            const live = hostSheet();
+            await arrive(live, null);
+            await sleep(300);
+            const own = Array.from(document.querySelectorAll('style')).find((x) => /aptx-panel/.test(x.textContent));
+            // a sheet that is not in force would leave a clean page compared with itself, and every check passing
+            check('the host sheet is in the page, after the viewer\'s own', !!live.sheet && !live.disabled && live.sheet.cssRules.length > 0
+                && !!own && (own.compareDocumentPosition(live) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0, live.sheet ? live.sheet.cssRules.length + ' rules' : 'no sheet');
+            const after = page();
+            const changed = PROPS.filter((p, i) => before[i] !== after[i]);
+            check('...and in force: it restyles the page itself', changed.length > 0, changed.length + ' properties of <body>, e.g. ' + changed.slice(0, 3).join(', '));
+        }
+        {
+            let hit = 0;
+            const els = ours();
+            for (const h of hostRules) { let m = false; try { m = els.some((el) => el.matches(h.sel)); } catch (e) { m = false; } if (m) { hit++; } }
+            out.push(hit + ' of the host\'s ' + hostRules.length + ' rules fit an element of the viewer\'s');
+            // a sheet that reaches nothing proves nothing
+            check('the host sheet reaches elements of the viewer', hit > 0, hit);
+        }
+        await walk((name, s, wrong, own) => {
+            check(host + ', ' + name + ': set up', wrong === '', wrong);
+            own.forEach((c) => check(host + ', ' + name + ': ' + c[0], c[1], c[2]));
+            const r = compare(clean.get(name), s);
+            check(host + ', ' + name + ': the same elements as in a clean page', r.paired, r.unpaired);
+            const groups = Array.from(r.styles.entries()).sort((a, b) => b[1].n - a[1].n);
+            check(host + ', ' + name + ': no computed style differs from the clean page (' + r.elements + ' elements)', groups.length === 0,
+                groups.length ? groups.length + ' kinds of difference' : '');
+            groups.slice(0, 40).forEach((g) => check('    ' + name + ': ' + g[1].n + 'x  ' + g[0] + g[1].why, false));
+            if (groups.length > 40) { out.push('    ... and ' + (groups.length - 40) + ' more kinds'); }
+            const moved = Array.from(r.moved.entries()).sort((a, b) => b[1] - a[1]);
+            check(host + ', ' + name + ': nothing sits anywhere else', moved.length === 0,
+                moved.slice(0, 6).map((m) => m[0] + ' by ' + m[1] + ' px').join(' || '));
+        });
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

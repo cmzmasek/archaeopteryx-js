@@ -115,6 +115,12 @@ async function main() {
     await send('Page.enable');
     await send('Emulation.setDeviceMetricsOverride', {width: W, height: H, deviceScaleFactor: 2, mobile: false});
     await send('Emulation.setFocusEmulationEnabled', {enabled: true});
+    // The page's colour scheme is the machine's unless it is said here, and the
+    // viewer follows it until its own switch is used. This machine changes its
+    // appearance at sunset: on 2026-10-09 it did so in the middle of a run, and
+    // three cases came up dark for their second launch after a light first one.
+    // Light is what a CI runner has; a case about the dark theme uses the switch.
+    await send('Emulation.setEmulatedMedia', {features: [{name: 'prefers-color-scheme', value: 'light'}]});
     await send('Page.navigate', {url});
     const t0 = Date.now();
     let done = false;

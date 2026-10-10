@@ -1,0 +1,52 @@
+/* Rules of kinds a host page carries; where one is quoted, its source is
+   named. None of them is addressed to the viewer, and none of them may change
+   it: test/browser/host_css.html launches the viewer under this sheet and
+   compares it with a launch in a clean page. */
+
+/* 1. What a page hands down by inheritance: here a dark, centred, serif page
+      set in small capitals. Every value is one a clean page does not have. */
+html { color-scheme: dark; }
+body {
+    color: rgb(201, 22, 122);
+    font: italic small-caps 800 23px/2.7 Georgia, serif;
+    font-stretch: condensed;
+    font-kerning: none;
+    font-feature-settings: "tnum";
+    letter-spacing: 3px;
+    word-spacing: 7px;
+    text-align: center;
+    text-indent: 31px;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 0 rgb(255, 0, 0);
+    text-rendering: geometricPrecision;
+    white-space: nowrap;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+    tab-size: 3;
+    quotes: "<" ">";
+    list-style: square inside;
+    accent-color: rgb(255, 0, 0);
+    caret-color: rgb(255, 0, 0);
+}
+
+/* 2. Icon systems: every svg takes the text colour. */
+svg { fill: currentColor; }
+
+/* 3. WordPress, Twenty Twenty: media never wider than its column. */
+svg, img, embed, object { display: block; height: auto; max-width: 100%; }
+
+/* 3b. A page whose only svgs were icons (the kind of rule BV-BRC's was:
+       written for the svgs the page had). It drew the tree 24 px square. */
+svg { width: 24px; height: 24px; }
+div > svg { fill: rgb(85, 85, 85); stroke: rgb(85, 85, 85); }
+
+/* 4. The stylesheet of the d3 tree examples, as a page with a chart of its
+      own would carry it. */
+.node { font: 10px sans-serif; cursor: pointer; }
+.node circle { fill: #fff; stroke: steelblue; stroke-width: 3px; }
+.node text { font: 12px sans-serif; }
+.link { fill: none; stroke: #ccc; stroke-width: 2px; }
+
+/* 5. "No focus outlines", as Eric Meyer's reset had it and many sites still do. */
+:focus { outline: 0; }

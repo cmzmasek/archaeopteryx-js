@@ -1213,6 +1213,57 @@ for the tree it moves to, and so does a new launch. A launch that is rejected
 while an earlier viewer is still on the page leaves that viewer's report as
 it was and adds one line saying what failed.
 
+### The host page's stylesheet
+
+The viewer is drawn inside your page, in your page's document, so your
+stylesheet applies to it. A rule written for something else can reach it: on
+one site, `.Phylogeny svg { background: #FFFFFF }`, written when the tree was
+the only svg in that box, put a white square behind every icon of the control
+panel. The viewer now says for itself what it used to leave to the page:
+
+* **Everything it puts on the page starts from the browser's own defaults.**
+  The control panel, the dialogs, the menus, the tooltip, the "working" card
+  and the alignment bar are untouched by rules written with element names
+  only, whichever stylesheet comes first: a reset's `* { box-sizing:
+  border-box }`, a framework's `label { font-weight: 700 }` or `button { font:
+  inherit }`, `svg { fill: currentColor }`. And a sheet's `:focus { outline:
+  0 }` no longer takes the keyboard focus ring off the viewer's controls.
+* **What your page hands down by inheritance stops at the viewer.** A page set
+  in capitals, centred, or in a serif face does not set the panel, the dialogs
+  or the tree that way.
+* **The tree's svg is `svg.aptx-tree`.** Its size and its font are stated
+  inline (a page whose only svgs were icons, with `svg { width: 24px; height:
+  24px }`, drew the tree 24 px square), and its background is a rectangle the
+  viewer draws, not the svg's own.
+* **The icons state their own paint**, and are untouched by a rule for a bare
+  `svg` inside a container of yours (`.my-box svg { ... }`).
+
+What still follows the page, on purpose: `direction`, `cursor`, `visibility`
+and `pointer-events` on whatever contains the viewer.
+
+**To restyle the viewer deliberately, name its classes**, inside a container
+of your own so that your rule outweighs the viewer's: `.my-page svg.aptx-tree
+{ border: 1px solid #ccc }` (the border fits inside the tree's size),
+`.my-page .aptx-panel { ... }`.
+
+**What the viewer cannot do from inside your document:**
+
+* A rule that names **a class of yours and an element** (`.content button {
+  text-transform: uppercase }`, `.page label { ... }`) still reaches the
+  viewer's buttons, labels and fields wherever the viewer's own rule for that
+  control does not state the same property: the defaults above weigh less than
+  one class, or they would outweigh the viewer's own rules. If your page has
+  such rules around the viewer, scope them to your own content.
+* The shapes of the tree that state their colour as an svg attribute still
+  give way to a rule for a bare `path`, `rect`, `line`, `circle` or `text`.
+* Nothing outranks a rule scoped by an `id`, or marked `!important`.
+
+`test/browser/host_css.html` launches the viewer under real stylesheets (the
+BV-BRC website's, Bootstrap 3 and 5, Tailwind's reset, and a sheet of single
+rules of kinds found on real pages), each added after the viewer's own, and
+fails on any difference from a launch in a clean page: in what any element
+computes to, and in where it sits.
+
 ### Downloads
 
 The panel's **Download** section (folded until you open it) holds the choices
@@ -1600,7 +1651,7 @@ All 118 of them, alphabetically:
 | `allowManualNodeSelection` | Renamed to `enableManualNodeSelection`. |
 | `backgroundColorDefault` | The background is fixed. |
 | `backgroundColorForPrintExportDefault` | The export background is fixed. |
-| `border` | Style the tree's svg with CSS instead. |
+| `border` | Style the tree's svg with CSS instead: it is `svg.aptx-tree` (a rule for a bare `svg` reaches the panel's icons too). |
 | `branchColorDefault` | The default branch colour is fixed. |
 | `branchDataFontSize` | Font size is fixed at launch (derived: 2px smaller than labels, floor 6px) and changed only via the in-panel Font slider — not a launch config key. |
 | `branchWidthDefault` | Branch width follows the size of the tree. |
