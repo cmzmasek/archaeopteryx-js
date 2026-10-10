@@ -161,7 +161,7 @@
                     + ' last corner ' + pN.map((v) => v.toFixed(1)).join(',')
                     + ' | rendered ' + rb.left.toFixed(1) + ',' + rb.top.toFixed(1)
                     + ' to ' + rb.right.toFixed(1) + ',' + rb.bottom.toFixed(1)
-                    + ' | boxes ' + boxes.length + ' | anchor ' + t.getAttribute('text-anchor')
+                    + ' | boxes ' + boxes.length + ' | anchor ' + getComputedStyle(t).textAnchor
                     + ' x=' + t.getAttribute('x') + ' dy=' + t.getAttribute('dy')
                     + ' tf=' + (t.getAttribute('transform') || 'none');
             }

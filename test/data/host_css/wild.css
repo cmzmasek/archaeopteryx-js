@@ -30,8 +30,10 @@ body {
     caret-color: rgb(255, 0, 0);
 }
 
-/* 2. Icon systems: every svg takes the text colour. */
-svg { fill: currentColor; }
+/* 2. Icon systems: every svg takes the text colour, and has no outline
+      (IcoMoon's ".icon" rule, written for a bare svg). What an svg has, its
+      shapes inherit: a stroke width of 0 leaves a tree without branches. */
+svg { fill: currentColor; stroke: currentColor; stroke-width: 0; }
 
 /* 3. WordPress, Twenty Twenty: media never wider than its column. */
 svg, img, embed, object { display: block; height: auto; max-width: 100%; }
@@ -50,3 +52,17 @@ div > svg { fill: rgb(85, 85, 85); stroke: rgb(85, 85, 85); }
 
 /* 5. "No focus outlines", as Eric Meyer's reset had it and many sites still do. */
 :focus { outline: 0; }
+
+/* 6. A chart's stylesheet written for a page with one chart on it, as the d3
+      examples have theirs: rules for bare shapes. An svg ATTRIBUTE gives way
+      to every one of them. */
+path { fill: none; stroke: #000; stroke-width: 1.5px; }
+line { stroke: #ccc; shape-rendering: crispEdges; }
+circle { fill: steelblue; stroke: #fff; stroke-width: 1.5px; }
+rect { fill: steelblue; cursor: pointer; }
+text { font: 10px sans-serif; fill: #333; text-anchor: middle; pointer-events: none; }
+
+/* 7. "Everything eases": a page that animates every change of every element.
+      The tree is redrawn frame by frame; under this it lagged its own pointer. */
+*, *::before, *::after { transition: all 0.3s ease; }
+

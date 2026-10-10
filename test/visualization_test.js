@@ -3061,6 +3061,7 @@ runTest("a download carries support: ", testDownloadsCarrySupportByDefault);
 runTest("zero is a value, not absent: ", testZeroIsAValueNotAbsence);
 runTest("alignedMolSeqs needs a length: ", testAlignedFlagIsNeverReadAlone);
 runTest("versions agree           : ", testVersionsAgree);
+runTest("a shape's paint is inline : ", testShapePaintIsNeverAnAttribute);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -3804,4 +3805,83 @@ function testAlignedFlagIsNeverReadAlone() {
         return false;
     }
     return true;
+}
+
+// The viewer is drawn inside somebody else's page, and an svg ATTRIBUTE gives
+// way to any rule of that page: "path { stroke: #000 }", written for the
+// page's own chart, repainted every branch (2026-10-09, after a rule for a bare
+// "svg" had put a white box behind the panel's icons). So what paints a shape
+// is an inline style, and the viewer's sheet says of every shape "as a page
+// that says nothing has it" for those properties (SHAPE_PAINT, hostProofCss),
+// which also means an ATTRIBUTE for one of them no longer does anything: a
+// shape drawn with .attr('fill', ...) would come out black in every page. This
+// holds the drawing code to it.
+function testShapePaintIsNeverAnAttribute() {
+    var fs = require('fs');
+    var pth = require('path');
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var table = src.match(/const SHAPE_PAINT = \{([\s\S]*?)\};/);
+    if (!table) {
+        console.log('    no SHAPE_PAINT table found in archaeopteryx.js');
+        return false;
+    }
+    var names = (table[1].match(/'[a-z-]+'(?=\s*:)/g) || []).map(function (n) {
+        return n.slice(1, -1);
+    });
+    if (names.indexOf('fill') < 0 || names.indexOf('stroke') < 0 || names.indexOf('text-anchor') < 0
+        || names.indexOf('transition') < 0) {
+        console.log('    the table read from the source is not the table: ' + names.join(', '));
+        return false;
+    }
+    // "font" is the shorthand: its longhands are attributes too
+    names = names.concat(['font-family', 'font-size', 'font-style', 'font-weight', 'font-variant', 'font-stretch']);
+    // any way of setting an attribute, its name on the same line or the next
+    var call = new RegExp('\\.(attr|setAttribute|setAttributeNS|attrTween)\\(\\s*(?:null\\s*,\\s*)?[\'"](' + names.join('|') + ')[\'"]', 'g');
+    var ok = true;
+    var m;
+    while ((m = call.exec(src)) !== null) {
+        var line = src.slice(0, m.index).split('\n').length;
+        var text = src.split('\n')[line - 1].trim();
+        if (text.indexOf('//') === 0) {
+            continue;
+        }
+        // The one attribute beside its style: canvg, which draws the PNG, reads vector-effect from the
+        // attribute alone, so the statement that sets it says it both ways.
+        if (m[2] === 'vector-effect' && /\.style\(\s*'vector-effect'\s*,\s*'non-scaling-stroke'\s*\)\s*\.attr\(\s*'vector-effect'/.test(text)) {
+            continue;
+        }
+        console.log('    archaeopteryx.js:' + line + ' sets a shape\'s paint as an attribute: ' + text.slice(0, 100));
+        ok = false;
+    }
+    // ... and the scan has to be able to find one, or it proves nothing
+    var finds = function (code) {
+        call.lastIndex = 0;
+        return call.test(code);
+    };
+    if (!finds("sel.attr('fill', c)") || !finds('el.setAttribute("stroke-width", 2)') || !finds("sel.attr(\n    'opacity', 1)")
+        || !finds("el.setAttributeNS(null, 'stroke', c)") || finds("sel.attr('transform', t)") || finds("sel.style('fill', c)")) {
+        console.log('    the scan does not tell an attribute from a style: it is broken, not the code');
+        return false;
+    }
+    var styled = src.split('\n').filter(function (l) {
+        return /\.style\(\s*['"](fill|stroke|stroke-width|text-anchor)['"]/.test(l);
+    }).length;
+    if (styled < 150) {
+        console.log('    only ' + styled + ' lines set a paint as a style: the scan is reading the wrong file');
+        return false;
+    }
+    // Markup written with attributes, as any svg file is (the About box's logo, the panel's icons), goes
+    // through paintInline. (What a markup string says is beyond this scan: test/browser/host_css.html takes the
+    // sheet's rules for shapes out of a clean page, and nothing may change.)
+    var uses = src.split('ARCHAEOPTERYX_LOGO_SVG').length - 1;
+    var inlined = src.split('paintInline(ARCHAEOPTERYX_LOGO_SVG)').length - 1;
+    if (uses !== inlined + 1 || inlined < 1) {
+        console.log('    the logo is put on a page ' + (uses - 1) + ' time(s), ' + inlined + ' of them through paintInline');
+        ok = false;
+    }
+    if (!/return paintInline\('<svg class="aptx-glyph"/.test(src)) {
+        console.log('    an icon\'s markup does not go through paintInline');
+        ok = false;
+    }
+    return ok;
 }

@@ -46,7 +46,7 @@
             .filter((t) => { const d = t.parentNode.__data__;
                 return d && !d.children && (t.textContent || '').trim() !== ''; })
             .map((t) => { const mm = t.getScreenCTM(); const bb = t.getBBox();
-                const ax = t.getAttribute('text-anchor') === 'end' ? bb.x + bb.width : bb.x;
+                const ax = getComputedStyle(t).textAnchor === 'end' ? bb.x + bb.width : bb.x;   // (an inline style since 2026-10-09, not an attribute)
                 const x = (mm.a * ax) + (mm.c * (bb.y + bb.height / 2)) + mm.e;
                 const y = (mm.b * ax) + (mm.d * (bb.y + bb.height / 2)) + mm.f;
                 return Math.hypot(x - c[0], y - c[1]); });

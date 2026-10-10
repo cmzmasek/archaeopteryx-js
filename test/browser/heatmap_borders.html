@@ -48,10 +48,15 @@
         + clade(TIPS) + '</phylogeny></phyloxml>';
     const cells = () => [...document.querySelectorAll('#p g.aptx-heatmap > rect, #p g.aptx-heatmap > path')]
         .filter((e) => e.getAttribute('vector-effect') === 'non-scaling-stroke');
-    const bordered = (els) => els.length > 0 && els.every((e) => e.getAttribute('stroke-width') === '0.75'
-        && e.getAttribute('stroke') === d3.color(e.getAttribute('fill')).darker(0.8).formatHex());
-    const sealed = (els) => els.length > 0 && els.every((e) => e.getAttribute('stroke-width') === '0.6'
-        && e.getAttribute('stroke') === e.getAttribute('fill'));
+    // A shape's paint is an inline style, not an attribute (2026-10-09: an attribute gives way to any rule of
+    // the page the viewer is drawn in), so it is read from the style; a colour comes back as rgb(), whatever
+    // it was given as.
+    const paint = (e, name) => e.style.getPropertyValue(name);
+    const hex = (c) => d3.color(c).formatHex();
+    const bordered = (els) => els.length > 0 && els.every((e) => paint(e, 'stroke-width') === '0.75'
+        && hex(paint(e, 'stroke')) === d3.color(paint(e, 'fill')).darker(0.8).formatHex());
+    const sealed = (els) => els.length > 0 && els.every((e) => paint(e, 'stroke-width') === '0.6'
+        && paint(e, 'stroke') === paint(e, 'fill'));
     try {
         const trees = archaeopteryx.parseTrees('cells.xml', xml);
         const viewer = archaeopteryx.launch('#p', trees, radial ? {showHeatmap: true, layout: 'circular'} : {showHeatmap: true});
@@ -63,7 +68,7 @@
             // merged sectors are bled over their seams rather than sealed, so
             // here every coloured sector counts, bordered or not
             const sectors = [...document.querySelectorAll('#p g.aptx-heatmap > path')]
-                .filter((e) => e.getAttribute('stroke-opacity') !== '0.45' && e.getAttribute('fill-opacity') === null);
+                .filter((e) => paint(e, 'stroke-opacity') !== '0.45' && paint(e, 'fill-opacity') === '');
             check('circular, at the fit: cells too small, runs merged, none bordered',
                 drawn.length === 0 && sectors.length > 0 && sectors.length < valueCells,
                 sectors.length + ' sectors for ' + valueCells + ' cells, ' + drawn.length + ' bordered');
@@ -94,9 +99,9 @@
             check('one rect per cell, none merged into a run', drawn.length === valueCells,
                 drawn.length + ' of ' + valueCells);
             check('each bordered in its own hue, darker, 0.75 px at any zoom', bordered(drawn),
-                drawn.slice(0, 2).map((e) => e.getAttribute('fill') + '/' + e.getAttribute('stroke')).join(' '));
+                drawn.slice(0, 2).map((e) => paint(e, 'fill') + '/' + paint(e, 'stroke')).join(' '));
             const blanks = [...document.querySelectorAll('#p g.aptx-heatmap > rect')]
-                .filter((e) => !e.getAttribute('vector-effect') && e.getAttribute('stroke-opacity') === '0.45');
+                .filter((e) => !e.getAttribute('vector-effect') && paint(e, 'stroke-opacity') === '0.45');
             check('the missing cell keeps its grey outline', blanks.length === 1, blanks.length);
 
             // the Reorder columns dialog drags (its drag is shared with the

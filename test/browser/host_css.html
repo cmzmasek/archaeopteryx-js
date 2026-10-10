@@ -181,8 +181,12 @@
         // on a button, the appearances "auto" and "button" are one and the same
         const sameLook = (name, a, b, el) => name === 'appearance' && (a === 'auto' || a === 'button') && (b === 'auto' || b === 'button')
             && (el.tagName === 'BUTTON' || (el.tagName === 'INPUT' && el.type === 'button'));
-        // box-sizing does nothing to a shape of an svg
-        const noBox = (name, el) => name === 'box-sizing' && el.namespaceURI === 'http://www.w3.org/2000/svg' && el.tagName.toLowerCase() !== 'svg';
+        // box-sizing counts where there is a border or a padding: with neither, the two boxes are one (and it does
+        // nothing at all to a shape of an svg)
+        const EDGES = ['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+            'padding-top', 'padding-right', 'padding-bottom', 'padding-left'].map((n) => PROPS.indexOf(n));
+        const noBox = (name, el, A, B) => name === 'box-sizing' && ((el.namespaceURI === 'http://www.w3.org/2000/svg' && el.tagName.toLowerCase() !== 'svg')
+            || EDGES.every((k) => A.vals[k] === '0px' && B.vals[k] === '0px'));
         // Where an element has a box, these report the box, and under border-box they report it by another
         // convention: where it sits is compared as such (its rectangle), which is the better measure. Where it
         // has no box (a folded section) they are what the sheet says, and are compared.
@@ -210,7 +214,7 @@
                     if (a.vals[k] === b.vals[k]) { continue; }
                     const nm = NAMES[k];
                     if (follows(nm, a.vals[k], b.vals[k], a, b) || noBorder(nm, a, b) || noOutline(nm, a, b) || sameLook(nm, a.vals[k], b.vals[k], el)
-                        || noBox(nm, el) || (BOXED.has(nm) && a.boxed && b.boxed)) { continue; }
+                        || noBox(nm, el, a, b) || (BOXED.has(nm) && a.boxed && b.boxed)) { continue; }
                     const key = nameOf(el) + '  ' + NAMES[k] + ':  ' + String(a.vals[k]).slice(0, 60) + '  =>  ' + String(b.vals[k]).slice(0, 60);
                     const g = res.styles.get(key);
                     if (g) { g.n++; } else { res.styles.set(key, {n: 1, why: blame(el, NAMES[k])}); }
@@ -228,7 +232,8 @@
             document.querySelectorAll('dialog[open]').forEach((d) => d.close());
             document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
             container.querySelectorAll('.aptx-search-row input[type=text]').forEach((i) => {
-                if (i.value !== '') { i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); } });
+                if (i.value !== '') { i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true}));
+                    i.dispatchEvent(new KeyboardEvent('keyup', {key: 'Backspace', bubbles: true})); } });     // (the keyup runs the search)
             if (document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); }
             const svg = container.querySelector(':scope > svg');
             if (svg) { svg.dispatchEvent(new MouseEvent('mousemove', {clientX: 2, clientY: 2, bubbles: true, cancelable: true, view: window})); }
@@ -242,6 +247,49 @@
         const focusOn = (el) => { el.focus(); return [el.matches(':focus-visible') ? '' : 'the element took no visible focus', [el]]; };
         const topDialog = () => { const d = document.querySelectorAll('dialog[open]'); return d.length ? d[d.length - 1] : null; };
         const paintOf = (el) => { const cs = getComputedStyle(el); return cs.fill + ' / ' + cs.stroke; };
+        // A page's rules for shapes, saying everything the viewer's sheet takes charge of for a shape (SHAPE_PAINT
+        // in archaeopteryx.js): a shape's paint is an inline style now, and what it does not state it has from
+        // its parent, whatever a page says of a "path" or a "text". Each selector weighs a class and an element,
+        // as "rect:hover", "text:first-child" and ".chart text" do: the heaviest the viewer's sheet outweighs.
+        // (First, what a page could hand down to an svg by inheritance: what a shape does not state it has from
+        // its parent, and in the end from the svg, which therefore says where that starts.)
+        const BARE_SHAPES = 'html, body { fill:rgb(9,9,9); stroke:rgb(8,8,8); stroke-width:5px; stroke-linecap:round; text-anchor:end; } '
+            + ['line', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'text', 'tspan', 'g', 'use', 'stop',
+            'linearGradient', 'defs', 'mask', 'title'].map((t) => t + ':not(.aptx-never)').join(', ') + ' {'
+            + ' fill:rgb(255,0,0); fill-opacity:0.5; fill-rule:evenodd; stroke:rgb(0,255,0); stroke-width:3px; stroke-opacity:0.5;'
+            + ' stroke-dasharray:2px 2px; stroke-dashoffset:1px; stroke-linecap:square; stroke-linejoin:bevel; stroke-miterlimit:2;'
+            + ' paint-order:stroke; text-anchor:middle; dominant-baseline:hanging; shape-rendering:crispEdges;'
+            + ' vector-effect:non-scaling-stroke; stop-color:rgb(0,0,255); stop-opacity:0.5; opacity:0.5; filter:blur(1px);'
+            + ' mix-blend-mode:multiply; display:none; visibility:hidden; cursor:crosshair; pointer-events:none; color:rgb(1,2,3);'
+            + ' font:italic 700 20px/2 Georgia, serif; letter-spacing:2px; word-spacing:3px; text-transform:uppercase;'
+            + ' text-decoration:underline; text-shadow:1px 1px rgb(255,0,0); text-rendering:geometricPrecision; white-space:pre;'
+            + ' transition:all 3s linear; animation:aptx-none 3s infinite; }';
+        // The viewer's own sheet, and its rules that say "as a page that says nothing has it" (hostProofCss: they
+        // carry the made-up element name that gives them their weight, and say "revert").
+        const ownSheet = () => Array.from(document.querySelectorAll('style')).find((x) => /aptx-panel/.test(x.textContent)).sheet;
+        const resets = () => Array.from(ownSheet().cssRules).map((r, i) => ({r: r, i: i}))
+            .filter((x) => x.r.type === CSSRule.STYLE_RULE && x.r.selectorText.indexOf('aptx-none') >= 0 && /:\s*revert/.test(x.r.style.cssText));
+        // IN A PAGE THAT SAYS NOTHING, THOSE RULES CHANGE NOTHING: taken out of the sheet, every element computes to
+        // what it did and sits where it sat. A rule of the viewer's own that one of them outweighs (a rule for a
+        // shape with one class), or a paint left in an ATTRIBUTE (which "revert" sets aside), shows up here: clean
+        // page and host page would be wrong alike, and agree.
+        let hostOn = false;
+        const nothingWithout = async (roots) => {
+            if (hostOn) { return null; }        // asked of a page that says nothing: under a host they are what keeps it out
+            const sheet = ownSheet();
+            const before = snapAll(roots);
+            const taken = resets().reverse();                 // from the last, so that the places stay true
+            taken.forEach((x) => { x.text = x.r.cssText; sheet.deleteRule(x.i); });
+            await sleep(150);
+            const r = compare(before, snapAll(roots));
+            taken.reverse().forEach((x) => sheet.insertRule(x.text, x.i));
+            await sleep(150);
+            const back = compare(before, snapAll(roots));
+            return ['with the sheet\'s "as a page that says nothing has it" rules taken out, nothing changes (' + taken.length + ' rules, '
+                + before.length + ' elements)', taken.length >= 3 && r.styles.size === 0 && r.moved.size === 0 && back.styles.size === 0,
+            (taken.length < 3 ? 'only ' + taken.length + ' such rules found; ' : '') + Array.from(r.styles.keys()).concat(Array.from(r.moved.keys())).slice(0, 4).join(' || ')
+                + (back.styles.size ? ' (and the sheet did not come back as it was)' : '')];
+        };
         // A rule for a bare svg under a class of the page's, the shape of BV-BRC's, tried on the svgs of a dialog
         // (which hangs on <body>, whose class this is): the About box's logo, the cheat sheet's icons, the clock
         // plot. It says what BV-BRC's did and what it did not.
@@ -251,29 +299,31 @@
             const before = snapAll(svgs);
             const rule = document.createElement('style');
             rule.textContent = '.claro svg { border:2px solid rgb(255,0,0); margin:3px; padding:2px; opacity:0.5; display:inline; width:30px; height:30px;'
-                + ' background:rgb(255,255,255); fill:rgb(0,0,255); stroke:rgb(0,255,0); }';
+                + ' background:rgb(255,255,255); fill:rgb(0,0,255); stroke:rgb(0,255,0); } ' + BARE_SHAPES;
             document.head.appendChild(rule);
             await sleep(150);
             const inForce = getComputedStyle(container.querySelector(':scope > svg')).opacity === '0.5';
             const r = compare(before, snapAll(svgs));
             rule.remove();
             await sleep(150);
-            return ['a rule for a bare svg under a class of the page\'s reaches no svg here (' + svgs.length + ' of them)',
+            return ['a rule for a bare svg under a class of the page\'s, and rules for shapes, reach no svg here (' + svgs.length + ' of them)',
                 inForce && r.styles.size === 0 && r.moved.size === 0,
                 (inForce ? '' : 'the rule was not in force; ') + Array.from(r.styles.keys()).concat(Array.from(r.moved.keys())).slice(0, 3).join(' || ')];
         };
+        // both, for a dialog
+        const svgChecks = async (root) => [await svgProof(root), await nothingWithout(root ? Array.from(root.querySelectorAll('svg')) : [])].filter((c) => c);
         const ALL = [
             ['the panel and the tree', async () => {
-                // an icon's filled parts are filled and its outlines are not: the sheet tells them apart by a class
+                // an icon's filled parts are filled and its outlines are not: each part says so itself, inline
                 const icons = Array.from(container.querySelectorAll('.aptx-panel svg.aptx-glyph')).filter((x) => x.getClientRects().length);
-                const solid = icons.map((i) => i.querySelector('.aptx-glyph-solid')).find((x) => x);
-                const line = icons.map((i) => i.querySelector('line:not(.aptx-glyph-solid)')).find((x) => x);
+                const solid = icons.map((i) => Array.from(i.querySelectorAll('polygon, circle, path')).find((x) => x.style.stroke === 'none')).find((x) => x);
+                const line = icons.map((i) => i.querySelector('line')).find((x) => x && !x.getAttribute('style'));
                 const col = solid ? getComputedStyle(solid).color : '';
-                return ['', null, [
+                return ['', null, [await nothingWithout(null)].filter((c) => c).concat([
                     ['an icon\'s filled part is filled with the button\'s colour, and has no outline', !!solid && getComputedStyle(solid).fill === col
                         && getComputedStyle(solid).stroke === 'none', solid ? paintOf(solid) + ' on ' + col : 'no filled part'],
                     ['an icon\'s line is a stroke in the button\'s colour, and is not filled', !!line && getComputedStyle(line).fill === 'none'
-                        && getComputedStyle(line).stroke === getComputedStyle(line).color, line ? paintOf(line) : 'no line']]]; }],
+                        && getComputedStyle(line).stroke === getComputedStyle(line).color, line ? paintOf(line) : 'no line']])]; }],
             ['a panel button holding the keyboard focus', async () => {
                 const b = container.querySelector('.aptx-panel .aptx-theme-btn');
                 return b && b.offsetParent ? focusOn(b) : ['no theme button on view', []]; }],
@@ -286,9 +336,17 @@
                 // the logo's own rule has two, or the logo would be the browser's 300 x 150
                 const logo = d ? d.querySelector('.aptx-about-logo svg') : null;
                 const lr = logo ? logo.getBoundingClientRect() : null;
-                return [d && d.querySelector('.aptx-about') ? '' : 'no About box', d ? [d] : [], [await svgProof(d),
+                return [d && d.querySelector('.aptx-about') ? '' : 'no About box', d ? [d] : [], (await svgChecks(d)).concat([
+                    // its markup has its paint in attributes, as any svg file has; the sheet says of every shape
+                    // "as a page that says nothing has it", so an attribute paints nothing: paintInline moves it
+                    ['the logo is painted: its shapes have their gradients and their outline', !!logo && (function () {
+                        const shapes = Array.from(logo.querySelectorAll('path'));
+                        return shapes.filter((x) => /^url\(/.test(getComputedStyle(x).fill)).length >= 5
+                            && shapes.filter((x) => getComputedStyle(x).stroke === 'rgb(37, 48, 79)').length >= 5
+                            && Array.from(logo.querySelectorAll('stop')).every((x) => getComputedStyle(x).stopColor !== 'rgb(0, 0, 0)'); })(),
+                        logo ? Array.from(logo.querySelectorAll('path')).slice(0, 2).map((x) => paintOf(x)).join(' ; ') : ''],
                     ['the logo keeps its own rule (a block the size of its box)', !!lr && Math.abs(lr.width - 56) < 0.5 && Math.abs(lr.height - 56) < 0.5
-                        && getComputedStyle(logo).display === 'block', lr ? Math.round(lr.width) + ' x ' + Math.round(lr.height) + ', ' + getComputedStyle(logo).display : 'no logo']]]; }],
+                        && getComputedStyle(logo).display === 'block', lr ? Math.round(lr.width) + ' x ' + Math.round(lr.height) + ', ' + getComputedStyle(logo).display : 'no logo']])]; }],
             ['the Diagnostics dialog', async () => { container.querySelector('.aptx-panel .prognamelink').click(); await sleep(250);
                 const row = Array.from(document.querySelectorAll('dialog[open] button, dialog[open] a')).find((b) => /nothing to report|to check/.test(b.textContent));
                 if (!row) { return ['no Diagnostics row', []]; }
@@ -300,7 +358,7 @@
                 if (!b) { return ['no cheat-sheet button', []]; }
                 b.click(); await sleep(250);
                 const d = topDialog();
-                return [d && d.querySelector('.aptx-cheat svg.aptx-glyph') ? '' : 'no cheat sheet with icons', d ? [d] : [], [await svgProof(d)]]; }],
+                return [d && d.querySelector('.aptx-cheat svg.aptx-glyph') ? '' : 'no cheat sheet with icons', d ? [d] : [], await svgChecks(d)]; }],
             ['the tree properties', async () => {
                 const b = container.querySelector('.aptx-panel .aptx-info-btn[aria-label="Tree properties and statistics"]');
                 if (!b) { return ['no tree-properties button', []]; }
@@ -345,10 +403,20 @@
                 field.value = opt.value; field.dispatchEvent(new Event('change', {bubbles: true}));
                 await sleep(150);
                 const input = container.querySelector('.aptx-search-row input[type=text]');
-                input.focus(); input.value = 'o'; input.dispatchEvent(new Event('input', {bubbles: true}));
-                await sleep(350);
+                // What is found wears a halo, and while there are few it pulses, by a rule of the sheet's own for a
+                // shape: the one tip of Nacovirus first, then a letter that many genera have, for the suggestions.
+                const type = (text) => { input.value = text; input.dispatchEvent(new Event('input', {bubbles: true}));
+                    input.dispatchEvent(new KeyboardEvent('keyup', {key: text.slice(-1), bubbles: true})); };
+                input.focus(); type('Naco');
+                await sleep(600);
+                const halo = container.querySelector('.aptx-found-halo');
+                const pulse = halo ? getComputedStyle(halo).animationName + ' / ' + getComputedStyle(halo).transformBox
+                    : 'no pulsing halo (' + container.querySelectorAll('.foundHalo').length + ' halos, field ' + field.options[field.selectedIndex].textContent + ', "' + input.value + '")';
+                type('o');
+                await sleep(450);
                 const box = document.querySelector('.aptx-suggest');
-                return [box && box.querySelector('button') ? '' : 'no suggestions', box ? [box] : []]; }],
+                return [box && box.querySelector('button') ? '' : 'no suggestions', box ? [box] : [], [
+                    ['a found node\'s halo keeps its own rule (it pulses)', pulse === 'aptx-halo-pulse / fill-box', pulse]]]; }],
             ['the hover tooltip', async () => {
                 const tipG = Array.from(container.querySelectorAll('g.node')).find((x) => x.__data__ && !x.__data__.children);
                 if (!tipG) { return ['no tip drawn', []]; }
@@ -367,11 +435,18 @@
                 const d = topDialog();
                 const svg = d ? d.querySelector('svg.aptx-clock-svg') : null;
                 const r = svg ? svg.getBoundingClientRect() : null;
-                return [svg && d.querySelectorAll('circle').length > 20 ? '' : 'no clock plot', d ? [d] : [], [await svgProof(d),
+                const grid = d ? d.querySelector('.aptx-clock-grid') : null, tip = d ? d.querySelector('.aptx-clock-tips circle') : null;
+                const label = svg ? svg.querySelector('text') : null;
+                return [svg && d.querySelectorAll('circle').length > 20 ? '' : 'no clock plot', d ? [d] : [], (await svgChecks(d)).concat([
+                    // the sheet's rule for every shape weighs a class: a rule of ours for one names two, or it is dead
+                    ['the plot\'s shapes keep their own rules (a grid line is drawn, a tip is translucent, a label is small)',
+                        !!grid && getComputedStyle(grid).stroke !== 'none' && getComputedStyle(grid).shapeRendering === 'crispedges'
+                        && !!tip && getComputedStyle(tip).fillOpacity === '0.8' && !!label && getComputedStyle(label).fontSize === '10px',
+                        grid && tip && label ? getComputedStyle(grid).stroke + ' / ' + getComputedStyle(tip).fillOpacity + ' / ' + getComputedStyle(label).fontSize : 'no grid, tip or label'],
                     ['the plot\'s svg keeps its own rule (a block, not to be scrolled by touch)', !!svg && getComputedStyle(svg).display === 'block'
                         && getComputedStyle(svg).touchAction === 'none', svg ? getComputedStyle(svg).display + ' / ' + getComputedStyle(svg).touchAction : ''],
                     ['the plot is the size its svg states', !!svg && Math.abs(r.width - parseFloat(svg.getAttribute('width'))) < 0.5
-                        && Math.abs(r.height - parseFloat(svg.getAttribute('height'))) < 0.5, r ? Math.round(r.width) + ' x ' + Math.round(r.height) : '']]]; }],
+                        && Math.abs(r.height - parseFloat(svg.getAttribute('height'))) < 0.5, r ? Math.round(r.width) + ' x ' + Math.round(r.height) : '']])]; }],
             alignment: ['the alignment bar', async () => { const nav = document.querySelector('.aptx-msa-nav');
                 return [nav && nav.getClientRects().length && nav.querySelector('button') ? '' : 'no alignment bar on view', nav ? [nav] : []]; }]
         };
@@ -390,6 +465,7 @@
             // hidden: a second launch had forty elements the first had not. So every walk starts by using it once.
             await STATES[STATES.length - 1][1]();
             await tidy();
+            await sleep(700);       // the tooltip fades out: its opacity is still on its way for half a second
             for (const st of STATES) {
                 await tidy();
                 const got = await st[1]();
@@ -421,7 +497,8 @@
         {
             const before = snapAll();
             const canary = document.createElement('style');
-            canary.textContent = '.aptx-panel .aptx-seg { margin-left:1px; } .Phylogeny text { letter-spacing:1px; }';
+            // (for the tree, a rule heavy enough still to reach it: two classes of the page's and an element)
+            canary.textContent = '.aptx-panel .aptx-seg { margin-left:1px; } .claro .Phylogeny text { letter-spacing:1px; }';
             document.head.appendChild(canary);
             await sleep(200);
             const r = compare(before, snapAll());
@@ -433,32 +510,42 @@
             check('...and what it moves', r.moved.size > 0, r.moved.size + ' kinds of element moved');
         }
 
-        // ---- 3b. the icons keep their paint under rules for bare shapes. An icon's lines state nothing of their
-        //          own, and a rule for "line" or "path" outranks whatever they inherit. The TREE's shapes are not
-        //          all proof against such a rule (some state their paint as attributes, which give way to any
-        //          rule): how many are not is counted and reported here, and is not a check. ----
+        // ---- 3b. the tree and the icons under a page's rules for bare shapes. Until 2026-10-09 a count only: 89 of
+        //          the 197 elements of this tree changed their paint, because they stated it as attributes. ----
         {
             const icons = Array.from(container.querySelectorAll('.aptx-panel svg.aptx-glyph'));
             const treeSvg = container.querySelector(':scope > svg');
             const before = snapAll(icons);
             const treeBefore = snapAll([treeSvg]);
             const shapes = document.createElement('style');
-            shapes.textContent = 'line, path, circle, rect, polygon, text { fill:rgb(255,0,0); stroke:rgb(0,255,0); stroke-width:1px;'
-                + ' stroke-linecap:square; stroke-linejoin:bevel; }';
-            document.head.insertBefore(shapes, document.head.firstChild);
-            await sleep(200);
+            shapes.textContent = BARE_SHAPES;
+            document.head.appendChild(shapes);      // last: it wins every tie
+            // an svg that is NOT the viewer's: the page's rule must reach it, or it was never in force
+            const probe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            probe.innerHTML = '<rect width="5" height="5" fill="blue"/>';
+            probe.style.cssText = 'position:fixed;left:-99px;top:0;width:5px;height:5px';
+            document.documentElement.appendChild(probe);
+            await sleep(250);
+            const probeStyle = getComputedStyle(probe.firstChild);
+            const inForce = probeStyle.fill === 'rgb(255, 0, 0)' && probeStyle.display === 'none';
+            // ...and it must try every property the viewer's sheet takes charge of, or a hole in that list is not seen
+            const ownRule = resets().map((x) => x.r).find((r) => r.selectorText.indexOf(' polyline:not(') >= 0);   // the one that names the shapes
+            const tried = shapes.sheet.cssRules.length > 1 ? shapes.sheet.cssRules[1].style : null;      // (the first is the page's own body)
+            const untried = ownRule && tried ? Array.from(ownRule.style).filter((p) => tried.getPropertyValue(p) === '') : ['(no rule to read)'];
             const r = compare(before, snapAll(icons));
             const t = compare(treeBefore, snapAll([treeSvg]));
-            const hit = new Map();
-            t.styles.forEach((g, key) => { const m = /^tree > ((?:line|path|circle|rect|polygon|text)\S*) {2}(fill|stroke|stroke-width|stroke-linecap|stroke-linejoin):/.exec(key);
-                if (m) { const tag = m[1].split('.')[0]; hit.set(tag, Math.max(hit.get(tag) || 0, g.n)); } });
-            out.push('under a page\'s rules for bare shapes, in the TREE (not proofed, a count only): '
-                + (hit.size ? Array.from(hit.entries()).map((e) => e[1] + ' ' + e[0]).join(', ') + ' of ' + treeBefore.length + ' elements change their paint'
-                    : 'nothing of ' + treeBefore.length + ' elements changes its paint'));
             shapes.remove();
-            await sleep(200);
+            probe.remove();
+            await sleep(250);
+            check('the page\'s rules for shapes are in force (they repaint an svg that is not the viewer\'s)', inForce, probeStyle.fill + ' / ' + probeStyle.display);
+            check('...and try every property the viewer\'s sheet takes charge of for a shape (' + (ownRule ? ownRule.style.length : 0) + ')',
+                untried.length === 0, untried.slice(0, 8).join(', '));
+            const kinds = (res) => Array.from(res.styles.keys()).concat(Array.from(res.moved.keys())).slice(0, 4).join(' || ');
             check('the panel has icons', icons.length > 5 && before.length > icons.length * 2, icons.length + ' icons, ' + before.length + ' elements');
-            check('an icon keeps its paint under a page\'s rules for bare shapes', r.styles.size === 0, Array.from(r.styles.keys()).slice(0, 4).join(' || '));
+            check('an icon keeps its paint under a page\'s rules for shapes', r.styles.size === 0 && r.moved.size === 0, kinds(r));
+            check('the tree has shapes', treeBefore.length > 100, treeBefore.length + ' elements');
+            check('the tree keeps its paint under a page\'s rules for shapes (' + treeBefore.length + ' elements)',
+                t.styles.size === 0 && t.moved.size === 0, (t.styles.size + t.moved.size) + ' kinds of difference: ' + kinds(t));
         }
 
         // ---- 3c. ...and under a rule for a bare svg inside the page's own container, the shape of BV-BRC's, saying
@@ -520,6 +607,7 @@
             // a sheet that reaches nothing proves nothing
             check('the host sheet reaches elements of the viewer', hit > 0, hit);
         }
+        hostOn = true;
         await walk((name, s, wrong, own) => {
             check(host + ', ' + name + ': set up', wrong === '', wrong);
             own.forEach((c) => check(host + ', ' + name + ': ' + c[0], c[1], c[2]));

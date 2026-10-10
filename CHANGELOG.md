@@ -34,12 +34,38 @@ users see a change only when a version is cut.
   state compared is pixel for pixel what 3.27.0 drew, with the one exception
   below. **Still not possible from inside the host's document:** a rule that
   names a class of the page's and an element (`.content button { ... }`)
-  still reaches the viewer's buttons, labels and fields where the viewer's
-  own rule does not state the same property; the tree's shapes that state
-  their colour as an svg attribute still give way to a rule for a bare
-  `path`, `rect`, `line`, `circle` or `text`; and nothing outranks a rule
-  scoped by an `id` or marked `!important`. See "The host page's stylesheet"
-  in the README.
+  still reaches the viewer's buttons, labels and fields where the viewer does
+  not state the same property itself (for a shape of the tree it takes two
+  classes); where a shape is and how large is still in its attributes, so
+  `rect { width: 100% }` still resizes the viewer's rectangles; and nothing
+  outranks a rule scoped by an `id` or marked `!important`. See "The host
+  page's stylesheet" in the README.
+- **A page's rules for bare shapes no longer repaint the tree.** A chart's
+  stylesheet written for a page with one chart on it, as the d3 examples have
+  theirs (`path { fill: none; stroke: #000 }`, `circle { fill: steelblue }`,
+  `text { font: 10px sans-serif; text-anchor: middle }`), repainted the
+  viewer's branches, labels, legends and tracks: under such rules 89 of the
+  197 elements of a small tree changed their paint. An svg *attribute* gives
+  way to any rule of the page, and that is how the drawing code stated a
+  shape's fill, stroke, opacity and a label's alignment in 173 places. They
+  are inline styles now, and the viewer's stylesheet says of every shape of
+  its svgs, for those properties, "as a page that says nothing has it": what
+  a shape does not state it has from its parent, not from the page, whether
+  the page's rule is for a bare `rect`, for `rect:hover`, or for `.chart
+  rect`. A page-wide `* { transition: all .3s }` no longer makes the tree
+  ease behind its own redraws. The same holds for the panel's icons, the
+  About box's logo and the clock plot. On screen nothing
+  changes (123 states of the 26 demo trees compared pixel for pixel: the
+  rectangular, circular and unrooted layouts, every display option on, both
+  themes, every dialog, a search, a selection, a collapsed clade); the PNG
+  and PDF exports are the same files as before (32 of them compared). Drawing
+  takes as long as it did in four of six cases measured; a heat map of 1,100
+  cells takes 37 ms where it took 32, and an alignment of 18,000 shapes 247
+  ms where it took 234.
+- **A branch whose file gives it a width or a colour that is none** (phyloXML
+  `<width>-1</width>`) is drawn as the tree's default, as it was: an inline
+  style ignores such a value where an attribute fell back, and the paths that
+  draw the branches are kept from one drawing to the next.
 - **The alignment strip's ruler numbers and caption, and the heat map
   strip's scale numbers and caption, were drawn in the host page's font**, in
   boxes measured for the viewer's own: in a page with a serif default they
@@ -53,8 +79,20 @@ users see a change only when a version is cut.
 - The tree's svg carries the class `aptx-tree`, so that a page can style it
   without also reaching the panel's icons (`.my-page svg.aptx-tree { ... }`),
   and it is `box-sizing: border-box`: a border given to it fits inside its
-  size. Exported files do not carry the class; their svg now states the
-  tree's `font-family`, and is otherwise byte for byte what 3.27.0 wrote.
+  size. Exported files do not carry the class.
+- **A page can no longer restyle a shape's colours and strokes by CSS.**
+  Through 3.27.0 a rule such as `#tree path { stroke-width: 2px }` or
+  `.my-page svg path { stroke: #333 }` did, because that paint was an
+  attribute. It is an inline style now, which gives way to nothing but
+  `!important`. Colours, widths and fonts are set through the configuration
+  and the control panel; a page rule that must override them says
+  `!important`. (The tree's svg itself can still be given a border or a
+  shadow, and the panel and dialogs restyled, by naming their classes.)
+- **An exported SVG file has its shapes' paint in `style` attributes**
+  (`style="fill: ...; stroke: ..."`) where it had `fill="..."` and
+  `stroke="..."`: it is a copy of what is on the page. It draws exactly as
+  before; a program that reads only the attributes of an svg will not see the
+  colours. The file's svg also states the tree's `font-family`.
 
 ### Tests
 - `test/browser/host_css.html`, eight cases: the viewer launched under the
@@ -69,6 +107,16 @@ users see a change only when a version is cut.
   fails. The stylesheets are saved copies in `test/data/host_css/`. Not
   measured: the "working" card, which is on the page only while a large tree
   is drawn.
+- `test/visualization_test.js` holds the drawing code to it: no shape's paint
+  is set as an attribute (an attribute for one of those properties no longer
+  paints anything, in any page). `host_css.html` asks the same of the page:
+  with the stylesheet's "as a page that says nothing has it" rules taken out
+  of a clean page, nothing may change; and under rules for every kind of
+  shape, at the weight of `rect:hover`, setting every property the viewer
+  takes charge of, nothing of the tree, the icons, the logo or the clock plot
+  may either.
+- `test/browser/branch_paint.html`: a branch's paint is a style, and a path
+  kept between drawings wears nothing of the batch it drew before.
 - The browser runner pins the page's colour scheme to light. It was the
   machine's, and a machine that changes its appearance at sunset ran the same
   case light in the afternoon and dark in the evening.

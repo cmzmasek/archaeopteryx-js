@@ -1235,8 +1235,18 @@ panel. The viewer now says for itself what it used to leave to the page:
   inline (a page whose only svgs were icons, with `svg { width: 24px; height:
   24px }`, drew the tree 24 px square), and its background is a rectangle the
   viewer draws, not the svg's own.
-* **The icons state their own paint**, and are untouched by a rule for a bare
-  `svg` inside a container of yours (`.my-box svg { ... }`).
+* **Every shape states its paint as an inline style**, in the tree and in the
+  viewer's other svgs: its fill, its stroke, its opacity, a label's alignment.
+  An svg *attribute* gives way to any rule of the page, so a chart's
+  stylesheet written for a page with one chart on it, `path { fill: none;
+  stroke: #000 }` or `text { font: 10px sans-serif }`, used to repaint the
+  tree: its branches, its labels, its legends. What a shape does not state it
+  has from its parent, whatever the page says of a `path`, a `rect` or a
+  `text`: bare, in a state (`rect:hover`), or inside a container of yours
+  (`.chart text`). Nor does a page-wide `* { transition: all .3s }` make the
+  tree ease behind its own redraws.
+* **The icons, the logo and the clock plot** are untouched by a rule for a
+  bare `svg` inside a container of yours (`.my-box svg { ... }`).
 
 What still follows the page, on purpose: `direction`, `cursor`, `visibility`
 and `pointer-events` on whatever contains the viewer.
@@ -1246,6 +1256,13 @@ of your own so that your rule outweighs the viewer's: `.my-page svg.aptx-tree
 { border: 1px solid #ccc }` (the border fits inside the tree's size),
 `.my-page .aptx-panel { ... }`.
 
+**A shape's colours and strokes are not restyled by CSS any more.** Through
+3.27.0 a rule such as `#tree path { stroke-width: 2px }` thickened the
+branches, because their width was an attribute; an inline style gives way to
+nothing but `!important`. Colours, widths and fonts are what the
+configuration and the control panel are for; a rule that must override them
+says `!important`.
+
 **What the viewer cannot do from inside your document:**
 
 * A rule that names **a class of yours and an element** (`.content button {
@@ -1254,9 +1271,17 @@ of your own so that your rule outweighs the viewer's: `.my-page svg.aptx-tree
   control does not state the same property: the defaults above weigh less than
   one class, or they would outweigh the viewer's own rules. If your page has
   such rules around the viewer, scope them to your own content.
-* The shapes of the tree that state their colour as an svg attribute still
-  give way to a rule for a bare `path`, `rect`, `line`, `circle` or `text`.
+* For a shape it takes more: a rule with two classes of yours, or an `id`,
+  still reaches what a shape does not state itself (`.page .chart text {
+  letter-spacing: 1px }` spaces the tree's labels).
+* Where a shape is, and how large, is still in its attributes (`x`, `y`,
+  `width`, `d`, `r`, `transform`): a rule such as `rect { width: 100% }` or
+  `circle { r: 4px }` moves or resizes the viewer's shapes too.
 * Nothing outranks a rule scoped by an `id`, or marked `!important`.
+
+An exported SVG file has its shapes' paint in `style` attributes for the same
+reason (it is a copy of what is on the page); the PNG and PDF exports are
+unchanged.
 
 `test/browser/host_css.html` launches the viewer under real stylesheets (the
 BV-BRC website's, Bootstrap 3 and 5, Tailwind's reset, and a sheet of single

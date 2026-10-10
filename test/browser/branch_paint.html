@@ -1,0 +1,76 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a branch's paint is an inline style, and a path kept between drawings keeps no other batch's</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// 2026-10-09: a shape's paint became an inline style (an svg attribute gives way to any rule of the page the
+// viewer is drawn in). A style is not an attribute in one more way: a value that is no width or no colour is
+// IGNORED, where an attribute was replaced by it and fell back to the default. The branches are drawn as one
+// path per (colour, width), most numerous first, and the paths are KEPT from one drawing to the next: a batch
+// whose width is none would go on wearing what another batch gave its path the last time (his xhigh code
+// review, finding 5).
+//
+// The tree is built here, twelve tips: a clade of three drawn 4 wide and red (four branches); two tips whose
+// file says <width>-1</width>, which is no width; the rest as they come. Collapsing the wide clade leaves it
+// one branch, so the batch without a width moves up into the path that drew the wide one.
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined || d === null || d === '' ? '' : '   [' + d + ']')); };
+    try {
+        const wide = '<width>4</width><color><red>200</red><green>0</green><blue>0</blue></color>';
+        const none = '<width>-1</width>';
+        const tip = (name, extra) => '<clade><name>' + name + '</name><branch_length>1</branch_length>' + (extra || '') + '</clade>';
+        const xml = '<?xml version="1.0" encoding="UTF-8"?><phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+            + '<clade><name>W</name><branch_length>1</branch_length>' + wide + tip('w1', wide) + tip('w2', wide) + tip('w3', wide) + '</clade>'
+            + '<clade><branch_length>1</branch_length>' + tip('n1', none) + tip('n2', none) + '</clade>'
+            + '<clade><branch_length>1</branch_length>' + ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7'].map((n) => tip(n)).join('') + '</clade>'
+            + '</clade></phylogeny></phyloxml>';
+        const viewer = archaeopteryx.launch('#p', archaeopteryx.parsePhyloXML(xml), {});
+        await viewer.ready;
+        await sleep(1500);
+        const paths = () => Array.from(document.querySelectorAll('#p g.aptx-branches > path'));
+        const says = (p) => (p.style.strokeWidth || 'no width') + ' ' + (p.style.stroke || 'no colour');
+        const RED = 'rgb(200, 0, 0)';
+        out.push('the branches, one path a batch: ' + paths().map(says).join(' | '));
+        check('three batches of branches are drawn', paths().length === 3, paths().length);
+        check('a branch states its paint as a style, and nothing of it as an attribute', paths().length > 0 && paths().every((p) =>
+            !p.hasAttribute('stroke') && !p.hasAttribute('stroke-width') && !p.hasAttribute('fill') && p.style.fill === 'none' && p.style.stroke !== ''));
+        check('the wide clade is 4 wide and red', paths().filter((p) => p.style.strokeWidth === '4' && p.style.stroke === RED).length === 1);
+        check('a width that is no width is not stated: those branches are drawn as the svg has it', paths().filter((p) => p.style.strokeWidth === '').length === 1);
+        // the order the paths are in: the wide batch (four branches) before the one without a width (two)
+        const before = paths().map((p) => p.style.strokeWidth);
+        check('the wide batch is drawn before the one without a width', before.indexOf('4') >= 0 && before.indexOf('4') < before.indexOf(''), before.join(','));
+
+        // ---- collapse the wide clade: one branch of it is left ----
+        const tipG = Array.from(document.querySelectorAll('#p g.node')).find((g) => g.__data__ && g.__data__.name === 'w1');
+        const node = tipG.__data__.parent;
+        const M = tipG.parentNode.getScreenCTM(); const svg = tipG.ownerSVGElement;
+        const at = {clientX: M.a * node.y + M.c * node.x + M.e, clientY: M.b * node.y + M.d * node.x + M.f, bubbles: true, cancelable: true, view: window};
+        svg.dispatchEvent(new MouseEvent('mousemove', at));
+        svg.dispatchEvent(new MouseEvent('click', at));
+        await sleep(500);
+        const item = Array.from(document.querySelectorAll('.aptx-node-menu button')).find((b) => /^Collapse/.test(b.textContent));
+        check('the node menu offers Collapse', !!item, Array.from(document.querySelectorAll('.aptx-node-menu button')).map((b) => b.textContent).join(' | ').slice(0, 160));
+        if (item) { item.click(); }
+        await sleep(2000);
+        out.push('after the collapse: ' + paths().map(says).join(' | '));
+        const after = paths().map((p) => p.style.strokeWidth);
+        check('the batch without a width has moved up, into the path that drew the wide one', after.indexOf('') >= 0 && after.indexOf('') < after.lastIndexOf('4'),
+            after.join(','));
+        check('...and wears nothing of it: whatever is 4 wide is red', paths().filter((p) => p.style.strokeWidth === '4').every((p) => p.style.stroke === RED),
+            paths().map(says).join(' | '));
+        check('...one batch has no width, as before', paths().filter((p) => p.style.strokeWidth === '').length === 1);
+    } catch (e) {
+        check('harness ran', false, e && e.stack);
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
