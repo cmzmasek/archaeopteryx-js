@@ -3958,6 +3958,20 @@ function testFilePaintIsAttributes() {
         console.log('    paint-order is no attribute in SVG 1.1: it stays the style every release wrote');
         ok = false;
     }
+    // A colour's alpha goes into an opacity (SVG 1.1 has no colour with one, and no "transparent": Inkscape 1.1 and
+    // MuPDF draw both as black). Each colour paint has its opacity, and both are paints of a file.
+    var alpha = src.match(/const FILE_ALPHA = \{([^}]*)\};/);
+    var pairs = alpha ? quoted(alpha[1]) : [];
+    if (pairs.join(' ') !== 'fill fill-opacity stroke stroke-opacity stop-color stop-opacity') {
+        console.log('    FILE_ALPHA is not the three colour paints with their opacities: ' + pairs.join(' '));
+        ok = false;
+    }
+    pairs.forEach(function (name) {
+        if (file.indexOf(name) < 0) {
+            console.log('    FILE_ALPHA names "' + name + '", which FILE_PAINT does not');
+            ok = false;
+        }
+    });
     // both downloads' copies are cleaned by one function, and it ends in the conversion
     var clean = src.match(/function cleanExportCopy\(copy\) \{([\s\S]*?)\n {4}\}/);
     if (!clean || !/return paintAsAttributes\(copy\);\s*$/.test(clean[1])) {

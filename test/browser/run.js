@@ -88,7 +88,7 @@ const CASES = {
     'branch_paint': [''],
     'host_css': ['?host=bvbrc', '?host=bvbrc&theme=dark', '?host=bootstrap3', '?host=bootstrap5', '?host=tailwind', '?host=wild',
         '?host=wild&tree=time', '?host=wild&tree=alignment'],
-    'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?big=1200']
+    'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?paints=1', '?big=1200']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',

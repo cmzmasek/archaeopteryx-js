@@ -1282,7 +1282,10 @@ says `!important`.
 A file is another matter: it has no page around it. In an exported SVG file a
 shape's colours, strokes, opacities and text alignment are attributes
 (`fill="..."`, `stroke-opacity="..."`), the form every program that opens an
-svg reads; only fonts and `paint-order` are in `style`.
+svg reads; only fonts and `paint-order` are in `style`. Its colours are those
+SVG 1.1 has: what is `transparent` on the page is `none` in the file, and a
+translucent colour is the colour with a `fill-opacity` or `stroke-opacity`
+(Inkscape 1.1 draws `transparent` and `rgba(...)` as black).
 
 `test/browser/host_css.html` launches the viewer under real stylesheets (the
 BV-BRC website's, Bootstrap 3 and 5, Tailwind's reset, and a sheet of single

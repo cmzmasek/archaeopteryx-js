@@ -62,6 +62,22 @@ users see a change only when a version is cut.
   takes as long as it did in four of six cases measured; a heat map of 1,100
   cells takes 37 ms where it took 32, and an alignment of 18,000 shapes 247
   ms where it took 234.
+- **An exported SVG no longer comes out with black slabs in Inkscape.** The
+  file carried two paints that SVG 1.1 does not have, and a program that
+  knows neither draws them black. `transparent`: the invisible surfaces with
+  which the alignment, the heat map and each row of a legend listen to the
+  pointer. A colour with an alpha (`rgba(70, 130, 220, 0.35)`): the
+  translucent bars of a node's age interval, a sampling date's uncertainty
+  and a fossil's range. A browser draws both as meant. Inkscape 1.1.2, with
+  a file from 3.27.0, draws a black rectangle over the whole alignment (100 %
+  of it measured black) and over the heat map, one over each row of a legend,
+  and the interval bars solid black; MuPDF does the same. In a file,
+  `transparent` is now `none`, and a colour with an alpha is the colour and a
+  `fill-opacity`, `stroke-opacity` or `stop-opacity` (times the opacity the
+  shape already has). Not on a group, whose opacity would reach the shapes in
+  it; no group is painted that way today. The PNG export is the same files as
+  before and the PDF export draws the same pages (16 of each compared; the
+  PDFs' bytes differ).
 - **A branch whose file gives it a width or a colour that is none** (phyloXML
   `<width>-1</width>`) is drawn as the tree's default, as it was: an inline
   style ignores such a value where an attribute fell back, and the paths that
@@ -97,11 +113,13 @@ users see a change only when a version is cut.
   reads an attribute, so the copy that becomes a file is written the plainest
   way. Fonts and `paint-order` stay in `style`, as they were, and a colour
   that was written `#909090` may now read `rgb(144, 144, 144)`. Sixteen
-  exported trees were drawn with Inkscape, LibreOffice, librsvg and Quick
-  Look from the files as they were and as they are: pixel for pixel the same.
-  MuPDF, which reads an opacity from an attribute and not from a style, draws
-  thirteen of the sixteen nearer to what the others draw. The file's svg also
-  states the tree's `font-family`.
+  exported trees were drawn with five programs that are not a browser, from
+  the files as they were and as they are. LibreOffice and librsvg: pixel for
+  pixel the same. Quick Look: the same but for a rounding of 1 in 255 on one
+  tree's translucent bars. Inkscape 1.1.2 and MuPDF: thirteen of the sixteen
+  differ, each nearer to what the others draw (the black slabs above; and
+  MuPDF reads an opacity from an attribute and not from a style). The file's
+  svg also states the tree's `font-family`.
 
 ### Tests
 - `test/browser/host_css.html`, eight cases: the viewer launched under the
@@ -130,7 +148,11 @@ users see a change only when a version is cut.
   of the page, the other way round: no shape of the file states its paint in
   a style, each states as an attribute exactly what the window's shape states
   as a style (every shape of the svg, one for one), a gradient is named as an
-  attribute names it, and the window is left as it was.
+  attribute names it, and the window is left as it was. `?paints=1` does it
+  on trees that draw what SVG 1.1 has no word for (a heat map, node ages
+  with intervals, fossil ranges, rectangular and circular): no paint of the
+  file is `transparent` or a colour with an alpha, and each such paint of the
+  window is `none`, or its colour at the alpha times the shape's opacity.
 - The browser runner pins the page's colour scheme to light. It was the
   machine's, and a machine that changes its appearance at sunset ran the same
   case light in the afternoon and dark in the evening.

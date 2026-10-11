@@ -126,7 +126,150 @@ async function launch(file, text) {
     return trees;
 }
 
+// On the page a shape's paint is an inline style (an attribute gives way to any rule of the page). A FILE says it
+// as attributes again (2026-10-10): of five programs that are not a browser, one (MuPDF) drew the faint lines of
+// an exported svg at full strength, reading a line's colour from a style and not its opacity. And it says its
+// colours as SVG 1.1 has them: the same program drew "transparent" and a colour with an alpha as black -- a slab
+// over a heat map (the surface that listens to the pointer), one over each row of a legend, a solid bar for a
+// node's translucent age interval.
+const FILE_PAINT = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
+    'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'text-anchor', 'dominant-baseline',
+    'shape-rendering', 'vector-effect', 'stop-color', 'stop-opacity', 'opacity'];
+const FILE_ALPHA = {'fill': 'fill-opacity', 'stroke': 'stroke-opacity', 'stop-color': 'stop-opacity'};
+const allOf = (svg) => [svg, ...svg.querySelectorAll('*')];
+const paintInStyle = (svg) => { const found = [];
+    for (const e of allOf(svg)) { for (const n of FILE_PAINT) { if (e.style && e.style.getPropertyValue(n) !== '') { found.push(e.tagName + ' ' + n + ': ' + e.style.getPropertyValue(n)); } } }
+    return found; };
+const paintAsAttribute = (svg) => allOf(svg).reduce((n, e) => n + FILE_PAINT.filter((p) => e.hasAttribute(p)).length, 0);
+// a paint SVG 1.1 does not have: "transparent", or a colour with an alpha
+const notOfSvg11 = (svg) => { const found = [];
+    for (const e of allOf(svg)) { for (const n of Object.keys(FILE_ALPHA)) { const v = e.getAttribute(n) || (e.style ? e.style.getPropertyValue(n) : '');
+        const c = v ? d3.color(v) : null; if (c && c.opacity < 1) { found.push(e.tagName + ' ' + n + '=' + v); } } }
+    return found; };
+// The svg file of what is on screen ("As shown"), against the window it was made from: shape by shape.
+function fileAgainstWindow(name, live, shown) {
+    const inWindow = allOf(live).reduce((n, e) => n + FILE_PAINT.filter((p) => e.style.getPropertyValue(p) !== '').length, 0);
+    check(name + ': the window states its shapes\' paint as styles', inWindow > 100 && paintAsAttribute(live) === live.querySelectorAll('[vector-effect]').length,
+        inWindow + ' as a style, ' + paintAsAttribute(live) + ' as an attribute');
+    const styled = paintInStyle(shown);
+    check(name + ': no shape of the file states its paint in a style', styled.length === 0, styled.length + ': ' + styled.slice(0, 3).join(' | '));
+    check(name + ': ... nor is a style attribute left empty', allOf(shown).every((e) => e.getAttribute('style') !== ''));
+    // ...and says what the window's shape says (the page's ground, which a file has white, is the one colour
+    // that may differ). All of the svg: the tree, the strips under it, the legend cards; less what a file leaves out.
+    const paper = (svg) => svg.querySelector('rect.basebackground');
+    const colour = (v) => { const c = v ? d3.color(v) : null; return c ? c.formatRgb() : v; };
+    const groundWindow = colour(paper(live).style.getPropertyValue('fill')); const groundFile = colour(paper(shown).getAttribute('fill'));
+    const a = [...live.querySelectorAll('*')].filter((e) => !e.closest('.aptx-overview, .aptx-hoverglow, circle.foundHalo'));
+    const b = [...shown.querySelectorAll('*')];
+    const holdsShapes = (e) => [...e.children].some((c) => c.localName !== 'title' && c.localName !== 'desc');
+    const differ = []; const worked = new Set(); let stated = 0; let clear = 0; let sheer = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); ++i) {
+        for (const n of FILE_PAINT) {
+            const want = a[i].style.getPropertyValue(n).replace(/^url\("([^"]*)"\)$/, 'url($1)'); const got = b[i].getAttribute(n) || '';
+            if (want !== '') { ++stated; }
+            if (worked.has(i + ' ' + n)) { continue; }                 // an opacity the file worked out of a colour's alpha: judged there
+            const c = FILE_ALPHA[n] && want ? d3.color(want) : null;
+            if (c && c.opacity < 1 && !holdsShapes(a[i])) {
+                // not SVG 1.1's: no paint at all is "none"; an alpha goes into the paint's opacity, times what the shape
+                // has of it in the window, stated or handed down
+                worked.add(i + ' ' + FILE_ALPHA[n]);
+                if (c.opacity === 0 && n !== 'stop-color') { ++clear;
+                    if (got !== 'none') { differ.push(a[i].tagName + ' ' + n + ': "' + want + '" in the window, "' + got + '" in the file'); }
+                    continue; }
+                ++sheer;
+                const whole = parseFloat(getComputedStyle(a[i]).getPropertyValue(FILE_ALPHA[n])); const has = parseFloat(b[i].getAttribute(FILE_ALPHA[n]));
+                if (colour(got) !== c.copy({opacity: 1}).formatRgb() || !(Math.abs(has - (c.opacity * whole)) < 0.001)) {
+                    differ.push(a[i].tagName + ' ' + n + ': "' + want + '" at ' + whole + ' in the window, "' + got + '" at ' + b[i].getAttribute(FILE_ALPHA[n]) + ' in the file'); }
+                continue;
+            }
+            if (want === got || colour(want) === colour(got) || (colour(want) === groundWindow && colour(got) === groundFile)) { continue; }
+            differ.push(a[i].tagName + ' ' + n + ': "' + want + '" in the window, "' + got + '" in the file');
+        }
+    }
+    check(name + ': the file has the window\'s shapes, one for one', a.length === b.length && a.length > 20 && a.every((e, i) => e.tagName === b[i].tagName),
+        a.length + ' in the window, ' + b.length + ' in the file');
+    const links = b.filter((e) => FILE_PAINT.some((n) => /url\(/.test(e.getAttribute(n) || '')));
+    out.push(name + ': ' + links.length + ' paints of the file are a gradient of its own; in the window ' + clear + ' are "transparent" and ' + sheer + ' a colour with an alpha');
+    check(name + ': ... a paint that is a gradient names it without quotes, as an attribute does', links.every((e) => FILE_PAINT.every((n) => !/url\(["']/.test(e.getAttribute(n) || ''))));
+    check(name + ': ... and each states as an attribute what the window\'s states as a style (' + stated + ' paints)', stated > 60 && differ.length === 0,
+        differ.length + ': ' + differ.slice(0, 3).join(' | '));
+    check(name + ': ... the page\'s ground among them, which the file has white', groundWindow !== groundFile && /255, 255, 255/.test(groundFile), groundWindow + ' / ' + groundFile);
+    const foreign = notOfSvg11(shown);
+    check(name + ': no paint of the file is "transparent" or a colour with an alpha', foreign.length === 0, foreign.length + ': ' + foreign.slice(0, 3).join(' | '));
+    return {clear: clear, sheer: sheer, differ: differ.length};
+}
+
+// The paints SVG 1.1 does not have, on trees that draw them: the heat map's pointer surface and a legend's rows
+// ("transparent"), a time tree's age intervals and fossil ranges (a fill with an alpha, a stroke with one).
+async function filePaints() {
+    const cases = [
+        {file: '../../docs/data/sparse-accessory-genome.xml', config: {showHeatmap: true}, clear: 2, sheer: 0},
+        // node ages with their intervals: translucent bars
+        {file: '../../docs/data/nextstrain-ncov.json', config: {}, clear: 0, sheer: 8},
+        // fossil ranges: bars, and end caps that are strokes; in the circular layout the bars are strokes too
+        {file: '../../docs/data/ammonite-time-tree.xml', config: {}, clear: 0, sheer: 15},
+        {file: '../../docs/data/ammonite-time-tree.xml', config: {}, circular: true, clear: 0, sheer: 15}
+    ];
+    for (const c of cases) {
+        const trees = archaeopteryx.parseTrees(c.file, await (await fetch(c.file)).text());
+        const viewer = archaeopteryx.launch('#phylogram1', trees, c.config);
+        await viewer.ready;
+        await sleep(1500);
+        if (c.circular) { byId('layout_circ_b').closest('label').click(); await sleep(1800); }
+        const name = c.file.split('/').pop() + (c.circular ? ' circular' : '');
+        const section = document.querySelector('fieldset.aptx-download');
+        if (section.classList.contains('aptx-collapsed')) { section.querySelector(':scope > legend').click(); await sleep(200); }
+        byId('dl_shown_b').closest('label').click();
+        await sleep(100);
+        const live = document.querySelector('rect.basebackground').ownerSVGElement;
+        const f = await download('SVG');
+        const shown = f ? await svgOf(f) : null;
+        check(name + ': an svg file came', !!shown);
+        if (!shown) { continue; }
+        const found = fileAgainstWindow(name, live, shown);
+        // the fixture has to draw what this is about, or it proves nothing
+        check(name + ': the window draws at least ' + c.clear + ' "transparent" paints and ' + c.sheer + ' with an alpha',
+            found.clear >= c.clear && found.sheer >= c.sheer, found.clear + ' and ' + found.sheer);
+        if (c !== cases[0]) { continue; }
+        // What no tree draws today, put into the tree here to enter the branches its shapes do not reach: a colour
+        // with an alpha on a shape that is handed an opacity as well (the two multiply); on a GROUP, where an
+        // opacity of its own would reach the shapes in it that have their own colour (left as it is); on the
+        // stops of a gradient (which take "stop-opacity", have no "none", and are handed nothing by the gradient).
+        const probe = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        probe.setAttribute('class', 'aptx-test-probe');
+        probe.style.setProperty('fill-opacity', '0.5');
+        probe.innerHTML = '<rect width="1" height="1" style="fill: rgba(10, 20, 30, 0.5)"></rect>'
+            + '<rect width="1" height="1" style="fill: rgba(10, 20, 30, 0.5); fill-opacity: 0.2; stroke: rgba(1, 2, 3, 0.25)"></rect>'
+            + '<g style="fill: rgba(40, 50, 60, 0.5)"><rect width="1" height="1" style="fill: rgb(70, 80, 90)"></rect><rect width="1" height="1"></rect></g>'
+            + '<linearGradient id="aptx-test-ramp" style="stop-opacity: 0.5"><stop offset="0" style="stop-color: rgba(1, 2, 3, 0.5)"></stop>'
+            + '<stop offset="1" style="stop-color: transparent; stop-opacity: 0.5"></stop></linearGradient>';
+        live.children[1].appendChild(probe);
+        const f2 = await download('SVG');
+        const again = f2 ? await svgOf(f2) : null;
+        probe.remove();
+        const p = again ? again.querySelector('.aptx-test-probe') : null;
+        check(name + ': a second svg file came, with the shapes put in', !!p && p.children.length === 4);
+        if (!p) { continue; }
+        const says = (e) => ['fill', 'fill-opacity', 'stroke', 'stroke-opacity', 'stop-color', 'stop-opacity'].filter((n) => e.hasAttribute(n))
+            .map((n) => n + '=' + e.getAttribute(n)).join(' ');
+        const [handed, own, group, ramp] = p.children;
+        check('an alpha goes into the opacity the shape is handed: 0.5 of 0.5', says(handed) === 'fill=rgb(10, 20, 30) fill-opacity=0.25', says(handed));
+        check('... or into the one it states itself: 0.5 of 0.2; a stroke\'s into the stroke\'s', says(own) === 'fill=rgb(10, 20, 30) fill-opacity=0.1 stroke=rgb(1, 2, 3) stroke-opacity=0.25', says(own));
+        check('a group keeps its colour as it is: its opacity would reach the shape in it that has its own colour',
+            says(group) === 'fill=rgba(40, 50, 60, 0.5)' && says(group.children[0]) === 'fill=rgb(70, 80, 90)' && says(group.children[1]) === '',
+            says(group) + ' / ' + says(group.children[0]) + ' / ' + says(group.children[1]));
+        check('a gradient\'s stop: its alpha into stop-opacity, and no colour at all is an opacity of none',
+            says(ramp.children[0]) === 'stop-color=rgb(1, 2, 3) stop-opacity=0.5' && says(ramp.children[1]) === 'stop-color=rgb(0, 0, 0) stop-opacity=0',
+            says(ramp.children[0]) + ' / ' + says(ramp.children[1]));
+    }
+}
+
 (async function () {
+    if (q.get('paints') === '1') {
+        await filePaints();
+        finish();
+        return;
+    }
     if (q.get('legends') === '1') {
         await legendCards();
         finish();
@@ -314,50 +457,9 @@ async function launch(file, text) {
         live.getAttribute('class') + ' / ' + live.style.width + ' x ' + live.style.height);
     check('as shown: the file carries neither', !!shown && pageOnly(shown) === '', shown && pageOnly(shown));
     check('as shown: the file states the tree\'s font', !!shown && /system-ui/.test(shown.style.fontFamily), shown && shown.getAttribute('style'));
-    // On the page a shape's paint is an inline style (an attribute gives way to any rule of the page). A FILE says
-    // it as attributes again (2026-10-10): of five programs that are not a browser, one drew the faint lines of an
-    // exported svg at full strength, reading a line's colour from a style and not its opacity.
-    const FILE_PAINT = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
-        'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'text-anchor', 'dominant-baseline',
-        'shape-rendering', 'vector-effect', 'stop-color', 'stop-opacity', 'opacity'];
-    const all = (svg) => [svg, ...svg.querySelectorAll('*')];
-    const inStyle = (svg) => { const found = [];
-        for (const e of all(svg)) { for (const n of FILE_PAINT) { if (e.style && e.style.getPropertyValue(n) !== '') { found.push(e.tagName + ' ' + n + ': ' + e.style.getPropertyValue(n)); } } }
-        return found; };
-    const asAttribute = (svg) => all(svg).reduce((n, e) => n + FILE_PAINT.filter((p) => e.hasAttribute(p)).length, 0);
-    const inWindow = all(live).reduce((n, e) => n + FILE_PAINT.filter((p) => e.style.getPropertyValue(p) !== '').length, 0);
-    check('the window states its shapes\' paint as styles', inWindow > 100 && asAttribute(live) === live.querySelectorAll('[vector-effect]').length,
-        inWindow + ' as a style, ' + asAttribute(live) + ' as an attribute');
-    check('as shown: no shape of the file states its paint in a style', !!shown && inStyle(shown).length === 0,
-        shown && inStyle(shown).length + ': ' + inStyle(shown).slice(0, 3).join(' | '));
-    check('... nor is a style attribute left empty', !!shown && all(shown).every((e) => e.getAttribute('style') !== ''));
-    // ...and says what the window's shape says, shape by shape through the tree (the page's ground, which a file
-    // has white, is the one colour that may differ)
-    if (shown) {
-        const paper = (svg) => svg.querySelector('rect.basebackground');
-        const colour = (v) => { const c = v ? d3.color(v) : null; return c ? c.formatRgb() : v; };
-        const groundWindow = colour(paper(live).style.getPropertyValue('fill')); const groundFile = colour(paper(shown).getAttribute('fill'));
-        // (all of the svg: the tree, the strips under it, the legend cards; less what a file leaves out)
-        const a = [...live.querySelectorAll('*')].filter((e) => !e.closest('.aptx-overview, .aptx-hoverglow, circle.foundHalo'));
-        const b = [...shown.querySelectorAll('*')];
-        const differ = []; let stated = 0;
-        for (let i = 0; i < Math.min(a.length, b.length); ++i) {
-            for (const n of FILE_PAINT) {
-                const want = a[i].style.getPropertyValue(n).replace(/^url\("([^"]*)"\)$/, 'url($1)'); const got = b[i].getAttribute(n) || '';
-                if (want !== '') { ++stated; }
-                if (want === got || colour(want) === colour(got) || (colour(want) === groundWindow && colour(got) === groundFile)) { continue; }
-                differ.push(a[i].tagName + ' ' + n + ': "' + want + '" in the window, "' + got + '" in the file');
-            }
-        }
-        check('as shown: the file has the window\'s shapes, one for one', a.length === b.length && a.length > 20 && a.every((e, i) => e.tagName === b[i].tagName),
-            a.length + ' in the window, ' + b.length + ' in the file');
-        const links = b.filter((e) => FILE_PAINT.some((n) => /url\(/.test(e.getAttribute(n) || '')));
-        out.push('as shown: ' + links.length + ' paints of the file are a gradient or a pattern of its own');
-        check('... a paint that is one names it without quotes, as an attribute does', links.every((e) => FILE_PAINT.every((n) => !/url\(["\']/.test(e.getAttribute(n) || ''))));
-        check('... and each states as an attribute what the window\'s states as a style (' + stated + ' paints)', stated > 60 && differ.length === 0,
-            differ.length + ': ' + differ.slice(0, 3).join(' | '));
-        check('... the page\'s ground among them, which the file has white', groundWindow !== groundFile && /255, 255, 255/.test(groundFile), groundWindow + ' / ' + groundFile);
-    }
+    // On the page a shape's paint is an inline style; a FILE says it as attributes again, and its colours as
+    // SVG 1.1 has them (fileAgainstWindow, below).
+    if (shown) { fileAgainstWindow('as shown', live, shown); }
 
     // ---- graphics: full size ------------------------------------------------
     byId('dl_full_b').closest('label').click();
@@ -369,8 +471,9 @@ async function launch(file, text) {
     const fullNames = full ? tipLabelsIn(full) : 0;
     check('full size: the file carries no class and no inline size of the page\'s', !!full && pageOnly(full) === '', full && pageOnly(full));
     check('full size: the file states the tree\'s font', !!full && /system-ui/.test(full.style.fontFamily), full && full.getAttribute('style'));
-    check('full size: no shape of the file states its paint in a style, and ' + (full ? asAttribute(full) : 0) + ' paints are attributes',
-        !!full && inStyle(full).length === 0 && asAttribute(full) > 100, full && inStyle(full).length + ': ' + inStyle(full).slice(0, 3).join(' | '));
+    check('full size: no shape of the file states its paint in a style, and ' + (full ? paintAsAttribute(full) : 0) + ' paints are attributes',
+        !!full && paintInStyle(full).length === 0 && paintAsAttribute(full) > 100, full && paintInStyle(full).length + ': ' + paintInStyle(full).slice(0, 3).join(' | '));
+    check('full size: no paint of the file is "transparent" or a colour with an alpha', !!full && notOfSvg11(full).length === 0, full && notOfSvg11(full).slice(0, 3).join(' | '));
     if (q.get('shot') === 'full' && full) {
         // the exported picture itself, fitted to the window, for a human to look at
         document.body.innerHTML = '';
@@ -550,6 +653,9 @@ async function legendCards() {
         const styled = saved.filter((e) => PAINT.some((n) => e.style.getPropertyValue(n) !== ''));
         check(name + ': no shape of the saved figure states its paint in a style', styled.length === 0 && saved.length > 50,
             styled.length + ' of ' + saved.length + (styled[0] ? ': ' + styled[0].tagName + ' ' + styled[0].getAttribute('style') : ''));
+        const cleared = drawn.filter((e) => e.style.getPropertyValue('fill') === 'transparent').length;
+        out.push(name + ': ' + cleared + ' shapes on screen are filled "transparent"');
+        check(name + ': no paint of the saved figure is "transparent" or a colour with an alpha', notOfSvg11(svg).length === 0, notOfSvg11(svg).slice(0, 3).join(' | '));
         const gradients = (els, read) => els.filter((e) => /^url\(/.test(read(e) || ''));
         const want = gradients(drawn, (e) => e.style.getPropertyValue('fill'));
         const got = gradients(saved, (e) => e.getAttribute('fill'));

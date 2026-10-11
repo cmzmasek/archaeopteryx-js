@@ -16852,6 +16852,13 @@ function (root, d3, forester, phyloXml) {
         'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
         'text-anchor', 'dominant-baseline', 'shape-rendering', 'vector-effect', 'stop-color', 'stop-opacity',
         'opacity'];
+    // The paints that are a colour, each with the attribute a colour's alpha
+    // goes to in a file. SVG 1.1 has no colour with an alpha and no
+    // "transparent", and a program that knows neither draws black: MuPDF put
+    // a black slab over a heat map (the surface it listens to the pointer
+    // with) and over every row of a legend, and a solid bar where a node's
+    // age interval is a translucent one.
+    const FILE_ALPHA = {'fill': 'fill-opacity', 'stroke': 'stroke-opacity', 'stop-color': 'stop-opacity'};
     // every kind of element an svg of the viewer's is made of: the rule names
     // them one by one, so that a browser never tries it on anything else
     const SHAPE_ELEMENTS = ['g', 'path', 'line', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'text', 'tspan',
@@ -20782,6 +20789,32 @@ function (root, d3, forester, phyloXml) {
             if (style.length === 0) {
                 el.removeAttribute('style');
             }
+        });
+        // A colour with an alpha is the colour and, in the paint's own
+        // opacity, the alpha times what the shape has of it already, stated
+        // or handed down; a paint that is no paint at all is "none". Only on
+        // a shape: an opacity stated on a group would reach the shapes in it
+        // that have a colour of their own.
+        Array.prototype.slice.call(svg.querySelectorAll('[fill], [stroke], [stop-color]')).forEach(function (el) {
+            let holdsShapes = Array.prototype.some.call(el.children, function (child) {
+                return child.localName !== 'title' && child.localName !== 'desc';
+            });
+            Object.keys(FILE_ALPHA).forEach(function (paint) {
+                let c = el.hasAttribute(paint) ? d3.color(el.getAttribute(paint)) : null;
+                if (!c || !(c.opacity < 1) || holdsShapes) {
+                    return;
+                }
+                let opacity = FILE_ALPHA[paint];
+                if (c.opacity === 0 && paint !== 'stop-color') {
+                    el.setAttribute(paint, 'none');
+                    return;
+                }
+                // (a gradient's stop hands nothing down, and is handed nothing)
+                let from = paint === 'stop-color' ? (el.hasAttribute(opacity) ? el : null) : el.closest('[' + opacity + ']');
+                let has = from ? parseFloat(from.getAttribute(opacity)) : 1;
+                el.setAttribute(paint, c.copy({opacity: 1}).formatRgb());
+                el.setAttribute(opacity, String(+(c.opacity * (isNaN(has) ? 1 : has)).toFixed(4)));
+            });
         });
         return svg;
     }
