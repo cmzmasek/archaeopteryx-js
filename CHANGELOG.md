@@ -88,11 +88,20 @@ users see a change only when a version is cut.
   and the control panel; a page rule that must override them says
   `!important`. (The tree's svg itself can still be given a border or a
   shadow, and the panel and dialogs restyled, by naming their classes.)
-- **An exported SVG file has its shapes' paint in `style` attributes**
-  (`style="fill: ...; stroke: ..."`) where it had `fill="..."` and
-  `stroke="..."`: it is a copy of what is on the page. It draws exactly as
-  before; a program that reads only the attributes of an svg will not see the
-  colours. The file's svg also states the tree's `font-family`.
+- **An exported SVG file states all of its shapes' paint as attributes**
+  (`fill="..."`, `stroke="..."`, `stroke-opacity="..."`, `text-anchor="..."`).
+  Through 3.27.0 the file was a mix: more than half of its fill colours, and
+  most opacities, were in `style` attributes, the rest in attributes of their
+  own. On the page all of it is a style now (above); a file has no page to
+  hold its ground against, and not every program reads a style as well as it
+  reads an attribute, so the copy that becomes a file is written the plainest
+  way. Fonts and `paint-order` stay in `style`, as they were, and a colour
+  that was written `#909090` may now read `rgb(144, 144, 144)`. Sixteen
+  exported trees were drawn with Inkscape, LibreOffice, librsvg and Quick
+  Look from the files as they were and as they are: pixel for pixel the same.
+  MuPDF, which reads an opacity from an attribute and not from a style, draws
+  thirteen of the sixteen nearer to what the others draw. The file's svg also
+  states the tree's `font-family`.
 
 ### Tests
 - `test/browser/host_css.html`, eight cases: the viewer launched under the
@@ -117,6 +126,11 @@ users see a change only when a version is cut.
   may either.
 - `test/browser/branch_paint.html`: a branch's paint is a style, and a path
   kept between drawings wears nothing of the batch it drew before.
+- `test/browser/exports.html` asks of the SVG file what `host_css.html` asks
+  of the page, the other way round: no shape of the file states its paint in
+  a style, each states as an attribute exactly what the window's shape states
+  as a style (every shape of the svg, one for one), a gradient is named as an
+  attribute names it, and the window is left as it was.
 - The browser runner pins the page's colour scheme to light. It was the
   machine's, and a machine that changes its appearance at sunset ran the same
   case light in the afternoon and dark in the evening.

@@ -3062,6 +3062,7 @@ runTest("zero is a value, not absent: ", testZeroIsAValueNotAbsence);
 runTest("alignedMolSeqs needs a length: ", testAlignedFlagIsNeverReadAlone);
 runTest("versions agree           : ", testVersionsAgree);
 runTest("a shape's paint is inline : ", testShapePaintIsNeverAnAttribute);
+runTest("a file's paint is attributes : ", testFilePaintIsAttributes);
 
 if (_testFailures > 0) {
     console.log("\n" + _testFailures + " test(s) FAILED");
@@ -3881,6 +3882,90 @@ function testShapePaintIsNeverAnAttribute() {
     }
     if (!/return paintInline\('<svg class="aptx-glyph"/.test(src)) {
         console.log('    an icon\'s markup does not go through paintInline');
+        ok = false;
+    }
+    return ok;
+}
+
+// ...and a FILE says it the other way again (2026-10-10). Of five programs that
+// are not a browser, one (MuPDF) drew the faint lines of an exported SVG at full
+// strength: it reads a line's colour from a style and not its opacity. So the
+// copy that becomes the SVG, PNG or PDF download has its paint moved back into
+// attributes (paintAsAttributes, FILE_PAINT). What the file then says is asked
+// in test/browser/exports.html; this holds the list to the table it is a part
+// of, and the copy to going through it.
+function testFilePaintIsAttributes() {
+    var fs = require('fs');
+    var pth = require('path');
+    var src = fs.readFileSync(pth.join(__dirname, '..', 'archaeopteryx.js'), 'utf8');
+    var quoted = function (text) {
+        return (text.match(/'[a-z-]+'/g) || []).map(function (n) {
+            return n.slice(1, -1);
+        });
+    };
+    var table = src.match(/const SHAPE_PAINT = \{([\s\S]*?)\};/);
+    var list = src.match(/const FILE_PAINT = \[([\s\S]*?)\];/);
+    if (!table || !list) {
+        console.log('    no SHAPE_PAINT table or no FILE_PAINT list found in archaeopteryx.js');
+        return false;
+    }
+    var paint = (table[1].match(/'[a-z-]+'(?=\s*:)/g) || []).map(function (n) {
+        return n.slice(1, -1);
+    });
+    var file = quoted(list[1]);
+    var ok = true;
+    // a property the viewer does not take charge of is none it moved into a style
+    file.forEach(function (name) {
+        if (paint.indexOf(name) < 0) {
+            console.log('    FILE_PAINT names "' + name + '", which SHAPE_PAINT does not');
+            ok = false;
+        }
+    });
+    // every paint the drawing code states (as a style, the test above) that SVG 1.1 has as an attribute
+    var stated = {};
+    var call = /\.(?:style|setProperty)\(\s*['"]([a-z-]+)['"]/g;
+    var m;
+    while ((m = call.exec(src)) !== null) {
+        stated[m[1]] = true;
+    }
+    // what a file leaves a style, on purpose: SVG 2's, and what is no paint
+    var styleOnly = ['paint-order', 'filter', 'mix-blend-mode', 'display', 'visibility', 'cursor', 'pointer-events',
+        'color', 'font', 'letter-spacing', 'word-spacing', 'text-transform', 'text-decoration', 'text-shadow',
+        'text-rendering', 'white-space', 'transition', 'animation'];
+    var seen = 0;
+    paint.forEach(function (name) {
+        if (!stated[name]) {
+            return;
+        }
+        ++seen;
+        if (file.indexOf(name) < 0 && styleOnly.indexOf(name) < 0) {
+            console.log('    the drawing code states "' + name + '" as a style, and a file would leave it one');
+            ok = false;
+        }
+    });
+    if (seen < 8 || !stated.fill || !stated['stroke-opacity']) {
+        console.log('    only ' + seen + ' paints found stated as a style: the scan is broken, not the code');
+        return false;
+    }
+    ['fill', 'stroke', 'stroke-width', 'stroke-opacity', 'fill-opacity', 'stroke-dasharray', 'text-anchor',
+        'dominant-baseline', 'stop-color', 'vector-effect'].forEach(function (name) {
+        if (file.indexOf(name) < 0) {
+            console.log('    FILE_PAINT does not name "' + name + '"');
+            ok = false;
+        }
+    });
+    if (file.indexOf('paint-order') >= 0) {
+        console.log('    paint-order is no attribute in SVG 1.1: it stays the style every release wrote');
+        ok = false;
+    }
+    // both downloads' copies are cleaned by one function, and it ends in the conversion
+    var clean = src.match(/function cleanExportCopy\(copy\) \{([\s\S]*?)\n {4}\}/);
+    if (!clean || !/return paintAsAttributes\(copy\);\s*$/.test(clean[1])) {
+        console.log('    cleanExportCopy does not end by handing its copy to paintAsAttributes');
+        ok = false;
+    }
+    if (src.split('.serializeToString(').length - 1 !== src.split('toLightExport((new XMLSerializer()).serializeToString(copy))').length - 1) {
+        console.log('    an svg is written out somewhere that is not the cleaned copy');
         ok = false;
     }
     return ok;

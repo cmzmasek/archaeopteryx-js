@@ -314,6 +314,50 @@ async function launch(file, text) {
         live.getAttribute('class') + ' / ' + live.style.width + ' x ' + live.style.height);
     check('as shown: the file carries neither', !!shown && pageOnly(shown) === '', shown && pageOnly(shown));
     check('as shown: the file states the tree\'s font', !!shown && /system-ui/.test(shown.style.fontFamily), shown && shown.getAttribute('style'));
+    // On the page a shape's paint is an inline style (an attribute gives way to any rule of the page). A FILE says
+    // it as attributes again (2026-10-10): of five programs that are not a browser, one drew the faint lines of an
+    // exported svg at full strength, reading a line's colour from a style and not its opacity.
+    const FILE_PAINT = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
+        'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'text-anchor', 'dominant-baseline',
+        'shape-rendering', 'vector-effect', 'stop-color', 'stop-opacity', 'opacity'];
+    const all = (svg) => [svg, ...svg.querySelectorAll('*')];
+    const inStyle = (svg) => { const found = [];
+        for (const e of all(svg)) { for (const n of FILE_PAINT) { if (e.style && e.style.getPropertyValue(n) !== '') { found.push(e.tagName + ' ' + n + ': ' + e.style.getPropertyValue(n)); } } }
+        return found; };
+    const asAttribute = (svg) => all(svg).reduce((n, e) => n + FILE_PAINT.filter((p) => e.hasAttribute(p)).length, 0);
+    const inWindow = all(live).reduce((n, e) => n + FILE_PAINT.filter((p) => e.style.getPropertyValue(p) !== '').length, 0);
+    check('the window states its shapes\' paint as styles', inWindow > 100 && asAttribute(live) === live.querySelectorAll('[vector-effect]').length,
+        inWindow + ' as a style, ' + asAttribute(live) + ' as an attribute');
+    check('as shown: no shape of the file states its paint in a style', !!shown && inStyle(shown).length === 0,
+        shown && inStyle(shown).length + ': ' + inStyle(shown).slice(0, 3).join(' | '));
+    check('... nor is a style attribute left empty', !!shown && all(shown).every((e) => e.getAttribute('style') !== ''));
+    // ...and says what the window's shape says, shape by shape through the tree (the page's ground, which a file
+    // has white, is the one colour that may differ)
+    if (shown) {
+        const paper = (svg) => svg.querySelector('rect.basebackground');
+        const colour = (v) => { const c = v ? d3.color(v) : null; return c ? c.formatRgb() : v; };
+        const groundWindow = colour(paper(live).style.getPropertyValue('fill')); const groundFile = colour(paper(shown).getAttribute('fill'));
+        // (all of the svg: the tree, the strips under it, the legend cards; less what a file leaves out)
+        const a = [...live.querySelectorAll('*')].filter((e) => !e.closest('.aptx-overview, .aptx-hoverglow, circle.foundHalo'));
+        const b = [...shown.querySelectorAll('*')];
+        const differ = []; let stated = 0;
+        for (let i = 0; i < Math.min(a.length, b.length); ++i) {
+            for (const n of FILE_PAINT) {
+                const want = a[i].style.getPropertyValue(n).replace(/^url\("([^"]*)"\)$/, 'url($1)'); const got = b[i].getAttribute(n) || '';
+                if (want !== '') { ++stated; }
+                if (want === got || colour(want) === colour(got) || (colour(want) === groundWindow && colour(got) === groundFile)) { continue; }
+                differ.push(a[i].tagName + ' ' + n + ': "' + want + '" in the window, "' + got + '" in the file');
+            }
+        }
+        check('as shown: the file has the window\'s shapes, one for one', a.length === b.length && a.length > 20 && a.every((e, i) => e.tagName === b[i].tagName),
+            a.length + ' in the window, ' + b.length + ' in the file');
+        const links = b.filter((e) => FILE_PAINT.some((n) => /url\(/.test(e.getAttribute(n) || '')));
+        out.push('as shown: ' + links.length + ' paints of the file are a gradient or a pattern of its own');
+        check('... a paint that is one names it without quotes, as an attribute does', links.every((e) => FILE_PAINT.every((n) => !/url\(["\']/.test(e.getAttribute(n) || ''))));
+        check('... and each states as an attribute what the window\'s states as a style (' + stated + ' paints)', stated > 60 && differ.length === 0,
+            differ.length + ': ' + differ.slice(0, 3).join(' | '));
+        check('... the page\'s ground among them, which the file has white', groundWindow !== groundFile && /255, 255, 255/.test(groundFile), groundWindow + ' / ' + groundFile);
+    }
 
     // ---- graphics: full size ------------------------------------------------
     byId('dl_full_b').closest('label').click();
@@ -325,6 +369,8 @@ async function launch(file, text) {
     const fullNames = full ? tipLabelsIn(full) : 0;
     check('full size: the file carries no class and no inline size of the page\'s', !!full && pageOnly(full) === '', full && pageOnly(full));
     check('full size: the file states the tree\'s font', !!full && /system-ui/.test(full.style.fontFamily), full && full.getAttribute('style'));
+    check('full size: no shape of the file states its paint in a style, and ' + (full ? asAttribute(full) : 0) + ' paints are attributes',
+        !!full && inStyle(full).length === 0 && asAttribute(full) > 100, full && inStyle(full).length + ': ' + inStyle(full).slice(0, 3).join(' | '));
     if (q.get('shot') === 'full' && full) {
         // the exported picture itself, fitted to the window, for a human to look at
         document.body.innerHTML = '';
@@ -495,6 +541,22 @@ async function legendCards() {
         holder.appendChild(document.importNode(await svgOf(f), true));
         document.body.appendChild(holder);
         const svg = holder.firstChild;
+        // A file states its paint as attributes (see "as shown", above): the cards', the heat map's and the gene
+        // arrows' too, and a paint that is a gradient of the file's own is named as an attribute names it.
+        const PAINT = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linejoin',
+            'text-anchor', 'dominant-baseline', 'vector-effect', 'stop-color', 'stop-opacity', 'opacity'];
+        const drawn = [...live.querySelectorAll('*')].filter((e) => !e.closest('.aptx-overview, .aptx-hoverglow, circle.foundHalo'));
+        const saved = [...svg.querySelectorAll('*')];
+        const styled = saved.filter((e) => PAINT.some((n) => e.style.getPropertyValue(n) !== ''));
+        check(name + ': no shape of the saved figure states its paint in a style', styled.length === 0 && saved.length > 50,
+            styled.length + ' of ' + saved.length + (styled[0] ? ': ' + styled[0].tagName + ' ' + styled[0].getAttribute('style') : ''));
+        const gradients = (els, read) => els.filter((e) => /^url\(/.test(read(e) || ''));
+        const want = gradients(drawn, (e) => e.style.getPropertyValue('fill'));
+        const got = gradients(saved, (e) => e.getAttribute('fill'));
+        out.push(name + ': ' + want.length + ' shapes on screen are filled with a gradient, ' + got.length + ' in the saved figure');
+        check(name + ': a gradient is named as an attribute names it, and is in the file',
+            got.length === want.length && got.every((e) => { const m = /^url\(#([^"')]+)\)$/.exec(e.getAttribute('fill')); return !!m && !!svg.querySelector('#' + m[1]); }),
+            got.map((e) => e.getAttribute('fill')).slice(0, 3).join(' | '));
         const page = svg.getBoundingClientRect();
         const tree = svg.children[1].getBoundingClientRect();
         for (const k of classes) {

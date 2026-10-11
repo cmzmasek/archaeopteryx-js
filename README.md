@@ -1279,9 +1279,10 @@ says `!important`.
   `circle { r: 4px }` moves or resizes the viewer's shapes too.
 * Nothing outranks a rule scoped by an `id`, or marked `!important`.
 
-An exported SVG file has its shapes' paint in `style` attributes for the same
-reason (it is a copy of what is on the page); the PNG and PDF exports are
-unchanged.
+A file is another matter: it has no page around it. In an exported SVG file a
+shape's colours, strokes, opacities and text alignment are attributes
+(`fill="..."`, `stroke-opacity="..."`), the form every program that opens an
+svg reads; only fonts and `paint-order` are in `style`.
 
 `test/browser/host_css.html` launches the viewer under real stylesheets (the
 BV-BRC website's, Bootstrap 3 and 5, Tailwind's reset, and a sheet of single

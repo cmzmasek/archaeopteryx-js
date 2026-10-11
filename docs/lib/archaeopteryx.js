@@ -16840,6 +16840,18 @@ function (root, d3, forester, phyloXml) {
         'text-decoration': null, 'text-shadow': null, 'text-rendering': null, 'white-space': null,
         'transition': null, 'animation': null
     };
+    // What of that paint a FILE states as attributes again (paintAsAttributes,
+    // for the SVG, PNG and PDF downloads). A file has no page to hold its
+    // ground against, and not every program that opens one reads a style as
+    // well as it reads an attribute: MuPDF takes a line's colour from a style
+    // and not its opacity, and drew the faint lines of a time axis at full
+    // strength. These are the paint properties SVG 1.1 has as attributes, and
+    // vector-effect, which every release wrote as one. (paint-order is SVG
+    // 2's: it stays the style it always was. So do the fonts.)
+    const FILE_PAINT = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity',
+        'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
+        'text-anchor', 'dominant-baseline', 'shape-rendering', 'vector-effect', 'stop-color', 'stop-opacity',
+        'opacity'];
     // every kind of element an svg of the viewer's is made of: the rule names
     // them one by one, so that a browser never tries it on anything else
     const SHAPE_ELEMENTS = ['g', 'path', 'line', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'text', 'tspan',
@@ -20747,7 +20759,31 @@ function (root, d3, forester, phyloXml) {
         if (glow) {
             glow.remove();
         }
-        return copy;
+        return paintAsAttributes(copy);
+    }
+
+    // The opposite of paintInline, for a file: a shape's paint, inline styles
+    // on the page, is attributes again (FILE_PAINT). Where an element says a
+    // thing both ways, the style is what painted it and has the last word.
+    function paintAsAttributes(svg) {
+        [svg].concat(Array.prototype.slice.call(svg.querySelectorAll('[style]'))).forEach(function (el) {
+            let style = el.style;
+            if (!style) {
+                return;
+            }
+            FILE_PAINT.forEach(function (name) {
+                let value = style.getPropertyValue(name);
+                if (value !== '') {
+                    // (the browser writes url("#id"); an attribute has no quotes there)
+                    el.setAttribute(name, value.replace(/^url\("([^"]*)"\)$/, 'url($1)'));
+                    style.removeProperty(name);
+                }
+            });
+            if (style.length === 0) {
+                el.removeAttribute('style');
+            }
+        });
+        return svg;
     }
 
     // The same element of the copy as `live` is of the svg: children are
