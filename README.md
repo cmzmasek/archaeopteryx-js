@@ -1343,6 +1343,11 @@ tree, with the same columns, and a table that joins back onto the tree as
 A full-size PDF taller or wider than 200 inches (14,400 pt, the PDF page
 limit) is scaled onto the largest page; it is vector, so nothing is lost.
 
+**The SVG file is written for programs other than a browser**: a shape's
+paint is in attributes, and its colours are those SVG 1.1 has (no
+`transparent`, no `rgba(...)`, which Inkscape 1.1 draws as black). See [The
+host page's stylesheet](#the-host-pages-stylesheet).
+
 Newick and Nexus files usually carry branch support as a bare internal label
 (`)100:0.05`). Archaeopteryx.js recognises those automatically and treats them
 as confidence values, so support-based features work without any setup. If your

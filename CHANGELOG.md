@@ -7,6 +7,8 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+## 3.28.0 — 2026-10-11
+
 ### Fixed
 - **A host page's stylesheet no longer restyles the viewer.** The viewer is
   drawn inside somebody else's page, and a rule of that page's won wherever
@@ -58,7 +60,8 @@ users see a change only when a version is cut.
   changes (123 states of the 26 demo trees compared pixel for pixel: the
   rectangular, circular and unrooted layouts, every display option on, both
   themes, every dialog, a search, a selection, a collapsed clade); the PNG
-  and PDF exports are the same files as before (32 of them compared). Drawing
+  exports are the same files as before and the PDF exports draw the same
+  pages (16 of each compared). Drawing
   takes as long as it did in four of six cases measured; a heat map of 1,100
   cells takes 37 ms where it took 32, and an alignment of 18,000 shapes 247
   ms where it took 234.
