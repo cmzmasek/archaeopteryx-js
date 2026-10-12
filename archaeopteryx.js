@@ -17148,6 +17148,13 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-close:hover { background:var(--p-accent-weak); color:var(--p-accent-ink);'
             + '  border-color:var(--p-accent); }'
             + '.aptx-dialog-body { padding:10px 13px 12px; overflow:auto; }'
+            // a strip under the body, which stays put while the body scrolls,
+            // and a button in it that reads as a link (as the program name does)
+            + '.aptx-dialog-foot { display:flex; align-items:center; padding:7px 13px 8px;'
+            + '  border-top:1px solid var(--p-line); }'
+            + '.aptx-dialog-link { margin:0; padding:0; border:0; background:none; font:inherit;'
+            + '  color:var(--p-accent-ink); cursor:pointer; }'
+            + '.aptx-dialog-link:hover { text-decoration:underline; }'
             // a dialog that scrolls gets the panel's own scrollbar: the
             // browser's default track is white in the dark theme too
             + '.aptx-dialog-body::-webkit-scrollbar { width:9px; height:9px; }'
@@ -18460,6 +18467,24 @@ function (root, d3, forester, phyloXml) {
             treePropRow(box, 'Confidence intervals',
                 (time.hasInternalIntervals || time.hasExternalIntervals) ? 'yes' : null);
         }
+
+        // A second way to the About box, which was reached by a click on the
+        // program name alone -- and a name does not look like a button to
+        // everyone, while the "i" is where "about this program" is looked for
+        // (Christian, 2026-10-12). Under the body rather than at its end: the
+        // body scrolls, and this must not.
+        let foot = document.createElement('div');
+        foot.className = 'aptx-dialog-foot';
+        let about = document.createElement('button');
+        about.type = 'button';
+        about.className = 'aptx-dialog-link';
+        about.textContent = 'About ' + NAME;
+        about.addEventListener('click', function () {
+            shell.dialog.close();
+            showAboutDialog();
+        });
+        foot.appendChild(about);
+        shell.dialog.appendChild(foot);
 
         shell.dialog.showModal();
     }

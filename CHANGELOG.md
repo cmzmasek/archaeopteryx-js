@@ -7,6 +7,13 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Added
+- **A second way to the About box.** It was reached by a click on the program
+  name alone, and a name does not look like a button to everyone. The **Tree
+  properties** dialog (the ⓘ button, ⌘I / Ctrl+I) now ends in a strip with an
+  "About Archaeopteryx.js" link, which stays in view while the dialog's body
+  scrolls.
+
 ### Fixed
 - **The hover readout's values are in one column.** Each row laid itself out,
   its label 96 px or wider: a label wider than that pushed its own value to

@@ -229,6 +229,41 @@
             }
             check('the button still reads name and version only', name.textContent === 'Archaeopteryx.js ' + rep.version, name.textContent);
 
+            // ---- Tree properties -> About: the second way in (Christian, 2026-10-12: a click on the
+            // program name is not found by everyone, the "i" is where "about" is looked for) ----
+            document.querySelector('#p .aptx-panel .aptx-info-btn').click(); await sleep(300);
+            const props = document.getElementById('aptx_tree_props');
+            check('the "i" button opens Tree properties', !!props && props.open);
+            const foot = props.querySelector('.aptx-dialog-foot'), pbody = props.querySelector('.aptx-dialog-body');
+            const aboutLink = foot && foot.querySelector('button');
+            check('... which ends in a strip holding one link, "About Archaeopteryx.js"', !!foot && foot === props.lastElementChild
+                && foot.children.length === 1 && !!aboutLink && aboutLink.textContent === 'About Archaeopteryx.js', aboutLink && aboutLink.textContent);
+            if (aboutLink) {
+                const at = () => { const b = foot.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round).join(' '); };
+                const first = at(); const fb = foot.getBoundingClientRect(), pb = props.getBoundingClientRect(), bb = pbody.getBoundingClientRect();
+                check('... under the body, inside the dialog and the window', fb.top >= bb.bottom - 0.5 && fb.bottom <= pb.bottom + 0.5
+                    && fb.left >= pb.left && fb.right <= pb.right && fb.bottom <= window.innerHeight && fb.height > 20, first + ' in ' + Math.round(pb.top) + '-' + Math.round(pb.bottom));
+                // ?trees=1 has a bare four-tip tree on view: its properties fit, and the strip is simply under them
+                const scrolls = pbody.scrollHeight > pbody.clientHeight + 40;
+                check(mode === 'trees' ? 'a bare tree\'s properties fit their box' : 'the body is longer than its box here (or the next check tests nothing)',
+                    scrolls === (mode !== 'trees'), pbody.scrollHeight + ' in ' + pbody.clientHeight);
+                if (scrolls) {
+                    pbody.scrollTop = pbody.scrollHeight; await sleep(100);
+                    check('... and the strip stays where it is while the body scrolls', pbody.scrollTop > 40 && at() === first, at());
+                }
+                const lb = aboutLink.getBoundingClientRect();
+                check('the link is drawn inside the strip, in the accent ink of the program name', lb.width > 60 && lb.top >= fb.top && lb.bottom <= fb.bottom
+                    && getComputedStyle(aboutLink).color === getComputedStyle(name).color && getComputedStyle(aboutLink).backgroundColor === 'rgba(0, 0, 0, 0)'
+                    && getComputedStyle(aboutLink).borderTopWidth === '0px', getComputedStyle(aboutLink).color + ' / ' + getComputedStyle(name).color);
+                check('... and is a button a keyboard reaches', aboutLink.tagName === 'BUTTON' && aboutLink.type === 'button' && aboutLink.tabIndex === 0);
+                aboutLink.click(); await sleep(300);
+                const viaProps = document.getElementById('aptx_about');
+                check('the link closes Tree properties and opens the About box', !document.getElementById('aptx_tree_props') && !!viaProps && viaProps.open
+                    && viaProps.querySelector('.aptx-about-name').textContent === 'Archaeopteryx.js');
+                if (viaProps) { viaProps.querySelector('.aptx-dialog-close').click(); await sleep(200); }
+                check('... which closes as ever', !document.getElementById('aptx_about'));
+            } else if (props) { props.querySelector('.aptx-dialog-close').click(); await sleep(200); }
+
             // ---- About -> Diagnostics ----
             name.click(); await sleep(300);
             const about = document.getElementById('aptx_about');

@@ -1172,7 +1172,8 @@ console.log(archaeopteryx.doctor().text);
 
 It works before a launch, after a launch that threw, and in Node, and it never
 throws. The same report is in the viewer: the **About** box (a click on the
-program name) has a **Diagnostics** row that opens it, with a **Copy report**
+program name, or the "About Archaeopteryx.js" link at the foot of **Tree
+properties**, the ⓘ button) has a **Diagnostics** row that opens it, with a **Copy report**
 button — the copied text adds the keys passed to `launch()` (a string or a
 number as given, anything else as its kind: a tree or a callback is never
 copied) and the browser.
