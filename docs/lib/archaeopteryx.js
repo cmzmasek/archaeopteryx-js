@@ -17598,9 +17598,13 @@ function (root, d3, forester, phyloXml) {
             // theme was applied. The two share their styling through the CSS
             // selector instead, which is all the class was wanted for.
             infoBtn.className = 'aptx-info-btn';
+            // ... and the About box, in the words of the link that leads
+            // there from the dialog: whoever looks for "about" under the "i"
+            // is told it is here before clicking (Christian, 2026-10-12).
+            // The shortcut stays with what it opens.
             infoBtn.title = 'Tree properties and statistics ('
-                + (IS_MAC ? '\u2318I' : 'Ctrl+I') + ')';
-            infoBtn.setAttribute('aria-label', 'Tree properties and statistics');
+                + (IS_MAC ? '\u2318I' : 'Ctrl+I') + '), and About ' + NAME;
+            infoBtn.setAttribute('aria-label', 'Tree properties and statistics, and About ' + NAME);
             infoBtn.innerHTML = makeGlyph('info');
             infoBtn.addEventListener('click', function (e) {
                 e.stopPropagation();

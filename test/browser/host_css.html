@@ -360,7 +360,7 @@
                 const d = topDialog();
                 return [d && d.querySelector('.aptx-cheat svg.aptx-glyph') ? '' : 'no cheat sheet with icons', d ? [d] : [], await svgChecks(d)]; }],
             ['the tree properties', async () => {
-                const b = container.querySelector('.aptx-panel .aptx-info-btn[aria-label="Tree properties and statistics"]');
+                const b = container.querySelector('.aptx-panel .aptx-info-btn[aria-label^="Tree properties"]');
                 if (!b) { return ['no tree-properties button', []]; }
                 b.click(); await sleep(250);
                 const d = topDialog();

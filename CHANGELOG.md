@@ -12,7 +12,8 @@ users see a change only when a version is cut.
   name alone, and a name does not look like a button to everyone. The **Tree
   properties** dialog (the ⓘ button, ⌘I / Ctrl+I) now ends in a strip with an
   "About Archaeopteryx.js" link, which stays in view while the dialog's body
-  scrolls.
+  scrolls, and the button's tooltip says so: "Tree properties and statistics
+  (⌘I), and About Archaeopteryx.js".
 
 ### Fixed
 - **The hover readout's values are in one column.** Each row laid itself out,

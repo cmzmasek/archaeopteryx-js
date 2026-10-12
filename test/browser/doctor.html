@@ -231,13 +231,18 @@
 
             // ---- Tree properties -> About: the second way in (Christian, 2026-10-12: a click on the
             // program name is not found by everyone, the "i" is where "about" is looked for) ----
-            document.querySelector('#p .aptx-panel .aptx-info-btn').click(); await sleep(300);
+            const infoBtn = document.querySelector('#p .aptx-panel .aptx-info-btn');
+            check('the "i" button says what it leads to, About included, the shortcut beside what it opens',
+                /^Tree properties and statistics \((\u2318I|Ctrl\+I)\), and About Archaeopteryx\.js$/.test(infoBtn.title)
+                && infoBtn.getAttribute('aria-label') === 'Tree properties and statistics, and About Archaeopteryx.js', infoBtn.title + ' | ' + infoBtn.getAttribute('aria-label'));
+            infoBtn.click(); await sleep(300);
             const props = document.getElementById('aptx_tree_props');
             check('the "i" button opens Tree properties', !!props && props.open);
             const foot = props.querySelector('.aptx-dialog-foot'), pbody = props.querySelector('.aptx-dialog-body');
             const aboutLink = foot && foot.querySelector('button');
             check('... which ends in a strip holding one link, "About Archaeopteryx.js"', !!foot && foot === props.lastElementChild
                 && foot.children.length === 1 && !!aboutLink && aboutLink.textContent === 'About Archaeopteryx.js', aboutLink && aboutLink.textContent);
+            check('... in the words the button\'s tooltip ends with', !!aboutLink && infoBtn.title.endsWith(', and ' + aboutLink.textContent));
             if (aboutLink) {
                 const at = () => { const b = foot.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round).join(' '); };
                 const first = at(); const fb = foot.getBoundingClientRect(), pb = props.getBoundingClientRect(), bb = pbody.getBoundingClientRect();
