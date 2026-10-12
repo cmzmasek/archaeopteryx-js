@@ -7,6 +7,18 @@ users see a change only when a version is cut.
 
 ## Unreleased
 
+### Fixed
+- **The hover readout's values are in one column.** Each row laid itself out,
+  its label 96 px or wider: a label wider than that pushed its own value to
+  the right of the others ("Confidence [SH_like]" by 15 px, "Confidence
+  [posterior probability]" by 82), and "Distance to parent", at 96.6 px, kept
+  its value half a pixel off the rows around it. The readout is one grid now,
+  for a node, a heat map cell, an alignment column, a domain, a gene and a
+  clock-plot point alike: the label column is as wide as its widest label and
+  every value starts on one x. A label wider than 190 px wraps (a long
+  metadata name used to take the line and leave its value a sliver). A
+  readout of short labels alone is what it was.
+
 ## 3.28.0 — 2026-10-11
 
 ### Fixed

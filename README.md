@@ -2635,6 +2635,14 @@ edge, every cell flipped and every readout floated ~95 px clear of the cell it
 described. `test_trees/heatmap_tip.html` pins it, in both layouts, and fails
 unless all four placements were exercised.
 
+**How the readout is laid out** is one grid for the whole of it, whoever
+filled it: the label column is as wide as its widest label, so every value
+starts on one x, and a label wider than `HOVER_KEY_MAX` (190 px of the 320 the
+readout may take) wraps. A row is `display:contents` there — its two cells
+are the grid's items — and a heading spans both columns. In the node-data
+dialog the same markup is a flex line a row, its label a fixed share of the
+width. `test/browser/hover_columns.html` pins the readout.
+
 In the rectangular layout the turned column names, the gradient, its two
 numbers, the blank key and the caption are a **floating strip**; its reserve adds `MSA_NAV_RESERVE` while the
 alignment is shown, or the alignment's navigation bar (fixed at the viewport

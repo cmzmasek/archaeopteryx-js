@@ -1605,6 +1605,9 @@ function (root, d3, forester, phyloXml) {
     // cell it described; a matrix that hugs the right edge flips on every cell,
     // so the guess was what the reader saw every time.
     const HOVER_READOUT_GAP = 14;
+    // The widest the readout's label column gets, of the 320 px the readout
+    // may take: a longer label wraps (see the .aptx-tip rules).
+    const HOVER_KEY_MAX = 190;
 
     // One way to open an external page. There were three: window.open + a
     // win.focus() that throws when a popup blocker hands back null and which
@@ -17290,11 +17293,22 @@ function (root, d3, forester, phyloXml) {
             + '  box-shadow:0 8px 20px -8px rgba(23,34,46,0.4),0 2px 5px -2px rgba(23,34,46,0.2);'
             + '  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;'
             + '  font-size:11px; line-height:1.45; text-align:left; }'
-            + '.aptx-tip .aptx-dialog-head { margin:7px 0 2px; }'
+            // ONE GRID for the whole readout, so every value starts on one x.
+            // Each row used to be a flex line of its own, its label 96 px or
+            // wider: "Confidence [SH_like]" is wider, and pushed its own value
+            // 15 px to the right of the three above it (Christian, 2026-10-12,
+            // with a screenshot). The label column is as wide as its widest
+            // label; past HOVER_KEY_MAX a label wraps, or one long metadata
+            // name would leave every value a sliver. A row's two cells are
+            // the grid's items (the row itself is display:contents), so the
+            // row's 1 px above and below is theirs now.
+            + '.aptx-tip { display:grid; grid-template-columns:fit-content(' + HOVER_KEY_MAX + 'px) minmax(0,1fr);'
+            + '  column-gap:8px; }'
+            + '.aptx-tip .aptx-dialog-head { grid-column:1 / -1; margin:7px 0 2px; }'
             + '.aptx-tip .aptx-dialog-head:first-child { margin-top:0; }'
-            + '.aptx-tip .aptx-dialog-line { padding:1px 0; }'
-            + '.aptx-tip .aptx-dialog-line + .aptx-dialog-line { border-top:0; }'
-            + '.aptx-tip .aptx-dialog-key { flex:0 0 auto; min-width:96px; }'
+            + '.aptx-tip .aptx-dialog-line { display:contents; }'
+            + '.aptx-tip .aptx-dialog-key,.aptx-tip .aptx-dialog-val { padding:1px 0; }'
+            + '.aptx-tip .aptx-dialog-key { min-width:96px; overflow-wrap:anywhere; }'
             // WRAPS. The title's longest word cannot break, so on a narrow
             // panel the buttons had nowhere to go and overflowed the padding:
             // with four of them they ended 2.4 px past the panel's own right

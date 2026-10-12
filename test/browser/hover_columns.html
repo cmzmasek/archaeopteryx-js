@@ -1,0 +1,194 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the hover readout lays its values out in one column</title>
+<style>
+  html,body{margin:0}
+  /* a page that flows, like an embedding site's: content above and below */
+  .filler{height:200px;background:repeating-linear-gradient(#f4f4f4 0 20px,#e8e8e8 20px 40px)}
+  #p{height:640px;position:relative;border:1px solid #ccc}
+</style>
+<div class="filler"></div>
+<div id="p"></div>
+<div class="filler"></div>
+<script>
+// Christian, 2026-10-12, with a screenshot: in the node's hover
+// readout "Distance to parent", "Depth" and "Tips below" had their values on
+// one x and "Confidence [SH_like]" had its own, 15 px to the right. The label
+// column had a minimum width (96 px) and nothing else: a label wider than that
+// pushed its own value, and only its own.
+//
+// The readout is one grid now: the label column is as wide as its widest
+// label (up to a cap, past which a label wraps) and every value starts on one
+// x. A readout of short labels alone is what it was, to the pixel.
+//
+//   (no query)   the light theme
+//   ?theme=dark  the same in the dark theme (the readout carries the panel's choice)
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
+        s.src = '../../docs/lib/' + src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+    try {
+        for (const l of ['d3.v7.min.js', 'sax.js', 'phyloxml.js', 'forester.js', 'archaeopteryx.js']) { await load(l); }
+        // "short": no label wider than the 96 px minimum (so no branch length: "Distance to parent" is 96.6 px). "support": the screenshot's node. "full": headed
+        // sections with sub-entries. "wide": a metadata field whose name is longer than the cap, with a long value.
+        // "unbroken": such a name with no space to break at.
+        const xml = '<?xml version="1.0" encoding="UTF-8"?>'
+            + '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+            + '<clade><name>support</name><branch_length>0.544708389</branch_length>'
+            + '<confidence type="SH_like">96</confidence>'
+            + '<confidence type="posterior probability" stddev="0.02">0.98</confidence>'
+            + '<clade><name>short</name></clade>'
+            + '<clade><name>full</name><branch_length>0.2</branch_length>'
+            + '<taxonomy><id provider="ncbi">9606</id><code>HUMAN</code><scientific_name>Homo sapiens</scientific_name></taxonomy>'
+            + '<sequence><accession source="UniProtKB">P12345</accession><name>A protein with a name</name></sequence>'
+            + '</clade></clade>'
+            + '<clade><name>wide</name><branch_length>0.3</branch_length>'
+            + '<property ref="x:An_unusually_long_metadata_field_name" datatype="xsd:string" applies_to="node">'
+            + 'a value that is long enough to need more than one line in a readout this narrow, and then some more words</property>'
+            + '</clade>'
+            + '<clade><name>unbroken</name><branch_length>0.3</branch_length>'
+            + '<property ref="x:Anunbrokenmetadatafieldnamewithnospaces" datatype="xsd:string" applies_to="node">1</property>'
+            + '</clade></clade></phylogeny></phyloxml>';
+        const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('hover.xml', xml), {});
+        await viewer.ready;
+        await sleep(1200);
+        document.getElementById('p').scrollIntoView({block: 'start'});
+        await sleep(200);
+        if (q.get('theme') === 'dark') {
+            document.querySelector('.aptx-panel .aptx-theme-btn').click();
+            await sleep(300);
+        }
+        out.push('case ' + (q.get('theme') === 'dark' ? 'dark' : 'light'));
+        const container = document.getElementById('p');
+        const tipBox = () => document.querySelector('.aptx-tip');
+
+        // the readout of the node of that name, as it is laid out: the box, and each row's two cells
+        async function readout(name) {
+            // an internal node has no group of its own unless it carries a mark: reached through a tip's ancestors
+            const drawn = Array.from(container.querySelectorAll('g.node')).filter((x) => x.__data__);
+            let d = null;
+            drawn.forEach((x) => { for (let n = x.__data__; n && !d; n = n.parent) { if (n.name === name) { d = n; } } });
+            if (!d) { return null; }
+            const M = drawn[0].parentNode.getScreenCTM();
+            drawn[0].ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', {clientX: M.a * d.y + M.c * d.x + M.e,
+                clientY: M.b * d.y + M.d * d.x + M.f, bubbles: true, cancelable: true, view: window}));
+            await sleep(450);
+            const t = tipBox();
+            if (!t || !(parseFloat(getComputedStyle(t).opacity) > 0.5)) { return null; }
+            const cs = getComputedStyle(t); const b = t.getBoundingClientRect();
+            const inner = {left: b.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft),
+                right: b.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight)};
+            // the INK of a cell: a range around its text, since a cell's own box is as wide as its column
+            const ink = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect(); };
+            // the lines a cell's text takes: one rectangle a line, counted by where each begins
+            const lines = (el) => { const r = document.createRange(); r.selectNodeContents(el);
+                return new Set(Array.from(r.getClientRects()).map((c) => Math.round(c.top))).size; };
+            const rows = Array.from(t.querySelectorAll('.aptx-dialog-line')).map((l) => {
+                const k = l.querySelector('.aptx-dialog-key'), v = l.querySelector('.aptx-dialog-val');
+                return {key: k.textContent, val: v.textContent, k: k.getBoundingClientRect(), v: v.getBoundingClientRect(),
+                    kInk: ink(k), vInk: ink(v), lines: lines(k), vLines: lines(v)}; });
+            const heads = Array.from(t.querySelectorAll('.aptx-dialog-head')).map((h) => ({text: h.textContent, b: h.getBoundingClientRect()}));
+            return {box: b, inner: inner, rows: rows, heads: heads, theme: t.className, bg: cs.backgroundColor, line: parseFloat(cs.lineHeight)};
+        }
+        const near = (a, b) => Math.abs(a - b) <= 0.5;
+        const px = (n) => Math.round(n * 10) / 10;
+        const starts = (r) => r.rows.map((x) => px(x.v.left - r.inner.left));
+        const oneColumn = (r) => r.rows.every((x) => near(x.v.left, r.rows[0].v.left));
+        const widestKey = (r) => Math.max.apply(null, r.rows.map((x) => x.kInk.width));
+        const GAP = 8, MIN_KEY = 96, CAP = 190, MAX_WIDTH = 320;
+        // every row's two cells sit on one line, the rows follow each other, and nothing leaves the box
+        const sound = (r) => r.rows.every((x, i) => near(x.k.top, x.v.top)
+            && (i === 0 || x.k.top >= Math.max(r.rows[i - 1].k.bottom, r.rows[i - 1].v.bottom) - 0.5)
+            && x.kInk.right <= x.v.left + 0.5 && x.vInk.right <= r.inner.right + 0.5 && x.kInk.left >= r.inner.left - 0.5);
+
+        // ---- the screenshot's node ----
+        const s = await readout('support');
+        check('the readout of a node with a typed support value opened', !!s && s.rows.some((x) => x.key === 'Confidence [SH_like]'),
+            s && s.rows.map((x) => x.key).join(' | '));
+        if (s) {
+            check('its labels are the ones in the screenshot, and a wider one', s.rows.map((x) => x.key).join('|')
+                === 'Name|Distance to parent|Depth|Tips below|Confidence [SH_like]|Confidence [posterior probability]|stdev', s.rows.map((x) => x.key).join('|'));
+            check('"Confidence [SH_like]" is wider than the 96 px minimum (or this tests nothing)',
+                s.rows.find((x) => x.key === 'Confidence [SH_like]').kInk.width > MIN_KEY, px(s.rows.find((x) => x.key === 'Confidence [SH_like]').kInk.width));
+            check('EVERY VALUE STARTS ON ONE X', oneColumn(s), starts(s).join(' '));
+            check('... which is the widest label and the gap', near(s.rows[0].v.left - s.inner.left, widestKey(s) + GAP),
+                px(s.rows[0].v.left - s.inner.left) + ' = ' + px(widestKey(s)) + ' + ' + GAP);
+            check('... every label on one line', s.rows.every((x) => x.lines === 1), s.rows.map((x) => x.lines).join(' '));
+            check('... rows in order, each on its own line, nothing outside the box', sound(s));
+            check('... and the box is as wide as its longest row, no wider', near(s.inner.right - s.inner.left,
+                widestKey(s) + GAP + Math.max.apply(null, s.rows.map((x) => x.vInk.width))),
+            px(s.inner.right - s.inner.left) + ' = ' + px(widestKey(s)) + ' + ' + GAP + ' + ' + px(Math.max.apply(null, s.rows.map((x) => x.vInk.width))));
+            check('the readout carries the panel\'s theme', q.get('theme') === 'dark' ? /aptx-dark/.test(s.theme) : !/aptx-dark/.test(s.theme), s.theme + ' ' + s.bg);
+        }
+
+        // ---- short labels only: what it was ----
+        const sh = await readout('short');
+        check('the readout of a tip with short labels opened', !!sh && sh.rows.map((x) => x.key).join('|') === 'Name|Depth', sh && sh.rows.map((x) => x.key).join(' | '));
+        if (sh) {
+            check('no label of it is wider than the minimum (or this tests nothing)', widestKey(sh) < MIN_KEY, px(widestKey(sh)));
+            check('its values start at the 96 px minimum and the gap, as before', sh.rows.every((x) => near(x.v.left - sh.inner.left, MIN_KEY + GAP)), starts(sh).join(' '));
+            check('... and its box is the minimum, the gap and the longest value', near(sh.inner.right - sh.inner.left,
+                MIN_KEY + GAP + Math.max.apply(null, sh.rows.map((x) => x.vInk.width))), px(sh.inner.right - sh.inner.left));
+            check('... rows in order, nothing outside the box', sound(sh));
+            out.push('short: box ' + px(sh.box.width) + ' x ' + px(sh.box.height));
+        }
+
+        // ---- headed sections ----
+        const f = await readout('full');
+        check('the readout of a tip with a taxonomy and a sequence opened', !!f && f.heads.map((h) => h.text).join('|') === 'Taxonomy|Sequence',
+            f && f.heads.map((h) => h.text).join('|'));
+        if (f) {
+            check('one column through every section', oneColumn(f), starts(f).join(' '));
+            check('a heading runs the whole width of the box', f.heads.every((h) => near(h.b.left, f.inner.left) && near(h.b.right, f.inner.right)),
+                f.heads.map((h) => px(h.b.left - f.inner.left) + '..' + px(f.inner.right - h.b.right)).join(' '));
+            check('... on its own line, between the rows around it', f.heads.every((h) => f.rows.every((x) => x.k.bottom <= h.b.top + 0.5 || x.k.top >= h.b.bottom - 0.5)));
+            // The pitch: from one row's label to the next is a line and the row's 1 px above and below; a
+            // heading between two rows adds its own height, 7 px above and 2 px below.
+            const pitch = f.rows.map((x, i) => i === 0 ? 0 : x.k.top - f.rows[i - 1].k.top).slice(1);
+            const want = f.rows.slice(1).map((x, i) => { const h = f.heads.find((hd) => hd.b.top >= f.rows[i].k.top && hd.b.bottom <= x.k.bottom);
+                return f.line + 2 + (h ? h.b.height + 7 + 2 : 0); });
+            check('... a line and 2 px from row to row, and a heading adds itself, 7 px above and 2 px below',
+                pitch.every((v, i) => near(v, want[i])), pitch.map(px).join(' ') + ' / ' + want.map(px).join(' '));
+            check('... rows in order, nothing outside the box', sound(f));
+            out.push('full: box ' + px(f.box.width) + ' x ' + px(f.box.height));
+        }
+
+        // ---- a label longer than the cap ----
+        const w = await readout('wide');
+        const long = w && w.rows.find((x) => /unusually long/i.test(x.key));
+        check('the readout of a tip with a long metadata name opened', !!long, w && w.rows.map((x) => x.key).join(' | '));
+        if (long) {
+            check('the box is no wider than its limit', w.box.width <= MAX_WIDTH + 2 * 10 + 2 + 0.5, px(w.box.width));
+            check('one column there too', oneColumn(w), starts(w).join(' '));
+            check('the long label takes the cap, wraps, and does not starve the values', long.lines > 1
+                && near(long.v.left - w.inner.left, CAP + GAP), long.lines + ' lines, values at ' + px(long.v.left - w.inner.left));
+            check('... each of its lines inside the label column', long.kInk.right <= long.v.left - GAP + 0.5 && long.kInk.left >= w.inner.left - 0.5,
+                px(long.kInk.right - w.inner.left));
+            check('... and the values keep more than a third of the box', (w.inner.right - long.v.left) > (w.inner.right - w.inner.left) / 3,
+                px(w.inner.right - long.v.left) + ' of ' + px(w.inner.right - w.inner.left));
+            check('the long value wraps inside the box', long.vLines > 1 && long.vInk.right <= w.inner.right + 0.5, long.vLines + ' lines');
+            check('... rows in order, nothing outside the box', sound(w));
+            out.push('wide: box ' + px(w.box.width) + ' x ' + px(w.box.height));
+        }
+        // ---- a long label with nowhere to break ----
+        const u = await readout('unbroken');
+        const word = u && u.rows.find((x) => /^Anunbroken/.test(x.key));
+        check('the readout of a tip with a long one-word metadata name opened', !!word, u && u.rows.map((x) => x.key).join(' | '));
+        if (word) {
+            check('the word is cut at the cap rather than widening the column', word.lines > 1 && near(word.v.left - u.inner.left, CAP + GAP)
+                && word.kInk.right <= word.v.left - GAP + 0.5, word.lines + ' lines, values at ' + px(word.v.left - u.inner.left));
+            check('... one column, rows in order, nothing outside the box', oneColumn(u) && sound(u), starts(u).join(' '));
+        }
+
+        // left on the screenshot's node, for a picture (SHOT=<png> node test/browser/cdp_run.js <this page>)
+        await readout(q.get('show') || 'support');
+    } catch (e) {
+        failures++; out.push('FAIL  the harness threw: ' + (e && e.stack || e));
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
