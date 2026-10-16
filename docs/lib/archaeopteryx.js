@@ -16772,8 +16772,11 @@ function (root, d3, forester, phyloXml) {
             default: throw new Error('unknown control-panel glyph: ' + kind);
         }
         // written as an svg file would be, its paint in attributes; paintInline
-        // makes inline styles of it, which no rule of a page outranks
-        return paintInline('<svg class="aptx-glyph" viewBox="0 0 ' + w + ' 100" aria-hidden="true" focusable="false"'
+        // makes inline styles of it, which no rule of a page outranks. The
+        // kind travels on the element (data-glyph): the generated control
+        // reference (test/make_control_reference.js) names each icon's file
+        // by it, and nothing else reads it.
+        return paintInline('<svg class="aptx-glyph" data-glyph="' + kind + '" viewBox="0 0 ' + w + ' 100" aria-hidden="true" focusable="false"'
             + ' fill="none" stroke="currentColor" stroke-width="' + sw + '"'
             + ' stroke-linecap="' + cap + '" stroke-linejoin="' + join + '">' + body + '</svg>');
     }

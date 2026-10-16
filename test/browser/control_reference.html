@@ -1,0 +1,225 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the control panel of every demo tree, for the control reference</title>
+<style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="phylogram1"></div>
+<script>
+// NOT a test case (run.js does not list it): the page that
+// test/make_control_reference.js drives to read the control panel of every
+// demo tree. For each tree it opens every section, opens the panel's own
+// cheat sheet ("Control panel: what each control does") and takes the sheet's
+// rows as they are -- name, words, icon -- so the reference says exactly what
+// the sheet says. What the sheet leaves out because the panel shows it, the
+// page reads from the panel beside each row: the section the control sits in,
+// its group heading, its id. The two readings are paired row for row and must
+// agree word for word, or the tree is reported as a problem instead.
+//
+//   ?trees=<json>   [{key, file, config, extras}]; file relative to docs/;
+//                   extras: selectors of controls whose face a click changes
+//                   (the ladderize button, the theme switch): each is clicked,
+//                   the panel is read again, and it is clicked back
+//   ?settle=<ms>    wait after a launch before reading (default 1500)
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const params = new URLSearchParams(location.search);
+    const trees = JSON.parse(params.get('trees') || '[]');
+    const settle = parseInt(params.get('settle') || '1500', 10);
+    const glyphs = {};      // kind -> the <svg> as the panel draws it
+    const perTree = [];
+    let ink = null;
+    // where the page is, for whoever watches the console or asks the page
+    const step = (key, what) => {
+        window.__progress = {key: key, step: what, at: Date.now()};
+        console.log('[ref] ' + key + ': ' + what);
+    };
+
+    // --- the sheet's own rules, copied from cheatSheetRows(): a control is
+    // listed when it is on the screen (a disabled one is) and carries a
+    // description, on itself, on an ancestor, or on the <label for> that
+    // names it. One departure: a tooltip that carries a live suffix keeps
+    // its base words in data-base-title (Auto-hide Labels: ", hiding now:
+    // 63 names that would overprint"), and the reference wants the base.
+    function describedBy(el) {
+        let n = el;
+        for (let i = 0; i < 4 && n; ++i) {
+            const base = (n.dataset && n.dataset.baseTitle) || '';
+            if (base.trim() !== '') { return base.trim(); }
+            const t = (n.getAttribute && (n.getAttribute('title') || n.getAttribute('aria-label'))) || '';
+            if (t.trim() !== '') { return t.trim(); }
+            n = n.parentElement;
+        }
+        if (el.id) {
+            const lab = document.querySelector('label[for="' + el.id + '"]');
+            const t = lab ? (lab.getAttribute('title') || lab.getAttribute('aria-label') || '') : '';
+            if (t.trim() !== '') { return t.trim(); }
+        }
+        return '';
+    }
+    function surfaceOf(el) {
+        const box = el.getBoundingClientRect();
+        if (box.width > 0 || box.height > 0) { return el; }
+        const label = el.closest ? el.closest('label') : null;
+        if (label) {
+            const lb = label.getBoundingClientRect();
+            if (lb.width > 0 || lb.height > 0) { return label; }
+        }
+        return null;
+    }
+    // The section: its legend, or a marker for the two fieldsets drawn
+    // without one and for the header; the generator names those.
+    function sectionOf(el) {
+        if (el.closest('.progname')) { return '#header'; }
+        const fs = el.closest('fieldset');
+        if (!fs) { return '#other'; }
+        const legend = fs.querySelector(':scope > legend');
+        if (legend) { return legend.textContent.trim(); }
+        if (fs.querySelector('.aptx-modebar')) { return '#modebar'; }
+        if (fs.querySelector('.aptx-tree-picker')) { return '#picker'; }
+        return '#other';
+    }
+    function groupOf(el) {
+        const grid = el.closest('.aptx-checkgrid');
+        const sub = grid ? grid.previousElementSibling : null;
+        return (sub && sub.classList.contains('aptx-subhead')) ? sub.textContent.trim() : '';
+    }
+    function panelControls(panel) {
+        const out = [];
+        panel.querySelectorAll('input, button, select').forEach((el) => {
+            const surface = el.disabled ? (surfaceOf(el) || el) : surfaceOf(el);
+            if (!surface) { return; }
+            const words = describedBy(el);
+            if (words === '') { return; }
+            const svg = surface.querySelector ? surface.querySelector('svg.aptx-glyph') : null;
+            out.push({
+                words: words,
+                glyph: svg ? svg.getAttribute('data-glyph') : null,
+                section: sectionOf(el),
+                group: groupOf(el),
+                id: el.id || '',
+                type: el.tagName === 'SELECT' ? 'menu' : (el.type || el.tagName.toLowerCase()),
+                disabled: !!el.disabled
+            });
+        });
+        return out;
+    }
+    function sheetRows() {
+        return Array.from(document.querySelectorAll('#aptx_cheatsheet .aptx-cheat-line')).map((line) => {
+            const svg = line.querySelector('svg.aptx-glyph');
+            const name = line.querySelector('.aptx-cheat-name');
+            const val = line.querySelector('.aptx-dialog-val');
+            return {
+                glyph: svg ? svg.getAttribute('data-glyph') : null,
+                name: name ? name.textContent.trim() : '',
+                words: val ? val.textContent.trim() : ''
+            };
+        });
+    }
+
+    for (const t of trees) {
+        const rec = {key: t.key, rows: [], problems: []};
+        perTree.push(rec);
+        let viewer = null;
+        try {
+            const file = '../../docs/' + t.file;
+            step(t.key, 'fetching ' + t.file);
+            const text = await (await fetch(file)).text();
+            const config = Object.assign({enableDynamicSizing: true}, t.config || {});
+            step(t.key, 'launching');
+            viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', file, text, config);
+            await viewer.ready;
+            await sleep(settle);
+            step(t.key, 'reading the panel');
+            const panel = document.querySelector('#phylogram1 .aptx-panel');
+            if (!panel) {
+                rec.problems.push('no control panel');
+                continue;
+            }
+            if (!ink) {
+                ink = getComputedStyle(panel).getPropertyValue('--p-ink').trim();
+            }
+            // every section open: a folded one's controls are not on the sheet
+            for (let i = 0; i < 4; ++i) {
+                const folded = panel.querySelectorAll('fieldset.aptx-collapsed > legend');
+                if (folded.length === 0) { break; }
+                folded.forEach((l) => l.click());
+                await sleep(400);
+            }
+            const still = panel.querySelectorAll('fieldset.aptx-collapsed');
+            if (still.length > 0) {
+                rec.problems.push(still.length + ' section(s) stayed folded: the window is not tall enough for the whole panel');
+            }
+            const sheetBtn = panel.querySelector('button[title^="Control panel"]');
+            if (!sheetBtn) {
+                rec.problems.push('no cheat-sheet button in the panel header');
+                continue;
+            }
+            sheetBtn.click();
+            await sleep(500);
+
+            const read = (state) => {
+                const rows = sheetRows();
+                const ctl = panelControls(panel);
+                if (rows.length !== ctl.length) {
+                    rec.problems.push((state || 'baseline') + ': the sheet lists ' + rows.length
+                        + ' rows, the panel walk found ' + ctl.length);
+                    return [];
+                }
+                const out = [];
+                for (let i = 0; i < rows.length; ++i) {
+                    // the same control: the sheet's words are the tooltip as
+                    // the sheet last read it, with or without a live suffix
+                    // the panel's base words leave out
+                    if (rows[i].words !== ctl[i].words && !rows[i].words.startsWith(ctl[i].words)) {
+                        rec.problems.push((state || 'baseline') + ': row ' + i + ' differs: the sheet says "'
+                            + rows[i].words + '", the panel "' + ctl[i].words + '"');
+                        return [];
+                    }
+                    out.push({
+                        section: ctl[i].section, group: ctl[i].group, id: ctl[i].id, type: ctl[i].type,
+                        disabled: ctl[i].disabled, name: rows[i].name, glyph: rows[i].glyph,
+                        words: ctl[i].words, state: state
+                    });
+                }
+                panel.querySelectorAll('svg.aptx-glyph[data-glyph]').forEach((svg) => {
+                    const k = svg.getAttribute('data-glyph');
+                    if (!glyphs[k]) { glyphs[k] = svg.outerHTML; }
+                });
+                return out;
+            };
+            rec.rows = read('');
+            step(t.key, rec.rows.length + ' rows');
+            for (const sel of (t.extras || [])) {
+                const b = panel.querySelector(sel);
+                if (!b || b.disabled) {
+                    rec.problems.push('extra ' + sel + ': not in the panel, or disabled');
+                    continue;
+                }
+                step(t.key, 'clicking ' + sel);
+                b.click();
+                await sleep(800);
+                rec.rows = rec.rows.concat(read('after a click on ' + sel));
+                step(t.key, 'clicking ' + sel + ' back');
+                b.click();
+                await sleep(800);
+            }
+        } catch (e) {
+            rec.problems.push(String((e && e.stack) || e));
+        } finally {
+            if (viewer) {
+                step(t.key, 'destroying');
+                try { viewer.destroy(); } catch (e) { rec.problems.push('destroy: ' + e); }
+            }
+            await sleep(200);
+        }
+    }
+    const version = (archaeopteryx.doctor && archaeopteryx.doctor().version) || null;
+    // one string: cdp_run prints the result as JSON, and a string survives
+    // that without a second layer of pretty-printing to undo
+    window.__benchResult = {json: JSON.stringify({version: version, ink: ink, glyphs: glyphs, trees: perTree})};
+    window.__benchDone = true;
+})();
+</script>

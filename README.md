@@ -315,6 +315,14 @@ needs no edit here, only a tooltip. And no row shows a live value, so a sheet
 that is saved or printed does not go wrong for every reader but the one who
 made it.
 
+For whoever writes documentation, `docs/control-panel/` holds the same sheet
+as reStructuredText, taken from the running viewer over the demo trees, which
+together show every control there is, with the panel's icons beside it as SVG
+and PNG files: `control-panel.rst` has one row per wording and says which
+demos show it, `archaeopteryx.rst` is a user-facing page with one row per
+control and no demo mentioned. `node test/make_control_reference.js`
+regenerates both.
+
 ## Rooting
 
 The tool row's re-root button asks how: **MAD re-root (Tria et al., 2017)**

@@ -8,6 +8,16 @@ users see a change only when a version is cut.
 ## Unreleased
 
 ### Added
+- **A control reference for documentation writers.** `docs/control-panel/`
+  lists every control of the panel as the cheat sheet would, section by
+  section, taken from the running viewer over the demo trees (which together
+  show every control there is), with the panel's icons beside it as SVG and
+  PNG files: `control-panel.rst` has one row per wording and a column saying
+  which demos show it; `archaeopteryx.rst` is a user-facing page, one row per
+  control with every wording and every icon it can wear, and no demo
+  mentioned. `node test/make_control_reference.js` regenerates both. Each
+  panel icon now names its kind in a `data-glyph` attribute, which the
+  generator names the icon files by.
 - **A second way to the About box.** It was reached by a click on the program
   name alone, and a name does not look like a button to everyone. The **Tree
   properties** dialog (the ⓘ button, ⌘I / Ctrl+I) now ends in a strip with an
