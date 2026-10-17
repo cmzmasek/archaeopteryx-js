@@ -18,10 +18,18 @@
 // its group heading, its id. The two readings are paired row for row and must
 // agree word for word, or the tree is reported as a problem instead.
 //
-//   ?trees=<json>   [{key, file, config, extras}]; file relative to docs/;
-//                   extras: selectors of controls whose face a click changes
-//                   (the ladderize button, the theme switch): each is clicked,
-//                   the panel is read again, and it is clicked back
+// It also reads, once, the viewer's own shortcut list (About box, "Keyboard"
+// row) as it is drawn on this machine, and on each tree the node menu as it
+// opens on a few nodes: a tip, a tip with an accession, an internal node, a
+// child of the root. The menu's entries carry no tooltip (a greyed one its
+// reason), so only their labels are read; the generator has the words.
+//
+//   ?trees=<json>   [{key, file, config, extras, menuOnly}]; file relative to
+//                   docs/; extras: selectors of controls whose face a click
+//                   changes (the ladderize button, the theme switch): each is
+//                   clicked, the panel is read again, and it is clicked back;
+//                   menuOnly: read the node menu and nothing else (a launch
+//                   with a setting that adds entries to it)
 //   ?settle=<ms>    wait after a launch before reading (default 1500)
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -31,6 +39,7 @@
     const glyphs = {};      // kind -> the <svg> as the panel draws it
     const perTree = [];
     let ink = null;
+    let shortcuts = null;
     // where the page is, for whoever watches the console or asks the page
     const step = (key, what) => {
         window.__progress = {key: key, step: what, at: Date.now()};
@@ -81,6 +90,18 @@
         if (fs.querySelector('.aptx-tree-picker')) { return '#picker'; }
         return '#other';
     }
+    // Every section in the panel's order, the hidden ones too (the Domain
+    // Architectures, Genome regions and Heat Map fieldsets are in the DOM
+    // for every tree, shown when their toggle is on): the order the
+    // reference lists sections in, which no one tree's sheet shows whole.
+    function sectionOrder(panel) {
+        const out = [];
+        panel.querySelectorAll('.progname, fieldset').forEach((el) => {
+            const s = el.classList.contains('progname') ? '#header' : sectionOf(el);
+            if (out.indexOf(s) < 0) { out.push(s); }
+        });
+        return out;
+    }
     function groupOf(el) {
         const grid = el.closest('.aptx-checkgrid');
         const sub = grid ? grid.previousElementSibling : null;
@@ -119,6 +140,111 @@
         });
     }
 
+    // --- the shortcut list, the way a user reaches it: the program name
+    // opens the About box, its Keyboard row opens the list. Each row is its
+    // key chips (⌘ ⇧ E here, Ctrl Shift E on another machine) and its words;
+    // the notes under the rows are the wheel's.
+    async function readShortcuts(panel) {
+        const name = panel.querySelector('.prognamelink');
+        if (!name) { throw new Error('no program name in the panel header'); }
+        name.click();
+        await sleep(400);
+        const about = document.getElementById('aptx_about');
+        if (!about) { throw new Error('the About box did not open'); }
+        const row = Array.from(about.querySelectorAll('.aptx-dialog-line')).find((l) => {
+            const k = l.querySelector('.aptx-dialog-key');
+            return k && k.textContent.trim() === 'Keyboard';
+        });
+        const link = row ? row.querySelector('a') : null;
+        if (!link) { throw new Error('no Keyboard row in the About box'); }
+        link.click();
+        await sleep(400);
+        const dlg = document.getElementById('aptx_shortcuts');
+        if (!dlg) { throw new Error('the shortcut list did not open'); }
+        const rows = Array.from(dlg.querySelectorAll('.aptx-dialog-line')).map((l) => {
+            const val = l.querySelector('.aptx-dialog-val');
+            return {
+                keys: Array.from(l.querySelectorAll('kbd')).map((k) => k.textContent.trim()),
+                words: val ? val.textContent.trim() : ''
+            };
+        });
+        const notes = Array.from(dlg.querySelectorAll('.aptx-shortcuts-note')).map((p) => p.textContent.trim());
+        if (dlg.open) { dlg.close(); }
+        await sleep(200);
+        return {rows: rows, notes: notes};
+    }
+
+    // --- the node menu. A node is found by position (the viewer keeps no
+    // element per node): a click on the tree's svg at the node's point, which
+    // in the rectangular layout is (d.y, d.x) in the tree group's
+    // coordinates. The nodes come from the groups the viewer does draw (a
+    // labelled tip, a collapsed clade) and their ancestors.
+    const describeNode = (d) => (d.children ? 'internal node' : 'tip') + (d.name ? ' ' + d.name : '');
+    async function menuAt(d, svg, treeGroup, what) {
+        const p = new DOMPoint(d.y, d.x).matrixTransform(treeGroup.getScreenCTM());
+        svg.dispatchEvent(new MouseEvent('click', {clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, view: window}));
+        await sleep(300);
+        const menu = document.querySelector('.aptx-node-menu');
+        if (!menu) {
+            return {at: what, node: describeNode(d), problem: 'no menu opened on the ' + describeNode(d)};
+        }
+        const title = menu.querySelector('.aptx-node-menu-title');
+        const entries = Array.from(menu.children).filter((el) => el.tagName === 'BUTTON').map((b) => {
+            const first = b.childNodes[0];
+            return {
+                label: (first && first.nodeType === 3 ? first.textContent : b.textContent).trim(),
+                disabled: b.disabled,
+                title: b.getAttribute('title') || '',
+                danger: b.classList.contains('aptx-menu-danger')
+            };
+        });
+        document.body.click();   // anywhere else closes it
+        await sleep(200);
+        if (document.querySelector('.aptx-node-menu')) {
+            document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+            await sleep(200);
+        }
+        return {at: what, node: describeNode(d), title: title ? title.textContent.trim() : '', entries: entries};
+    }
+    async function readMenus() {
+        const svg = document.querySelector('#phylogram1 svg.aptx-tree');
+        const groups = Array.from(document.querySelectorAll('#phylogram1 g.node')).filter((g) => g.__data__);
+        if (!svg || groups.length === 0) {
+            return {skipped: 'no node has a group of its own (every label hidden?)', menus: []};
+        }
+        const treeGroup = groups[0].parentElement;
+        const nodes = [];
+        const seen = new Set();
+        groups.forEach((g) => {
+            let d = g.__data__;
+            while (d && !seen.has(d)) {
+                seen.add(d);
+                nodes.push(d);
+                d = d.parent;
+            }
+        });
+        const deep = (d) => !!(d.parent && d.parent.parent && d.parent.parent.parent);
+        // what the Access DB entry looks for: an accession among the
+        // properties or the sequences, or a UniProt-style name (CASP9_HUMAN)
+        const hasAccession = (d) => (d.properties || []).some((p) => p.value && p.ref && /accession/i.test(p.ref))
+            || (d.sequences || []).some((s) => s.accession && s.accession.value)
+            || /^[A-Z0-9]{2,10}_[A-Z0-9]{3,5}$/.test(d.name || '');
+        const picks = [
+            ['a tip', nodes.find((d) => !d.children && deep(d))],
+            ['a tip with an accession', nodes.find((d) => !d.children && deep(d) && hasAccession(d))],
+            ['an internal node', nodes.find((d) => d.children && d.children.length > 1 && deep(d))],
+            ['a child of the root', nodes.find((d) => d.parent && !d.parent.parent)]
+        ];
+        const menus = [];
+        const done = new Set();
+        for (const [what, d] of picks) {
+            if (!d || done.has(d)) { continue; }
+            done.add(d);
+            menus.push(await menuAt(d, svg, treeGroup, what));
+        }
+        return {menus: menus};
+    }
+
     for (const t of trees) {
         const rec = {key: t.key, rows: [], problems: []};
         perTree.push(rec);
@@ -132,79 +258,100 @@
             viewer = archaeopteryx.launchArchaeopteryx('#phylogram1', file, text, config);
             await viewer.ready;
             await sleep(settle);
-            step(t.key, 'reading the panel');
             const panel = document.querySelector('#phylogram1 .aptx-panel');
             if (!panel) {
                 rec.problems.push('no control panel');
                 continue;
             }
-            if (!ink) {
-                ink = getComputedStyle(panel).getPropertyValue('--p-ink').trim();
-            }
-            // every section open: a folded one's controls are not on the sheet
-            for (let i = 0; i < 4; ++i) {
-                const folded = panel.querySelectorAll('fieldset.aptx-collapsed > legend');
-                if (folded.length === 0) { break; }
-                folded.forEach((l) => l.click());
-                await sleep(400);
-            }
-            const still = panel.querySelectorAll('fieldset.aptx-collapsed');
-            if (still.length > 0) {
-                rec.problems.push(still.length + ' section(s) stayed folded: the window is not tall enough for the whole panel');
-            }
-            const sheetBtn = panel.querySelector('button[title^="Control panel"]');
-            if (!sheetBtn) {
-                rec.problems.push('no cheat-sheet button in the panel header');
-                continue;
-            }
-            sheetBtn.click();
-            await sleep(500);
-
-            const read = (state) => {
-                const rows = sheetRows();
-                const ctl = panelControls(panel);
-                if (rows.length !== ctl.length) {
-                    rec.problems.push((state || 'baseline') + ': the sheet lists ' + rows.length
-                        + ' rows, the panel walk found ' + ctl.length);
-                    return [];
+            if (!t.menuOnly) {
+                step(t.key, 'reading the panel');
+                if (!ink) {
+                    ink = getComputedStyle(panel).getPropertyValue('--p-ink').trim();
                 }
-                const out = [];
-                for (let i = 0; i < rows.length; ++i) {
-                    // the same control: the sheet's words are the tooltip as
-                    // the sheet last read it, with or without a live suffix
-                    // the panel's base words leave out
-                    if (rows[i].words !== ctl[i].words && !rows[i].words.startsWith(ctl[i].words)) {
-                        rec.problems.push((state || 'baseline') + ': row ' + i + ' differs: the sheet says "'
-                            + rows[i].words + '", the panel "' + ctl[i].words + '"');
-                        return [];
-                    }
-                    out.push({
-                        section: ctl[i].section, group: ctl[i].group, id: ctl[i].id, type: ctl[i].type,
-                        disabled: ctl[i].disabled, name: rows[i].name, glyph: rows[i].glyph,
-                        words: ctl[i].words, state: state
-                    });
+                // every section open: a folded one's controls are not on the sheet
+                for (let i = 0; i < 4; ++i) {
+                    const folded = panel.querySelectorAll('fieldset.aptx-collapsed > legend');
+                    if (folded.length === 0) { break; }
+                    folded.forEach((l) => l.click());
+                    await sleep(400);
                 }
-                panel.querySelectorAll('svg.aptx-glyph[data-glyph]').forEach((svg) => {
-                    const k = svg.getAttribute('data-glyph');
-                    if (!glyphs[k]) { glyphs[k] = svg.outerHTML; }
-                });
-                return out;
-            };
-            rec.rows = read('');
-            step(t.key, rec.rows.length + ' rows');
-            for (const sel of (t.extras || [])) {
-                const b = panel.querySelector(sel);
-                if (!b || b.disabled) {
-                    rec.problems.push('extra ' + sel + ': not in the panel, or disabled');
+                const still = panel.querySelectorAll('fieldset.aptx-collapsed');
+                if (still.length > 0) {
+                    rec.problems.push(still.length + ' section(s) stayed folded: the window is not tall enough for the whole panel');
+                }
+                const sheetBtn = panel.querySelector('button[title^="Control panel"]');
+                if (!sheetBtn) {
+                    rec.problems.push('no cheat-sheet button in the panel header');
                     continue;
                 }
-                step(t.key, 'clicking ' + sel);
-                b.click();
-                await sleep(800);
-                rec.rows = rec.rows.concat(read('after a click on ' + sel));
-                step(t.key, 'clicking ' + sel + ' back');
-                b.click();
-                await sleep(800);
+                sheetBtn.click();
+                await sleep(500);
+
+                const read = (state) => {
+                    const rows = sheetRows();
+                    const ctl = panelControls(panel);
+                    if (rows.length !== ctl.length) {
+                        rec.problems.push((state || 'baseline') + ': the sheet lists ' + rows.length
+                            + ' rows, the panel walk found ' + ctl.length);
+                        return [];
+                    }
+                    const out = [];
+                    for (let i = 0; i < rows.length; ++i) {
+                        // the same control: the sheet's words are the tooltip as
+                        // the sheet last read it, with or without a live suffix
+                        // the panel's base words leave out
+                        if (rows[i].words !== ctl[i].words && !rows[i].words.startsWith(ctl[i].words)) {
+                            rec.problems.push((state || 'baseline') + ': row ' + i + ' differs: the sheet says "'
+                                + rows[i].words + '", the panel "' + ctl[i].words + '"');
+                            return [];
+                        }
+                        out.push({
+                            section: ctl[i].section, group: ctl[i].group, id: ctl[i].id, type: ctl[i].type,
+                            disabled: ctl[i].disabled, name: rows[i].name, glyph: rows[i].glyph,
+                            words: ctl[i].words, state: state
+                        });
+                    }
+                    panel.querySelectorAll('svg.aptx-glyph[data-glyph]').forEach((svg) => {
+                        const k = svg.getAttribute('data-glyph');
+                        if (!glyphs[k]) { glyphs[k] = svg.outerHTML; }
+                    });
+                    return out;
+                };
+                rec.rows = read('');
+                rec.sectionOrder = sectionOrder(panel);
+                step(t.key, rec.rows.length + ' rows');
+                for (const sel of (t.extras || [])) {
+                    const b = panel.querySelector(sel);
+                    if (!b || b.disabled) {
+                        rec.problems.push('extra ' + sel + ': not in the panel, or disabled');
+                        continue;
+                    }
+                    step(t.key, 'clicking ' + sel);
+                    b.click();
+                    await sleep(800);
+                    rec.rows = rec.rows.concat(read('after a click on ' + sel));
+                    step(t.key, 'clicking ' + sel + ' back');
+                    b.click();
+                    await sleep(800);
+                }
+                if (!shortcuts) {
+                    step(t.key, 'reading the shortcut list');
+                    shortcuts = await readShortcuts(panel);
+                }
+            }
+            // the node menu, found by position in the rectangular layout only
+            const layout = (t.config && t.config.layout) || 'rectangular';
+            if (layout === 'rectangular') {
+                step(t.key, 'reading the node menu');
+                rec.menu = await readMenus();
+                for (const m of rec.menu.menus) {
+                    if (m.problem) {
+                        rec.problems.push('node menu: ' + m.problem);
+                    }
+                }
+                step(t.key, rec.menu.menus.length + ' menus' + (rec.menu.skipped ? ' (' + rec.menu.skipped + ')' : ''));
+            } else if (t.menuOnly) {
+                rec.problems.push('a menu-only launch in the ' + layout + ' layout reads nothing');
             }
         } catch (e) {
             rec.problems.push(String((e && e.stack) || e));
@@ -219,7 +366,8 @@
     const version = (archaeopteryx.doctor && archaeopteryx.doctor().version) || null;
     // one string: cdp_run prints the result as JSON, and a string survives
     // that without a second layer of pretty-printing to undo
-    window.__benchResult = {json: JSON.stringify({version: version, ink: ink, glyphs: glyphs, trees: perTree})};
+    window.__benchResult = {json: JSON.stringify({version: version, ink: ink, glyphs: glyphs,
+        shortcuts: shortcuts, trees: perTree})};
     window.__benchDone = true;
 })();
 </script>

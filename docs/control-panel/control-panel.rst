@@ -246,12 +246,12 @@ Display Data
    * - Sequence
      - to show/hide node sequence information
      - swh1, flavivirus, caliciviridae\_500, adenoviridae, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, influenza, confidences, branch\_events
-   * - Confidence
-     - to show/hide confidence values
-     - swh1, beast, flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, apaf, bcl2, confidences, flu\_h5, circular
    * - Metadata
      - to show/hide the nodes' metadata (phyloXML properties: species, host, …) in their labels; Metadata fields… chooses which, and in what order
      - all demos but swh1, sarscov2, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous, bcl2
+   * - Confidence
+     - to show/hide confidence values
+     - swh1, beast, flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, apaf, bcl2, confidences, flu\_h5, circular
    * - Branch Length
      - to show/hide branch length values
      - all demos
@@ -261,6 +261,17 @@ Display Data
    * - Int. Labels
      - to show/hide internal node labels
      - auspice, flavivirus, sarscov2, caliciviridae\_500, adenoviridae, dinosaur, ammonite, late\_cretaceous, bcl2, flu\_h5, woese
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Control
+     - What it does
+     - Shown for
+   * - Metadata fields…
+     - choose which metadata fields the labels show, and in what order
+     - all demos but swh1, sarscov2, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous, bcl2
 
 .. rubric:: Nodes
 
@@ -278,17 +289,6 @@ Display Data
      - to show/hide branch events (e.g. mutations)
      - branch\_events
 
-.. list-table::
-   :header-rows: 1
-   :widths: 24 56 20
-
-   * - Control
-     - What it does
-     - Shown for
-   * - Metadata fields…
-     - choose which metadata fields the labels show, and in what order
-     - all demos but swh1, sarscov2, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous, bcl2
-
 .. rubric:: Options
 
 .. list-table::
@@ -304,74 +304,48 @@ Display Data
    * - Short Names
      - to shorten long node names
      - all demos
-   * - Genes
-     - to show/hide the genome regions beside the tips: each gene an arrow on a backbone, coloured by family, the rows lined up on one family
-     - genome\_regions
    * - Support Dots
      - to mark a branch with support of at least 95% with a dot at its midpoint, where there is room to draw it
      - swh1, beast, flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, apaf, bcl2, confidences, flu\_h5, circular
-   * - Visual Styles
-     - to use visual styles (node and font colors, shapes) and branch colors, if present in the tree file
-     - flavivirus, caliciviridae\_500, adenoviridae
    * - Alignment
      - to show/hide the sequence alignment beside the tree (rectangular layout only)
      - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
    * - Sequence Logo
      - to summarize the alignment under it as a sequence logo: each column a stack of letters, as tall as that column's information content and shared out by residue frequency. Over the tips currently on screen, so entering a clade summarizes that clade
      - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
+   * - Visual Styles
+     - to use visual styles (node and font colors, shapes) and branch colors, if present in the tree file
+     - flavivirus, caliciviridae\_500, adenoviridae
    * - Visualizations
      - to show or hide the Color and Shape visualizations chosen above
      - all demos but swh1, sarscov2, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous
-   * - Domain Architectures
-     - to show/hide the protein domain architectures beside the tips
-     - flavivirus, apaf
    * - Heat Map
      - to show/hide a cell per tip and numeric field beside the tree, every column on one color scale; concentric rings in the circular layout (not in the unrooted one, where a column has no ring to be)
      - auspice, clustergram, influenza, confidences
+   * - Domain Architectures
+     - to show/hide the protein domain architectures beside the tips
+     - flavivirus, apaf
+   * - Genes
+     - to show/hide the genome regions beside the tips: each gene an arrow on a backbone, coloured by family, the rows lined up on one family
+     - genome\_regions
    * - Scale
      - to show/hide the scale bar at the bottom left of a phylogram: a round length in the tree's branch-length unit (it gives way while the scale axis is on)
      - all demos
    * - Scale Axis
-     - to show/hide the geologic (ICS) time axis and node-age bars (a distance axis while the branches show divergence) (phylogram; rectangular and circular layouts)
-     - dinosaur, ammonite, late\_cretaceous
-   * - Scale Axis
      - to show/hide a labeled distance axis from the root to the deepest tip (phylogram; rectangular and circular layouts)
      - all demos but auspice, sarscov2, dinosaur, ammonite, late\_cretaceous
-   * - Scale Grid
-     - to show/hide grid lines (rings, in circular) at the scale axis ticks
-     - all demos but auspice, sarscov2, dinosaur, ammonite, late\_cretaceous
+   * - Scale Axis
+     - to show/hide the geologic (ICS) time axis and node-age bars (a distance axis while the branches show divergence) (phylogram; rectangular and circular layouts)
+     - dinosaur, ammonite, late\_cretaceous
    * - Scale Axis
      - to show/hide the calendar time axis and node-age bars (a distance axis while the branches show divergence) (phylogram; rectangular and circular layouts)
      - auspice, sarscov2
    * - Scale Grid
+     - to show/hide grid lines (rings, in circular) at the scale axis ticks
+     - all demos but auspice, sarscov2, dinosaur, ammonite, late\_cretaceous
+   * - Scale Grid
      - to show/hide grid lines (rings, in circular) at the time axis's intervals or ticks
      - auspice, sarscov2, dinosaur, ammonite, late\_cretaceous
-
-Genome regions
---------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 24 56 20
-
-   * - Control
-     - What it does
-     - Shown for
-   * - −
-     - narrow the gene track (hold to repeat)
-     - genome\_regions
-   * - \+
-     - widen the gene track (hold to repeat)
-     - genome\_regions
-   * - Anchor
-     - the family the rows line up on: its gene sits at the same place in every genome, pointing right, and the neighbours follow (a genome with it on the other strand is mirrored). Auto picks the family single-copy in the most genomes; None left-aligns the rows
-     - genome\_regions
-   * - Family
-     - which family annotation colours the genes and anchors the rows (a BV-BRC export carries both PGfams and PLfams)
-     - genome\_regions
-   * - Labels
-     - where the gene symbols go: on the arrows (rectangular layout only), in a legend of the families, or nowhere
-     - genome\_regions
 
 Domain Architectures
 --------------------
@@ -402,6 +376,32 @@ Domain Architectures
      - a soft glow in each domain's own colour around its box
      - flavivirus, apaf
 
+Genome regions
+--------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Control
+     - What it does
+     - Shown for
+   * - −
+     - narrow the gene track (hold to repeat)
+     - genome\_regions
+   * - \+
+     - widen the gene track (hold to repeat)
+     - genome\_regions
+   * - Anchor
+     - the family the rows line up on: its gene sits at the same place in every genome, pointing right, and the neighbours follow (a genome with it on the other strand is mirrored). Auto picks the family single-copy in the most genomes; None left-aligns the rows
+     - genome\_regions
+   * - Family
+     - which family annotation colours the genes and anchors the rows (a BV-BRC export carries both PGfams and PLfams)
+     - genome\_regions
+   * - Labels
+     - where the gene symbols go: on the arrows (rectangular layout only), in a legend of the families, or nowhere
+     - genome\_regions
+
 Heat Map
 --------
 
@@ -429,45 +429,45 @@ View & Tools
    * - Control
      - What it does
      - Shown for
-   * - \+
-     - zoom in (or mousewheel over the tree)
-     - circular, woese
-   * - |rotate_ccw|
-     - rotate counter-clockwise
-     - circular, woese
    * - Y+
      - zoom in vertically (or Shift+mousewheel)
      - all demos but circular, woese
+   * - \+
+     - zoom in (or mousewheel over the tree)
+     - circular, woese
    * - X-
      - zoom out horizontally (or Shift+Alt+mousewheel)
      - all demos but circular, woese
+   * - |rotate_ccw|
+     - rotate counter-clockwise
+     - circular, woese
    * - |expand_vertical|
      - fit and center tree, expand vertically
      - all demos
    * - |fit_all|
      - fit and center tree display (Home or Esc for an almost complete reset)
      - all demos
-   * - |labels_radial|
-     - node labels: horizontal -- click to flip
-     - circular (after a click on the control)
-   * - |labels_horizontal|
-     - node labels: radial -- click to flip
-     - circular, woese
-   * - |rotate_cw|
-     - rotate clockwise
-     - circular, woese
-   * - \-
-     - zoom out (or mousewheel over the tree)
-     - circular, woese
    * - |fit_width|
      - fit the tree to the window width, keeping the current vertical zoom
      - all demos but circular, woese
+   * - |labels_horizontal|
+     - node labels: radial -- click to flip
+     - circular, woese
+   * - |labels_radial|
+     - node labels: horizontal -- click to flip
+     - circular (after a click on the control)
    * - X+
      - zoom in horizontally (or Shift+Alt+mousewheel)
      - all demos but circular, woese
+   * - |rotate_cw|
+     - rotate clockwise
+     - circular, woese
    * - Y-
      - zoom out vertically (or Shift+mousewheel)
      - all demos but circular, woese
+   * - \-
+     - zoom out (or mousewheel over the tree)
+     - circular, woese
    * - |ladderize_asc| |ladderize_desc|
      - ladderize all
      - all demos
@@ -481,14 +481,14 @@ View & Tools
      - uncollapse all
      - all demos
    * - |midpoint|
-     - This tree is marked as not re-rootable (rerootable="false").
-     - caliciviridae\_500, adenoviridae, bcl2
-   * - |midpoint|
      - re-root the tree: MAD or midpoint
      - all demos but auspice, beast, sarscov2, caliciviridae\_500, adenoviridae, dinosaur, ammonite, late\_cretaceous, bcl2
    * - |midpoint|
      - Time trees can't be re-rooted: their branch lengths are times measured from this root.
      - auspice, beast, sarscov2, dinosaur, ammonite, late\_cretaceous
+   * - |midpoint|
+     - This tree is marked as not re-rootable (rerootable="false").
+     - caliciviridae\_500, adenoviridae, bcl2
    * - |representatives|
      - select representative tips: one per group of close tips
      - all demos
@@ -579,6 +579,170 @@ Download
    * - Copy Newick
      - copy the tree to the clipboard in Newick format
      - all demos
+
+Keyboard shortcuts
+------------------
+
+The same actions on every platform; only the modifier differs: ⌘ on macOS,
+Ctrl on Windows and Linux. In the viewer, ⌘/ (Ctrl+/) shows this list, drawn for
+the platform you are on, and the About box (a click on the program name) links
+to it.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 24 58
+
+   * - macOS
+     - Windows / Linux
+     - What it does
+   * - ⌘0
+     - Ctrl+0
+     - Fit the tree to the window
+   * - ⌘+
+     - Ctrl++
+     - Zoom in
+   * - ⌘−
+     - Ctrl+−
+     - Zoom out
+   * - ⌘⇧↑
+     - Ctrl+Shift+↑
+     - Zoom in vertically
+   * - ⌘⇧↓
+     - Ctrl+Shift+↓
+     - Zoom out vertically
+   * - ⌘⇧→
+     - Ctrl+Shift+→
+     - Zoom in horizontally (circular: rotate)
+   * - ⌘⇧←
+     - Ctrl+Shift+←
+     - Zoom out horizontally (circular: rotate back)
+   * - ⌘⇧E
+     - Ctrl+Shift+E
+     - Expand vertically until the labels fit
+   * - ⌘⇧L
+     - Ctrl+Shift+L
+     - Next layout: rectangular, circular, unrooted
+   * - ⌘⇧D
+     - Ctrl+Shift+D
+     - Next display type: phylogram, aligned, cladogram
+   * - ⌘⇧X
+     - Ctrl+Shift+X
+     - Time / divergence scale, or the scale axis
+   * - ⌘⇧O
+     - Ctrl+Shift+O
+     - Ladderize (order the tree)
+   * - ⌘⇧U
+     - Ctrl+Shift+U
+     - Uncollapse every clade
+   * - ⌘F
+     - Ctrl+F
+     - Go to the search box
+   * - ⌘G
+     - Ctrl+G
+     - Next search hit
+   * - ⌘⇧G
+     - Ctrl+Shift+G
+     - Previous search hit
+   * - ⌘⇧<
+     - Ctrl+Shift+<
+     - Previous tree of the file
+   * - ⌘⇧>
+     - Ctrl+Shift+>
+     - Next tree of the file
+   * - ⌘I
+     - Ctrl+I
+     - Tree properties and statistics
+   * - ⌘/
+     - Ctrl+/
+     - This list
+   * - Esc
+     - Esc
+     - Back to the whole tree, the launch view
+   * - O
+     - O
+     - Move the overview to the next corner
+   * - PageUp
+     - PageUp
+     - Larger font
+   * - PageDown
+     - PageDown
+     - Smaller font
+
+The mouse wheel zooms; with Shift it zooms vertically only, with Shift+Alt horizontally, with Ctrl+Shift it sizes the font.
+
+Node menu
+---------
+
+A click on a node, on its point or its label, opens a menu named after the
+node. What it offers depends on the node: a tip cannot be collapsed, a child
+of the root cannot be switched to or re-rooted on, the root has no menu, and
+an entry the tree does not allow is greyed, with a tooltip that says why.
+
+The labels and the greyed entries' reasons are read from the menu, opened on a tip, a
+tip with an accession, an internal node and a child of the root of each demo tree
+shown in the rectangular layout, and once more on the first demo launched with
+``enableManualNodeSelection``, which adds two entries. The words of this table are
+NOT the viewer's: its entries carry no tooltip, so they were written for this
+reference and are to be checked like any draft.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Entry
+     - What it does
+     - Shown for
+   * - Display Node Data
+     - show what the file says about this node: name, branch length, date, taxonomy, sequence, properties and the rest, in a window to copy from
+     - all demos; with enableManualNodeSelection
+   * - Switch to Subtree
+     - show only the clade under this node, as a tree of its own (for a tip, its parent's clade); the whole-tree button of View & Tools, or Esc, returns to the whole tree
+     - all demos; with enableManualNodeSelection
+   * - Collapse/Uncollapse
+     - fold the clade under this node into a wedge, or open it again; greyed for a tip and in the unrooted layout
+     - all demos; with enableManualNodeSelection
+   * - Uncollapse Subtree
+     - open every collapsed clade under this node; greyed when nothing below it is collapsed
+     - all demos; with enableManualNodeSelection
+   * - Swap Descendants
+     - exchange the order of this node's child clades
+     - all demos; with enableManualNodeSelection
+   * - Ladderize Subtree
+     - order the clades under this node by size, largest first or smallest first in turn
+     - all demos; with enableManualNodeSelection
+   * - Reroot
+     - re-root the tree on the branch above this node; when the new root would change the clade of an internal node that carries data, a warning says how many before anything changes
+     - all demos but auspice, beast, sarscov2, caliciviridae\_500, adenoviridae, dinosaur, ammonite, late\_cretaceous, bcl2
+   * - Reroot
+     - Time trees can't be re-rooted: their branch lengths are times measured from this root.
+     - auspice, beast, sarscov2, dinosaur, ammonite, late\_cretaceous; with enableManualNodeSelection
+   * - Reroot
+     - This tree is marked as not re-rootable (rerootable="false").
+     - caliciviridae\_500, adenoviridae, bcl2
+   * - Select/Deselect Node
+     - add this node to the selection, or take it out; offered when the host page enables manual node selection
+     - with enableManualNodeSelection
+   * - Select/Deselect All Ext Nodes
+     - add every tip under this node to the selection, taking out those already in it; offered when the host page enables manual node selection
+     - with enableManualNodeSelection
+   * - Download Ext. Node Data
+     - download the tips under this node as a tab-separated table: name, taxonomy, sequence, branch length and one column per property
+     - all demos; with enableManualNodeSelection
+   * - List Sequences in Fasta
+     - show the molecular sequences of the tips under this node in FASTA format, in a window to copy from; offered when the tree carries sequences
+     - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
+   * - Download Sequences in Fasta
+     - download the molecular sequences of the tips under this node as a FASTA file; offered when the tree carries sequences
+     - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
+   * - Delete Subtree
+     - remove this node and its whole clade from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
+     - all demos but flu\_h5n1\_seg3; with enableManualNodeSelection
+   * - Access DB [accession]
+     - open the database record of this node's accession (NCBI protein or nucleotide, RefSeq, UniProt) in a new browser tab; offered when the node has one, among its properties or sequences or as a UniProt-style name such as CASP9\_HUMAN
+     - flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, genome\_regions, influenza, confidences, branch\_events, flu\_h5n1\_seg3
+   * - Delete External Node
+     - remove this tip from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
+     - all demos; with enableManualNodeSelection
 
 Icon files
 ----------

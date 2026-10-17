@@ -320,7 +320,10 @@ as reStructuredText, taken from the running viewer over the demo trees, which
 together show every control there is, with the panel's icons beside it as SVG
 and PNG files: `control-panel.rst` has one row per wording and says which
 demos show it, `archaeopteryx.rst` is a user-facing page with one row per
-control and no demo mentioned. `node test/make_control_reference.js`
+control and no demo mentioned. Both end with the keyboard shortcuts, read
+from the viewer's own list, and the node menu, its entries read off the menu
+as it opens on the demo trees (the words of that table are the generator's:
+the entries carry no tooltip). `node test/make_control_reference.js`
 regenerates both.
 
 ## Rooting
@@ -519,6 +522,7 @@ too.
 | ⌘F | Ctrl+F | Go to the search box |
 | ⌘G / ⌘⇧G | Ctrl+G / Ctrl+Shift+G | Next / previous search hit |
 | ⌘⇧< / ⌘⇧> | Ctrl+Shift+< / > | Previous / next tree of a multi-tree file |
+| ⌘I | Ctrl+I | Tree properties and statistics |
 | ⌘/ | Ctrl+/ | The shortcut list |
 | Esc or Home | Esc or Home | Back to the whole tree, the launch view |
 | O | O | Move the overview to the next corner |

@@ -15,9 +15,13 @@ users see a change only when a version is cut.
   PNG files: `control-panel.rst` has one row per wording and a column saying
   which demos show it; `archaeopteryx.rst` is a user-facing page, one row per
   control with every wording and every icon it can wear, and no demo
-  mentioned. `node test/make_control_reference.js` regenerates both. Each
-  panel icon now names its kind in a `data-glyph` attribute, which the
+  mentioned. Both end with the keyboard shortcuts, read from the viewer's
+  own list, and the node menu, its entries read off the menu as it opens on
+  the demo trees. `node test/make_control_reference.js` regenerates both.
+  Each panel icon now names its kind in a `data-glyph` attribute, which the
   generator names the icon files by.
+- The README's shortcut table lists ⌘I / Ctrl+I (Tree properties and
+  statistics), which the viewer's own list had and the table lacked.
 - **A second way to the About box.** It was reached by a click on the program
   name alone, and a name does not look like a button to everyone. The **Tree
   properties** dialog (the ⓘ button, ⌘I / Ctrl+I) now ends in a strip with an
