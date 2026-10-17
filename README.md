@@ -320,11 +320,12 @@ as reStructuredText, taken from the running viewer over the demo trees, which
 together show every control there is, with the panel's icons beside it as SVG
 and PNG files: `control-panel.rst` has one row per wording and says which
 demos show it, `archaeopteryx.rst` is a user-facing page with one row per
-control and no demo mentioned. Both end with the keyboard shortcuts, read
-from the viewer's own list, and the node menu, its entries read off the menu
-as it opens on the demo trees (the words of that table are the generator's:
-the entries carry no tooltip). `node test/make_control_reference.js`
-regenerates both.
+control and no demo mentioned. In both, the Download section ends with the
+formats of the Download… menu, each with the sentence the menu shows for it,
+and both end with the keyboard shortcuts, read from the viewer's own list,
+and the node menu, its entries read off the menu as it opens on the demo
+trees (the words of that table are the generator's: the entries carry no
+tooltip). `node test/make_control_reference.js` regenerates both.
 
 ## Rooting
 

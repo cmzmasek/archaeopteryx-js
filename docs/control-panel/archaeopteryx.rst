@@ -474,10 +474,63 @@ Download
      - SVG, PDF and PNG show what is on screen: the part of the tree in view, at the current zoom
    * - Full size
      - SVG, PDF and PNG show the whole tree, drawn large enough for every name
+   * - 2×
+     - PNG at 2 times the resolution of the screen
+   * - 4×
+     - PNG at 4 times the resolution of the screen
+   * - 8×
+     - PNG at 8 times the resolution of the screen
    * - Download…
      - download the tree: choose the format from the menu
    * - Copy Newick
      - copy the tree to the clipboard in Newick format
+   * - Copy PNG
+     - copy the tree to the clipboard as a PNG image, to paste into a document or a slide: drawn as the Graphics and PNG choices above say
+
+.. rubric:: Download… menu: Graphics
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 72
+
+   * - Format
+     - What it does
+   * - SVG
+     - vector: edit it in Inkscape or Illustrator
+   * - PDF
+     - vector: ready to print or to put in a paper
+   * - PNG
+     - image, at 4× the screen's resolution
+
+.. rubric:: Download… menu: Tree
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 72
+
+   * - Format
+     - What it does
+   * - phyloXML
+     - keeps everything the tree carries: taxonomy, sequences, dates, metadata
+   * - Newick
+     - names, branch lengths and support values only
+   * - Nexus
+     - the tree: names, branch lengths and support values
+
+       the tree and its alignment, in one file
+
+.. rubric:: Download… menu: Tip data
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 72
+
+   * - Format
+     - What it does
+   * - TSV
+     - a table, one row per tip: names, taxonomy, sequence names, branch lengths and every metadata field
+   * - FASTA
+     - every molecular sequence the tips carry
 
 Keyboard shortcuts
 ==================

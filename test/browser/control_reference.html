@@ -3,12 +3,17 @@
 <style>html,body{margin:0;height:100%}#phylogram1{position:absolute;inset:0}</style>
 <script src="../../docs/lib/d3.v7.min.js"></script>
 <script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/jspdf.umd.min.js"></script>
+<script src="../../docs/lib/svg2pdf.umd.min.js"></script>
+<script src="../../docs/lib/canvg.global.js"></script>
 <script src="../../docs/lib/phyloxml.js"></script>
 <script src="../../docs/lib/forester.js"></script>
 <script src="../../docs/lib/archaeopteryx.js"></script>
 <div id="phylogram1"></div>
 <script>
-// NOT a test case (run.js does not list it): the page that
+// NOT a test case (run.js does not list it); it loads what the demo page
+// loads, the PDF and PNG libraries included, or the Download menu offers no
+// PDF and no PNG. The page that
 // test/make_control_reference.js drives to read the control panel of every
 // demo tree. For each tree it opens every section, opens the panel's own
 // cheat sheet ("Control panel: what each control does") and takes the sheet's
@@ -19,10 +24,12 @@
 // agree word for word, or the tree is reported as a problem instead.
 //
 // It also reads, once, the viewer's own shortcut list (About box, "Keyboard"
-// row) as it is drawn on this machine, and on each tree the node menu as it
-// opens on a few nodes: a tip, a tip with an accession, an internal node, a
-// child of the root. The menu's entries carry no tooltip (a greyed one its
-// reason), so only their labels are read; the generator has the words.
+// row) as it is drawn on this machine; on each tree the Download button's
+// menu (each format says what it keeps: those words, under the menu's own
+// headings); and on each tree the node menu as it opens on a few nodes: a
+// tip, a tip with an accession, an internal node, a child of the root. The
+// node menu's entries carry no tooltip (a greyed one its reason), so only
+// their labels are read; the generator has the words.
 //
 //   ?trees=<json>   [{key, file, config, extras, menuOnly}]; file relative to
 //                   docs/; extras: selectors of controls whose face a click
@@ -172,6 +179,41 @@
         if (dlg.open) { dlg.close(); }
         await sleep(200);
         return {rows: rows, notes: notes};
+    }
+
+    // --- the Download button's menu: its headings and, under each, the
+    // formats with the sentence each one shows.
+    async function readDownloadMenu(panel) {
+        const btn = panel.querySelector('#dl_b');
+        if (!btn) { throw new Error('no Download button in the panel'); }
+        btn.click();
+        await sleep(300);
+        const menu = document.querySelector('.aptx-node-menu');
+        if (!menu) { throw new Error('the Download button opened no menu'); }
+        const entries = [];
+        let heading = '';
+        Array.from(menu.children).forEach((el) => {
+            if (el.classList.contains('aptx-node-menu-heading')) {
+                heading = el.textContent.trim();
+            } else if (el.tagName === 'BUTTON') {
+                const first = el.childNodes[0];
+                const detail = el.querySelector('.aptx-menu-detail');
+                entries.push({
+                    heading: heading,
+                    label: (first && first.nodeType === 3 ? first.textContent : el.textContent).trim(),
+                    detail: detail ? detail.textContent.trim() : '',
+                    warn: !!(detail && detail.classList.contains('aptx-menu-warn')),
+                    disabled: el.disabled
+                });
+            }
+        });
+        btn.click();   // pressed again, it closes the menu
+        await sleep(200);
+        if (document.querySelector('.aptx-node-menu')) {
+            document.body.click();
+            await sleep(200);
+        }
+        return {entries: entries};
     }
 
     // --- the node menu. A node is found by position (the viewer keeps no
@@ -338,6 +380,9 @@
                     step(t.key, 'reading the shortcut list');
                     shortcuts = await readShortcuts(panel);
                 }
+                step(t.key, 'reading the Download menu');
+                rec.downloads = await readDownloadMenu(panel);
+                step(t.key, rec.downloads.entries.length + ' formats');
             }
             // the node menu, found by position in the rectangular layout only
             const layout = (t.config && t.config.layout) || 'rectangular';

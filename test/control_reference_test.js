@@ -242,4 +242,46 @@ test('the menu union: the demos that read it, the selection launch named on its 
     assert.deepStrictEqual(m[1].words, [gen.MENU_WORDS.Reroot, 'no: a time tree']);
 });
 
+test('the Download menu: one row per format under the menu\'s heading, the words the menu\'s own', () => {
+    const launch = {key: 'apaf', rows: [
+        {section: 'Search', group: '', name: 'Search', glyph: null, words: 'find', state: ''},
+        {section: 'Download', group: '', name: 'Download…', glyph: null, words: 'download the tree', state: ''},
+        {section: 'Download', group: '', name: 'Download…', glyph: null, words: 'download the tree', state: 'after a click on #ladderize_b'}],
+        downloads: {entries: [
+            {heading: 'Graphics, as shown', label: 'SVG', detail: 'vector: edit it', warn: false, disabled: false},
+            {heading: 'Graphics, as shown', label: 'PNG', detail: 'image, at 2× the screen\'s resolution', warn: false, disabled: false},
+            {heading: 'Tree: the subtree on view', label: 'Nexus', detail: 'the tree only: why. phyloXML keeps them.', warn: true, disabled: false},
+            {heading: 'Tip data', label: 'TSV', detail: '', warn: false, disabled: false}
+        ]}};
+    const d = gen.downloadRows(launch);
+    assert.deepStrictEqual(d.rows.map((r) => [r.section, r.group, r.id, r.name, r.words]), [
+        ['Download', 'Download… menu: Graphics', 'download:SVG', 'SVG', 'vector: edit it'],
+        ['Download', 'Download… menu: Graphics', 'download:PNG', 'PNG', 'image, at 2× the screen\'s resolution'],
+        ['Download', 'Download… menu: Tree', 'download:Nexus', 'Nexus', 'the tree only: why. phyloXML keeps them.']
+    ]);
+    assert.deepStrictEqual(d.problems, ['a download format without words: "TSV"']);
+    assert.deepStrictEqual(gen.downloadRows({key: 'x', rows: []}), {rows: [], problems: []});
+    // the rows join the panel's first pass right after the Download section's
+    // own controls, before the passes after a click
+    const w = gen.withDownloads({version: 'v', trees: [launch]});
+    assert.deepStrictEqual(w.problems, ['apaf: a download format without words: "TSV"']);
+    assert.strictEqual(w.reading.version, 'v');
+    assert.deepStrictEqual(w.reading.trees[0].rows.map((r) => r.name + (r.state ? '*' : '')),
+        ['Search', 'Download…', 'SVG', 'PNG', 'Nexus', 'Download…*']);
+    assert.strictEqual(launch.rows.length, 3, 'the reading is not changed in place');
+    const u = gen.unite(w.reading, [{key: 'apaf'}]);
+    assert.deepStrictEqual(u.rows.map((r) => [r.group, r.name]), [
+        ['', 'Search'], ['', 'Download…'], ['Download… menu: Graphics', 'SVG'], ['Download… menu: Graphics', 'PNG'], ['Download… menu: Tree', 'Nexus']
+    ]);
+    // a second launch with a row the first has not, ahead of the section:
+    // the formats still follow the section's controls
+    const other = {key: 'bcl2', rows: [
+        {section: 'Search', group: '', name: 'Search', glyph: null, words: 'find', state: ''},
+        {section: 'Search', group: '', name: 'Negate', glyph: null, words: 'not', state: ''},
+        {section: 'Download', group: '', name: 'Download…', glyph: null, words: 'download the tree', state: ''}],
+        downloads: launch.downloads};
+    const u2 = gen.unite(gen.withDownloads({trees: [launch, other]}).reading, [{key: 'apaf'}, {key: 'bcl2'}]);
+    assert.deepStrictEqual(u2.rows.map((r) => r.name), ['Search', 'Negate', 'Download…', 'SVG', 'PNG', 'Nexus']);
+});
+
 console.log('All tests passed (' + n + ')');

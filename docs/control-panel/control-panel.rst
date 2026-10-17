@@ -17,7 +17,9 @@ button in the panel header, "Control panel: what each control does"); no
 row shows a live value. The panel draws a control only when the tree on view
 gives it something to do, so this is the union over the 26 demo trees of
 ``demo.html``, and the last column says which of them show the control.
-A control with two icons shows the one for what the next click will do.
+A control with two icons shows the one for what the next click will do. The
+Download section ends with the formats of the Download… button's menu, each with
+the sentence the menu shows for it.
 
 .. |aligned_phylogram| image:: glyphs/aligned_phylogram.svg
    :height: 1.3em
@@ -573,12 +575,81 @@ Download
    * - Full size
      - SVG, PDF and PNG show the whole tree, drawn large enough for every name
      - all demos
+   * - 2×
+     - PNG at 2 times the resolution of the screen
+     - all demos
+   * - 4×
+     - PNG at 4 times the resolution of the screen
+     - all demos
+   * - 8×
+     - PNG at 8 times the resolution of the screen
+     - all demos
    * - Download…
      - download the tree: choose the format from the menu
      - all demos
    * - Copy Newick
      - copy the tree to the clipboard in Newick format
      - all demos
+   * - Copy PNG
+     - copy the tree to the clipboard as a PNG image, to paste into a document or a slide: drawn as the Graphics and PNG choices above say
+     - all demos
+
+.. rubric:: Download… menu: Graphics
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Format
+     - What it does
+     - Shown for
+   * - SVG
+     - vector: edit it in Inkscape or Illustrator
+     - all demos
+   * - PDF
+     - vector: ready to print or to put in a paper
+     - all demos
+   * - PNG
+     - image, at 4× the screen's resolution
+     - all demos
+
+.. rubric:: Download… menu: Tree
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Format
+     - What it does
+     - Shown for
+   * - phyloXML
+     - keeps everything the tree carries: taxonomy, sequences, dates, metadata
+     - all demos
+   * - Newick
+     - names, branch lengths and support values only
+     - all demos
+   * - Nexus
+     - the tree: names, branch lengths and support values
+     - all demos but swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
+   * - Nexus
+     - the tree and its alignment, in one file
+     - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
+
+.. rubric:: Download… menu: Tip data
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Format
+     - What it does
+     - Shown for
+   * - TSV
+     - a table, one row per tip: names, taxonomy, sequence names, branch lengths and every metadata field
+     - all demos
+   * - FASTA
+     - every molecular sequence the tips carry
+     - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
 
 Keyboard shortcuts
 ------------------

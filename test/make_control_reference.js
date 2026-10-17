@@ -28,6 +28,9 @@
 // The rst refers to the SVGs, which GitHub's preview, docutils and Sphinx all
 // draw; a LaTeX build takes the PNGs instead (the file's own comment says how).
 //
+// The Download section also lists the formats of the Download button's menu,
+// each with the sentence the menu shows for it, under the menu's own headings.
+//
 // Two more sections follow the panel's: the keyboard shortcuts, read once from
 // the viewer's own list (the About box's Keyboard row) with the other
 // platform's keys derived from the chips; and the node menu, whose entries
@@ -99,6 +102,8 @@ const EXTRAS_CIRCULAR = ['#fitwidth'];
 // adds the two selection entries to the node menu.
 const SELECTION_KEY = 'with enableManualNodeSelection';
 const KEYS_SECTION = 'Keyboard shortcuts';
+const DOWNLOAD_SECTION = 'Download';   // the panel's legend
+const DOWNLOAD_GROUP = 'Download\u2026 menu: ';
 const MENU_SECTION = 'Node menu';
 // The node menu's entries and what they do, in the sheet's voice (the viewer
 // gives the entries no tooltip). An entry whose label carries a value is
@@ -458,6 +463,51 @@ function menuRows(launch) {
     return {rows: rows, problems: problems.map((l) => 'a node menu entry without words: "' + l + '"')};
 }
 
+// The Download button's menu as one launch read it, as rows of the Download
+// section for unite(): one per format, under the menu's heading (its live
+// part dropped: "Graphics, as shown" and "Graphics, full size" are one
+// heading, so is "Tree: the subtree on view"), the words the menu's own. A
+// format without them is a problem.
+function downloadRows(launch) {
+    const rows = [];
+    const problems = [];
+    const entries = (launch.downloads && launch.downloads.entries) || [];
+    for (const e of entries) {
+        if (!e.detail) {
+            problems.push('a download format without words: "' + e.label + '"');
+            continue;
+        }
+        const heading = e.heading.replace(/[:,].*$/, '').trim();
+        rows.push({section: DOWNLOAD_SECTION, group: DOWNLOAD_GROUP + heading, id: 'download:' + e.label,
+            name: e.label, glyph: null, words: e.detail, state: ''});
+    }
+    return {rows: rows, problems: problems};
+}
+
+// The launches with the Download menu's rows in the panel's first pass,
+// right after the Download section's own controls: the menu hangs under the
+// Download button, and the reference lists it there. (As a run of their own
+// the formats had no place in the order and drifted above the controls
+// whenever a row of the section waited on one seen in a later launch.)
+function withDownloads(reading) {
+    const problems = [];
+    const trees = reading.trees.map((t) => {
+        const d = downloadRows(t);
+        problems.push(...d.problems.map((p) => t.key + ': ' + p));
+        const rows = t.rows.slice();
+        let at = -1;
+        for (let i = 0; i < rows.length && !(rows[i].state || '') && rows[i].segment === undefined; ++i) {
+            if (rows[i].section === DOWNLOAD_SECTION) {
+                at = i;
+            }
+        }
+        const formats = d.rows.map((r) => Object.assign({}, r, {segment: undefined}));
+        rows.splice(at + 1, 0, ...formats);
+        return Object.assign({}, t, {rows: rows});
+    });
+    return {reading: Object.assign({}, reading, {trees: trees}), problems: problems};
+}
+
 // The union of the menus over the launches, the demo trees being those the
 // menu was read on (the rectangular layout: the page finds a node by its
 // place, which it knows there).
@@ -632,6 +682,11 @@ function substitutions(kinds) {
     return out + '\n';
 }
 
+// The first column's name: the Download menu's groups list formats.
+function firstColumn(group) {
+    return group.startsWith(DOWNLOAD_GROUP) ? 'Format' : 'Control';
+}
+
 function groupsOf(rows) {
     const groups = [];
     for (const r of rows) {
@@ -652,7 +707,9 @@ function makeRst(union, menu, reading, trees, skipped, glyphInfo) {
         + 'row shows a live value. The panel draws a control only when the tree on view\n'
         + 'gives it something to do, so this is the union over the ' + trees.length
         + ' demo trees of\n``demo.html``, and the last column says which of them show the control.\n'
-        + 'A control with two icons shows the one for what the next click will do.\n\n';
+        + 'A control with two icons shows the one for what the next click will do. The\n'
+        + 'Download section ends with the formats of the Download\u2026 button\'s menu, each with\n'
+        + 'the sentence the menu shows for it.\n\n';
     // the substitutions, all of them, first
     out += substitutions(glyphInfo.kinds);
     for (const section of union.sections) {
@@ -664,7 +721,7 @@ function makeRst(union, menu, reading, trees, skipped, glyphInfo) {
             }
             const rows = inSection.filter((r) => r.group === group)
                 .map((r) => [controlCell(r), rstText(r.words), rstText(r.where)]);
-            out += listTable([24, 56, 20], ['Control', 'What it does', 'Shown for'], rows);
+            out += listTable([24, 56, 20], [firstColumn(group), 'What it does', 'Shown for'], rows);
         }
     }
     out += keysSection(reading, '-');
@@ -738,7 +795,7 @@ function makePlainRst(union, menu, reading) {
             }
             const table = inSection.filter((r) => r.group === group)
                 .map((r) => [controlCell(r), r.words.map(rstText)]);
-            out += listTable([28, 72], ['Control', 'What it does'], table);
+            out += listTable([28, 72], [firstColumn(group), 'What it does'], table);
         }
     }
     out += keysSection(reading, '=');
@@ -786,8 +843,13 @@ async function main() {
         ++bad;
     }
     const menu = menuUnion(reading, trees);
-    for (const p of menu.problems) {
+    const dl = withDownloads(reading);
+    for (const p of menu.problems.concat(dl.problems)) {
         process.stderr.write('  PROBLEM ' + p + '\n');
+        ++bad;
+    }
+    if (!dl.reading.trees.some((t) => t.downloads && t.downloads.entries.length > 0)) {
+        process.stderr.write('  PROBLEM: no Download menu was read\n');
         ++bad;
     }
     if (menu.rows.length === 0) {
@@ -802,7 +864,7 @@ async function main() {
         process.stderr.write('nothing written: the page reported no ink colour or no version\n');
         process.exit(1);
     }
-    const union = unite(reading, trees);
+    const union = unite(dl.reading, trees);
     fs.mkdirSync(OUT_DIR, {recursive: true});
     const glyphInfo = writeGlyphs(reading.glyphs, reading.ink);
     fs.writeFileSync(RST, makeRst(union, menu, reading, trees, skipped, glyphInfo));
@@ -828,4 +890,4 @@ if (require.main === module) {
 
 // for test/control_reference_test.js: the parts that need no browser
 module.exports = {demoTrees, selectionLaunch, glyphFile, rstText, unite, mergeOrders, mergeByControl, listTable, menuLabel, menuRows,
-    menuUnion, keyColumns, MENU_WORDS, UNTITLED, GLYPH_PAD, GLYPH_PX};
+    menuUnion, downloadRows, withDownloads, keyColumns, MENU_WORDS, UNTITLED, GLYPH_PAD, GLYPH_PX};
