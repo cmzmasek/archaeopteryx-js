@@ -123,10 +123,14 @@
         check('the section is shown', section() && section().style.display !== 'none');
         // species (66 taxa over 97 tips) and strain (88 over 91) barely
         // repeat and are not offered, as the Color-by would not lead with them
-        check('the chooser lists family and genus, in that order, with their reach; not species or strain',
-            optionTexts().length === 2 && /^family \(2 taxa, 97 of 97 tips\)$/.test(optionTexts()[0])
-            && /^genus \(10 taxa, 87 of 97 tips\) auto$/.test(optionTexts()[1]),
+        check('the chooser lists family and genus, in that order, with their taxa; not species or strain',
+            optionTexts().length === 2 && /^family \(2 taxa\)$/.test(optionTexts()[0]) && /^genus \(10 taxa\)$/.test(optionTexts()[1]),
             optionTexts().join(' | '));
+        check('an entry\'s tooltip says how many tips the rank places',
+            sel().options[1].title === 'genus: 87 of 97 tips placed, in 10 taxa', sel().options[1].title);
+        // the two switches each take a row of their own, so their names are not clipped
+        const wide = [byId('rank_color_cb'), byId('rank_marks_cb')].map((cb) => cb.closest('.aptx-check-wide, .aptx-check'));
+        check('the switches stand on rows of their own', wide.every((w) => w && w.classList.contains('aptx-check-wide')));
         check('the automatic choice is genus', sel().value === 'genus');
         check('both switches are off: no colours, no marks, no legend', !byId('rank_color_cb').checked && !byId('rank_marks_cb').checked
             && strokes().size === 1 && !marks() && !legend(), [...strokes()].join(' '));

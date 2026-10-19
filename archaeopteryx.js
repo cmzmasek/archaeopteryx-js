@@ -14116,12 +14116,12 @@ function (root, d3, forester, phyloXml) {
         }
         let sel = byId(RANK_SELECT);
         if (sel) {
-            let auto = forester.defaultRank(_rank.coverage, LEGEND_MAX_ROWS);
+            // the entry names the rank and its taxa, what fits the panel's
+            // select; the tips it places are its tooltip (and the legend's
+            // "no value" row counts the rest)
             let options = _rank.coverage.map(function (c) {
                 return {value: c.rank,
-                    text: c.rank + ' (' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon, ' : ' taxa, ')
-                        + countNumber(c.placed) + ' of ' + countNumber(c.tips) + ' tips)'
-                        + (c.rank === auto && _state.cladeRank === 'auto' ? ' auto' : ''),
+                    text: c.rank + ' (' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon)' : ' taxa)'),
                     title: c.rank + ': ' + countNumber(c.placed) + ' of ' + countNumber(c.tips)
                         + ' tips placed, in ' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon' : ' taxa')};
             });
@@ -20879,9 +20879,11 @@ function (root, d3, forester, phyloXml) {
                 + ' how many tips it places: by a tip\'s own taxonomy at that rank, a field named for the rank'
                 + ' (Genus, family...), or the nearest ancestor annotated at it. A tip the file does not place'
                 + ' does not vote"></select></div>');
+            // each switch on a row of its own: side by side, the two names
+            // were clipped to "Colorize subt..." (seen with a real mouse)
             h = h.concat('<div class="aptx-checkgrid">'
-                + makeCheckboxItem('Colorize subtrees', RANK_COLOR_CB, 'to paint the branches of every clade of one taxon at the chosen rank in that taxon\'s colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend')
-                + makeCheckboxItem('Annotate clades', RANK_MARKS_CB, 'to mark every clade of one taxon at the chosen rank with a bar beside the tips and the taxon\'s name (an arc in the circular layout, the name at the mouth of the wedge in the unrooted one)')
+                + makeCheckboxItem('Colorize subtrees', RANK_COLOR_CB, 'to paint the branches of every clade of one taxon at the chosen rank in that taxon\'s colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend', true)
+                + makeCheckboxItem('Annotate clades', RANK_MARKS_CB, 'to mark every clade of one taxon at the chosen rank with a bar beside the tips and the taxon\'s name (an arc in the circular layout, the name at the mouth of the wedge in the unrooted one)', true)
                 + '</div>');
             h = h.concat('</fieldset>');
             return h;

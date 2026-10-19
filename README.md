@@ -258,8 +258,9 @@ not one whose taxa barely repeat (more than three taxa per five placed tips,
 the Color-by's own near-unique line: a strain field, or the species of a
 virus tree sampled once or twice per species), since its clades would be
 single tips with nothing to colour. Each entry says how many taxa the rank
-names and how many tips it places; the automatic choice is the finest rank
-naming 2 to 20 taxa (a legend's worth), else the one naming the most. The
+names, and its tooltip how many tips it places; the automatic choice is the
+finest rank naming 2 to 20 taxa (a legend's worth), else the one naming the
+most. The
 config keys `cladeRank`, `colorizeByRank` and `annotateByRank` set the
 start; a view carries `rank`, `rankColor` and `rankMarks`. Live:
 [Caliciviridae](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500#rankColor=1&rankMarks=1)
@@ -2515,7 +2516,8 @@ fit adds `rankRadialExtent()`. State: `cladeRank` (`'auto'` | a rank),
 `colorizeByRank`, `annotateByRank`; the view `rank` (the EFFECTIVE rank),
 `rankColor`, `rankMarks`. Panel: the `Clades by rank` fieldset
 (`syncRankControls`: hidden without a rank; the select's entries `genus (10
-taxa, 87 of 97 tips) auto`), closed by default. Numbers in
+taxa)` with the placed tips in the tooltip; the two switches on rows of
+their own), closed by default. Numbers in
 `test/rank_test.js` (a hand-built tree, every rule once), the SVG and the
 panel in `test/browser/ranks.html`, the saved figure in
 `test/browser/exports.html?legends=1`.
