@@ -14348,6 +14348,14 @@ function (root, d3, forester, phyloXml) {
         _baseSvg.call(_zoomListener.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(scale));
     }
 
+    // "Fit and center tree, expand vertically": the height every label needs,
+    // and the tree placed as a fit places it -- the root at its offset, the
+    // top at the top border; in the radial layouts, fitted to the window.
+    // setZoomScale keeps the pan, and the pan after a few Y+ presses is the
+    // one keepViewportCentred chose for a tree several times taller than
+    // this one: left in place, it put the whole expanded tree above the
+    // display (Christian, 2026-10-18, demo.html?tree=auspice: Y+, then
+    // expand, and "the tree disappears").
     function zoomToExpandY() {
         if (_root) {
             calcMaxExtLabel();
@@ -14362,6 +14370,13 @@ function (root, d3, forester, phyloXml) {
                 _displayHeight = min;
             }
             update(null, 0);
+            if (_state.circularDisplay) {
+                fitCircular();
+            } else if (_state.unrootedDisplay) {
+                fitUnrooted();
+            } else {
+                centerNode(_root, _settings.rootOffset, TOP_AND_BOTTOM_BORDER_HEIGHT);
+            }
         }
     }
 

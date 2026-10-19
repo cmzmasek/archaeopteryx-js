@@ -32,6 +32,12 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Fixed
+- **Expand vertically after a vertical zoom no longer loses the tree.** The
+  expand button ("fit and center tree, expand vertically") reset the zoom
+  scale but kept the pan a few Y+ presses had left, so the expanded tree sat
+  above the display and had to be scrolled to. It is now placed as the fit
+  button places it: the root at its offset, the top at the top border; in the
+  circular and unrooted layouts, fitted to the window.
 - **The hover readout's values are in one column.** Each row laid itself out,
   its label 96 px or wider: a label wider than that pushed its own value to
   the right of the others ("Confidence [SH_like]" by 15 px, "Confidence

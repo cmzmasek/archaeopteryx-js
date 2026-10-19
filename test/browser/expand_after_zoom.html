@@ -1,0 +1,80 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: expand vertically after a vertical zoom keeps the tree on the screen</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<div id="p"></div>
+<script>
+// Christian, 2026-10-18: on demo.html?tree=auspice, "Y+" a few times and then
+// the expand-vertically button, and the tree is gone from the display; the
+// user has to scroll to find it. The button says "fit and center tree, expand
+// vertically": after it the top of the tree must be on the screen, at the
+// top, whatever zoom came before.
+//
+//   ?zooms=N          how many Y+ presses before expanding (default 3; 0 is
+//                     the plain press, which must land where it always did)
+//   ?file=...         another tree file, relative to docs/ (default the auspice demo)
+//   ?layout=circular  the same in the circular layout, where expand fits the
+//                     tree to the window as the fit button does
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const zooms = parseInt(q.get('zooms') || '3', 10);
+    const file = q.get('file') || 'data/nextstrain-ncov.json';
+    const layout = q.get('layout') || 'rectangular';
+    const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
+        s.src = '../../docs/lib/' + src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+    // where the drawn tree is, against the svg it is drawn in
+    const where = () => {
+        const svg = document.querySelector('#p svg.aptx-tree');
+        const g = svg.querySelector('g');          // the zoomed tree group
+        const s = svg.getBoundingClientRect();
+        const b = g.getBoundingClientRect();
+        return {svgTop: s.top, svgBottom: s.bottom, svgLeft: s.left, svgRight: s.right,
+            top: b.top, bottom: b.bottom, left: b.left, right: b.right,
+            visible: b.bottom > s.top && b.top < s.bottom && b.right > s.left && b.left < s.right,
+            topOnScreen: b.top >= s.top - 1 && b.top < s.bottom};
+    };
+    try {
+        for (const l of ['d3.v7.min.js', 'sax.js', 'phyloxml.js', 'forester.js', 'archaeopteryx.js']) { await load(l); }
+        const text = await (await fetch('../../docs/' + file)).text();
+        const viewer = archaeopteryx.launchArchaeopteryx('#p', file, text, {enableDynamicSizing: true, layout: layout});
+        await viewer.ready;
+        await sleep(1200);
+        const w0 = where();
+        check('at launch the tree is on the screen', w0.visible, JSON.stringify(w0));
+        const yPlus = document.getElementById('zoomout_y');     // the ids are historic: Y+ is zoomout_y
+        const expand = document.getElementById('zoomtoexpandy');
+        check('the Y+ and expand buttons exist', !!yPlus && !!expand);
+        for (let i = 0; i < zooms; ++i) { yPlus.click(); await sleep(250); }
+        const w1 = where();
+        out.push('after ' + zooms + ' x Y+: ' + JSON.stringify(w1));
+        expand.click();
+        await sleep(900);
+        const w2 = where();
+        out.push('after expand: ' + JSON.stringify(w2));
+        check('after expand the tree is on the screen', w2.visible, 'top ' + w2.top + ' bottom ' + w2.bottom + ' in svg ' + w2.svgTop + '..' + w2.svgBottom);
+        if (layout === 'circular') {
+            // fitted: the tree's centre near the window's, the whole of it inside
+            const cx = (w2.left + w2.right) / 2, cy = (w2.top + w2.bottom) / 2;
+            const sx = (w2.svgLeft + w2.svgRight) / 2, sy = (w2.svgTop + w2.svgBottom) / 2;
+            check('after expand the circular tree is centred in the display', Math.abs(cx - sx) < 60 && Math.abs(cy - sy) < 60, cx + ',' + cy + ' vs ' + sx + ',' + sy);
+            check('after expand the whole circular tree is inside the display', w2.top >= w2.svgTop - 1 && w2.bottom <= w2.svgBottom + 1, w2.top + '..' + w2.bottom);
+        } else {
+            check('after expand the top of the tree is at the top of the display', w2.topOnScreen, 'top ' + w2.top + ' svgTop ' + w2.svgTop);
+            if (zooms === 0) {
+                check('a plain expand keeps the x of the launch (the root at its offset)', Math.abs(w2.left - w0.left) < 1, w2.left + ' vs ' + w0.left);
+            }
+        }
+        // the same press on a fresh tree, for the reference: expand alone
+        expand.click();
+        await sleep(600);
+        const w3 = where();
+        out.push('after a second expand: ' + JSON.stringify(w3));
+        check('a second expand leaves it where the first put it', Math.abs(w3.top - w2.top) < 1 && Math.abs(w3.left - w2.left) < 1, w3.top + ' vs ' + w2.top);
+    } catch (e) { failures++; out.push('FAIL  threw: ' + (e && e.stack || e)); }
+    window.__benchResult = {failures: failures, lines: out};
+    window.__benchDone = true;
+})();
+</script>
