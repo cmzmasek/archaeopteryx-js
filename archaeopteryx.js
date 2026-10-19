@@ -13918,20 +13918,132 @@ function (root, d3, forester, phyloXml) {
         return widest;
     }
 
+    // A collapsed clade's label as drawn (drawCollapsedClades places it
+    // itself, so nodeLabelGeometry does not know it): the rectangle
+    // nodeLabelGeometry gives a tip's label, in the same coordinates.
+    // Rectangular and circular (nothing collapses in unrooted); null before
+    // the layout.
+    function collapsedLabelGeometry(d) {
+        if (_state.unrootedDisplay || d.x === undefined || d.y === undefined) {
+            return null;
+        }
+        let fontPx = _state.externalNodeFontSize;
+        let w = legendTextWidth(collapsedLabel(d), (collapsedFullyMarked(d) ? '600 ' : '') + fontPx + 'px ' + FONT_DEFAULTS);
+        let fm = branchFontMetrics(fontPx);
+        let gap = _state.nodeLabelGap;
+        if (!_state.circularDisplay) {
+            let column = (_state.phylogram && _state.alignPhylogram) ? _w : collapsedReach(d)[1];
+            return {x: column + gap, y: (d.x + (0.3 * fontPx)) - fm.ascent, w: w, h: fm.height, angle: 0};
+        }
+        if (!_radial) {
+            return null;
+        }
+        let flip = labelFlip(d);
+        let dy = 0.32 * fontPx;
+        if (_radialLabelsHorizontal) {
+            // upright, out at its point on the ring
+            let base = polarXY(radialAngle(d.x), _radial.maxRad);
+            return {x: base[0] + (flip ? -gap - w : gap), y: (base[1] + dy) - fm.ascent, w: w, h: fm.height, angle: 0};
+        }
+        // along the spoke from the ring, outward on both halves, as a tip's
+        let theta = spokeAngle(d);
+        let at = radialXY(d.x, d.y);
+        let along = gap + (_radial.maxRad - radialRadius(d.y));
+        let off = flip ? -dy : dy;
+        let top = flip ? (off - fm.descent) : (off - fm.ascent);
+        let cos = Math.cos(theta), sin = Math.sin(theta);
+        return {x: at[0] + (cos * along) - (sin * top), y: at[1] + (sin * along) + (cos * top),
+            w: w, h: fm.height, angle: theta};
+    }
+
+    // Where the labels on screen end, which the marks' column starts past.
+    // The layout sizes the label column by a character count with a fixed
+    // headroom (tipLabelSpace: 80 px and more past the longest label), and
+    // marks placed past THAT stood far from the labels (Christian,
+    // 2026-10-19). The desktop measures its labels and starts the bars
+    // CLADE_BAR_GAP past them (labelsRightEdge); so do we, over every row on
+    // screen -- a tip's label or a collapsed clade's, bold or styled as
+    // drawn. Rectangular: the farthest right edge in the tree's x, at least
+    // the label column's start. Circular: the farthest corner's distance
+    // past the ring, at least the label gap.
+    function rankLabelsEnd() {
+        let circular = _state.circularDisplay;
+        let end = circular ? _state.nodeLabelGap : _w + _state.nodeLabelGap;
+        forEachDisplayed(function (n) {
+            if (n.children && !isCollapsed(n)) {
+                return;
+            }
+            let quad = nodeLabelQuad(isCollapsed(n) ? collapsedLabelGeometry(n) : nodeLabelGeometry(n));
+            if (!quad) {
+                return;
+            }
+            for (let i = 0; i < quad.length; ++i) {
+                let reach = circular ? Math.hypot(quad[i][0], quad[i][1]) - _radial.maxRad : quad[i][0];
+                if (isFinite(reach)) {
+                    end = Math.max(end, reach);
+                }
+            }
+        });
+        return end;
+    }
+
+    // The widest label a row of the view could draw, in px, over every tip
+    // and collapsed clade on screen whether auto-hide shows its label or
+    // not: the labels end (rankLabelsEnd) at most this far past the label
+    // column's start, whatever the zoom.
+    function rankLabelBound() {
+        let widest = 0;
+        forEachDisplayed(function (d) {
+            let text = null;
+            let font = null;
+            if (isCollapsed(d)) {
+                text = collapsedLabel(d);
+                font = (collapsedFullyMarked(d) ? '600 ' : '') + _state.externalNodeFontSize + 'px ' + FONT_DEFAULTS;
+            } else if (!d.children) {
+                text = makeNodeLabel(d);
+                let style = nodeStyle(d);
+                let bold = getFoundColor(d) || (style && (style.fontStyle === 'bold' || style.fontStyle === 'bold_italic'));
+                font = (bold ? 'bold ' : '') + nodeLabelFontSize(d) + 'px ' + FONT_DEFAULTS;
+            }
+            if (text) {
+                widest = Math.max(widest, legendTextWidth(text, font));
+            }
+        });
+        return widest;
+    }
+
+    // What the marks' column adds to the layout: the gap, the bar, the
+    // widest name and the end gap, LESS the headroom the label column's
+    // estimate (tipLabelSpace) already stands past the widest label -- the
+    // marks start past the labels as drawn, so that headroom is theirs and
+    // the tree keeps the rest. When a track lies between, the marks start
+    // past the track and the column needs its whole width. `labelStart` is
+    // what the layout budgets before the labels besides tipLabelSpace: the
+    // label gap in rectangular (calcMaxTreeLengthForDisplay), nothing in
+    // circular (fitRadialExtent), so in circular the gap is the labels' own.
+    function rankColumnBudget(gap, tracks, labelStart) {
+        let column = gap + RANK_BAR_WIDTH + RANK_LABEL_GAP + rankWidestLabel() + DOMAIN_TRACK_END_GAP;
+        if (tracks > 0) {
+            return column;
+        }
+        return Math.max(0, column + rankLabelBound() + labelStart - tipLabelSpace());
+    }
+
     // The rectangular layout reserves the marks' column past the other
     // strips, as the tracks do; the radial layouts fit it into the ring.
     function rankReserve() {
         if (!rankMarksOn() || radialDisplay()) {
             return 0;
         }
-        return RANK_BAR_GAP + RANK_BAR_WIDTH + RANK_LABEL_GAP + rankWidestLabel() + DOMAIN_TRACK_END_GAP;
+        return rankColumnBudget(RANK_BAR_GAP, _domainReserve + _geneReserve, 0);
     }
 
     function rankRadialExtent() {
         if (!rankMarksOn() || !radialDisplay()) {
             return 0;
         }
-        return RANK_RADIAL_GAP + RANK_BAR_WIDTH + RANK_LABEL_GAP + rankWidestLabel() + DOMAIN_TRACK_END_GAP;
+        return rankColumnBudget(RANK_RADIAL_GAP, domainRadialExtent() + geneRadialExtent() + heatmapRadialExtent(),
+            _state.nodeLabelGap);
     }
 
     // One mark per clade with rows on screen: a row is a tip, or a collapsed
@@ -14020,7 +14132,10 @@ function (root, d3, forester, phyloXml) {
                 above.set(y, i > 0 ? (ys[i - 1] + y) / 2 : y - (pitch / 2));
                 below.set(y, i < ys.length - 1 ? (y + ys[i + 1]) / 2 : y + (pitch / 2));
             });
-            let x = _w + _state.nodeLabelGap + tipLabelSpace() + _domainReserve + _geneReserve + RANK_BAR_GAP;
+            // past the labels as drawn; when a track lies between, past the
+            // track's column (which the layout placed past the label estimate)
+            let x = ((_domainReserve === 0 && _geneReserve === 0) ? rankLabelsEnd()
+                : _w + _state.nodeLabelGap + tipLabelSpace() + _domainReserve + _geneReserve) + RANK_BAR_GAP;
             let top = _root.children[0];
             groups.forEach(function (rows, clade) {
                 let y0 = Infinity;
@@ -14060,8 +14175,11 @@ function (root, d3, forester, phyloXml) {
     // over the clade's rows plus half a row at each end; the name along the
     // spoke at the arc's middle, flipped on the left half like a tip label.
     function drawRankArcs(groups, markLayer, nameLayer, name) {
-        let r = _radial.maxRad + tipLabelSpace() + domainRadialExtent() + geneRadialExtent()
-            + heatmapRadialExtent() + RANK_RADIAL_GAP + (RANK_BAR_WIDTH / 2);
+        // just outside the labels as drawn; outside the rings when a track
+        // lies between (those start past the label estimate)
+        let rings = domainRadialExtent() + geneRadialExtent() + heatmapRadialExtent();
+        let r = _radial.maxRad + (rings === 0 ? rankLabelsEnd() : tipLabelSpace() + rings)
+            + RANK_RADIAL_GAP + (RANK_BAR_WIDTH / 2);
         let half = Math.PI / Math.max(1, displayedLeafCount());
         let top = _root.children[0];
         groups.forEach(function (rows, clade) {
@@ -14126,14 +14244,12 @@ function (root, d3, forester, phyloXml) {
     // nothing here.
     function drawRankWedgeNames(groups, markLayer, nameLayer, name) {
         let top = _root.children[0];
-        let font = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
         let reach = domainRadialExtent() + geneRadialExtent() + RANK_RADIAL_GAP + RANK_LABEL_GAP;
         let labelReach = function (n) {
-            // the row's label as drawn, along its spoke: the gap and the text
-            if (n._labelDropped || !n._extLabelText) {
-                return 0;
-            }
-            return _state.nodeLabelGap + legendTextWidth(n._extLabelText, font);
+            // the row's label as drawn, along its spoke: the gap and the text,
+            // bold or styled as drawn (nothing collapses in this layout)
+            let g = n.children ? null : nodeLabelGeometry(n);
+            return g ? _state.nodeLabelGap + g.w : 0;
         };
         let half = Math.PI / Math.max(1, displayedLeafCount());
         groups.forEach(function (rows, clade) {

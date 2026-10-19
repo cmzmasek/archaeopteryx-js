@@ -17,10 +17,12 @@ users see a change only when a version is cut.
   rank in that taxon's colour (the branch into the clade's root included; a
   tip the file does not place keeps its branch grey), independent of the
   Color-by on the labels and dots, so genus branches under host-coloured
-  tips is one figure. *Annotate clades* marks every clade: a bar beside the
-  tips with the taxon's name in the rectangular layout, an arc outside the
-  labels in the circular one, the name at the mouth of the clade's wedge in
-  the unrooted one; or, as the **Marks** choice says, the desktop's shaded
+  tips is one figure. *Annotate clades* marks every clade: a bar just past
+  the labels with the taxon's name in the rectangular layout, an arc just
+  outside the labels in the circular one, the name at the mouth of the
+  clade's wedge in the unrooted one (the marks stand 16 px past the labels
+  as drawn, a collapsed clade's included, not past the layout's label
+  estimate, and the tree keeps the room that estimate leaves); or, as the **Marks** choice says, the desktop's shaded
   boxes: a translucent box under the tree from the clade's root to the
   tips, a sector in the radial layouts. Either brings up a legend card of the Color-by's kind,
   with counts over the tips on screen, a "no value" row and clickable

@@ -223,11 +223,12 @@ and two switches, both off until asked for:
   genus-coloured branches under host-coloured tips is one figure, as on the
   desktop; the file's own branch colours step aside while the switch is on.
 * **Annotate clades** marks every such clade, in the style the **Marks**
-  choice names. **Bars**: in the rectangular layout a bar beside the tips,
-  past every other strip, with the taxon's name where the clade is tall
-  enough to carry it (a tooltip otherwise); in the circular layout an arc
-  outside the labels, the name riding the spoke; in the unrooted layout the
-  name at the mouth of the clade's wedge. **Shaded boxes** (the desktop's):
+  choice names. **Bars**: in the rectangular layout a bar just past the
+  labels (past the domain and gene tracks when those are shown), with the
+  taxon's name where the clade is tall enough to carry it (a tooltip
+  otherwise); in the circular layout an arc just outside the labels, the
+  name riding the spoke; in the unrooted layout the name at the mouth of
+  the clade's wedge. **Shaded boxes** (the desktop's):
   a translucent box under the tree from the clade's root out to where the
   bar would stand; in the circular layout a sector from the root's radius
   out to the arc's edge; in the unrooted layout a sector of the clade's
@@ -2505,21 +2506,34 @@ cards, outside their Visualizations gate; class `legendRank`, in
 `WINDOW_LEGEND_CLASSES` so the full-size export stacks it. Marks
 (`drawRankMarks`, a `g.aptx-rankmarks` [marks, names] at the end of the
 tree group): the rows on screen (tips and collapsed clades) grouped by
-`cladeOf`; rectangular: a 9 px bar (`RANK_BAR_WIDTH`) at `_w + nodeLabelGap
-+ labelSpace + _domainReserve + _geneReserve + 16`, from midway above the
-clade's first row to midway below its last (half the rows' pitch at the
-ends), the name 4 px right of it in the tree's font when the bar is at
-least a font size tall, else a `<title>`; the column is reserved in
-`_rankReserve` (`16 + 9 + 4 + widest name + 10`, counted wherever `_w` and
-the other reserves are); circular: an arc at `maxRad + labelSpace + the
-domain, gene and heat map radial extents + 6 + 4.5`, from half a row before
-the first row's angle to half a row after the last (a full circle when it
-closes), stroked 9 px, the name on the spoke at the arc's middle, flipped
-on the left half; unrooted: the name after a 9 px swatch at the mouth of
-the wedge — the clade's root (the view's top node when the root is above
-the view) plus the mean unit direction to its rows times the farthest row's
-distance, that row's label included, plus the extents and gaps; the radial
-fit adds `rankRadialExtent()`. Shaded boxes (`cladeMarkStyle: 'boxes'`, `rankBoxes()`): the marks group
+`cladeOf`; rectangular: a 9 px bar (`RANK_BAR_WIDTH`) 16 px
+(`RANK_BAR_GAP`, the desktop's) past the labels AS DRAWN — `rankLabelsEnd()`,
+the farthest right edge of a row's label, a tip's (`nodeLabelGeometry`) or
+a collapsed clade's (`collapsedLabelGeometry`), bold or styled as drawn,
+never left of `_w + nodeLabelGap`; or, when a domain or gene track lies
+between, past the track at `_w + nodeLabelGap + labelSpace + _domainReserve
++ _geneReserve + 16` (the tracks start past the layout's label estimate,
+which stands 80 px and more past the labels; the marks placed past that
+estimate wasted the difference, Christian, 2026-10-19) — from midway above
+the clade's first row to midway below its last (half the rows' pitch at the
+ends), the name 4 px right of it in the tree's font when the bar is at least
+a font size tall, else a `<title>`; the column is reserved in `_rankReserve`
+(`rankColumnBudget`: `16 + 9 + 4 + widest name + 10`, LESS the estimate's
+headroom over the widest label any row could draw, `rankLabelBound()`, so
+the tree keeps that headroom; the whole column when a track lies between;
+counted wherever `_w` and the other reserves are); circular: an arc at
+`maxRad + rankLabelsEnd() + 6 + 4.5` (the farthest label corner's distance
+past the ring, at least the label gap), or past the rings at `maxRad +
+labelSpace + the domain, gene and heat map radial extents + 6 + 4.5` when
+one is drawn, from half a row before the first row's angle to half a row
+after the last (a full circle when it closes), stroked 9 px, the name on
+the spoke at the arc's middle, flipped on the left half; unrooted: the
+name after a 9 px swatch at the mouth of the wedge — the clade's root (the
+view's top node when the root is above the view) plus the mean unit
+direction to its rows times the farthest row's distance, that row's label
+included (its measured width, bold or styled as drawn), plus the extents
+and gaps; the radial fit adds `rankRadialExtent()` (the same budget, the
+label gap counted since `fitRadialExtent` budgets none). Shaded boxes (`cladeMarkStyle: 'boxes'`, `rankBoxes()`): the marks group
 is inserted FIRST in the tree group, under the branches; rectangular: a
 rect from the clade's origin (`rankCladeOrigin`: the clade root, or the
 view's top node when the root is above the view) at its `y` to the end of

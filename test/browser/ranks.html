@@ -228,10 +228,21 @@
         check('Annotate: the view state says so', vs.rankMarks === true && vs.rankColor === false, JSON.stringify(vs));
 
         if (layout === 'rectangular') {
-            const tipLabels = qa('text.extlabel').filter((t) => t.textContent.trim() !== '');
-            const labelRight = Math.max(...tipLabels.map((t) => t.getBoundingClientRect().right));
-            const barLeft = Math.min(...bars().map((b) => b.getBoundingClientRect().left));
-            check('rectangular: the bars stand past every tip label', barLeft > labelRight, (barLeft - labelRight).toFixed(0));
+            // the bars start RANK_BAR_GAP (16, the desktop's) past the farthest
+            // label as drawn -- a tip's or a collapsed clade's -- measured in
+            // the tree's units, not past the layout's label estimate (which
+            // stood 80 px and more past the labels: Christian, 2026-10-19)
+            const treeG = q('g.aptx-branches').parentNode;
+            const toTreeX = (x, y) => { const pt = treeG.ownerSVGElement.createSVGPoint(); pt.x = x; pt.y = y; return pt.matrixTransform(treeG.getScreenCTM().inverse()).x; };
+            const rightOf = (sel) => Math.max(-Infinity, ...qa(sel).filter((t) => t.textContent.trim() !== '').map((t) => { const b = t.getBoundingClientRect(); return toTreeX(b.right, b.top); }));
+            const labelsRight = () => Math.max(rightOf('text.extlabel'), rightOf('text.aptx-collapsed-label'));
+            const barLeft = () => Math.min(...bars().map((b) => +b.getAttribute('x')));
+            const gapOk = (g) => g > 14.5 && g < 18;
+            check('rectangular: the bars stand 16 px past the farthest label, no more', gapOk(barLeft() - labelsRight()), (barLeft() - labelsRight()).toFixed(1));
+            // and the column fits: every name ends inside the svg
+            const svgRight = treeG.ownerSVGElement.getBoundingClientRect().right;
+            const namesRight = () => Math.max(...qa('g.aptx-rankmarks > g:nth-child(2) > text').map((t) => t.getBoundingClientRect().right));
+            check('rectangular: every name ends inside the display', namesRight() <= svgRight + 0.5, namesRight().toFixed(0) + ' vs ' + svgRight.toFixed(0));
             check('rectangular: the bars are one column, 9 px wide', bars().every((b) => +b.getAttribute('width') === 9)
                 && new Set(bars().map((b) => b.getAttribute('x'))).size === 1);
             // bars meet and do not overlap: sorted by y, each starts where the one before it ends, or later
@@ -245,12 +256,15 @@
                 names().length === tall.length && tall.length >= 8 && tall.length < bars().length && names().includes('Vesivirus') && !names().includes('Nacovirus'),
                 names().length + ' names, ' + tall.length + ' tall bars of ' + bars().length + ' at ' + fontPx + 'px: ' + names().join(', '));
             const nameLeft = Math.min(...qa('g.aptx-rankmarks > g:nth-child(2) > text').map((t) => t.getBoundingClientRect().left));
-            check('rectangular: the names stand right of the bars', nameLeft > barLeft + 9);
+            check('rectangular: the names stand right of the bars', nameLeft > Math.min(...bars().map((b) => b.getBoundingClientRect().left)) + 9);
             // the column is reserved: the tree narrows to make room, and widens back when the marks go
             const treeRight = () => Math.max(...qa('g.aptx-branches > path').map((p) => p.getBoundingClientRect().right));
             const withMarks = treeRight();
             byId('rank_marks_cb').click(); await settle();
-            check('rectangular: without the marks the tree widens back', treeRight() > withMarks + 20, withMarks.toFixed(0) + ' -> ' + treeRight().toFixed(0));
+            check('rectangular: without the marks the tree widens back', treeRight() > withMarks + 5, withMarks.toFixed(0) + ' -> ' + treeRight().toFixed(0));
+            // ... by less than the column's width: the column took the label
+            // estimate's headroom (80 px and more) rather than adding to it
+            check('rectangular: the column takes the label estimate\'s headroom, the tree gives up under 60 px', treeRight() - withMarks < 60, (treeRight() - withMarks).toFixed(0));
             byId('rank_marks_cb').click(); await settle();
             // the chooser: family makes other clades
             choose('rank_select', 'family'); await settle();
@@ -282,7 +296,18 @@
             check('collapsed: the wedge inside the Norovirus clade is filled in its colour', wedge && wedge.style.fill === noroColor,
                 wedge ? wedge.style.fill + ' vs ' + noroColor : 'no wedge');
             check('collapsed: the wedge stands for its rows in the marks: still 17 bars', bars().length === 17, bars().length);
+            check('collapsed: the bars still stand 16 px past the farthest label', gapOk(barLeft() - labelsRight()), (barLeft() - labelsRight()).toFixed(1));
             viewer.applyViewState(noro); byId('vis_cb').click(); await settle();
+            // the collapsed clade's label counts as a label: fold the clade
+            // holding the farthest tip; named by the Color-by ("Salovirus ·
+            // 3 tips"), its label sits past that tip's wedge, the farthest of all
+            const farTip = qa('g.node').map((g) => g.__data__).filter((d) => d && !d.children).sort((a, b) => b.y - a.y)[0];
+            viewer.applyViewState(Object.assign({}, noro, {collapsed: [farTip.parent.viewId]})); await settle();
+            const collapsedRight = rightOf('text.aptx-collapsed-label');
+            check('collapsed farthest: its label is the farthest label on screen', collapsedRight >= labelsRight() - 0.01 && q('text.aptx-collapsed-label'),
+                collapsedRight.toFixed(1) + ' vs ' + labelsRight().toFixed(1) + ' (' + (q('text.aptx-collapsed-label') || {}).textContent + ')');
+            check('collapsed farthest: the bars stand 16 px past the collapsed label', gapOk(barLeft() - collapsedRight), (barLeft() - collapsedRight).toFixed(1));
+            viewer.applyViewState(noro); await settle();
             // a swatch click opens the picker; an override reaches the branches and the bars
             const row = legend().querySelectorAll('rect[style*="cursor"]');
             check('the legend\'s rows take a click (the colour picker)', row.length >= 10, row.length);
@@ -300,9 +325,17 @@
             // units) beats the farthest label corner, measured in the same frame
             const treeG = q('g.aptx-branches').parentNode;
             const toTree = (x, y) => { const pt = treeG.ownerSVGElement.createSVGPoint(); pt.x = x; pt.y = y; return pt.matrixTransform(treeG.getScreenCTM().inverse()); };
-            const labelReach = Math.max(...qa('text.extlabel').filter((t) => t.textContent.trim() !== '').map((t) => { const b = t.getBoundingClientRect();
-                return Math.max(...[[b.left, b.top], [b.right, b.top], [b.left, b.bottom], [b.right, b.bottom]].map(([x, y]) => { const p = toTree(x, y); return Math.hypot(p.x, p.y); })); }));
-            check('circular: the arcs stand outside every tip label', [...radii][0] - 4.5 > labelReach, ([...radii][0] - 4.5).toFixed(0) + ' vs ' + labelReach.toFixed(0));
+            // a turned label's corners: its own box put through its transform
+            // (the screen box of turned text is the box AROUND it, up to half
+            // a line farther out)
+            const labelReach = Math.max(...qa('text.extlabel').filter((t) => t.textContent.trim() !== '').map((t) => { const b = t.getBBox(); const m = t.getScreenCTM();
+                return Math.max(...[[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].map(([x, y]) => {
+                    const pt = treeG.ownerSVGElement.createSVGPoint(); pt.x = x; pt.y = y; const sp = pt.matrixTransform(m); const p = toTree(sp.x, sp.y); return Math.hypot(p.x, p.y); })); }));
+            // the arc's inner edge is RANK_RADIAL_GAP (6) past the farthest
+            // label corner (the browser's text box is a little taller than the
+            // font metrics the viewer reckons with, so 6 or a little less)
+            const arcGap = [...radii][0] - 4.5 - labelReach;
+            check('circular: the arcs stand 6 px outside the farthest tip label, no more', arcGap > 3.5 && arcGap < 6.5, arcGap.toFixed(2));
             const sweep = bars().map((b) => +(/A[-\d.]+,[-\d.]+ 0 (\d),(\d)/.exec(b.getAttribute('d')) || [0, 0, 0])[2]);
             check('circular: every arc runs clockwise', sweep.every((x) => x === 1), sweep.join(''));
         }
