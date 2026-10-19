@@ -249,6 +249,7 @@ function (root, d3, forester, phyloXml) {
     const LEGEND_NODE_SHAPE = 'legendNodeShape';
     const LEGEND_DOMAINS = 'legendDomains';
     const LEGEND_GENES = 'legendGenes';
+    const LEGEND_RANK = 'legendRank';
     const NH_EXPORT_FORMAT = 'Newick';
     const NEXUS_EXPORT_FORMAT = 'Nexus';
     const NODE_SIZE_MAX = 9;
@@ -437,6 +438,10 @@ function (root, d3, forester, phyloXml) {
     const GENE_ANCHOR_SELECT = 'gene_anchor';
     const GENE_FAMILY_SELECT = 'gene_family';
     const GENE_LABELS_SELECT = 'gene_labels';
+    const RANK_CONTROLS = 'rank_controls';
+    const RANK_SELECT = 'rank_select';
+    const RANK_COLOR_CB = 'rank_color_cb';
+    const RANK_MARKS_CB = 'rank_marks_cb';
     const SCALE_AXIS_CB = 'scaleaxis_cb';
     const SCALE_GRID_CB = 'scalegrid_cb';
     const SCALE_BAR_CB = 'scalebar_cb';
@@ -664,6 +669,13 @@ function (root, d3, forester, phyloXml) {
     const DOMAIN_GLOWS = [[3.2, 20], [1.6, 34]];                              // grown by, alpha of 255
     const DOMAIN_LEGEND_INSET = 10;       // px from the bottom-right corner, the legend's home
     const DOMAIN_LEGEND_ROW_MAX_PX = 240; // a legend row is clipped to this
+    // The clade marks of Annotate clades (the desktop's CLADE_BAR_WIDTH and
+    // CLADE_BAR_GAP): a bar beside the tips, its name after it.
+    const RANK_BAR_WIDTH = 9;             // px, the bar (an arc's stroke, in circular)
+    const RANK_BAR_GAP = 16;              // px from the last strip to the bar, rectangular
+    const RANK_RADIAL_GAP = 6;            // px from the last ring to the arc, radial layouts
+    const RANK_LABEL_GAP = 4;             // px from the bar to its name
+    const RANK_LABEL_MAX_PX = 240;        // a clade's name is clipped to this
     const DOMAIN_LABEL_MODES = ['none', 'domains', 'legend'];
     let _domain = null;                   // {width, palette, next, legendFrac}, set per launch
     let _domainReserve = 0;               // horizontal px reserved for the tracks, set with _w
@@ -676,6 +688,8 @@ function (root, d3, forester, phyloXml) {
     const GENE_LANE_MIN_H = 3;            // px: a lane of two is never thinner
     let _gene = null;                     // {width, radialWidth, palette, legendFrac, cache}, set per launch
     let _geneReserve = 0;                 // horizontal px reserved for the gene track, set with _w
+    let _rank = null;                     // {coverage, cache}: the ranks the tree offers, its clades per rank; set per launch
+    let _rankReserve = 0;                 // horizontal px reserved for the clade marks, set with _w
     // ------ heat map (the desktop's MATRIX annotation columns) ------
     const HEATMAP_TRACK_GAP = 8;          // px between what is left of the tree and the matrix
     const HEATMAP_PREF_COL_W = 14;        // a column never grows past this
@@ -1256,7 +1270,7 @@ function (root, d3, forester, phyloXml) {
         // the viewport: measured box=[0,13 1497x755] against
         // view=[-254,-10 1497x800] with rootOffset=254, so "does it fit" said
         // no by precisely 254px and the overview appeared after every Fit.
-        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve + _geneReserve;
+        maxX += calcMaxTreeLengthForDisplay() - _settings.rootOffset + _domainReserve + _geneReserve + _rankReserve;
         minY -= heatmapTopReserve();   // the dendrogram band stands above the first row
         if (scaleBarShown()) {
             maxY += SCALE_BAR_RESERVE;   // the bar sits under the last row
@@ -1519,6 +1533,9 @@ function (root, d3, forester, phyloXml) {
         }
         if (!c && _state.showNodeEvents && d.events && d.children) {
             c = makeNodeEventsDependentColor(d.events);
+        }
+        if (!c) {
+            c = rankBranchColor(d);
         }
         if (!c && _state.useVisualStyles && d.color) {
             let bc = 'rgb(' + d.color.red + ',' + d.color.green + ',' + d.color.blue + ')';
@@ -2918,20 +2935,27 @@ function (root, d3, forester, phyloXml) {
     function addLegends() {
         removeColorLegend(LEGEND_LABEL_COLOR);
         removeShapeLegend(LEGEND_NODE_SHAPE);
-        // Both legends follow the Visualizations switch: with it off nothing
-        // is painted, so nothing should claim to be.
-        if (!_vis || !_state.showVisualizations) {
+        removeColorLegend(LEGEND_RANK);
+        if (!_vis) {
             return;
         }
         let x = _state.visualizationsLegendXpos;
         let y = _state.visualizationsLegendYpos;
-        let colorVis = currentColorVis();
-        let shapeVis = currentShapeVis();
-        if (colorVis) {
-            y += drawLegendCard(LEGEND_LABEL_COLOR, x, y, colorVis, 'color') + 10;
+        // The colour and shape legends follow the Visualizations switch: with
+        // it off nothing is painted, so nothing should claim to be. The
+        // clades-by-rank card has its own switches.
+        if (_state.showVisualizations) {
+            let colorVis = currentColorVis();
+            let shapeVis = currentShapeVis();
+            if (colorVis) {
+                y += drawLegendCard(LEGEND_LABEL_COLOR, x, y, colorVis, 'color') + 10;
+            }
+            if (shapeVis) {
+                y += drawLegendCard(LEGEND_NODE_SHAPE, x, y, shapeVis, 'shape') + 10;
+            }
         }
-        if (shapeVis) {
-            drawLegendCard(LEGEND_NODE_SHAPE, x, y, shapeVis, 'shape');
+        if (rankLegendShown()) {
+            drawLegendCard(LEGEND_RANK, x, y, rankVis(), 'color');
         }
     }
 
@@ -3076,6 +3100,7 @@ function (root, d3, forester, phyloXml) {
             // the gene track its own past theirs
             _domainReserve = domainReserve();
             _geneReserve = geneReserve();
+            _rankReserve = rankReserve();   // the clade marks' column, past both tracks
             // The heat map is budgeted FIRST of the two right-hand tracks: it
             // wants a fixed, finite width (its columns at their preferred size
             // and no more), while the alignment's band is a WINDOW that scrolls
@@ -3088,7 +3113,7 @@ function (root, d3, forester, phyloXml) {
                 let vw0 = Math.min(_displayWidth, (vp0 && vp0.w) ? vp0.w : _displayWidth);
                 let hband = Math.max(HEATMAP_MIN_BAND_PX, Math.round(vw0 * HEATMAP_MAX_VIEWPORT_FRACTION));
                 let hmax = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - _geneReserve
-                    - HEATMAP_TRACK_GAP - HEATMAP_MIN_TREE_PX;
+                    - _rankReserve - HEATMAP_TRACK_GAP - HEATMAP_MIN_TREE_PX;
                 hband = Math.max(HEATMAP_MIN_BAND_PX, Math.min(hband, hmax));
                 _heatmapReserve = HEATMAP_TRACK_GAP + Math.min(cols * HEATMAP_PREF_COL_W, hband);
             }
@@ -3103,12 +3128,12 @@ function (root, d3, forester, phyloXml) {
                 // a wide alignment must not squeeze the tree itself away: the
                 // band yields until the tree keeps its minimum share
                 let maxBand = _displayWidth - calcMaxTreeLengthForDisplay() - _domainReserve - _geneReserve
-                    - _heatmapReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
+                    - _rankReserve - _heatmapReserve - MSA_TRACK_GAP - MSA_MIN_TREE_PX;
                 band = Math.max(MSA_MIN_BAND_PX, Math.min(band, maxBand));
                 _msaReserve = MSA_TRACK_GAP + Math.min(fullPx, band);
             }
             _w = _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve - _domainReserve - _geneReserve
-                - _heatmapReserve;
+                - _rankReserve - _heatmapReserve;
             if (_w < 1) {
                 _w = 1;
             }
@@ -3664,6 +3689,7 @@ function (root, d3, forester, phyloXml) {
         drawDomainLegend();
         drawGeneTrack();
         drawGeneLegend();
+        drawRankMarks();
         drawMsaTrack();
         drawHeatmapTrack();
         drawTimeOverlays();
@@ -3723,7 +3749,12 @@ function (root, d3, forester, phyloXml) {
     };
 
     let makeBranchColor = function (link) {
-
+        // Colorize subtrees paints the clade's branches; the file's own
+        // branch colours step aside while it is on
+        let rankColor = rankBranchColor(link.target);
+        if (rankColor) {
+            return rankColor;
+        }
         if (_state.useVisualStyles && link.target.color) {
             let c = link.target.color;
             return 'rgb(' + c.red + ',' + c.green + ',' + c.blue + ')';
@@ -3798,7 +3829,12 @@ function (root, d3, forester, phyloXml) {
         if (styleColor) {
             return styleColor;
         }
-        // the branch colour, unlike a style colour, holds under a Color-by (desktop)
+        // the branch colour, unlike a style colour, holds under a Color-by
+        // (desktop): a clade's under Colorize subtrees, else the file's
+        let rankColor = rankBranchColor(phynode);
+        if (rankColor) {
+            return rankColor;
+        }
         if (_state.useVisualStyles && phynode.color) {
             let c = phynode.color;
             return "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
@@ -5833,6 +5869,9 @@ function (root, d3, forester, phyloXml) {
         'geneAnchor',
         'geneFamily',
         'geneLabels',
+        'cladeRank',
+        'colorizeByRank',
+        'annotateByRank',
         'showScaleAxis',
         'showScaleBar',
         'showScaleGrid',
@@ -6166,6 +6205,24 @@ function (root, d3, forester, phyloXml) {
         } else if (typeof _state.geneFamily !== 'string' || _state.geneFamily.length === 0) {
             throw new Error(ERROR + '"geneFamily" must be an annotation namespace such as "pgfam", or "auto"');
         }
+        // Clades by rank: off until asked for, on a tree that offers a rank
+        // at all (rankInit says). The rank is the automatic choice unless
+        // named; a name no rank of the tree answers to warns and yields.
+        if (_state.cladeRank === undefined) {
+            _state.cladeRank = 'auto';
+        } else if (typeof _state.cladeRank !== 'string' || _state.cladeRank.trim().length === 0) {
+            throw new Error(ERROR + '"cladeRank" must be a taxonomic rank such as "genus", or "auto"');
+        } else {
+            _state.cladeRank = _state.cladeRank.trim().toLowerCase();
+        }
+        ['colorizeByRank', 'annotateByRank'].forEach(function (key) {
+            if (_state[key] === undefined) {
+                _state[key] = false;
+            } else if (typeof _state[key] !== 'boolean') {
+                throw new Error(ERROR + '"' + key + '" must be true or false');
+            }
+        });
+        rankInit();
         _gene = {width: null, radialWidth: null, palette: null, legendFrac: null, cache: new WeakMap()};
         if (_basicTreeProperties.geneRegions) {
             // a location outside the grammar and a gene on a second contig
@@ -7599,6 +7656,9 @@ function (root, d3, forester, phyloXml) {
             _domain.palette = null;   // the tree changed: the domain names are dealt their colours again
         }
         if (edited) {
+            rankTreeEdited();         // the ranks offered and the clades are read off the tree again
+        }
+        if (edited) {
             _labelFields = null;      // the fields the labels can show, too
             _heatmapModel = null;     // ... and the heat map's columns and scale are derived from it again
             _heatmapColor = null;
@@ -7642,7 +7702,7 @@ function (root, d3, forester, phyloXml) {
         // once flung the whole tree off-screen after three X+ presses).
         return {
             horizontal: Math.max(1, _displayWidth - calcMaxTreeLengthForDisplay() - _msaReserve
-                - _domainReserve - _geneReserve - _heatmapReserve),
+                - _domainReserve - _geneReserve - _rankReserve - _heatmapReserve),
             vertical: Math.max(40, _displayHeight - (2 * TOP_AND_BOTTOM_BORDER_HEIGHT)
                 - bottomOverlayReserve() - topOverlayReserve())
         };
@@ -8996,7 +9056,7 @@ function (root, d3, forester, phyloXml) {
         // A faint dashed guide from each tip across to its row, as the
         // alignment track draws -- skipped when the domain or gene tracks are
         // in between, where it would run straight through their boxes.
-        if (_domainReserve === 0 && _geneReserve === 0) {
+        if (_domainReserve === 0 && _geneReserve === 0 && _rankReserve === 0) {
             let guideFont = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
             let guideGap = _state.nodeLabelGap;
             let guideEnd = originX - 3;
@@ -9888,7 +9948,9 @@ function (root, d3, forester, phyloXml) {
     function collapsedColor(d) {
         let vis = currentColorVis();
         if (!vis || !_state.showVisualizations) {
-            return _state.branchColorDefault;
+            // no Color-by on the tips: the clade's colour under Colorize
+            // subtrees, else the default
+            return rankBranchColor(d) || _state.branchColorDefault;
         }
         let counts = Object.create(null);
         let best = null;
@@ -10160,6 +10222,11 @@ function (root, d3, forester, phyloXml) {
             s.geneAnchor = geneAnchor() || 'none';
             s.geneFamily = geneFamilyNamespace() || 'auto';
         }
+        if (rankAvailable()) {
+            s.rank = cladeRank();   // the rank in effect, so a link reproduces the figure
+            s.rankColor = _state.colorizeByRank === true;
+            s.rankMarks = _state.annotateByRank === true;
+        }
         if (_basicTreeProperties.branchLengths === true) {
             s.scaleAxis = _state.showScaleAxis === true;
             s.scaleGrid = _state.showScaleGrid === true;
@@ -10335,6 +10402,15 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.geneAnchor === 'string' && s.geneAnchor.length > 0) {
             _state.geneAnchor = s.geneAnchor;
         }
+        if (typeof s.rank === 'string' && rankOffered(s.rank.toLowerCase())) {
+            _state.cladeRank = s.rank.toLowerCase();
+        }
+        if (typeof s.rankColor === 'boolean') {
+            _state.colorizeByRank = s.rankColor;
+        }
+        if (typeof s.rankMarks === 'boolean') {
+            _state.annotateByRank = s.rankMarks;
+        }
         // timeAxis / timeGrid: the names before the axis also measured
         // distance, still read so that older links keep their axis
         let axis = typeof s.scaleAxis === 'boolean' ? s.scaleAxis : s.timeAxis;
@@ -10429,6 +10505,7 @@ function (root, d3, forester, phyloXml) {
         setValue(DOMAIN_LABELS_SELECT, _state.domainLabels);
         syncDomainControls();
         syncGeneControls();
+        syncRankControls();
         setSliderValue(FONT_SIZE_SLIDER, _state.externalNodeFontSize);
         setSliderValue(NODE_SIZE_SLIDER, _state.nodeSizeDefault);
         setSliderValue(BRANCH_WIDTH_SLIDER, _state.branchWidthDefault);
@@ -10501,11 +10578,11 @@ function (root, d3, forester, phyloXml) {
     // The heat map's four keys and the alignment logo went in exactly that
     // way, while the README promised a link reproduced the figure.
     const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine',
-        'heatmapOrder', 'scale', 'geneAnchor', 'geneFamily', 'geneLabels'];
+        'heatmapOrder', 'scale', 'geneAnchor', 'geneFamily', 'geneLabels', 'rank'];
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
     const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow', 'genes',
-        'scaleAxis', 'scaleGrid', 'scaleBar', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
+        'rankColor', 'rankMarks', 'scaleAxis', 'scaleGrid', 'scaleBar', 'timeAxis', 'timeGrid', 'matchCase', 'inverse'];
     // Lists of strings, comma-joined. A property ref carries ':' but never a
     // comma, and encodeViewValue leaves both readable in a hash.
     const VIEW_LIST_KEYS = ['heatmapManual', 'labelFields'];
@@ -13567,6 +13644,512 @@ function (root, d3, forester, phyloXml) {
         scheduleUpdate(null, 0, true);
     }
 
+    // ===================== Clades by rank =====================
+    // "Colorize subtrees" and "Annotate clades" by a taxonomic rank: the
+    // desktop's Tools > Colorize Subtrees via Taxonomic Rank and Annotate
+    // Clades by Rank, on the file's own annotations and nothing else
+    // (forester.rankClades says which, and how a clade is cut). The clades
+    // are decided on the TREE, never per view, like a Color-by value: a
+    // subtree view keeps the colours its clades had. Christian, 2026-10-19:
+    // "build it", on the plan in TODO.md.
+    //
+    //   - Colorize subtrees paints each clade's BRANCHES, the branch into the
+    //     clade's root included, in the clade's colour. A tip the file does
+    //     not place keeps its own branch in the default colour: the viewer
+    //     claims nothing about it. Labels and dots stay the Color-by's, so
+    //     genus branches under host-coloured tips is one figure, as on the
+    //     desktop. The file's branch colours step aside while it is on.
+    //   - Annotate clades draws a MARK per clade: in rectangular a bar beside
+    //     the tips, past every other strip, with the taxon's name where the
+    //     clade is tall enough to carry it (a tooltip otherwise); in
+    //     circular an arc outside the labels, the name riding the spoke; in
+    //     unrooted the name at the mouth of the clade's wedge (the desktop
+    //     draws no mark in unrooted).
+    //   - One legend card for both, the Color-by's kind: a count per taxon
+    //     over the tips on screen, a "no value" row for the unplaced ones, a
+    //     colour changed by clicking its swatch. The colours come from the
+    //     Color-by's palette, and when the rank is first shown while the
+    //     Color-by shows the same field (the genus the rank reads), its
+    //     colours are taken over, so one genus never wears two.
+
+    function rankAvailable() {
+        return !!(_rank && _rank.coverage.length > 0);
+    }
+
+    // Per launch: which ranks this tree offers, and the config's say.
+    function rankInit() {
+        _rank = {coverage: forester.rankCoverage(_treeData), cache: Object.create(null)};
+        if (_state.cladeRank !== 'auto' && rankAvailable() && !rankOffered(_state.cladeRank)) {
+            say('problem', 'warn', WARNING + ': cladeRank "' + _state.cladeRank
+                + '" names no rank this tree places tips at; using the automatic choice');
+            _state.cladeRank = 'auto';
+        }
+    }
+
+    function rankOffered(rank) {
+        return !!(_rank && _rank.coverage.some(function (c) {
+            return c.rank === rank;
+        }));
+    }
+
+    // The rank in effect: the named one, else the automatic choice.
+    function cladeRank() {
+        if (!rankAvailable()) {
+            return null;
+        }
+        if (_state.cladeRank !== 'auto' && rankOffered(_state.cladeRank)) {
+            return _state.cladeRank;
+        }
+        return forester.defaultRank(_rank.coverage, LEGEND_MAX_ROWS);
+    }
+
+    // The tree's clades at the rank in effect, computed once per rank and
+    // kept until the tree is edited.
+    function rankClades() {
+        let rank = cladeRank();
+        if (!rank) {
+            return null;
+        }
+        if (!_rank.cache[rank]) {
+            _rank.cache[rank] = forester.rankClades(_treeData, rank);
+            if (_vis) {
+                rankDealColors(_rank.cache[rank]);   // once per rank: every branch reads the memory
+            }
+        }
+        return _rank.cache[rank];
+    }
+
+    // After a deletion or a re-rooting: the ranks offered and the clades are
+    // derived from the tree again (a rank can lose its last tip).
+    function rankTreeEdited() {
+        if (!_rank) {
+            return;
+        }
+        _rank.coverage = forester.rankCoverage(_treeData);
+        _rank.cache = Object.create(null);
+    }
+
+    function rankColorizeOn() {
+        return _state.colorizeByRank === true && rankAvailable();
+    }
+
+    function rankMarksOn() {
+        return _state.annotateByRank === true && rankAvailable();
+    }
+
+    function rankVisId() {
+        return 'rank:' + cladeRank();
+    }
+
+    // The colours, dealt over the WHOLE tree's taxa (most tips first) into
+    // the same memory the Color-by legends use, so a swatch click and
+    // "[reset colors]" work on them unchanged. Dealt once per rank: a taxon
+    // keeps its colour for the session. When a categorical Color-by is on
+    // and names EVERY taxon of the rank among its values, its colours are
+    // taken over instead of the palette's next ones.
+    function rankDealColors(model) {
+        let id = rankVisId();
+        let mem = _vis.colorMemory[id] || (_vis.colorMemory[id] = {});
+        let wanting = model.taxa.filter(function (t) {
+            return !(t.name in mem);
+        });
+        if (wanting.length === 0) {
+            return;
+        }
+        let same = null;
+        let cv = currentColorVis();
+        if (cv && colorModeOf(cv) === 'category' && _vis.colorMemory[cv.id]) {
+            let theirs = _vis.colorMemory[cv.id];
+            let byLower = Object.create(null);
+            Object.keys(theirs).forEach(function (k) {
+                byLower[k.toLowerCase()] = theirs[k];
+            });
+            if (model.taxa.every(function (t) {
+                return byLower[t.name.toLowerCase()] !== undefined;
+            })) {
+                same = byLower;
+            }
+        }
+        let next = _vis.colorNext[id] || 0;
+        wanting.forEach(function (t) {
+            mem[t.name] = same ? same[t.name.toLowerCase()] : extendedPaletteColor(next++);
+        });
+        _vis.colorNext[id] = next;
+    }
+
+    function rankColorOf(taxon) {
+        let mem = _vis && _vis.colorMemory[rankVisId()];
+        return (mem && mem[taxon]) || null;
+    }
+
+    // The colour a node's branch wears under Colorize subtrees: its clade's,
+    // or null -- for a node in no clade, for a tip the file does not place,
+    // and while the switch is off.
+    function rankBranchColor(node) {
+        if (!rankColorizeOn() || !node) {
+            return null;
+        }
+        let model = rankClades();
+        let clade = model ? model.cladeOf.get(node) : null;
+        if (!clade || (!node.children && !model.tipTaxon.has(node))) {
+            return null;
+        }
+        return rankColorOf(clade.taxon);
+    }
+
+    // The legend's view of the rank: the Color-by legend's shape of record
+    // (drawLegendCard reads it as a categorical colour field), summarized
+    // over the tips on screen like summarizeView does.
+    function rankVis() {
+        let model = rankClades();
+        if (!model) {
+            return null;
+        }
+        rankDealColors(model);
+        let counts = Object.create(null);
+        let total = 0;
+        let placed = 0;
+        (function walk(n) {
+            if (!n.children) {
+                total++;
+                let t = model.tipTaxon.get(n);
+                if (t !== undefined) {
+                    placed++;
+                    counts[t] = (counts[t] || 0) + 1;
+                }
+            } else if (!isCollapsed(n)) {
+                for (let i = 0; i < n.children.length; ++i) {
+                    walk(n.children[i]);
+                }
+            }
+        })(_root);
+        let rank = model.rank;
+        let vis = {
+            id: rankVisId(), kind: 'rank', ref: null,
+            label: rank.charAt(0).toUpperCase() + rank.substring(1) + ' clades',
+            numeric: false, colorMode: 'category', switchable: false, shape: false,
+            values: model.taxa.map(function (t) {
+                return t.name;
+            }).filter(function (name) {
+                return counts[name] > 0;
+            }),
+            counts: counts, total: total, coverage: placed
+        };
+        buildCategoryScale(vis);
+        return vis;
+    }
+
+    function rankLegendShown() {
+        return (rankColorizeOn() || rankMarksOn()) && rankClades() !== null && rankClades().clades.length > 0;
+    }
+
+    // ---- the marks ----
+
+    function rankMarkFont() {
+        return _state.externalNodeFontSize + 'px ' + _state.defaultFont;
+    }
+
+    function rankMarkText(taxon) {
+        return clipTextToWidth(taxon, rankMarkFont(), RANK_LABEL_MAX_PX);
+    }
+
+    // The widest taxon name of the rank, as drawn: what the marks' column
+    // reserves beside the bar.
+    function rankWidestLabel() {
+        let model = rankClades();
+        let widest = 0;
+        if (model) {
+            let font = rankMarkFont();
+            model.taxa.forEach(function (t) {
+                widest = Math.max(widest, legendTextWidth(rankMarkText(t.name), font));
+            });
+        }
+        return widest;
+    }
+
+    // The rectangular layout reserves the marks' column past the other
+    // strips, as the tracks do; the radial layouts fit it into the ring.
+    function rankReserve() {
+        if (!rankMarksOn() || radialDisplay()) {
+            return 0;
+        }
+        return RANK_BAR_GAP + RANK_BAR_WIDTH + RANK_LABEL_GAP + rankWidestLabel() + DOMAIN_TRACK_END_GAP;
+    }
+
+    function rankRadialExtent() {
+        if (!rankMarksOn() || !radialDisplay()) {
+            return 0;
+        }
+        return RANK_RADIAL_GAP + RANK_BAR_WIDTH + RANK_LABEL_GAP + rankWidestLabel() + DOMAIN_TRACK_END_GAP;
+    }
+
+    // One mark per clade with rows on screen: a row is a tip, or a collapsed
+    // clade standing for its tips. [the marks, the names], kept between
+    // redraws and moved to the end of the tree group.
+    function drawRankMarks() {
+        if (!_svgGroup) {
+            return;
+        }
+        let existing = _svgGroup.select('g.aptx-rankmarks');
+        let model = (rankMarksOn() && _root) ? rankClades() : null;
+        let groups = new Map();   // clade -> its rows on screen
+        if (model) {
+            forEachDisplayed(function (n) {
+                if (n.children && !isCollapsed(n)) {
+                    return;
+                }
+                if (_state.unrootedDisplay ? (n.ux === undefined) : (n.x === undefined)) {
+                    return;
+                }
+                let clade = model.cladeOf.get(n);
+                if (!clade) {
+                    return;
+                }
+                let rows = groups.get(clade);
+                if (!rows) {
+                    rows = [];
+                    groups.set(clade, rows);
+                }
+                rows.push(n);
+            });
+        }
+        if (groups.size === 0) {
+            existing.remove();
+            return;
+        }
+        rankDealColors(model);
+        let g = existing.node();
+        if (!g) {
+            g = document.createElementNS(d3.namespaces.svg, 'g');
+            g.setAttribute('class', 'aptx-rankmarks');
+            g.style.pointerEvents = 'none';
+            ['g', 'g'].forEach(function (tag) {
+                g.appendChild(document.createElementNS(d3.namespaces.svg, tag));
+            });
+        }
+        _svgGroup.node().appendChild(g);
+        let markLayer = d3.select(g.children[0]);
+        let nameLayer = d3.select(g.children[1]);
+        markLayer.selectAll('*').remove();
+        nameLayer.selectAll('*').remove();
+        const font = rankMarkFont();
+        const FS = _state.externalNodeFontSize;
+        const ink = _state.labelColorDefault;
+        let name = function (sel, taxon) {
+            return sel.style('font', font).style('fill', ink).text(rankMarkText(taxon));
+        };
+        if (_state.circularDisplay) {
+            drawRankArcs(groups, markLayer, nameLayer, name);
+        } else if (_state.unrootedDisplay) {
+            drawRankWedgeNames(groups, markLayer, nameLayer, name);
+        } else {
+            // a bar runs from midway above its first row to midway below its
+            // last, so neighbouring bars meet exactly; the outermost rows get
+            // half the rows' pitch, so a one-row bar is one row tall
+            let ys = [];
+            groups.forEach(function (rows) {
+                rows.forEach(function (n) {
+                    ys.push(n.x);
+                });
+            });
+            ys.sort(function (a, b) {
+                return a - b;
+            });
+            let pitch = ys.length > 1 ? (ys[ys.length - 1] - ys[0]) / (ys.length - 1) : FS;
+            let above = new Map();   // a row's y -> the bar edge above it
+            let below = new Map();   // ... and below it
+            ys.forEach(function (y, i) {
+                above.set(y, i > 0 ? (ys[i - 1] + y) / 2 : y - (pitch / 2));
+                below.set(y, i < ys.length - 1 ? (y + ys[i + 1]) / 2 : y + (pitch / 2));
+            });
+            let x = _w + _state.nodeLabelGap + tipLabelSpace() + _domainReserve + _geneReserve + RANK_BAR_GAP;
+            groups.forEach(function (rows, clade) {
+                let y0 = Infinity;
+                let y1 = -Infinity;
+                rows.forEach(function (n) {
+                    y0 = Math.min(y0, above.get(n.x));
+                    y1 = Math.max(y1, below.get(n.x));
+                });
+                let color = rankColorOf(clade.taxon);
+                let bar = markLayer.append('rect')
+                    .attr('x', x).attr('y', y0)
+                    .attr('width', RANK_BAR_WIDTH).attr('height', Math.max(1, y1 - y0))
+                    .style('fill', color);
+                bar.append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
+                if (y1 - y0 >= FS) {
+                    name(nameLayer.append('text')
+                        .attr('x', x + RANK_BAR_WIDTH + RANK_LABEL_GAP)
+                        .attr('y', (y0 + y1) / 2)
+                        .style('dominant-baseline', 'middle'), clade.taxon);
+                }
+            });
+        }
+    }
+
+    // Circular: an arc per clade just outside the labels and the rings,
+    // over the clade's rows plus half a row at each end; the name along the
+    // spoke at the arc's middle, flipped on the left half like a tip label.
+    function drawRankArcs(groups, markLayer, nameLayer, name) {
+        let r = _radial.maxRad + tipLabelSpace() + domainRadialExtent() + geneRadialExtent()
+            + heatmapRadialExtent() + RANK_RADIAL_GAP + (RANK_BAR_WIDTH / 2);
+        let half = Math.PI / Math.max(1, displayedLeafCount());
+        groups.forEach(function (rows, clade) {
+            let a0 = Infinity;
+            let a1 = -Infinity;
+            rows.forEach(function (n) {
+                let a = radialAngle(n.x);
+                a0 = Math.min(a0, a);
+                a1 = Math.max(a1, a);
+            });
+            a0 -= half;
+            a1 += half;
+            let color = rankColorOf(clade.taxon);
+            let d;
+            if (a1 - a0 >= (2 * Math.PI) - 1e-6) {
+                d = 'M' + (-r) + ',0A' + r + ',' + r + ' 0 1,1 ' + r + ',0A' + r + ',' + r + ' 0 1,1 ' + (-r) + ',0';
+            } else {
+                let p0 = polarXY(a0, r);
+                let p1 = polarXY(a1, r);
+                d = 'M' + p0[0] + ',' + p0[1] + 'A' + r + ',' + r + ' 0 ' + ((a1 - a0) > Math.PI ? 1 : 0) + ',1 '
+                    + p1[0] + ',' + p1[1];
+            }
+            markLayer.append('path')
+                .attr('d', d)
+                .style('fill', 'none')
+                .style('stroke', color)
+                .style('stroke-width', RANK_BAR_WIDTH)
+                .append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
+            let mid = (a0 + a1) / 2;
+            let p = polarXY(mid, r + (RANK_BAR_WIDTH / 2) + RANK_LABEL_GAP);
+            let deg = (mid - (Math.PI / 2)) * 180 / Math.PI;
+            let m = (mid - (Math.PI / 2)) % (2 * Math.PI);
+            if (m < 0) {
+                m += 2 * Math.PI;
+            }
+            let flip = m > (Math.PI / 2) && m < (1.5 * Math.PI);
+            name(nameLayer.append('text')
+                .attr('transform', 'translate(' + p[0] + ',' + p[1] + ') rotate(' + (flip ? deg + 180 : deg) + ')')
+                .style('text-anchor', flip ? 'end' : 'start')
+                .style('dominant-baseline', 'middle'), clade.taxon);
+        });
+    }
+
+    // Unrooted: the name at the mouth of the clade's wedge -- past its
+    // farthest row AND that row's own label, along the mean direction from
+    // the clade's root (the view's top node when the root is above the
+    // view), with a swatch of the colour before it. The desktop draws
+    // nothing here.
+    function drawRankWedgeNames(groups, markLayer, nameLayer, name) {
+        let top = _root.children[0];
+        let font = _state.externalNodeFontSize + 'px ' + _state.defaultFont;
+        let reach = domainRadialExtent() + geneRadialExtent() + RANK_RADIAL_GAP + RANK_LABEL_GAP;
+        let labelReach = function (n) {
+            // the row's label as drawn, along its spoke: the gap and the text
+            if (n._labelDropped || !n._extLabelText) {
+                return 0;
+            }
+            return _state.nodeLabelGap + legendTextWidth(n._extLabelText, font);
+        };
+        groups.forEach(function (rows, clade) {
+            let origin = clade.node;
+            for (let n = origin; n && n !== top; n = n.parent) {
+                if (!n.parent) {
+                    origin = top;   // the clade's root is not on screen: the view is inside the clade
+                    break;
+                }
+            }
+            if (origin.ux === undefined) {
+                origin = top;
+            }
+            let dx = 0;
+            let dy = 0;
+            let far = 0;
+            rows.forEach(function (n) {
+                let vx = n.ux - origin.ux;
+                let vy = n.uy - origin.uy;
+                let len = Math.sqrt((vx * vx) + (vy * vy));
+                if (len > 0) {
+                    dx += vx / len;
+                    dy += vy / len;
+                }
+                far = Math.max(far, len + labelReach(n));
+            });
+            let len = Math.sqrt((dx * dx) + (dy * dy));
+            if (len > 0) {
+                dx /= len;
+                dy /= len;
+            } else {
+                let a = rows[0].uangle || 0;   // one row on the origin itself: its own spoke
+                dx = Math.cos(a);
+                dy = Math.sin(a);
+            }
+            let px = origin.ux + (dx * (far + reach));
+            let py = origin.uy + (dy * (far + reach));
+            let color = rankColorOf(clade.taxon);
+            let right = dx >= 0;
+            let sw = RANK_BAR_WIDTH;
+            markLayer.append('rect')
+                .attr('x', right ? px : px - sw).attr('y', py - (sw / 2))
+                .attr('width', sw).attr('height', sw)
+                .attr('rx', 2)
+                .style('fill', color)
+                .append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
+            name(nameLayer.append('text')
+                .attr('x', right ? px + sw + RANK_LABEL_GAP : px - sw - RANK_LABEL_GAP)
+                .attr('y', py)
+                .style('text-anchor', right ? 'start' : 'end')
+                .style('dominant-baseline', 'middle'), clade.taxon);
+        });
+    }
+
+    // ---- the controls: the section is shown when the tree offers a rank;
+    // the select lists the ranks with their reach, the two boxes the switches
+    function syncRankControls() {
+        let fs = byId(RANK_CONTROLS);
+        if (!fs) {
+            return;
+        }
+        let on = rankAvailable();
+        fs.style.display = on ? '' : 'none';
+        if (!on) {
+            return;
+        }
+        let sel = byId(RANK_SELECT);
+        if (sel) {
+            let auto = forester.defaultRank(_rank.coverage, LEGEND_MAX_ROWS);
+            let options = _rank.coverage.map(function (c) {
+                return {value: c.rank,
+                    text: c.rank + ' (' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon, ' : ' taxa, ')
+                        + countNumber(c.placed) + ' of ' + countNumber(c.tips) + ' tips)'
+                        + (c.rank === auto && _state.cladeRank === 'auto' ? ' auto' : ''),
+                    title: c.rank + ': ' + countNumber(c.placed) + ' of ' + countNumber(c.tips)
+                        + ' tips placed, in ' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon' : ' taxa')};
+            });
+            fillSelect(sel, options, cladeRank());
+        }
+        setCheckboxValue(RANK_COLOR_CB, _state.colorizeByRank === true);
+        setCheckboxValue(RANK_MARKS_CB, _state.annotateByRank === true);
+    }
+
+    function rankSelectChanged() {
+        let v = getValue(RANK_SELECT);
+        if (typeof v === 'string' && v.length > 0 && v !== cladeRank()) {
+            _state.cladeRank = v;
+            scheduleUpdate(null, 0);
+        }
+        syncRankControls();
+    }
+
+    function rankColorCbClicked() {
+        _state.colorizeByRank = getCheckboxValue(RANK_COLOR_CB);
+        scheduleUpdate(null, 0);
+    }
+
+    function rankMarksCbClicked() {
+        _state.annotateByRank = getCheckboxValue(RANK_MARKS_CB);
+        scheduleUpdate(null, 0);
+    }
+
     // ===================== Time axis =====================
     // The desktop's time overlays, drawn beneath a rectangular PHYLOGRAM of
     // a dated tree: the two-band ICS geologic axis with a "Ma before
@@ -14339,7 +14922,8 @@ function (root, d3, forester, phyloXml) {
             return;
         }
         let labelSpace = (_maxLabelLength * _state.externalNodeFontSize * LABEL_SIZE_CALC_FACTOR) + LABEL_SIZE_CALC_ADDITION;
-        let outer = maxRad + labelSpace + domainRadialExtent() + geneRadialExtent() + heatmapRadialExtent();
+        let outer = maxRad + labelSpace + domainRadialExtent() + geneRadialExtent() + heatmapRadialExtent()
+            + rankRadialExtent();
         let W = +_baseSvg.attr('width'), H = +_baseSvg.attr('height');
         let scale = 0.9 * (Math.min(W, H) / (2 * outer));
         if (!isFinite(scale) || scale <= 0) {
@@ -16352,7 +16936,8 @@ function (root, d3, forester, phyloXml) {
     const PANEL_SECTIONS_KEY = 'aptx-panel-sections';
     // Download too (Christian, 2026-09-28): four rows, and not something a
     // session uses often.
-    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['View & Tools', 'Sizes', 'Domain Architectures', 'Genome regions', 'Download'];
+    const PANEL_SECTIONS_CLOSED_BY_DEFAULT = ['View & Tools', 'Sizes', 'Domain Architectures', 'Genome regions',
+        'Clades by rank', 'Download'];
 
     function loadPanelSections() {
         if (_panelSections) {
@@ -19435,6 +20020,8 @@ function (root, d3, forester, phyloXml) {
 
             c0.insertAdjacentHTML('beforeend',makeGeneControls());
 
+            c0.insertAdjacentHTML('beforeend',makeRankControls());
+
             c0.insertAdjacentHTML('beforeend',makeHeatmapControls());
 
             c0.insertAdjacentHTML('beforeend',makeZoomControl());
@@ -19570,6 +20157,9 @@ function (root, d3, forester, phyloXml) {
         on(GENE_ANCHOR_SELECT, 'change', geneAnchorChanged);
         on(GENE_FAMILY_SELECT, 'change', geneFamilyChanged);
         on(GENE_LABELS_SELECT, 'change', geneLabelsChanged);
+        on(RANK_SELECT, 'change', rankSelectChanged);
+        on(RANK_COLOR_CB, 'click', rankColorCbClicked);
+        on(RANK_MARKS_CB, 'click', rankMarksCbClicked);
         on(SCALE_BAR_CB, 'click', scaleBarCbClicked);
         on(SCALE_AXIS_CB, 'click', scaleAxisCbClicked);
         on(SCALE_GRID_CB, 'click', scaleGridCbClicked);
@@ -20277,6 +20867,26 @@ function (root, d3, forester, phyloXml) {
             return h;
         }
 
+        // Clades by rank, shown when the tree offers a rank at all
+        // (syncRankControls, which also fills the select from the tree): the
+        // rank, and the two switches, Colorize subtrees and Annotate clades.
+        function makeRankControls() {
+            let h = '<fieldset id="' + RANK_CONTROLS + '" style="display:none">';
+            h = h.concat('<legend>Clades by rank</legend>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + RANK_SELECT + '">Rank</label>');
+            h = h.concat('<select name="' + RANK_SELECT + '" id="' + RANK_SELECT
+                + '" title="the taxonomic rank the clades are cut at, with how many taxa the tree names there and'
+                + ' how many tips it places: by a tip\'s own taxonomy at that rank, a field named for the rank'
+                + ' (Genus, family...), or the nearest ancestor annotated at it. A tip the file does not place'
+                + ' does not vote"></select></div>');
+            h = h.concat('<div class="aptx-checkgrid">'
+                + makeCheckboxItem('Colorize subtrees', RANK_COLOR_CB, 'to paint the branches of every clade of one taxon at the chosen rank in that taxon\'s colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend')
+                + makeCheckboxItem('Annotate clades', RANK_MARKS_CB, 'to mark every clade of one taxon at the chosen rank with a bar beside the tips and the taxon\'s name (an arc in the circular layout, the name at the mouth of the wedge in the unrooted one)')
+                + '</div>');
+            h = h.concat('</fieldset>');
+            return h;
+        }
+
         // Shown only while the Heat Map toggle is on (syncHeatmapControls).
         // The desktop's View > Order Matrix Columns, minus its Manual mode --
         // that one means "the order you dragged the rows into", and there is
@@ -20524,6 +21134,7 @@ function (root, d3, forester, phyloXml) {
         setCheckboxValue(HEATMAP_CB, _state.showHeatmap);
         syncDomainControls();
         syncGeneControls();
+        syncRankControls();
         syncHeatmapControls();
         setCheckboxValue(SCALE_AXIS_CB, _state.showScaleAxis);
         setCheckboxValue(SCALE_GRID_CB, _state.showScaleGrid);
@@ -21059,7 +21670,7 @@ function (root, d3, forester, phyloXml) {
     // colour and shape legends, the domain legend, the heat-map ring's scale.
     // On screen they sit where the window has room; in a full-size figure the
     // window is gone, so they are stacked beside the tree instead.
-    const WINDOW_LEGEND_CLASSES = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE, LEGEND_DOMAINS, LEGEND_GENES,
+    const WINDOW_LEGEND_CLASSES = [LEGEND_LABEL_COLOR, LEGEND_NODE_SHAPE, LEGEND_RANK, LEGEND_DOMAINS, LEGEND_GENES,
         'aptx-heatmap-ringlegend'];
     const FULL_SIZE_LEGEND_STACK_GAP = 12;
 

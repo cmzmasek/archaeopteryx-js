@@ -8809,6 +8809,349 @@
     };
 
     // --------------------------------------------------------------
+    // Taxonomic ranks: clades by rank
+    // --------------------------------------------------------------
+    // The model behind "Colorize subtrees" and "Annotate clades" by a
+    // taxonomic rank (the desktop's Tools > Colorize Subtrees via Taxonomic
+    // Rank and Annotate Clades by Rank), on what the FILE says and nothing
+    // else: no database is asked, no annotation is corrected or inferred
+    // (Christian, 2026-10-19: "we should not be in the business of
+    // _correcting_ annotations").
+    //
+    // Three sources name a tip's taxon at a rank, in this order:
+    //   1. its own <taxonomy> element at exactly that rank (the scientific
+    //      name, else the common name, else the code);
+    //   2. a property whose ref's LOCAL name (after the namespace colon) is
+    //      the rank, in ANY namespace -- vipr:Genus, repseq:family,
+    //      BVBRC:species, ncbi:genus, tol:Domain -- with a non-blank value.
+    //      The desktop reads ncbi: and gtdb: only; a BV-BRC tree keeps its
+    //      ranks under its own prefixes, so here every namespace counts;
+    //   3. the nearest ancestor that itself names a taxon at that rank
+    //      (1 or 2 on the ancestor): the file's word about the clade.
+    // An internal node is read for its OWN taxon only (1 or 2), as the
+    // ancestor of source 3; an internal annotation never outvotes the tips.
+    //
+    // Then every maximal subtree whose placed tips all name one taxon is a
+    // CLADE of that taxon; a paraphyletic taxon is several clades. A tip
+    // the file places at no taxon does not vote (his decision, 2026-10-19;
+    // the desktop's rule is stricter: an unplaced tip keeps its clade mixed
+    // unless the clade's own annotation names the taxon). Taxa are matched
+    // by name, trimmed and case-insensitively; the first spelling met is the
+    // one shown.
+
+    // The ranks in Linnaean order: phyloXML's rank vocabulary less "other"
+    // and "unknown", in the desktop's order (TaxonomyUtil.TAXONOMY_RANKS_LIST,
+    // so both programs list a rank chooser alike). A rank outside it is
+    // still a rank, listed after these alphabetically.
+    forester.TAXONOMIC_RANKS = ['domain', 'superkingdom', 'kingdom', 'subkingdom', 'branch', 'infrakingdom',
+        'superphylum', 'phylum', 'subphylum', 'infraphylum', 'microphylum', 'superdivision', 'division',
+        'subdivision', 'infradivision', 'superclass', 'class', 'subclass', 'infraclass', 'superlegion', 'legion',
+        'sublegion', 'infralegion', 'supercohort', 'cohort', 'subcohort', 'infracohort', 'superorder', 'order',
+        'suborder', 'infraorder', 'superfamily', 'family', 'subfamily', 'supertribe', 'tribe', 'subtribe',
+        'infratribe', 'genus', 'subgenus', 'superspecies', 'species', 'subspecies', 'variety', 'varietas',
+        'subvariety', 'form', 'subform', 'cultivar', 'strain', 'section', 'subsection'];
+
+    const RANK_NOT_A_RANK = {'': true, 'other': true, 'unknown': true};
+
+    // A rank, normalised; '' for none and for phyloXML's "other" / "unknown".
+    function rankKey(rank) {
+        let k = typeof rank === 'string' ? rank.trim().toLowerCase() : '';
+        return RANK_NOT_A_RANK[k] ? '' : k;
+    }
+
+    // Document order: the root first, then each child's subtree in the
+    // file's order. (forester.preOrderTraversal walks children LAST first,
+    // which is the drawing order; a "first spelling met" and a list of
+    // clades read better in the file's own order.)
+    function walkDown(n, fn) {
+        fn(n);
+        if (n.children) {
+            for (let i = 0; i < n.children.length; ++i) {
+                walkDown(n.children[i], fn);
+            }
+        }
+    }
+
+    function eachNode(tree, fn) {
+        if (tree) {
+            walkDown(forester.getTreeRoot(tree), fn);
+        }
+    }
+
+    function taxonText(v) {
+        return typeof v === 'string' ? v.trim() : '';
+    }
+
+    // The rank a property ref names: its local name, lower-cased, when that
+    // is a known rank ("vipr:Genus" -> "genus"); null for any other ref.
+    function propertyRank(ref) {
+        if (typeof ref !== 'string') {
+            return null;
+        }
+        let local = rankKey(ref.substring(ref.lastIndexOf(':') + 1));
+        return forester.TAXONOMIC_RANKS.indexOf(local) >= 0 ? local : null;
+    }
+
+    // A node's OWN taxon at `rank` ({name, source: 'taxonomy' | 'property'}),
+    // or null. Sources 1 and 2 above.
+    forester.ownRankTaxon = function (node, rank) {
+        let want = rankKey(rank);
+        if (!node || !want) {
+            return null;
+        }
+        if (node.taxonomies) {
+            for (let i = 0; i < node.taxonomies.length; ++i) {
+                let t = node.taxonomies[i];
+                if (t && rankKey(t.rank) === want) {
+                    let name = taxonText(t.scientific_name) || taxonText(t.common_name) || taxonText(t.code);
+                    if (name) {
+                        return {name: name, source: 'taxonomy'};
+                    }
+                }
+            }
+        }
+        if (node.properties) {
+            for (let i = 0; i < node.properties.length; ++i) {
+                let p = node.properties[i];
+                if (p && propertyRank(p.ref) === want) {
+                    let name = taxonText(p.value);
+                    if (name) {
+                        return {name: name, source: 'property'};
+                    }
+                }
+            }
+        }
+        return null;
+    };
+
+    // A tip's taxon at `rank`: its own, else the nearest ancestor's own
+    // ({name, source: 'taxonomy' | 'property' | 'ancestor'}), or null.
+    forester.tipRankTaxon = function (node, rank) {
+        let own = forester.ownRankTaxon(node, rank);
+        if (own) {
+            return own;
+        }
+        for (let a = node ? node.parent : null; a; a = a.parent) {
+            let t = forester.ownRankTaxon(a, rank);
+            if (t) {
+                return {name: t.name, source: 'ancestor'};
+            }
+        }
+        return null;
+    };
+
+    // Canonical order first, then the rest alphabetically.
+    forester.compareRanks = function (a, b) {
+        let ia = forester.TAXONOMIC_RANKS.indexOf(a);
+        let ib = forester.TAXONOMIC_RANKS.indexOf(b);
+        if (ia >= 0 || ib >= 0) {
+            if (ia < 0) {
+                return 1;
+            }
+            if (ib < 0) {
+                return -1;
+            }
+            return ia - ib;
+        }
+        return a < b ? -1 : (a > b ? 1 : 0);
+    };
+
+    // The ranks the tree names anywhere -- in a <taxonomy>'s rank, or as a
+    // property's local name -- in canonical order.
+    function ranksNamed(tree) {
+        let seen = Object.create(null);
+        eachNode(tree, function (n) {
+            if (n.taxonomies) {
+                n.taxonomies.forEach(function (t) {
+                    let r = t ? rankKey(t.rank) : '';
+                    if (r) {
+                        seen[r] = true;
+                    }
+                });
+            }
+            if (n.properties) {
+                n.properties.forEach(function (p) {
+                    let r = p ? propertyRank(p.ref) : null;
+                    if (r) {
+                        seen[r] = true;
+                    }
+                });
+            }
+        });
+        return Object.keys(seen).sort(forester.compareRanks);
+    }
+
+    // The ranks worth offering, in canonical order, each with how many tips
+    // it places and how many taxa it names there: [{rank, placed, tips,
+    // taxa}]. A rank placing no tip is left out, and so is one whose taxa
+    // barely repeat -- more than three taxa per five placed tips, the
+    // Color-by's own near-unique line (a strain field; the species of a
+    // virus tree sampled once or twice per species): its clades would be
+    // single tips, nothing to colour or to mark. The desktop offers every
+    // annotated rank.
+    forester.rankCoverage = function (tree) {
+        let out = [];
+        if (!tree) {
+            return out;
+        }
+        ranksNamed(tree).forEach(function (rank) {
+            let placed = 0;
+            let tips = 0;
+            let taxa = Object.create(null);
+            eachNode(tree, function (n) {
+                if (n.children) {
+                    return;
+                }
+                tips++;
+                let t = forester.tipRankTaxon(n, rank);
+                if (t) {
+                    placed++;
+                    taxa[t.name.toLowerCase()] = true;
+                }
+            });
+            let distinct = Object.keys(taxa).length;
+            if (placed > 0 && distinct * 5 <= placed * 3) {
+                out.push({rank: rank, placed: placed, tips: tips, taxa: distinct});
+            }
+        });
+        return out;
+    };
+
+    // The rank to open the chooser on: the FINEST rank that names 2 to
+    // `maxTaxa` taxa (a legend's worth: a genus level on a family tree),
+    // else the one naming the most taxa, else null. From rankCoverage's
+    // list, so only an offered rank is ever picked.
+    forester.defaultRank = function (coverage, maxTaxa) {
+        if (!coverage || coverage.length === 0) {
+            return null;
+        }
+        let cap = maxTaxa > 1 ? maxTaxa : 20;
+        for (let i = coverage.length - 1; i >= 0; --i) {
+            if (coverage[i].taxa >= 2 && coverage[i].taxa <= cap) {
+                return coverage[i].rank;
+            }
+        }
+        let best = coverage[0];
+        coverage.forEach(function (c) {
+            if (c.taxa > best.taxa) {
+                best = c;
+            }
+        });
+        return best.rank;
+    };
+
+    const RANK_MIXED = {};   // a subtree whose placed tips name two taxa or more
+
+    // The clades of the tree at `rank`:
+    //   clades    [{node, taxon, tips, placed}] -- each maximal subtree whose
+    //             placed tips all name `taxon`, in document order; `tips`
+    //             all the tips under it, `placed` those the file names. The
+    //             subtrees are disjoint. ONE placed tip in a subtree is
+    //             enough to make it pure (the others do not vote), so a
+    //             sparsely annotated tree can be one clade.
+    //   cladeOf   Map: every node inside a clade (its root included) -> that
+    //             clade. A tip the file does not place is in its clade's map
+    //             entry (it is swept in), but not in tipTaxon.
+    //   tipTaxon  Map: placed tip -> its taxon's display name.
+    //   taxa      [{name, tips, clades}], by tips descending then name:
+    //             `tips` the placed tips naming it, `clades` how many clades
+    //             it is split into (2 or more: paraphyletic on this tree).
+    //   tips, placed, unplaced   the tree's tip counts.
+    forester.rankClades = function (tree, rank) {
+        let out = {rank: rankKey(rank), clades: [], cladeOf: new Map(), tipTaxon: new Map(), taxa: [],
+            tips: 0, placed: 0, unplaced: 0};
+        if (!tree || !out.rank) {
+            return out;
+        }
+        let display = Object.create(null);   // taxon key -> the first spelling met
+        let nameOf = function (t) {
+            let k = t.name.toLowerCase();
+            if (!(k in display)) {
+                display[k] = t.name;
+            }
+            return k;
+        };
+        // every placed tip's taxon key, in document order (the display
+        // spelling is the first met)
+        let keyOf = new Map();
+        eachNode(tree, function (n) {
+            if (n.children) {
+                return;
+            }
+            out.tips++;
+            let t = forester.tipRankTaxon(n, rank);
+            if (t) {
+                keyOf.set(n, nameOf(t));
+                out.tipTaxon.set(n, display[keyOf.get(n)]);
+            }
+        });
+        out.placed = out.tipTaxon.size;
+        out.unplaced = out.tips - out.placed;
+        if (out.placed === 0) {
+            return out;
+        }
+        // the taxon each subtree is pure for: its placed tips' one taxon,
+        // RANK_MIXED, or null when it has no placed tip
+        let subtree = new Map();
+        forester.postOrderTraversalAll(forester.getTreeRoot(tree), function (n) {
+            if (!n.children) {
+                subtree.set(n, keyOf.has(n) ? keyOf.get(n) : null);
+                return;
+            }
+            let consensus = null;
+            for (let i = 0; i < n.children.length; ++i) {
+                let s = subtree.get(n.children[i]);
+                if (s === RANK_MIXED || (s !== null && consensus !== null && s !== consensus)) {
+                    consensus = RANK_MIXED;
+                    break;
+                }
+                if (s !== null) {
+                    consensus = s;
+                }
+            }
+            subtree.set(n, consensus);
+        });
+        // the roots: pure, under a parent that is not pure for the same taxon
+        let byTaxon = Object.create(null);
+        eachNode(tree, function (n) {
+            let t = subtree.get(n);
+            if (t === null || t === RANK_MIXED) {
+                return;
+            }
+            let p = n.parent;
+            if (p && subtree.has(p) && subtree.get(p) === t) {
+                return;
+            }
+            let clade = {node: n, taxon: display[t], tips: 0, placed: 0};
+            walkDown(n, function (m) {
+                out.cladeOf.set(m, clade);
+                if (!m.children) {
+                    clade.tips++;
+                    if (out.tipTaxon.has(m)) {
+                        clade.placed++;
+                    }
+                }
+            });
+            out.clades.push(clade);
+            let tx = byTaxon[t] || (byTaxon[t] = {name: display[t], tips: 0, clades: 0});
+            tx.tips += clade.placed;
+            tx.clades++;
+        });
+        out.taxa = Object.keys(byTaxon).map(function (k) {
+            return byTaxon[k];
+        }).sort(function (a, b) {
+            let d = b.tips - a.tips;
+            if (d !== 0) {
+                return d;
+            }
+            let la = a.name.toLowerCase();
+            let lb = b.name.toLowerCase();
+            return la < lb ? -1 : (la > lb ? 1 : 0);
+        });
+        return out;
+    };
+
+    // --------------------------------------------------------------
     // Metadata tables
     // --------------------------------------------------------------
     // A table beside the tree -- TSV or CSV with a header row, the first

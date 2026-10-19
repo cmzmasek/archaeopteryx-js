@@ -83,6 +83,18 @@ export interface ArchaeopteryxConfig {
     geneFamily?: string;
     /** Where gene symbols go: on the arrows, in a legend of the families, or nowhere. */
     geneLabels?: 'none' | 'genes' | 'legend';
+    /** The taxonomic rank the clades are cut at (Clades by rank): 'auto'
+     * (the finest rank naming 2 to 20 taxa, else the one naming the most)
+     * or a rank such as 'genus'. A rank the tree places no tip at warns and
+     * falls back to 'auto'. */
+    cladeRank?: string;
+    /** Open with the branches of every clade at that rank painted in its
+     * taxon's colour. Default false. */
+    colorizeByRank?: boolean;
+    /** Open with every clade at that rank marked beside the tips (a bar and
+     * the taxon's name; an arc in circular; the name at the wedge's mouth in
+     * unrooted). Default false. */
+    annotateByRank?: boolean;
     initialVisualization?: string | null;
     ladderizeTree?: boolean;
     layout?: Layout;
@@ -213,6 +225,12 @@ export interface ViewState {
     /** The family namespace in effect. */
     geneFamily?: string;
     geneLabels?: 'none' | 'genes' | 'legend';
+    /** The rank in effect for Clades by rank, such as 'genus'. */
+    rank?: string;
+    /** Colorize subtrees by that rank. */
+    rankColor?: boolean;
+    /** Annotate clades by that rank. */
+    rankMarks?: boolean;
     scaleAxis?: boolean;
     scaleGrid?: boolean;
     scaleBar?: boolean;

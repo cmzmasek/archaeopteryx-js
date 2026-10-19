@@ -208,6 +208,63 @@ and decides by itself what is worth showing. There is nothing to configure.
   itself (and phyloXML branch colours). Search hits and selections always
   outrank visualization colours. **Esc** returns to the opening state.
 
+## Clades by rank
+
+The desktop's **Colorize Subtrees via Taxonomic Rank** and **Annotate Clades
+by Rank**, on what the file says and nothing else: no database is asked, no
+annotation is corrected or inferred. The **Clades by rank** section of the
+panel (shown when the tree names a rank anywhere) holds a **Rank** chooser
+and two switches, both off until asked for:
+
+* **Colorize subtrees** paints the branches of every clade of one taxon at
+  the chosen rank in that taxon's colour, the branch into the clade's root
+  included. A tip the file does not place keeps its branch grey: the viewer
+  claims nothing about it. Labels and node dots stay the Color-by's, so
+  genus-coloured branches under host-coloured tips is one figure, as on the
+  desktop; the file's own branch colours step aside while the switch is on.
+* **Annotate clades** marks every such clade: in the rectangular layout a
+  bar beside the tips, past every other strip, with the taxon's name where
+  the clade is tall enough to carry it (a tooltip otherwise); in the
+  circular layout an arc outside the labels, the name riding the spoke; in
+  the unrooted layout the name at the mouth of the clade's wedge.
+
+Either switch brings up a legend card of the Color-by's kind — a count per
+taxon over the tips on screen, a **no value** row for the tips the file does
+not place, a swatch you click to change a colour, `[reset colors]` — and the
+colours come from the Color-by's palette: when the Color-by shows the same
+field (the genus the rank reads), its colours are taken over, so one genus
+never wears two.
+
+**A tip's taxon at a rank** comes from, in this order: its own `<taxonomy>`
+element at exactly that rank (the scientific name, else the common name,
+else the code); a property whose name after the namespace colon is the
+rank, in any namespace — `vipr:Genus`, `repseq:family`, `BVBRC:species`,
+`ncbi:genus`, `tol:Domain` (the desktop reads `ncbi:` and `gtdb:` only); the
+nearest ancestor that itself names a taxon at that rank. **A clade** is a
+maximal subtree whose placed tips all name one taxon; a taxon scattered over
+the tree is several clades, each marked and coloured alike. A tip the file
+places at no taxon **does not vote** (Christian's rule; the desktop's is
+stricter: an unplaced tip keeps its clade mixed unless the clade's own
+annotation names the taxon), so a sparsely annotated subtree is swept in
+with its placed tips, and one placed tip is enough to make a subtree pure.
+Taxa are matched by name, trimmed and case-insensitively, and shown in the
+first spelling met. The clades are decided on the whole tree, never per
+view: a subtree view keeps its clades' colours, and the legend re-describes
+what is on screen. Deleting part of the tree or re-rooting derives the ranks
+and the clades again.
+
+**The ranks offered** are those that place a tip, in Linnaean order — and
+not one whose taxa barely repeat (more than three taxa per five placed tips,
+the Color-by's own near-unique line: a strain field, or the species of a
+virus tree sampled once or twice per species), since its clades would be
+single tips with nothing to colour. Each entry says how many taxa the rank
+names and how many tips it places; the automatic choice is the finest rank
+naming 2 to 20 taxa (a legend's worth), else the one naming the most. The
+config keys `cladeRank`, `colorizeByRank` and `annotateByRank` set the
+start; a view carries `rank`, `rankColor` and `rankMarks`. Live:
+[Caliciviridae](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500#rankColor=1&rankMarks=1)
+by genus.
+
 ## Layouts
 
 Three layouts, switched with the second row of buttons at the top of the
@@ -543,9 +600,11 @@ desktop's Unicode entry: it stays with the text field there, as it should.
 A view is what you made of a tree with the panel: the layout and display
 type, which labels show, the colour and shape fields, both searches, the
 clade you switched to, the clades you collapsed, the font, node and branch
-sizes, the rotation, whether the branches show time or divergence, and the
+sizes, the rotation, whether the branches show time or divergence, the
 tracks — which track is shown, the heat map's column order (including one
-you arranged by hand) and whether the alignment is summarised as a logo. On
+you arranged by hand) and whether the alignment is summarised as a logo —
+and the clades by rank: the rank, and whether the subtrees are coloured and
+the clades marked. On
 the demo pages it rides in the URL's
 `#` hash and follows every change, so the address bar is always a link to
 what is on screen: copy it (**Copy link to this view** in the toolbar) and
@@ -1621,6 +1680,9 @@ copy-pastable JSON.
 | `geneAnchor` | `'auto'` | The family the gene track's rows line up on: `'auto'` (the family single-copy in the most genomes), `'none'` (left-aligned rows), or a family ref such as `'pgfam:PGF_00019355'`. |
 | `geneFamily` | `'auto'` | The annotation namespace that colours the genes and anchors the rows: `'auto'` (the one most genes carry) or a prefix such as `'pgfam'`. |
 | `geneLabels` | `'genes'` | Where gene symbols go: `'genes'` (on the arrows), `'legend'` (a card of the families), or `'none'`. |
+| `cladeRank` | `'auto'` | The taxonomic rank the clades are cut at (see [Clades by rank](#clades-by-rank)): `'auto'` (the finest rank naming 2 to 20 taxa, else the one naming the most) or a rank such as `'genus'`. A rank the tree places no tip at logs a console warning and falls back to the automatic choice. |
+| `colorizeByRank` | `false` | Open with the branches of every clade at that rank painted in its taxon's colour. |
+| `annotateByRank` | `false` | Open with every clade at that rank marked: a bar and the taxon's name beside the tips (an arc in circular, the name at the wedge's mouth in unrooted). |
 | `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
 | `showScaleBar` | `true` | Open with the scale bar at the bottom left of a phylogram (a round length in the tree's branch-length unit). It gives way while the scale axis is shown either way. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
@@ -2388,6 +2450,75 @@ crowding rule left). Fixture `test/data/genome_regions.xml`, generated by
 `test/make_genome_regions_fixture.js` (the demo copy is byte-identical and
 a test says so); the numbers in `test/gene_test.js`, the SVG in
 `test/browser/genes.html`.
+
+### Clades by rank
+
+Data model (forester, pure and offline): `forester.ownRankTaxon(node,
+rank)` is a node's OWN taxon at a rank — the first `taxonomies[i]` whose
+`rank` is it (`scientific_name`, else `common_name`, else `code`), else the
+first property whose ref's local name (after the last colon, lower-cased)
+is the rank and is in `TAXONOMIC_RANKS` (phyloXML's vocabulary less
+`other` / `unknown`, in the desktop's `TaxonomyUtil.TAXONOMY_RANKS_LIST`
+order), with a non-blank value; `{name, source}` or null. `tipRankTaxon`
+adds the nearest ancestor's own taxon (`source: 'ancestor'`). `rankCoverage
+(tree)` lists the ranks named anywhere that place a tip and whose distinct
+taxa are at most 3/5 of the placed tips, in `compareRanks` order (canonical
+first, the rest alphabetically), each `{rank, placed, tips, taxa}`;
+`defaultRank(coverage, maxTaxa = 20)` the finest with 2..maxTaxa taxa, else
+the most taxa. `rankClades(tree, rank)`: tips keyed by their taxon (lower-
+cased; the display spelling is the first met in document order), then a
+postorder pass gives every subtree the one taxon its placed tips agree on,
+`MIXED` on two or more, null with none — an unplaced tip never breaks a
+subtree, the one difference from the desktop's `maximalMonochromaticRoots`
+— and a preorder pass takes as a clade every pure node whose parent is not
+pure for the same taxon. Result `{clades: [{node, taxon, tips, placed}],
+cladeOf: Map node → clade (every node under a root, the root included),
+tipTaxon: Map placed tip → name, taxa: [{name, tips, clades}] by tips desc
+then name, tips, placed, unplaced}`. 23 ms on 13,000 tips.
+
+Viewer: `_rank = {coverage, cache}` per launch (`rankInit`, after the
+config's `cladeRank` is read; a rank not offered warns through `say` and
+yields to `'auto'`); `cladeRank()` the rank in effect, `rankClades()` its
+model cached per rank until `rankTreeEdited()` (from `refreshVisualizations
+(edited)`). Colours: `rankDealColors` writes the taxa, most tips first, into
+`_vis.colorMemory['rank:<rank>']` with `extendedPaletteColor` — or, when a
+categorical Color-by is on whose memory names EVERY taxon of the rank, that
+Color-by's colours — once per rank per session; a swatch click goes through
+`setColorOverride` unchanged. `rankBranchColor(node)` is the clade's colour
+for a node in `cladeOf`, null for a tip not in `tipTaxon`; read first in
+`makeBranchColor` (so the file's branch colours yield), in
+`makeNodeStrokeColor` after the Color-by and a style, in `hoverGlowColor`
+before the file's colour, and by `collapsedColor` when no Color-by paints
+the wedge. Legend: `rankVis()` builds a candidate-shaped record (`kind:
+'rank'`, `label: '<Rank> clades'`, values = the taxa with a placed tip on
+screen, counts over the displayed, uncollapsed tips, `total` / `coverage`)
+and `addLegends` draws it with `drawLegendCard` under the colour and shape
+cards, outside their Visualizations gate; class `legendRank`, in
+`WINDOW_LEGEND_CLASSES` so the full-size export stacks it. Marks
+(`drawRankMarks`, a `g.aptx-rankmarks` [marks, names] at the end of the
+tree group): the rows on screen (tips and collapsed clades) grouped by
+`cladeOf`; rectangular: a 9 px bar (`RANK_BAR_WIDTH`) at `_w + nodeLabelGap
++ labelSpace + _domainReserve + _geneReserve + 16`, from midway above the
+clade's first row to midway below its last (half the rows' pitch at the
+ends), the name 4 px right of it in the tree's font when the bar is at
+least a font size tall, else a `<title>`; the column is reserved in
+`_rankReserve` (`16 + 9 + 4 + widest name + 10`, counted wherever `_w` and
+the other reserves are); circular: an arc at `maxRad + labelSpace + the
+domain, gene and heat map radial extents + 6 + 4.5`, from half a row before
+the first row's angle to half a row after the last (a full circle when it
+closes), stroked 9 px, the name on the spoke at the arc's middle, flipped
+on the left half; unrooted: the name after a 9 px swatch at the mouth of
+the wedge — the clade's root (the view's top node when the root is above
+the view) plus the mean unit direction to its rows times the farthest row's
+distance, that row's label included, plus the extents and gaps; the radial
+fit adds `rankRadialExtent()`. State: `cladeRank` (`'auto'` | a rank),
+`colorizeByRank`, `annotateByRank`; the view `rank` (the EFFECTIVE rank),
+`rankColor`, `rankMarks`. Panel: the `Clades by rank` fieldset
+(`syncRankControls`: hidden without a rank; the select's entries `genus (10
+taxa, 87 of 97 tips) auto`), closed by default. Numbers in
+`test/rank_test.js` (a hand-built tree, every rule once), the SVG and the
+panel in `test/browser/ranks.html`, the saved figure in
+`test/browser/exports.html?legends=1`.
 
 ### The alignment track
 

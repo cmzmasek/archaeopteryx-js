@@ -611,7 +611,9 @@ async function legendCards() {
         {file: '../../docs/data/apaf.xml', config: {}, domains: 'legend', circular: false},
         {file: '../../docs/data/sparse-accessory-genome.xml', config: {showHeatmap: true}, circular: true},
         // the gene track's families card, and the arrows themselves in the saved figure
-        {file: '../data/genome_regions.xml', config: {geneLabels: 'legend'}, genes: 116, circular: false}
+        {file: '../data/genome_regions.xml', config: {geneLabels: 'legend'}, genes: 116, circular: false},
+        // clades by rank: the "Genus clades" card, and the 17 clade bars with their names in the saved figure
+        {file: '../../docs/data/Caliciviridae_100.xml', config: {colorizeByRank: true, annotateByRank: true}, ranks: 17, circular: false}
     ];
     for (const c of cases) {
         const trees = archaeopteryx.parseTrees(c.file, await (await fetch(c.file)).text());
@@ -630,7 +632,7 @@ async function legendCards() {
         }
         const name = c.file.split('/').pop() + (c.circular ? ' circular' : '');
         const live = document.querySelector('rect.basebackground').ownerSVGElement;
-        const classes = ['legendLabelColor', 'legendNodeShape', 'legendDomains', 'legendGenes', 'aptx-heatmap-ringlegend']
+        const classes = ['legendLabelColor', 'legendNodeShape', 'legendRank', 'legendDomains', 'legendGenes', 'aptx-heatmap-ringlegend']
             .filter((k) => live.querySelector(':scope > g.' + k));
         out.push(name + ': cards on screen: ' + classes.join(', '));
         const section = document.querySelector('fieldset.aptx-download');
@@ -677,7 +679,23 @@ async function legendCards() {
         }
         // the fixture has to carry the cards this is about, or it proves nothing
         check(name + ': the fixture shows the card under test', classes.includes(c.domains ? 'legendDomains'
-            : c.genes ? 'legendGenes' : 'aptx-heatmap-ringlegend'), classes.join(', '));
+            : c.genes ? 'legendGenes' : c.ranks ? 'legendRank' : 'aptx-heatmap-ringlegend'), classes.join(', '));
+        if (c.ranks) {
+            // the clade bars ride into the figure, each with its paint as an attribute, inside the page
+            const bars = [...svg.querySelectorAll('g.aptx-rankmarks > g:nth-child(1) > rect')];
+            const inside = bars.filter((b) => { const r = b.getBoundingClientRect();
+                return r.left >= page.left - 0.5 && r.right <= page.right + 0.5 && r.top >= page.top - 0.5 && r.bottom <= page.bottom + 0.5; });
+            check(name + ': the saved figure carries every clade bar, on the page, painted by attribute',
+                bars.length === c.ranks && inside.length === c.ranks && bars.every((b) => /^#|^rgb/.test(b.getAttribute('fill') || '')),
+                bars.length + ' bars, ' + inside.length + ' on the page');
+            const named = [...svg.querySelectorAll('g.aptx-rankmarks > g:nth-child(2) > text')].map((t) => t.textContent);
+            check(name + ': ... and the clade names', named.length >= 8 && named.includes('Norovirus') && named.includes('Sapovirus'), named.join(', '));
+            // the branches wear the clades' colours: the legend's swatch colours are among the branch strokes
+            const strokes = new Set([...svg.querySelectorAll('g.aptx-branches > path')].map((p) => p.getAttribute('stroke')));
+            const swatches = [...svg.querySelectorAll('g.legendRank > rect')].slice(1).map((r) => r.getAttribute('fill')).filter((f) => f && f !== 'none');
+            check(name + ': the saved branches wear the legend\'s colours', swatches.length >= 10 && swatches.every((f) => strokes.has(f)),
+                swatches.filter((f) => !strokes.has(f)).join(', ') || 'all ' + swatches.length);
+        }
         if (c.genes) {
             // the track rides into the figure: every arrow, its backbones, and
             // the arrows inside the page

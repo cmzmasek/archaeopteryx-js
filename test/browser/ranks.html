@@ -1,0 +1,288 @@
+<!doctype html>
+<meta charset="utf-8"><title>clades by rank: colorize subtrees, annotate clades</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Christian, 2026-10-19: "Colorize Subtrees by Taxonomic Rank" and "Annotate
+// Clades by Rank" as the desktop has them, simpler, on the file's own
+// annotations. The tree is docs/data/Caliciviridae_100.xml (97 tips; its
+// genera are vipr:Genus properties on 87 of them, its family annotated on
+// internal nodes); test/rank_test.js pins the model, this harness reads what
+// the SVG and the panel show.
+//
+//   (no query)         rectangular: the section, the chooser, the branch
+//                      colours, the legend, the bars and names, the reserve,
+//                      the view state, a subtree view
+//   ?layout=circular   the arcs and their names
+//   ?layout=unrooted   the names at the wedge mouths
+//   ?config=1          launch config: named rank, switches on, bad values throw,
+//                      an unknown rank warns and yields
+//   ?none=1            a tree without a rank: no section, no legend, no keys
+//   ?shot=1            draw everything and stop (for a screenshot)
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const settle = () => sleep(1500);
+    const byId = (id) => document.getElementById(id);
+    const q = (s) => document.querySelector('#p ' + s);
+    const qa = (s) => [...document.querySelectorAll('#p ' + s)];
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const finish = () => { window.__benchResult = {report: out, failures: failures}; window.__benchDone = true; };
+    const params = new URLSearchParams(location.search);
+    const marks = () => q('g.aptx-rankmarks');
+    const bars = () => marks() ? [...marks().children[0].children] : [];
+    const names = () => marks() ? [...marks().children[1].children].map((t) => t.textContent) : [];
+    const legend = () => q('g.legendRank');
+    const legendTexts = () => legend() ? [...legend().querySelectorAll('text')].map((t) => t.textContent) : [];
+    const legendSwatches = () => legend() ? [...legend().querySelectorAll('rect')].slice(1)
+        .filter((r) => r.style.fill && r.style.fill !== 'transparent' && r.style.fill !== 'none') : [];
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
+    const choose = (id, value) => { const sel = byId(id); sel.value = value; sel.dispatchEvent(new Event('change', {bubbles: true})); };
+    // the branches as drawn: batched paths, one per colour|width, each carrying its nodes
+    const branchPaths = () => qa('path.aptx-branch, g.branches path, path[data-aptx-branch]');
+    try {
+        const xml = await (await fetch('../../docs/data/Caliciviridae_100.xml')).text();
+        const layout = params.get('layout') || 'rectangular';
+        const trees = archaeopteryx.parseTrees('Caliciviridae_100.xml', xml);
+        if (params.get('shot')) {
+            const viewer = archaeopteryx.launch('#p', trees, {layout: layout, colorizeByRank: true, annotateByRank: true});
+            await viewer.ready; await settle();
+            out.push('legend: ' + legendTexts().join(' | '));
+            out.push('bars ' + bars().length + ' names ' + names().length + ': ' + names().join(', '));
+            finish();
+            return;
+        }
+        // the branches as drawn: one path per colour and width, so the SET of
+        // stroke colours says what the tree wears
+        const strokes = () => new Set(qa('g.aptx-branches > path').map((p) => p.style.stroke));
+        const DEFAULT_BRANCH = 'rgb(144, 144, 144)';   // BRANCH_COLOR_DEFAULT, #909090
+        const swatchFills = () => legendSwatches().map((r) => r.style.fill);
+        const section = () => byId('rank_controls');
+        const sel = () => byId('rank_select');
+        const optionTexts = () => sel() ? [...sel().options].map((o) => o.textContent) : [];
+
+        if (params.get('none')) {
+            // a tree that names no rank anywhere: nothing is offered, nothing
+            // drawn, nothing in the view
+            const bxml = await (await fetch('../../docs/data/branch_events.xml')).text();
+            const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('branch_events.xml', bxml), {colorizeByRank: true, annotateByRank: true});
+            await viewer.ready; await settle();
+            check('no rank: the section is hidden', section() && section().style.display === 'none');
+            check('no rank: no legend, no marks', !legend() && !marks());
+            check('no rank: one branch colour', strokes().size === 1 && strokes().has(DEFAULT_BRANCH), [...strokes()].join(' '));
+            const vs = viewer.getViewState();
+            check('no rank: the view carries no rank keys', !('rank' in vs) && !('rankColor' in vs) && !('rankMarks' in vs), JSON.stringify(vs));
+            check('no rank: a named rank is not even warned about', warnings.length === 0, warnings.join(' | '));
+            finish();
+            return;
+        }
+
+        if (params.get('config')) {
+            const bad = [[{cladeRank: ''}, /cladeRank/], [{cladeRank: 3}, /cladeRank/], [{colorizeByRank: 'yes'}, /colorizeByRank/],
+                [{annotateByRank: 1}, /annotateByRank/]];
+            for (const [cfg, re] of bad) {
+                let threw = null;
+                try { archaeopteryx.launch('#p', archaeopteryx.parseTrees('c.xml', xml), cfg); } catch (e) { threw = String(e); }
+                check('throws on ' + JSON.stringify(cfg), threw !== null && re.test(threw), threw);
+            }
+            document.body.insertAdjacentHTML('beforeend', '<div id="p2" style="position:absolute;inset:0"></div>');
+            let viewer = archaeopteryx.launch('#p2', archaeopteryx.parseTrees('c.xml', xml), {cladeRank: 'Family', colorizeByRank: true});
+            await viewer.ready; await settle();
+            check('named: the rank select says family', byId('rank_select').value === 'family', byId('rank_select').value);
+            check('named: Colorize is on, Annotate off', byId('rank_color_cb').checked && !byId('rank_marks_cb').checked);
+            const lt = [...document.querySelectorAll('#p2 g.legendRank text')].map((t) => t.textContent);
+            check('named: the legend is the family clades', lt[0] === 'Family clades' && lt.includes('Caliciviridae') && lt.includes('unclassified Caliciviridae'), lt.join(' | '));
+            const st2 = new Set([...document.querySelectorAll('#p2 g.aptx-branches > path')].map((p) => p.style.stroke));
+            check('named: two clade colours on the branches, the default too (the stub, the mixed root)', st2.size === 3 && st2.has(DEFAULT_BRANCH), [...st2].join(' '));
+            check('named: no marks', !document.querySelector('#p2 g.aptx-rankmarks'));
+            let vs = viewer.getViewState();
+            check('named: the view state says so', vs.rank === 'family' && vs.rankColor === true && vs.rankMarks === false, JSON.stringify(vs));
+            document.body.insertAdjacentHTML('beforeend', '<div id="p3" style="position:absolute;inset:0"></div>');
+            viewer = archaeopteryx.launch('#p3', archaeopteryx.parseTrees('c.xml', xml), {cladeRank: 'phylum', annotateByRank: true});
+            await viewer.ready; await settle();
+            check('unknown rank: warned, by name', warnings.some((w) => /cladeRank "phylum"/.test(w)), warnings.join(' | '));
+            check('unknown rank: the automatic choice stands in (genus)', document.querySelector('#p3 #rank_select').value === 'genus');
+            check('unknown rank: Annotate on from the config, the bars drawn', document.querySelectorAll('#p3 g.aptx-rankmarks > g:nth-child(1) > rect').length === 17);
+            check('unknown rank: the doctor lists the warning as a problem', archaeopteryx.doctor().problems.some((w) => /cladeRank/.test(w)) , JSON.stringify(archaeopteryx.doctor().problems));
+            finish();
+            return;
+        }
+
+        const viewer = archaeopteryx.launch('#p', trees, {layout: layout});
+        await viewer.ready; await settle();
+
+        // ---- the section and the chooser, in every layout ----
+        check('the section is shown', section() && section().style.display !== 'none');
+        // species (66 taxa over 97 tips) and strain (88 over 91) barely
+        // repeat and are not offered, as the Color-by would not lead with them
+        check('the chooser lists family and genus, in that order, with their reach; not species or strain',
+            optionTexts().length === 2 && /^family \(2 taxa, 97 of 97 tips\)$/.test(optionTexts()[0])
+            && /^genus \(10 taxa, 87 of 97 tips\) auto$/.test(optionTexts()[1]),
+            optionTexts().join(' | '));
+        check('the automatic choice is genus', sel().value === 'genus');
+        check('both switches are off: no colours, no marks, no legend', !byId('rank_color_cb').checked && !byId('rank_marks_cb').checked
+            && strokes().size === 1 && !marks() && !legend(), [...strokes()].join(' '));
+        let vs = viewer.getViewState();
+        check('the view state names the rank in effect and the switches', vs.rank === 'genus' && vs.rankColor === false && vs.rankMarks === false, JSON.stringify(vs));
+
+        // ---- Colorize subtrees ----
+        byId('rank_color_cb').click(); await settle();
+        const colorVisOn = byId('vis_cb') && byId('vis_cb').checked;
+        check('Colorize: ten clade colours on the branches, and the default (the unplaced tips, the mixed nodes)',
+            strokes().size === 11 && strokes().has(DEFAULT_BRANCH), strokes().size + ': ' + [...strokes()].join(' '));
+        check('Colorize: the legend is up, titled by the rank, a row per genus and a "no value" row',
+            legendTexts()[0] === 'Genus clades' && legendTexts().includes('Vesivirus') && legendTexts().includes('no value'), legendTexts().join(' | '));
+        check('Colorize: the legend counts the placed tips, 87, and the unplaced, 10',
+            legendTexts().includes('23') && legendTexts().includes('17') && legendTexts()[legendTexts().length - 1] === '10', legendTexts().slice(-4).join(' '));
+        check('Colorize: every swatch colour is on a branch', swatchFills().length === 10 && swatchFills().every((f) => strokes().has(f)),
+            swatchFills().filter((f) => !strokes().has(f)).join(' '));
+        // the Color-by shows the same field (Genus): the clade colours are its colours
+        const colorLegend = q('g.legendLabelColor');
+        if (colorLegend && colorVisOn) {
+            // a legend card: the title, then per row a swatch rect and the
+            // row's text and count -- read name -> colour off each card
+            const colorsOf = (card) => { const m = {}; let rect = null;
+                [...card.querySelectorAll('rect, text')].slice(1).forEach((el) => {
+                    if (el.tagName === 'rect') { if (el.style.fill && el.style.fill !== 'transparent' && el.style.fill !== 'none') { rect = el; } }
+                    else if (rect && !/^\d+$/.test(el.textContent) && !/^\[/.test(el.textContent)) { m[el.textContent] = rect.style.fill; rect = null; }
+                }); return m; };
+            const rows = [...colorLegend.querySelectorAll('text')].map((t) => t.textContent);
+            check('Colorize: the Color-by legend shows Genus', rows[0] === 'Genus', rows[0]);
+            const theirs = colorsOf(colorLegend);
+            const mine = colorsOf(legend());
+            const genera = Object.keys(mine);
+            check('Colorize: the clade colours are the Color-by\'s, genus for genus',
+                genera.length === 10 && genera.every((g) => theirs[g] === mine[g]),
+                genera.filter((g) => theirs[g] !== mine[g]).map((g) => g + ': ' + theirs[g] + ' vs ' + mine[g]).join('; ') || genera.length);
+        }
+        // off again: the default colour alone
+        byId('rank_color_cb').click(); await settle();
+        check('Colorize off: one branch colour, no legend', strokes().size === 1 && !legend(), [...strokes()].join(' '));
+
+        // ---- Annotate clades ----
+        byId('rank_marks_cb').click(); await settle();
+        check('Annotate: 17 marks, one per clade on screen', bars().length === 17, bars().length);
+        check('Annotate: the legend is up again', legendTexts()[0] === 'Genus clades');
+        const paintOf = (b) => b.tagName === 'path' ? b.style.stroke : b.style.fill;
+        check('Annotate: every mark wears its taxon\'s swatch colour', bars().every((b) => swatchFills().includes(paintOf(b))),
+            bars().map(paintOf).filter((f) => !swatchFills().includes(f)).join(' '));
+        check('Annotate: a mark names its clade and its rows', bars().every((b) => /\(\d+ rows?\)$/.test(b.querySelector('title').textContent)),
+            bars()[0] && bars()[0].querySelector('title').textContent);
+        vs = viewer.getViewState();
+        check('Annotate: the view state says so', vs.rankMarks === true && vs.rankColor === false, JSON.stringify(vs));
+
+        if (layout === 'rectangular') {
+            const tipLabels = qa('text.extlabel').filter((t) => t.textContent.trim() !== '');
+            const labelRight = Math.max(...tipLabels.map((t) => t.getBoundingClientRect().right));
+            const barLeft = Math.min(...bars().map((b) => b.getBoundingClientRect().left));
+            check('rectangular: the bars stand past every tip label', barLeft > labelRight, (barLeft - labelRight).toFixed(0));
+            check('rectangular: the bars are one column, 9 px wide', bars().every((b) => +b.getAttribute('width') === 9)
+                && new Set(bars().map((b) => b.getAttribute('x'))).size === 1);
+            // bars meet and do not overlap: sorted by y, each starts where the one before it ends, or later
+            const ys = bars().map((b) => [+b.getAttribute('y'), +b.getAttribute('y') + +b.getAttribute('height')]).sort((a, b) => a[0] - b[0]);
+            check('rectangular: the bars do not overlap', ys.every((r, i) => i === 0 || r[0] >= ys[i - 1][1] - 0.01), JSON.stringify(ys.slice(0, 4)));
+            // a name where the bar is at least a font size tall, none where
+            // it is not: Nacovirus is one row
+            const fontPx = parseFloat(getComputedStyle(qa('g.aptx-rankmarks > g:nth-child(2) > text')[0]).fontSize);
+            const tall = bars().filter((b) => +b.getAttribute('height') >= fontPx);
+            check('rectangular: a name beside every clade tall enough, none beside a one-row one',
+                names().length === tall.length && tall.length >= 8 && tall.length < bars().length && names().includes('Vesivirus') && !names().includes('Nacovirus'),
+                names().length + ' names, ' + tall.length + ' tall bars of ' + bars().length + ' at ' + fontPx + 'px: ' + names().join(', '));
+            const nameLeft = Math.min(...qa('g.aptx-rankmarks > g:nth-child(2) > text').map((t) => t.getBoundingClientRect().left));
+            check('rectangular: the names stand right of the bars', nameLeft > barLeft + 9);
+            // the column is reserved: the tree narrows to make room, and widens back when the marks go
+            const treeRight = () => Math.max(...qa('g.aptx-branches > path').map((p) => p.getBoundingClientRect().right));
+            const withMarks = treeRight();
+            byId('rank_marks_cb').click(); await settle();
+            check('rectangular: without the marks the tree widens back', treeRight() > withMarks + 20, withMarks.toFixed(0) + ' -> ' + treeRight().toFixed(0));
+            byId('rank_marks_cb').click(); await settle();
+            // the chooser: family makes other clades
+            choose('rank_select', 'family'); await settle();
+            check('family: the legend follows the rank', legendTexts()[0] === 'Family clades', legendTexts()[0]);
+            check('family: 4 clades, as the model counts', bars().length === 4, bars().length);
+            check('family: the view state names family', viewer.getViewState().rank === 'family');
+            choose('rank_select', 'genus'); await settle();
+            check('genus again: 17 marks', bars().length === 17, bars().length);
+            // a subtree view inside one genus keeps the colour and shows one mark
+            byId('rank_color_cb').click(); await settle();
+            const noro = viewer.getViewState();
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const model = forester.rankClades(tree, 'genus');
+            const big = model.clades.filter((c) => c.taxon === 'Norovirus').sort((a, b) => b.tips - a.tips)[0];
+            const noroColor = swatchFills()[legendTexts().slice(2).filter((t, i) => i % 2 === 0).indexOf('Norovirus')];
+            viewer.applyViewState(Object.assign({}, viewer.getViewState(), {subtree: big.node.viewId})); await settle();
+            check('subtree: inside the Norovirus clade one mark remains, named', bars().length === 1 && names()[0] === 'Norovirus', bars().length + ' ' + names().join(','));
+            check('subtree: its legend lists Norovirus alone, with the tips on screen', legendTexts().includes('Norovirus') && !legendTexts().includes('Vesivirus')
+                && legendTexts()[legendTexts().indexOf('Norovirus') + 1] === String(big.placed), legendTexts().join(' | '));
+            check('subtree: the branches wear the Norovirus colour the whole tree gave it', strokes().has(noroColor) && strokes().size <= 2, [...strokes()].join(' ') + ' vs ' + noroColor);
+            viewer.applyViewState(noro); await settle();
+            check('back on the whole tree: 17 marks', bars().length === 17, bars().length);
+            // a collapsed clade inside the Norovirus clade: its wedge wears the
+            // clade's colour when no Color-by paints it
+            const inner = big.node.children.find((c) => c.children && c.children.length > 1) || big.node.children[0];
+            byId('vis_cb').click(); await settle();
+            viewer.applyViewState(Object.assign({}, viewer.getViewState(), {collapsed: [inner.viewId]})); await settle();
+            const wedge = q('path.aptx-collapsed');
+            check('collapsed: the wedge inside the Norovirus clade is filled in its colour', wedge && wedge.style.fill === noroColor,
+                wedge ? wedge.style.fill + ' vs ' + noroColor : 'no wedge');
+            check('collapsed: the wedge stands for its rows in the marks: still 17 bars', bars().length === 17, bars().length);
+            viewer.applyViewState(noro); byId('vis_cb').click(); await settle();
+            // a swatch click opens the picker; an override reaches the branches and the bars
+            const row = legend().querySelectorAll('rect[style*="cursor"]');
+            check('the legend\'s rows take a click (the colour picker)', row.length >= 10, row.length);
+            // the "i" readout: not part of this; the collapsed clade: folds into its clade's colour
+            check('no console warning on the way', warnings.length === 0, warnings.join(' | '));
+        }
+        if (layout === 'circular') {
+            check('circular: the marks are arcs, stroked 9 px, unfilled', bars().every((b) => b.tagName === 'path' && parseFloat(b.style.strokeWidth) === 9 && b.style.fill === 'none'),
+                bars()[0] && (bars()[0].tagName + ' ' + bars()[0].style.strokeWidth + ' ' + bars()[0].style.fill));
+            check('circular: every arc is named', names().length === 17, names().length);
+            const r = (p) => { const m = /^M(-?[\d.]+),(-?[\d.]+)A(-?[\d.]+)/.exec(p.getAttribute('d')); return m ? +m[3] : null; };
+            const radii = new Set(bars().map(r));
+            check('circular: the arcs share one radius', radii.size === 1 && [...radii][0] > 0, [...radii].join(' '));
+            // the arcs stand outside every label: the arc radius (in tree
+            // units) beats the farthest label corner, measured in the same frame
+            const treeG = q('g.aptx-branches').parentNode;
+            const toTree = (x, y) => { const pt = treeG.ownerSVGElement.createSVGPoint(); pt.x = x; pt.y = y; return pt.matrixTransform(treeG.getScreenCTM().inverse()); };
+            const labelReach = Math.max(...qa('text.extlabel').filter((t) => t.textContent.trim() !== '').map((t) => { const b = t.getBoundingClientRect();
+                return Math.max(...[[b.left, b.top], [b.right, b.top], [b.left, b.bottom], [b.right, b.bottom]].map(([x, y]) => { const p = toTree(x, y); return Math.hypot(p.x, p.y); })); }));
+            check('circular: the arcs stand outside every tip label', [...radii][0] - 4.5 > labelReach, ([...radii][0] - 4.5).toFixed(0) + ' vs ' + labelReach.toFixed(0));
+            const sweep = bars().map((b) => +(/A[-\d.]+,[-\d.]+ 0 (\d),(\d)/.exec(b.getAttribute('d')) || [0, 0, 0])[2]);
+            check('circular: every arc runs clockwise', sweep.every((x) => x === 1), sweep.join(''));
+        }
+        if (layout === 'unrooted') {
+            check('unrooted: a swatch and a name per clade, 17 each', bars().length === 17 && names().length === 17 && bars().every((b) => b.tagName === 'rect'), bars().length + ' ' + names().length);
+            const texts = qa('g.aptx-rankmarks > g:nth-child(2) > text');
+            check('unrooted: the names are upright', texts.every((t) => !t.getAttribute('transform')));
+            // a name stands beyond its clade's tips: farther from the drawing's centre than the clade's farthest tip
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const model = forester.rankClades(tree, 'genus');
+            const centre = (() => { const c = q('g.aptx-branches').getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; })();
+            const tipPos = {};
+            qa('g.node').forEach((g) => { if (g.__data__ && !g.__data__.children) { const b = g.getBoundingClientRect(); tipPos[g.__data__.name] = [b.left + b.width / 2, b.top + b.height / 2]; } });
+            let beyond = 0;
+            texts.forEach((t) => {
+                const b = t.getBoundingClientRect();
+                const dName = Math.hypot(b.left + b.width / 2 - centre[0], b.top + b.height / 2 - centre[1]);
+                const clade = model.clades.find((c) => c.taxon === t.textContent);
+                const far = Math.max(...forester.getAllExternalNodes(clade.node).map((n) => tipPos[n.name] ? Math.hypot(tipPos[n.name][0] - centre[0], tipPos[n.name][1] - centre[1]) : 0));
+                if (dName > far) { beyond++; }
+            });
+            out.push('unrooted: ' + beyond + ' of ' + texts.length + ' names stand farther out than their clade\'s farthest tip');
+            check('unrooted: most names stand beyond their clades', beyond >= 12, beyond);
+        }
+        finish();
+    } catch (e) {
+        check('no exception', false, e && e.stack ? e.stack : String(e));
+        finish();
+    }
+})();
+</script>
