@@ -95,6 +95,10 @@ export interface ArchaeopteryxConfig {
      * the taxon's name; an arc in circular; the name at the wedge's mouth in
      * unrooted). Default false. */
     annotateByRank?: boolean;
+    /** How Annotate clades marks a clade: 'bars' (default) or 'boxes', a
+     * translucent box under the tree from the clade's root to the tips (a
+     * sector in the radial layouts). */
+    cladeMarkStyle?: 'bars' | 'boxes';
     initialVisualization?: string | null;
     ladderizeTree?: boolean;
     layout?: Layout;
@@ -231,6 +235,8 @@ export interface ViewState {
     rankColor?: boolean;
     /** Annotate clades by that rank. */
     rankMarks?: boolean;
+    /** The marks' style: bars, or shaded boxes. */
+    rankStyle?: 'bars' | 'boxes';
     scaleAxis?: boolean;
     scaleGrid?: boolean;
     scaleBar?: boolean;

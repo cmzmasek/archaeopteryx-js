@@ -20,7 +20,9 @@ users see a change only when a version is cut.
   tips is one figure. *Annotate clades* marks every clade: a bar beside the
   tips with the taxon's name in the rectangular layout, an arc outside the
   labels in the circular one, the name at the mouth of the clade's wedge in
-  the unrooted one. Either brings up a legend card of the Color-by's kind,
+  the unrooted one; or, as the **Marks** choice says, the desktop's shaded
+  boxes: a translucent box under the tree from the clade's root to the
+  tips, a sector in the radial layouts. Either brings up a legend card of the Color-by's kind,
   with counts over the tips on screen, a "no value" row and clickable
   swatches; when the Color-by shows the same field its colours are taken
   over. A tip's taxon at a rank is its own `<taxonomy>` at that rank, else a
@@ -31,8 +33,9 @@ users see a change only when a version is cut.
   scattered over the tree is several clades. The ranks offered are those
   that place a tip and whose taxa repeat (at most three taxa per five placed
   tips); the automatic choice is the finest rank naming 2 to 20 taxa. Config
-  `cladeRank`, `colorizeByRank`, `annotateByRank`; the view carries `rank`,
-  `rankColor`, `rankMarks`; the marks and the card are in every export. New
+  `cladeRank`, `colorizeByRank`, `annotateByRank`, `cladeMarkStyle`; the
+  view carries `rank`, `rankColor`, `rankMarks`, `rankStyle`; the marks and
+  the card are in every export. New
   in `forester`: `TAXONOMIC_RANKS`, `ownRankTaxon`, `tipRankTaxon`,
   `rankCoverage`, `defaultRank`, `rankClades`, `compareRanks`.
 - **A control reference for documentation writers.** `docs/control-panel/`

@@ -361,7 +361,9 @@ Clades by rank
    * - Colorize subtrees
      - to paint the branches of every clade of one taxon at the chosen rank in that taxon's colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend
    * - Annotate clades
-     - to mark every clade of one taxon at the chosen rank with a bar beside the tips and the taxon's name (an arc in the circular layout, the name at the mouth of the wedge in the unrooted one)
+     - to mark every clade of one taxon at the chosen rank with its taxon's name and a bar beside the tips or a shaded box over the clade (the Marks choice below)
+   * - Marks
+     - how Annotate clades marks a clade: a bar beside the tips (an arc in the circular layout, a swatch at the mouth of the wedge in the unrooted one), or a shaded box under the tree from the clade's root to the tips (a sector in the radial layouts)
 
 Heat Map
 --------

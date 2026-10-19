@@ -442,6 +442,7 @@ function (root, d3, forester, phyloXml) {
     const RANK_SELECT = 'rank_select';
     const RANK_COLOR_CB = 'rank_color_cb';
     const RANK_MARKS_CB = 'rank_marks_cb';
+    const RANK_STYLE_SELECT = 'rank_style';
     const SCALE_AXIS_CB = 'scaleaxis_cb';
     const SCALE_GRID_CB = 'scalegrid_cb';
     const SCALE_BAR_CB = 'scalebar_cb';
@@ -676,6 +677,8 @@ function (root, d3, forester, phyloXml) {
     const RANK_RADIAL_GAP = 6;            // px from the last ring to the arc, radial layouts
     const RANK_LABEL_GAP = 4;             // px from the bar to its name
     const RANK_LABEL_MAX_PX = 240;        // a clade's name is clipped to this
+    const RANK_BOX_OPACITY = 0.18;        // a shaded box's fill (the desktop's CLADE_BOX_ALPHA, 46 of 255)
+    const RANK_MARK_STYLES = ['bars', 'boxes'];
     const DOMAIN_LABEL_MODES = ['none', 'domains', 'legend'];
     let _domain = null;                   // {width, palette, next, legendFrac}, set per launch
     let _domainReserve = 0;               // horizontal px reserved for the tracks, set with _w
@@ -5872,6 +5875,7 @@ function (root, d3, forester, phyloXml) {
         'cladeRank',
         'colorizeByRank',
         'annotateByRank',
+        'cladeMarkStyle',
         'showScaleAxis',
         'showScaleBar',
         'showScaleGrid',
@@ -6222,6 +6226,11 @@ function (root, d3, forester, phyloXml) {
                 throw new Error(ERROR + '"' + key + '" must be true or false');
             }
         });
+        if (_state.cladeMarkStyle === undefined) {
+            _state.cladeMarkStyle = 'bars';
+        } else if (RANK_MARK_STYLES.indexOf(_state.cladeMarkStyle) < 0) {
+            throw new Error(ERROR + '"cladeMarkStyle" must be "bars" or "boxes"');
+        }
         rankInit();
         _gene = {width: null, radialWidth: null, palette: null, legendFrac: null, cache: new WeakMap()};
         if (_basicTreeProperties.geneRegions) {
@@ -10226,6 +10235,7 @@ function (root, d3, forester, phyloXml) {
             s.rank = cladeRank();   // the rank in effect, so a link reproduces the figure
             s.rankColor = _state.colorizeByRank === true;
             s.rankMarks = _state.annotateByRank === true;
+            s.rankStyle = _state.cladeMarkStyle;
         }
         if (_basicTreeProperties.branchLengths === true) {
             s.scaleAxis = _state.showScaleAxis === true;
@@ -10411,6 +10421,9 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.rankMarks === 'boolean') {
             _state.annotateByRank = s.rankMarks;
         }
+        if (RANK_MARK_STYLES.indexOf(s.rankStyle) >= 0) {
+            _state.cladeMarkStyle = s.rankStyle;
+        }
         // timeAxis / timeGrid: the names before the axis also measured
         // distance, still read so that older links keep their axis
         let axis = typeof s.scaleAxis === 'boolean' ? s.scaleAxis : s.timeAxis;
@@ -10578,7 +10591,7 @@ function (root, d3, forester, phyloXml) {
     // The heat map's four keys and the alignment logo went in exactly that
     // way, while the README promised a link reproduced the figure.
     const VIEW_TEXT_KEYS = ['layout', 'display', 'order', 'root', 'colorBy', 'shapeBy', 'domainLabels', 'combine',
-        'heatmapOrder', 'scale', 'geneAnchor', 'geneFamily', 'geneLabels', 'rank'];
+        'heatmapOrder', 'scale', 'geneAnchor', 'geneFamily', 'geneLabels', 'rank', 'rankStyle'];
     const VIEW_INT_KEYS = ['tree', 'subtree', 'rotation', 'domainEvalue'];
     const VIEW_NUMBER_KEYS = ['font', 'node', 'branch'];
     const VIEW_BOOL_KEYS = ['horizontalLabels', 'msa', 'msaLogo', 'heatmap', 'domains', 'domainGlow', 'genes',
@@ -13659,12 +13672,17 @@ function (root, d3, forester, phyloXml) {
     //     claims nothing about it. Labels and dots stay the Color-by's, so
     //     genus branches under host-coloured tips is one figure, as on the
     //     desktop. The file's branch colours step aside while it is on.
-    //   - Annotate clades draws a MARK per clade: in rectangular a bar beside
-    //     the tips, past every other strip, with the taxon's name where the
-    //     clade is tall enough to carry it (a tooltip otherwise); in
-    //     circular an arc outside the labels, the name riding the spoke; in
-    //     unrooted the name at the mouth of the clade's wedge (the desktop
-    //     draws no mark in unrooted).
+    //   - Annotate clades draws a MARK per clade, in one of two styles (his
+    //     "i also want the shaded boxes from the desktop", 2026-10-19). Bars:
+    //     in rectangular a bar beside the tips, past every other strip, with
+    //     the taxon's name where the clade is tall enough to carry it (a
+    //     tooltip otherwise); in circular an arc outside the labels, the name
+    //     riding the spoke; in unrooted the name at the mouth of the clade's
+    //     wedge (the desktop draws no mark in unrooted). Shaded boxes: a
+    //     translucent box UNDER the tree from the clade's root to the marks'
+    //     column (the desktop's box); in circular an annular sector from the
+    //     root's radius out to the arc's edge; in unrooted a sector of the
+    //     clade's wedge from its root. The names stand where the bars' do.
     //   - One legend card for both, the Color-by's kind: a count per taxon
     //     over the tips on screen, a "no value" row for the unplaced ones, a
     //     colour changed by clicking its swatch. The colours come from the
@@ -13735,6 +13753,39 @@ function (root, d3, forester, phyloXml) {
 
     function rankMarksOn() {
         return _state.annotateByRank === true && rankAvailable();
+    }
+
+    function rankBoxes() {
+        return _state.cladeMarkStyle === 'boxes';
+    }
+
+    // The node a clade's mark starts from: the clade's root, or the view's
+    // top node when the root is above the view (the view is inside the clade).
+    function rankCladeOrigin(clade, top) {
+        for (let n = clade.node; n; n = n.parent) {
+            if (n === top) {
+                return clade.node;
+            }
+        }
+        return top;
+    }
+
+    // An annular sector from radius r0 to r1 over [a0, a1] (the arcs' frame);
+    // a full annulus, drawn with the even-odd rule, when the span closes.
+    function rankSectorPath(r0, r1, a0, a1) {
+        let circle = function (r) {
+            return 'M' + (-r) + ',0A' + r + ',' + r + ' 0 1,1 ' + r + ',0A' + r + ',' + r + ' 0 1,1 ' + (-r) + ',0';
+        };
+        if (a1 - a0 >= (2 * Math.PI) - 1e-6) {
+            return circle(r1) + circle(r0);
+        }
+        let large = (a1 - a0) > Math.PI ? 1 : 0;
+        let o0 = polarXY(a0, r1);
+        let o1 = polarXY(a1, r1);
+        let i0 = polarXY(a0, r0);
+        let i1 = polarXY(a1, r0);
+        return 'M' + o0[0] + ',' + o0[1] + 'A' + r1 + ',' + r1 + ' 0 ' + large + ',1 ' + o1[0] + ',' + o1[1]
+            + 'L' + i1[0] + ',' + i1[1] + 'A' + r0 + ',' + r0 + ' 0 ' + large + ',0 ' + i0[0] + ',' + i0[1] + 'Z';
     }
 
     function rankVisId() {
@@ -13927,7 +13978,14 @@ function (root, d3, forester, phyloXml) {
                 g.appendChild(document.createElementNS(d3.namespaces.svg, tag));
             });
         }
-        _svgGroup.node().appendChild(g);
+        // bars and names over the tree; shaded boxes under it, so the
+        // branches and labels stay legible through them
+        let treeGroup = _svgGroup.node();
+        if (rankBoxes()) {
+            treeGroup.insertBefore(g, treeGroup.firstChild);
+        } else {
+            treeGroup.appendChild(g);
+        }
         let markLayer = d3.select(g.children[0]);
         let nameLayer = d3.select(g.children[1]);
         markLayer.selectAll('*').remove();
@@ -13963,6 +14021,7 @@ function (root, d3, forester, phyloXml) {
                 below.set(y, i < ys.length - 1 ? (y + ys[i + 1]) / 2 : y + (pitch / 2));
             });
             let x = _w + _state.nodeLabelGap + tipLabelSpace() + _domainReserve + _geneReserve + RANK_BAR_GAP;
+            let top = _root.children[0];
             groups.forEach(function (rows, clade) {
                 let y0 = Infinity;
                 let y1 = -Infinity;
@@ -13971,10 +14030,21 @@ function (root, d3, forester, phyloXml) {
                     y1 = Math.max(y1, below.get(n.x));
                 });
                 let color = rankColorOf(clade.taxon);
-                let bar = markLayer.append('rect')
-                    .attr('x', x).attr('y', y0)
-                    .attr('width', RANK_BAR_WIDTH).attr('height', Math.max(1, y1 - y0))
-                    .style('fill', color);
+                let bar;
+                if (rankBoxes()) {
+                    // from the clade's root to the end of the marks' column
+                    let left = rankCladeOrigin(clade, top).y;
+                    bar = markLayer.append('rect')
+                        .attr('x', left).attr('y', y0)
+                        .attr('width', Math.max(1, (x + RANK_BAR_WIDTH) - left)).attr('height', Math.max(1, y1 - y0))
+                        .style('fill', color)
+                        .style('fill-opacity', RANK_BOX_OPACITY);
+                } else {
+                    bar = markLayer.append('rect')
+                        .attr('x', x).attr('y', y0)
+                        .attr('width', RANK_BAR_WIDTH).attr('height', Math.max(1, y1 - y0))
+                        .style('fill', color);
+                }
                 bar.append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
                 if (y1 - y0 >= FS) {
                     name(nameLayer.append('text')
@@ -13993,6 +14063,7 @@ function (root, d3, forester, phyloXml) {
         let r = _radial.maxRad + tipLabelSpace() + domainRadialExtent() + geneRadialExtent()
             + heatmapRadialExtent() + RANK_RADIAL_GAP + (RANK_BAR_WIDTH / 2);
         let half = Math.PI / Math.max(1, displayedLeafCount());
+        let top = _root.children[0];
         groups.forEach(function (rows, clade) {
             let a0 = Infinity;
             let a1 = -Infinity;
@@ -14004,21 +14075,35 @@ function (root, d3, forester, phyloXml) {
             a0 -= half;
             a1 += half;
             let color = rankColorOf(clade.taxon);
-            let d;
-            if (a1 - a0 >= (2 * Math.PI) - 1e-6) {
-                d = 'M' + (-r) + ',0A' + r + ',' + r + ' 0 1,1 ' + r + ',0A' + r + ',' + r + ' 0 1,1 ' + (-r) + ',0';
+            let title = clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)');
+            if (rankBoxes()) {
+                // the desktop's circular box: an annular sector from the
+                // clade root's radius out to the arc's outer edge
+                let rIn = radialRadius(rankCladeOrigin(clade, top).y);
+                markLayer.append('path')
+                    .attr('d', rankSectorPath(rIn, r + (RANK_BAR_WIDTH / 2), a0, a1))
+                    .style('fill', color)
+                    .style('fill-opacity', RANK_BOX_OPACITY)
+                    .style('fill-rule', 'evenodd')
+                    .style('stroke', 'none')
+                    .append('title').text(title);
             } else {
-                let p0 = polarXY(a0, r);
-                let p1 = polarXY(a1, r);
-                d = 'M' + p0[0] + ',' + p0[1] + 'A' + r + ',' + r + ' 0 ' + ((a1 - a0) > Math.PI ? 1 : 0) + ',1 '
-                    + p1[0] + ',' + p1[1];
+                let d;
+                if (a1 - a0 >= (2 * Math.PI) - 1e-6) {
+                    d = 'M' + (-r) + ',0A' + r + ',' + r + ' 0 1,1 ' + r + ',0A' + r + ',' + r + ' 0 1,1 ' + (-r) + ',0';
+                } else {
+                    let p0 = polarXY(a0, r);
+                    let p1 = polarXY(a1, r);
+                    d = 'M' + p0[0] + ',' + p0[1] + 'A' + r + ',' + r + ' 0 ' + ((a1 - a0) > Math.PI ? 1 : 0) + ',1 '
+                        + p1[0] + ',' + p1[1];
+                }
+                markLayer.append('path')
+                    .attr('d', d)
+                    .style('fill', 'none')
+                    .style('stroke', color)
+                    .style('stroke-width', RANK_BAR_WIDTH)
+                    .append('title').text(title);
             }
-            markLayer.append('path')
-                .attr('d', d)
-                .style('fill', 'none')
-                .style('stroke', color)
-                .style('stroke-width', RANK_BAR_WIDTH)
-                .append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
             let mid = (a0 + a1) / 2;
             let p = polarXY(mid, r + (RANK_BAR_WIDTH / 2) + RANK_LABEL_GAP);
             let deg = (mid - (Math.PI / 2)) * 180 / Math.PI;
@@ -14050,14 +14135,9 @@ function (root, d3, forester, phyloXml) {
             }
             return _state.nodeLabelGap + legendTextWidth(n._extLabelText, font);
         };
+        let half = Math.PI / Math.max(1, displayedLeafCount());
         groups.forEach(function (rows, clade) {
-            let origin = clade.node;
-            for (let n = origin; n && n !== top; n = n.parent) {
-                if (!n.parent) {
-                    origin = top;   // the clade's root is not on screen: the view is inside the clade
-                    break;
-                }
-            }
+            let origin = rankCladeOrigin(clade, top);
             if (origin.ux === undefined) {
                 origin = top;
             }
@@ -14086,14 +14166,47 @@ function (root, d3, forester, phyloXml) {
             let px = origin.ux + (dx * (far + reach));
             let py = origin.uy + (dy * (far + reach));
             let color = rankColorOf(clade.taxon);
+            let title = clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)');
             let right = dx >= 0;
             let sw = RANK_BAR_WIDTH;
-            markLayer.append('rect')
-                .attr('x', right ? px : px - sw).attr('y', py - (sw / 2))
-                .attr('width', sw).attr('height', sw)
-                .attr('rx', 2)
-                .style('fill', color)
-                .append('title').text(clade.taxon + ' (' + rows.length + (rows.length === 1 ? ' row)' : ' rows)'));
+            if (rankBoxes()) {
+                // a sector of the clade's wedge from its root: the rows'
+                // angles about the mean direction, half a row wider at each
+                // edge, out to just inside the name
+                let mean = Math.atan2(dy, dx);
+                let lo = 0;
+                let hi = 0;
+                rows.forEach(function (n) {
+                    let vx = n.ux - origin.ux;
+                    let vy = n.uy - origin.uy;
+                    if (vx === 0 && vy === 0) {
+                        return;
+                    }
+                    let dev = Math.atan2(vy, vx) - mean;
+                    dev = Math.atan2(Math.sin(dev), Math.cos(dev));   // into (-pi, pi]
+                    lo = Math.min(lo, dev);
+                    hi = Math.max(hi, dev);
+                });
+                let a0 = mean + lo - half;
+                let a1 = mean + hi + half;
+                let R = far + reach - RANK_LABEL_GAP;
+                let q0 = [origin.ux + (R * Math.cos(a0)), origin.uy + (R * Math.sin(a0))];
+                let q1 = [origin.ux + (R * Math.cos(a1)), origin.uy + (R * Math.sin(a1))];
+                markLayer.append('path')
+                    .attr('d', 'M' + origin.ux + ',' + origin.uy + 'L' + q0[0] + ',' + q0[1]
+                        + 'A' + R + ',' + R + ' 0 ' + ((a1 - a0) > Math.PI ? 1 : 0) + ',1 ' + q1[0] + ',' + q1[1] + 'Z')
+                    .style('fill', color)
+                    .style('fill-opacity', RANK_BOX_OPACITY)
+                    .style('stroke', 'none')
+                    .append('title').text(title);
+            } else {
+                markLayer.append('rect')
+                    .attr('x', right ? px : px - sw).attr('y', py - (sw / 2))
+                    .attr('width', sw).attr('height', sw)
+                    .attr('rx', 2)
+                    .style('fill', color)
+                    .append('title').text(title);
+            }
             name(nameLayer.append('text')
                 .attr('x', right ? px + sw + RANK_LABEL_GAP : px - sw - RANK_LABEL_GAP)
                 .attr('y', py)
@@ -14129,6 +14242,15 @@ function (root, d3, forester, phyloXml) {
         }
         setCheckboxValue(RANK_COLOR_CB, _state.colorizeByRank === true);
         setCheckboxValue(RANK_MARKS_CB, _state.annotateByRank === true);
+        setValue(RANK_STYLE_SELECT, _state.cladeMarkStyle);
+    }
+
+    function rankStyleChanged() {
+        let v = getValue(RANK_STYLE_SELECT);
+        if (RANK_MARK_STYLES.indexOf(v) >= 0 && v !== _state.cladeMarkStyle) {
+            _state.cladeMarkStyle = v;
+            scheduleUpdate(null, 0);
+        }
     }
 
     function rankSelectChanged() {
@@ -20160,6 +20282,7 @@ function (root, d3, forester, phyloXml) {
         on(RANK_SELECT, 'change', rankSelectChanged);
         on(RANK_COLOR_CB, 'click', rankColorCbClicked);
         on(RANK_MARKS_CB, 'click', rankMarksCbClicked);
+        on(RANK_STYLE_SELECT, 'change', rankStyleChanged);
         on(SCALE_BAR_CB, 'click', scaleBarCbClicked);
         on(SCALE_AXIS_CB, 'click', scaleAxisCbClicked);
         on(SCALE_GRID_CB, 'click', scaleGridCbClicked);
@@ -20883,8 +21006,16 @@ function (root, d3, forester, phyloXml) {
             // were clipped to "Colorize subt..." (seen with a real mouse)
             h = h.concat('<div class="aptx-checkgrid">'
                 + makeCheckboxItem('Colorize subtrees', RANK_COLOR_CB, 'to paint the branches of every clade of one taxon at the chosen rank in that taxon\'s colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend', true)
-                + makeCheckboxItem('Annotate clades', RANK_MARKS_CB, 'to mark every clade of one taxon at the chosen rank with a bar beside the tips and the taxon\'s name (an arc in the circular layout, the name at the mouth of the wedge in the unrooted one)', true)
+                + makeCheckboxItem('Annotate clades', RANK_MARKS_CB, 'to mark every clade of one taxon at the chosen rank with its taxon\'s name and a bar beside the tips or a shaded box over the clade (the Marks choice below)', true)
                 + '</div>');
+            h = h.concat('<div class="aptx-domrow"><label class="aptx-domlabel" for="' + RANK_STYLE_SELECT + '">Marks</label>');
+            h = h.concat('<select name="' + RANK_STYLE_SELECT + '" id="' + RANK_STYLE_SELECT
+                + '" title="how Annotate clades marks a clade: a bar beside the tips (an arc in the circular layout, a'
+                + ' swatch at the mouth of the wedge in the unrooted one), or a shaded box under the tree from the'
+                + ' clade\'s root to the tips (a sector in the radial layouts)">');
+            h = h.concat('<option value="bars">Bars</option>');
+            h = h.concat('<option value="boxes">Shaded boxes</option>');
+            h = h.concat('</select></div>');
             h = h.concat('</fieldset>');
             return h;
         }

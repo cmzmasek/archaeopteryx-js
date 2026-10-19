@@ -22,6 +22,9 @@
 //   ?layout=unrooted   the names at the wedge mouths
 //   ?config=1          launch config: named rank, switches on, bad values throw,
 //                      an unknown rank warns and yields
+//   ?boxes=1           the shaded boxes (the Marks choice): under the tree from
+//                      the clade's root in rectangular, sectors in the radial
+//                      layouts, the names where the bars' are
 //   ?none=1            a tree without a rank: no section, no legend, no keys
 //   ?shot=1            draw everything and stop (for a screenshot)
 (async function () {
@@ -53,7 +56,8 @@
         const layout = params.get('layout') || 'rectangular';
         const trees = archaeopteryx.parseTrees('Caliciviridae_100.xml', xml);
         if (params.get('shot')) {
-            const viewer = archaeopteryx.launch('#p', trees, {layout: layout, colorizeByRank: true, annotateByRank: true});
+            const viewer = archaeopteryx.launch('#p', trees, {layout: layout, colorizeByRank: !params.get('style'), annotateByRank: true,
+                cladeMarkStyle: params.get('style') || 'bars'});
             await viewer.ready; await settle();
             out.push('legend: ' + legendTexts().join(' | '));
             out.push('bars ' + bars().length + ' names ' + names().length + ': ' + names().join(', '));
@@ -81,6 +85,46 @@
             const vs = viewer.getViewState();
             check('no rank: the view carries no rank keys', !('rank' in vs) && !('rankColor' in vs) && !('rankMarks' in vs), JSON.stringify(vs));
             check('no rank: a named rank is not even warned about', warnings.length === 0, warnings.join(' | '));
+            finish();
+            return;
+        }
+
+        if (params.get('boxes')) {
+            const viewer = archaeopteryx.launch('#p', trees, {annotateByRank: true, cladeMarkStyle: 'boxes'});
+            await viewer.ready; await settle();
+            check('boxes: the Marks select says Shaded boxes', byId('rank_style').value === 'boxes');
+            check('boxes: 17 boxes, each filled at the desktop\'s alpha, no stroke', bars().length === 17
+                && bars().every((b) => b.tagName === 'rect' && Math.abs(parseFloat(b.style.fillOpacity) - 0.18) < 1e-9 && !b.style.stroke),
+                bars()[0] && (bars()[0].style.fillOpacity + ' ' + bars()[0].style.stroke));
+            const treeG = q('g.aptx-branches').parentNode;
+            const order = [...treeG.children].map((c) => c.getAttribute('class'));
+            check('boxes: the marks lie UNDER the branches', order.indexOf('aptx-rankmarks') < order.indexOf('aptx-branches'), order.join(' > '));
+            const tree = Array.isArray(trees) ? trees[0] : trees;
+            const model = forester.rankClades(tree, 'genus');
+            const big = model.clades.filter((c) => c.taxon === 'Norovirus').sort((a, b) => b.tips - a.tips)[0];
+            const bigBox = bars().find((b) => b.querySelector('title').textContent.startsWith('Norovirus (' + big.tips + ' '));
+            check('boxes: a box starts at its clade\'s root', bigBox && Math.abs(+bigBox.getAttribute('x') - big.node.y) < 0.01,
+                bigBox ? bigBox.getAttribute('x') + ' vs ' + big.node.y : 'no box');
+            const rights = new Set(bars().map((b) => (+b.getAttribute('x') + +b.getAttribute('width')).toFixed(2)));
+            check('boxes: every box ends at the marks\' column', rights.size === 1, [...rights].join(' '));
+            check('boxes: the names stand where the bars\' do', names().length >= 8 && names().includes('Vesivirus'), names().join(', '));
+            check('boxes: the view state names the style', viewer.getViewState().rankStyle === 'boxes', JSON.stringify(viewer.getViewState()));
+            choose('rank_style', 'bars'); await settle();
+            check('bars again: 9 px bars over the tree', bars().every((b) => +b.getAttribute('width') === 9)
+                && [...treeG.children].map((c) => c.getAttribute('class')).indexOf('aptx-rankmarks') > [...treeG.children].map((c) => c.getAttribute('class')).indexOf('aptx-branches'));
+            choose('rank_style', 'boxes'); await settle();
+            byId('layout_circ_b').click(); await settle();
+            check('circular boxes: 17 filled sectors, no stroke', bars().length === 17
+                && bars().every((b) => b.tagName === 'path' && b.style.fill !== 'none' && b.style.stroke === 'none' && Math.abs(parseFloat(b.style.fillOpacity) - 0.18) < 1e-9));
+            check('circular boxes: a sector is an outer arc, a line in, an inner arc back', bars().every((b) => /^M.*A.*L.*A.*Z$/.test(b.getAttribute('d'))),
+                bars()[0] && bars()[0].getAttribute('d').substring(0, 60));
+            byId('layout_unrooted_b').click(); await settle();
+            check('unrooted boxes: 17 filled sectors from each clade\'s root', bars().length === 17
+                && bars().every((b) => b.tagName === 'path' && /^M[-\d.]+,[-\d.]+L.*A.*Z$/.test(b.getAttribute('d')) && b.style.stroke === 'none'),
+                bars()[0] && bars()[0].getAttribute('d').substring(0, 60));
+            let threw = null;
+            try { archaeopteryx.launch('#p', archaeopteryx.parseTrees('c.xml', xml), {cladeMarkStyle: 'bricks'}); } catch (e) { threw = String(e); }
+            check('throws on cladeMarkStyle "bricks"', threw !== null && /cladeMarkStyle/.test(threw), threw);
             finish();
             return;
         }

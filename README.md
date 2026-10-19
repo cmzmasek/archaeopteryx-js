@@ -222,11 +222,16 @@ and two switches, both off until asked for:
   claims nothing about it. Labels and node dots stay the Color-by's, so
   genus-coloured branches under host-coloured tips is one figure, as on the
   desktop; the file's own branch colours step aside while the switch is on.
-* **Annotate clades** marks every such clade: in the rectangular layout a
-  bar beside the tips, past every other strip, with the taxon's name where
-  the clade is tall enough to carry it (a tooltip otherwise); in the
-  circular layout an arc outside the labels, the name riding the spoke; in
-  the unrooted layout the name at the mouth of the clade's wedge.
+* **Annotate clades** marks every such clade, in the style the **Marks**
+  choice names. **Bars**: in the rectangular layout a bar beside the tips,
+  past every other strip, with the taxon's name where the clade is tall
+  enough to carry it (a tooltip otherwise); in the circular layout an arc
+  outside the labels, the name riding the spoke; in the unrooted layout the
+  name at the mouth of the clade's wedge. **Shaded boxes** (the desktop's):
+  a translucent box under the tree from the clade's root out to where the
+  bar would stand; in the circular layout a sector from the root's radius
+  out to the arc's edge; in the unrooted layout a sector of the clade's
+  wedge from its root. The names stand where the bars' do.
 
 Either switch brings up a legend card of the Color-by's kind — a count per
 taxon over the tips on screen, a **no value** row for the tips the file does
@@ -261,8 +266,9 @@ single tips with nothing to colour. Each entry says how many taxa the rank
 names, and its tooltip how many tips it places; the automatic choice is the
 finest rank naming 2 to 20 taxa (a legend's worth), else the one naming the
 most. The
-config keys `cladeRank`, `colorizeByRank` and `annotateByRank` set the
-start; a view carries `rank`, `rankColor` and `rankMarks`. Live:
+config keys `cladeRank`, `colorizeByRank`, `annotateByRank` and
+`cladeMarkStyle` set the start; a view carries `rank`, `rankColor`,
+`rankMarks` and `rankStyle`. Live:
 [Caliciviridae](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=caliciviridae_500#rankColor=1&rankMarks=1)
 by genus.
 
@@ -1683,7 +1689,8 @@ copy-pastable JSON.
 | `geneLabels` | `'genes'` | Where gene symbols go: `'genes'` (on the arrows), `'legend'` (a card of the families), or `'none'`. |
 | `cladeRank` | `'auto'` | The taxonomic rank the clades are cut at (see [Clades by rank](#clades-by-rank)): `'auto'` (the finest rank naming 2 to 20 taxa, else the one naming the most) or a rank such as `'genus'`. A rank the tree places no tip at logs a console warning and falls back to the automatic choice. |
 | `colorizeByRank` | `false` | Open with the branches of every clade at that rank painted in its taxon's colour. |
-| `annotateByRank` | `false` | Open with every clade at that rank marked: a bar and the taxon's name beside the tips (an arc in circular, the name at the wedge's mouth in unrooted). |
+| `annotateByRank` | `false` | Open with every clade at that rank marked: a bar and the taxon's name beside the tips (an arc in circular, the name at the wedge's mouth in unrooted), or a shaded box. |
+| `cladeMarkStyle` | `'bars'` | How Annotate clades marks a clade: `'bars'` or `'boxes'` (a translucent box under the tree from the clade's root to the tips; a sector in the radial layouts). |
 | `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
 | `showScaleBar` | `true` | Open with the scale bar at the bottom left of a phylogram (a round length in the tree's branch-length unit). It gives way while the scale axis is shown either way. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
@@ -2512,12 +2519,24 @@ on the left half; unrooted: the name after a 9 px swatch at the mouth of
 the wedge — the clade's root (the view's top node when the root is above
 the view) plus the mean unit direction to its rows times the farthest row's
 distance, that row's label included, plus the extents and gaps; the radial
-fit adds `rankRadialExtent()`. State: `cladeRank` (`'auto'` | a rank),
-`colorizeByRank`, `annotateByRank`; the view `rank` (the EFFECTIVE rank),
-`rankColor`, `rankMarks`. Panel: the `Clades by rank` fieldset
-(`syncRankControls`: hidden without a rank; the select's entries `genus (10
-taxa)` with the placed tips in the tooltip; the two switches on rows of
-their own), closed by default. Numbers in
+fit adds `rankRadialExtent()`. Shaded boxes (`cladeMarkStyle: 'boxes'`, `rankBoxes()`): the marks group
+is inserted FIRST in the tree group, under the branches; rectangular: a
+rect from the clade's origin (`rankCladeOrigin`: the clade root, or the
+view's top node when the root is above the view) at its `y` to the end of
+the bar's column, over the same rows, `fill-opacity` 0.18
+(`RANK_BOX_OPACITY`, the desktop's 46 of 255) as a style on the shape (the
+file gets the attribute); circular: `rankSectorPath(rIn, rOut, a0, a1)`,
+an annular sector from the origin's `radialRadius` out to the arc's outer
+edge, even-odd so a closed span is an annulus; unrooted: a sector from the
+origin over the rows' angles about the mean direction (each in (−π, π]),
+half a row wider at each edge, to just inside the name. The names are the
+bars'. State: `cladeRank` (`'auto'` | a rank), `colorizeByRank`,
+`annotateByRank`, `cladeMarkStyle` (`'bars'` | `'boxes'`); the view `rank`
+(the EFFECTIVE rank), `rankColor`, `rankMarks`, `rankStyle`. Panel: the
+`Clades by rank` fieldset (`syncRankControls`: hidden without a rank; the
+select's entries `genus (10 taxa)` with the placed tips in the tooltip; the
+two switches on rows of their own; a Marks select), closed by default.
+Numbers in
 `test/rank_test.js` (a hand-built tree, every rule once), the SVG and the
 panel in `test/browser/ranks.html`, the saved figure in
 `test/browser/exports.html?legends=1`.
