@@ -46,7 +46,8 @@ users see a change only when a version is cut.
   substrain and isolate are not ranks. The ranks offered are those
   that place a tip and whose taxa repeat (at most three taxa per five placed
   tips); the automatic choice, among the ranks naming 2 to 20 taxa, is the
-  file's own scheme naming the most taxa, else the finest listed rank. Config
+  one naming the most, listed or not, a tie going to the listed rank (the
+  desktop opens on the same rank). Config
   `cladeRank`, `colorizeByRank`, `annotateByRank`, `cladeMarkStyle`; the
   view carries `rank`, `rankColor`, `rankMarks`, `rankStyle`; the marks and
   the card are in every export. New
@@ -77,6 +78,14 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Fixed
+- **A full-size export of a circular or unrooted tree is bounded at 6,000 px
+  across.** The drawing grew by 1.4x while each step freed a few more
+  crowded names, and on a fan whose names keep parting a little at every
+  size (bcl2 in the unrooted layout) it reached 45,000 px: the PNG could
+  only be painted at 0.43x, where the branches and names vanish and the
+  shaded clade boxes alone remain. Now the drawing stops at the bound,
+  names still crowded there are left out as on screen, and the PNG paints
+  at the chosen scale. "As shown" exports were never affected.
 - **Expand vertically after a vertical zoom no longer loses the tree.** The
   expand button ("fit and center tree, expand vertically") reset the zoom
   scale but kept the pan a few Y+ presses had left, so the expanded tree sat

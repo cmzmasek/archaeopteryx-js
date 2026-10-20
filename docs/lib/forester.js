@@ -9114,41 +9114,44 @@
         return out;
     };
 
-    // The rank to open the chooser on, among those naming 2 to `maxTaxa`
-    // taxa (a legend's worth): a scheme of the file's own (unlisted:
-    // H5Clade, a PANGO level) naming the MOST taxa -- the finest cut that
-    // still fits a legend; the list says nothing about how such schemes
-    // nest, and the alphabet was deciding (his /code-review, 2026-10-19) --
-    // else the FINEST listed rank (a genus level on a family tree); else
-    // the rank naming the most taxa of all; null on an empty list. Ties
-    // among schemes: the first in rankCoverage's order. From rankCoverage's
-    // list, so only an offered rank is ever picked.
+    // The rank to open the chooser on: among those naming 2 to `maxTaxa`
+    // taxa (a legend's worth), the one naming the MOST -- the finest cut
+    // that still fits a legend, a listed rank or a scheme of the file's own
+    // alike (the joint rule, Christian 2026-10-20, after the cross-run with
+    // the desktop's 0.11.186: it let a listed rank beat a scheme, we the
+    // reverse). A tie goes to the listed rank over a scheme, to the finer
+    // of two listed ranks, to the first met of two schemes. None within
+    // the cap: the rank naming the most taxa of all. Null on an empty
+    // list. From rankCoverage's list, so only an offered rank is ever picked.
     forester.defaultRank = function (coverage, maxTaxa) {
         if (!coverage || coverage.length === 0) {
             return null;
         }
         let cap = maxTaxa > 1 ? maxTaxa : 20;
-        let scheme = null;
-        let listed = null;
-        coverage.forEach(function (c) {
-            if (c.taxa < 2 || c.taxa > cap) {
-                return;
+        let better = function (c, b) {   // c a better default than b?
+            if (!b) {
+                return true;
             }
-            if (RANK_INDEX[c.rank] === undefined) {
-                if (!scheme || c.taxa > scheme.taxa) {
-                    scheme = c;
-                }
-            } else if (!listed || RANK_INDEX[c.rank] > RANK_INDEX[listed.rank]) {
-                listed = c;
+            if (c.taxa !== b.taxa) {
+                return c.taxa > b.taxa;
+            }
+            let ic = RANK_INDEX[c.rank];
+            let ib = RANK_INDEX[b.rank];
+            if ((ic !== undefined) !== (ib !== undefined)) {
+                return ic !== undefined;
+            }
+            return ic !== undefined && ic > ib;
+        };
+        let best = null;
+        coverage.forEach(function (c) {
+            if (c.taxa >= 2 && c.taxa <= cap && better(c, best)) {
+                best = c;
             }
         });
-        if (scheme) {
-            return scheme.rank;
+        if (best) {
+            return best.rank;
         }
-        if (listed) {
-            return listed.rank;
-        }
-        let best = coverage[0];
+        best = coverage[0];
         coverage.forEach(function (c) {
             if (c.taxa > best.taxa) {
                 best = c;

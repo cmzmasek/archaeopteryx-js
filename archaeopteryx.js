@@ -21810,6 +21810,12 @@ function (root, d3, forester, phyloXml) {
     // size anyone should meet short of tens of thousands of tips.
     const FULL_SIZE_ROW_PITCH = 1.3;
     const FULL_SIZE_MAX_EXTENT = 200000;
+    // The most a radial full-size drawing grows to, per side: a PNG at 2x
+    // still paints, a PDF page fits. Unrooted names on short branches part
+    // a little at every size (bcl2: 69 hidden at 800 px, 14 at 45,000), and
+    // the drawing that chased them was painted at 0.43x, the branches and
+    // names gone, the shaded boxes alone left (Christian, 2026-10-20).
+    const FULL_SIZE_RADIAL_MAX_SIDE = 6000;
     const FULL_SIZE_MARGIN = 20;
     const FULL_SIZE_LEGEND_GAP = 24;
 
@@ -21853,6 +21859,11 @@ function (root, d3, forester, phyloXml) {
         };
         _state.dynahide = true;
         if (radialDisplay()) {
+            // a ring or fan at most FULL_SIZE_RADIAL_MAX_SIDE across, however
+            // many names stay crowded: those are left out, as on screen
+            cap = function (v) {
+                return Math.min(FULL_SIZE_RADIAL_MAX_SIDE, v);
+            };
             let side = cap(Math.max(Math.min(_displayWidth, _displayHeight), Math.min(fitW, fitH)));
             _displayWidth = side;
             _displayHeight = side;
@@ -21875,15 +21886,17 @@ function (root, d3, forester, phyloXml) {
                 _displayHeight = _displayWidth;
                 update(null, 0);
             }
-            // Then grown while growing still frees names, and no further. In
-            // an unrooted fan names collide that no size will part: flu_h5's
-            // clusters sit on branches a thousand times shorter than the tree,
-            // and at 67,000 px across 176 of its 354 names were still refused
-            // (332 at 850 px, 322 at 2,300) -- chasing them only made a file
-            // too large to paint as a PNG. The drawing kept is the smallest
-            // that showed the fewest refusals.
+            // Then grown while growing still frees names, and no further --
+            // nor past FULL_SIZE_RADIAL_MAX_SIDE. In an unrooted fan names
+            // collide that no size will part: flu_h5's clusters sit on
+            // branches a thousand times shorter than the tree, and at 67,000
+            // px across 176 of its 354 names were still refused (332 at 850
+            // px, 322 at 2,300); bcl2's part by a few names a step all the way
+            // to 45,000 px -- chasing them only made a file too large to paint
+            // as a PNG. The drawing kept is the smallest that showed the
+            // fewest refusals within the bound.
             let best = {hidden: _radialNamesHidden, side: _displayWidth};
-            for (let i = 0; i < 12 && _radialNamesHidden > 0 && _displayWidth < FULL_SIZE_MAX_EXTENT; ++i) {
+            for (let i = 0; i < 12 && _radialNamesHidden > 0 && _displayWidth < FULL_SIZE_RADIAL_MAX_SIDE; ++i) {
                 _displayWidth = cap(_displayWidth * 1.4);
                 _displayHeight = _displayWidth;
                 update(null, 0);

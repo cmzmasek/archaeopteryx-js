@@ -282,17 +282,24 @@ runTest("rank: the Nextstrain demo offers clade_membership alone, with no contra
         && forester.rankClades(t, 'clade_membership').conflicts.length === 0;
 });
 
-runTest("rank: the default rank reaches below species: the finest listed naming 2..20 taxa ", function () {
+runTest("rank: the default rank is the finest cut that fits a legend: the most taxa within the cap, listed or not ", function () {
+    // the joint rule (2026-10-20): species 3 over subtype 2; subclade 30 is over the cap
     var cov = [{rank: 'species', taxa: 3}, {rank: 'subtype', taxa: 2}, {rank: 'subclade', taxa: 30}];
-    return forester.defaultRank(cov, 20) === 'subtype';
+    return forester.defaultRank(cov, 20) === 'species';
 });
 
-runTest("rank: the default among a file's own schemes is the one naming the most taxa within the cap, not the alphabet ", function () {
-    // PANGO_Lineage (14) over its L1 (11) and L0 (2); GlobalH1Clade (2) over H1Clade (1, no candidate);
-    // a scheme beats a listed rank; a scheme over the cap leaves the listed one; the most taxa when none fits
+runTest("rank: the default's ties: the listed rank over a scheme, the finer of two listed, the first of two schemes ", function () {
+    // PANGO_Lineage (14) over subtype (8), its L1 (11) and L0 (2); GlobalH1Clade (2) over H1Clade (1, no
+    // candidate); subtype 3 over H5Clade 3 (a tie: the listed rank, the desktop's answer on influenza.xml);
+    // genus over family at 3 each (the finer); family 4 over genus 3 (more taxa); a scheme over the cap leaves
+    // the listed one; the most taxa when none fits; two schemes tied: the first met
     return forester.defaultRank([{rank: 'species', taxa: 3}, {rank: 'subtype', taxa: 8}, {rank: 'pangolineage', taxa: 14},
             {rank: 'pangolineagel0', taxa: 2}, {rank: 'pangolineagel1', taxa: 11}], 20) === 'pangolineage'
         && forester.defaultRank([{rank: 'subtype', taxa: 1}, {rank: 'globalh1clade', taxa: 2}, {rank: 'h1clade', taxa: 1}], 20) === 'globalh1clade'
+        && forester.defaultRank([{rank: 'subtype', taxa: 3}, {rank: 'h5clade', taxa: 3}], 20) === 'subtype'
+        && forester.defaultRank([{rank: 'h5clade', taxa: 3}, {rank: 'subtype', taxa: 3}], 20) === 'subtype'
+        && forester.defaultRank([{rank: 'family', taxa: 3}, {rank: 'genus', taxa: 3}], 20) === 'genus'
+        && forester.defaultRank([{rank: 'family', taxa: 4}, {rank: 'genus', taxa: 3}], 20) === 'family'
         && forester.defaultRank([{rank: 'species', taxa: 3}, {rank: 'h5clade', taxa: 25}], 20) === 'species'
         && forester.defaultRank([{rank: 'species', taxa: 30}, {rank: 'h5clade', taxa: 25}], 20) === 'species'
         && forester.defaultRank([{rank: 'h5clade', taxa: 3}, {rank: 'nextstrainclade', taxa: 3}], 20) === 'h5clade';

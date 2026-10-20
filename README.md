@@ -286,11 +286,12 @@ not one whose taxa barely repeat (more than three taxa per five placed tips,
 the Color-by's own near-unique line: a strain field, or the species of a
 virus tree sampled once or twice per species), since its clades would be
 single tips with nothing to colour. Each entry says how many taxa the rank
-names, and its tooltip how many tips it places; the automatic choice,
-among the ranks naming 2 to 20 taxa (a legend's worth), is the file's own
-scheme naming the most taxa (the finest cut that still fits a legend: the
-full PANGO lineage over its levels), else the finest listed rank (a genus
-level on a family tree), else the rank naming the most taxa of all. The
+names, and its tooltip how many tips it places; the automatic choice is
+the finest cut that still fits a legend: among the ranks naming 2 to 20
+taxa, the one naming the most, a listed rank or a file's own scheme alike
+(genus on a family tree; the full PANGO lineage over its levels), a tie
+going to the listed rank; when none fits, the rank naming the most taxa.
+The desktop opens on the same rank. The
 config keys `cladeRank`, `colorizeByRank`, `annotateByRank` and
 `cladeMarkStyle` set the start; a view carries `rank`, `rankColor`,
 `rankMarks` and `rankStyle`. Live:
@@ -1415,9 +1416,12 @@ when the sequences are of unequal length, why it cannot.
   name has to be hidden — in rows in the rectangular layout, around the ring in
   the circular one — and cropped to the drawing, with the legends (colour,
   shape, domains, gene families, the heat-map ring's scale) stacked beside the tree rather
-  than over it. The window itself is left exactly as it was. An unrooted fan
-  is enlarged only while that still frees names: tips on very short branches
-  can collide at any size. An alignment track is drawn as its window, the
+  than over it. The window itself is left exactly as it was. A ring or an
+  unrooted fan is enlarged only while that still frees names, and to at most
+  6,000 px across: tips on very short branches can collide at any size, and
+  a drawing that chased them grew past what a PNG can be painted at, so
+  names still crowded at that size are left out, as on screen. An alignment
+  track is drawn as its window, the
   columns in view, in a full-size figure too: a genome-length alignment drawn
   whole would be hundreds of thousands of cells.
 * **PNG: 2× / 4× / 8×** — the image's resolution relative to the screen
@@ -2521,9 +2525,12 @@ the card's title ("H5Clade clades") and the warnings show (viewer
 `rankLabel`); the config's and the view's `rank` are keys, folded on the way
 in;
 `defaultRank(coverage, maxTaxa = 20)`: among the ranks with 2..maxTaxa
-taxa, a scheme of the file's own (unlisted) naming the most taxa, else the
-finest listed rank, else the most taxa of all (the alphabet decided among
-schemes before: his /code-review, 2026-10-19). `rankClades(tree, rank)`: tips keyed by their taxon (lower-
+taxa, the one naming the most, listed or not; a tie goes to the listed
+rank over a scheme, to the finer of two listed ranks, to the first met of
+two schemes; none within the cap, the most taxa of all (the joint rule of
+2026-10-20, after the cross-run with the desktop's 0.11.186: it let a
+listed rank beat a scheme, we the reverse; before that the alphabet
+decided among schemes, his /code-review, 2026-10-19). `rankClades(tree, rank)`: tips keyed by their taxon (lower-
 cased; the display spelling is the first met in document order), then a
 postorder pass gives every subtree the one taxon its placed tips agree on,
 `MIXED` on two or more, null with none — an unplaced tip never breaks a

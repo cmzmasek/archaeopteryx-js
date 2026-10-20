@@ -91,7 +91,7 @@ const CASES = {
     'expand_after_zoom': ['?zooms=3', '?zooms=0', '?zooms=8', '?layout=circular&zooms=3'],
     'host_css': ['?host=bvbrc', '?host=bvbrc&theme=dark', '?host=bootstrap3', '?host=bootstrap5', '?host=tailwind', '?host=wild',
         '?host=wild&tree=time', '?host=wild&tree=alignment'],
-    'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?paints=1', '?big=1200']
+    'exports': ['', '?keeps=1', '?keeps=genes', '?layout=circular', '?layout=unrooted', '?seqs=1', '?subtree=1', '?subtree=div', '?legends=1', '?paints=1', '?big=1200', '?cap=1']
 };
 
 const TYPES = {'.html': 'text/html', '.js': 'text/javascript', '.xml': 'text/xml',

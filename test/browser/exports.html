@@ -270,6 +270,11 @@ async function filePaints() {
         finish();
         return;
     }
+    if (q.get('cap') === '1') {
+        await cappedRadial();
+        finish();
+        return;
+    }
     if (q.get('legends') === '1') {
         await legendCards();
         finish();
@@ -606,6 +611,51 @@ async function filePaints() {
 // figure beside the tree: present, on the page, and off the tree. Only the
 // colour legend was moved at first; the domain legend landed on the tree
 // and half off the page (the review of 15857e6..12e5d62 caught it).
+// A radial full-size drawing is bounded (FULL_SIZE_RADIAL_MAX_SIDE, 6,000 px
+// a side): bcl2 in the unrooted layout kept freeing a few names per growth
+// step all the way to 45,000 px, the PNG was painted at 0.43x and the
+// branches and names vanished while the shaded boxes stayed (Christian,
+// 2026-10-20, "only the shaded boxes and nothing else"). The export is at
+// most the bound plus the legend column and margins, the PNG paints at the
+// chosen scale, and the tree is on it.
+async function cappedRadial() {
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
+    const text = await (await fetch('../../docs/data/bcl2.xml')).text();
+    const viewer = archaeopteryx.launch('#phylogram1', archaeopteryx.parseTrees('bcl2.xml', text),
+        {layout: 'unrooted', colorizeByRank: true, annotateByRank: true, cladeMarkStyle: 'boxes'});
+    window.__aptxViewer = viewer;
+    await viewer.ready;
+    await sleep(1800);
+    check('cap: the unrooted bcl2 draws its shaded boxes', document.querySelectorAll('g.aptx-rankmarks > g:nth-child(1) > path').length > 50,
+        document.querySelectorAll('g.aptx-rankmarks > g:nth-child(1) > path').length);
+    const f = await download('SVG');
+    const svg = await svgOf(f);
+    const w = +svg.getAttribute('width');
+    const h = +svg.getAttribute('height');
+    check('cap: the full-size SVG is at most the bound plus the legend column and margins', w > 2000 && w < 6000 + 400 && h > 2000 && h < 6000 + 100, w + 'x' + h);
+    check('cap: the SVG holds the branches, the names and the boxes', svg.querySelectorAll('g.aptx-branches path').length > 0
+        && [...svg.querySelectorAll('text.extlabel')].filter((t) => t.textContent.trim() !== '').length > 40
+        && svg.querySelectorAll('g.aptx-rankmarks path').length > 50,
+        svg.querySelectorAll('g.aptx-branches path').length + ' ' + svg.querySelectorAll('text.extlabel').length + ' ' + svg.querySelectorAll('g.aptx-rankmarks path').length);
+    byId('dl_png2_b').closest('label').click();
+    await sleep(50);
+    const p = await download('PNG');
+    const bm = await createImageBitmap(p.blob);
+    check('cap: the PNG paints at the chosen 2x, no fallback', bm.width === Math.round(w * 2) && bm.height === Math.round(h * 2)
+        && !warnings.some((x) => /rather than/.test(x)), bm.width + 'x' + bm.height + ' ' + warnings.join(' | '));
+    const c = document.createElement('canvas');
+    c.width = bm.width; c.height = bm.height;
+    const g = c.getContext('2d');
+    g.drawImage(bm, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let dark = 0;
+    for (let i = 0; i < d.length; i += 4 * 97) { if (d[i] < 128 && d[i + 1] < 128 && d[i + 2] < 128) { ++dark; } }
+    check('cap: the tree is painted on the PNG, not the boxes alone', dark > 200, dark + ' dark samples');
+    console.warn = warn;
+}
+
 async function legendCards() {
     const cases = [
         {file: '../../docs/data/apaf.xml', config: {}, domains: 'legend', circular: false},
