@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.000</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.033</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.067</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.100</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.133</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.167</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.200</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.233</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.267</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.300</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.333</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.367</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.400</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.433</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.467</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.500</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.533</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.567</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.600</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.633</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.667</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.700</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.733</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.767</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.800</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2000</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.833</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2001</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">14-Jun-2013</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.867</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2002</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2012-12-2</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.900</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2003</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">2016</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">B</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.933</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2004</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">B</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:Collection_Date" datatype="xsd:string" applies_to="node">Jan-2006</property>
+        <property ref="x:Date_Added" datatype="xsd:string" applies_to="node">A</property>
+        <property ref="x:Sampling_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="nextstrain:num_date" datatype="xsd:string" applies_to="node">2020.967</property>
+        <property ref="x:Mixed_Date" datatype="xsd:string" applies_to="node">2005</property>
+        <property ref="x:Updated" datatype="xsd:string" applies_to="node">A</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

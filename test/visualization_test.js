@@ -119,8 +119,9 @@ function only(phy) {
 // vipr:Genus (307/321, 4 genera) survives 14 missing nodes; vipr:Year
 // (219/321 = 68.2%) sits just above the 2/3 coverage line -- the reason
 // that line is 2/3 and not 70%. Host (125 distinct), Species (234),
-// Strain (228), Collection_Date (151), the sequence names (253) and the
-// scientific names (234) are all beyond 20 categories.
+// Strain (228), the sequence names (253) and the scientific names (234)
+// are all beyond 20 categories. Collection_Date (151 spellings, "Oct-2010"
+// beside "1958") is a date as text and is refused since 2026-10-20.
 function testAdenoviridae() {
     // Host: 125 hosts over 273 covered nodes (repeat ratio 0.46) -- wide,
     // offered last, never auto-applied.
@@ -133,8 +134,7 @@ function testAdenoviridae() {
         'seq:name category [wide]',
         'tax:scientific_name category [wide]',
         'prop:vipr:Species category [wide]',
-        'prop:vipr:Strain category [wide]',
-        'prop:vipr:Collection_Date category [wide]'
+        'prop:vipr:Strain category [wide]'
     ]);
 }
 
@@ -153,8 +153,7 @@ function testCaliciviridae100() {
         'seq:name category [wide]',
         'tax:scientific_name category [wide]',
         'prop:vipr:Species category [wide]',
-        'prop:vipr:Strain category [wide]',
-        'prop:vipr:Collection_Date category [wide]'
+        'prop:vipr:Strain category [wide]'
     ]);
 }
 
@@ -172,8 +171,7 @@ function testCaliciviridae500() {
         // barely-repeating (> 20 values, distinct/covered > 3/5): offered at the
         // very bottom since 2026-09-12 rather than refused
         'seq:name category [wide]',
-        'prop:vipr:Strain category [wide]',
-        'prop:vipr:Collection_Date category [wide]'
+        'prop:vipr:Strain category [wide]'
     ]);
 }
 
@@ -303,7 +301,13 @@ function testRefusals() {
         [herpes, 'prop:BVBRC:patric_id'],        // identifier
         [herpes, 'prop:BVBRC:accession'],        // identifier
         [flu, 'prop:BVBRC:species'],             // one value on every node
-        [flu, 'prop:BVBRC:genome_id']            // numeric identifier
+        [flu, 'prop:BVBRC:genome_id'],           // numeric identifier
+        // a date as text (2016 beside Jan-2006 and 14-Jun-2013), on every
+        // ViPR / BV-BRC family tree: refused since 2026-10-20
+        [summarize(forester.visualizationCandidates(loadTree('Adenoviridae'))).join('\n'),
+            'prop:vipr:Collection_Date'],
+        [summarize(forester.visualizationCandidates(loadTree('Caliciviridae_500'))).join('\n'),
+            'prop:vipr:Collection_Date']
     ];
     // genome_name and strain barely repeat (346/354, 183/199). They used to be
     // refused by the wide guard; since 2026-09-12 they are offered at the very
@@ -2391,6 +2395,90 @@ function testTaxonIdNeverOffered() {
 // every statistical test, but a colour spent on one says nothing about the
 // tree. The controls matter as much as the exclusions here -- the rule is
 // separator-aware precisely so that "Authority" and "Dataset" survive it.
+// A date is a measurement or nothing (Christian, 2026-10-20: Collection_Date
+// "should never be offered for visualization" -- its values mix "2016",
+// "Jan-2006" and "14-Jun-2013" and are missing on a third of the tips; the
+// rule generalised to every date-named field on his choice). The word "date"
+// in the MENU name refuses the field as text however well it repeats, and
+// lets it through as a numeric field when every value is a number: a year,
+// or the num_date decimal year the Nextstrain and BEAST readers write for
+// Color-by on purpose. Anchored as a word, so Updated and Candidate survive.
+function testDateIsAMeasurementOrNothing() {
+    function candidatesFor(ref, valueOf) {
+        var phy = forester.parseNewHampshire('((a,b,c,d,e,f),(g,h,i,j,k,l));', true, false);
+        forester.getAllExternalNodes(phy).forEach(function (n, i) {
+            n.properties = [{ref: ref, datatype: 'xsd:string', applies_to: 'node', value: valueOf(i)}];
+        });
+        return forester.visualizationCandidates(phy);
+    }
+    var AB = function (i) { return (i % 2) ? 'Alpha' : 'Beta'; };
+    var refusedAsText = [
+        'vipr:Collection_Date', 'repseq:collection_date', 'x:collectionDate', 'x:Collection Date',
+        'x:COLLECTION_DATE', 'meta:Collection_Date',
+        'nextstrain:date', 'nextstrain:date_added', 'nextstrain:date_submitted',
+        'nextstrain:date_released', 'nextstrain:date_updated',
+        'x:Date', 'x:Dates', 'x:Sampling_Date', 'x:Release-Date', 'x:date of collection',
+        'nextstrain:num_date'   // the name alone does not spare it: its NUMBERS do
+    ];
+    var leaked = refusedAsText.filter(function (r) { return candidatesFor(r, AB).length !== 0; });
+    if (leaked.length) {
+        console.log('    a date as text was offered: ' + leaked.join(', '));
+        return false;
+    }
+    // a date is refused however well it repeats: four spellings, evenly, is
+    // the shape of a clean category and is still refused
+    var spellings = ['2016', 'Jan-2006', '14-Jun-2013', '2012-12-2'];
+    if (candidatesFor('vipr:Collection_Date', function (i) { return spellings[i % 4]; }).length !== 0) {
+        console.log('    a well-repeating date as text was offered');
+        return false;
+    }
+    // "date" inside a word is not the word
+    var kept = ['x:Updated', 'x:Dated', 'x:Candidate', 'x:Datetime', 'x:Validated', 'x:Year',
+        'BVBRC:collection_year', 'x:Host'];
+    var lost = kept.filter(function (r) { return candidatesFor(r, AB).length !== 1; });
+    if (lost.length) {
+        console.log('    wrongly refused: ' + lost.join(', '));
+        return false;
+    }
+    // every value a number: a measurement, offered as one
+    var years = candidatesFor('vipr:Collection_Date', function (i) { return String(2010 + (i % 4)); });
+    if (years.length !== 1 || !years[0].numeric || years[0].colorMode !== 'category') {
+        console.log('    a date of plain years should be a numeric candidate: '
+            + (years.length ? years[0].numeric + ' ' + years[0].colorMode : 'refused'));
+        return false;
+    }
+    var decimal = candidatesFor('nextstrain:num_date', function (i) { return (2020 + i / 12).toFixed(4); });
+    if (decimal.length !== 1 || !decimal[0].numeric || decimal[0].values.length !== 12) {
+        console.log('    num_date decimal years, all distinct, should be a numeric candidate: '
+            + (decimal.length ? decimal[0].numeric + ' ' + decimal[0].values.length : 'refused'));
+        return false;
+    }
+    // one spelling that is not a number spoils the measurement: refused, not
+    // offered as a category of twelve
+    var mixed = candidatesFor('x:Sampling_Date', function (i) { return i ? String(2010 + (i % 4)) : 'Jan-2006'; });
+    if (mixed.length !== 0) {
+        console.log('    a date with one non-numeric spelling was offered as ' + mixed[0].colorMode);
+        return false;
+    }
+    // the rule reads the menu name, so the camelCase ref is seen split
+    if (forester.propertyDisplayName('x:collectionDate') !== 'Collection Date') {
+        console.log('    display name no longer splits camelCase: ' + forester.propertyDisplayName('x:collectionDate'));
+        return false;
+    }
+    // and it is a Color-by rule only: the field is still a label field
+    var phy = forester.parseNewHampshire('((a,b),(c,d));', true, false);
+    forester.getAllExternalNodes(phy).forEach(function (n, i) {
+        n.properties = [{ref: 'vipr:Collection_Date', datatype: 'xsd:string', applies_to: 'node',
+            value: spellings[i]}];
+    });
+    var labels = forester.labelPropertyRefs(phy);
+    if (!labels || labels.indexOf('vipr:Collection_Date') < 0) {
+        console.log('    Collection_Date should still be a label field: ' + JSON.stringify(labels));
+        return false;
+    }
+    return true;
+}
+
 function testRecordKeepingNeverOffered() {
     var excluded = [
         'x:Author', 'x:Authors', 'x:Author(s)', 'x:Abbr Authors', 'x:abbr_authors',
@@ -3040,6 +3128,7 @@ runTest("nodeLabels retired       : ", testNodeLabelsRetired);
 runTest("property display name    : ", testPropertyDisplayName);
 runTest("taxon id never offered   : ", testTaxonIdNeverOffered);
 runTest("record-keeping refs never offered: ", testRecordKeepingNeverOffered);
+runTest("a date is a measurement or nothing: ", testDateIsAMeasurementOrNothing);
 runTest("in-group offered, never first : ", testInGroupOfferedButNotFirst);
 runTest("sparse ranked, not refused  : ", testSparseFieldsRankedNotRefused);
 runTest("joint contract fixture    : ", testJointContractFixture);

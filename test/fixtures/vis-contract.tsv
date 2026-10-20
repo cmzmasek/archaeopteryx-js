@@ -1,8 +1,11 @@
 # archaeopteryx-js visualization contract fixture
-# generated from forester.js at cee2efe by RUNNING the implementation
+# generated from forester.js at cee2efe by RUNNING the implementation; later rows added the same way
 # columns: ref <TAB> verdict <TAB> displayed label
 # verdict: EXCLUDED (never offered) | DEPRIORITIZED (offered, bottom tier) | offered
-# each ref tested on a 30-tip tree with an even 2-value split, so any refusal is by NAME alone
+# each ref tested on a 30-tip tree with an even 2-value split of TEXT values, so any refusal is by NAME alone --
+# except the date rule (2026-10-20), which reads the name AND the values: a ref with the word "date" is EXCLUDED
+# here because the values are text; with every value a number (a year, a num_date decimal year) it is offered as
+# a numeric field, see vis-trees.tsv (tree date_rule)
 BVBRC:accession	EXCLUDED	Accession
 BVBRC:collection_year	offered	Collection Year
 BVBRC:genbank_accessions	EXCLUDED	Genbank Accessions
@@ -34,7 +37,7 @@ style:anything	EXCLUDED	Anything
 style:font_color	EXCLUDED	Font Color
 tol:Domain	offered	Domain
 vipr:BVBRC_Accession	EXCLUDED	BVBRC Accession
-vipr:Collection_Date	offered	Collection Date
+vipr:Collection_Date	EXCLUDED	Collection Date
 vipr:Country	offered	Country
 vipr:GB_Accession	EXCLUDED	GB Accession
 vipr:Genome_Name	offered	Genome Name
@@ -138,7 +141,7 @@ x:abbr_authors	EXCLUDED	Abbr Authors
 x:accession_number	offered	Accession Number
 x:already Spaced	offered	Already Spaced
 x:authorship	offered	Authorship
-x:collection_date	offered	Collection Date
+x:collection_date	EXCLUDED	Collection Date
 x:dataUseTerms	EXCLUDED	Data Use Terms
 x:data_use_terms	EXCLUDED	Data Use Terms
 x:gbAccession	EXCLUDED	Gb Accession
@@ -187,3 +190,16 @@ x:a__b	offered	A  B
 x:y:z	offered	Y:z
 x:y:Z_w	offered	Y:Z W
 BVBRC:H5N1_Clade	offered	H5N1 Clade
+# a date is a measurement or nothing (2026-10-20): the word "date" refuses the field as text, whatever the spelling
+# of the name; Updated, Dated, Candidate and Datetime do not contain the word
+nextstrain:date	EXCLUDED	Date
+nextstrain:date_added	EXCLUDED	Date Added
+nextstrain:date_submitted	EXCLUDED	Date Submitted
+nextstrain:num_date	EXCLUDED	Num Date
+x:collectionDate	EXCLUDED	Collection Date
+x:Sampling_Date	EXCLUDED	Sampling Date
+x:Dates	EXCLUDED	Dates
+x:Updated	offered	Updated
+x:Dated	offered	Dated
+x:Candidate	offered	Candidate
+x:Datetime	offered	Datetime

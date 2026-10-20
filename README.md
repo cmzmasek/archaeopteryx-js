@@ -1962,7 +1962,14 @@ What gets offered, briefly:
   never offered — the desktop reserves it for rendering instructions.
 * A field must cover at least **⅔ of the external nodes** and have at least
   2 — and fewer than all — distinct values. Identifier-like fields
-  (accessions, genome ids) are refused.
+  (accessions, genome ids) and record-keeping fields (authors, data-use
+  terms) are refused by name. So is a **date as text**: a field whose name
+  has the word "date" (Collection Date, Date Added, Nextstrain's `date`) is
+  offered only when every value is a number — a year, or Nextstrain's
+  `num_date` decimal year — and is then a measurement like Year, a gradient.
+  Database dates mix `2016` with `Jan-2006` and `14-Jun-2013` and are missing
+  on many tips, and a colour per spelling says nothing about the tree. The
+  field is still a label field and a search field.
 * Up to **20** distinct values → **Color** (one fixed, colour-vision-aware
   palette at every cardinality). Fields with **21+ values** (hosts, species)
   are still offered — every value coloured, desktop-style, by extending the
