@@ -184,10 +184,64 @@ runTest("rank: the ranks offered, in canonical order, with their coverage ", fun
 });
 
 runTest("rank: canonical ranks first, in order, then the rest alphabetically ", function () {
-    var sorted = ['strain', 'zzz', 'species', 'aaa', 'domain', 'genus'].sort(forester.compareRanks);
-    return sorted.join(' ') === 'domain genus species strain aaa zzz'
-        && forester.TAXONOMIC_RANKS.indexOf('other') < 0 && forester.TAXONOMIC_RANKS.indexOf('unknown') < 0
-        && forester.TAXONOMIC_RANKS.length === 52;
+    var sorted = ['subtype', 'zzz', 'species', 'aaa', 'domain', 'genus', 'h5clade', 'subclade'].sort(forester.compareRanks);
+    var R = forester.TAXONOMIC_RANKS;
+    return sorted.join(' ') === 'domain genus species subtype subclade aaa h5clade zzz'
+        && R.indexOf('other') < 0 && R.indexOf('unknown') < 0
+        && R.indexOf('strain') < 0 && R.indexOf('substrain') < 0 && R.indexOf('isolate') < 0
+        && R.length === 68
+        && R.indexOf('species') < R.indexOf('subspecies') && R.indexOf('subtype') < R.indexOf('clade')
+        && R.indexOf('subgenus') < R.indexOf('section') && R.indexOf('subsection') < R.indexOf('species')
+        && R.indexOf('variant') === R.length - 1;
+});
+
+runTest("rank: a rank's key folds case, spaces, hyphens, underscores, dots and a few abbreviations ", function () {
+    return forester.rankKey('Sub-Species') === 'subspecies' && forester.rankKey('sub_species') === 'subspecies'
+        && forester.rankKey(' ssp. ') === 'subspecies' && forester.rankKey('subsp') === 'subspecies'
+        && forester.rankKey('Forma specialis') === 'formaspecialis' && forester.rankKey('f. sp.') === 'formaspecialis'
+        && forester.rankKey('var.') === 'variety' && forester.rankKey('cv') === 'cultivar'
+        && forester.rankKey('Sub_Type') === 'subtype' && forester.rankKey('H5Clade') === 'h5clade'
+        && forester.rankLabel('formaspecialis') === 'forma specialis' && forester.rankLabel('genus') === 'genus'
+        && forester.rankLabel('h5clade') === null;
+});
+
+runTest("rank: strain, substrain and isolate are not ranks here (his word), nor other / unknown ", function () {
+    // the strains repeat (two tips each), so the near-unique line would let
+    // them through: refused by name, as properties and as taxonomy ranks
+    var t = readTree('<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+        + clade('s1', prop('vipr:Strain', 'A') + prop('x:sub-strain', 'A1') + prop('y:Isolate', 'I1') + tax('strain', 'A'))
+        + clade('s2', prop('vipr:Strain', 'A') + prop('x:sub_strain', 'A1') + prop('y:Isolate', 'I1') + tax('Sub_Strain', 'A1'))
+        + clade('s3', prop('vipr:Strain', 'B') + prop('x:substrain', 'B1') + prop('y:Isolate', 'I2') + tax('isolate', 'I2'))
+        + clade('s4', prop('vipr:Strain', 'B') + prop('x:substrain', 'B1') + prop('y:Isolate', 'I2') + tax('other', 'o'))
+        + '</clade></phylogeny></phyloxml>');
+    return forester.rankCoverage(t).length === 0
+        && forester.rankKey('strain') === '' && forester.rankKey('Sub-Strain') === '' && forester.rankKey('isolate') === ''
+        && forester.rankKey('other') === '' && forester.rankKey('unknown') === '' && forester.rankKey('') === ''
+        && forester.rankKey(null) === '';
+});
+
+runTest("rank: a property is a rank by the list, or by naming a clade or lineage; a field is not ", function () {
+    var tip = function (name) {
+        return clade(name, prop('ird:H5Clade', '2.3.4.4') + prop('vipr:PANGO_Lineage_L1', 'B.1') + prop('ns:clade_membership', '20A')
+            + prop('BVBRC:host_group', 'Human') + prop('x:genome_type', 'ssRNA') + prop('ird:Subtype', 'H5N1') + prop('q:Serotype', 'O1'));
+    };
+    var t = readTree('<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>' + tip('t1') + tip('t2')
+        + '</clade></phylogeny></phyloxml>');
+    var cov = forester.rankCoverage(t);
+    var keys = cov.map(function (c) { return c.rank; }).join(' ');
+    var labels = cov.map(function (c) { return c.label; }).join(' ');
+    // the listed ones first in their order (serotype before subtype), then
+    // the file's own alphabetically, under the file's spelling; host_group
+    // and genome_type are fields, not ranks
+    return keys === 'serotype subtype clademembership h5clade pangolineagel1'
+        && labels === 'serotype subtype clade_membership H5Clade PANGO_Lineage_L1'
+        && forester.tipRankTaxon(byName(t, 't1'), 'H5-Clade').name === '2.3.4.4'
+        && forester.tipRankTaxon(byName(t, 't1'), 'host_group') === null;
+});
+
+runTest("rank: the default rank reaches below species: the finest naming 2..20 taxa ", function () {
+    var cov = [{rank: 'species', taxa: 3}, {rank: 'subtype', taxa: 2}, {rank: 'subclade', taxa: 30}];
+    return forester.defaultRank(cov, 20) === 'subtype';
 });
 
 var genus = forester.rankClades(tree, 'genus');
@@ -241,6 +295,37 @@ runTest("rank: a rank placing nothing gives an empty result ", function () {
     return r.clades.length === 0 && r.taxa.length === 0 && r.tips === 12 && r.placed === 0 && r.unplaced === 12
         && none.clades.length === 0 && none.tips === 0
         && forester.rankClades(null, 'genus').clades.length === 0;
+});
+
+runTest("rank: an internal annotation its tips contradict is reported, never corrected ", function () {
+    // E says Vulpes, e1 says Nyctereutes itself: E is contradicted (and e1
+    // still decides its own clade). A says Felis and a2's "felis" is the
+    // same taxon spelled lower: no conflict. D's tips name nothing of their
+    // own: no conflict. One conflict, E against e1.
+    var m = forester.rankClades(tree, 'genus');
+    return m.conflicts.length === 1
+        && m.conflicts[0].node === byName(tree, 'E') && m.conflicts[0].taxon === 'Vulpes'
+        && m.conflicts[0].tip === byName(tree, 'e1') && m.conflicts[0].tipTaxon === 'Nyctereutes'
+        && m.clades.length === 7;
+});
+
+runTest("rank: no internal annotation at the rank, no conflict ", function () {
+    // at species only a1 is annotated, and no internal node is
+    return forester.rankClades(tree, 'species').conflicts.length === 0
+        && forester.rankClades(tree, 'family').conflicts.length === 0;
+});
+
+runTest("rank: a nearer internal annotation contradicts a farther one through the tips it places ", function () {
+    // F says Felis; its child G says Lynx; the tips name nothing of their
+    // own, so they take G's Lynx -- F is contradicted (by tip g1, placed by
+    // G), G is not
+    var t = readTree('<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade><name>root</name>'
+        + clade('F', tax('genus', 'Felis') + clade('G', tax('genus', 'Lynx') + clade('g1', '') + clade('g2', '')))
+        + clade('h1', prop('x:genus', 'Felis'))
+        + '</clade></phylogeny></phyloxml>');
+    var m = forester.rankClades(t, 'genus');
+    return m.conflicts.length === 1 && m.conflicts[0].node === byName(t, 'F') && m.conflicts[0].taxon === 'Felis'
+        && m.conflicts[0].tip === byName(t, 'g1') && m.conflicts[0].tipTaxon === 'Lynx';
 });
 
 runTest("rank: species: the one placed tip makes the whole tree its clade (the voting rule's reach) ", function () {

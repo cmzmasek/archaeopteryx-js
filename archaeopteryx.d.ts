@@ -85,8 +85,9 @@ export interface ArchaeopteryxConfig {
     geneLabels?: 'none' | 'genes' | 'legend';
     /** The taxonomic rank the clades are cut at (Clades by rank): 'auto'
      * (the finest rank naming 2 to 20 taxa, else the one naming the most)
-     * or a rank such as 'genus'. A rank the tree places no tip at warns and
-     * falls back to 'auto'. */
+     * or a rank such as 'genus', 'subtype' or a file's own 'H5Clade'
+     * (spelling folds: 'Sub-Type' is subtype). A rank the tree places no
+     * tip at warns and falls back to 'auto'. */
     cladeRank?: string;
     /** Open with the branches of every clade at that rank painted in its
      * taxon's colour. Default false. */

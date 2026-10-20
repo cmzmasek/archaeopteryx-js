@@ -8840,24 +8840,60 @@
     // one shown.
 
     // The ranks in Linnaean order: phyloXML's rank vocabulary less "other"
-    // and "unknown", in the desktop's order (TaxonomyUtil.TAXONOMY_RANKS_LIST,
-    // so both programs list a rank chooser alike). A rank outside it is
-    // still a rank, listed after these alphabetically.
+    // and "unknown" down to species, in the desktop's order
+    // (TaxonomyUtil.TAXONOMY_RANKS_LIST, section and subsection moved to
+    // their place under the genus), then the TERMS BELOW SPECIES viruses and
+    // microbes are grouped by (Christian, 2026-10-19, his list: "strain",
+    // "substrain" and "isolate" are NOT ranks here, a strain being one tip).
+    // These are not a strict hierarchy across viruses; their order decides
+    // only the chooser's listing and the automatic default. A rank outside
+    // the list is still a rank when a <taxonomy> names it, listed after
+    // these alphabetically; a property is a rank only by this list or by
+    // the clade / lineage rule (propertyRank).
     forester.TAXONOMIC_RANKS = ['domain', 'superkingdom', 'kingdom', 'subkingdom', 'branch', 'infrakingdom',
         'superphylum', 'phylum', 'subphylum', 'infraphylum', 'microphylum', 'superdivision', 'division',
         'subdivision', 'infradivision', 'superclass', 'class', 'subclass', 'infraclass', 'superlegion', 'legion',
         'sublegion', 'infralegion', 'supercohort', 'cohort', 'subcohort', 'infracohort', 'superorder', 'order',
         'suborder', 'infraorder', 'superfamily', 'family', 'subfamily', 'supertribe', 'tribe', 'subtribe',
-        'infratribe', 'genus', 'subgenus', 'superspecies', 'species', 'subspecies', 'variety', 'varietas',
-        'subvariety', 'form', 'subform', 'cultivar', 'strain', 'section', 'subsection'];
+        'infratribe', 'genus', 'subgenus', 'section', 'subsection', 'superspecies', 'species',
+        'subspecies', 'variety', 'varietas', 'subvariety', 'form', 'subform', 'forma specialis', 'cultivar',
+        'biovar', 'serovar', 'pathovar', 'morphovar', 'serogroup', 'serotype', 'genogroup', 'genotype',
+        'subgenotype', 'type', 'subtype', 'clade', 'subclade', 'lineage', 'sublineage', 'variant'];
 
-    const RANK_NOT_A_RANK = {'': true, 'other': true, 'unknown': true};
+    // A rank's KEY is its name folded: lower case, no spaces, hyphens,
+    // underscores or dots ("Sub-Species", "sub_species", "ssp." all read
+    // subspecies); a few abbreviations fold onto their term. Refused: none,
+    // phyloXML's "other" / "unknown", and the three his word excluded.
+    const RANK_ALIASES = {ssp: 'subspecies', subsp: 'subspecies', 'var': 'variety', subvar: 'subvariety',
+        forma: 'form', fsp: 'formaspecialis', formasp: 'formaspecialis', cv: 'cultivar'};
+    const RANK_REFUSED = {'': true, other: true, unknown: true, strain: true, substrain: true, isolate: true};
+    const RANK_INDEX = Object.create(null);   // key -> place in TAXONOMIC_RANKS
+    const RANK_LABEL = Object.create(null);   // key -> the canonical spelling
 
-    // A rank, normalised; '' for none and for phyloXML's "other" / "unknown".
-    function rankKey(rank) {
-        let k = typeof rank === 'string' ? rank.trim().toLowerCase() : '';
-        return RANK_NOT_A_RANK[k] ? '' : k;
+    function foldRank(rank) {
+        return typeof rank === 'string' ? rank.trim().toLowerCase().replace(/[\s_.-]+/g, '') : '';
     }
+
+    forester.TAXONOMIC_RANKS.forEach(function (name, i) {
+        RANK_INDEX[foldRank(name)] = i;
+        RANK_LABEL[foldRank(name)] = name;
+    });
+
+    // A rank's key; '' when it is none, or refused.
+    function rankKey(rank) {
+        let k = foldRank(rank);
+        if (RANK_ALIASES[k]) {
+            k = RANK_ALIASES[k];
+        }
+        return RANK_REFUSED[k] ? '' : k;
+    }
+    forester.rankKey = rankKey;
+
+    // The canonical spelling of a listed rank's key ("forma specialis" for
+    // formaspecialis), null for a rank outside the list.
+    forester.rankLabel = function (key) {
+        return RANK_LABEL[key] || null;
+    };
 
     // Document order: the root first, then each child's subtree in the
     // file's order. (forester.preOrderTraversal walks children LAST first,
@@ -8888,8 +8924,24 @@
         if (typeof ref !== 'string') {
             return null;
         }
-        let local = rankKey(ref.substring(ref.lastIndexOf(':') + 1));
-        return forester.TAXONOMIC_RANKS.indexOf(local) >= 0 ? local : null;
+        let local = ref.substring(ref.lastIndexOf(':') + 1);
+        let key = rankKey(local);
+        if (!key) {
+            return null;
+        }
+        if (RANK_INDEX[key] !== undefined) {
+            return key;
+        }
+        // a clade or lineage naming scheme of the file's own -- a name
+        // ending in, or with a word of, "clade" or "lineage" (ird:H5Clade,
+        // vipr:PANGO_Lineage_L1, clade_membership) -- is a rank of its own,
+        // shown under the file's spelling; anything else named by a
+        // property is a field for the Color-by, not a rank
+        if (/(clade|lineage)$/.test(key)) {
+            return key;
+        }
+        let words = local.trim().toLowerCase().split(/[\s_.-]+/);
+        return (words.indexOf('clade') >= 0 || words.indexOf('lineage') >= 0) ? key : null;
     }
 
     // A node's OWN taxon at `rank` ({name, source: 'taxonomy' | 'property'}),
@@ -8940,10 +8992,10 @@
         return null;
     };
 
-    // Canonical order first, then the rest alphabetically.
+    // Canonical order first, then the rest alphabetically. Keys.
     forester.compareRanks = function (a, b) {
-        let ia = forester.TAXONOMIC_RANKS.indexOf(a);
-        let ib = forester.TAXONOMIC_RANKS.indexOf(b);
+        let ia = RANK_INDEX[a] !== undefined ? RANK_INDEX[a] : -1;
+        let ib = RANK_INDEX[b] !== undefined ? RANK_INDEX[b] : -1;
         if (ia >= 0 || ib >= 0) {
             if (ia < 0) {
                 return 1;
@@ -8957,33 +9009,36 @@
     };
 
     // The ranks the tree names anywhere -- in a <taxonomy>'s rank, or as a
-    // property's local name -- in canonical order.
+    // property's local name -- in canonical order: [{rank (the key), label
+    // (the canonical spelling, else the file's first)}].
     function ranksNamed(tree) {
-        let seen = Object.create(null);
+        let seen = Object.create(null);   // key -> label: the canonical spelling, else the file's first
         eachNode(tree, function (n) {
             if (n.taxonomies) {
                 n.taxonomies.forEach(function (t) {
                     let r = t ? rankKey(t.rank) : '';
-                    if (r) {
-                        seen[r] = true;
+                    if (r && !(r in seen)) {
+                        seen[r] = forester.rankLabel(r) || String(t.rank).trim();
                     }
                 });
             }
             if (n.properties) {
                 n.properties.forEach(function (p) {
                     let r = p ? propertyRank(p.ref) : null;
-                    if (r) {
-                        seen[r] = true;
+                    if (r && !(r in seen)) {
+                        seen[r] = forester.rankLabel(r) || p.ref.substring(p.ref.lastIndexOf(':') + 1).trim();
                     }
                 });
             }
         });
-        return Object.keys(seen).sort(forester.compareRanks);
+        return Object.keys(seen).sort(forester.compareRanks).map(function (k) {
+            return {rank: k, label: seen[k]};
+        });
     }
 
     // The ranks worth offering, in canonical order, each with how many tips
-    // it places and how many taxa it names there: [{rank, placed, tips,
-    // taxa}]. A rank placing no tip is left out, and so is one whose taxa
+    // it places and how many taxa it names there: [{rank, label, placed,
+    // tips, taxa}] (`rank` the key, `label` what to show). A rank placing no tip is left out, and so is one whose taxa
     // barely repeat -- more than three taxa per five placed tips, the
     // Color-by's own near-unique line (a strain field; the species of a
     // virus tree sampled once or twice per species): its clades would be
@@ -8994,7 +9049,7 @@
         if (!tree) {
             return out;
         }
-        ranksNamed(tree).forEach(function (rank) {
+        ranksNamed(tree).forEach(function (r) {
             let placed = 0;
             let tips = 0;
             let taxa = Object.create(null);
@@ -9003,7 +9058,7 @@
                     return;
                 }
                 tips++;
-                let t = forester.tipRankTaxon(n, rank);
+                let t = forester.tipRankTaxon(n, r.rank);
                 if (t) {
                     placed++;
                     taxa[t.name.toLowerCase()] = true;
@@ -9011,7 +9066,7 @@
             });
             let distinct = Object.keys(taxa).length;
             if (placed > 0 && distinct * 5 <= placed * 3) {
-                out.push({rank: rank, placed: placed, tips: tips, taxa: distinct});
+                out.push({rank: r.rank, label: r.label, placed: placed, tips: tips, taxa: distinct});
             }
         });
         return out;
@@ -9056,10 +9111,16 @@
     //   taxa      [{name, tips, clades}], by tips descending then name:
     //             `tips` the placed tips naming it, `clades` how many clades
     //             it is split into (2 or more: paraphyletic on this tree).
+    //   conflicts [{node, taxon, tip, tipTaxon}] -- the internal nodes that
+    //             name a taxon at `rank` themselves while a placed tip below
+    //             names another (its own, or a nearer ancestor's): `taxon`
+    //             the node's, `tip` the first such tip in document order,
+    //             `tipTaxon` its taxon. Reported, never corrected: the tips
+    //             decide the clades either way. In document order.
     //   tips, placed, unplaced   the tree's tip counts.
     forester.rankClades = function (tree, rank) {
         let out = {rank: rankKey(rank), clades: [], cladeOf: new Map(), tipTaxon: new Map(), taxa: [],
-            tips: 0, placed: 0, unplaced: 0};
+            conflicts: [], tips: 0, placed: 0, unplaced: 0};
         if (!tree || !out.rank) {
             return out;
         }
@@ -9110,6 +9171,30 @@
                 }
             }
             subtree.set(n, consensus);
+        });
+        // the internal annotations the tips contradict: the node names one
+        // taxon, its subtree is not pure for it (another taxon, or mixed)
+        eachNode(tree, function (n) {
+            if (!n.children) {
+                return;
+            }
+            let own = forester.ownRankTaxon(n, rank);
+            if (!own) {
+                return;
+            }
+            let key = own.name.toLowerCase();
+            if (subtree.get(n) === key) {
+                return;
+            }
+            let against = null;
+            walkDown(n, function (m) {
+                if (!against && !m.children && keyOf.has(m) && keyOf.get(m) !== key) {
+                    against = m;
+                }
+            });
+            if (against) {
+                out.conflicts.push({node: n, taxon: own.name, tip: against, tipTaxon: out.tipTaxon.get(against)});
+            }
         });
         // the roots: pure, under a parent that is not pure for the same taxon
         let byTaxon = Object.create(null);

@@ -246,7 +246,25 @@ element at exactly that rank (the scientific name, else the common name,
 else the code); a property whose name after the namespace colon is the
 rank, in any namespace — `vipr:Genus`, `repseq:family`, `BVBRC:species`,
 `ncbi:genus`, `tol:Domain` (the desktop reads `ncbi:` and `gtdb:` only); the
-nearest ancestor that itself names a taxon at that rank. **A clade** is a
+nearest ancestor that itself names a taxon at that rank. **The ranks** are
+the Linnaean ones down to species, then the terms viruses and microbes are
+grouped by below it — subspecies, variety, subvariety, form, subform, forma
+specialis, cultivar, biovar, serovar, pathovar, morphovar, serogroup,
+serotype, genogroup, genotype, subgenotype, type, subtype, clade, subclade,
+lineage, sublineage, variant — plus any clade or lineage naming scheme of
+the file's own, a property whose name ends in or carries the word *clade*
+or *lineage* (`ird:H5Clade`, `vipr:PANGO_Lineage_L1`, `clade_membership`),
+offered under the file's spelling. Spellings fold: case, spaces, hyphens,
+underscores and dots are ignored, so `Sub-Species`, `sub_species` and
+`ssp.` are one rank. **Strain, substrain and isolate are not ranks here**
+(a strain is one tip), nor are phyloXML's `other` and `unknown`; a property
+named anything else (host, country, genome name) is a field for the
+Color-by, not a rank. A `<taxonomy>` element's rank counts whatever it
+says. An internal
+node's own annotation reaches only the tips below it that name nothing
+themselves: a tip that names another taxon keeps it, and the contradiction
+is said in the console and in the diagnostics report (how many internal
+nodes, and the first node, tip and taxa), never corrected. **A clade** is a
 maximal subtree whose placed tips all name one taxon; a taxon scattered over
 the tree is several clades, each marked and coloured alike. A tip the file
 places at no taxon **does not vote** (Christian's rule; the desktop's is
@@ -1688,7 +1706,7 @@ copy-pastable JSON.
 | `geneAnchor` | `'auto'` | The family the gene track's rows line up on: `'auto'` (the family single-copy in the most genomes), `'none'` (left-aligned rows), or a family ref such as `'pgfam:PGF_00019355'`. |
 | `geneFamily` | `'auto'` | The annotation namespace that colours the genes and anchors the rows: `'auto'` (the one most genes carry) or a prefix such as `'pgfam'`. |
 | `geneLabels` | `'genes'` | Where gene symbols go: `'genes'` (on the arrows), `'legend'` (a card of the families), or `'none'`. |
-| `cladeRank` | `'auto'` | The taxonomic rank the clades are cut at (see [Clades by rank](#clades-by-rank)): `'auto'` (the finest rank naming 2 to 20 taxa, else the one naming the most) or a rank such as `'genus'`. A rank the tree places no tip at logs a console warning and falls back to the automatic choice. |
+| `cladeRank` | `'auto'` | The taxonomic rank the clades are cut at (see [Clades by rank](#clades-by-rank)): `'auto'` (the finest rank naming 2 to 20 taxa, else the one naming the most) or a rank such as `'genus'`, `'subtype'` or a file's own `'H5Clade'`; spelling folds (`'Sub-Type'` is `subtype`). A rank the tree places no tip at logs a console warning and falls back to the automatic choice. |
 | `colorizeByRank` | `false` | Open with the branches of every clade at that rank painted in its taxon's colour. |
 | `annotateByRank` | `false` | Open with every clade at that rank marked: a bar and the taxon's name beside the tips (an arc in circular, the name at the wedge's mouth in unrooted), or a shaded box. |
 | `cladeMarkStyle` | `'bars'` | How Annotate clades marks a clade: `'bars'` or `'boxes'` (a translucent box under the tree from the clade's root to the tips; a sector in the radial layouts). |
@@ -2465,14 +2483,31 @@ a test says so); the numbers in `test/gene_test.js`, the SVG in
 Data model (forester, pure and offline): `forester.ownRankTaxon(node,
 rank)` is a node's OWN taxon at a rank — the first `taxonomies[i]` whose
 `rank` is it (`scientific_name`, else `common_name`, else `code`), else the
-first property whose ref's local name (after the last colon, lower-cased)
-is the rank and is in `TAXONOMIC_RANKS` (phyloXML's vocabulary less
-`other` / `unknown`, in the desktop's `TaxonomyUtil.TAXONOMY_RANKS_LIST`
-order), with a non-blank value; `{name, source}` or null. `tipRankTaxon`
-adds the nearest ancestor's own taxon (`source: 'ancestor'`). `rankCoverage
+first property whose ref's local name (after the last colon) is the rank,
+with a non-blank value; `{name, source}` or null. A rank is handled by its
+KEY, `rankKey(rank)`: the name folded (lower case; spaces, hyphens,
+underscores and dots removed; `ssp`/`subsp`, `var`, `subvar`, `forma`,
+`fsp`/`formasp`, `cv` folded onto their terms), '' for none and for the
+refused `other`, `unknown`, `strain`, `substrain`, `isolate` (the last
+three his word, 2026-10-19). `TAXONOMIC_RANKS` (68) lists the canonical
+spellings: phyloXML's vocabulary down to species in the desktop's
+`TaxonomyUtil.TAXONOMY_RANKS_LIST` order (section and subsection moved
+under the genus; strain dropped), then the terms below species
+(subspecies … variant, the user section's list); `rankLabel(key)` gives a
+listed rank's spelling, null otherwise. A `<taxonomy>` rank counts
+whatever it says (its key); a property's local name counts when its key is
+listed, or when it ends in or has a word (split on the same separators)
+`clade` or `lineage` — a clade / lineage scheme of the file's own, keyed by
+its folded name (`h5clade`, `pangolineagel1`). `tipRankTaxon` adds the
+nearest ancestor's own taxon (`source: 'ancestor'`). `rankCoverage
 (tree)` lists the ranks named anywhere that place a tip and whose distinct
 taxa are at most 3/5 of the placed tips, in `compareRanks` order (canonical
-first, the rest alphabetically), each `{rank, placed, tips, taxa}`;
+first, the rest alphabetically; keys), each `{rank, label, placed, tips,
+taxa}` — `rank` the key, `label` the canonical spelling or, for a rank
+outside the list, the file's first spelling (`H5Clade`), which the chooser,
+the card's title ("H5Clade clades") and the warnings show (viewer
+`rankLabel`); the config's and the view's `rank` are keys, folded on the way
+in;
 `defaultRank(coverage, maxTaxa = 20)` the finest with 2..maxTaxa taxa, else
 the most taxa. `rankClades(tree, rank)`: tips keyed by their taxon (lower-
 cased; the display spelling is the first met in document order), then a
@@ -2483,13 +2518,23 @@ subtree, the one difference from the desktop's `maximalMonochromaticRoots`
 pure for the same taxon. Result `{clades: [{node, taxon, tips, placed}],
 cladeOf: Map node → clade (every node under a root, the root included),
 tipTaxon: Map placed tip → name, taxa: [{name, tips, clades}] by tips desc
-then name, tips, placed, unplaced}`. 23 ms on 13,000 tips.
+then name, conflicts: [{node, taxon, tip, tipTaxon}], tips, placed,
+unplaced}`. `conflicts` are the internal nodes that name a taxon at the
+rank themselves while a placed tip below names another (its own, or a
+nearer ancestor's): the node's taxon, the first such tip in document order
+and its taxon — found by comparing the node's own taxon with its subtree's
+consensus, so a nearer internal annotation that places the tips counts as
+a contradiction of a farther one. Reported, never corrected (his word,
+2026-10-19). 23 ms on 13,000 tips.
 
 Viewer: `_rank = {coverage, cache}` per launch (`rankInit`, after the
 config's `cladeRank` is read; a rank not offered warns through `say` and
 yields to `'auto'`); `cladeRank()` the rank in effect, `rankClades()` its
 model cached per rank until `rankTreeEdited()` (from `refreshVisualizations
-(edited)`). Colours: `rankDealColors` writes the taxa, most tips first, into
+(edited)`); when a rank's model is first built and it carries `conflicts`,
+one `say('note', 'warn', …)` line names how many internal nodes annotated at
+the rank the tips contradict, with the first (the node and its taxon, the
+tip and its taxon), so the console and the diagnostics report carry it. Colours: `rankDealColors` writes the taxa, most tips first, into
 `_vis.colorMemory['rank:<rank>']` with `extendedPaletteColor` — or, when a
 categorical Color-by is on whose memory names EVERY taxon of the rank, that
 Color-by's colours — once per rank per session; a swatch click goes through

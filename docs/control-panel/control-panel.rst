@@ -416,16 +416,16 @@ Clades by rank
      - Shown for
    * - Rank
      - the taxonomic rank the clades are cut at, with how many taxa the tree names there and how many tips it places: by a tip's own taxonomy at that rank, a field named for the rank (Genus, family...), or the nearest ancestor annotated at it. A tip the file does not place does not vote
-     - flavivirus, caliciviridae\_500, adenoviridae, bcl2, flu\_h5, woese, flu\_h5n1\_seg3
+     - auspice, flavivirus, caliciviridae\_500, adenoviridae, influenza, bcl2, confidences, branch\_events, flu\_h5, woese, flu\_h5n1\_seg3
    * - Colorize subtrees
      - to paint the branches of every clade of one taxon at the chosen rank in that taxon's colour (a tip the file does not place keeps its branch grey); the colours are listed in a legend
-     - flavivirus, caliciviridae\_500, adenoviridae, bcl2, flu\_h5, woese, flu\_h5n1\_seg3
+     - auspice, flavivirus, caliciviridae\_500, adenoviridae, influenza, bcl2, confidences, branch\_events, flu\_h5, woese, flu\_h5n1\_seg3
    * - Annotate clades
      - to mark every clade of one taxon at the chosen rank with its taxon's name and a bar beside the tips or a shaded box over the clade (the Marks choice below)
-     - flavivirus, caliciviridae\_500, adenoviridae, bcl2, flu\_h5, woese, flu\_h5n1\_seg3
+     - auspice, flavivirus, caliciviridae\_500, adenoviridae, influenza, bcl2, confidences, branch\_events, flu\_h5, woese, flu\_h5n1\_seg3
    * - Marks
      - how Annotate clades marks a clade: a bar beside the tips (an arc in the circular layout, a swatch at the mouth of the wedge in the unrooted one), or a shaded box under the tree from the clade's root to the tips (a sector in the radial layouts)
-     - flavivirus, caliciviridae\_500, adenoviridae, bcl2, flu\_h5, woese, flu\_h5n1\_seg3
+     - auspice, flavivirus, caliciviridae\_500, adenoviridae, influenza, bcl2, confidences, branch\_events, flu\_h5, woese, flu\_h5n1\_seg3
 
 Heat Map
 --------

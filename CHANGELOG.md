@@ -30,16 +30,28 @@ users see a change only when a version is cut.
   over. A tip's taxon at a rank is its own `<taxonomy>` at that rank, else a
   property named for the rank in any namespace (`vipr:Genus`,
   `repseq:family`, `BVBRC:species`, `ncbi:genus`), else the nearest
-  ancestor's annotation; a clade is a maximal subtree whose placed tips all
-  name one taxon, a tip the file does not place does not vote, and a taxon
-  scattered over the tree is several clades. The ranks offered are those
+  ancestor's annotation (an internal node's own annotation reaches only the
+  tips below it that name nothing themselves; a tip that names another taxon
+  keeps it, and the contradiction is said once in the console and in the
+  diagnostics report, never corrected); a clade is a maximal subtree whose
+  placed tips all name one taxon, a tip the file does not place does not
+  vote, and a taxon scattered over the tree is several clades. The ranks
+  are the Linnaean ones down to species and, below it, the terms viruses
+  and microbes are grouped by (subspecies, variety, forma specialis,
+  cultivar, biovar, serovar, pathovar, serotype, genogroup, genotype,
+  subtype, clade, subclade, lineage, sublineage, variant and more), plus any
+  clade or lineage naming scheme of the file's own (`ird:H5Clade`,
+  `vipr:PANGO_Lineage_L1`), offered under the file's spelling; spellings
+  fold (`Sub-Species`, `sub_species`, `ssp.` are one rank); strain,
+  substrain and isolate are not ranks. The ranks offered are those
   that place a tip and whose taxa repeat (at most three taxa per five placed
   tips); the automatic choice is the finest rank naming 2 to 20 taxa. Config
   `cladeRank`, `colorizeByRank`, `annotateByRank`, `cladeMarkStyle`; the
   view carries `rank`, `rankColor`, `rankMarks`, `rankStyle`; the marks and
   the card are in every export. New
-  in `forester`: `TAXONOMIC_RANKS`, `ownRankTaxon`, `tipRankTaxon`,
-  `rankCoverage`, `defaultRank`, `rankClades`, `compareRanks`.
+  in `forester`: `TAXONOMIC_RANKS`, `rankKey`, `rankLabel`, `ownRankTaxon`,
+  `tipRankTaxon`, `rankCoverage`, `defaultRank`, `rankClades`,
+  `compareRanks`.
 - **A control reference for documentation writers.** `docs/control-panel/`
   lists every control of the panel as the cheat sheet would, section by
   section, taken from the running viewer over the demo trees (which together

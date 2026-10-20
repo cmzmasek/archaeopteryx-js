@@ -6217,7 +6217,7 @@ function (root, d3, forester, phyloXml) {
         } else if (typeof _state.cladeRank !== 'string' || _state.cladeRank.trim().length === 0) {
             throw new Error(ERROR + '"cladeRank" must be a taxonomic rank such as "genus", or "auto"');
         } else {
-            _state.cladeRank = _state.cladeRank.trim().toLowerCase();
+            _state.cladeRank = forester.rankKey(_state.cladeRank) || _state.cladeRank.trim();
         }
         ['colorizeByRank', 'annotateByRank'].forEach(function (key) {
             if (_state[key] === undefined) {
@@ -10413,7 +10413,7 @@ function (root, d3, forester, phyloXml) {
             _state.geneAnchor = s.geneAnchor;
         }
         if (typeof s.rank === 'string' && rankOffered(s.rank.toLowerCase())) {
-            _state.cladeRank = s.rank.toLowerCase();
+            _state.cladeRank = forester.rankKey(s.rank) || String(s.rank);
         }
         if (typeof s.rankColor === 'boolean') {
             _state.colorizeByRank = s.rankColor;
@@ -13710,6 +13710,16 @@ function (root, d3, forester, phyloXml) {
         }));
     }
 
+    // What a rank is called on the panel, the card and in a warning: the
+    // canonical spelling, or the file's own for a rank outside the list
+    // ("H5Clade", "PANGO_Lineage_L1"); the key itself when it is not offered.
+    function rankLabel(rank) {
+        let c = _rank ? _rank.coverage.find(function (x) {
+            return x.rank === rank;
+        }) : null;
+        return c ? c.label : (forester.rankLabel(rank) || rank);
+    }
+
     // The rank in effect: the named one, else the automatic choice.
     function cladeRank() {
         if (!rankAvailable()) {
@@ -13729,9 +13739,22 @@ function (root, d3, forester, phyloXml) {
             return null;
         }
         if (!_rank.cache[rank]) {
-            _rank.cache[rank] = forester.rankClades(_treeData, rank);
+            let model = forester.rankClades(_treeData, rank);
+            _rank.cache[rank] = model;
             if (_vis) {
-                rankDealColors(_rank.cache[rank]);   // once per rank: every branch reads the memory
+                rankDealColors(model);   // once per rank: every branch reads the memory
+            }
+            // an internal annotation its tips contradict is said, never
+            // corrected (Christian, 2026-10-19): the tips decide the clades
+            if (model.conflicts.length > 0) {
+                let c = model.conflicts[0];
+                let n = model.conflicts.length;
+                let nodeName = c.node.name ? ' "' + c.node.name + '"' : '';
+                let tipName = c.tip.name ? ' "' + c.tip.name + '"' : '';
+                say('note', 'warn', MESSAGE + n + ' internal node' + (n === 1 ? '' : 's') + ' annotated at ' + rankLabel(rank)
+                    + (n === 1 ? ' is' : ' are') + ' contradicted by the tips below (the node' + nodeName
+                    + ' says ' + c.taxon + ', its tip' + tipName + ' says ' + c.tipTaxon
+                    + '); the tips decide the clades, the annotation is not corrected');
             }
         }
         return _rank.cache[rank];
@@ -13874,7 +13897,7 @@ function (root, d3, forester, phyloXml) {
                 }
             }
         })(_root);
-        let rank = model.rank;
+        let rank = rankLabel(model.rank);
         let vis = {
             id: rankVisId(), kind: 'rank', ref: null,
             label: rank.charAt(0).toUpperCase() + rank.substring(1) + ' clades',
@@ -14350,8 +14373,8 @@ function (root, d3, forester, phyloXml) {
             // "no value" row counts the rest)
             let options = _rank.coverage.map(function (c) {
                 return {value: c.rank,
-                    text: c.rank + ' (' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon)' : ' taxa)'),
-                    title: c.rank + ': ' + countNumber(c.placed) + ' of ' + countNumber(c.tips)
+                    text: c.label + ' (' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon)' : ' taxa)'),
+                    title: c.label + ': ' + countNumber(c.placed) + ' of ' + countNumber(c.tips)
                         + ' tips placed, in ' + countNumber(c.taxa) + (c.taxa === 1 ? ' taxon' : ' taxa')};
             });
             fillSelect(sel, options, cladeRank());

@@ -73,11 +73,28 @@
         const sel = () => byId('rank_select');
         const optionTexts = () => sel() ? [...sel().options].map((o) => o.textContent) : [];
 
+        if (params.get('flu')) {
+            // a rank outside the list: ird:H5Clade is a clade naming scheme of
+            // the file's own, offered under its spelling; the fold reads the
+            // config's "H5-Clade" as it
+            const fxml = await (await fetch('../../docs/data/influenza.xml')).text();
+            const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('influenza.xml', fxml), {annotateByRank: true, cladeRank: 'H5-Clade'});
+            await viewer.ready; await settle();
+            check('flu: the chooser lists subtype (the list\'s spelling) and H5Clade (the file\'s)', /^subtype \(\d+ tax(on|a)\) \| H5Clade \(3 taxa\)$/.test(optionTexts().join(' | ')), optionTexts().join(' | '));
+            check('flu: the config\'s "H5-Clade" folded onto it, no warning', sel().value === 'h5clade' && warnings.length === 0, sel().value + ' ' + warnings.join(' | '));
+            check('flu: the card is titled by the file\'s spelling', legendTexts()[0] === 'H5Clade clades', legendTexts()[0]);
+            check('flu: the view carries the key', viewer.getViewState().rank === 'h5clade', JSON.stringify(viewer.getViewState()));
+            choose('rank_select', 'subtype'); await settle();
+            check('flu: Subtype chosen: its card and marks', bars().length >= 1 && legendTexts()[0] === 'Subtype clades', bars().length + ' ' + legendTexts()[0]);
+            finish();
+            return;
+        }
         if (params.get('none')) {
-            // a tree that names no rank anywhere: nothing is offered, nothing
-            // drawn, nothing in the view
-            const bxml = await (await fetch('../../docs/data/branch_events.xml')).text();
-            const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('branch_events.xml', bxml), {colorizeByRank: true, annotateByRank: true});
+            // a tree that names no rank anywhere (genome names, host and
+            // geographic groups are fields, not ranks): nothing is offered,
+            // nothing drawn, nothing in the view
+            const bxml = await (await fetch('../../docs/data/herpes_dnapol.xml')).text();
+            const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('herpes_dnapol.xml', bxml), {colorizeByRank: true, annotateByRank: true});
             await viewer.ready; await settle();
             check('no rank: the section is hidden', section() && section().style.display === 'none');
             check('no rank: no legend, no marks', !legend() && !marks());
@@ -267,8 +284,19 @@
             check('rectangular: the column takes the label estimate\'s headroom, the tree gives up under 60 px', treeRight() - withMarks < 60, (treeRight() - withMarks).toFixed(0));
             byId('rank_marks_cb').click(); await settle();
             // the chooser: family makes other clades
+            check('genus: no internal annotation contradicted, no warning', warnings.length === 0, warnings.join(' | '));
             choose('rank_select', 'family'); await settle();
             check('family: the legend follows the rank', legendTexts()[0] === 'Family clades', legendTexts()[0]);
+            // the file's root says Caliciviridae at family and a goose tip says
+            // "unclassified Caliciviridae": said once, as a note, never corrected
+            check('family: the contradicted internal annotation is warned about, once', warnings.length === 1
+                && /1 internal node annotated at family is contradicted by the tips below \(the node "Caliciviridae" says Caliciviridae, its tip "Goose_calicivirus[^"]*" says unclassified Caliciviridae\); the tips decide the clades, the annotation is not corrected$/.test(warnings[0]),
+                warnings.join(' | '));
+            check('family: the diagnostics report carries it as a note, not a problem', archaeopteryx.doctor().notes.some((t) => /contradicted by the tips below/.test(t))
+                && !archaeopteryx.doctor().problems.some((t) => /contradicted/.test(t)), JSON.stringify(archaeopteryx.doctor().notes));
+            choose('rank_select', 'genus'); await settle();
+            choose('rank_select', 'family'); await settle();
+            check('family again: the warning is not repeated (the model is cached)', warnings.length === 1, warnings.length);
             check('family: 4 clades, as the model counts', bars().length === 4, bars().length);
             check('family: the view state names family', viewer.getViewState().rank === 'family');
             choose('rank_select', 'genus'); await settle();
@@ -312,7 +340,7 @@
             const row = legend().querySelectorAll('rect[style*="cursor"]');
             check('the legend\'s rows take a click (the colour picker)', row.length >= 10, row.length);
             // the "i" readout: not part of this; the collapsed clade: folds into its clade's colour
-            check('no console warning on the way', warnings.length === 0, warnings.join(' | '));
+            check('no other console warning on the way', warnings.length === 1, warnings.join(' | '));
         }
         if (layout === 'circular') {
             check('circular: the marks are arcs, stroked 9 px, unfilled', bars().every((b) => b.tagName === 'path' && parseFloat(b.style.strokeWidth) === 9 && b.style.fill === 'none'),
