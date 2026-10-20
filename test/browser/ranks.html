@@ -73,6 +73,41 @@
         const sel = () => byId('rank_select');
         const optionTexts = () => sel() ? [...sel().options].map((o) => o.textContent) : [];
 
+        if (params.get('zero')) {
+            // Tips on zero-length branches sit ON their clade's root: an
+            // unrooted sector built from where the tips landed covered only
+            // the ones that had moved (his bug, 2026-10-20). The wedge is the
+            // equal-angle layout's: the clade's rows over the fan's tips,
+            // about the root's spoke, and every tip lies in it.
+            const tax = (n) => '<property ref="vipr:Species" datatype="xsd:string" applies_to="node">' + n + '</property>';
+            const tip = (name, bl, sp) => '<clade><name>' + name + '</name><branch_length>' + bl + '</branch_length>' + tax(sp) + '</clade>';
+            const zxml = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade><name>root</name>'
+                + '<clade><name>A</name><branch_length>1.0</branch_length>' + tip('x1', 0, 'X') + tip('x2', 0, 'X') + tip('x3', 0, 'X') + tip('x4', 0, 'X') + tip('x5', 0, 'X') + '</clade>'
+                + '<clade><name>B</name><branch_length>0.2</branch_length>' + tip('y1', 0.3, 'Y') + tip('y2', 0.2, 'Y') + '</clade>'
+                + tip('z1', 0.5, 'Z') + tip('w1', 0.4, 'W')
+                + '</clade></phylogeny></phyloxml>';
+            const ztrees = archaeopteryx.parseTrees('zero.xml', zxml);
+            const viewer = archaeopteryx.launch('#p', ztrees, {layout: 'unrooted', annotateByRank: true, cladeMarkStyle: 'boxes'});
+            await viewer.ready; await settle();
+            const model = forester.rankClades(ztrees[0], 'species');
+            const xClade = model.clades.find((c) => c.taxon === 'X');
+            const sector = bars().find((b) => b.querySelector('title').textContent.startsWith('X ('));
+            check('zero: the X clade has 5 rows and a sector', xClade && xClade.tips === 5 && sector, bars().map((b) => b.querySelector('title').textContent).join('; '));
+            const m = /^M([-\d.e]+),([-\d.e]+)L([-\d.e]+),([-\d.e]+)A[-\d.e]+,[-\d.e]+ 0 (\d),1 ([-\d.e]+),([-\d.e]+)Z$/.exec(sector.getAttribute('d'));
+            check('zero: the sector is a wedge from the clade root', m && Math.abs(+m[1] - xClade.node.ux) < 1e-6 && Math.abs(+m[2] - xClade.node.uy) < 1e-6, sector.getAttribute('d').slice(0, 80));
+            const ang = (x, y) => Math.atan2(y - xClade.node.uy, x - xClade.node.ux);
+            let span = ang(+m[6], +m[7]) - ang(+m[3], +m[4]);
+            if (span < 0) { span += 2 * Math.PI; }
+            const want = 2 * Math.PI * 5 / 9;
+            check('zero: the wedge spans the clade\'s share of the turn, 5 of 9 tips', Math.abs(span - want) < 1e-6 && +m[5] === 1, span.toFixed(4) + ' vs ' + want.toFixed(4) + ' large-arc ' + m[5]);
+            // every X tip is in the wedge: on the root, or within its angles
+            const a0 = ang(+m[3], +m[4]);
+            const inside = forester.getAllExternalNodes(xClade.node).every((n) => { const dx = n.ux - xClade.node.ux, dy = n.uy - xClade.node.uy; if (Math.hypot(dx, dy) < 1e-9) { return true; } let d = Math.atan2(dy, dx) - a0; while (d < 0) { d += 2 * Math.PI; } return d <= span + 1e-9; });
+            check('zero: every tip of the clade lies in its wedge (five on the root itself)', inside);
+            check('zero: the name stands past the wedge\'s mouth along the root\'s spoke', (() => { const t = qa('g.aptx-rankmarks > g:nth-child(2) > text').find((x) => x.textContent === 'X'); const d = Math.atan2(+t.getAttribute('y') - xClade.node.uy, +t.getAttribute('x') - xClade.node.ux); let dev = d - xClade.node.uangle; dev = Math.atan2(Math.sin(dev), Math.cos(dev)); return Math.abs(dev) < 0.2; })());
+            finish();
+            return;
+        }
         if (params.get('flu')) {
             // a rank outside the list: ird:H5Clade is a clade naming scheme of
             // the file's own, offered under its spelling; the fold reads the

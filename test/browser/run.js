@@ -78,7 +78,7 @@ const CASES = {
     'label_properties': ['', '?figure=1', '?config=1', '?nodeLabels=1'],
     'branch_scale_subtree': ['', '?clock=1', '?refused=1', '?delete=1', '?delete=gain', '?opensdiv=1', '?view=1'],
     'genes': ['', '?config=1', '?radial=1', '?domains=1'],
-    'ranks': ['', '?layout=circular', '?layout=unrooted', '?config=1', '?none=1', '?boxes=1', '?flu=1'],
+    'ranks': ['', '?layout=circular', '?layout=unrooted', '?config=1', '?none=1', '?boxes=1', '?flu=1', '?zero=1'],
     'initial_visualization': ['', '?sparse=1', '?fine=1', '?last=1', '?missing=1', '?auto=1'],
     'color_picker': ['', '?top=1', '?demo=1'],
     'canvg_global': ['', '?none=1'],

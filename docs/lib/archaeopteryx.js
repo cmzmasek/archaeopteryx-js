@@ -14264,10 +14264,16 @@ function (root, d3, forester, phyloXml) {
     }
 
     // Unrooted: the name at the mouth of the clade's wedge -- past its
-    // farthest row AND that row's own label, along the mean direction from
-    // the clade's root (the view's top node when the root is above the
-    // view), with a swatch of the colour before it. The desktop draws
-    // nothing here.
+    // farthest row AND that row's own label, along the spoke of the clade's
+    // root (the view's top node when the root is above the view), with a
+    // swatch of the colour before it. The wedge is the one the equal-angle
+    // layout gave that root: arcs subdivide by tip count all the way down,
+    // so a node's wedge is a full turn times its tips over the fan's, about
+    // its spoke (forester.equalAngleLayout). Never built from where the
+    // tips landed: 22 genomes of one species on zero-length branches sit ON
+    // their clade's root, and a sector built from the tips' positions
+    // covered the two that had moved (Christian, 2026-10-20). The desktop
+    // draws nothing here.
     function drawRankWedgeNames(groups, markLayer, nameLayer, name) {
         let top = _root.children[0];
         let reach = domainRadialExtent() + geneRadialExtent() + RANK_RADIAL_GAP + RANK_LABEL_GAP;
@@ -14277,34 +14283,25 @@ function (root, d3, forester, phyloXml) {
             let g = n.children ? null : nodeLabelGeometry(n);
             return g ? _state.nodeLabelGap + g.w : 0;
         };
-        let half = Math.PI / Math.max(1, displayedLeafCount());
+        let total = Math.max(1, displayedLeafCount());
         groups.forEach(function (rows, clade) {
             let origin = rankCladeOrigin(clade, top);
             if (origin.ux === undefined) {
                 origin = top;
             }
-            let dx = 0;
-            let dy = 0;
+            // the clade's share of the full turn: its rows over the fan's
+            // tips when its root is the origin; everything on view when the
+            // origin is the view's top node (the clade holds all of it)
+            let share = origin === clade.node ? Math.min(1, rows.length / total) : 1;
+            let mean = origin.uangle || 0;
+            let dx = Math.cos(mean);
+            let dy = Math.sin(mean);
             let far = 0;
             rows.forEach(function (n) {
                 let vx = n.ux - origin.ux;
                 let vy = n.uy - origin.uy;
-                let len = Math.sqrt((vx * vx) + (vy * vy));
-                if (len > 0) {
-                    dx += vx / len;
-                    dy += vy / len;
-                }
-                far = Math.max(far, len + labelReach(n));
+                far = Math.max(far, Math.sqrt((vx * vx) + (vy * vy)) + labelReach(n));
             });
-            let len = Math.sqrt((dx * dx) + (dy * dy));
-            if (len > 0) {
-                dx /= len;
-                dy /= len;
-            } else {
-                let a = rows[0].uangle || 0;   // one row on the origin itself: its own spoke
-                dx = Math.cos(a);
-                dy = Math.sin(a);
-            }
             let px = origin.ux + (dx * (far + reach));
             let py = origin.uy + (dy * (far + reach));
             let color = rankColorOf(clade.taxon);
@@ -14312,31 +14309,23 @@ function (root, d3, forester, phyloXml) {
             let right = dx >= 0;
             let sw = RANK_BAR_WIDTH;
             if (rankBoxes()) {
-                // a sector of the clade's wedge from its root: the rows'
-                // angles about the mean direction, half a row wider at each
-                // edge, out to just inside the name
-                let mean = Math.atan2(dy, dx);
-                let lo = 0;
-                let hi = 0;
-                rows.forEach(function (n) {
-                    let vx = n.ux - origin.ux;
-                    let vy = n.uy - origin.uy;
-                    if (vx === 0 && vy === 0) {
-                        return;
-                    }
-                    let dev = Math.atan2(vy, vx) - mean;
-                    dev = Math.atan2(Math.sin(dev), Math.cos(dev));   // into (-pi, pi]
-                    lo = Math.min(lo, dev);
-                    hi = Math.max(hi, dev);
-                });
-                let a0 = mean + lo - half;
-                let a1 = mean + hi + half;
+                // the clade's wedge from its root, out to just inside the
+                // name; a disc when the clade is the whole fan
                 let R = far + reach - RANK_LABEL_GAP;
-                let q0 = [origin.ux + (R * Math.cos(a0)), origin.uy + (R * Math.sin(a0))];
-                let q1 = [origin.ux + (R * Math.cos(a1)), origin.uy + (R * Math.sin(a1))];
+                let d;
+                if (share >= 1 - 1e-9) {
+                    d = 'M' + (origin.ux - R) + ',' + origin.uy + 'A' + R + ',' + R + ' 0 1,1 ' + (origin.ux + R) + ',' + origin.uy
+                        + 'A' + R + ',' + R + ' 0 1,1 ' + (origin.ux - R) + ',' + origin.uy + 'Z';
+                } else {
+                    let a0 = mean - (Math.PI * share);
+                    let a1 = mean + (Math.PI * share);
+                    let q0 = [origin.ux + (R * Math.cos(a0)), origin.uy + (R * Math.sin(a0))];
+                    let q1 = [origin.ux + (R * Math.cos(a1)), origin.uy + (R * Math.sin(a1))];
+                    d = 'M' + origin.ux + ',' + origin.uy + 'L' + q0[0] + ',' + q0[1]
+                        + 'A' + R + ',' + R + ' 0 ' + (share > 0.5 ? 1 : 0) + ',1 ' + q1[0] + ',' + q1[1] + 'Z';
+                }
                 markLayer.append('path')
-                    .attr('d', 'M' + origin.ux + ',' + origin.uy + 'L' + q0[0] + ',' + q0[1]
-                        + 'A' + R + ',' + R + ' 0 ' + ((a1 - a0) > Math.PI ? 1 : 0) + ',1 ' + q1[0] + ',' + q1[1] + 'Z')
+                    .attr('d', d)
                     .style('fill', color)
                     .style('fill-opacity', RANK_BOX_OPACITY)
                     .style('stroke', 'none')

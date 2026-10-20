@@ -2596,11 +2596,16 @@ one is drawn, from half a row before the first row's angle to half a row
 after the last (a full circle when it closes), stroked 9 px, the name on
 the spoke at the arc's middle, flipped on the left half; unrooted: the
 name after a 9 px swatch at the mouth of the wedge — the clade's root (the
-view's top node when the root is above the view) plus the mean unit
-direction to its rows times the farthest row's distance, that row's label
-included (its measured width, bold or styled as drawn), plus the extents
-and gaps; the radial fit adds `rankRadialExtent()` (the same budget, the
-label gap counted since `fitRadialExtent` budgets none). Shaded boxes (`cladeMarkStyle: 'boxes'`, `rankBoxes()`): the marks group
+view's top node when the root is above the view) plus that root's spoke
+direction (`uangle`, the wedge's bisector) times the farthest row's
+distance, that row's label included (its measured width, bold or styled as
+drawn), plus the extents and gaps; the radial fit adds `rankRadialExtent()`
+(the same budget, the label gap counted since `fitRadialExtent` budgets
+none). The unrooted wedge is the one the equal-angle layout gave the
+clade's root — a full turn times the clade's rows over the fan's tips,
+about the spoke (`forester.equalAngleLayout` subdivides arcs by tip count
+all the way down) — never built from where the tips landed: tips on
+zero-length branches sit on their clade's root (Christian, 2026-10-20). Shaded boxes (`cladeMarkStyle: 'boxes'`, `rankBoxes()`): the marks group
 is inserted FIRST in the tree group, under the branches; rectangular: a
 rect from the clade's origin (`rankCladeOrigin`: the clade root, or the
 view's top node when the root is above the view) at its `y` to the end of
