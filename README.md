@@ -252,15 +252,19 @@ grouped by below it — subspecies, variety, subvariety, form, subform, forma
 specialis, cultivar, biovar, serovar, pathovar, morphovar, serogroup,
 serotype, genogroup, genotype, subgenotype, type, subtype, clade, subclade,
 lineage, sublineage, variant — plus any clade or lineage naming scheme of
-the file's own, a property whose name ends in or carries the word *clade*
-or *lineage* (`ird:H5Clade`, `vipr:PANGO_Lineage_L1`, `clade_membership`),
-offered under the file's spelling. Spellings fold: case, spaces, hyphens,
+the file's own: a property whose name ends in *clade* or *lineage*, a level
+suffix allowed (`ird:H5Clade`, `vipr:PANGO_Lineage`, `vipr:PANGO_Lineage_L1`),
+or Nextstrain's `clade_membership`, carried by at least one tip, offered
+under the file's spelling. A name that merely carries the word
+(`clade_size`, `lineage_count`, `clade_color`) is a field, and so are branch
+labels on internal nodes alone. Spellings fold: case, spaces, hyphens,
 underscores and dots are ignored, so `Sub-Species`, `sub_species` and
-`ssp.` are one rank. **Strain, substrain and isolate are not ranks here**
-(a strain is one tip), nor are phyloXML's `other` and `unknown`; a property
-named anything else (host, country, genome name) is a field for the
-Color-by, not a rank. A `<taxonomy>` element's rank counts whatever it
-says. An internal
+`ssp.` are one rank, and so are `variety` and `varietas`, `form` and
+`forma`. **Strain, substrain and isolate are not ranks here** (a strain is
+one tip), nor are phyloXML's `other` and `unknown`; a property named
+anything else (host, country, genome name) is a field for the Color-by,
+not a rank. A `<taxonomy>` element's rank counts whatever it says, those
+five apart. An internal
 node's own annotation reaches only the tips below it that name nothing
 themselves: a tip that names another taxon keeps it, and the contradiction
 is said in the console and in the diagnostics report (how many internal
@@ -282,9 +286,11 @@ not one whose taxa barely repeat (more than three taxa per five placed tips,
 the Color-by's own near-unique line: a strain field, or the species of a
 virus tree sampled once or twice per species), since its clades would be
 single tips with nothing to colour. Each entry says how many taxa the rank
-names, and its tooltip how many tips it places; the automatic choice is the
-finest rank naming 2 to 20 taxa (a legend's worth), else the one naming the
-most. The
+names, and its tooltip how many tips it places; the automatic choice,
+among the ranks naming 2 to 20 taxa (a legend's worth), is the file's own
+scheme naming the most taxa (the finest cut that still fits a legend: the
+full PANGO lineage over its levels), else the finest listed rank (a genus
+level on a family tree), else the rank naming the most taxa of all. The
 config keys `cladeRank`, `colorizeByRank`, `annotateByRank` and
 `cladeMarkStyle` set the start; a view carries `rank`, `rankColor`,
 `rankMarks` and `rankStyle`. Live:
@@ -2486,30 +2492,38 @@ rank)` is a node's OWN taxon at a rank — the first `taxonomies[i]` whose
 first property whose ref's local name (after the last colon) is the rank,
 with a non-blank value; `{name, source}` or null. A rank is handled by its
 KEY, `rankKey(rank)`: the name folded (lower case; spaces, hyphens,
-underscores and dots removed; `ssp`/`subsp`, `var`, `subvar`, `forma`,
-`fsp`/`formasp`, `cv` folded onto their terms), '' for none and for the
-refused `other`, `unknown`, `strain`, `substrain`, `isolate` (the last
-three his word, 2026-10-19). `TAXONOMIC_RANKS` (68) lists the canonical
+underscores and dots removed; `ssp`/`subsp`, `var`, `varietas`, `subvar`,
+`forma`, `fsp`/`formasp`, `cv` folded onto their terms; the tables have no
+prototype, so `constructor` is a rank named constructor), '' for none and
+for the refused `other`, `unknown`, `strain`, `substrain`, `isolate` (the
+last three his word, 2026-10-19). `TAXONOMIC_RANKS` (67) lists the canonical
 spellings: phyloXML's vocabulary down to species in the desktop's
 `TaxonomyUtil.TAXONOMY_RANKS_LIST` order (section and subsection moved
 under the genus; strain dropped), then the terms below species
 (subspecies … variant, the user section's list); `rankLabel(key)` gives a
 listed rank's spelling, null otherwise. A `<taxonomy>` rank counts
-whatever it says (its key); a property's local name counts when its key is
-listed, or when it ends in or has a word (split on the same separators)
-`clade` or `lineage` — a clade / lineage scheme of the file's own, keyed by
-its folded name (`h5clade`, `pangolineagel1`). `tipRankTaxon` adds the
-nearest ancestor's own taxon (`source: 'ancestor'`). `rankCoverage
-(tree)` lists the ranks named anywhere that place a tip and whose distinct
-taxa are at most 3/5 of the placed tips, in `compareRanks` order (canonical
-first, the rest alphabetically; keys), each `{rank, label, placed, tips,
-taxa}` — `rank` the key, `label` the canonical spelling or, for a rank
+whatever it says (its key); a property's local name (`propertyLocalName`:
+after the last colon, trimmed) counts when its key is listed, or when its
+key matches `RANK_SCHEME` (`/(clade|lineage)(l?\d+)?$/`: ends in the
+word, a level suffix allowed) or is `clademembership` — a clade / lineage
+scheme of the file's own, keyed by its folded name (`h5clade`,
+`pangolineagel1`), and offered only when a TIP carries it (`ranksNamed`:
+the auspice reader's `nextstrain:clade_label` branch labels live on
+internal nodes alone and are not a rank of the tips; a name that merely
+carries the word, `clade_size`, is a field; his /code-review, 2026-10-19).
+`tipRankTaxon` adds the nearest ancestor's own taxon (`source:
+'ancestor'`). `rankCoverage (tree)` lists the ranks named anywhere that
+place a tip and whose distinct taxa are at most 3/5 of the placed tips, in
+`compareRanks` order (canonical first, the rest alphabetically; keys or
+names, folded alike), each `{rank, label, placed, tips, taxa}` — `rank` the key, `label` the canonical spelling or, for a rank
 outside the list, the file's first spelling (`H5Clade`), which the chooser,
 the card's title ("H5Clade clades") and the warnings show (viewer
 `rankLabel`); the config's and the view's `rank` are keys, folded on the way
 in;
-`defaultRank(coverage, maxTaxa = 20)` the finest with 2..maxTaxa taxa, else
-the most taxa. `rankClades(tree, rank)`: tips keyed by their taxon (lower-
+`defaultRank(coverage, maxTaxa = 20)`: among the ranks with 2..maxTaxa
+taxa, a scheme of the file's own (unlisted) naming the most taxa, else the
+finest listed rank, else the most taxa of all (the alphabet decided among
+schemes before: his /code-review, 2026-10-19). `rankClades(tree, rank)`: tips keyed by their taxon (lower-
 cased; the display spelling is the first met in document order), then a
 postorder pass gives every subtree the one taxon its placed tips agree on,
 `MIXED` on two or more, null with none — an unplaced tip never breaks a
@@ -2524,8 +2538,9 @@ rank themselves while a placed tip below names another (its own, or a
 nearer ancestor's): the node's taxon, the first such tip in document order
 and its taxon — found by comparing the node's own taxon with its subtree's
 consensus, so a nearer internal annotation that places the tips counts as
-a contradiction of a farther one. Reported, never corrected (his word,
-2026-10-19). 23 ms on 13,000 tips.
+a contradiction of a farther one; one walk, the open entries carried down
+and settled by the first differing placed tip (a walk per node was
+quadratic). Reported, never corrected (his word, 2026-10-19). 23 ms on 13,000 tips.
 
 Viewer: `_rank = {coverage, cache}` per launch (`rankInit`, after the
 config's `cladeRank` is read; a rank not offered warns through `say` and

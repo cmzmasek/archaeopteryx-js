@@ -45,7 +45,8 @@ users see a change only when a version is cut.
   fold (`Sub-Species`, `sub_species`, `ssp.` are one rank); strain,
   substrain and isolate are not ranks. The ranks offered are those
   that place a tip and whose taxa repeat (at most three taxa per five placed
-  tips); the automatic choice is the finest rank naming 2 to 20 taxa. Config
+  tips); the automatic choice, among the ranks naming 2 to 20 taxa, is the
+  file's own scheme naming the most taxa, else the finest listed rank. Config
   `cladeRank`, `colorizeByRank`, `annotateByRank`, `cladeMarkStyle`; the
   view carries `rank`, `rankColor`, `rankMarks`, `rankStyle`; the marks and
   the card are in every export. New

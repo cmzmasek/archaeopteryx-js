@@ -8856,22 +8856,32 @@
         'sublegion', 'infralegion', 'supercohort', 'cohort', 'subcohort', 'infracohort', 'superorder', 'order',
         'suborder', 'infraorder', 'superfamily', 'family', 'subfamily', 'supertribe', 'tribe', 'subtribe',
         'infratribe', 'genus', 'subgenus', 'section', 'subsection', 'superspecies', 'species',
-        'subspecies', 'variety', 'varietas', 'subvariety', 'form', 'subform', 'forma specialis', 'cultivar',
+        'subspecies', 'variety', 'subvariety', 'form', 'subform', 'forma specialis', 'cultivar',
         'biovar', 'serovar', 'pathovar', 'morphovar', 'serogroup', 'serotype', 'genogroup', 'genotype',
         'subgenotype', 'type', 'subtype', 'clade', 'subclade', 'lineage', 'sublineage', 'variant'];
 
     // A rank's KEY is its name folded: lower case, no spaces, hyphens,
     // underscores or dots ("Sub-Species", "sub_species", "ssp." all read
-    // subspecies); a few abbreviations fold onto their term. Refused: none,
-    // phyloXML's "other" / "unknown", and the three his word excluded.
-    const RANK_ALIASES = {ssp: 'subspecies', subsp: 'subspecies', 'var': 'variety', subvar: 'subvariety',
-        forma: 'form', fsp: 'formaspecialis', formasp: 'formaspecialis', cv: 'cultivar'};
-    const RANK_REFUSED = {'': true, other: true, unknown: true, strain: true, substrain: true, isolate: true};
+    // subspecies); a few abbreviations and Latin spellings fold onto their
+    // term (varietas is variety, forma is form). Refused: none, phyloXML's
+    // "other" / "unknown", and the three his word excluded. The tables have
+    // no prototype: a rank named "constructor" is a rank named constructor.
+    const RANK_ALIASES = Object.assign(Object.create(null), {ssp: 'subspecies', subsp: 'subspecies',
+        'var': 'variety', varietas: 'variety', subvar: 'subvariety', forma: 'form', fsp: 'formaspecialis',
+        formasp: 'formaspecialis', cv: 'cultivar'});
+    const RANK_REFUSED = Object.assign(Object.create(null), {'': true, other: true, unknown: true, strain: true,
+        substrain: true, isolate: true});
     const RANK_INDEX = Object.create(null);   // key -> place in TAXONOMIC_RANKS
     const RANK_LABEL = Object.create(null);   // key -> the canonical spelling
 
     function foldRank(rank) {
         return typeof rank === 'string' ? rank.trim().toLowerCase().replace(/[\s_.-]+/g, '') : '';
+    }
+
+    // Folded and aliased, refused or not: what compareRanks orders by.
+    function rankFold(rank) {
+        let k = foldRank(rank);
+        return RANK_ALIASES[k] || k;
     }
 
     forester.TAXONOMIC_RANKS.forEach(function (name, i) {
@@ -8881,13 +8891,23 @@
 
     // A rank's key; '' when it is none, or refused.
     function rankKey(rank) {
-        let k = foldRank(rank);
-        if (RANK_ALIASES[k]) {
-            k = RANK_ALIASES[k];
-        }
+        let k = rankFold(rank);
         return RANK_REFUSED[k] ? '' : k;
     }
     forester.rankKey = rankKey;
+
+    // A property's local name: after the last colon, trimmed. What the
+    // rank readers key and label by.
+    function propertyLocalName(ref) {
+        return ref.substring(ref.lastIndexOf(':') + 1).trim();
+    }
+
+    // The key of a clade or lineage naming scheme of the file's own: ends in
+    // the word, a level suffix allowed (h5clade, globalh1clade, pangolineage,
+    // pangolineagel1); Nextstrain's clade_membership by name. A name that
+    // merely carries the word (clade_size, lineage_count, clade_color) is a
+    // field, not a rank (his /code-review, 2026-10-19).
+    const RANK_SCHEME = /(clade|lineage)(l?\d+)?$/;
 
     // The canonical spelling of a listed rank's key ("forma specialis" for
     // formaspecialis), null for a rank outside the list.
@@ -8924,24 +8944,19 @@
         if (typeof ref !== 'string') {
             return null;
         }
-        let local = ref.substring(ref.lastIndexOf(':') + 1);
-        let key = rankKey(local);
+        let key = rankKey(propertyLocalName(ref));
         if (!key) {
             return null;
         }
         if (RANK_INDEX[key] !== undefined) {
             return key;
         }
-        // a clade or lineage naming scheme of the file's own -- a name
-        // ending in, or with a word of, "clade" or "lineage" (ird:H5Clade,
-        // vipr:PANGO_Lineage_L1, clade_membership) -- is a rank of its own,
-        // shown under the file's spelling; anything else named by a
-        // property is a field for the Color-by, not a rank
-        if (/(clade|lineage)$/.test(key)) {
-            return key;
-        }
-        let words = local.trim().toLowerCase().split(/[\s_.-]+/);
-        return (words.indexOf('clade') >= 0 || words.indexOf('lineage') >= 0) ? key : null;
+        // a clade or lineage naming scheme of the file's own (ird:H5Clade,
+        // vipr:PANGO_Lineage_L1, clade_membership) is a rank of its own,
+        // shown under the file's spelling -- when a tip carries it, which
+        // ranksNamed checks; anything else named by a property is a field
+        // for the Color-by, not a rank
+        return (RANK_SCHEME.test(key) || key === 'clademembership') ? key : null;
     }
 
     // A node's OWN taxon at `rank` ({name, source: 'taxonomy' | 'property'}),
@@ -8992,10 +9007,13 @@
         return null;
     };
 
-    // Canonical order first, then the rest alphabetically. Keys.
+    // Canonical order first, then the rest alphabetically; keys or names,
+    // folded alike ("forma specialis" and formaspecialis sort as one).
     forester.compareRanks = function (a, b) {
-        let ia = RANK_INDEX[a] !== undefined ? RANK_INDEX[a] : -1;
-        let ib = RANK_INDEX[b] !== undefined ? RANK_INDEX[b] : -1;
+        let ka = rankFold(a);
+        let kb = rankFold(b);
+        let ia = RANK_INDEX[ka] !== undefined ? RANK_INDEX[ka] : -1;
+        let ib = RANK_INDEX[kb] !== undefined ? RANK_INDEX[kb] : -1;
         if (ia >= 0 || ib >= 0) {
             if (ia < 0) {
                 return 1;
@@ -9005,33 +9023,57 @@
             }
             return ia - ib;
         }
-        return a < b ? -1 : (a > b ? 1 : 0);
+        return ka < kb ? -1 : (ka > kb ? 1 : 0);
     };
 
     // The ranks the tree names anywhere -- in a <taxonomy>'s rank, or as a
     // property's local name -- in canonical order: [{rank (the key), label
-    // (the canonical spelling, else the file's first)}].
+    // (the canonical spelling, else the file's first)}]. A scheme of the
+    // file's own named by a property (unlisted: h5clade, clademembership)
+    // counts only when a TIP carries it: the auspice reader's branch labels
+    // (nextstrain:clade_label, internal nodes only) are not a rank of the
+    // tips, and nested as they are they would read as contradictions (his
+    // /code-review, 2026-10-19).
     function ranksNamed(tree) {
-        let seen = Object.create(null);   // key -> label: the canonical spelling, else the file's first
+        let seen = Object.create(null);     // key -> label: the canonical spelling, else the file's first
+        let scheme = Object.create(null);   // key -> named by a property outside the list
+        let onTip = Object.create(null);    // key -> a tip carries it
         eachNode(tree, function (n) {
             if (n.taxonomies) {
                 n.taxonomies.forEach(function (t) {
                     let r = t ? rankKey(t.rank) : '';
-                    if (r && !(r in seen)) {
+                    if (!r) {
+                        return;
+                    }
+                    if (!(r in seen)) {
                         seen[r] = forester.rankLabel(r) || String(t.rank).trim();
+                    }
+                    if (!n.children) {
+                        onTip[r] = true;
                     }
                 });
             }
             if (n.properties) {
                 n.properties.forEach(function (p) {
                     let r = p ? propertyRank(p.ref) : null;
-                    if (r && !(r in seen)) {
-                        seen[r] = forester.rankLabel(r) || p.ref.substring(p.ref.lastIndexOf(':') + 1).trim();
+                    if (!r) {
+                        return;
+                    }
+                    if (!(r in seen)) {
+                        seen[r] = forester.rankLabel(r) || propertyLocalName(p.ref);
+                    }
+                    if (RANK_INDEX[r] === undefined) {
+                        scheme[r] = true;
+                    }
+                    if (!n.children) {
+                        onTip[r] = true;
                     }
                 });
             }
         });
-        return Object.keys(seen).sort(forester.compareRanks).map(function (k) {
+        return Object.keys(seen).filter(function (k) {
+            return !scheme[k] || onTip[k];
+        }).sort(forester.compareRanks).map(function (k) {
             return {rank: k, label: seen[k]};
         });
     }
@@ -9072,19 +9114,39 @@
         return out;
     };
 
-    // The rank to open the chooser on: the FINEST rank that names 2 to
-    // `maxTaxa` taxa (a legend's worth: a genus level on a family tree),
-    // else the one naming the most taxa, else null. From rankCoverage's
+    // The rank to open the chooser on, among those naming 2 to `maxTaxa`
+    // taxa (a legend's worth): a scheme of the file's own (unlisted:
+    // H5Clade, a PANGO level) naming the MOST taxa -- the finest cut that
+    // still fits a legend; the list says nothing about how such schemes
+    // nest, and the alphabet was deciding (his /code-review, 2026-10-19) --
+    // else the FINEST listed rank (a genus level on a family tree); else
+    // the rank naming the most taxa of all; null on an empty list. Ties
+    // among schemes: the first in rankCoverage's order. From rankCoverage's
     // list, so only an offered rank is ever picked.
     forester.defaultRank = function (coverage, maxTaxa) {
         if (!coverage || coverage.length === 0) {
             return null;
         }
         let cap = maxTaxa > 1 ? maxTaxa : 20;
-        for (let i = coverage.length - 1; i >= 0; --i) {
-            if (coverage[i].taxa >= 2 && coverage[i].taxa <= cap) {
-                return coverage[i].rank;
+        let scheme = null;
+        let listed = null;
+        coverage.forEach(function (c) {
+            if (c.taxa < 2 || c.taxa > cap) {
+                return;
             }
+            if (RANK_INDEX[c.rank] === undefined) {
+                if (!scheme || c.taxa > scheme.taxa) {
+                    scheme = c;
+                }
+            } else if (!listed || RANK_INDEX[c.rank] > RANK_INDEX[listed.rank]) {
+                listed = c;
+            }
+        });
+        if (scheme) {
+            return scheme.rank;
+        }
+        if (listed) {
+            return listed.rank;
         }
         let best = coverage[0];
         coverage.forEach(function (c) {
@@ -9173,28 +9235,45 @@
             subtree.set(n, consensus);
         });
         // the internal annotations the tips contradict: the node names one
-        // taxon, its subtree is not pure for it (another taxon, or mixed)
-        eachNode(tree, function (n) {
+        // taxon, its subtree is not pure for it (another taxon, or mixed).
+        // ONE walk: such nodes are carried down as open entries, and the
+        // first placed tip under one naming another taxon settles it (a
+        // walk per node was quadratic on a tree annotated at every node:
+        // his /code-review, 2026-10-19). Entries in document order.
+        let open = [];
+        (function walk(n) {
             if (!n.children) {
-                return;
-            }
-            let own = forester.ownRankTaxon(n, rank);
-            if (!own) {
-                return;
-            }
-            let key = own.name.toLowerCase();
-            if (subtree.get(n) === key) {
-                return;
-            }
-            let against = null;
-            walkDown(n, function (m) {
-                if (!against && !m.children && keyOf.has(m) && keyOf.get(m) !== key) {
-                    against = m;
+                if (keyOf.has(n)) {
+                    let k = keyOf.get(n);
+                    for (let i = 0; i < open.length; ++i) {
+                        if (!open[i].tip && open[i].key !== k) {
+                            open[i].tip = n;
+                        }
+                    }
                 }
-            });
-            if (against) {
-                out.conflicts.push({node: n, taxon: own.name, tip: against, tipTaxon: out.tipTaxon.get(against)});
+                return;
             }
+            let entry = null;
+            let own = forester.ownRankTaxon(n, rank);
+            if (own) {
+                let key = own.name.toLowerCase();
+                if (subtree.get(n) !== key) {
+                    entry = {node: n, taxon: own.name, key: key, tip: null};
+                    open.push(entry);
+                    out.conflicts.push(entry);
+                }
+            }
+            for (let i = 0; i < n.children.length; ++i) {
+                walk(n.children[i]);
+            }
+            if (entry) {
+                open.pop();
+            }
+        })(forester.getTreeRoot(tree));
+        out.conflicts = out.conflicts.filter(function (e) {
+            return e.tip !== null;
+        }).map(function (e) {
+            return {node: e.node, taxon: e.taxon, tip: e.tip, tipTaxon: out.tipTaxon.get(e.tip)};
         });
         // the roots: pure, under a parent that is not pure for the same taxon
         let byTaxon = Object.create(null);

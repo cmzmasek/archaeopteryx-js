@@ -10412,8 +10412,8 @@ function (root, d3, forester, phyloXml) {
         if (typeof s.geneAnchor === 'string' && s.geneAnchor.length > 0) {
             _state.geneAnchor = s.geneAnchor;
         }
-        if (typeof s.rank === 'string' && rankOffered(s.rank.toLowerCase())) {
-            _state.cladeRank = forester.rankKey(s.rank) || String(s.rank);
+        if (typeof s.rank === 'string' && rankOffered(forester.rankKey(s.rank))) {
+            _state.cladeRank = forester.rankKey(s.rank);   // folded, as the config's is
         }
         if (typeof s.rankColor === 'boolean') {
             _state.colorizeByRank = s.rankColor;
@@ -13698,8 +13698,11 @@ function (root, d3, forester, phyloXml) {
     function rankInit() {
         _rank = {coverage: forester.rankCoverage(_treeData), cache: Object.create(null)};
         if (_state.cladeRank !== 'auto' && rankAvailable() && !rankOffered(_state.cladeRank)) {
-            say('problem', 'warn', WARNING + ': cladeRank "' + _state.cladeRank
-                + '" names no rank this tree places tips at; using the automatic choice');
+            // refused by name (strain, substrain, isolate, other, unknown),
+            // or a rank this tree has no tips at: two different things to say
+            say('problem', 'warn', WARNING + ': cladeRank "' + _state.cladeRank + (forester.rankKey(_state.cladeRank) === ''
+                ? '" is not a rank here (strain, substrain, isolate, other and unknown are not); using the automatic choice'
+                : '" names no rank this tree places tips at; using the automatic choice'));
             _state.cladeRank = 'auto';
         }
     }

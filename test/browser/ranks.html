@@ -86,6 +86,12 @@
             check('flu: the view carries the key', viewer.getViewState().rank === 'h5clade', JSON.stringify(viewer.getViewState()));
             choose('rank_select', 'subtype'); await settle();
             check('flu: Subtype chosen: its card and marks', bars().length >= 1 && legendTexts()[0] === 'Subtype clades', bars().length + ' ' + legendTexts()[0]);
+            // a refused rank in the config is said to be refused, not missing
+            const v2 = archaeopteryx.launch('#p', archaeopteryx.parseTrees('influenza.xml', fxml), {annotateByRank: true, cladeRank: 'strain'});
+            await v2.ready; await settle();
+            check('config: cladeRank "strain" is refused by name, not for want of data',
+                warnings.some((w) => /cladeRank "strain" is not a rank here \(strain, substrain, isolate, other and unknown are not\); using the automatic choice/.test(w))
+                && !warnings.some((w) => /names no rank this tree places tips at/.test(w)), warnings.join(' | '));
             finish();
             return;
         }
@@ -340,6 +346,11 @@
             const row = legend().querySelectorAll('rect[style*="cursor"]');
             check('the legend\'s rows take a click (the colour picker)', row.length >= 10, row.length);
             // the "i" readout: not part of this; the collapsed clade: folds into its clade's colour
+            // a shared view's rank folds as the config's does: "FAMILY" is family
+            viewer.applyViewState(Object.assign({}, noro, {rank: 'FAMILY'})); await settle();
+            check('view: the rank in a view folds (FAMILY is family)', viewer.getViewState().rank === 'family' && legendTexts()[0] === 'Family clades',
+                viewer.getViewState().rank + ' ' + legendTexts()[0]);
+            viewer.applyViewState(noro); await settle();
             check('no other console warning on the way', warnings.length === 1, warnings.join(' | '));
         }
         if (layout === 'circular') {
