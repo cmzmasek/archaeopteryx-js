@@ -79,15 +79,16 @@ users see a change only when a version is cut.
 
 ### Changed
 - **A date field is offered as a Color-by only as numbers.** A field whose
-  name has the word "date" (BV-BRC's Collection Date, Nextstrain's `date`,
-  `date_added`, `date_submitted`) is no longer in the Color and Shape menus
-  unless every value is a number, when it is a measurement like Year and is
-  offered as a gradient (Nextstrain's `num_date` decimal year stays). Database
-  dates mix `2016`, `Jan-2006` and `14-Jun-2013` and are missing on a third
-  of the tips, so a colour per spelling said nothing; on one Nextstrain build
-  the day a sequence was added to the build opened the tree. The field is
-  still a label field and a search field. A rule of the joint visualization
-  contract, pinned in both fixtures (`vis-contract.tsv`, `vis-trees.tsv`).
+  name has the word "date" or "month" (BV-BRC's Collection Date and Year
+  Month, Nextstrain's `date`, `date_added`, `date_submitted`) is no longer in
+  the Color and Shape menus unless every value is a number, when it is a
+  measurement like Year and is offered as a gradient (Nextstrain's `num_date`
+  decimal year stays). Database dates mix `2016`, `Jan-2006` and `14-Jun-2013`
+  and are missing on a third of the tips, so a colour per spelling said
+  nothing; on one Nextstrain build the day a sequence was added to the build
+  opened the tree. The field is still a label field and a search field. A
+  rule of the joint visualization contract, pinned in both fixtures
+  (`vis-contract.tsv`, `vis-trees.tsv`).
 
 ### Fixed
 - **A full-size export of a circular or unrooted tree is bounded at 6,000 px

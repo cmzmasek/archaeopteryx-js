@@ -48,6 +48,8 @@ name_rules	x:Abbr_Authors	refused	-	-	-	-	-	-	-	-	-	x:Host	-
 name_rules	x:Out-Group	offered	3	2	0	0	0	0	1	category	1	x:Host	2
 name_rules	x:Plasmid	offered	0	1	0	0	0	0	0	category	1	x:Host	2
 date_rule	x:Collection_Date	refused	-	-	-	-	-	-	-	-	-	x:Updated	-
+date_rule	x:Year_Month	refused	-	-	-	-	-	-	-	-	-	x:Updated	-
+date_rule	x:Month	offered	1	3	1	0	0	0	0	range	0	x:Updated	12
 date_rule	x:Date_Added	refused	-	-	-	-	-	-	-	-	-	x:Updated	-
 date_rule	x:Sampling_Date	offered	1	1	1	0	0	0	0	category	1	x:Updated	6
 date_rule	nextstrain:num_date	offered	1	2	1	0	0	0	0	range	0	x:Updated	30

@@ -123,11 +123,13 @@ const TREES = {
         'x:Host': AB, 'x:genome_id': AB, 'x:Abbr_Authors': AB, 'x:Out-Group': AB, 'x:Plasmid': AB
     }},
     // --- a date is a measurement or nothing (decided 2026-10-20) ---------
-    // The one name rule that reads the VALUES: the word "date" in the menu
-    // name refuses the field as text, however well it repeats, and lets it
-    // through as a numeric field when every value is a number.
+    // The one name rule that reads the VALUES: the word "date" or "month" in
+    // the menu name refuses the field as text, however well it repeats, and
+    // lets it through as a numeric field when every value is a number.
     date_rule: {n: 30, f: {
         'x:Collection_Date': i => ['2016', 'Jan-2006', '14-Jun-2013', '2012-12-2'][i % 4],  // four spellings, evenly: refused
+        'x:Year_Month':      i => '2020_0' + (1 + (i % 6)),                // a date at month resolution, evenly: refused
+        'x:Month':           i => String(1 + (i % 12)),                    // every value a number: numeric, offered
         'x:Date_Added':      AB,                                       // a record date, a perfect split: refused
         'x:Sampling_Date':   i => String(2000 + (i % 6)),               // every value a year: numeric, offered
         'nextstrain:num_date': i => (2020 + (i % 30) / 30).toFixed(3),  // decimal years, all distinct: numeric, offered

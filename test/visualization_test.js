@@ -208,7 +208,8 @@ function testBranchEvents() {
         'prop:vipr:Region category+shape',
         'prop:vipr:PANGO_Lineage_L1 category',
         'prop:vipr:Country category',
-        'prop:vipr:Year_Month category',
+        // Year_Month ("2020_03", 8 values): a date at month resolution, as
+        // text, refused since 2026-10-20 (his "Year_Month should go too!!")
         'prop:vipr:Host category+shape',
         'prop:vipr:PANGO_Lineage_L0 category+shape',
         // numeric: tier 1, so after every clean categorical however it scores
@@ -307,7 +308,10 @@ function testRefusals() {
         [summarize(forester.visualizationCandidates(loadTree('Adenoviridae'))).join('\n'),
             'prop:vipr:Collection_Date'],
         [summarize(forester.visualizationCandidates(loadTree('Caliciviridae_500'))).join('\n'),
-            'prop:vipr:Collection_Date']
+            'prop:vipr:Collection_Date'],
+        // a date at month resolution ("2020_03"), as text: refused too
+        [summarize(forester.visualizationCandidates(loadTree('branch_events'))).join('\n'),
+            'prop:vipr:Year_Month']
     ];
     // genome_name and strain barely repeat (346/354, 183/199). They used to be
     // refused by the wide guard; since 2026-09-12 they are offered at the very
@@ -711,7 +715,10 @@ function testPrettyLabels() {
     if (h['prop:BVBRC:collection_year'] !== 'Collection Year') return false;
     var b = labels('branch_events');
     if (b['prop:vipr:PANGO_Lineage_L0'] !== 'PANGO Lineage L0') return false;
-    if (b['prop:vipr:Year_Month'] !== 'Year Month') return false;
+    if (b['prop:vipr:PANGO_Lineage_L1'] !== 'PANGO Lineage L1') return false;
+    // Year_Month is no candidate since 2026-10-20 (a date as text), but its
+    // menu name is what the date rule reads, so the prettifier still owes it
+    if (forester.propertyDisplayName('vipr:Year_Month') !== 'Year Month') return false;
     var c = labels('confidences');
     if (c['prop:ird:FluSeason'] !== 'Flu Season') return false;
     if (c['prop:ird:GlobalH1Clade'] !== 'Global H1 Clade') return false;
@@ -2398,11 +2405,13 @@ function testTaxonIdNeverOffered() {
 // A date is a measurement or nothing (Christian, 2026-10-20: Collection_Date
 // "should never be offered for visualization" -- its values mix "2016",
 // "Jan-2006" and "14-Jun-2013" and are missing on a third of the tips; the
-// rule generalised to every date-named field on his choice). The word "date"
+// rule generalised to every date-named field on his choice; then "Year_Month
+// should go too!!", a date at month resolution). The word "date" or "month"
 // in the MENU name refuses the field as text however well it repeats, and
 // lets it through as a numeric field when every value is a number: a year,
-// or the num_date decimal year the Nextstrain and BEAST readers write for
-// Color-by on purpose. Anchored as a word, so Updated and Candidate survive.
+// a month 1..12, or the num_date decimal year the Nextstrain and BEAST
+// readers write for Color-by on purpose. Anchored as words, so Updated,
+// Candidate and Monthly survive, and Year alone is never a date word.
 function testDateIsAMeasurementOrNothing() {
     function candidatesFor(ref, valueOf) {
         var phy = forester.parseNewHampshire('((a,b,c,d,e,f),(g,h,i,j,k,l));', true, false);
@@ -2418,7 +2427,9 @@ function testDateIsAMeasurementOrNothing() {
         'nextstrain:date', 'nextstrain:date_added', 'nextstrain:date_submitted',
         'nextstrain:date_released', 'nextstrain:date_updated',
         'x:Date', 'x:Dates', 'x:Sampling_Date', 'x:Release-Date', 'x:date of collection',
-        'nextstrain:num_date'   // the name alone does not spare it: its NUMBERS do
+        'nextstrain:num_date',  // the name alone does not spare it: its NUMBERS do
+        'vipr:Year_Month', 'x:Year-Month', 'x:yearMonth', 'x:YEAR_MONTH', 'x:Month', 'x:Months',
+        'x:Collection_Month', 'x:month of sampling'
     ];
     var leaked = refusedAsText.filter(function (r) { return candidatesFor(r, AB).length !== 0; });
     if (leaked.length) {
@@ -2432,9 +2443,14 @@ function testDateIsAMeasurementOrNothing() {
         console.log('    a well-repeating date as text was offered');
         return false;
     }
-    // "date" inside a word is not the word
+    if (candidatesFor('vipr:Year_Month', function (i) { return '2020_0' + (1 + (i % 4)); }).length !== 0) {
+        console.log('    a well-repeating year-month as text was offered');
+        return false;
+    }
+    // "date" or "month" inside a word is not the word; a year or a season is
+    // neither
     var kept = ['x:Updated', 'x:Dated', 'x:Candidate', 'x:Datetime', 'x:Validated', 'x:Year',
-        'BVBRC:collection_year', 'x:Host'];
+        'BVBRC:collection_year', 'x:Monthly', 'x:Years', 'ird:FluSeason', 'x:Host'];
     var lost = kept.filter(function (r) { return candidatesFor(r, AB).length !== 1; });
     if (lost.length) {
         console.log('    wrongly refused: ' + lost.join(', '));
@@ -2445,6 +2461,12 @@ function testDateIsAMeasurementOrNothing() {
     if (years.length !== 1 || !years[0].numeric || years[0].colorMode !== 'category') {
         console.log('    a date of plain years should be a numeric candidate: '
             + (years.length ? years[0].numeric + ' ' + years[0].colorMode : 'refused'));
+        return false;
+    }
+    var months = candidatesFor('x:Month', function (i) { return String(1 + (i % 12)); });
+    if (months.length !== 1 || !months[0].numeric) {
+        console.log('    a month of plain numbers should be a numeric candidate: '
+            + (months.length ? months[0].numeric : 'refused'));
         return false;
     }
     var decimal = candidatesFor('nextstrain:num_date', function (i) { return (2020 + i / 12).toFixed(4); });

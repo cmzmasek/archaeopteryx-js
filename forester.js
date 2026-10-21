@@ -1763,11 +1763,11 @@
     //               values as the tree has tips is an identifier and is
     //               refused; a NUMERIC one is kept, because a measurement
     //               is naturally one value per sample.
-    //   date        a field whose name has the word "date" (Collection Date,
-    //               Date Added, Nextstrain's date) is a measurement or
-    //               nothing: offered when every value is a number (a year,
-    //               a num_date decimal year), refused as a category
-    //               (VIS_DATE_WORD_RE below).
+    //   date        a field whose name has the word "date" or "month"
+    //               (Collection Date, Date Added, Year Month, Nextstrain's
+    //               date) is a measurement or nothing: offered when every
+    //               value is a number (a year, a num_date decimal year),
+    //               refused as a category (VIS_DATE_WORD_RE below).
     //   coverage    a field on fewer than 2/3 of the tips is SPARSE: offered,
     //               ranked after everything dense, never opening a tree that
     //               has anything denser. Database exports are always patchy,
@@ -1867,9 +1867,10 @@
     // alone.
 
     // A DATE is a measurement or nothing. Matched on the displayed name like
-    // the rules above (the word "date", singular or plural: Collection Date,
-    // Date Added, Date Submitted, Sampling Date, Nextstrain's date), but
-    // applied only once the values are known, because the verdict depends on
+    // the rules above (the word "date" or "month", singular or plural:
+    // Collection Date, Date Added, Date Submitted, Sampling Date, Nextstrain's
+    // date, BV-BRC's Year Month), but applied only once the values are known,
+    // because the verdict depends on
     // them: a field whose every value is a number -- a year, Nextstrain's
     // num_date decimal year, which the readers write for Color-by on purpose
     // -- is a measurement like Year and is offered as one; anything else is
@@ -1880,11 +1881,14 @@
     // colour per spelling says nothing, and a record date -- the day a
     // sequence entered a build -- repeats well enough to OPEN a tree
     // (date_added on a Nextstrain enterovirus build, 11 values, 94% covered).
-    // The word is anchored, so Updated, Dated, Candidate and Datetime are
-    // untouched. Christian, 2026-10-20: "'Collection_Date' is something which
-    // should never be offered for visualization"; the rule generalised to
-    // every date, as text, on his choice.
-    const VIS_DATE_WORD_RE = /(^| )dates?( |$)/;
+    // The words are anchored, so Updated, Dated, Candidate, Datetime and
+    // Monthly are untouched; Year alone is not a date word (a year is the
+    // measurement), nor is a season ("15-16"). Christian, 2026-10-20:
+    // "'Collection_Date' is something which should never be offered for
+    // visualization"; the rule generalised to every date, as text, on his
+    // choice; then "Year_Month should go too!!" -- a date at month
+    // resolution ("2020_03"), hence the second word.
+    const VIS_DATE_WORD_RE = /(^| )(dates?|months?)( |$)/;
 
     // Offered, but never the tree's OPENING visualization unless it is the
     // only thing on offer. "In-Group" and "Out-Group" say which tips were the
@@ -2248,8 +2252,8 @@
             let numeric = values.every(function (v) {
                 return VIS_NUMERIC_RE.test(v);
             });
-            // a date as text is refused whatever its distribution; as numbers
-            // it goes on as a measurement (VIS_DATE_WORD_RE)
+            // a date or month as text is refused whatever its distribution;
+            // as numbers it goes on as a measurement (VIS_DATE_WORD_RE)
             if (!numeric && s.kind === 'property' && visDateRef(s.ref)) {
                 return;
             }
