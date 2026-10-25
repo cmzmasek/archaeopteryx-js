@@ -950,15 +950,24 @@ table's numeric columns become heat-map columns like any others.
 
 ## Time trees
 
-A tree whose nodes carry phyloXML `<date>` elements is drawn against time.
-Ages (`unit="mya"` and friends, or values that look like ages) get the
-**geologic axis**: two rows of ICS intervals in their official colours —
-Period over Epoch for most trees, coarser pairs for Precambrian-deep ones —
-plus a "Ma before present" ruler. Years (`unit="year"`, or values that look
-like calendar years) get a labelled **calendar axis**. The layout itself
-never changes: time is an overlay calibrated by the dates, so it also works
-for a fossil-only tree, where the axis stops at the youngest tip and labels
-that age (the ammonite demo ends at the K-Pg, 66).
+A **time tree** — one whose ancestors carry phyloXML `<date>` elements: at
+least two, and more than half of the internal nodes, the root included (the
+rule the desktop shares) — is drawn against time. Ages (`unit="mya"` and
+friends) get the **geologic axis**: two rows of ICS intervals in their
+official colours — Period over Epoch for most trees, coarser pairs for
+Precambrian-deep ones — plus a "Ma before present" ruler. Years
+(`unit="year"`) get a labelled **calendar axis**. A date without a
+recognised unit draws no axis. Dates on the tips alone make no time tree:
+a divergence tree in substitutions per site whose tips carry their
+sampling dates keeps its scale bar, and those dates serve the [clock
+plot](#clock-plot) and the Tree properties instead; nor do a couple of
+calibration ages on a tree of otherwise undated ancestors. There is no
+per-tree override — a tree whose branch lengths are years but whose
+ancestors state no dates has no time axis here (the desktop offers one in
+its Settings). The layout itself never changes: time is an overlay
+calibrated by the dates, so it also works for a fossil-only tree, where the
+axis stops at the youngest tip and labels that age (the ammonite demo ends
+at the K-Pg, 66).
 
 Nodes with a date **range** (`minimum`/`maximum` — minimum is the younger
 bound) draw uncertainty bars: translucent blue **HPD age bars** on internal
@@ -1720,7 +1729,7 @@ copy-pastable JSON.
 | `colorizeByRank` | `false` | Open with the branches of every clade at that rank painted in its taxon's colour. |
 | `annotateByRank` | `false` | Open with every clade at that rank marked: a bar and the taxon's name beside the tips (an arc in circular, the name at the wedge's mouth in unrooted), or a shaded box. |
 | `cladeMarkStyle` | `'bars'` | How Annotate clades marks a clade: `'bars'` or `'boxes'` (a translucent box under the tree from the clade's root to the tips; a sector in the radial layouts). |
-| `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on when the tree carries `<date>` elements and opens shown in time, off otherwise (a dated tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
+| `showScaleAxis` | tree-derived | Open with the scale axis shown: the time axis on a time tree whose branches show time, a distance axis on any other phylogram. Default: on for a time tree (most of its ancestors dated; tip dates alone do not count) that opens shown in time, off otherwise (a time tree that opens in divergence is a divergence tree on screen) — an explicit `true`/`false` overrides that. |
 | `showScaleBar` | `true` | Open with the scale bar at the bottom left of a phylogram (a round length in the tree's branch-length unit). It gives way while the scale axis is shown either way. |
 | `showScaleGrid` | `false` | Open with the Scale Grid lines on (only meaningful — and only offered as a checkbox — while the scale axis itself is shown). |
 | `showSupportDots` | `false` | Open with the Support Dots marks on (the checkbox appears whenever the tree has confidences). |
@@ -2915,14 +2924,27 @@ PDF and PNG exports match the screen.
 
 Data model: per-node `date = {unit, desc, value, minimum, maximum}` —
 **minimum is the younger bound, maximum the older**, everywhere. Detection
-(`forester.timeAxisInfo`): unit sets decide (`mya ma myr(s) my ga gya bya
-kya million/billion years` → geologic; `year(s) yr(s) cal ce ad calendar…` →
-calendar); unitless values fall back to magnitude — a strict majority in
-[1500, 2200] reads as years, `max > 10 && min ≤ 5% of max` as ages.
-Non-finite values are ignored (a `1e400` in a file once hung the tick
-loops). Calibration: the **largest** date value is the root age (geologic)
-or the present (calendar) — no unit conversion is done, so a Ga-valued tree
-is misbanded exactly as on the desktop.
+(`forester.timeAxisInfo`): `dateUnit` is what the dates *mean*, from the
+unit sets alone (`mya ma myr(s) my ga gya bya kya million/billion years` →
+geologic; `year(s) yr(s) cal ce ad calendar…` → calendar; no unit, no kind —
+the guess from the size of the numbers went on 2026-09-17, when BEAST's
+unitless heights banded twelve years of influenza as 12 Ma); `type` is the
+*axis*: `dateUnit` on a time tree (`forester.isTimeTree`: at least two and
+more than half of the internal nodes dated, asked of the whole tree however
+deep the root handed is: a subtree view keeps its tree's answer to the
+rule, while its units and calibration are read under the root handed, so a
+clade with no date on view draws nothing), `null` on any other (until
+2026-10-24 a majority of dated *tips* counted too, and a divergence tree
+with sampling dates on its tips, or two calibration ages, was banded over
+substitutions). The clock plot, a tip interval's meaning and the Tree
+properties (always the whole tree's) read `dateUnit`; the axis, its default
+and its tooltip read `type`. The desktop's `dateUnitAxisType` reads the
+first stated unit where `dateUnit` counts them all, ages winning a tie: a
+difference only a file mixing units could show. Non-finite values are
+ignored (a `1e400` in a file once hung the tick loops). Calibration: the
+**largest** date value under the root handed is the root age (geologic) or
+the present (calendar) — no unit conversion is done, so a Ga-valued tree is
+misbanded exactly as on the desktop.
 
 Rendering (phylogram, rectangular or circular; the layout never changes):
 age→x is `anchorX + (anchorAge − age) × corr` with `corr` the branch-length

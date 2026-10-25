@@ -24,6 +24,9 @@
 //                and the axis disable it
 //   ?bar=plain   a tree that states no unit: the number alone
 //   ?bar=off     config showScaleBar: false opens without the bar
+//   ?tipdated=1  a divergence tree whose TIPS carry dates and that states no unit (Christian, 2026-10-24, on the
+//                desktop, of his family trees: "all these trees open with a year scale by default"): no time axis,
+//                the switch off, the bar shown, the Clock plot offered; the switch draws the DISTANCE ruler
 (async function () {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const settle = () => sleep(2200);
@@ -48,7 +51,15 @@
         const trees = archaeopteryx.parseTrees('t.nwk', '((A:0.1,B:0.2):0.05,(C:0.3,D:0.15):0.1);');
         const tree = Array.isArray(trees) ? trees[0] : trees;
         const bar = (new URLSearchParams(location.search)).get('bar');
-        if (bar !== 'plain') { tree.branch_length_unit = 'subs/site'; }
+        const tipdated = /[?&]tipdated=1/.test(location.search);
+        if (tipdated) {
+            // the family trees' shape less the unit that happens to guard them: every tip <date unit="year">,
+            // no ancestor dated, so the years cannot be read off the branches
+            const years = {A: 2021.5, B: 2022.4, C: 2024.9, D: 2023.2};
+            forester.preOrderTraversalAll(forester.getTreeRoot(tree), (n) => {
+                if (!n.children) { n.date = {unit: 'year', value: years[n.name]}; }
+            });
+        } else if (bar !== 'plain') { tree.branch_length_unit = 'subs/site'; }
         const old = /[?&]old=1/.test(location.search);
         const viewer = archaeopteryx.launch('#p', trees, old ? {showTimeAxis: true, timeAxisGrid: true}
             : (bar === 'off' ? {showScaleBar: false} : {}));
@@ -95,6 +106,31 @@
             check('unrooted: the bar is drawn and the switch enabled', !!q('g.aptx-scalebar') && !cb.disabled);
             cb.click(); await settle();
             check('unrooted: unticked, gone', !q('g.aptx-scalebar'));
+            finish();
+            return;
+        }
+
+        if (tipdated) {
+            const timeAxis = () => q('g.aptx-time-axis');
+            const clock = document.querySelector('.aptx-clockbtn');
+            check('a divergence tree with dated tips opens without a time axis', !timeAxis());
+            check('... the Scale Axis off and the scale bar shown', !byId('scaleaxis_cb').checked
+                && !!q('g.aptx-scalebar') && viewer.getViewState().scaleAxis === false);
+            check('... and its dates still offer the Clock plot', !!clock && clock.offsetParent !== null);
+            byId('scaleaxis_cb').click(); await settle();
+            check('the switch draws the distance ruler, not years', !!strip() && !timeAxis());
+            const got = strip() ? [...strip().querySelectorAll('text')].map((t) => t.textContent) : [];
+            check('... from 0 to the deepest tip, no unit stated', got.join(' ') === NINE.join(' '), got.join(' '));
+            check('... and no node-age bars', qa('.aptx-age-bar, .aptx-sampling-bar, .aptx-fossil-bar').length === 0);
+            // the Tree properties still report the dates, as what they are and
+            // without calling the tree a time tree
+            const info = document.querySelector('[title^="Tree properties"]');
+            if (info) { info.click(); await sleep(700); }
+            const props = (document.querySelector('.aptx-props') || {textContent: ''}).textContent.replace(/\s+/g, ' ');
+            check('Tree properties: the dates are calendar years, on 4 of 7 nodes, the most recent tip named',
+                /Dates\s*calendar years/.test(props) && /Dated nodes\s*4 of 7 nodes/.test(props)
+                && /Most recent tip\s*2024\.9/.test(props), props.slice(props.indexOf('Time'), props.indexOf('Time') + 90));
+            check('... and it is no time tree', !/a time tree/.test(props) && !/a dated tree/.test(props));
             finish();
             return;
         }

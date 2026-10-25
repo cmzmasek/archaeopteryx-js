@@ -78,6 +78,21 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **A time axis only on a time tree.** The geologic or calendar axis, and
+  its default, now need a tree whose ancestors are mostly dated (at least
+  two and more than half of the internal nodes: the rule the viewer and
+  the desktop already shared for re-rooting); the dates' unit alone no
+  longer draws one. A divergence tree in substitutions per site whose tips
+  carry their sampling dates (the BV-BRC and vfam_trees family trees, the
+  desktop's root-to-tip demo) opened under a calendar ruler with years
+  read off substitutions whenever its unit was not spelled exactly
+  `subs/site`, and a gene-family tree with two calibration ages under
+  Mississippian stages. Such a tree now opens with its scale bar, its
+  Scale Axis draws the distance ruler, and its dates still feed the Clock
+  plot and the Tree properties (which now say "a time tree" where they
+  said "a dated tree"). `forester.timeAxisInfo` gains `dateUnit`, what the
+  dates mean on any tree, beside `type`, the axis a time tree gets;
+  `dated` is the time-tree rule. The desktop is making the same change.
 - **A date field is offered as a Color-by only as numbers.** A field whose
   name has the word "date" or "month" (BV-BRC's Collection Date and Year
   Month, Nextstrain's `date`, `date_added`, `date_submitted`) is no longer in

@@ -6246,13 +6246,17 @@ function (root, d3, forester, phyloXml) {
                     + ' on a genome\'s other contigs not drawn: the gene track shows one contig per genome');
             }
         }
-        // Likewise a dated tree draws its scale axis from the start -- a
-        // time axis of geologic ICS bands or calendar years, decided from the
-        // <date> elements by forester.timeAxisInfo -- again unless the caller
-        // set showScaleAxis explicitly. Any other tree opens without one, as
-        // on the desktop: its distance axis is asked for.
+        // Likewise a TIME tree draws its scale axis from the start -- a time
+        // axis of geologic ICS bands or calendar years, decided by
+        // forester.timeAxisInfo from the <date> units on a tree whose
+        // ancestors are mostly dated (tip dates alone put no axis on a
+        // divergence tree) -- again unless the caller set showScaleAxis
+        // explicitly. Any other tree opens without one, as on the desktop:
+        // its distance axis is asked for.
         _timeInfo = _treeData ? forester.timeAxisInfo(forester.getTreeRoot(_treeData)) : null;
-        _timeTree = _treeData ? forester.isTimeTree(_treeData) : false;
+        // the same fact, read once: forester.isTimeTree's rule is what dated
+        // reports, asked of the whole tree
+        _timeTree = !!(_timeInfo && _timeInfo.dated);
         // Whether this tree says two different things -- when its nodes sit in
         // time AND its branches measure something else -- and which of the two
         // it arrived showing. An Auspice build arrives in the time view; a
@@ -19165,7 +19169,9 @@ function (root, d3, forester, phyloXml) {
         shell.body.style.overflowY = 'auto';
         let st = forester.treeStatistics(_root);
         let bp = forester.collectBasicTreeProperties(_root);
-        let time = forester.timeAxisInfo(_root);
+        // the TREE's, as st and bp are (both climb to its root): a subtree
+        // view of an undated clade must not report its tree's dates as "yes"
+        let time = forester.timeAxisInfo(forester.getTreeRoot(_root));
         let phy = _treeData || {};
 
         // --- what the tree says it is ---------------------------------
@@ -19312,16 +19318,21 @@ function (root, d3, forester, phyloXml) {
         }
 
         // --- time -----------------------------------------------------
-        if (time && (time.type || time.dated)) {
+        // every tree with a date reports it: what the dates MEAN (their
+        // unit), on a divergence tree with dated tips as much as on a
+        // chronogram; whether the tree is a TIME tree (most ancestors dated:
+        // its lengths are time, it gets the time axis) is said on the nodes
+        // row
+        if (time && st.nodesWithDate > 0) {
             box = treePropSection(shell.body, 'Time');
-            treePropRow(box, 'Dates', time.type === 'geologic'
-                ? 'geologic ages' : (time.type === 'calendar' ? 'calendar years' : 'yes'));
+            treePropRow(box, 'Dates', time.dateUnit === 'geologic'
+                ? 'geologic ages' : (time.dateUnit === 'calendar' ? 'calendar years' : 'yes'));
             treePropRow(box, 'Dated nodes', statOf(st.nodesWithDate, st.nodes, 'nodes')
-                + (time.dated ? ' (a dated tree)' : ''));
-            if (time.type === 'geologic' && time.rootAge > 0) {
+                + (time.dated ? ' (a time tree)' : ''));
+            if (time.dateUnit === 'geologic' && time.rootAge > 0) {
                 treePropRow(box, 'Oldest node', statNumber(time.rootAge, 4) + ' Ma');
             }
-            if (time.type === 'calendar' && time.presentDate > 0) {
+            if (time.dateUnit === 'calendar' && time.presentDate > 0) {
                 treePropRow(box, 'Most recent tip', statNumber(time.presentDate, 4));
             }
             treePropRow(box, 'Confidence intervals',

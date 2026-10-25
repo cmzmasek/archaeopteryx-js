@@ -7549,13 +7549,16 @@
                 ys.push(div);
             }
         });
+        // what the dates MEAN (their unit), never the axis: a root-to-tip
+        // tree is no time tree and gets no axis, and its dates are years all
+        // the same
         let info = forester.timeAxisInfo(treeRoot);
         // a root-to-tip tree has no dated pair to read the direction off:
         // its dates are calendar dates unless their unit says ages
-        let forward = rootToTip ? info.type !== 'geologic' : timeIncreasesTowardTips(treeRoot);
+        let forward = rootToTip ? info.dateUnit !== 'geologic' : timeIncreasesTowardTips(treeRoot);
         // calendar years: the dates' unit says so, or they were read off the
         // tips' names, which carry no other kind of date
-        let calendar = forward && (info.type === 'calendar' || (rootToTip && info.type === null && fromNames > 0));
+        let calendar = forward && (info.dateUnit === 'calendar' || (rootToTip && info.dateUnit === null && fromNames > 0));
         let root = {node: top, date: auspiceNodeDate(top), div: divOf(top)};
         let fit = forester.clockRegression(xs, ys);
         if (fit) {
@@ -10371,46 +10374,89 @@
      * a divergence tree can carry collection dates, and re-rooting it (as a
      * root-to-tip regression does) is a normal step. A time tree is never
      * re-rooted: a new root would contradict the ancestors' dates. The
-     * desktop's rule is the same (its detectTimeTree, internal-node half).
+     * desktop's rule is the same (its isTimeTree; from its 0.11.190 -- in
+     * their working tree on 2026-10-24 -- its badge and its time axis ask it
+     * too, as timeAxisInfo does here).
      *
      * @param phy the tree
      * @returns {boolean}
      */
     forester.isTimeTree = function (phy) {
+        return datedAncestorMajority(forester.getTreeRoot(phy));
+    };
+
+    // The one body of that rule, over a root: the same two predicates and the
+    // same arithmetic as timeAxisInfo's own walk, which counts this way when
+    // it is handed the tree's root and comes here for a subtree view's.
+    function isInternalNode(n) {
+        return !!(n.children && n.children.length > 0);
+    }
+
+    function hasFiniteDate(n) {
+        return !!n.date && typeof n.date.value === 'number' && isFinite(n.date.value);
+    }
+
+    function ancestorsMostlyDated(internal, dated) {
+        return dated >= 2 && dated * 2 > internal;
+    }
+
+    function datedAncestorMajority(root) {
         let internal = 0;
         let dated = 0;
-        forester.preOrderTraversalAll(forester.getTreeRoot(phy), function (n) {
-            if (n.children && n.children.length > 0) {
+        forester.preOrderTraversalAll(root, function (n) {
+            if (isInternalNode(n)) {
                 ++internal;
-                if (n.date && typeof n.date.value === 'number' && isFinite(n.date.value)) {
+                if (hasFiniteDate(n)) {
                     ++dated;
                 }
             }
         });
-        return dated >= 2 && dated * 2 > internal;
-    };
+        return ancestorsMostlyDated(internal, dated);
+    }
 
     // Everything the viewer needs to decide about and draw a time axis:
-    // {type: 'geologic'|'calendar'|null, rootAge, presentDate, dated,
-    //  hasInternalIntervals, hasExternalIntervals}. rootAge (geologic) and
-    // presentDate (calendar) are both the LARGEST date value -- the oldest
-    // node for ages, the most recent tip for years.
+    // {dateUnit: 'geologic'|'calendar'|null, type: 'geologic'|'calendar'|null,
+    //  dated, rootAge, presentDate, hasInternalIntervals, hasExternalIntervals}.
+    //
+    // dateUnit is what the <date>s MEAN, read off their units on any tree
+    // (ages before present, or calendar years; never a guess from the size
+    // of the numbers): it decides what a tip's interval is (a fossil range
+    // or a sampling-date uncertainty), which way an age bar runs, and the
+    // clock plot's calendar. type is the AXIS the tree gets: dateUnit on a
+    // time tree (isTimeTree: most ancestors dated), null on any other. A
+    // time axis maps distance from the root to time, so it needs branch
+    // lengths that ARE time, and tip dates are no evidence of that: a
+    // divergence tree in substitutions per site whose tips carry their
+    // sampling dates (every vfam_trees family tree, a BV-BRC export, the
+    // desktop's root-to-tip demo) was banded in calendar years read off
+    // substitutions unless its unit happened to be spelled 'subs/site', and
+    // a gene family carrying two calibration ages in geologic stages, until
+    // 2026-10-24 (Christian, on the desktop: "all these trees open with a
+    // year scale by default"; the desktop's deriveTimeAxisType /
+    // dateUnitAxisType split has the same shape -- its dateUnitAxisType
+    // reads the FIRST stated unit where dateUnit counts them all with ages
+    // winning a tie, a difference only a file mixing units could show).
+    // type and dated are the TREE's answer whatever root is handed -- a
+    // subtree view's fake root is climbed out of, as getTreeRoot does -- so
+    // a cherry viewed on its own is still part of its time tree. dateUnit,
+    // the intervals, rootAge (ages) and presentDate (years) are read UNDER
+    // the root handed -- the largest date value: the oldest node, the most
+    // recent tip -- so a subtree view calibrates to its own, and a clade
+    // with no date on view draws nothing; they follow dateUnit, so the tree
+    // properties can name a divergence tree's most recent tip.
     forester.timeAxisInfo = function (root) {
+        let top = forester.getTreeRoot(root);
         let valued = 0;
         let maxVal = -Infinity; // running, not Math.max.apply: 150k dated tips overflow the call stack
         let geoUnits = 0;
         let calUnits = 0;
         let internal = 0;
-        let external = 0;
         let datedInternal = 0;
-        let datedExternal = 0;
         let hasInternalIntervals = false;
         let hasExternalIntervals = false;
         forester.preOrderTraversalAll(root, function (n) {
-            let isExt = !n.children;
-            if (isExt) {
-                ++external;
-            } else {
+            let isExt = !isInternalNode(n);
+            if (!isExt) {
                 ++internal;
             }
             let d = n.date;
@@ -10432,9 +10478,7 @@
             if (d.value > maxVal) {
                 maxVal = d.value;
             }
-            if (isExt) {
-                ++datedExternal;
-            } else {
+            if (!isExt) {
                 ++datedInternal;
             }
             if (d.unit) {
@@ -10446,21 +10490,26 @@
                 }
             }
         });
-        let type = null;
+        let dateUnit = null;
         if (valued > 0) {
             if (geoUnits > 0 && geoUnits >= calUnits) {
-                type = 'geologic';
+                dateUnit = 'geologic';
             } else if (calUnits > 0) {
-                type = 'calendar';
+                dateUnit = 'calendar';
             }
         }
-        let dated = (datedInternal >= 2 && (datedInternal * 2) > internal)
-            || (datedExternal >= 2 && (datedExternal * 2) > external);
+        // the TREE's, not the view's (until 2026-10-24 a majority of dated
+        // TIPS counted too, and that is what put an axis on a divergence
+        // tree): counted in the walk above when the root handed is the
+        // tree's, which it is on every render but a subtree view's, and in
+        // one more walk, of the whole tree, when it is not
+        let dated = top === root ? ancestorsMostlyDated(internal, datedInternal) : datedAncestorMajority(top);
         let maxValue = valued > 0 ? maxVal : 0;
         return {
-            type: type,
-            rootAge: type === 'geologic' ? maxValue : 0,
-            presentDate: type === 'calendar' ? maxValue : 0,
+            dateUnit: dateUnit,
+            type: dated ? dateUnit : null,
+            rootAge: dateUnit === 'geologic' ? maxValue : 0,
+            presentDate: dateUnit === 'calendar' ? maxValue : 0,
             dated: dated,
             hasInternalIntervals: hasInternalIntervals,
             hasExternalIntervals: hasExternalIntervals

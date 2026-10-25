@@ -1895,13 +1895,26 @@ function testGeoQueries() {
 }
 
 function testTimeAxisDetection() {
+    // The root and one inner node dated -- 2 of 2 ancestors, a time tree --
+    // the rest tips: vals[0] is the root's date, vals[1] the inner node's,
+    // the first two tips sit under the inner node. Until 2026-10-24 this
+    // fixture was a star (one ancestor), which no rule could call a time
+    // tree once the tips stopped counting. Parent links are set, as a parsed
+    // tree has them: the rule is asked of the whole tree from any root.
     var mk = function (unit, vals) {
-        return {name: 'r', date: {unit: unit, value: vals[0]}, children: vals.slice(1).map(function (v, i) {
+        var tips = vals.slice(2).map(function (v, i) {
             return {name: 't' + i, date: {unit: unit, value: v}};
-        })};
+        });
+        var inner = {name: 'i', date: {unit: unit, value: vals[1]}, children: tips.slice(0, 2)};
+        var root = {name: 'r', date: {unit: unit, value: vals[0]}, children: [inner].concat(tips.slice(2))};
+        root.parent = {children: [root]};
+        forester.preOrderTraversalAll(root, function (n) {
+            (n.children || []).forEach(function (c) { c.parent = n; });
+        });
+        return root;
     };
-    var geo = forester.timeAxisInfo(mk('mya', [250, 0, 66, 100]));
-    var cal = forester.timeAxisInfo(mk('year', [2019.9, 2021, 2022, 2020]));
+    var geo = forester.timeAxisInfo(mk('mya', [250, 100, 0, 66, 10]));
+    var cal = forester.timeAxisInfo(mk('year', [2019.9, 2020.5, 2021, 2022, 2020]));
     // A UNITLESS tree gets NO axis, and that is the point of this test.
     // Guessing from magnitude read every tip-dated BEAST tree as geologic --
     // BEAST states a node's age as a unitless `height`, so 12 years of
@@ -1910,15 +1923,45 @@ function testTimeAxisDetection() {
     // Both are gone: Christian, 2026-09-17, and the desktop dropped the same
     // rule in their e9ac62ec. A dated tree with no unit is still `dated`; it
     // just has no axis to draw.
-    var magGeo = forester.timeAxisInfo(mk(null, [250, 1, 66, 3]));
-    var magCal = forester.timeAxisInfo(mk(null, [2019, 2021, 2022]));
+    var magGeo = forester.timeAxisInfo(mk(null, [250, 100, 1, 66, 3]));
+    var magCal = forester.timeAxisInfo(mk(null, [2019, 2020, 2021, 2022]));
     var none = forester.timeAxisInfo({name: 'r', children: [{name: 'a'}, {name: 'b'}]});
-    return geo.type === 'geologic' && geo.rootAge === 250 && geo.dated === true
-        && cal.type === 'calendar' && cal.presentDate === 2022
-        && magGeo.type === null && magCal.type === null
+    // Tip dates alone put no axis on a tree (Christian, 2026-10-24, on the
+    // desktop: "all these trees open with a year scale by default" -- his
+    // family trees, substitutions per site with every tip dated, banded in
+    // calendar years read off substitutions). The unit still says what the
+    // dates MEAN (dateUnit: the clock plot, the tree properties); the axis
+    // (type) says nothing, and the tree is no time tree (dated).
+    var tipsOnly = mk('year', [2019.9, 2020.5, 2021, 2022, 2020]);
+    delete tipsOnly.date;
+    delete tipsOnly.children[0].date;
+    var tipDated = forester.timeAxisInfo(tipsOnly);
+    // two calibration ages among four ancestors: no majority, no axis
+    var calib = mk('mya', [250, 100, 0, 66, 10]);
+    calib.children.push({name: 'j', parent: calib, children: [{name: 'u'}, {name: 'v'}]});
+    calib.children.push({name: 'k', parent: calib, children: [{name: 'w'}, {name: 'x'}]});
+    var calibrated = forester.timeAxisInfo(calib);
+    // a subtree view hands the viewer's fake root over a clade: the axis is
+    // still the TREE's (a cherry of a time tree keeps it), the calibration
+    // the clade's own
+    var whole = mk('mya', [250, 100, 0, 66, 10]);
+    var cherry = forester.timeAxisInfo({children: [whole.children[0]]});
+    var ok = geo.type === 'geologic' && geo.dateUnit === 'geologic' && geo.rootAge === 250 && geo.dated === true
+        && cal.type === 'calendar' && cal.dateUnit === 'calendar' && cal.presentDate === 2022 && cal.dated === true
+        && magGeo.type === null && magCal.type === null && magGeo.dateUnit === null && magCal.dateUnit === null
         && magGeo.dated === true && magCal.dated === true
         && magGeo.rootAge === 0 && magCal.presentDate === 0
-        && none.type === null && none.dated === false;
+        && none.type === null && none.dateUnit === null && none.dated === false
+        && tipDated.type === null && tipDated.dateUnit === 'calendar' && tipDated.dated === false
+        && tipDated.presentDate === 2022 && tipDated.rootAge === 0
+        && calibrated.type === null && calibrated.dateUnit === 'geologic' && calibrated.dated === false
+        && calibrated.rootAge === 250
+        && cherry.type === 'geologic' && cherry.dated === true && cherry.rootAge === 100;
+    if (!ok) {
+        console.log('    ' + JSON.stringify({geo: geo, cal: cal, magGeo: magGeo, magCal: magCal, none: none,
+            tipDated: tipDated, calibrated: calibrated, cherry: cherry}));
+    }
+    return ok;
 }
 
 // TreeAnnotator prints an exactly dated tip's HPD as {9.0,9.000000000000004}:
