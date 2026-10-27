@@ -177,7 +177,7 @@ test('the node menu: labels keyed without their value, words from the table or t
     assert.strictEqual(gen.menuLabel('Delete Subtree'), 'Delete Subtree');
     // every entry the viewer builds has words
     for (const label of ['Display Node Data', 'Switch to Subtree', 'Collapse/Uncollapse', 'Uncollapse Subtree',
-        'Swap Descendants', 'Ladderize Subtree', 'Reroot', 'Select/Deselect Node', 'Select/Deselect All Ext Nodes',
+        'Swap Descendants', 'Ladderize Subtree', 'Reroot', 'Select/Deselect Node', 'Select/Deselect Tips',
         'Download Ext. Node Data', 'List Sequences in Fasta', 'Download Sequences in Fasta', 'Access DB [accession]',
         'Delete Subtree', 'Delete External Node']) {
         assert.ok(gen.MENU_WORDS[label], label + ' has words');

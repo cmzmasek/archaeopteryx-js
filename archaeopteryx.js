@@ -7600,7 +7600,8 @@ function (root, d3, forester, phyloXml) {
             }
             if (_settings.enableManualNodeSelection) {
                 items.push({label: 'Select/Deselect Node', action: function () { selectDeselectNode(d); }});
-                items.push({label: 'Select/Deselect All Ext Nodes', action: function () { selectDeselectNodeExtNodes(d); }});
+                // "Tips" is the desktop's word for this entry too (its 0.11.191 node menu).
+                items.push({label: 'Select/Deselect Tips', action: function () { selectDeselectNodeExtNodes(d); }});
             }
             if (d.parent) {
                 items.push({separator: true});

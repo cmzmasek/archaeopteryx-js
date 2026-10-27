@@ -122,7 +122,7 @@ const MENU_WORDS = {
         + 'internal node that carries data, a warning says how many before anything changes',
     'Select/Deselect Node': 'add this node to the selection, or take it out; offered when the host page enables '
         + 'manual node selection',
-    'Select/Deselect All Ext Nodes': 'add every tip under this node to the selection, taking out those already '
+    'Select/Deselect Tips': 'add every tip under this node to the selection, taking out those already '
         + 'in it; offered when the host page enables manual node selection',
     'Download Ext. Node Data': 'download the tips under this node as a tab-separated table: name, taxonomy, '
         + 'sequence, branch length and one column per property',

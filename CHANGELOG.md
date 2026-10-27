@@ -78,6 +78,9 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **The node menu's "Select/Deselect All Ext Nodes" is "Select/Deselect Tips".** The same
+  action under the desktop's word for it (its node menu of 0.11.191 says Tips);
+  offered, as before, only when the host page enables manual node selection.
 - **A time axis only on a time tree.** The geologic or calendar axis, and
   its default, now need a tree whose ancestors are mostly dated (at least
   two and more than half of the internal nodes: the rule the viewer and

@@ -3050,7 +3050,7 @@ hand), the panel in `test/browser/clock_plot.html`.
 ## Node selection
 
 With `enableManualNodeSelection` on, the node menu gains **Select/Deselect Node**
-and **Select/Deselect All Ext Nodes**, and the selection is readable from outside
+and **Select/Deselect Tips**, and the selection is readable from outside
 the viewer:
 
 ```js
