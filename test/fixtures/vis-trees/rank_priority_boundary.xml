@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Alphaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Sarbecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <taxonomy>
+          <scientific_name>v1</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">California</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v1</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v1</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <taxonomy>
+          <scientific_name>v2</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <taxonomy>
+          <scientific_name>v2</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <taxonomy>
+          <scientific_name>v2</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <taxonomy>
+          <scientific_name>v2</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <taxonomy>
+          <scientific_name>v2</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v2</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v2</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <taxonomy>
+          <scientific_name>v3</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <taxonomy>
+          <scientific_name>v3</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <taxonomy>
+          <scientific_name>v3</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <taxonomy>
+          <scientific_name>v3</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <taxonomy>
+          <scientific_name>v3</scientific_name>
+        </taxonomy>
+        <property ref="x:Subfamily" datatype="xsd:string" applies_to="node">Betaherpesvirinae</property>
+        <property ref="x:Subgenus" datatype="xsd:string" applies_to="node">Embecovirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Division" datatype="xsd:string" applies_to="node">Oregon</property>
+        <property ref="x:Species" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:Strain" datatype="xsd:string" applies_to="node">v3</property>
+        <property ref="x:clade_membership" datatype="xsd:string" applies_to="node">v3</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

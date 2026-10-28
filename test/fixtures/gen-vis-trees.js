@@ -40,6 +40,9 @@ function phyloxml(tips) {
         + '<phyloxml xmlns="http://www.phyloxml.org">\n  <phylogeny rooted="true">\n    <clade>\n';
     tips.forEach(function (t) {
         x += '      <clade>\n        <name>' + esc(t.name) + '</name>\n';
+        if (t.tax) {   // the one element slot a fixture tree carries: before the properties, as the schema orders
+            x += '        <taxonomy>\n          <scientific_name>' + esc(t.tax) + '</scientific_name>\n        </taxonomy>\n';
+        }
         t.props.forEach(function (p) {
             x += '        <property ref="' + esc(p.ref) + '" datatype="xsd:string" applies_to="'
                 + (p.applies_to || 'node') + '">' + esc(p.value) + '</property>\n';
@@ -49,19 +52,23 @@ function phyloxml(tips) {
     return x + '    </clade>\n  </phylogeny>\n</phyloxml>\n';
 }
 
-// fields: {ref: fn(i) -> value | null (absent) | [v1, v2] (carried twice)}
+// fields: {ref: fn(i) -> value | null (absent) | [v1, v2] (carried twice)};
+// the ref 'tax:scientific_name' is not a property but the tip's <taxonomy>
+// (the element slot of that id), so a tree can pin that a slot is never high
 function tree(n, fields, appliesTo) {
     const tips = [];
     for (let i = 0; i < n; ++i) {
         const props = [];
+        let tax = null;
         Object.keys(fields).forEach(function (ref) {
             const v = fields[ref](i);
             if (v === null || v === undefined) { return; }
+            if (ref === 'tax:scientific_name') { tax = v; return; }
             (Array.isArray(v) ? v : [v]).forEach(function (one) {
                 props.push({ref: ref, value: one, applies_to: (appliesTo && appliesTo[ref]) || 'node'});
             });
         });
-        tips.push({name: 't' + i, props: props});
+        tips.push({name: 't' + i, props: props, tax: tax});
     }
     return tips;
 }
@@ -93,6 +100,46 @@ const TREES = {
         'x:In-Group': i => (i % 2) ? 'in' : 'out',                    // tier 3, perfect score
         'x:Sparse':   i => i < 24 ? AB(i) : null,                     // tier 4 (24/40 = 0.6 < 2/3)
         'x:Barely':   i => 'b' + (i % 30)                             // tier 5 (30/40 = 0.75 > 3/5)
+    }},
+    // --- section 5: the two priorities (decided 2026-10-27) ---------------
+    // A property named for a rank above species (local name, any namespace,
+    // folded as a rank) sorts before every other candidate -- unless the data
+    // make it sparse or near-unique; inside each priority the tiers as above.
+    // Six botanical rank names are not such a rank here (superdivision,
+    // division, subdivision, infradivision, section, subsection: Nextstrain's
+    // "division" is a state or province); a rank-named field of NUMBERS is a
+    // measurement, not high (a rank is names).
+    // What opens the tree is unchanged: the first candidate that is not wide.
+    rank_priority: {n: 30, f: {                                        // a rank beats a higher-scoring field
+        'x:Genus':   i => i < 20 ? 'Alphavirus' : (i < 25 ? 'Betavirus' : 'Gammavirus'),   // 20/5/5, high, opens
+        'x:Country': i => 'c' + (i % 10),                                  // 10 x 3, score 1.0, low
+        'x:Year':    i => String(1990 + i)                                 // numeric, low
+    }},
+    rank_priority_sparse: {n: 30, f: {                                 // a sparse rank is low, as today
+        'x:Genus':   i => i < 10 ? ((i % 2 === 0) ? 'Alphavirus' : 'Betavirus') : null,   // 10 of 30: sparse
+        'x:Country': i => 'c' + (i % 10)                                   // opens
+    }},
+    rank_priority_wide: {n: 35, f: {                                   // a wide rank leads and never opens
+        'x:Genus': i => 'g' + (i % 21),                                    // 21 of 35: wide, not near-unique, high
+        'x:Host':  i => (i % 2 === 0) ? 'Human' : 'Bat'                    // opens
+    }},
+    rank_priority_near_unique: {n: 34, f: {                            // a near-unique rank is low
+        'x:Genus': i => 'g' + (i % 21),                                    // 21 of 34: near-unique
+        'x:Host':  i => (i % 2 === 0) ? 'Human' : 'Bat'                    // opens
+    }},
+    rank_priority_numeric: {n: 30, f: {                                // a rank is names: a column of ids is not high
+        'x:Genus': i => String(694002 + i),                                // 30 distinct numbers: numeric, tier 1, low
+        'x:Host':  i => (i % 2) ? 'Bat' : 'Human'                          // opens
+    }},
+    rank_priority_boundary: {n: 30, f: {                               // which names are above species
+        'x:Subfamily':        i => i < 15 ? 'Alphaherpesvirinae' : 'Betaherpesvirinae',   // high, 1.0
+        'x:Subgenus':         i => i < 15 ? 'Sarbecovirus' : 'Embecovirus',               // high, 1.0: after Subfamily by label
+        'x:Country':          i => 'c' + (i % 10),                                        // low, 1.0: first of the low
+        'x:Division':         i => i < 20 ? 'California' : 'Oregon',                      // a botanical rank word left out: low, 0.918 (no tie with Country)
+        'x:Species':          i => i < 20 ? 'v1' : (i < 25 ? 'v2' : 'v3'),                 // species is not above species
+        'x:Strain':           i => i < 20 ? 'v1' : (i < 25 ? 'v2' : 'v3'),                 // below species
+        'x:clade_membership': i => i < 20 ? 'v1' : (i < 25 ? 'v2' : 'v3'),                 // a scheme of the file's own
+        'tax:scientific_name': i => i < 20 ? 'v1' : (i < 25 ? 'v2' : 'v3')                // an element slot, never high
     }},
     // --- applies_to ------------------------------------------------------
     applies_to: {n: 30, f: {
@@ -161,17 +208,17 @@ Object.keys(TREES).forEach(function (name) {
     Object.keys(spec.f).forEach(function (ref) {
         const hit = byRef[ref];
         if (!hit) {
-            rows.push([name, ref, 'refused', '-', '-', '-', '-', '-', '-', '-', '-', '-', opens, '-'].join('\t'));
+            rows.push([name, ref, 'refused', '-', '-', '-', '-', '-', '-', '-', '-', '-', opens, '-', '-'].join('\t'));
             return;
         }
         const c = hit.c;
         rows.push([name, ref, 'offered', tierOf(c), hit.rank, c.numeric ? 1 : 0, c.wide ? 1 : 0,
                    c.nearUnique ? 1 : 0, c.sparse ? 1 : 0, c.deprioritized ? 1 : 0,
-                   c.colorMode, c.shape ? 1 : 0, opens, c.values.length].join('\t'));
+                   c.colorMode, c.shape ? 1 : 0, opens, c.values.length, c.high ? 1 : 0].join('\t'));
     });
     // a candidate the spec did not declare would be a bug in this generator
     cands.forEach(function (c) {
-        if (!(c.ref in spec.f)) { throw new Error(name + ': unexpected candidate ' + (c.ref || c.id)); }
+        if (!((c.ref || c.id) in spec.f)) { throw new Error(name + ': unexpected candidate ' + (c.ref || c.id)); }
     });
 });
 
@@ -180,8 +227,13 @@ const header = [
     '# test/fixtures/gen-vis-trees.js from forester.js by RUNNING it. Do not edit;',
     '# regenerate deliberately when a rule changes, never to make a test pass.',
     '# tree <TAB> ref <TAB> verdict <TAB> tier <TAB> rank <TAB> numeric <TAB> wide <TAB> nearUnique',
-    '#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens <TAB> distinct',
+    '#   <TAB> sparse <TAB> deprioritized <TAB> colorMode <TAB> shape <TAB> opens <TAB> distinct <TAB> high',
     '# tier: 0 clean categorical, 1 numeric, 2 wide, 3 deprioritized, 4 sparse, 5 near-unique',
+    '# high: 1 = a rank above species (local name, any namespace; never a clade/lineage scheme or an',
+    '#   element slot; not superdivision/division/subdivision/infradivision/section/subsection) whose',
+    '#   values are not all numbers and that is neither sparse nor near-unique: sorts before every',
+    '#   other candidate',
+    '# rank: the position in the full order (every high candidate before every low one, then the tiers)',
     '# opens: the ref the viewer colours the tree with on load -- the first candidate that',
     '#   is not wide ("-" = uncoloured)',
     '# distinct: distinct values AFTER grouping (case folds for categories; spellings of one',

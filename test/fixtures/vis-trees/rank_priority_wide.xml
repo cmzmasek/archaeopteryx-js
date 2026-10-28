@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g0</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g1</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g2</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g3</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g4</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g5</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g6</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g7</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g8</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g9</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g10</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g11</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g12</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g13</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g14</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g15</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g16</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g17</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g18</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g19</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g20</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g0</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g1</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g2</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g3</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g4</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g5</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g6</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g7</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g8</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t30</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g9</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t31</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g10</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t32</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g11</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+      <clade>
+        <name>t33</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g12</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Bat</property>
+      </clade>
+      <clade>
+        <name>t34</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">g13</property>
+        <property ref="x:Host" datatype="xsd:string" applies_to="node">Human</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

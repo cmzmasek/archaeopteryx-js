@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+  <phylogeny rooted="true">
+    <clade>
+      <clade>
+        <name>t0</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1990</property>
+      </clade>
+      <clade>
+        <name>t1</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1991</property>
+      </clade>
+      <clade>
+        <name>t2</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1992</property>
+      </clade>
+      <clade>
+        <name>t3</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1993</property>
+      </clade>
+      <clade>
+        <name>t4</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1994</property>
+      </clade>
+      <clade>
+        <name>t5</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1995</property>
+      </clade>
+      <clade>
+        <name>t6</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1996</property>
+      </clade>
+      <clade>
+        <name>t7</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1997</property>
+      </clade>
+      <clade>
+        <name>t8</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1998</property>
+      </clade>
+      <clade>
+        <name>t9</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">1999</property>
+      </clade>
+      <clade>
+        <name>t10</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2000</property>
+      </clade>
+      <clade>
+        <name>t11</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2001</property>
+      </clade>
+      <clade>
+        <name>t12</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2002</property>
+      </clade>
+      <clade>
+        <name>t13</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2003</property>
+      </clade>
+      <clade>
+        <name>t14</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2004</property>
+      </clade>
+      <clade>
+        <name>t15</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2005</property>
+      </clade>
+      <clade>
+        <name>t16</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2006</property>
+      </clade>
+      <clade>
+        <name>t17</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2007</property>
+      </clade>
+      <clade>
+        <name>t18</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2008</property>
+      </clade>
+      <clade>
+        <name>t19</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Alphavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2009</property>
+      </clade>
+      <clade>
+        <name>t20</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Betavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c0</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2010</property>
+      </clade>
+      <clade>
+        <name>t21</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Betavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c1</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2011</property>
+      </clade>
+      <clade>
+        <name>t22</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Betavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c2</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2012</property>
+      </clade>
+      <clade>
+        <name>t23</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Betavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c3</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2013</property>
+      </clade>
+      <clade>
+        <name>t24</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Betavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c4</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2014</property>
+      </clade>
+      <clade>
+        <name>t25</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Gammavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c5</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2015</property>
+      </clade>
+      <clade>
+        <name>t26</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Gammavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c6</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2016</property>
+      </clade>
+      <clade>
+        <name>t27</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Gammavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c7</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2017</property>
+      </clade>
+      <clade>
+        <name>t28</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Gammavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c8</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2018</property>
+      </clade>
+      <clade>
+        <name>t29</name>
+        <property ref="x:Genus" datatype="xsd:string" applies_to="node">Gammavirus</property>
+        <property ref="x:Country" datatype="xsd:string" applies_to="node">c9</property>
+        <property ref="x:Year" datatype="xsd:string" applies_to="node">2019</property>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

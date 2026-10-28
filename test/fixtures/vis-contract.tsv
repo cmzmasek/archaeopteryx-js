@@ -1,7 +1,9 @@
 # archaeopteryx-js visualization contract fixture
 # generated from forester.js at cee2efe by RUNNING the implementation; later rows added the same way
 # columns: ref <TAB> verdict <TAB> displayed label
-# verdict: EXCLUDED (never offered) | DEPRIORITIZED (offered, bottom tier) | offered
+# verdicts: EXCLUDED (never offered) | offered | PRIORITIZED (offered, and named for a taxonomic rank above
+#   species: sorts before every other candidate, 2026-10-27) | DEPRIORITIZED (offered, ranked after the clean
+#   and the numeric fields: tier 3 of 5, before the sparse and the near-unique)
 # each ref tested on a 30-tip tree with an even 2-value split of TEXT values, so any refusal is by NAME alone --
 # except the date rule (2026-10-20), which reads the name AND the values: a ref with the word "date" or "month" is
 # EXCLUDED here because the values are text; with every value a number (a year, a num_date decimal year, a month
@@ -35,13 +37,13 @@ ird:Subtype	offered	Subtype
 ird:Year	offered	Year
 style:anything	EXCLUDED	Anything
 style:font_color	EXCLUDED	Font Color
-tol:Domain	offered	Domain
+tol:Domain	PRIORITIZED	Domain
 vipr:BVBRC_Accession	EXCLUDED	BVBRC Accession
 vipr:Collection_Date	EXCLUDED	Collection Date
 vipr:Country	offered	Country
 vipr:GB_Accession	EXCLUDED	GB Accession
 vipr:Genome_Name	offered	Genome Name
-vipr:Genus	offered	Genus
+vipr:Genus	PRIORITIZED	Genus
 vipr:Host	offered	Host
 vipr:Host_Group	offered	Host Group
 vipr:Isolation_Source	offered	Isolation Source
@@ -207,3 +209,39 @@ x:Month	EXCLUDED	Month
 x:Collection_Month	EXCLUDED	Collection Month
 x:yearMonth	EXCLUDED	Year Month
 x:Monthly	offered	Monthly
+# the two priorities (2026-10-27): rank names above species, and names that are not
+x:Genus	PRIORITIZED	Genus
+x:Subgenus	PRIORITIZED	Subgenus
+x:Section	offered	Section
+x:Subsection	offered	Subsection
+x:Superspecies	PRIORITIZED	Superspecies
+x:Kingdom	PRIORITIZED	Kingdom
+x:Superkingdom	PRIORITIZED	Superkingdom
+x:Domain	PRIORITIZED	Domain
+BVBRC:family	PRIORITIZED	Family
+ncbi:order	PRIORITIZED	Order
+gtdb:phylum	PRIORITIZED	Phylum
+repseq:class	PRIORITIZED	Class
+x:Sub-Genus	PRIORITIZED	Sub-Genus
+x:sub_family	PRIORITIZED	Sub Family
+x:Species	offered	Species
+x:Subspecies	offered	Subspecies
+x:ssp	offered	Ssp
+x:Strain	offered	Strain
+x:Serotype	offered	Serotype
+x:Variety	offered	Variety
+x:Forma_specialis	offered	Forma Specialis
+x:clade_membership	offered	Clade Membership
+x:host_genus	offered	Host Genus
+x:Genus_name	offered	Genus Name
+x:genus_id	EXCLUDED	Genus Id
+# six botanical rank names are not prioritized (2026-10-27): a Nextstrain division is a state
+x:Division	offered	Division
+nextstrain:division	offered	Division
+x:Superdivision	offered	Superdivision
+x:Subdivision	offered	Subdivision
+x:Infradivision	offered	Infradivision
+# the other ordinary words above species stay in the priority (his decision, 2026-10-27): class, order, family,
+#   domain are the ranks the rule exists for; cohort is NCBI's rank in ray-finned fishes; pinned here as decided
+x:Class	PRIORITIZED	Class
+x:Cohort	PRIORITIZED	Cohort

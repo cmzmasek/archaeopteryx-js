@@ -1944,6 +1944,43 @@
         return VIS_DATE_WORD_RE.test(visNameWords(ref));
     }
 
+    // A property NAMED for a taxonomic rank above species. Its local name, in
+    // any namespace, folded as a rank is (rankKey: case, spaces, hyphens,
+    // underscores, dots -- "Sub-Genus", "sub_genus" and "Subgenus" are one;
+    // "ssp" is subspecies), is one of forester.TAXONOMIC_RANKS placed before
+    // "species": domain .. family, subfamily, .. genus, subgenus, section,
+    // subsection, superspecies. Species and everything below it are not
+    // (subspecies, strain, serotype, variety: groupings within a species),
+    // nor are a file's own clade or lineage schemes (ird:H5Clade,
+    // vipr:PANGO_Lineage, clade_membership -- ranks of their own for the
+    // Clades-by-rank feature, within-species groupings here), nor the
+    // element slots (a <taxonomy>'s scientific name is not a rank). Such a
+    // field leads the Color-by menu (Christian, 2026-10-27: "High priority:
+    // taxonomic ranks above species (i.e. subgenus and higher). Low priority:
+    // everything else. Within the two priorities ... keep the current
+    // approach"; the same rule in the desktop) -- when the data let it, see
+    // `high` below.
+    //
+    // Six botanical names are left out of THIS test, not of the vocabulary
+    // (his decision, 2026-10-27): superdivision, division, subdivision,
+    // infradivision, section, subsection. No virus, bacterial or animal tree
+    // carries them as taxonomy, and two are ordinary metadata words -- a
+    // Nextstrain build's "division" is a state or province (country >
+    // division > location, on every ncov and flu build), and led the Color
+    // menu of the hMPV build as a rank. The Clades-by-rank chooser still
+    // lists them when a tree names one.
+    const VIS_RANK_NOT_PRIORITIZED = Object.assign(Object.create(null), {superdivision: true, division: true,
+        subdivision: true, infradivision: true, section: true, subsection: true});
+
+    function visRankAboveSpecies(ref) {
+        if (typeof ref !== 'string') {
+            return false;
+        }
+        let key = rankKey(propertyLocalName(ref));
+        return key !== '' && RANK_INDEX[key] !== undefined && RANK_INDEX[key] < RANK_INDEX.species
+            && !VIS_RANK_NOT_PRIORITIZED[key];
+    }
+
     // ---- display normalization --------------------------------------------
     //
     // Property values are grouped for colouring after a normalization pass,
@@ -2405,6 +2442,20 @@
                 nearUnique: nearUnique,
                 sparse: sparse,
                 deprioritized: visDeprioritizedRef(s.ref || id),
+                // HIGH priority: a property named for a rank above species
+                // (visRankAboveSpecies) that the data do not demote -- not
+                // sparse, not near-unique, and NOT numeric: a rank is names
+                // by nature, so a rank-named column of numbers (a joined
+                // table's family of NCBI tax ids, an "order" of 1, 2, 3) is
+                // a measurement like any other and must not open the tree as
+                // a gradient of ids (the desktop's code review, 2026-10-27).
+                // Measured on 329 family trees (2026-10-27): without the
+                // sparse half, 40 trees would have opened on a Genus carried
+                // by 4 of 41 tips over a Host on 40 of them. A high candidate
+                // sorts before every low one; what OPENS the tree is
+                // unchanged (openingVisualization), so a wide Genus leads the
+                // menu and still does not open.
+                high: s.kind === 'property' && !numeric && !sparse && !nearUnique && visRankAboveSpecies(s.ref),
                 shape: distinct <= VIS_MAX_SHAPE_CATEGORIES
             });
         });
@@ -2419,15 +2470,19 @@
             }
         });
 
-        // Best first: clean categorical fields, then EVERY numeric field, then
-        // the wide categoricals (offered, never leading), then the
-        // deprioritized ones, then the sparse, and last the barely-repeating
-        // wide ones -- within each tier by score, ties alphabetically. What
-        // OPENS the tree is openingVisualization below: the first entry that
-        // is not wide. So tiers 0, 1, 3 and 4 can open a tree, each only when
-        // nothing above it exists, and tiers 2 and 5 never do -- a wide field
-        // above an In-Group does not stop the In-Group from opening the tree,
-        // it just precedes it in the menu.
+        // Two priorities, then the tiers. Every HIGH candidate (a rank above
+        // species, not sparse, not near-unique: `high` above) comes before
+        // every low one; inside each priority the order is the same as it
+        // always was. Best first: clean categorical fields, then EVERY
+        // numeric field, then the wide categoricals (offered, never leading),
+        // then the deprioritized ones, then the sparse, and last the
+        // barely-repeating wide ones -- within each tier by score, ties
+        // alphabetically. What OPENS the tree is openingVisualization below:
+        // the first entry that is not wide. So tiers 0, 1, 3 and 4 can open a
+        // tree, each only when nothing above it exists, and tiers 2 and 5
+        // never do -- a wide field above an In-Group does not stop the
+        // In-Group from opening the tree, it just precedes it in the menu;
+        // and a wide Genus leads the menu without opening the tree.
         function tierOf(c) {
             if (c.nearUnique) {
                 return 5;
@@ -2451,6 +2506,9 @@
             return c.wide ? 2 : 0;
         }
         candidates.sort(function (a, b) {
+            if (a.high !== b.high) {
+                return a.high ? -1 : 1;
+            }
             let ta = tierOf(a);
             let tb = tierOf(b);
             if (ta !== tb) {

@@ -180,10 +180,16 @@ inspects what the tree carries (taxonomy, sequence fields, metadata)
 and decides by itself what is worth showing. There is nothing to configure.
 
 * The **Color** and **Shape** menus (top of the control panel) list every
-  field worth visualizing, best first. Colouring paints the node label and
+  field worth visualizing, best first. A field named for a **taxonomic rank
+  above species** — Genus, Subfamily, Family, Order and so on, whatever its
+  namespace — comes before everything else, so a tree carrying one opens
+  coloured by it; species, strain and a clade or lineage scheme do not count
+  as such a rank, and a rank field that most tips lack, that barely
+  repeats, or that holds numbers rather than names is ranked like any other. Colouring paints the node label and
   the node itself; shapes draw a symbol per value. Fields with many values
   (hosts, species) sit at the end of the Color list — they are offered, but
-  never chosen for you.
+  never chosen for you (a rank with many values leads the list and is still
+  not chosen for you).
 * Numeric fields with few values are treated as **codes** (H5N1 vs H5N2)
   and get individual colours; with many values they become a **gradient**
   (years). The legend's `[colors]` / `[gradient]` chip switches between the
@@ -2002,18 +2008,25 @@ What gets offered, briefly:
   below; raw values remain untouched everywhere else — exports, search,
   and the node-data dialog.
 
-The menus are ordered **best first** — categorical fields ahead of numeric
-ramps, then by coverage × balance (the normalized entropy of the value
-distribution), so a field that reads "Nonhuman Mammal" on 92% of its nodes
-sits below one that actually splits the tree. **The best candidate is applied
-automatically on load**: a tree opens coloured by its most informative field
-rather than grey with a menu to discover. Esc resets back to that state.
+The menus are ordered **best first** — a field named for a **taxonomic rank
+above species** (Genus, Subfamily, Family, Order, …, in any namespace; not
+species, strain or a clade / lineage scheme, and not when it is sparse or
+barely repeats) ahead of everything else; then categorical fields ahead of
+numeric ramps, then by coverage × balance (the normalized entropy of the
+value distribution), so a field that reads "Nonhuman Mammal" on 92% of its
+nodes sits below one that actually splits the tree. **The best candidate is
+applied automatically on load**: a tree opens coloured by its most
+informative field rather than grey with a menu to discover. Esc resets back
+to that state.
 
-**Local candidacy, stable identity.** Candidates, bands, counts, menus and
-legends always describe the **displayed** tree: switch into a subtree (or
-delete part of the tree) and everything is re-derived, so a field that was
-refused on the full tree — Species at 66 values, say — is offered inside a
-clade where it has six. A value's **colour and shape, by contrast, are
+**Candidacy on the tree, summaries on the view.** What is offered, and in
+what order, is decided once on the whole tree; bands, counts and legends
+describe the **displayed** tree: switch into a subtree and they are
+re-derived, while the menus stand (a field refused on the full tree — Species
+at 66 values, say — is not offered inside a clade where it has six, and a
+field that is one value inside the clade keeps its colour). Deleting part of
+the tree re-derives the menus from what is left, keeping your choice. A
+value's **colour and shape, by contrast, are
 identities**: assigned once per launch and remembered, so nothing recolours
 when you dive in and out, and deleting a clade never shifts the colours of
 what survives. Numeric ramps are the exception by design — a ramp's colour is
@@ -2058,10 +2071,26 @@ verbatim refs.
 `H = −Σ p·ln p` over the groups, `p = groupCount / coverage` — coverage
 times the normalized entropy of the value distribution, so a field that
 reads one value on 92% of nodes ranks low even at full coverage. Candidates
-sort by **tier** (clean categorical → range → wide), then score descending,
-ties by label case-insensitively then id. At launch the viewer applies
-`candidates[0]` automatically — unless it is wide — and turns the
-Visualizations checkbox on. Auto-apply happens **only** at launch.
+sort in **two priorities**, then by **tier** (clean categorical → range →
+wide → deprioritized → sparse → near-unique), then score descending, ties by
+label case-insensitively then id. A candidate is **high** priority (`high:
+true`) when it is a property whose local name, in any namespace, folded as a
+rank is (case, spaces, hyphens, underscores, dots; `rankKey`), is one of
+`forester.TAXONOMIC_RANKS` placed before `species` — domain … family,
+subfamily, … genus, subgenus, superspecies — whose values are not all numbers
+(a rank is names; a column of taxon ids is a measurement) and that the data
+do not make sparse or near-unique; everything else is low: species and below
+(subspecies, strain, serotype, variety), a file's own clade or lineage scheme
+(`ird:H5Clade`, `clade_membership`), the element slots (a `<taxonomy>`'s
+scientific name is not a rank), and six botanical rank names that are left
+out of this test alone — superdivision, division, subdivision, infradivision,
+section, subsection — because a Nextstrain build's `division` is a state or
+province, not a rank (the Clades-by-rank chooser still knows them). Every high candidate precedes
+every low one; inside each priority the order is as before. At launch the
+viewer applies the first candidate that is not wide (`openingVisualization`,
+unchanged by the priority: a wide Genus leads the menu and does not open the
+tree) and turns the Visualizations checkbox on. Auto-apply happens **only**
+at launch. The two priorities are the desktop's rule too (2026-10-27).
 
 ### Palettes, scales and shapes
 

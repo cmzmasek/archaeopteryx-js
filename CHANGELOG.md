@@ -78,6 +78,24 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **Two priorities in the Color-by order: a taxonomic rank above species leads.** A
+  property named for a rank above species — its local name in any namespace, folded
+  as a rank is: Genus, Subgenus, Subfamily, Family, Order, … up to Domain — now sorts
+  before every other candidate in the Color and Shape menus, so a tree that carries
+  one opens coloured by it even when a Host or Country field scores higher. Species
+  and everything below it (subspecies, strain, serotype, variety), a file's own clade
+  or lineage scheme (`ird:H5Clade`, `clade_membership`) and the taxonomy element
+  slots are not such ranks, nor are six botanical rank names (superdivision, division,
+  subdivision, infradivision, section, subsection: a Nextstrain build's `division` is a
+  state or province); a rank field that is sparse (under two thirds of the tips),
+  near-unique, or numeric (a column of taxon ids is a measurement, not a rank)
+  stays where the old rules put it. Inside each priority the order is
+  unchanged (tier, then score), and so is what opens the tree: the first candidate
+  that is not wide, so a Genus with more than 20 values leads the menu and does not
+  open. Each candidate carries a new `high` flag; the joint fixtures gain a `high`
+  column (`vis-trees.tsv`, five new trees) and a `PRIORITIZED` verdict
+  (`vis-contract.tsv`, 25 new rows; `vipr:Genus` and `tol:Domain` move to it). The
+  desktop has the same rule.
 - **The node menu's "Select/Deselect All Ext Nodes" is "Select/Deselect Tips".** The same
   action under the desktop's word for it (its node menu of 0.11.191 says Tips);
   offered, as before, only when the host page enables manual node selection.

@@ -1038,6 +1038,98 @@ function testOpeningRule() {
         && forester.openingVisualization([]) === null;
 }
 
+// Two priorities (Christian, 2026-10-27; the desktop has the same rule): a
+// property named for a taxonomic rank ABOVE species -- local name, any
+// namespace, folded as a rank -- sorts before every other candidate, unless
+// the data make it sparse or near-unique; inside each priority the order is
+// the old one (tier, score, label). What opens the tree is unchanged.
+function testRankPriority() {
+    function rows(n, fields) {
+        var out = [];
+        for (var i = 0; i < n; ++i) {
+            var r = {};
+            Object.keys(fields).forEach(function (ref) {
+                var v = fields[ref](i);
+                if (v !== null) { r[ref] = v; }
+            });
+            out.push(r);
+        }
+        return out;
+    }
+    function order(cands) { return cands.map(function (c) { return (c.ref || c.id) + (c.high ? '*' : ''); }).join(' '); }
+    var fails = [];
+    function expect(name, cands, want, opens) {
+        var got = order(cands);
+        if (got !== want) { fails.push(name + ': ' + got + ' (want ' + want + ')'); }
+        var o = forester.openingVisualization(cands);
+        if ((o ? o.ref : '-') !== opens) { fails.push(name + ' opens ' + (o ? o.ref : '-') + ' (want ' + opens + ')'); }
+    }
+    // a rank beats a higher-scoring field, numeric fields included
+    var c1 = forester.visualizationCandidates(propTree(rows(30, {
+        'x:Genus': function (i) { return i < 20 ? 'Alphavirus' : (i < 25 ? 'Betavirus' : 'Gammavirus'); },
+        'x:Country': function (i) { return 'c' + (i % 10); },
+        'x:Year': function (i) { return String(1990 + i); }
+    })));
+    expect('rank first', c1, 'x:Genus* x:Country x:Year', 'x:Genus');
+    if (c1[0].score >= c1[1].score) { fails.push('the fixture does not test a lower score'); }
+    // a sparse rank is low (and opens only when nothing better exists)
+    expect('sparse rank', forester.visualizationCandidates(propTree(rows(30, {
+        'x:Genus': function (i) { return i < 10 ? ((i % 2) ? 'A' : 'B') : null; },
+        'x:Country': function (i) { return 'c' + (i % 10); }
+    }))), 'x:Country x:Genus', 'x:Country');
+    // a wide rank leads the menu and never opens; a near-unique one is low
+    expect('wide rank', forester.visualizationCandidates(propTree(rows(35, {
+        'x:Genus': function (i) { return 'g' + (i % 21); },
+        'x:Host': function (i) { return (i % 2) ? 'Human' : 'Bat'; }
+    }))), 'x:Genus* x:Host', 'x:Host');
+    expect('near-unique rank', forester.visualizationCandidates(propTree(rows(34, {
+        'x:Genus': function (i) { return 'g' + (i % 21); },
+        'x:Host': function (i) { return (i % 2) ? 'Human' : 'Bat'; }
+    }))), 'x:Host x:Genus', 'x:Host');
+    // inside the high group the old order: a 1.0-score Subfamily before a 20/5/5 Genus;
+    // a rank-named field of NUMBERS is not high (a rank is names): it stays a tier-1
+    // measurement in the low group, after the clean Host
+    expect('within high', forester.visualizationCandidates(propTree(rows(30, {
+        'x:Genus': function (i) { return i < 20 ? 'Alphavirus' : (i < 25 ? 'Betavirus' : 'Gammavirus'); },
+        'x:Subfamily': function (i) { return i < 15 ? 'Alphaherpesvirinae' : 'Betaherpesvirinae'; },
+        'ncbi:order': function (i) { return String(1 + (i % 4)); },
+        'x:Host': function (i) { return (i % 2) ? 'Human' : 'Bat'; }
+    }))), 'x:Subfamily* x:Genus* x:Host ncbi:order', 'x:Subfamily');
+    // a column of tax ids under a rank name never opens the tree as a gradient
+    expect('numeric rank', forester.visualizationCandidates(propTree(rows(30, {
+        'x:Genus': function (i) { return String(694002 + i); },
+        'x:Host': function (i) { return (i % 2) ? 'Bat' : 'Human'; }
+    }))), 'x:Host x:Genus', 'x:Host');
+    // which names are a rank above species: folded, any namespace; species and
+    // below, a clade/lineage scheme and a word that merely contains a rank are not
+    var high = ['x:Genus', 'x:Sub-Genus', 'x:sub_family', 'x:Superspecies', 'x:Kingdom', 'tol:Domain',
+        'BVBRC:family', 'ncbi:order', 'gtdb:phylum', 'repseq:class'];
+    // the six botanical names are not prioritized (Nextstrain's division is a state)
+    var low = ['x:Species', 'x:Subspecies', 'x:ssp', 'x:Strain', 'x:Serotype', 'x:Variety', 'x:Forma_specialis',
+        'x:clade_membership', 'ird:H5Clade', 'vipr:PANGO_Lineage', 'x:host_genus', 'x:Genus_name', 'x:Host',
+        'nextstrain:division', 'x:Division', 'x:Superdivision', 'x:Subdivision', 'x:Infradivision', 'x:Section',
+        'x:Subsection'];
+    high.concat(low).forEach(function (ref) {
+        var f = {};
+        f[ref] = function (i) { return (i % 2) ? 'A' : 'B'; };
+        var c = forester.visualizationCandidates(propTree(rows(30, f)))[0];
+        var want = high.indexOf(ref) >= 0;
+        if (!c || !!c.high !== want) { fails.push(ref + ': high ' + (c ? c.high : 'refused') + ' (want ' + want + ')'); }
+    });
+    // an element slot is never high, whatever its values look like
+    var phy = propTree(rows(30, {'x:Host': function (i) { return (i % 2) ? 'Human' : 'Bat'; }}));
+    var k = 0;
+    forester.preOrderTraversalAll(phy, function (n) {
+        if (n.children) { return; }
+        n.taxonomies = [{scientific_name: (k++ % 3) ? 'Alphavirus' : 'Betavirus'}];
+    });
+    var cs = forester.visualizationCandidates(phy);
+    var slot = byRef(cs, 'tax:scientific_name') || cs.filter(function (c) { return c.id === 'tax:scientific_name'; })[0];
+    if (!slot || slot.high) { fails.push('slot: ' + (slot ? 'high' : 'missing')); }
+    if (fails.length) { fails.forEach(function (f) { console.log('    ' + f); }); return false; }
+    return true;
+}
+
 // A VIEW re-summarizes, it never re-classifies. Adenoviridae opens by Genus;
 // inside an all-Aviadenovirus clade the classifier refuses Genus (one value)
 // -- which is exactly why the viewer must not ask it -- while the summary
@@ -1225,6 +1317,7 @@ runTest("wrapper tolerated          : ", testWrapperTolerated);
 runTest("numeric grammar            : ", testNumericGrammar);
 runTest("numeric key folding        : ", testNumericKeyFolding);
 runTest("opening rule               : ", testOpeningRule);
+runTest("rank priority              : ", testRankPriority);
 runTest("view: summarize, not reclassify: ", testViewSummaryNotReclassified);
 runTest("edit: keep a valued choice : ", testEditKeepsValuedChoice);
 runTest("fold-to-empty is no value  : ", testFoldToEmptyIsNoValue);
@@ -3396,7 +3489,9 @@ function testJointContractFixture() {
                              value: (i % 2) ? 'A' : 'B'}];
         });
         var c = forester.visualizationCandidates(phy)[0];
-        var gotVerdict = !c ? 'EXCLUDED' : (c.deprioritized ? 'DEPRIORITIZED' : 'offered');
+        // PRIORITIZED = offered AND high: a rank above species (a two-value field
+        // on every tip is never sparse or near-unique, so the name alone decides here)
+        var gotVerdict = !c ? 'EXCLUDED' : (c.high ? 'PRIORITIZED' : (c.deprioritized ? 'DEPRIORITIZED' : 'offered'));
         var gotLabel = forester.propertyDisplayName(ref);
 
         if (gotVerdict !== wantVerdict) {
@@ -3560,6 +3655,9 @@ function testJointContractTrees() {
         }
         if (String(c.values.length) !== r[13]) {
             bad.push(tree + ' ' + ref + ': ' + c.values.length + ' distinct values, fixture says ' + r[13]);
+        }
+        if ((c.high ? '1' : '0') !== r[14]) {
+            bad.push(tree + ' ' + ref + ': high ' + (c.high ? 1 : 0) + ', fixture says ' + r[14]);
         }
     });
     // and nothing is offered that the fixture does not declare
