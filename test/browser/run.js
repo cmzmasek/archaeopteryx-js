@@ -63,6 +63,7 @@ const CASES = {
     'label_ink_covered': ['', '?tree=../../docs/data/flu_h5.xml&find=A'],
     'label_reservation': ['?tips=36', '?tips=60'],
     'orphan_marks': ['', '?big=96'],
+    'domain_evalue': ['', '?strict=1'],
     'panel_descriptions': ['', '?compact=1'],
     'autohide_indicator': ['', '?tree=../../docs/data/woese-tree-of-life.xml'],
     'display_buttons': ['', '?tree=../../docs/data/woese-tree-of-life.xml'],

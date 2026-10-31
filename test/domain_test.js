@@ -245,7 +245,8 @@ function testResidueCoverage() {
 }
 
 // A malformed domain is skipped and counted, never fatal; an architecture
-// without a usable length is no architecture at all.
+// without a usable length is no architecture at all. A domain without an
+// E-value is NOT malformed (2026-10-30; testNoConfidence has the rule).
 function testMalformedSkipped() {
     var da = {length: 50, domains: [
         {name: 'ok', from: 1, to: 10, confidence: 0.01},
@@ -256,7 +257,8 @@ function testMalformedSkipped() {
         {name: 'fractional', from: 1.5, to: 9, confidence: 0.01}
     ]};
     var dd = forester.domainArchitectureDomains(da);
-    if (dd.domains.length !== 1 || dd.domains[0].name !== 'ok' || dd.ignored !== 5) {
+    if (dd.domains.length !== 2 || dd.domains[0].name !== 'ok' || dd.domains[1].name !== 'no E-value'
+        || dd.domains[1].evalue !== null || dd.ignored !== 4) {
         console.log('    kept ' + dd.domains.length + ', ignored ' + dd.ignored);
         return false;
     }
@@ -271,7 +273,49 @@ function testMalformedSkipped() {
         return false;
     }
     var stats = forester.domainArchitectureStats({children: [{name: 'a', sequences: [{domain_architecture: da}]}, {name: 'b'}]});
-    return stats.tips === 1 && stats.maxLength === 50 && stats.domains === 1 && stats.ignored === 5;
+    return stats.tips === 1 && stats.maxLength === 50 && stats.domains === 2 && stats.ignored === 4;
+}
+
+// The E-value is optional, the desktop's rule since its 0.11.195 (checked on
+// its ProteinDomainParser, RenderableDomainArchitecture and NodeHoverText at
+// that tag): a domain whose confidence is missing, not a number or negative
+// (the desktop saves "none" as -1.0) is kept with evalue null, admitted by
+// every threshold, counted by the legend, and its readout names no E-value.
+// An explicit 0 is a score, the best. +Infinity is a number the desktop keeps
+// as well, and no threshold admits it.
+function testNoConfidence() {
+    var da = {length: 60, domains: [
+        {name: 'none', from: 1, to: 10},
+        {name: 'desktop', from: 11, to: 20, confidence: -1},
+        {name: 'text', from: 21, to: 30, confidence: 'n/a'},
+        {name: 'zero', from: 31, to: 40, confidence: 0},
+        {name: 'inf', from: 41, to: 50, confidence: Infinity},
+        {name: 'weak', from: 51, to: 60, confidence: 0.5}
+    ]};
+    var dd = forester.domainArchitectureDomains(da);
+    var ev = dd.domains.map(function (d) { return d.evalue; });
+    if (dd.ignored !== 0 || dd.domains.length !== 6 || ev[0] !== null || ev[1] !== null || ev[2] !== null
+        || ev[3] !== 0 || ev[4] !== Infinity || ev[5] !== 0.5) {
+        console.log('    ignored ' + dd.ignored + ', evalues ' + ev.map(String).join(' '));
+        return false;
+    }
+    var names = function (exp) {
+        return forester.domainBoxes(da, 0, 1, exp).boxes.map(function (b) { return b.name; }).join(',');
+    };
+    if (names(forester.DOMAIN_EVALUE_EXPONENT_MIN) !== 'none,desktop,text,zero'
+        || names(forester.DOMAIN_EVALUE_EXPONENT_MAX) !== 'none,desktop,text,zero,weak') {
+        console.log('    strictest: ' + names(forester.DOMAIN_EVALUE_EXPONENT_MIN)
+            + '; loosest: ' + names(forester.DOMAIN_EVALUE_EXPONENT_MAX));
+        return false;
+    }
+    var s = forester.domainSummary([{sequences: [{domain_architecture: da}]}], forester.DOMAIN_EVALUE_EXPONENT_MIN);
+    if (s.boxes !== 4 || s.names.join(',') !== 'desktop,none,text,zero') {
+        console.log('    legend: ' + s.boxes + ' boxes, ' + s.names.join(','));
+        return false;
+    }
+    var t = forester.domainEvalueText;
+    return t(null) === null && t(undefined) === null && t(-1) === null && t(NaN) === null
+        && t(0) === '0' && t(0.5) === '0.5';
 }
 
 // The summary over a small tree: first-appearance order, unnamed boxes
@@ -329,6 +373,7 @@ runTest("legend rows                : ", testLegendRows);
 runTest("22_MOUSE geometry          : ", testGeometry22Mouse);
 runTest("residue coverage           : ", testResidueCoverage);
 runTest("malformed domains skipped  : ", testMalformedSkipped);
+runTest("no E-value is no fault     : ", testNoConfidence);
 runTest("summary order              : ", testSummaryOrder);
 runTest("colour math and readout    : ", testColourMathAndReadout);
 runTest("domain id and reference   : ", testDomainIdAndReference);

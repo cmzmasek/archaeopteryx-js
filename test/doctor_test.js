@@ -233,14 +233,14 @@ test('the vendored phyloxml passes the round-trip probe', function (said) {
     let v = fresh();
     let row = lib(v.report(), 'phyloxml');
     v.done();
-    if (row.status !== 'ok' || row.detail !== 'writes phyloXML as 1.1.7 does') {
+    if (row.status !== 'ok' || row.detail !== 'writes phyloXML as 1.1.8 does') {
         said.push(JSON.stringify(row));
         return false;
     }
     // the probe names the release package.json asks for: when phyloxml moves,
     // the probe's expected output and this number move with it
     let range = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).dependencies.phyloxml;
-    if (range.replace(/^[^0-9]*/, '') !== '1.1.7') {
+    if (range.replace(/^[^0-9]*/, '') !== '1.1.8') {
         said.push('package.json asks for phyloxml ' + range + ': update PHYLOXML_EXPECTED and the probe in archaeopteryx.js');
         return false;
     }
@@ -249,8 +249,8 @@ test('the vendored phyloxml passes the round-trip probe', function (said) {
 
 // One mutation per thing the probe has to see, each what an older release
 // really did, and what it must NOT flag. Losing data, and writing a style as
-// releases before 1.1.7 did, are problems. A file merely laid out differently
-// is a note: package.json admits 1.1.8 and later, and a newer phyloxml must
+// releases before 1.1.8 did, are problems. A file merely laid out differently
+// is a note: package.json admits 1.1.9 and later, and a newer phyloxml must
 // not light the dot on every page that has it (review, 2026-10-09 -- the
 // first probe demanded the bytes). In every case the phyloXML function stays
 // ON: the library still reads and saves, and the Download menu still offers it.
@@ -268,15 +268,17 @@ test('the vendored phyloxml passes the round-trip probe', function (said) {
         let b = '      <property ref="style:font_color" datatype="xsd:token" applies_to="node">#ce1616</property>\n';
         return x.replace(a + b, b.replace('#ce1616', '#CE1616') + a);
     }],
-['the domain architecture dropped (1.1.4)', 'problem', /^an older copy: saving a tree as phyloXML drops protein domains \(phyloxml 1\.1\.7 keeps them\)$/,
+['the domain architecture dropped (1.1.4)', 'problem', /^an older copy: saving a tree as phyloXML drops protein domains \(phyloxml 1\.1\.8 keeps them\)$/,
     function (x) { return x.replace(/ {6}<sequence>[\s\S]*<\/sequence>\n/, ''); }],
+['a domain without an E-value saved as 0 (1.1.7)', 'problem', /^an older copy: it writes a domain without an E-value as E-value 0, so a saved tree differs from the desktop program's file \(phyloxml 1\.1\.8 does not\)$/,
+    function (x) { return x.replace('<domain from="6" to="9" confidence="-1">N</domain>', '<domain from="6" to="9" confidence="0">N</domain>'); }],
 ['the phylogeny\'s property dropped (1.1.2)', 'problem', /drops a tree's own properties/,
     function (x) { return x.replace(/ {2}<property ref="p:q"[^\n]*\n/, ''); }],
 ['a node property dropped', 'problem', /drops node properties/,
     function (x) { return x.replace(/ {6}<property ref="x:y"[^\n]*\n/, ''); }],
 ['the style dropped', 'problem', /drops node styles/,
     function (x) { return x.replace(/ {6}<property ref="style:font_color"[^\n]*\n/, ''); }],
-['another indentation: only a note', 'note', /^writes a small tree differently from phyloxml 1\.1\.7, losing nothing: a newer release, or an altered copy$/,
+['another indentation: only a note', 'note', /^writes a small tree differently from phyloxml 1\.1\.8, losing nothing: a newer release, or an altered copy$/,
     function (x) { return x.replace(/\n {2}<clade>/, '\n    <clade>'); }],
 ['a newline after </phyloxml>: only a note', 'note', /^writes a small tree differently/,
     function (x) { return x + '\n'; }],

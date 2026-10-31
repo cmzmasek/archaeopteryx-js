@@ -127,6 +127,20 @@ users see a change only when a version is cut.
   (`vis-contract.tsv`, `vis-trees.tsv`).
 
 ### Fixed
+- **A protein domain without an E-value is no fault.** phyloXML makes a
+  domain's `confidence` optional, and the desktop saves a domain without one
+  as `-1.0`. The viewer counted such a domain as malformed and never drew
+  it, printed "E=-1" for the desktop's sentinel, and phyloxml saved a domain
+  without an E-value as `confidence="0"`, the best possible score, so one
+  round trip turned "unknown" into "certain". Now a missing or negative
+  confidence means "no E-value": the domain is drawn whatever the threshold
+  (the desktop's rule since its 0.11.195), counted by the legend, and
+  neither readout names an E-value for it; the ignored count covers
+  positions only. phyloxml 1.1.8 saves it as `-1`, the desktop's own
+  sentinel, so the file round-trips through either program; an empty or
+  unreadable value still refuses the file, as the desktop application's
+  schema-validating parser does. The diagnostics' phyloxml probe now carries
+  such a domain and names a 1.1.5 to 1.1.7 copy as a problem.
 - **A full-size export of a circular or unrooted tree is bounded at 6,000 px
   across.** The drawing grew by 1.4x while each step freed a few more
   crowded names, and on a fan whose names keep parting a little at every

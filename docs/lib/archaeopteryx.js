@@ -6183,7 +6183,7 @@ function (root, d3, forester, phyloXml) {
             let ignored = forester.domainArchitectureStats(_treeData).ignored;
             if (ignored > 0) {
                 say('note', 'warn', MESSAGE + ignored + ' protein domain' + (ignored === 1 ? '' : 's')
-                    + ' with a missing or impossible from / to / E-value ignored');
+                    + ' with a missing or impossible from / to ignored');
             }
         }
         // Likewise a tree whose tips carry genome regions -- genes as located
@@ -18851,10 +18851,12 @@ function (root, d3, forester, phyloXml) {
                         let name = dom.name || '(unnamed)';
                         let span = (dom.from !== undefined && dom.to !== undefined)
                             ? dom.from + '-' + dom.to : '';
-                        // the confidence on a domain is its e-value; an
-                        // explicit 0 is a real score, so test for undefined
-                        let ev = (dom.confidence !== undefined && dom.confidence !== null)
-                            ? ' (E=' + dom.confidence + ')' : '';
+                        // the confidence on a domain is its E-value, written
+                        // as the domain box's readout writes it: an explicit
+                        // 0 is a real score, a missing or negative one (the
+                        // desktop saves "none" as -1.0) is no E-value
+                        let evText = forester.domainEvalueText(dom.confidence);
+                        let ev = evText === null ? '' : ' (E=' + evText + ')';
                         text += '-- ' + name + ': ' + span + ev + '<br>';
                     });
                 }
@@ -19387,16 +19389,18 @@ function (root, d3, forester, phyloXml) {
 
     // phyloxml states no version, so a small tree goes through it and what
     // comes back is read for what an OLDER release is known to do. Each of
-    // these is a named fault, and each published release before 1.1.7 shows
-    // at least one (measured on 1.0.2, 1.1.3, 1.1.4, 1.1.5 and 1.1.6):
+    // these is a named fault, and each published release before 1.1.8 shows
+    // at least one (measured on 1.0.2, 1.1.3, 1.1.4, 1.1.5, 1.1.6 and 1.1.7):
     //   * it drops the domain architecture, or a <phylogeny>'s own property
     //     (before 1.1.5 / 1.1.3): a saved tree LOSES data;
     //   * it writes a style colour as it came, or the style property before
-    //     the node's other properties (before 1.1.7): the saved file differs
+    //     the node's other properties (before 1.1.7), or a domain without
+    //     an E-value as one of 0, the best possible (1.1.5 to 1.1.7, where
+    //     the desktop writes -1.0 and 1.1.8 -1): the saved file differs
     //     from the desktop program's.
-    // Whether the output is byte for byte what 1.1.7 writes is looked at too,
+    // Whether the output is byte for byte what 1.1.8 writes is looked at too,
     // but a difference there alone is only a NOTE. package.json admits any
-    // 1.1.x from 1.1.7 up, a release of this viewer cannot be corrected
+    // 1.1.x from 1.1.8 up, a release of this viewer cannot be corrected
     // after it is published, and a newer phyloxml that lays a file out
     // differently must not light a dot on every page that has it. (A first
     // version demanded the bytes and called every difference "an older
@@ -19404,7 +19408,7 @@ function (root, d3, forester, phyloXml) {
     const PHYLOXML_PROBE_IN = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
         + '<clade><name>a</name><branch_length>1</branch_length>'
         + '<sequence><domain_architecture length="9"><domain from="1" to="5" confidence="0.1">D</domain>'
-        + '</domain_architecture></sequence>'
+        + '<domain from="6" to="9">N</domain></domain_architecture></sequence>'
         + '<property ref="style:font_color" datatype="xsd:token" applies_to="node">#CE1616</property>'
         + '<property ref="x:y" datatype="xsd:string" applies_to="node">v</property></clade>'
         + '<clade><name>b</name><branch_length>2</branch_length></clade></clade>'
@@ -19419,6 +19423,7 @@ function (root, d3, forester, phyloXml) {
         '      <sequence>',
         '        <domain_architecture length="9">',
         '          <domain from="1" to="5" confidence="0.1">D</domain>',
+        '          <domain from="6" to="9" confidence="-1">N</domain>',
         '        </domain_architecture>',
         '      </sequence>',
         '      <property ref="x:y" datatype="xsd:string" applies_to="node">v</property>',
@@ -19432,7 +19437,7 @@ function (root, d3, forester, phyloXml) {
         '  <property ref="p:q" datatype="xsd:string" applies_to="phylogeny">w</property>',
         '</phylogeny>',
         '</phyloxml>'].join('\n');
-    const PHYLOXML_EXPECTED = '1.1.7';
+    const PHYLOXML_EXPECTED = '1.1.8';
     const D3_TESTED_MINOR = 9;       // package.json: d3 ^7.9.0
     const JSPDF_TESTED_MAJOR = 4;    // package.json: jspdf ^4.2.1
 
@@ -19440,8 +19445,8 @@ function (root, d3, forester, phyloXml) {
     // dot asks often, and the answer cannot change.
     //   threw / stage   reading ('read') or writing ('write') failed, with the message
     //   lost            what a saved tree no longer has
-    //   old             what is written as releases before 1.1.7 wrote it
-    //   same            the output is byte for byte 1.1.7's
+    //   old             what is written as releases before 1.1.8 wrote it
+    //   same            the output is byte for byte 1.1.8's
     let _phyloXmlProbe = null;
     function probePhyloXml(px) {
         if (_phyloXmlProbe && _phyloXmlProbe.lib === px) {
@@ -19471,6 +19476,10 @@ function (root, d3, forester, phyloXml) {
             result.same = written === PHYLOXML_PROBE_OUT;
             if (!/<domain from="1" to="5"[^>]*>D<\/domain>/.test(written)) {
                 result.lost.push('protein domains');
+            } else if (/<domain from="6" to="9" confidence="0">N<\/domain>/.test(written)) {
+                // 1.1.5 to 1.1.7: a domain without an E-value saved as the
+                // best possible one; the desktop saves -1.0, 1.1.8 -1
+                result.old.push('a domain without an E-value as E-value 0');
             }
             if (written.indexOf('ref="p:q"') < 0) {
                 result.lost.push('a tree\'s own properties');

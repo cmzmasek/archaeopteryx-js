@@ -24,7 +24,7 @@
 //   ?order=1       svg2pdf.js loaded BEFORE jspdf (the real files): present, not attached
 //   ?old=1         the 2.x-era globals: window.canvg and window.jsPDF
 //   ?forester=1    forester.js from another release
-//   ?phyloxml=1    a phyloxml that writes a style as releases before 1.1.7 did: a problem, and phyloXML still ON
+//   ?phyloxml=1    a phyloxml that writes a style as releases before 1.1.8 did: a problem, and phyloXML still ON
 //   ?newer=1       a phyloxml that only lays the file out differently (a newer one): a note, no dot
 //   ?d3=1          a d3 that is not version 7 (handed to the viewer at load)
 //   ?esm=1         a d3 with no `version` (the ES-module build), and a v5 put on window AFTER load: ok, no dot
@@ -156,7 +156,7 @@
             document.getElementById('dl_b').click(); await sleep(200);
         }
         if (mode === 'newer') {
-            check('a different layout alone is a note', lib('phyloxml').status === 'note' && rep.notes.length === 1 && /^phyloxml: writes a small tree differently from phyloxml 1\.1\.7, losing nothing/.test(rep.notes[0]), rep.notes.join(' || '));
+            check('a different layout alone is a note', lib('phyloxml').status === 'note' && rep.notes.length === 1 && /^phyloxml: writes a small tree differently from phyloxml 1\.1\.8, losing nothing/.test(rep.notes[0]), rep.notes.join(' || '));
         }
         if (mode !== 'd3' && mode !== 'notes' && mode !== 'esm') { check('d3 states its version', lib('d3').version === '7.9.0' && lib('d3').status === 'ok', lib('d3').version + ' ' + lib('d3').status); }
         if (mode !== 'forester') { check('forester.js states the viewer\'s version', lib('forester.js').version === rep.version && lib('forester.js').status === 'ok', lib('forester.js').version + ' vs ' + rep.version); }

@@ -673,7 +673,7 @@ and anything that does not fit the tree is skipped.
 ## Protein domain architectures
 
 A tree whose tips carry `<domain_architecture>` elements (a protein's length
-and its domains, each with a position and an E-value) draws them as **domain
+and its domains, each with a position and, usually, an E-value) draws them as **domain
 tracks** beside the tips: a thin grey backbone, `L` residues long, with a
 rounded box per domain, placed at its residues on one scale shared by the
 whole tree so lengths compare across tips, coloured by domain name from the
@@ -693,8 +693,8 @@ section holds the controls:
   the tree), or `None`.
 * **Glow** — a soft glow in each domain's own colour around its box.
 
-**Hovering a domain** reads it out: the domain's name, its E-value (small
-ones keep their exponent, 7.20e-117), the residues it spans with its own length and the protein's,
+**Hovering a domain** reads it out: the domain's name, its E-value where it
+has one (small ones keep their exponent, 7.20e-117), the residues it spans with its own length and the protein's,
 the tree tip it belongs to, and its accession where the file carries one.
 **Clicking the box** looks the domain up: straight to the Pfam entry when
 there is an accession, and an InterPro search by name when there is not —
@@ -710,8 +710,10 @@ its name: where the crowding rule has taken a tip's name away, its track is
 left out too, since a track with no name beside it can only be identified by
 which spoke it sits on. Switching the name fields off is not the same thing —
 nothing is hidden by the rule then, and every track is still drawn. A malformed domain — a missing or
-impossible position or E-value — is skipped and counted in a console
-warning, never fatal. The tracks ride into the SVG, PDF and PNG exports.
+impossible position — is skipped and counted in a console warning, never
+fatal. The E-value is optional: a domain without one (the attribute missing,
+or the desktop's own `-1.0` for none) is drawn whatever the threshold, and
+its readout names no E-value. The tracks ride into the SVG, PDF and PNG exports.
 This is the desktop's domain display, drawn to the same numbers
 (`test/domain_test.js` holds them).
 
@@ -1307,8 +1309,8 @@ What is a **problem** and what is only stated:
 | A library under its 2.x-era global (`window.canvg`, `window.jsPDF`) and not under the one this version reads; a `window.Canvg` without `fromString` | **problem** |
 | A d3 that is not version 7 (d3 4 to 6 have `d3.zoom` and `d3.cluster` too, so the launch check lets them through) | **problem**; a d3 7 older than 7.9 is a note |
 | `forester.js` and `archaeopteryx.js` from different releases (`forester.VERSION`) | **problem** |
-| A phyloxml older than 1.1.7: one that drops something when saving, or writes a node's style as the earlier releases did | **problem** — and "Read and save phyloXML" stays **on**, since it still reads and saves |
-| A phyloxml that only lays the file out differently from 1.1.7 (a newer release) | **note** |
+| A phyloxml older than 1.1.8: one that drops something when saving, writes a node's style as the earlier releases did, or saves a domain without an E-value as one of 0 | **problem** — and "Read and save phyloXML" stays **on**, since it still reads and saves |
+| A phyloxml that only lays the file out differently from 1.1.8 (a newer release) | **note** |
 | phyloxml or sax not loaded, or a phyloxml that cannot read or write at all | **problem** |
 | What the last launch printed about its **config**: a deprecated key, an `initialVisualization` the tree cannot honour or that was overruled, a bad `pngExportScale`, a thrown `onViewChange`, and why a launch threw (`launchArchaeopteryx` included) | **problem** |
 | An export that failed (a clipboard the browser refused, a canvas too large), what the viewer left out of a tree (a domain or a gene it could not place), a size setting ignored | **note**: nothing a site's configuration decides |
@@ -2423,9 +2425,12 @@ crowded names by overlap instead, as on the desktop.
 Data model: per-tip `sequences[i].domain_architecture = {length, domains:
 [{name, from, to, confidence}]}` — the first sequence carrying one; `length`
 must be a positive integer or the architecture is not drawn. A domain is
-drawable when `from` and `to` are integers with `to > from` and `confidence`
-(its E-value) is a number; otherwise it is skipped and counted
-(`forester.domainArchitectureDomains`). Gate: `showDomainArchitectures`
+drawable when `from` and `to` are integers with `to > from`; otherwise it is
+skipped and counted (`forester.domainArchitectureDomains`). Its `confidence`
+(the E-value) is optional: missing, not a number or negative means none,
+`evalue: null`, which every threshold admits and no readout names — the
+desktop's rule since its 0.11.195; it saves none as `-1.0`, phyloxml 1.1.8
+as `-1`. Gate: `showDomainArchitectures`
 state (auto-on when `_basicTreeProperties.domainArchitectures`) AND external
 labels shown AND, in a radial layout, radial rather than upright labels AND,
 per tip, a name the crowding rule has not taken (`_labelDropped`) — note

@@ -4517,12 +4517,14 @@
         return q ? {url: INTERPRO_SEARCH + encodeURIComponent(q) + '/', exact: false} : null;
     };
 
-    // A domain's E-value for display. It spans many orders of magnitude, so a
-    // small one keeps its exponent; the count of significant digits is the
-    // only thing normalized, because a scan writes 7.2E-117 and 1E-6 and a
-    // readout that mixed those forms would read as two different measures.
+    // A domain's E-value for display, or null when it has none (missing, not
+    // a number, or negative: the desktop's -1.0 for "no confidence"). It spans
+    // many orders of magnitude, so a small one keeps its exponent; the count
+    // of significant digits is the only thing normalized, because a scan
+    // writes 7.2E-117 and 1E-6 and a readout that mixed those forms would
+    // read as two different measures.
     forester.domainEvalueText = function (e) {
-        if (typeof e !== 'number' || !isFinite(e)) {
+        if (typeof e !== 'number' || !isFinite(e) || e < 0) {
             return null;
         }
         if (e === 0) {
@@ -8235,8 +8237,16 @@
 
     // The drawable domains of an architecture, in from order (equal froms
     // keep file order). A malformed domain -- a coordinate missing or not an
-    // integer, to <= from, no E-value -- is left out and counted, never
-    // fatal; the caller reports the count once.
+    // integer, to <= from -- is left out and counted, never fatal; the
+    // caller reports the count once. The E-value is OPTIONAL: a domain whose
+    // confidence is missing, not a number or negative is kept with `evalue`
+    // null, which every threshold admits and no readout names. That is the
+    // desktop's rule since its 0.11.195 (it saves a domain without one as
+    // -1.0, reads a missing, unreadable or negative value back as "no
+    // confidence", and draws with confidence <= threshold, which -1 always
+    // passes); until 2026-10-30 such a domain was counted as malformed here
+    // and never drawn, the desktop's rule before. An explicit 0 is a score,
+    // the best there is.
     forester.domainArchitectureDomains = function (da) {
         let domains = [];
         let ignored = 0;
@@ -8244,10 +8254,17 @@
             let from = domainNumber(d.from);
             let to = domainNumber(d.to);
             let e = domainNumber(d.confidence);
-            if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from || !isFinite(e)) {
+            if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from) {
                 ignored++;
                 return;
             }
+            if (isNaN(e) || e < 0) {
+                e = null;
+            }
+            // +Infinity stays a number, as the desktop keeps it (Java reads
+            // "Infinity"): no threshold admits it. No valid file carries it --
+            // the schema's spelling is INF, which the parser refuses -- so
+            // that phyloxml saves it as -1 is a limit, not a path.
             // `id` is phyloXML's optional domain identifier, which for a Pfam
             // scan is the accession (PF00931). Carried through because the
             // hover readout links to the entry with it when it is there, and
@@ -8297,6 +8314,14 @@
     // preorder, or an array of tips in DISPLAY order -- the legend reads
     // the way the eye goes down the tree, which a ladderized display does
     // not do in data order.
+    // Over the threshold: a domain with an E-value above it. A domain with
+    // none (evalue null) is admitted by every threshold, the desktop's rule
+    // (its -1.0 passes confidence <= threshold); said here, not left to how
+    // null compares with a number.
+    function domainOverThreshold(d, T) {
+        return d.evalue !== null && d.evalue > T;
+    }
+
     forester.domainSummary = function (tips, exponent) {
         let T = forester.domainEvalueThreshold(exponent);
         let counts = Object.create(null);
@@ -8318,7 +8343,7 @@
                 return;
             }
             forester.domainArchitectureDomains(da).domains.forEach(function (d) {
-                if (d.evalue > T) {
+                if (domainOverThreshold(d, T)) {
                     return;
                 }
                 boxes++;
@@ -8349,7 +8374,7 @@
         let T = forester.domainEvalueThreshold(exponent);
         let boxes = [];
         forester.domainArchitectureDomains(da).domains.forEach(function (d) {
-            if (d.evalue > T) {
+            if (domainOverThreshold(d, T)) {
                 return;
             }
             let w = d.length * f;

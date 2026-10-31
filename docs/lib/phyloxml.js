@@ -20,7 +20,7 @@
  *  Created by czmasek on 7/7/2016.
  */
 
-// v 1.1.7
+// v 1.1.8
 // 2019-05-16
 //
 // phyloxml.js is a JavaScript program for reading (SAX style parser)
@@ -1481,8 +1481,14 @@
                 var a = {};
                 a[PROTEINDOMAIN_FROM_ATTR] = d.from;
                 a[PROTEINDOMAIN_TO_ATTR] = d.to;
+                // phyloXML makes the confidence optional. A domain without one
+                // is saved as -1, the desktop's own sentinel (forester's
+                // ProteinDomain.CONFIDENCE_DEFAULT, written -1.0 and, since its
+                // 0.11.195, read back as "no confidence"), so the file round-trips
+                // through either program; 1.1.5 to 1.1.7 wrote 0, the best
+                // possible E-value, and one round trip made "unknown" "certain".
                 a[PROTEINDOMAIN_CONFIDENCE_ATTR] = (typeof d.confidence === 'number' && isFinite(d.confidence))
-                    ? d.confidence : 0;
+                    ? d.confidence : -1;
                 a[PROTEINDOMAIN_ID_ATTR] = d.id;
                 var name = (d.name === undefined || d.name === null) ? '' : String(d.name);
                 x += ind + '<' + PROTEINDOMAIN;

@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a protein domain without an E-value</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// phyloXML makes a domain's confidence optional, and the desktop saves a
+// domain without one as -1.0. Since 2026-10-30 (the desktop's 0.11.195 rule)
+// such a domain is drawn whatever the threshold and neither readout names an
+// E-value for it; until then the viewer dropped it as malformed and printed
+// "E=-1" for the desktop's sentinel. The unit tests hold the model
+// (test/domain_test.js); this is the wiring they cannot reach: the boxes on
+// screen, the box readout, the node readout and the one-time note.
+//   ''          the default threshold, 10^-3
+//   ?strict=1   the strictest, 10^-20: the scored domain goes, the two without an E-value stay
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const strict = q.get('strict') === '1';
+    out.push('case ' + (strict ? 'strict' : 'default'));
+    const tip = (name, domains) => '<clade branch_length="0.3"><name>' + name + '</name><sequence>'
+        + '<domain_architecture length="100">' + domains + '</domain_architecture></sequence></clade>';
+    const xml = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+        + tip('A', '<domain from="1" to="10">none</domain>'
+            + '<domain from="11" to="20" confidence="-1.0">desktop</domain>'
+            + '<domain from="21" to="30" confidence="2.5e-7">scored</domain>'
+            + '<domain from="31" to="40" confidence="0.5">weak</domain>'
+            + '<domain from="50" to="40" confidence="0.1">bad</domain>')
+        + tip('B', '<domain from="5" to="60" confidence="1e-9">scored</domain>')
+        + tip('C', '<domain from="5" to="60" confidence="1e-9">scored</domain>')
+        + '</clade></phylogeny></phyloxml>';
+    const config = strict ? {domainEvalueExponent: -20} : {};
+    const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('evalue.xml', xml), config);
+    await viewer.ready; await sleep(1500);
+    const container = document.getElementById('p');
+    const dom = document.getElementById('domains_cb');
+    check('the Domains switch is there and on (the tree carries architectures)', !!dom && dom.checked, dom && dom.checked);
+
+    // the boxes drawn for tip A, by what their readouts carry
+    const boxes = () => Array.from(container.querySelectorAll('g.aptx-domains rect')).filter((r) => r.__aptxDomain);
+    const namesOfA = () => boxes().filter((r) => r.__aptxDomain.tip === 'A').map((r) => r.__aptxDomain.name).sort().join(',');
+    check(strict ? 'at 10^-20 the two domains without an E-value are drawn, the scored one is not'
+        : 'at 10^-3 the two without an E-value are drawn beside the scored one; the weak and the malformed are not',
+    namesOfA() === (strict ? 'desktop,none' : 'desktop,none,scored'), namesOfA());
+    check('their E-value is null on the box, not -1', boxes().filter((r) => ['none', 'desktop'].indexOf(r.__aptxDomain.name) >= 0)
+        .every((r) => r.__aptxDomain.evalue === null), boxes().filter((r) => r.__aptxDomain.tip === 'A').map((r) => r.__aptxDomain.name + '=' + r.__aptxDomain.evalue).join(' '));
+
+    // the box readout
+    const tipBox = () => document.querySelector('.aptx-tip');
+    const hoverBox = async (name) => {
+        const r = boxes().find((x) => x.__aptxDomain.tip === 'A' && x.__aptxDomain.name === name);
+        if (!r) { return null; }
+        const b = r.getBoundingClientRect();
+        r.dispatchEvent(new MouseEvent('mousemove', {clientX: b.left + (b.width / 2), clientY: b.top + (b.height / 2), bubbles: true, cancelable: true, view: window}));
+        await sleep(450);
+        const t = tipBox();
+        const text = (t && parseFloat(getComputedStyle(t).opacity) > 0.5) ? t.textContent : null;
+        r.dispatchEvent(new MouseEvent('mouseout', {bubbles: true, cancelable: true, view: window}));
+        await sleep(300);
+        return text;
+    };
+    const none = await hoverBox('none');
+    check('hovering the box of a domain without an E-value names the domain and no E-value', none !== null && /none/.test(none) && !/E-value/.test(none) && !/-1/.test(none), none);
+    const desk = await hoverBox('desktop');
+    check('... and the desktop\'s -1.0 reads the same: no E-value', desk !== null && /desktop/.test(desk) && !/E-value/.test(desk) && !/-1/.test(desk), desk);
+    if (!strict) {
+        const scored = await hoverBox('scored');
+        check('a scored domain still shows its E-value', scored !== null && /E-value/.test(scored) && /2\.50e-7/.test(scored), scored);
+    }
+
+    // the node readout: every domain of the architecture, an E-value only where there is one
+    const drawn = Array.from(container.querySelectorAll('g.node')).filter((x) => x.__data__);
+    const dA = drawn.map((x) => x.__data__).find((d) => d.name === 'A');
+    let nodeText = null;
+    if (dA) {
+        const M = drawn[0].parentNode.getScreenCTM();
+        drawn[0].ownerSVGElement.dispatchEvent(new MouseEvent('mousemove', {clientX: M.a * dA.y + M.c * dA.x + M.e,
+            clientY: M.b * dA.y + M.d * dA.x + M.f, bubbles: true, cancelable: true, view: window}));
+        await sleep(450);
+        const t = tipBox();
+        nodeText = (t && parseFloat(getComputedStyle(t).opacity) > 0.5) ? t.textContent : null;
+    }
+    // the node readout lists the FILE's domains, the malformed one included (it has an E-value of its own)
+    const eCount = nodeText === null ? -1 : (nodeText.match(/\(E=/g) || []).length;
+    check('the node readout lists all five domains, an E-value (as the box writes it) on the three that have one, none for the two without', nodeText !== null
+        && /none1-10desktop11-20/.test(nodeText) && /bad/.test(nodeText) && eCount === 3
+        && /\(E=2\.50e-7\)/.test(nodeText) && /\(E=0\.5\)/.test(nodeText) && !/E=-1/.test(nodeText), nodeText);
+
+    // the one-time note counts positions only: the backwards domain, not the two without an E-value
+    const rep = archaeopteryx.doctor();
+    const notes = (rep.notes || []).filter((n) => /protein domain/.test(n));
+    check('one note, for the malformed domain alone, and it no longer names the E-value', notes.length === 1
+        && /1 protein domain with a missing or impossible from \/ to ignored$/.test(notes[0]), notes.join(' || ') || '(none)');
+
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>
