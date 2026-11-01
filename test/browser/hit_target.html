@@ -1,0 +1,322 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: the node under the pointer, the hit disc, and the nearest wins</title>
+<style>html,body{margin:0} #p{width:1080px;height:820px;position:relative}</style>
+<div id="p"></div>
+<script>
+// Hover, cursor and click find their node the same way (nodeDatum): a node's
+// own group under the pointer -- its label -- is that node; otherwise the
+// nearest node centre within nodeHitRadius() tree units (nodeAtPointer). The
+// radius is 5, or the node size + 2 once the Node size slider is past 3 (a
+// dot is a target across all of it; a node without a dot gets the same disc,
+// as on the desktop), and never under 4 px on screen when a radial fit has
+// scaled the tree group down. Where discs overlap the nearest centre wins.
+// The desktop's rule since its 0.11.196 (a square there, a disc here; the
+// difference is invisible).
+//
+// Measured by synthetic mousemove events on the element under each point,
+// the hover readout's Name row saying which node answered, the pointer
+// cursor saying whether any did; a mouseleave on the svg between probes, so
+// that each one starts with nothing hovered. A MouseEvent's coordinates are
+// whole pixels, so every probe is placed on whole pixels and judged by its
+// REAL distance from the node's centre, which is wherever the layout put it.
+// The oracle is the rule itself, over every tip of the tree (positions from
+// the data: a tip has a group only while its label is drawn, and the
+// unrooted layout auto-hides half of them at this density); a check makes
+// sure no internal node comes within the probed band.
+//
+// The page is 1080 x 820, within the runner's 1100 x 850 window, and wider
+// than it is tall so that a radial tree, centred in the svg, stays clear of
+// the control panel at the left. The oracle is read only after the hover
+// state is cleared, at the moment the probe is made.
+//
+//   (no query)        32 tips, rectangular, node size 3: a disc of 5 px, every tip its own
+//   ?size=9           64 tips, the slider at 9: the disc grows to 11 px (the dot is drawn to 9);
+//                     the discs of neighbours 13 px apart overlap, and the nearest centre wins;
+//                     a label hovered at its far end is its node's
+//   ?layout=circular  64 tips with long names: the fit scales the tree well down, so that 5 tree
+//                     units are under 4 px, and the disc on screen is still 4 px
+//   ?layout=unrooted  the same tree in the equal-angle layout, with its own fit and scale
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const load = (src) => new Promise((res, rej) => { const s = document.createElement('script');
+        s.src = '../../docs/lib/' + src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); });
+    try {
+        for (const l of ['d3.v7.min.js', 'sax.js', 'phyloxml.js', 'forester.js', 'archaeopteryx.js']) { await load(l); }
+        const size = q.get('size') ? parseInt(q.get('size'), 10) : null;
+        const layout = q.get('layout') || 'rectangular';
+        const radial = layout !== 'rectangular';
+        const tipsWanted = (size || radial) ? 64 : 32;
+        const depth = Math.round(Math.log2(tipsWanted));
+        out.push('case ' + (q.toString() || 'default') + ': ' + tipsWanted + ' tips, ' + layout + (size ? ', node size ' + size : ''));
+        check('the viewport holds the whole page (every probe is on screen)', window.innerWidth >= 1080 && window.innerHeight >= 820, window.innerWidth + 'x' + window.innerHeight);
+        // a balanced tree, every branch 0.1: every tip at one depth (one radius in the circular layout)
+        let n = 0;
+        function clade(d) {
+            if (d === 0) {
+                n++;
+                const name = 't' + String(n).padStart(3, '0')
+                    + (radial ? '_a_tip_name_long_enough_that_the_fit_has_to_scale_the_whole_tree_well_down_to_keep_it_in_the_window_with_the_rest' : '');
+                return '<clade><name>' + name + '</name><branch_length>0.1</branch_length></clade>';
+            }
+            return '<clade><branch_length>0.1</branch_length>' + clade(d - 1) + clade(d - 1) + '</clade>';
+        }
+        const xml = '<?xml version="1.0" encoding="UTF-8"?><phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true">'
+            + clade(depth) + '</phylogeny></phyloxml>';
+        const viewer = archaeopteryx.launch('#p', archaeopteryx.parseTrees('hit.xml', xml), {layout: layout});
+        await viewer.ready;
+        await sleep(1500);
+        const svg = document.querySelector('#p svg.aptx-tree');
+        const tipGroups = Array.from(document.querySelectorAll('#p svg g.node'))
+            .filter((g) => g.__data__ && !(g.__data__.children && g.__data__.children.length));
+        check('some tip has a label group (to find the tree group by)', tipGroups.length > 0);
+        let tg = tipGroups[0];
+        while (tg && tg.parentNode !== svg) { tg = tg.parentNode; }
+        const scaleOf = () => { const m = /scale\(([^)]+)\)/.exec(tg.getAttribute('transform') || ''); return m ? parseFloat(m[1]) : 1; };
+        // a point of the tree group's frame on screen; a group's own translate; a tip's point from the DATA
+        function toScreen(lx, ly) {
+            const pt = svg.createSVGPoint(); pt.x = lx; pt.y = ly;
+            const s = pt.matrixTransform(tg.getScreenCTM());
+            return [s.x, s.y];
+        }
+        function screenPoint(g) {
+            const m = /translate\(([-\d.e]+)[ ,]([-\d.e]+)\)/.exec(g.getAttribute('transform') || '');
+            return toScreen(parseFloat(m[1]), parseFloat(m[2]));
+        }
+        let root = tipGroups[0].__data__;
+        while (root.parent) { root = root.parent; }
+        const allTips = [];
+        (function walk(d) { if (d.children && d.children.length) { d.children.forEach(walk); } else { allTips.push(d); } })(root);
+        const groupOf = new Map(tipGroups.map((g) => [g.__data__, g]));
+        function tipPoint(d) {
+            if (layout === 'rectangular') { return toScreen(d.y, d.x); }
+            if (layout === 'unrooted') { return toScreen(d.ux, d.uy); }
+            return screenPoint(groupOf.get(d));   // circular: from its group (every tip has one in this case)
+        }
+        check('the tree has every tip', allTips.length === n, allTips.length + ' of ' + n);
+        if (layout === 'circular') {
+            check('every tip has a label group to locate it by', tipGroups.length === n, tipGroups.length + ' of ' + n);
+        } else {
+            out.push(tipGroups.length + ' of ' + n + ' tips have a label group');
+            // the data's point and the group's agree where both exist
+            const g0 = tipGroups[0]; const a = screenPoint(g0), b = tipPoint(g0.__data__);
+            check('a tip\'s point from the data is where its group is', Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.01, a.map((v) => v.toFixed(1)) + ' vs ' + b.map((v) => v.toFixed(1)));
+        }
+        const tipBox = () => document.querySelector('.aptx-tip');
+        function moveTo(x, y) {
+            const t = document.elementFromPoint(x, y);   // null outside the viewport: the probe is then off the page
+            if (!t) { return false; }
+            t.dispatchEvent(new MouseEvent('mousemove', {clientX: x, clientY: y, bubbles: true, cancelable: true, view: window}));
+            return svg.contains(t) || t === svg;
+        }
+        function leave() {   // the pointer leaves the svg: the viewer forgets the hovered node
+            svg.dispatchEvent(new MouseEvent('mouseleave', {bubbles: false, cancelable: true, view: window}));
+        }
+        // which node the viewer says is under the pointer: null when none (no pointer cursor)
+        function hitName() {
+            if (svg.style.cursor !== 'pointer') { return null; }
+            const b = tipBox();
+            if (!b) { return '?'; }
+            const lines = (b.innerText || '').split('\n').map((s) => s.trim()).filter(Boolean);
+            const i = lines.indexOf('Name');
+            return i >= 0 ? lines[i + 1] : lines[0];
+        }
+        async function settle() { leave(); await sleep(3); }
+        async function probe(x, y) {
+            const inSvg = moveTo(Math.round(x), Math.round(y)); await sleep(3);
+            return inSvg ? hitName() : 'OFF-SVG';
+        }
+        async function hitAt(x, y) { await settle(); return probe(x, y); }
+        // what is under a point, for a report: the element and its node group if any
+        function underAt(x, y) {
+            const t = document.elementFromPoint(x, y);
+            const g = t && t.closest ? t.closest('g.node') : null;
+            return (t ? t.tagName.toLowerCase() + (t.getAttribute('class') ? '.' + t.getAttribute('class') : '') : 'nothing') + (g && g.__data__ ? ' of ' + short(g.__data__.name) : '');
+        }
+        const short = (s) => (s || String(s)).slice(0, 4);
+        const glowR = () => Math.max(0, ...Array.from(document.querySelectorAll('#p svg g.aptx-hoverglow circle')).map((c) => parseFloat(c.getAttribute('r')) || 0));
+
+        // the probes start clean: a hover, then a leave, and nothing is hovered
+        {
+            const [x, y] = tipPoint(allTips[0]);
+            const h = await hitAt(x, y);
+            leave(); await sleep(3);
+            check('a mouseleave clears the hover (each probe starts with nothing hovered)', h === allTips[0].name && svg.style.cursor !== 'pointer', short(h) + ' then cursor ' + (svg.style.cursor || 'default'));
+        }
+        if (size !== null) {
+            // the slider is set as a user sets it; that the VIEWER took it shows in the hover glow, whose diameter is max(18, 3 x size)
+            const [x, y] = tipPoint(allTips[0]);
+            await hitAt(x, y); await sleep(300);
+            const before = glowR();
+            const sl = document.getElementById('ns_sl');
+            check('the Node size slider is on the page', !!sl);
+            sl.value = size;
+            sl.dispatchEvent(new Event('input', {bubbles: true}));
+            await sleep(1200);
+            await hitAt(x, y); await sleep(300);
+            const after = glowR();
+            const want = Math.max(18, size * 3) / 18;
+            check('the viewer took the size: the hover glow grew ' + want.toFixed(2) + 'x', before > 0 && Math.abs(after / before - want) < 0.01, before.toFixed(2) + ' -> ' + after.toFixed(2));
+        }
+        const k = scaleOf();
+        out.push('tree group transform ' + tg.getAttribute('transform') + ' -> k = ' + k.toFixed(3));
+
+        // 1. every tip answers for itself dead centre
+        let self = 0; const wrong = [];
+        for (const d of allTips) {
+            const [x, y] = tipPoint(d);
+            const h = await hitAt(x, y);
+            if (h === d.name) { self++; } else { wrong.push(short(d.name) + '->' + short(h)); }
+        }
+        check('every tip answers for itself dead centre', self === allTips.length, self + '/' + allTips.length + (wrong.length ? ' ' + wrong.slice(0, 6).join(' ') : ''));
+
+        // 2. the disc and the nearest: every whole-pixel point in a band around the
+        // edge of one tip's disc, each judged by the rule itself -- the node whose
+        // own group (label) is under the point; else the nearest tip centre if it
+        // is inside the disc; else nothing. In a dense tree a point outside the
+        // probed tip's disc may be inside a neighbour's, and the neighbour must
+        // answer; a point on the diagonal just outside the disc would still answer
+        // under a SQUARE of the same half side, and does not.
+        const radiusTree = Math.max(5, (size || 3) + 2, 4 / k);      // nodeHitRadius(), computed here too
+        const radiusPx = radiusTree * k;
+        const floorOn = 5 * k < radiusPx - 0.2;   // the 4 px floor is what sets the radius, by a margin
+        const centres = allTips.map((d) => ({name: d.name, p: tipPoint(d)}));
+        function nearestTip(px, py) {
+            let best = null, bd = Infinity;
+            for (const c of centres) {
+                const d = Math.hypot(px - c.p[0], py - c.p[1]);
+                if (d < bd) { bd = d; best = c.name; }
+            }
+            return {name: best, d: bd};
+        }
+        // the whole-pixel points around a point that lie beyond 5 tree units of EVERY tip but inside 4 px of the
+        // nearest: found only by the floor, and naming that nearest tip (in the unrooted layout sister tips sit 4 px apart)
+        function floorRing(x, y) {
+            const pts = [];
+            for (let px = Math.floor(x) - 5; px <= Math.ceil(x) + 5; px++) {
+                for (let py = Math.floor(y) - 5; py <= Math.ceil(y) + 5; py++) {
+                    const near = nearestTip(px, py);
+                    if (near.d > 5 * k + 0.05 && near.d < radiusPx - 0.05) { pts.push({px, py, d: near.d, want: near.name}); }
+                }
+            }
+            return pts;
+        }
+        let mid = allTips[Math.floor(allTips.length / 2)];
+        if (radial) {
+            // a tip clear of the panel; while the floor is in force, the one whose floor ring holds the most whole pixels
+            const clear = allTips.filter((d) => tipPoint(d)[0] > 300);
+            mid = floorOn
+                ? clear.reduce((a, b) => floorRing(...tipPoint(b)).length > floorRing(...tipPoint(a)).length ? b : a)
+                : clear.reduce((a, b) => tipPoint(b)[1] > tipPoint(a)[1] ? b : a);
+        }
+        const [cx, cy] = tipPoint(mid);
+        out.push('probe tip ' + short(mid.name) + ' at (' + cx.toFixed(2) + ', ' + cy.toFixed(2) + '); expected hit radius '
+            + radiusTree.toFixed(2) + ' tree units = ' + radiusPx.toFixed(2) + ' px on screen');
+        // the oracle knows the tips only: the nearest internal node, the probe tip's parent, must lie beyond the band
+        let parentDist;
+        if (layout === 'rectangular') {
+            const [px, py] = toScreen(mid.parent.y, mid.parent.x);
+            parentDist = Math.hypot(px - cx, py - cy);
+        } else if (layout === 'unrooted') {
+            const [px, py] = toScreen(mid.parent.ux, mid.parent.uy);
+            parentDist = Math.hypot(px - cx, py - cy);
+        } else {   // every branch 0.1 at this depth: the parent sits that fraction of the tip's radius further in, at least that far away
+            const r = svg.getBoundingClientRect();
+            parentDist = Math.hypot(cx - (r.left + r.width / 2), cy - (r.top + r.height / 2)) / depth;
+        }
+        check('the nearest internal node (the parent) lies beyond the probed band', parentDist > radiusPx + 3, parentDist.toFixed(1) + ' px');
+        function expectedAt(px, py) {
+            const t = document.elementFromPoint(px, py);
+            const g = t && t.closest ? t.closest('g.node') : null;
+            if (g && g.__data__ && svg.contains(g)) { return g.__data__.name; }   // a node's own group: that node, whatever the distance
+            const near = nearestTip(px, py);
+            if (Math.abs(near.d - radiusPx) < 0.1) { return undefined; }   // on the edge: too close to call
+            return near.d < radiusPx ? near.name : null;
+        }
+        const band = [];
+        const reach = Math.ceil(radiusPx + 2);
+        for (let px = Math.floor(cx) - reach; px <= Math.ceil(cx) + reach; px++) {
+            for (let py = Math.floor(cy) - reach; py <= Math.ceil(cy) + reach; py++) {
+                const d = Math.hypot(px - cx, py - cy);
+                if (d >= radiusPx - 2 && d <= radiusPx + 2) { band.push({px, py, d}); }
+            }
+        }
+        const step = Math.max(1, Math.floor(band.length / 48));
+        let agreed = 0, tried = 0, nearIn = false, nearOut = false; const disagreed = [];
+        for (let i = 0; i < band.length; i += step) {
+            const b = band[i];
+            await settle();
+            const want = expectedAt(b.px, b.py);
+            if (want === undefined) { continue; }
+            tried++;
+            const h = await probe(b.px, b.py);
+            if (h === want) { agreed++; } else { disagreed.push(b.d.toFixed(2) + 'px:' + short(h) + ' not ' + short(want) + ' (' + underAt(b.px, b.py) + ')'); }
+            if (want === mid.name && b.d < radiusPx) { nearIn = nearIn || b.d > radiusPx - 1; }
+            if (want === null) { nearOut = nearOut || b.d < radiusPx + 1; }
+        }
+        check('every probe in the band gets the node whose label it is on, else the nearest tip inside the disc, else nothing', tried > 0 && agreed === tried,
+            agreed + '/' + tried + (disagreed.length ? ' ' + disagreed.slice(0, 6).join(' ') : ''));
+        check('the probes bracket the edge within 1 px on both sides', nearIn && nearOut);
+        if (radial) {
+            out.push('5 tree units = ' + (5 * k).toFixed(2) + ' px on screen in this fit');
+            if (layout === 'circular') {
+                check('the circular fit scaled the tree down, so that 5 tree units are under the 4 px floor by a margin', floorOn, (5 * k).toFixed(2) + ' px');
+            }
+            if (floorOn) {
+                // every whole pixel beyond 5 tree units but inside 4 px is found: the floor at work
+                const ring = floorRing(cx, cy);
+                check('the floor\'s ring around the probe tip holds whole pixels to probe', ring.length >= 1, ring.length + ' at ' + ring.map((r) => r.d.toFixed(2)).join(' '));
+                let got = 0; const lost = [];
+                for (const r of ring) {
+                    const h = await hitAt(r.px, r.py);
+                    if (h === r.want) { got++; } else { lost.push(r.d.toFixed(2) + ':' + short(h) + ' not ' + short(r.want)); }
+                }
+                check('every whole pixel beyond 5 tree units of every tip but inside 4 px of the nearest is found, and names the nearest', ring.length >= 1 && got === ring.length, got + '/' + ring.length + (lost.length ? ' ' + lost.join(' ') : ''));
+            }
+        }
+        if (size !== null) {
+            check('found 7 px from the centre, over the dot drawn to ' + size + ' px', await hitAt(cx - 7, cy) === mid.name);
+            // 3. neighbours whose discs overlap: between two rows, the nearer centre answers
+            const sorted = allTips.slice().sort((a, b) => tipPoint(a)[1] - tipPoint(b)[1]);
+            const i = Math.floor(sorted.length / 2);
+            const A = sorted[i], B = sorted[i + 1];
+            const [ax, ay] = tipPoint(A), [, by] = tipPoint(B);
+            const gap = by - ay;
+            out.push('rows ' + gap.toFixed(2) + ' px apart; discs of ' + radiusPx.toFixed(1) + ' px overlap');
+            check('the rows are closer than two radii (the discs overlap)', gap < 2 * radiusPx, gap.toFixed(2));
+            let between = 0, right = 0; const miss = [];
+            for (let py = Math.ceil(ay + 1); py < by - 1; py++) {
+                const px = Math.round(ax);
+                await settle();
+                const want = expectedAt(px, py);
+                const dA = Math.hypot(px - ax, py - ay), dB = Math.hypot(px - ax, py - by);
+                if (want === undefined || want === null || Math.abs(dA - dB) < 0.5) { continue; }
+                between++;
+                const h = await probe(px, py);
+                if (h === want) { right++; } else { miss.push(dA.toFixed(1) + '/' + dB.toFixed(1) + ':' + short(h)); }
+            }
+            check('every point between the two rows, inside both discs, answers the nearer centre', between >= 4 && right === between,
+                right + '/' + between + (miss.length ? ' ' + miss.join(' ') : ''));
+            // 4. hover and click agree on a label: the readout names the node a click there opens
+            const lab = groupOf.get(A) && groupOf.get(A).querySelector('text');
+            if (lab) {
+                const r = lab.getBoundingClientRect();
+                const lx = Math.round(r.right - 4), ly = Math.round(r.top + r.height / 2);
+                const far = Math.hypot(lx - ax, ly - ay);
+                const h = await hitAt(lx, ly);
+                check('hovering the far end of a label, ' + far.toFixed(0) + ' px from its node, names that node (as a click there opens it)', far > radiusPx && h === A.name, short(h) + ' at ' + lx + ',' + ly);
+            } else {
+                check('the tip has a label text to hover', false);
+            }
+        }
+    } catch (e) {
+        failures++;
+        out.push('ERROR ' + (e && e.stack || e));
+    }
+    window.__benchResult = {report: out, failures: failures};
+    window.__benchDone = true;
+})();
+</script>

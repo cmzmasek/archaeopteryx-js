@@ -1829,17 +1829,21 @@ function (root, d3, forester, phyloXml) {
     // handful of batched paths (drawTreeGeometry), and a node has a <g> of its
     // own only when something is drawn for it individually -- a label, a
     // collapsed clade, a branch value. Every node used to carry an invisible
-    // 5px circle as its hover target; the hit area is that circle's, a radius
-    // of NODE_HIT_RADIUS in tree units (so it scales with the zoom as the
-    // circle did), looked up in a quadtree built on the first pointer event
-    // after each render.
+    // 5px circle as its hover target; the hit area is a disc of nodeHitRadius()
+    // around the node's centre -- that circle's 5 tree units, or the node size
+    // plus 2 once the slider is past 3 (dot drawn or not, as on the desktop),
+    // and never under 4 px on screen when a radial fit has scaled the tree
+    // down -- looked up in a quadtree built on the first pointer event after
+    // each render. Where discs overlap, the node whose centre is nearest the
+    // pointer wins (the desktop's rule too, since its 0.11.196).
     //
     // One listener per type on the svg rather than the tree group: the group
     // only receives events over painted content, and a hit area is mostly
     // empty space. Namespaced, so d3.zoom's own listeners on the same svg
-    // are left alone. A click on a node's own group -- its label, a collapsed
-    // clade's wedge -- takes that node first: a label is a much easier thing
-    // to aim at than a point.
+    // are left alone. A click or a hover on a node's own group -- its label, a
+    // collapsed clade's wedge -- takes that node first: a label is a much
+    // easier thing to aim at than a point, and the readout names the node a
+    // click there opens.
     function attachNodeEventDelegation(group) {
         let svg = d3.select(group.node().ownerSVGElement);
         _hoverNode = null;
@@ -1891,7 +1895,7 @@ function (root, d3, forester, phyloXml) {
                 }
             })
             .on('mousemove.aptxnode', function (event) {
-                let d = overTree(event) ? nodeAtPointer(event) : null;
+                let d = nodeDatum(event);
                 hover(event, d);
                 if (d) {
                     mousemove(event, d);
@@ -1918,7 +1922,17 @@ function (root, d3, forester, phyloXml) {
                 .addAll(_hitNodes);
         }
         let p = d3.pointer(event, _svgGroup.node());
-        return _nodeIndex.find(p[0], p[1], NODE_HIT_RADIUS) || null;
+        return _nodeIndex.find(p[0], p[1], nodeHitRadius()) || null;
+    }
+
+    // The hit radius, in tree units: NODE_HIT_RADIUS, or the node size plus a
+    // margin once the slider is past 3 -- so a dot is a target across all of
+    // it; a node drawn without a dot gets the same disc, as on the desktop --
+    // and at least NODE_HIT_MIN_PX on screen: the circular and unrooted fits
+    // scale the tree group down (currentZoomScale), where the rectangular zoom
+    // re-lays out and keeps the scale at 1.
+    function nodeHitRadius() {
+        return Math.max(NODE_HIT_RADIUS, _state.nodeSizeDefault + NODE_HIT_PAD, NODE_HIT_MIN_PX / currentZoomScale());
     }
 
     function mouseout() {
@@ -5194,7 +5208,9 @@ function (root, d3, forester, phyloXml) {
     // interpolates angle and radius, so nodes sweep along the circle; d3's
     // path-string interpolation used to cut straight across it.
 
-    const NODE_HIT_RADIUS = 5;   // tree units: the radius of the hover circle every node used to carry
+    const NODE_HIT_RADIUS = 5;   // tree units: the least hit radius, the hover circle every node used to carry
+    const NODE_HIT_PAD = 2;      // tree units past a drawn dot's radius that still hit it (the desktop's 2 px)
+    const NODE_HIT_MIN_PX = 4;   // px on screen the hit radius never goes under once a fit has scaled the tree down (the desktop's floor)
     const OUTLINED_DOTS_MAX = 2000;   // outlined dots (hits, selection) drawn one element each up to this many
     const ANIMATED_HALOS_MAX = 1000;  // search-hit halos pulse up to this many hits; past it they are still
     const HALO_REST_OPACITY = 0.35;   // a halo's opacity at rest: the pulse's ends, and a still halo

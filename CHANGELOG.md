@@ -78,6 +78,16 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **A node's hover and click target grows with the node size, and never falls under
+  4 px on screen.** The pointer finds the nearest node centre within a disc of 5
+  tree units (5 px in the rectangular layout), as before, or of the node size plus
+  2 once the Node size slider is past 3, whether or not a dot is drawn at the node
+  (as on the desktop): a dot is a target across all of it, where its rim used to
+  answer nothing. In the circular and unrooted layouts, which the fit scales down,
+  the disc keeps 4 px on screen. Where discs overlap the nearest centre wins, as it
+  did. And the hover readout names the node a click there opens: a label hovered
+  anywhere along its length is its node's, as a click on it has been. The desktop's
+  rule since its 0.11.196 (a square there, a disc here).
 - **Two priorities in the Color-by order: a taxonomic rank above species leads.** A
   property named for a rank above species — its local name in any namespace, folded
   as a rank is: Genus, Subgenus, Subfamily, Family, Order, … up to Domain — now sorts
