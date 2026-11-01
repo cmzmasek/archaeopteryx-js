@@ -1,0 +1,108 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a legend reads at the small tree font, between 11 and 16 px</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// Every legend reads at the small tree font -- the label size less 2 -- never
+// under 11 px and never over 16 (the desktop's rule since its 0.11.197); a
+// card's title reads one px over its rows. Until
+// 2026-11-01 a legend read at the label size itself with no cap, and at the Font
+// slider's top an 11-row card was 222 x 400 px and covered the tree. Three
+// legends share the rule through one helper; each case moves the Font slider as
+// a user does and reads the legend's text back.
+//   ''                the Color-by card (Caliciviridae, Color-by Genus): the floor, the step, the cap
+//   ?legend=domains   the Protein domains card (domainLabels: 'legend')
+//   ?legend=genes     the Gene families card (geneLabels: 'legend')
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const which = q.get('legend') || 'color';
+    out.push('case ' + which + ': window ' + innerWidth + 'x' + innerHeight);
+    try {
+        let trees, config = {}, cls;
+        if (which === 'domains') {
+            const tip = (name, domains) => '<clade branch_length="0.3"><name>' + name + '</name><sequence>'
+                + '<domain_architecture length="100">' + domains + '</domain_architecture></sequence></clade>';
+            const xml = '<phyloxml xmlns="http://www.phyloxml.org"><phylogeny rooted="true"><clade>'
+                + tip('A', '<domain from="1" to="30" confidence="1e-9">alpha</domain><domain from="40" to="90" confidence="1e-9">beta</domain>')
+                + tip('B', '<domain from="5" to="60" confidence="1e-9">alpha</domain>')
+                + tip('C', '<domain from="5" to="60" confidence="1e-9">gamma</domain>')
+                + '</clade></phylogeny></phyloxml>';
+            trees = archaeopteryx.parseTrees('domains.xml', xml);
+            config = {domainLabels: 'legend'};
+            cls = 'legendDomains';
+        } else if (which === 'genes') {
+            const xml = await (await fetch('../data/genome_regions.xml')).text();
+            trees = archaeopteryx.parseTrees('g.xml', xml);
+            config = {geneLabels: 'legend'};
+            cls = 'legendGenes';
+        } else {
+            const file = '../../docs/data/Caliciviridae_100.xml';
+            trees = archaeopteryx.parseTrees(file, await (await fetch(file)).text());
+            cls = 'legendLabelColor';
+        }
+        const viewer = archaeopteryx.launch('#p', trees, config);
+        await viewer.ready; await sleep(1500);
+        if (which === 'color') {
+            // the card under test is a category card of 11 rows: the automatic
+            // Color-by is the file's Genus (a changed Color-by order would show here)
+            check('the tree opens coloured by Genus', viewer.getViewState().colorBy === 'prop:vipr:Genus', viewer.getViewState().colorBy);
+        }
+        const sl = document.getElementById('fs_sl');
+        check('the Font slider is on the page, at 11', !!sl && Number(sl.value) === 11, sl && sl.value);
+        const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+        // the legend is rebuilt on every redraw: find it afresh each time
+        const legend = () => {
+            const g = document.querySelector('#p svg g.' + cls);
+            if (!g) { return null; }
+            const sizes = [...g.querySelectorAll('text')].map(px);
+            const rect = g.querySelector('rect');
+            return {texts: sizes.length, min: Math.min(...sizes), max: Math.max(...sizes),
+                h: rect ? parseFloat(rect.getAttribute('height')) : NaN, w: rect ? parseFloat(rect.getAttribute('width')) : NaN};
+        };
+        const labelPx = () => px(document.querySelector('#p svg text.extlabel'));
+        const setFont = async (v) => {
+            sl.value = v;
+            sl.dispatchEvent(new Event('input', {bubbles: true}));
+            await sleep(1200);
+        };
+        // one reading: the labels took the slider, the legend's rows read at the
+        // expected size and its title one px over it
+        const at = async (size, want) => {
+            if (Number(sl.value) !== size) { await setFont(size); }
+            const l = legend();
+            check('label font ' + size + ': the labels follow the slider', Math.abs(labelPx() - size) < 0.01, labelPx());
+            check('... the legend is drawn (' + (l ? l.texts : 0) + ' texts)', !!l && l.texts >= 3);
+            check('... every legend row reads at ' + want + ' px, the title at ' + (want + 1), !!l && l.min === want && l.max === want + 1,
+                l && (l.min + '..' + l.max));
+            return l;
+        };
+        const l11 = await at(11, 11);
+        if (which === 'color') {
+            const l13 = await at(13, 11);                // the floor: 13 - 2 is 11
+            check('the card at 13 is the card at 11 (the floor holds the geometry too)', l13.h === l11.h && l13.w === l11.w,
+                l11.w.toFixed(1) + 'x' + l11.h + ' -> ' + l13.w.toFixed(1) + 'x' + l13.h);
+            const l14 = await at(14, 12);                // the step: two under the labels
+            check('the card at 14 is taller than at 13 (one px per row)', l14.h > l13.h, l13.h + ' -> ' + l14.h);
+            const l18 = await at(18, 16);                // the cap is reached
+            const l26 = await at(26, 16);                // and holds at the slider's top
+            check('the card at 26 is the card at 18 (the cap holds the geometry too)', l26.h === l18.h && l26.w === l18.w,
+                l18.w.toFixed(1) + 'x' + l18.h + ' -> ' + l26.w.toFixed(1) + 'x' + l26.h);
+            check('the card at the slider\'s top is under 300 px tall (it was 400)', l26.h < 300, l26.h);
+            check('the slider\'s top is 26', Number(sl.max) === 26, sl.max);
+        } else {
+            await at(26, 16);
+        }
+    } catch (e) { check('no exception', false, e && (e.stack || e)); }
+    window.__benchResult = {report: out.join('\n'), failures};
+    window.__benchDone = true;
+})();
+</script>

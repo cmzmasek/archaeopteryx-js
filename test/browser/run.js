@@ -90,6 +90,7 @@ const CASES = {
     'branch_paint': [''],
     'hover_columns': ['', '?theme=dark'],
     'hit_target': ['', '?size=9', '?layout=circular', '?layout=unrooted'],
+    'legend_font': ['', '?legend=domains', '?legend=genes'],
     'expand_after_zoom': ['?zooms=3', '?zooms=0', '?zooms=8', '?layout=circular&zooms=3'],
     'host_css': ['?host=bvbrc', '?host=bvbrc&theme=dark', '?host=bootstrap3', '?host=bootstrap5', '?host=tailwind', '?host=wild',
         '?host=wild&tree=time', '?host=wild&tree=alignment'],

@@ -240,6 +240,13 @@ function (root, d3, forester, phyloXml) {
     const TSV_EXPORT_FORMAT = 'TSV';
     const FONT_SIZE_MAX = 26;
     const FONT_SIZE_MIN = 2;
+    // a legend reads at the small tree font (branchDataFontSize: two under the
+    // labels, as on the desktop) but never under LEGEND_FONT_MIN -- it is a key,
+    // and a key one cannot read is furniture -- and never over LEGEND_FONT_MAX,
+    // the desktop's cap since its 0.11.197 (before it an 11-row card at the Font
+    // slider's top was 222 x 400 px and covered the tree)
+    const LEGEND_FONT_MIN = 11;
+    const LEGEND_FONT_MAX = 16;
     // branch-data (support / branch-length) text sits 2px under the label
     // font, but never below this readable floor
     const BRANCH_DATA_FONT_MIN = 6;
@@ -2673,20 +2680,33 @@ function (root, d3, forester, phyloXml) {
         return Number.isInteger(n) ? String(n) : preciseRound(n, 2);
     }
 
+    // The font size every legend reads at (the Color-by, Shape-by and Clades-by-
+    // rank cards, the Protein domains card, the Gene families card): the small
+    // tree font, the one support values and branch lengths draw in, held between
+    // LEGEND_FONT_MIN and LEGEND_FONT_MAX. The desktop's rule.
+    function legendFontSize() {
+        return clamp(_state.branchDataFontSize, LEGEND_FONT_MIN, LEGEND_FONT_MAX);
+    }
+
+    // What the three legends share: the font, the padding, the row height, the
+    // gap between a swatch and its text, the row and title fonts (a title reads
+    // one px over its rows, bold), the ink and the frame. Each keeps its own
+    // swatch size.
+    function legendMetrics() {
+        const fs = legendFontSize();
+        return {fs: fs, pad: 9, row: fs + 6, gap: 6,
+            rowFont: fs + 'px ' + FONT_DEFAULTS,
+            titleFont: '600 ' + (fs + 1) + 'px ' + FONT_DEFAULTS,
+            ink: _state.labelColorDefault, frame: _state.branchColorDefault};
+    }
+
     // Draws one legend card and returns its height.
     function drawLegendCard(id, x, y, vis, kind) {
-        // The legend reads at the same size as the tree's labels, but never
-        // below 11 -- it is a key, and a key one cannot read is furniture.
-        const FS = Math.max(11, _state.externalNodeFontSize || 11);
-        const PAD = 9;
-        const ROW = FS + 6;
+        const m = legendMetrics();
+        const FS = m.fs, PAD = m.pad, ROW = m.row, GAP = m.gap;
+        const rowFont = m.rowFont, titleFont = m.titleFont, ink = m.ink, frame = m.frame;
         const SWATCH = 9;
-        const GAP = 6;
         const ELLIPSIS_AT = 28;
-        const rowFont = FS + 'px ' + FONT_DEFAULTS;
-        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
-        const ink = _state.labelColorDefault;
-        const frame = _state.branchColorDefault;
         // a field with no value in this view has no range to draw: the card
         // is then just its "no value" row
         const isRange = kind === 'color' && colorModeOf(vis) === 'range' && vis.values.length > 0;
@@ -10369,10 +10389,10 @@ function (root, d3, forester, phyloXml) {
             setFontSizes(Number(s.font));
         }
         if (isFinite(s.node)) {
-            _state.nodeSizeDefault = Math.min(NODE_SIZE_MAX, Math.max(NODE_SIZE_MIN, Number(s.node)));
+            _state.nodeSizeDefault = clamp(Number(s.node), NODE_SIZE_MIN, NODE_SIZE_MAX);
         }
         if (isFinite(s.branch)) {
-            _state.branchWidthDefault = Math.min(BRANCH_WIDTH_MAX, Math.max(BRANCH_WIDTH_MIN, Number(s.branch)));
+            _state.branchWidthDefault = clamp(Number(s.branch), BRANCH_WIDTH_MIN, BRANCH_WIDTH_MAX);
         }
         if (Number.isInteger(s.rotation)) {
             _radialRotation = (s.rotation * RADIAL_ROTATION_STEP) % (2 * Math.PI);
@@ -12738,15 +12758,10 @@ function (root, d3, forester, phyloXml) {
         if (summary.legend.length === 0 || !size) {
             return;
         }
-        const FS = Math.max(11, _state.externalNodeFontSize || 11);
-        const PAD = 9;
-        const ROW = FS + 6;
+        const m = legendMetrics();
+        const FS = m.fs, PAD = m.pad, ROW = m.row, GAP = m.gap;
+        const rowFont = m.rowFont, titleFont = m.titleFont, ink = m.ink, frame = m.frame;
         const SWATCH = 10;
-        const GAP = 6;
-        const rowFont = FS + 'px ' + FONT_DEFAULTS;
-        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
-        const ink = _state.labelColorDefault;
-        const frame = _state.branchColorDefault;
         let title = 'Protein domains (E ≤ 1e' + _state.domainEvalueExponent + ')';
         let rows = summary.legend.map(function (r) {
             return {
@@ -13459,15 +13474,10 @@ function (root, d3, forester, phyloXml) {
         if ((summary.legend.length === 0 && summary.singletons === 0 && summary.unfamilied === 0) || !size) {
             return;
         }
-        const FS = Math.max(11, _state.externalNodeFontSize || 11);
-        const PAD = 9;
-        const ROW = FS + 6;
+        const m = legendMetrics();
+        const FS = m.fs, PAD = m.pad, ROW = m.row, GAP = m.gap;
+        const rowFont = m.rowFont, titleFont = m.titleFont, ink = m.ink, frame = m.frame;
         const SWATCH = 10;
-        const GAP = 6;
-        const rowFont = FS + 'px ' + FONT_DEFAULTS;
-        const titleFont = '600 ' + (FS + 1) + 'px ' + FONT_DEFAULTS;
-        const ink = _state.labelColorDefault;
-        const frame = _state.branchColorDefault;
         let title = 'Gene families' + (ns ? ' (' + ns + ')' : '');
         let rows = summary.legend.map(function (r) {
             let what = r.product || r.symbol || r.family;
@@ -16962,7 +16972,11 @@ function (root, d3, forester, phyloXml) {
     }
 
     function clampFontSize(v) {
-        return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, v));
+        return clamp(v, FONT_SIZE_MIN, FONT_SIZE_MAX);
+    }
+
+    function clamp(v, lo, hi) {
+        return Math.min(hi, Math.max(lo, v));
     }
 
     function setFontSizes(size) {

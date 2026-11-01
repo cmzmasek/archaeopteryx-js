@@ -78,6 +78,14 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **A legend reads at the small tree font: 11 to 16 px.** Every legend (the
+  Color-by, Shape-by and Clades-by-rank cards, the Protein domains card, the
+  Gene families card) reads at the font the support values and branch lengths
+  draw in, two px under the labels, never under 11 px and never over 16; a
+  card's title stays one px over its rows, in bold. The desktop's rule since its
+  0.11.197. Before, a legend read at the label size itself with no cap, so at
+  the Font slider's top an 11-row card was 222 x 400 px and covered the tree;
+  it is now 154 x 280. Nothing changes at the default font size.
 - **A node's hover and click target grows with the node size, and never falls under
   4 px on screen.** The pointer finds the nearest node centre within a disc of 5
   tree units (5 px in the rectangular layout), as before, or of the node size plus
