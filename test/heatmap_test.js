@@ -566,8 +566,8 @@ function testFigureMatrixRefs() {
         && t.properties.length === 1;                                        // the phylogeny's stays
 }
 
-// labelprops (a "|" list, escaped like every value) and the show.<OPTION>
-// switches, as the desktop's FigureSpec writes them; other keys ignored.
+// labelprops (a "|" list, escaped like every value), the show.<OPTION>
+// switches and colorby, as the desktop's FigureSpec writes them; other keys ignored.
 function testFigureLabelChoices() {
     var f = forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
         value: 'v1;labelprops=BVBRC:species\\pBVBRC:host_name;show.SHOW_PROPERTIES=true;show.SHOW_NODE_NAMES=false;'
@@ -576,7 +576,13 @@ function testFigureLabelChoices() {
         value: 'v1;columns=a\\sMATRIX\\sCIRCLE\\sfalse'}]});
     return JSON.stringify(f.labelProps) === '["BVBRC:species","BVBRC:host_name"]'
         && f.show.SHOW_PROPERTIES === true && f.show.SHOW_NODE_NAMES === false && !('BOGUS' in f.show)
-        && none.labelProps === null && Object.keys(none.show).length === 0;
+        && none.labelProps === null && Object.keys(none.show).length === 0
+        // colorby: the field's ref as saved, '' while Color by was off, null when unsaid
+        && f.colorBy === 'x' && none.colorBy === null
+        && forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
+            value: 'v1;colorby='}]}).colorBy === ''
+        && forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
+            value: 'v1;colorby=vipr:Host\\_Name;show.SHOW_PROPERTIES=true'}]}).colorBy === 'vipr:Host Name';
 }
 
 // Values only, " | "-joined (a value may hold a comma), a unit without its namespace; aptx: and style:

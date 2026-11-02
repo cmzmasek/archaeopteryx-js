@@ -3086,8 +3086,11 @@
         }
         // labelProps: the properties the label shows, in order (null when the
         // figure does not say, [] when it says none); show: the desktop's
-        // display switches by DisplayOption name ("show.SHOW_PROPERTIES=true")
-        let figure = {columns: [], labelProps: null, show: {}};
+        // display switches by DisplayOption name ("show.SHOW_PROPERTIES=true");
+        // colorBy: the field the desktop coloured by, as its ref (vipr:Genus, or
+        // a built-in slot's id such as tax:code), '' while Color by was off,
+        // null when the figure does not say
+        let figure = {columns: [], labelProps: null, show: {}, colorBy: null};
         parts.slice(1).forEach(function (kv) {
             let at = kv.indexOf('=');
             if (at < 1) {
@@ -3103,6 +3106,10 @@
             }
             if (key.indexOf('show.') === 0 && (value === 'true' || value === 'false')) {
                 figure.show[key.substring(5)] = value === 'true';
+                return;
+            }
+            if (key === 'colorby') {
+                figure.colorBy = value;
                 return;
             }
             if (key !== 'columns') {

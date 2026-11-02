@@ -1,0 +1,84 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: a saved figure's Color-by is honoured</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// The desktop's figure setting (aptx:figure, directly under <phylogeny>)
+// carries colorby=<ref>: the field it coloured by, as the field's ref, empty
+// while Color by was off, no key when the figure does not say. Since its
+// 0.11.198 a figure saved with Color by off reopens uncoloured there; here
+// the key was ignored. test/heatmap_test.js pins the reader; this is the
+// launch path. The tree is docs/data/Caliciviridae_100.xml, whose automatic
+// choice is Genus.
+//   ''            colorby=            opens uncoloured, and stays so
+//   ?field=1      colorby=vipr:Host   opens by Host, not the automatic Genus
+//   ?missing=1    colorby=vipr:Nope   warns, names the figure, takes the automatic choice
+//   ?absent=1     no colorby key      the automatic choice, as before
+//   ?config=1     colorby= AND initialVisualization: 'Genus'   the config wins
+//   ?configmiss=1 colorby= AND initialVisualization: 'Nope'    a config name this tree lacks yields to the figure
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const q = new URLSearchParams(location.search);
+    const mode = ['field', 'missing', 'absent', 'config', 'configmiss'].find((m) => q.get(m) === '1') || 'off';
+    out.push('case ' + mode);
+    const warnings = [];
+    const warn = console.warn;
+    console.warn = function () { warnings.push([...arguments].join(' ')); warn.apply(console, arguments); };
+    try {
+        const file = '../../docs/data/Caliciviridae_100.xml';
+        const trees = archaeopteryx.parseTrees(file, await (await fetch(file)).text());
+        const value = {off: 'v1;colorby=', field: 'v1;colorby=vipr:Host', missing: 'v1;colorby=vipr:Nope',
+            absent: 'v1;show.SHOW_NODE_NAMES=true', config: 'v1;colorby=', configmiss: 'v1;colorby='}[mode];
+        trees[0].properties = (trees[0].properties || []).concat([{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string', value: value}]);
+        check('the reader sees the key as written', JSON.stringify(forester.readFigure(trees[0]).colorBy) === JSON.stringify({off: '', field: 'vipr:Host', missing: 'vipr:Nope', absent: null, config: '', configmiss: ''}[mode]),
+            JSON.stringify(forester.readFigure(trees[0]).colorBy));
+        const config = mode === 'config' ? {initialVisualization: 'Genus'} : (mode === 'configmiss' ? {initialVisualization: 'Nope'} : {});
+        const viewer = archaeopteryx.launch('#p', trees, config);
+        await viewer.ready; await sleep(1500);
+        const colorBy = viewer.getViewState().colorBy;
+        const menu = document.getElementById('lcs_menu');
+        const legendTitle = () => { const g = document.querySelector('#p svg g.legendLabelColor text'); return g ? g.textContent : null; };
+        const named = warnings.filter((w) => /figure \(colorby=/.test(w));
+        if (mode === 'off') {
+            check('colorby= opens the tree uncoloured', colorBy === 'none', colorBy);
+            check('... the Color by menu says so and no colour legend is up', menu && menu.selectedOptions[0].text === 'default' && legendTitle() === null,
+                (menu && menu.selectedOptions[0].text) + ' / ' + legendTitle());
+            check('... without a warning', warnings.length === 0, warnings.join(' | '));
+            // and stays so: a subtree view opens uncoloured too (the automatic choice is not consulted)
+            const inner = forester.getAllExternalNodes(trees[0]).find((n) => n.parent && n.parent.parent).parent;
+            viewer.applyViewState(Object.assign({}, viewer.getViewState(), {subtree: inner.viewId})); await sleep(1200);
+            const vs1 = viewer.getViewState();
+            check('... a subtree view stays uncoloured', !!vs1.subtree && vs1.colorBy === 'none' && legendTitle() === null, JSON.stringify(vs1.subtree) + ' / ' + vs1.colorBy + ' / ' + legendTitle());
+        } else if (mode === 'field') {
+            check('colorby=vipr:Host opens by Host, not the automatic Genus', colorBy === 'prop:vipr:Host', colorBy);
+            check('... the Host legend is up', legendTitle() === 'Host', legendTitle());
+            check('... the one warning is the wide-field one and names the figure', warnings.length === 1 && named.length === 1
+                && /the file's figure \(colorby=vipr:Host\) names a field with \d+ distinct values/.test(named[0]), warnings.join(' | '));
+        } else if (mode === 'missing') {
+            check('colorby=vipr:Nope: the automatic choice, Genus', colorBy === 'prop:vipr:Genus', colorBy);
+            check('... one warning names the figure and the field and says what was done', named.length === 1
+                && /the file's figure \(colorby=vipr:Nope\) names no visualization of this tree; using the automatic choice/.test(named[0]), warnings.join(' | '));
+        } else if (mode === 'absent') {
+            check('no colorby key: the automatic choice, Genus', colorBy === 'prop:vipr:Genus', colorBy);
+            check('... no warning', warnings.length === 0, warnings.join(' | '));
+        } else if (mode === 'config') {
+            check('colorby= with initialVisualization "Genus": the config wins, Genus', colorBy === 'prop:vipr:Genus', colorBy);
+            check('... no warning', warnings.length === 0, warnings.join(' | '));
+        } else {
+            check('colorby= with initialVisualization "Nope": the config names nothing here, the figure decides, uncoloured', colorBy === 'none' && legendTitle() === null, colorBy);
+            check('... the config warning says the figure decided', warnings.length === 1
+                && /initialVisualization "Nope" names no visualization of this tree; using the file's figure, which opens it uncoloured/.test(warnings[0]), warnings.join(' | '));
+        }
+    } catch (e) { check('no exception', false, e && (e.stack || e)); }
+    window.__benchResult = {report: out.join('\n'), failures};
+    window.__benchDone = true;
+})();
+</script>

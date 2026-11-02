@@ -127,14 +127,26 @@ function (root, d3, forester, phyloXml) {
     // The 7 distinct fill symbols d3 v7 actually has -- the old auto list
     // offered triangle-up AND triangle-down, which v7 renders identically.
     const VIS_SHAPES = ['circle', 'square', 'diamond', 'triangle', 'cross', 'star', 'wye'];
+    // The clade marks' own palette: the desktop's AptxUtil.RANK_PALETTE since its
+    // 0.11.198, the same ten here so a figure reads alike in both programs,
+    // dealt over a rank's taxa in name order and apart from the Color-by's, so
+    // a genus box and a host dot no longer come out in one and the same colour.
+    // The desktop chose them at least 16 CIEDE2000 from the first five of
+    // Tableau 10 and of Okabe-Ito, at CIELAB L 48.7-67.1 for both canvases;
+    // against OUR Color-by palette (Observable 10) three come near (#ee8866 is
+    // 6.7 from #ff725c, #9467bd 8.6 from #a463f2, #8da0cb 8.9 from #97bbf5),
+    // none equal. Past ten, the cycles blend as the Color-by palette's do.
+    const RANK_COLOR_PALETTE = ['#9467bd', '#008695', '#e7298a', '#999933', '#8c785d',
+        '#ee8866', '#8da0cb', '#68855c', '#a06177', '#a6761d'];
 
     // Past the palette's 20 entries, wide categorical fields continue the
     // desktop's qualitativeColor scheme: each further cycle re-uses the
     // palette blended increasingly toward white (odd cycles) then black
     // (even), capped at 0.55 -- deterministic for any number of values.
-    function extendedPaletteColor(i) {
-        const len = VIS_COLOR_PALETTE.length;
-        let c = VIS_COLOR_PALETTE[i % len];
+    function extendedPaletteColor(i, palette) {
+        const pal = palette || VIS_COLOR_PALETTE;
+        const len = pal.length;
+        let c = pal[i % len];
         let cycle = Math.floor(i / len);
         if (cycle === 0) {
             return c;
@@ -698,7 +710,7 @@ function (root, d3, forester, phyloXml) {
     const GENE_LANE_MIN_H = 3;            // px: a lane of two is never thinner
     let _gene = null;                     // {width, radialWidth, palette, legendFrac, cache}, set per launch
     let _geneReserve = 0;                 // horizontal px reserved for the gene track, set with _w
-    let _rank = null;                     // {coverage, cache}: the ranks the tree offers, its clades per rank; set per launch
+    let _rank = null;                     // {coverage, cache, dealt, shared}: the ranks the tree offers, its clades per rank, the ranks dealt their colours, the Color-by names index; set per launch
     let _rankReserve = 0;                 // horizontal px reserved for the clade marks, set with _w
     // ------ heat map (the desktop's MATRIX annotation columns) ------
     const HEATMAP_TRACK_GAP = 8;          // px between what is left of the tree and the matrix
@@ -1982,7 +1994,7 @@ function (root, d3, forester, phyloXml) {
         _vis = {candidates: [], byId: {}, colorId: null, shapeId: null, autoColorId: null,
             labelRef: null, labelPrefix: null,
             legendSortById: {}, colorModeById: {}, legendExpandedById: {},
-            colorMemory: {}, colorNext: {}, colorOverrides: {}, shapeMemory: {}, shapeNext: {},
+            colorMemory: {}, colorNext: {}, colorOverrides: {}, shapeMemory: {}, shapeNext: {}, gen: 0,
             hasStyles: false};
         // The readable-name inference stands on its own: it applies even when
         // the Color / Shape menus are disabled.
@@ -2026,17 +2038,58 @@ function (root, d3, forester, phyloXml) {
         // honour warns and falls through to the automatic choice, so a
         // site-wide setting is safe on trees without that field.
         let requested = null;
+        let asked = null;                 // how the field was asked for, for the warnings
+        let level = 'problem';            // a config mistake lights the Diagnostics dot; a file's figure does not
+        let figureOff = false;            // the file's figure says: uncoloured, and stay so
+        let configMiss = null;            // a config request this tree cannot honour
         if (_settings.initialVisualization) {
             let want = _settings.initialVisualization.trim().toLowerCase();
             requested = _vis.candidates.find(function (c) {
                 return c.id.toLowerCase() === want
                     || (c.label && String(c.label).toLowerCase() === want);
             }) || null;
+            asked = 'initialVisualization "' + _settings.initialVisualization + '"';
             if (!requested) {
-                say('problem', 'warn', WARNING + ': initialVisualization "'
-                    + _settings.initialVisualization
-                    + '" names no visualization of this tree; using the automatic choice');
+                configMiss = asked;
+                asked = null;
             }
+        }
+        if (!requested) {
+            // The file's own figure (aptx:figure, its colorby= key): the
+            // desktop writes the field's ref as it holds it -- a property's
+            // namespace:local (vipr:Genus) or a built-in slot's id (tax:code)
+            // -- empty while Color by is off, and no key when the figure does
+            // not say. A ref opens by that field (its spelling exactly, else
+            // case aside); empty opens uncoloured and stays so (no automatic
+            // choice); absent leaves the choice to the viewer. The desktop
+            // takes any ref unchecked; here a ref the tree does not offer
+            // cannot be chosen, so it says so -- a note, not a problem: nobody
+            // made a mistake -- and yields to the automatic choice. A config
+            // request this tree offers wins over the file.
+            let figure = forester.readFigure(_treeData);
+            if (figure && figure.colorBy === '') {
+                figureOff = true;
+            } else if (figure && figure.colorBy) {
+                let ref = figure.colorBy;
+                let lower = ref.toLowerCase();
+                requested = _vis.candidates.find(function (c) {
+                    return c.id === ref || c.id === 'prop:' + ref;
+                }) || _vis.candidates.find(function (c) {
+                    let id = c.id.toLowerCase();
+                    return id === lower || id === 'prop:' + lower;
+                }) || null;
+                asked = 'the file\'s figure (colorby=' + ref + ')';
+                level = 'note';
+                if (!requested) {
+                    say('note', 'warn', WARNING + ': ' + asked
+                        + ' names no visualization of this tree; using the automatic choice');
+                }
+            }
+        }
+        if (configMiss) {
+            say('problem', 'warn', WARNING + ': ' + configMiss + ' names no visualization of this tree; using '
+                + (figureOff ? 'the file\'s figure, which opens it uncoloured'
+                    : (requested ? asked : 'the automatic choice')));
         }
         if (requested) {
             // an explicit request is honoured even for a wide field (21+
@@ -2063,15 +2116,15 @@ function (root, d3, forester, phyloXml) {
                     ? requested.values.length + ' distinct values on this tree, more than the '
                         + LEGEND_MAX_ROWS + ' the legend lists'
                     : 'a value on ' + requested.coverage + ' of the tree\'s ' + requested.total + ' tips';
-                say('problem', 'warn', WARNING + ': initialVisualization "' + _settings.initialVisualization
-                    + '" names a field with ' + why + '; left to itself the viewer would '
+                say(level, 'warn', WARNING + ': ' + asked
+                    + ' names a field with ' + why + '; left to itself the viewer would '
                     + (auto ? 'open with "' + auto.label + '" (' + auto.values.length + ' values)'
                         : 'open uncoloured'));
             }
             _vis.autoColorId = requested.id;
             _vis.colorId = requested.id;
             _state.showVisualizations = true;
-        } else {
+        } else if (!figureOff) {
             // Auto-apply the best candidate that is not WIDE: the classifier
             // returns them best first, so a tree opens already coloured by
             // its most informative field instead of grey with a menu to
@@ -2398,6 +2451,7 @@ function (root, d3, forester, phyloXml) {
             let k = visMemoryKey(vis, v);
             if (!(k in mem)) {
                 mem[k] = extendedPaletteColor(next++);
+                _vis.gen++;
             }
         });
         _vis.colorNext[vis.id] = next;
@@ -2428,6 +2482,7 @@ function (root, d3, forester, phyloXml) {
             o[k] = _vis.colorMemory[vis.id][k];
         }
         _vis.colorMemory[vis.id][k] = color;
+        _vis.gen++;
         buildCategoryScale(vis);
     }
 
@@ -2440,6 +2495,7 @@ function (root, d3, forester, phyloXml) {
             _vis.colorMemory[vis.id][k] = o[k];
         });
         delete _vis.colorOverrides[vis.id];
+        _vis.gen++;
         buildCategoryScale(vis);
     }
 
@@ -2457,6 +2513,7 @@ function (root, d3, forester, phyloXml) {
     // its scales from that: the whole tree at launch and after an edit, the
     // displayed subtree on every view change.
     function summarizeView(root) {
+        _vis.gen++;   // a new view: what depends on the values on screen is rebuilt (rankSharedColor)
         // the tips on screen: the view's, minus what collapsed clades hide
         let tips = [];
         (function walk(n) {
@@ -13716,10 +13773,13 @@ function (root, d3, forester, phyloXml) {
     //     clade's wedge from its root. The names stand where the bars' do.
     //   - One legend card for both, the Color-by's kind: a count per taxon
     //     over the tips on screen, a "no value" row for the unplaced ones, a
-    //     colour changed by clicking its swatch. The colours come from the
-    //     Color-by's palette, and when the rank is first shown while the
-    //     Color-by shows the same field (the genus the rank reads), its
-    //     colours are taken over, so one genus never wears two.
+    //     colour changed by clicking its swatch. The colours are the marks'
+    //     own palette (RANK_COLOR_PALETTE, the desktop's, dealt in name
+    //     order), apart from the Color-by's, so a genus box and a host dot
+    //     no longer come out in one and the same colour; a taxon the Color-by
+    //     legend also names wears the Color-by's colour, so one genus never
+    //     wears two
+    //     (the desktop's rule since its 0.11.198).
 
     function rankAvailable() {
         return !!(_rank && _rank.coverage.length > 0);
@@ -13727,7 +13787,7 @@ function (root, d3, forester, phyloXml) {
 
     // Per launch: which ranks this tree offers, and the config's say.
     function rankInit() {
-        _rank = {coverage: forester.rankCoverage(_treeData), cache: Object.create(null)};
+        _rank = {coverage: forester.rankCoverage(_treeData), cache: Object.create(null), dealt: Object.create(null), shared: null};
         if (_state.cladeRank !== 'auto' && rankAvailable() && !rankOffered(_state.cladeRank)) {
             // refused by name (strain, substrain, isolate, other, unknown),
             // or a rank this tree has no tips at: two different things to say
@@ -13849,45 +13909,76 @@ function (root, d3, forester, phyloXml) {
         return 'rank:' + cladeRank();
     }
 
-    // The colours, dealt over the WHOLE tree's taxa (most tips first) into
+    // The clade colours: RANK_COLOR_PALETTE dealt over the WHOLE tree's taxa in
+    // name order (code-unit order, as the desktop sorts), once per rank, into
     // the same memory the Color-by legends use, so a swatch click and
-    // "[reset colors]" work on them unchanged. Dealt once per rank: a taxon
-    // keeps its colour for the session. When a categorical Color-by is on
-    // and names EVERY taxon of the rank among its values, its colours are
-    // taken over instead of the palette's next ones.
+    // "[reset colors]" work on them unchanged. A taxon the Color-by legend also
+    // names wears the Color-by's colour instead: rankColorOf reads that
+    // through, live, so the marks follow the Color-by menu.
     function rankDealColors(model) {
         let id = rankVisId();
-        let mem = _vis.colorMemory[id] || (_vis.colorMemory[id] = {});
-        let wanting = model.taxa.filter(function (t) {
-            return !(t.name in mem);
-        });
-        if (wanting.length === 0) {
+        if (_rank.dealt[id]) {
             return;
         }
-        let same = null;
-        let cv = currentColorVis();
-        if (cv && colorModeOf(cv) === 'category' && _vis.colorMemory[cv.id]) {
-            let theirs = _vis.colorMemory[cv.id];
-            let byLower = Object.create(null);
-            Object.keys(theirs).forEach(function (k) {
-                byLower[k.toLowerCase()] = theirs[k];
-            });
-            if (model.taxa.every(function (t) {
-                return byLower[t.name.toLowerCase()] !== undefined;
-            })) {
-                same = byLower;
+        let mem = _vis.colorMemory[id] || (_vis.colorMemory[id] = {});
+        model.taxa.map(function (t) {
+            return t.name;
+        }).sort().forEach(function (name, i) {
+            if (!(name in mem)) {
+                mem[name] = extendedPaletteColor(i, RANK_COLOR_PALETTE);
             }
-        }
-        let next = _vis.colorNext[id] || 0;
-        wanting.forEach(function (t) {
-            mem[t.name] = same ? same[t.name.toLowerCase()] : extendedPaletteColor(next++);
         });
-        _vis.colorNext[id] = next;
+        _rank.dealt[id] = true;
     }
 
+    // The colour a taxon's marks and branches wear: the user's pick from the
+    // legend's swatch when there is one; else, when the Color-by legend names
+    // the taxon, the Color-by's colour, so one genus never wears two; else the
+    // rank palette's. The desktop's rule since its 0.11.198.
     function rankColorOf(taxon) {
-        let mem = _vis && _vis.colorMemory[rankVisId()];
-        return (mem && mem[taxon]) || null;
+        let id = rankVisId();
+        let mem = _vis && _vis.colorMemory[id];
+        if (!mem || !(taxon in mem)) {
+            return null;
+        }
+        let o = _vis.colorOverrides[id];
+        if (o && taxon in o) {
+            return mem[taxon];
+        }
+        return rankSharedColor(taxon) || mem[taxon];
+    }
+
+    // The Color-by's colour for a taxon's name, or null: looked up in the
+    // categorical Color-by on screen, the spelling exactly first, else case
+    // aside -- among several such values the one on most tips. The case index
+    // is rebuilt only when the Color-by, the view or the colour memory has
+    // changed (_vis.gen counts those), so a branch costs two lookups; the
+    // colours themselves are read live, so a swatch pick on the Color-by legend
+    // reaches the marks.
+    function rankSharedColor(taxon) {
+        let cv = colorVisActive() ? currentColorVis() : null;
+        if (!cv || colorModeOf(cv) !== 'category' || !_vis.colorMemory[cv.id]) {
+            return null;
+        }
+        let theirs = _vis.colorMemory[cv.id];
+        let k = visMemoryKey(cv, taxon);
+        if (k in theirs) {
+            return theirs[k];
+        }
+        let c = _rank.shared;
+        if (!c || c.vis !== cv || c.gen !== _vis.gen) {
+            let byLower = Object.create(null);
+            Object.keys(theirs).forEach(function (key) {
+                let lk = key.toLowerCase();
+                let have = byLower[lk];
+                if (have === undefined || (cv.counts[key] || 0) > (cv.counts[have] || 0)) {
+                    byLower[lk] = key;
+                }
+            });
+            c = _rank.shared = {vis: cv, gen: _vis.gen, byLower: byLower};
+        }
+        let alt = c.byLower[taxon.toLowerCase()];
+        return alt !== undefined ? theirs[alt] : null;
     }
 
     // The colour a node's branch wears under Colorize subtrees: its clade's,
@@ -13943,7 +14034,10 @@ function (root, d3, forester, phyloXml) {
             }),
             counts: counts, total: total, coverage: placed
         };
-        buildCategoryScale(vis);
+        // the legend wears what the marks wear (a shared name the Color-by's
+        // colour): its scale reads rankColorOf, never the Color-by's palette
+        vis.categoryOnScreen = new Set(vis.values);
+        vis.categoryScale = d3.scaleOrdinal().domain(vis.values).range(vis.values.map(rankColorOf));
         return vis;
     }
 

@@ -242,10 +242,12 @@ and two switches, both off until asked for:
 
 Either switch brings up a legend card of the Color-by's kind — a count per
 taxon over the tips on screen, a **no value** row for the tips the file does
-not place, a swatch you click to change a colour, `[reset colors]` — and the
-colours come from the Color-by's palette: when the Color-by shows the same
-field (the genus the rank reads), its colours are taken over, so one genus
-never wears two.
+not place, a swatch you click to change a colour, `[reset colors]`. The
+colours are the marks' own: a palette of ten, the desktop's, apart from the
+Color-by's and dealt over the rank's taxa in name order, so a genus box and
+a host dot no longer come out in one and the same colour. A taxon the Color-by legend
+also names wears the Color-by's colour instead, so one genus never wears
+two (the desktop's rule since its 0.11.198).
 
 **A tip's taxon at a rank** comes from, in this order: its own `<taxonomy>`
 element at exactly that rank (the scientific name, else the common name,
@@ -899,6 +901,15 @@ the desktop's and are not drawn here. Only a property directly under
 0.11.117 to 0.11.172 wrote it — is ignored and left out of what is saved; the phylogeny's
 own is saved back unchanged. An explicit `showHeatmap`, `heatmapColumnOrder`
 or `heatmapManualOrder` in the config wins over the file.
+
+**The figure's Color-by is honoured too.** Its `colorby=` names the field the
+desktop coloured by, as that field's ref (`vipr:Genus`; a built-in slot such
+as `tax:code`), and the tree opens coloured by it when it offers that field;
+a field it does not offer warns and yields to the automatic choice (the
+desktop takes any ref unchecked). An empty `colorby=`, saved while Color by
+was off, opens the tree uncoloured, and it stays so; a figure without the
+key leaves the choice to the viewer. An `initialVisualization` in the config
+wins over the file.
 
 **Hover any cell** for its tip, the column and its value — or `not assessed` —
 and the scale it was coloured against. The column names stand under the matrix,
@@ -2864,8 +2875,9 @@ ordering must not move with them.
 figure's MATRIX columns (`forester.figureMatrixRefs(tree)`, from
 `forester.readFigure`, which reads the phylogeny's own `aptx:figure` only:
 `"v1;key=value;…"`, values escaped as the desktop's `PropertyTextCodec` does,
-`columns=` a `|` list of `ref~TYPE~SHAPE~normalized`; an unknown version is no
-figure, unknown keys are ignored). `forester.dropCladeFigures(tree)` removes
+`columns=` a `|` list of `ref~TYPE~SHAPE~normalized`, `colorby=` the field the
+desktop coloured by (`colorBy`: its ref, `''` while Color by was off, `null`
+when unsaid); an unknown version is no figure, unknown keys are ignored). `forester.dropCladeFigures(tree)` removes
 the old clade-level copies at launch.
 
 Distances are `forester.heatmapEuclideanDistances` (R's `dist` convention for

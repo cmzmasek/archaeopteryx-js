@@ -268,6 +268,42 @@
             check('Colorize: the clade colours are the Color-by\'s, genus for genus',
                 genera.length === 10 && genera.every((g) => theirs[g] === mine[g]),
                 genera.filter((g) => theirs[g] !== mine[g]).map((g) => g + ': ' + theirs[g] + ' vs ' + mine[g]).join('; ') || genera.length);
+            // the marks' own palette (the desktop's RANK_PALETTE since its 0.11.198):
+            // with the Color-by on another field every genus wears a rank
+            // colour, dealt in name order; back on Genus, the Color-by's again
+            const setColorBy = async (text) => { const s = byId('lcs_menu'); const opt = [...s.options].find((o) => o.text === text);
+                s.value = opt.value; s.dispatchEvent(new Event('change', {bubbles: true})); await settle(); };
+            const RANK_PALETTE = ['#9467bd', '#008695', '#e7298a', '#999933', '#8c785d', '#ee8866', '#8da0cb', '#68855c', '#a06177', '#a6761d'];
+            const rgb = (hex) => 'rgb(' + [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16)).join(', ') + ')';
+            await setColorBy('Host');
+            const own = colorsOf(legend());
+            const sorted = Object.keys(own).sort();
+            check('Color-by Host: every genus wears the rank palette, dealt in name order (Bavovirus first)',
+                sorted.length === 10 && sorted.every((g, i) => own[g] === rgb(RANK_PALETTE[i])),
+                sorted.map((g, i) => g + ': ' + own[g] + (own[g] === rgb(RANK_PALETTE[i]) ? '' : ' != ' + rgb(RANK_PALETTE[i]))).join('; '));
+            const hostColors = Object.values(colorsOf(q('g.legendLabelColor')));
+            check('Color-by Host: no genus wears a host\'s colour', hostColors.length > 0 && sorted.every((g) => !hostColors.includes(own[g])), hostColors.length);
+            check('Color-by Host: the branches wear the rank colours', sorted.every((g) => strokes().has(own[g])), [...strokes()].join(' '));
+            await setColorBy('Genus');
+            const back = colorsOf(legend());
+            check('Color-by Genus again: the clade colours are the Color-by\'s once more', genera.every((g) => back[g] === theirs[g]),
+                genera.filter((g) => back[g] !== theirs[g]).join(' '));
+            // a swatch pick on the rank legend outranks the shared colour, and
+            // "[reset colors]" hands the shared colour back
+            const rankHit = () => [...legend().querySelectorAll('title')].find((t) => /click to change the color for "Norovirus"/.test(t.textContent)).parentNode;
+            const hitBox = rankHit().getBoundingClientRect();
+            rankHit().dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: hitBox.left + 4, clientY: hitBox.top + 4})); await sleep(400);
+            const dlg = byId('color_picker_dialog');
+            check('the rank legend\'s swatch opens the picker', !!dlg && dlg.open !== false, !!dlg);
+            const hex = dlg.querySelector('input'); hex.value = '#123456'; hex.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+            check('a picked colour wins over the shared one, on the legend and the branches', colorsOf(legend()).Norovirus === 'rgb(18, 52, 86)' && strokes().has('rgb(18, 52, 86)'),
+                colorsOf(legend()).Norovirus + ' / ' + [...strokes()].join(' '));
+            dlg.querySelector('.aptx-dialog-close').click(); await sleep(300);
+            // a chip's text element carries its tooltip as a child: match its own text
+            const resetChip = [...legend().querySelectorAll('text')].find((t) => t.firstChild && t.firstChild.nodeValue === '[reset colors]');
+            check('the card offers [reset colors]', !!resetChip, legendTexts().filter((t) => /^\[/.test(t)).join(' | '));
+            resetChip.dispatchEvent(new MouseEvent('click', {bubbles: true})); await settle();
+            check('reset: the shared colour is back', colorsOf(legend()).Norovirus === theirs.Norovirus, colorsOf(legend()).Norovirus + ' vs ' + theirs.Norovirus);
         }
         // off again: the default colour alone
         byId('rank_color_cb').click(); await settle();

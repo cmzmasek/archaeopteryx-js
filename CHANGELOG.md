@@ -8,6 +8,13 @@ users see a change only when a version is cut.
 ## Unreleased
 
 ### Added
+- **A saved figure's Color-by is honoured.** The desktop's figure setting
+  (`aptx:figure`) names the field it coloured by (`colorby=vipr:Genus`): the
+  tree opens coloured by it when it offers that field, else warns and takes
+  the automatic choice. Saved while Color by was off (`colorby=`), the tree
+  opens uncoloured and stays so; a figure without the key leaves the choice
+  to the viewer, as before. An `initialVisualization` in the config wins over
+  the file. The desktop's own rule since its 0.11.198.
 - **Clades by rank: Colorize subtrees and Annotate clades.** The desktop's
   two Tools (Colorize Subtrees via Taxonomic Rank, Annotate Clades by Rank),
   on the file's own annotations and nothing else. A new **Clades by rank**
@@ -26,8 +33,11 @@ users see a change only when a version is cut.
   boxes: a translucent box under the tree from the clade's root to the
   tips, a sector in the radial layouts. Either brings up a legend card of the Color-by's kind,
   with counts over the tips on screen, a "no value" row and clickable
-  swatches; when the Color-by shows the same field its colours are taken
-  over. A tip's taxon at a rank is its own `<taxonomy>` at that rank, else a
+  swatches. The marks and branches draw from a palette of their own, the
+  desktop's ten rank colours dealt in name order, apart from the Color-by's,
+  so a genus box and a host dot no longer come out in one and the same
+  colour; a taxon the Color-by legend also names wears that colour, so one
+  genus never wears two. A tip's taxon at a rank is its own `<taxonomy>` at that rank, else a
   property named for the rank in any namespace (`vipr:Genus`,
   `repseq:family`, `BVBRC:species`, `ncbi:genus`), else the nearest
   ancestor's annotation (an internal node's own annotation reaches only the
