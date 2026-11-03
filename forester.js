@@ -3056,12 +3056,28 @@
     // "phylogeny"> as a direct child of <phylogeny>. Its value (FigureSpec
     // on the desktop) is "v1;key=value;..." with every value escaped
     // (PropertyTextCodec): \\ \t \n \r, \_ a space, \p "|", \s "~",
-    // \c ";", \e "=". columns= is a "|" list of ref~TYPE~SHAPE~normalized.
+    // \c ";", \e "=". columns= is a "|" list of ref~TYPE~SHAPE~normalized;
+    // labelprops= a "|" list of refs; colorby= a field's ref ("" while off);
+    // layout=, displaytype= and labeldirection= the desktop's enum names;
+    // show.<DisplayOption>= one of its display switches, "true" (case aside)
+    // on and any other value off, as Boolean.parseBoolean reads it there.
     // Only a direct child of <phylogeny> counts (Christian, 2026-09-30: "a
     // hard break"): desktops 0.11.117 to 0.11.172 wrote it on the root clade,
     // and such a copy is ignored here and dropped on the way out, as the
     // desktop does. An unknown version is no figure; unknown keys are ignored.
     forester.FIGURE_REF = 'aptx:figure';
+
+    // The desktop's layout and display-type names a figure may carry, as the
+    // viewer's own words. A name this viewer has no layout for (EURO_STYLE,
+    // ROUNDED, TRIANGULAR: the desktop's other rectangular-family layouts)
+    // reads as unsaid, so the default decides, as an unknown name does there.
+    const FIGURE_LAYOUTS = {RECTANGULAR: 'rectangular', CIRCULAR: 'circular', UNROOTED: 'unrooted'};
+    const FIGURE_DISPLAYS = {CLADOGRAM: 'cladogram', ALIGNED_PHYLOGRAM: 'aligned', UNALIGNED_PHYLOGRAM: 'phylogram'};
+    const FIGURE_LABEL_DIRECTIONS = {HORIZONTAL: 'horizontal', RADIAL: 'radial'};
+
+    function figureName(table, value) {
+        return Object.prototype.hasOwnProperty.call(table, value) ? table[value] : null;
+    }
 
     forester.unescapeFigureValue = function (v) {
         const map = {'\\': '\\', 't': '\t', 'n': '\n', 'r': '\r', '_': ' ', 'p': '|', 's': '~', 'c': ';', 'e': '='};
@@ -3070,8 +3086,9 @@
         });
     };
 
-    // {columns: [{ref, type, shape, normalized}]} from the tree's figure, or
-    // null when it has none (or one this version cannot read).
+    // {columns: [{ref, type, shape, normalized}], labelProps, show, colorBy,
+    // layout, display, labelDirection} from the tree's figure, or null when
+    // it has none (or one this version cannot read).
     forester.readFigure = function (tree) {
         let props = tree && Array.isArray(tree.properties) ? tree.properties : [];
         let p = props.find(function (q) {
@@ -3089,8 +3106,14 @@
         // display switches by DisplayOption name ("show.SHOW_PROPERTIES=true");
         // colorBy: the field the desktop coloured by, as its ref (vipr:Genus, or
         // a built-in slot's id such as tax:code), '' while Color by was off,
-        // null when the figure does not say
-        let figure = {columns: [], labelProps: null, show: {}, colorBy: null};
+        // null when the figure does not say; layout: 'rectangular', 'circular'
+        // or 'unrooted'; display: 'cladogram', 'aligned' or 'phylogram' (the
+        // desktop's displaytype, its phylogram tri-state); labelDirection:
+        // 'horizontal' or 'radial' (the radial layouts' label direction, which
+        // the desktop writes for a radial figure only); each null when the
+        // figure does not say or names one this viewer has not
+        let figure = {columns: [], labelProps: null, show: {}, colorBy: null, layout: null, display: null,
+            labelDirection: null};
         parts.slice(1).forEach(function (kv) {
             let at = kv.indexOf('=');
             if (at < 1) {
@@ -3104,12 +3127,27 @@
                 });
                 return;
             }
-            if (key.indexOf('show.') === 0 && (value === 'true' || value === 'false')) {
-                figure.show[key.substring(5)] = value === 'true';
+            if (key.indexOf('show.') === 0) {
+                // a key with any value names the switch: "true" (case aside) is
+                // on, anything else (an empty value included) off, as the
+                // desktop's Boolean.parseBoolean reads it
+                figure.show[key.substring(5)] = value.toLowerCase() === 'true';
                 return;
             }
             if (key === 'colorby') {
                 figure.colorBy = value;
+                return;
+            }
+            if (key === 'layout') {
+                figure.layout = figureName(FIGURE_LAYOUTS, value);
+                return;
+            }
+            if (key === 'displaytype') {
+                figure.display = figureName(FIGURE_DISPLAYS, value);
+                return;
+            }
+            if (key === 'labeldirection') {
+                figure.labelDirection = figureName(FIGURE_LABEL_DIRECTIONS, value);
                 return;
             }
             if (key !== 'columns') {

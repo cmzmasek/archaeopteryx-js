@@ -911,6 +911,27 @@ was off, opens the tree uncoloured, and it stays so; a figure without the
 key leaves the choice to the viewer. An `initialVisualization` in the config
 wins over the file.
 
+**The figure's switches are honoured too.** Since its 0.11.199 the desktop
+opens a tree as its figure says rather than as its load-time guesses would
+have it, and so does this viewer, for every switch it has a control for:
+`displaytype=` (`CLADOGRAM`, `ALIGNED_PHYLOGRAM` or `UNALIGNED_PHYLOGRAM`; a
+tree without branch lengths still opens as a cladogram, and the unrooted
+layout cannot align), `layout=` (`RECTANGULAR`, `CIRCULAR` or `UNROOTED`;
+the desktop's other rectangular-family layouts open rectangular),
+`labeldirection=` (`HORIZONTAL` or `RADIAL`, the radial layouts' label
+direction), and the display switches `show.WRITE_CONFIDENCE_VALUES` (Confidence),
+`show.WRITE_EVENTS` (Node Events), `show.USE_STYLE` (Visual Styles),
+`show.SHOW_DOMAIN_ARCHITECTURES` (Domains), `show.SHOW_MSA` (Alignment),
+`show.DISPLAY_EXTERNAL_DATA` and `show.DISPLAY_INTERNAL_DATA` (Ext. and
+Int. Labels), besides `show.SHOW_PROPERTIES` and `show.SHOW_NODE_NAMES` (see
+[Metadata in the label](#metadata-in-the-label)). A `show.` key with any
+value names its switch: `true` (case aside) is on, anything else off, as the
+desktop reads it. `show.WIDTH_BRANCHES` is not asked: a file's branch widths
+are always drawn here. A `layout`, `showMsa` or `showDomainArchitectures` in
+the config wins over the file. In a file of several trees, a tree's own
+figure also wins over the layout, display type and label direction carried
+from the tree shown before it.
+
 **Hover any cell** for its tip, the column and its value — or `not assessed` —
 and the scale it was coloured against. The column names stand under the matrix,
 turned; a matrix with more columns than will fit shows a window and says so
@@ -1727,16 +1748,16 @@ copy-pastable JSON.
 | `displayHeight` | `600` | Height — only when dynamic sizing is off. |
 | `zoomToFitUponWindowResize` | `true` | Re-fit the tree after a window resize. |
 | `rootOffset` | `254` | Distance from the left edge to the root. The default clears the control panel: its inset plus its width plus a margin. |
-| `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. |
+| `layout` | `'rectangular'` | The starting layout: `'rectangular'`, `'circular'`, or `'unrooted'`. Unset, the file's figure (`layout=`) chooses, else rectangular. |
 | `ladderizeTree` | `true` | Ladderize the tree on load: at each node, the larger clade first (any number of children, so a polytomy sorts too). |
-| `showMsa` | tree-derived | Open with the alignment track shown. Default: on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showMsa` | tree-derived | Open with the alignment track shown. Default: as the file's figure says (`show.SHOW_MSA=`), else on when the tree carries an aligned `mol_seq`, off otherwise — an explicit `true`/`false` overrides both. |
 | `showProperties` | tree-derived | Open with the nodes' metadata (their phyloXML properties) in their labels — the **Metadata** checkbox. Default: off, unless the file's figure setting (`show.SHOW_PROPERTIES=true`) says on. See [Metadata in the label](#metadata-in-the-label). |
 | `labelProperties` | tree-derived | Which metadata fields the label shows, in order, as an array of refs (`['BVBRC:species', 'BVBRC:host_name']`). Default: the figure setting's `labelprops`, else `null` — every property but the heat map's columns. |
 | `showMsaLogo` | `false` | Open with the alignment summarised as a sequence logo instead of a conservation bar: a stack of letters per column, as tall as its information content, over the tips currently on screen. Only drawn while the alignment track is shown. |
 | `showHeatmap` | tree-derived | Open with the heat map shown. Offered whenever the tree carries two or more numeric per-tip fields, but off unless asked for — almost any annotated tree has such fields, so turning it on by itself would be an opinion about the tree rather than a service — or unless the file's own figure setting (`aptx:figure`, see [Heat maps](#heat-maps)) draws them as a matrix. |
 | `heatmapColumnOrder` | tree-derived | How the heat map's columns are ordered: `'document'` (as the file lists them), `'clustered'` (Euclidean), `'clustered-presence'` (Bray–Curtis), `'alphabetical'`, `'frequency'`. The clustered modes also draw the dendrogram. Default: a **clustered** order, with the distance chosen from the values — Bray–Curtis where the matrix has zeros to ignore and nothing negative, Euclidean otherwise. An explicit value always wins and is never re-derived. |
 | `heatmapManualOrder` | `null` | The heat map's columns in your own order, as an array of property refs (`['meta:recA', 'meta:gyrA', …]`). Only read while `heatmapColumnOrder` is `'manual'`. A ref the tree has not got is ignored, and a column the list does not name follows the ones it does. |
-| `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides that. |
+| `showDomainArchitectures` | tree-derived | Open with the domain tracks shown. Default: as the file's figure says (`show.SHOW_DOMAIN_ARCHITECTURES=`), else on when any tip carries a `<domain_architecture>`, off otherwise — an explicit `true`/`false` overrides both. |
 | `domainLabels` | `'domains'` | Where domain names go: `'domains'` (on the boxes), `'legend'` (a card), or `'none'`. |
 | `domainGlow` | `false` | Open with the glow around each domain box on. |
 | `domainEvalueExponent` | `-3` | The E-value threshold's exponent at launch, an integer from `-20` to `3`: domains with an E-value at or under `10^exponent` are drawn. |
@@ -1822,7 +1843,7 @@ All 118 of them, alphabetically:
 
 | Key | Why, and what to do instead |
 | --- | --- |
-| `alignPhylogram` | Aligning the tips is a control, not a launch option. |
+| `alignPhylogram` | Aligning the tips is a control, not a launch option; the file's figure (`displaytype=ALIGNED_PHYLOGRAM`) can open the tree aligned. |
 | `allowManualNodeSelection` | Renamed to `enableManualNodeSelection`. |
 | `backgroundColorDefault` | The background is fixed. |
 | `backgroundColorForPrintExportDefault` | The export background is fixed. |
@@ -1885,7 +1906,7 @@ All 118 of them, alphabetically:
 | `nodeVisualizations` | The visualization-dictionary mechanism (with its per-visualization regex matching) was removed for good; visualizations are derived automatically from the tree itself. Throws as a config key — and any old positional argument after `config` is rejected by count. |
 | `nodeVisualizationsOpacity` | No longer configurable. |
 | `orderTree` | Renamed to `ladderizeTree`, to match the wording used everywhere else. |
-| `phylogram` | The tree is drawn to scale when most of its branches have a length. |
+| `phylogram` | The tree is drawn to scale when most of its branches have a length, or as the file's figure says. |
 | `propertiesToIgnoreForNodeVisualization` | Every property the tree carries is offered; choose what to show in the panel. |
 | `searchFieldWidth` | The search boxes size themselves to the control panel. |
 | `searchIsCaseSensitive` | Off by default; use the Match case checkbox. |
@@ -1900,18 +1921,18 @@ All 118 of them, alphabetically:
 | `showBranchEvents` | Shown when the tree has branch events. |
 | `showBranchLengthValues` | Off by default; use the Branch Length checkbox. |
 | `showBranchVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
-| `showConfidenceValues` | Shown when the tree has confidences. |
+| `showConfidenceValues` | Shown when the tree has confidences; on or off as the file's figure says. |
 | `showDistributions` | Off by default. |
 | `showDynahideButton` | The Auto-hide Labels checkbox is always shown. |
-| `showExternalLabels` | On by default; use the Ext. Labels checkbox. |
+| `showExternalLabels` | On by default, or as the file's figure says; use the Ext. Labels checkbox. |
 | `showExternalLabelsButton` | Always shown. |
 | `showExternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `showExternalNodesButton` | The Ext. Nodes switch no longer exists. |
-| `showInternalLabels` | Off by default; use the Int. Labels checkbox. |
+| `showInternalLabels` | Off by default, or as the file's figure says; use the Int. Labels checkbox. |
 | `showInternalLabelsButton` | Shown automatically when the tree has internal node data. |
 | `showInternalNodes` | Node shapes now appear wherever a node visualization applies. |
 | `showInternalNodesButton` | The Int. Nodes switch no longer exists. |
-| `showNodeEvents` | Shown when the tree has node events. |
+| `showNodeEvents` | Shown when the tree has node events, unless the file's figure says not. |
 | `showNodeName` | Shown when the tree has node names. |
 | `showNodeNameButton` | Shown automatically when the tree has node names. |
 | `showNodeVisualizations` | Node and branch visualizations are one switch now; use the Visualizations checkbox. |
@@ -1935,7 +1956,7 @@ All 118 of them, alphabetically:
 | `textFieldHeight` | The text fields size themselves to their content. |
 | `treeName` | The name comes from the tree file. |
 | `unrootedDisplay` | Replaced by `layout`; use `layout: 'unrooted'`. |
-| `useVisualStyles` | On by default; use the Visual Styles checkbox. |
+| `useVisualStyles` | On by default, or as the file's figure says; use the Visual Styles checkbox. |
 | `valuesToIgnoreForNodeVisualization` | Every value is shown; choose what to show in the panel. |
 | `visualizationsLegendOrientation` | The legend orientation is fixed; the legend has its own control. |
 | `visualizationsLegendXposOrig` | Internal bookkeeping; set visualizationsLegendXpos. |
@@ -2877,7 +2898,13 @@ figure's MATRIX columns (`forester.figureMatrixRefs(tree)`, from
 `"v1;key=value;…"`, values escaped as the desktop's `PropertyTextCodec` does,
 `columns=` a `|` list of `ref~TYPE~SHAPE~normalized`, `colorby=` the field the
 desktop coloured by (`colorBy`: its ref, `''` while Color by was off, `null`
-when unsaid); an unknown version is no figure, unknown keys are ignored). `forester.dropCladeFigures(tree)` removes
+when unsaid), `layout=` and `displaytype=` as the view's words (`layout`:
+`'rectangular'`, `'circular'` or `'unrooted'`; `display`: `'cladogram'`,
+`'aligned'` or `'phylogram'`; `labelDirection`: `'horizontal'` or `'radial'`;
+each `null` when unsaid or a name this viewer has not),
+`show.<DisplayOption>=` (`show`: by the desktop's name, `true` for `true` in
+any case, `false` for any other value); an unknown version is no figure,
+unknown keys are ignored). `forester.dropCladeFigures(tree)` removes
 the old clade-level copies at launch.
 
 Distances are `forester.heatmapEuclideanDistances` (R's `dist` convention for

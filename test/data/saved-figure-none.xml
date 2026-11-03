@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Saved figure wins: none (demo)</name>
+  <description>The twin of saved-figure.xml: the same tree without a saved figure. It opens with the support values, the duplications, the branch colours and widths, the domain architectures and the alignment switched on, in the phylogram type your preference names.</description>
+  <clade>
+    <branch_length>0.0</branch_length>
+    <clade>
+      <branch_length>0.12</branch_length>
+      <confidence type="bootstrap">76</confidence>
+      <events>
+        <duplications>1</duplications>
+      </events>
+      <clade>
+        <branch_length>0.06</branch_length>
+        <confidence type="bootstrap">84</confidence>
+        <events>
+          <duplications>1</duplications>
+        </events>
+        <clade>
+          <branch_length>0.03</branch_length>
+          <confidence type="bootstrap">97</confidence>
+          <width>3.0</width>
+          <color>
+            <red>192</red>
+            <green>57</green>
+            <blue>43</blue>
+          </color>
+          <events>
+            <speciations>1</speciations>
+          </events>
+          <clade>
+            <name>SRC_HUMAN</name>
+            <branch_length>0.04</branch_length>
+            <width>3.0</width>
+            <color>
+              <red>192</red>
+              <green>57</green>
+              <blue>43</blue>
+            </color>
+            <sequence>
+              <name>SRC_HUMAN</name>
+              <mol_seq is_aligned="true">MGSNKSKPKDASQRRRSLEPAENVHGAGGA</mol_seq>
+              <domain_architecture length="536">
+                <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+                <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+                <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+              </domain_architecture>
+            </sequence>
+          </clade>
+          <clade>
+            <name>SRC_MOUSE</name>
+            <branch_length>0.05</branch_length>
+            <width>3.0</width>
+            <color>
+              <red>192</red>
+              <green>57</green>
+              <blue>43</blue>
+            </color>
+            <sequence>
+              <name>SRC_MOUSE</name>
+              <mol_seq is_aligned="true">MGSNKSKRKDASQRRRSLEPAENVHGAGGA</mol_seq>
+              <domain_architecture length="536">
+                <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+                <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+                <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+              </domain_architecture>
+            </sequence>
+          </clade>
+        </clade>
+        <clade>
+          <branch_length>0.04</branch_length>
+          <confidence type="bootstrap">99</confidence>
+          <events>
+            <speciations>1</speciations>
+          </events>
+          <clade>
+            <name>YES_HUMAN</name>
+            <branch_length>0.06</branch_length>
+            <sequence>
+              <name>YES_HUMAN</name>
+              <mol_seq is_aligned="true">MGSTKSKPKDASQRRRSLDPAENVHGAGGA</mol_seq>
+              <domain_architecture length="536">
+                <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+                <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+                <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+              </domain_architecture>
+            </sequence>
+          </clade>
+          <clade>
+            <name>YES_MOUSE</name>
+            <branch_length>0.07</branch_length>
+            <sequence>
+              <name>YES_MOUSE</name>
+              <mol_seq is_aligned="true">MGSTKSKPKDASQRRRSLEKAENVHGAGGA</mol_seq>
+              <domain_architecture length="536">
+                <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+                <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+                <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+              </domain_architecture>
+            </sequence>
+          </clade>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.05</branch_length>
+        <confidence type="bootstrap">100</confidence>
+        <events>
+          <speciations>1</speciations>
+        </events>
+        <clade>
+          <name>FYN_HUMAN</name>
+          <branch_length>0.05</branch_length>
+          <sequence>
+            <name>FYN_HUMAN</name>
+            <mol_seq is_aligned="true">MGSNKSKPKD-SQRRRSLEPAESVHGAGGA</mol_seq>
+            <domain_architecture length="536">
+              <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+              <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+              <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+            </domain_architecture>
+          </sequence>
+        </clade>
+        <clade>
+          <name>FYN_MOUSE</name>
+          <branch_length>0.06</branch_length>
+          <sequence>
+            <name>FYN_MOUSE</name>
+            <mol_seq is_aligned="true">MGSNKSKPKD-SQRRRSLEPAENVHTAGGA</mol_seq>
+            <domain_architecture length="536">
+              <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+              <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+              <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+            </domain_architecture>
+          </sequence>
+        </clade>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.2</branch_length>
+      <confidence type="bootstrap">100</confidence>
+      <events>
+        <speciations>1</speciations>
+      </events>
+      <clade>
+        <name>ABL1_HUMAN</name>
+        <branch_length>0.18</branch_length>
+        <sequence>
+          <name>ABL1_HUMAN</name>
+          <mol_seq is_aligned="true">MLSNKSKPKDASQRERSLEPAENVHGAGGA</mol_seq>
+          <domain_architecture length="536">
+            <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+            <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+            <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+          </domain_architecture>
+        </sequence>
+      </clade>
+      <clade>
+        <name>ABL_DROME</name>
+        <branch_length>0.31</branch_length>
+        <sequence>
+          <name>ABL_DROME</name>
+          <mol_seq is_aligned="true">MLSNKSKPKDASQRERSLEPAENVHGANGA</mol_seq>
+          <domain_architecture length="536">
+            <domain from="84" to="145" confidence="1.0E-6" id="PF00018">SH3</domain>
+            <domain from="151" to="248" confidence="1.0E-6" id="PF00017">SH2</domain>
+            <domain from="270" to="519" confidence="1.0E-6" id="PF00069">Pkinase</domain>
+          </domain_architecture>
+        </sequence>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

@@ -5837,8 +5837,8 @@ function (root, d3, forester, phyloXml) {
         visualizationsLegendXposOrig: 'internal bookkeeping; set visualizationsLegendXpos',
         visualizationsLegendYposOrig: 'internal bookkeeping; set visualizationsLegendYpos',
         // Decided from the tree, or simply fixed, as of the 2026 modernization.
-        phylogram: 'the tree is drawn to scale when most of its branches have a length',
-        alignPhylogram: 'aligning the tips is a control, not a launch option',
+        phylogram: 'the tree is drawn to scale when most of its branches have a length, or as the file\'s figure says',
+        alignPhylogram: 'aligning the tips is a control, not a launch option; the file\'s figure can open the tree aligned',
         treeName: 'the name comes from the tree file',
         fontSize: 'one default size for every label; the font-size slider changes it',
         defaultFont: 'labels use the sans-serif the reader\'s own system renders best',
@@ -5852,12 +5852,12 @@ function (root, d3, forester, phyloXml) {
         showNodeName: 'shown when the tree has node names',
         showTaxonomy: 'shown when the tree has taxonomies',
         showSequence: 'shown when the tree has sequences',
-        showConfidenceValues: 'shown when the tree has confidences',
-        showNodeEvents: 'shown when the tree has node events',
+        showConfidenceValues: 'shown when the tree has confidences; on or off as the file\'s figure says',
+        showNodeEvents: 'shown when the tree has node events, unless the file\'s figure says not',
         showBranchEvents: 'shown when the tree has branch events',
         showBranchLengthValues: 'off by default; use the Branch Length checkbox',
-        showInternalLabels: 'off by default; use the Int. Labels checkbox',
-        showExternalLabels: 'on by default; use the Ext. Labels checkbox',
+        showInternalLabels: 'off by default, or as the file\'s figure says; use the Int. Labels checkbox',
+        showExternalLabels: 'on by default, or as the file\'s figure says; use the Ext. Labels checkbox',
         showDistributions: 'off by default',
         showBranchColors: 'merged into the Visual Styles checkbox, like the desktop\'s "Visual Styles/Branch Colors"',
         shortenNodeNames: 'on by default when the tree has long node names; use the Short Names checkbox',
@@ -5935,7 +5935,7 @@ function (root, d3, forester, phyloXml) {
         // it stays gone: the tree itself is the only source of visualizations
         nodeVisualizations: 'the visualization-dictionary mechanism was removed; visualizations are derived automatically from the tree itself',
         specialVisualizations: 'removed along with the enableSpecialVisualizations2/3/4 settings',
-        useVisualStyles: 'on by default; use the Visual Styles checkbox'
+        useVisualStyles: 'on by default, or as the file\'s figure says; use the Visual Styles checkbox'
     };
 
     // ---- the public config surface ----------------------------------------
@@ -6090,6 +6090,17 @@ function (root, d3, forester, phyloXml) {
         }
     }
 
+    // The on/off a file's figure names for one of the desktop's display
+    // switches (show.WRITE_CONFIDENCE_VALUES=false), else the viewer's own
+    // guess. A figure wins over the load-time guesses for every switch this
+    // viewer has a control for, the desktop's rule since its 0.11.199; an
+    // explicit config value, where there is one, wins over the figure (the
+    // callers test for that first). show.WIDTH_BRANCHES is never asked: a
+    // file's branch widths are always drawn here.
+    function figureSwitch(figure, name, guess) {
+        return figure && typeof figure.show[name] === 'boolean' ? figure.show[name] : guess;
+    }
+
     function initializeState(state) {
         _state = state;
 
@@ -6099,6 +6110,10 @@ function (root, d3, forester, phyloXml) {
         // the same per-tree discovery that drives the search Field menu.
         let presentFields = new Set(_treeData ? forester.availableSearchFields(_treeData) : []);
         let F = forester.searchFields;
+        // The file's figure (aptx:figure, the desktop's), read once: its
+        // switches are applied where each guess is made below, its label keys
+        // in their own block, its Color-by where the visualizations start.
+        let figure = _treeData ? forester.readFigure(_treeData) : null;
 
         // Branch lengths are worth drawing to scale only when MOST of the
         // branches that CARRY THE SCALE have one. Two corrections to the
@@ -6134,19 +6149,35 @@ function (root, d3, forester, phyloXml) {
             && (measured / branchCount) > PHYLOGRAM_MIN_BRANCH_FRACTION;
         _state.alignPhylogram = false;
         // "layout" is launch-time only: a caller picks the starting layout by
-        // name, and from here on _state.circularDisplay/_state.unrootedDisplay
+        // name (else the file's figure, else rectangular), and from here on
+        // _state.circularDisplay/_state.unrootedDisplay
         // (set from it below, once) are the only live representation -- the
         // layout buttons write straight to those two, never back to a "layout"
         // field, so keeping one around afterward would just go stale.
         let layout = _state.layout;
         if (layout === undefined) {
-            layout = 'rectangular';
+            layout = (figure && figure.layout) || 'rectangular';
         } else if (layout !== 'rectangular' && layout !== 'circular' && layout !== 'unrooted') {
             throw new Error(ERROR + '"layout" must be "rectangular", "circular", or "unrooted"');
         }
         _state.circularDisplay = layout === 'circular';
         _state.unrootedDisplay = layout === 'unrooted';
         delete _state.layout;
+        // The figure's displaytype (CLADOGRAM, ALIGNED_PHYLOGRAM or
+        // UNALIGNED_PHYLOGRAM, read as the view's words) wins over the
+        // fraction rule above. A tree without branch lengths opens as a
+        // cladogram whatever its figure says, the desktop's one exception;
+        // the unrooted layout cannot align, as applyViewState has it.
+        if (figure && figure.display && _basicTreeProperties.branchLengths === true) {
+            _state.phylogram = figure.display !== 'cladogram';
+            _state.alignPhylogram = figure.display === 'aligned' && !_state.unrootedDisplay;
+        }
+        // The radial layouts' label direction (labeldirection=, which the
+        // desktop writes for a radial figure only): the domain and gene
+        // tracks still turn the labels onto the spokes, their own rule.
+        if (figure && figure.labelDirection) {
+            _radialLabelsHorizontal = figure.labelDirection === 'horizontal';
+        }
         _state.dynahide = true;
 
         if (_state.searchAinitialValue && (typeof _state.searchAinitialValue === 'string' || _state.searchAinitialValue instanceof String) && _state.searchAinitialValue.trim().length > 0) {
@@ -6187,15 +6218,17 @@ function (root, d3, forester, phyloXml) {
         // them drawn, so there is nothing to preserve and today's uncluttered
         // default is right. Only promotion destroys visible information. That
         // difference between the two programs is a NAMED divergence, agreed
-        // 2026-09-08 -- do not "fix" it into either shape.
-        _state.showConfidenceValues = !!(_treeData && _treeData.confidencesFromInternalLabels > 0);
+        // 2026-09-08 -- do not "fix" it into either shape. A figure that
+        // names the switch wins over either program's guess.
+        _state.showConfidenceValues = figureSwitch(figure, 'WRITE_CONFIDENCE_VALUES',
+            !!(_treeData && _treeData.confidencesFromInternalLabels > 0));
         // A tree carrying an aligned mol_seq per tip shows its alignment
         // track from the start, as the desktop auto-enables it on load --
         // unless the caller already said so explicitly (an explicit value
         // must survive, or "showMsa" in STATE_KEYS would be a dead promise).
         if (_state.showMsa === undefined) {
-            _state.showMsa = _basicTreeProperties.alignedMolSeqs === true
-                && _basicTreeProperties.maxMolSeqLength > 0;
+            _state.showMsa = figureSwitch(figure, 'SHOW_MSA', _basicTreeProperties.alignedMolSeqs === true
+                && _basicTreeProperties.maxMolSeqLength > 0);
         }
         // The heat map is offered whenever the tree carries two or more
         // numeric per-tip fields, which is common enough that turning it on
@@ -6252,7 +6285,8 @@ function (root, d3, forester, phyloXml) {
         // draw from the viewport; threshold, label mode and glow come from
         // the config or the desktop's defaults.
         if (_state.showDomainArchitectures === undefined) {
-            _state.showDomainArchitectures = _basicTreeProperties.domainArchitectures === true;
+            _state.showDomainArchitectures = figureSwitch(figure, 'SHOW_DOMAIN_ARCHITECTURES',
+                _basicTreeProperties.domainArchitectures === true);
         }
         if (_state.domainLabels === undefined) {
             _state.domainLabels = 'domains';
@@ -6367,13 +6401,16 @@ function (root, d3, forester, phyloXml) {
         // the scale bar is on unless the caller says no; it gives way to the axis anyway
         _state.showScaleBar = _state.showScaleBar !== false;
         _state.showSupportDots = _state.showSupportDots === true;
-        _state.showNodeEvents = _basicTreeProperties.nodeEvents === true;
+        // Four more of the desktop's switches read off its figure when it
+        // names them: Node Events (its WRITE_EVENTS; Branch Events are this
+        // viewer's own), Int. and Ext. Labels, Visual Styles.
+        _state.showNodeEvents = figureSwitch(figure, 'WRITE_EVENTS', _basicTreeProperties.nodeEvents === true);
         _state.showBranchEvents = _basicTreeProperties.branchEvents === true;
         _state.showBranchLengthValues = false;
         _state.showDistributions = false;
-        _state.showInternalLabels = false;
-        _state.showExternalLabels = true;
-        _state.useVisualStyles = true;
+        _state.showInternalLabels = figureSwitch(figure, 'DISPLAY_INTERNAL_DATA', false);
+        _state.showExternalLabels = figureSwitch(figure, 'DISPLAY_EXTERNAL_DATA', true);
+        _state.useVisualStyles = figureSwitch(figure, 'USE_STYLE', true);
         // Long names are shortened from the start; the checkbox is always there
         // to turn that off.
         _state.shortenNodeNames = _basicTreeProperties.longestNodeName > SHORTEN_NAME_MAX_LENGTH;
@@ -6488,12 +6525,11 @@ function (root, d3, forester, phyloXml) {
 
         // Properties in the tip label: off unless asked for, as on the desktop,
         // in every user-visible property's own order unless a list says which.
-        // The file's figure setting (aptx:figure) can say both, and whether
-        // the names show: labelprops, show.SHOW_PROPERTIES and
+        // The file's figure setting (aptx:figure, read above) can say both,
+        // and whether the names show: labelprops, show.SHOW_PROPERTIES and
         // show.SHOW_NODE_NAMES, the desktop's own keys. The config wins.
-        let figure = _treeData ? forester.readFigure(_treeData) : null;
         if (_state.showProperties === undefined) {
-            _state.showProperties = !!(figure && figure.show.SHOW_PROPERTIES === true);
+            _state.showProperties = figureSwitch(figure, 'SHOW_PROPERTIES', false);
         }
         if (_state.labelProperties === undefined) {
             _state.labelProperties = (figure && figure.labelProps) ? figure.labelProps.slice() : null;
@@ -6503,8 +6539,8 @@ function (root, d3, forester, phyloXml) {
             }))) {
             throw new Error(ERROR + '"labelProperties" must be an array of property refs');
         }
-        if (figure && typeof figure.show.SHOW_NODE_NAMES === 'boolean' && _basicTreeProperties.nodeNames) {
-            _state.showNodeName = figure.show.SHOW_NODE_NAMES;
+        if (_basicTreeProperties.nodeNames) {
+            _state.showNodeName = figureSwitch(figure, 'SHOW_NODE_NAMES', _state.showNodeName);
         }
 
         // A small tree is drawn with a heavier stroke; hairlines are for trees
@@ -7190,6 +7226,10 @@ function (root, d3, forester, phyloXml) {
     // alone: the settings that say nothing about what is in the tree. So
     // stepping through ten trees of one file in the circular layout keeps
     // the circular layout, while each tree still labels itself its own way.
+    // Except what the tree's own figure names (layout=, displaytype=,
+    // labeldirection=): a figure wins over inherited geometry as it wins
+    // over the load-time guesses, so a tree saved circular opens circular
+    // after a rectangular one, as it opens in its own tab on the desktop.
     const VIEW_CARRY_KEYS = ['layout', 'display', 'font', 'node', 'branch', 'rotation', 'horizontalLabels'];
 
     // The tree on screen, as it stands, filed under the tree OBJECT: indices
@@ -7213,9 +7253,12 @@ function (root, d3, forester, phyloXml) {
             return remembered;
         }
         let current = _root_const ? getViewState() : {};
+        let figure = forester.readFigure(tree);
+        let named = {layout: !!(figure && figure.layout), display: !!(figure && figure.display),
+            horizontalLabels: !!(figure && figure.labelDirection)};
         let carried = {};
         VIEW_CARRY_KEYS.forEach(function (k) {
-            if (current[k] !== undefined) {
+            if (current[k] !== undefined && !named[k]) {
                 carried[k] = current[k];
             }
         });

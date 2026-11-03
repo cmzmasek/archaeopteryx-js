@@ -574,9 +574,34 @@ function testFigureLabelChoices() {
             + 'show.BOGUS=maybe;colorby=x'}]});
     var none = forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',
         value: 'v1;columns=a\\sMATRIX\\sCIRCLE\\sfalse'}]});
+    var fig = function (v) {
+        return forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string', value: v}]});
+    };
+    var sw = fig('v1;layout=CIRCULAR;displaytype=ALIGNED_PHYLOGRAM;show.USE_STYLE=;show.SHOW_MSA=true;show.WRITE_EVENTS=no');
     return JSON.stringify(f.labelProps) === '["BVBRC:species","BVBRC:host_name"]'
-        && f.show.SHOW_PROPERTIES === true && f.show.SHOW_NODE_NAMES === false && !('BOGUS' in f.show)
+        // a show. key with any value names the switch: "true" on, anything else off (the desktop's reading)
+        && f.show.SHOW_PROPERTIES === true && f.show.SHOW_NODE_NAMES === false && f.show.BOGUS === false
         && none.labelProps === null && Object.keys(none.show).length === 0
+        // layout and displaytype as the view's words; unsaid, or a name this viewer has not, is null
+        && none.layout === null && none.display === null && f.layout === null && f.display === null
+        && sw.layout === 'circular' && sw.display === 'aligned'
+        && sw.show.USE_STYLE === false && sw.show.SHOW_MSA === true && sw.show.WRITE_EVENTS === false
+        && fig('v1;layout=UNROOTED;displaytype=CLADOGRAM').layout === 'unrooted'
+        && fig('v1;layout=UNROOTED;displaytype=CLADOGRAM').display === 'cladogram'
+        && fig('v1;layout=RECTANGULAR;displaytype=UNALIGNED_PHYLOGRAM').layout === 'rectangular'
+        && fig('v1;layout=RECTANGULAR;displaytype=UNALIGNED_PHYLOGRAM').display === 'phylogram'
+        && fig('v1;layout=EURO_STYLE;displaytype=NOPE').layout === null
+        && fig('v1;layout=constructor;displaytype=toString').layout === null
+        && fig('v1;layout=constructor;displaytype=toString').display === null
+        && fig('v1;layout=EURO_STYLE;displaytype=NOPE').display === null
+        // "true" case aside, as the desktop's Boolean.parseBoolean reads it
+        && fig('v1;show.SHOW_MSA=TRUE;show.USE_STYLE=True').show.SHOW_MSA === true
+        && fig('v1;show.SHOW_MSA=TRUE;show.USE_STYLE=True').show.USE_STYLE === true
+        // the radial layouts' label direction
+        && none.labelDirection === null && sw.labelDirection === null
+        && fig('v1;labeldirection=HORIZONTAL').labelDirection === 'horizontal'
+        && fig('v1;labeldirection=RADIAL').labelDirection === 'radial'
+        && fig('v1;labeldirection=SIDEWAYS').labelDirection === null
         // colorby: the field's ref as saved, '' while Color by was off, null when unsaid
         && f.colorBy === 'x' && none.colorBy === null
         && forester.readFigure({properties: [{ref: 'aptx:figure', applies_to: 'phylogeny', datatype: 'xsd:string',

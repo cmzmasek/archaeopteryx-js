@@ -8,6 +8,19 @@ users see a change only when a version is cut.
 ## Unreleased
 
 ### Added
+- **A saved figure's switches are honoured.** The desktop's figure setting
+  (`aptx:figure`) names what a tree was saved showing, and the tree now opens
+  that way here rather than as the viewer's load-time guesses would have it:
+  the display type (`displaytype=`: cladogram, phylogram or aligned
+  phylogram; a tree without branch lengths still opens as a cladogram), the
+  layout (`layout=`), the radial layouts' label direction
+  (`labeldirection=`), and the switches Confidence, Node Events, Visual
+  Styles, Domains, Alignment, Ext. and Int. Labels (`show.…=`; `true` is on,
+  any other value off). Branch widths are no switch here and are always
+  drawn. A `layout`, `showMsa` or `showDomainArchitectures` in the config
+  wins over the file; in a file of several trees, a tree's own figure wins
+  over the geometry carried from the tree before it. The desktop's own rule since its 0.11.199; its demo
+  pair (`saved-figure.xml` and its figure-less twin) is the acceptance test.
 - **A saved figure's Color-by is honoured.** The desktop's figure setting
   (`aptx:figure`) names the field it coloured by (`colorby=vipr:Genus`): the
   tree opens coloured by it when it offers that field, else warns and takes
