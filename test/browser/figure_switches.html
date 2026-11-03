@@ -79,9 +79,23 @@
         const shows = (f) => vs.show.indexOf(f) >= 0;
         const cb = (id) => { const e = document.getElementById(id); return e ? e.checked : null; };
         const summary = JSON.stringify({layout: vs.layout, display: vs.display, msa: vs.msa, domains: vs.domains, show: vs.show});
-        const labelsAligned = () => {
-            const xs = [...document.querySelectorAll('#p svg text.extlabel')].map((t) => t.getBoundingClientRect().left);
-            return xs.length > 1 && Math.max(...xs) - Math.min(...xs) < 1;
+        // update() animates, and a slow runner (CI, one case at a time) may still be moving the labels after the
+        // wait above: read the visible labels' x until two readings 400 ms apart agree, then judge
+        const labelXs = () => [...document.querySelectorAll('#p svg text.extlabel')]
+            .map((t) => t.getBoundingClientRect()).filter((r) => r.width > 0).map((r) => r.left);
+        const settledXs = async () => {
+            let last = labelXs();
+            for (let i = 0; i < 15; i++) {
+                await sleep(400);
+                const now = labelXs();
+                if (now.length === last.length && now.every((x, k) => Math.abs(x - last[k]) < 0.01)) { return now; }
+                last = now;
+            }
+            return last;
+        };
+        const labelsAligned = async () => {
+            const xs = await settledXs();
+            return {ok: xs.length > 1 && Math.max(...xs) - Math.min(...xs) < 1, xs: xs.map((x) => Math.round(x)).join(',')};
         };
         const fileColourOnScreen = () => [...document.querySelectorAll('#p svg *')].some((el) => {
             const cs = getComputedStyle(el); return cs.fill === 'rgb(192, 57, 43)' || cs.stroke === 'rgb(192, 57, 43)';
@@ -101,7 +115,8 @@
             if (mode === 'figure') {
                 check('... the alignment and the domains off, as the figure says', vs.msa === false && vs.domains === false
                     && cb('msa_cb') === false && cb('domains_cb') === false && !msaDrawn() && !domainsDrawn(), summary);
-                check('... the tip labels start on one x', labelsAligned());
+                const a = await labelsAligned();
+                check('... the tip labels start on one x', a.ok, a.xs);
             } else {
                 check('... but the config\'s showMsa and showDomainArchitectures win over the figure', vs.msa === true && vs.domains === true
                     && cb('msa_cb') === true && cb('domains_cb') === true, summary);
@@ -113,7 +128,8 @@
             check('... the file\'s branch colour is on screen', fileColourOnScreen());
             check('... the alignment and the domains on and drawn', vs.msa === true && vs.domains === true
                 && cb('msa_cb') === true && cb('domains_cb') === true && msaDrawn() && domainsDrawn(), summary);
-            check('... the tip labels do not start on one x', !labelsAligned());
+            const a = await labelsAligned();
+            check('... the tip labels do not start on one x', !a.ok, a.xs);
             check('... Ext. Labels on and Int. Labels off', shows('external') && !shows('internal'), summary);
         } else if (mode === 'on') {
             check('the figure opens a cladogram, circular', vs.display === 'cladogram' && vs.layout === 'circular', summary);
