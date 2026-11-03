@@ -93,9 +93,11 @@
             }
             return last;
         };
+        // a text's box starts at its first glyph's edge, which differs by about a pixel between first letters
+        // on CI's Linux Chrome (964..965 there); the twin's unaligned labels differ by hundreds of pixels
         const labelsAligned = async () => {
             const xs = await settledXs();
-            return {ok: xs.length > 1 && Math.max(...xs) - Math.min(...xs) < 1, xs: xs.map((x) => Math.round(x)).join(',')};
+            return {ok: xs.length > 1 && Math.max(...xs) - Math.min(...xs) < 3, xs: xs.map((x) => Math.round(x)).join(',')};
         };
         const fileColourOnScreen = () => [...document.querySelectorAll('#p svg *')].some((el) => {
             const cs = getComputedStyle(el); return cs.fill === 'rgb(192, 57, 43)' || cs.stroke === 'rgb(192, 57, 43)';
