@@ -17,7 +17,8 @@ users see a change only when a version is cut.
   value under another name is not guessed at. The rules are the desktop's
   (its 0.11.202) and its two demo trees are the acceptance test here. The
   node-data dialog now lists a sequence's cross-references too.
-  `enableAccessToDatabases` governs both links.
+  `enableAccessToDatabases` governs both links. The desktop's demo tree for
+  it, six real records, joins the demos as "Node data links (Open PDB)".
 - **A saved figure's switches are honoured.** The desktop's figure setting
   (`aptx:figure`) names what a tree was saved showing, and the tree now opens
   that way here rather than as the viewer's load-time guesses would have it:

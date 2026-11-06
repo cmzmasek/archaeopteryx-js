@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Node Data Links (demo)</name>
+  <description>Six real records on a schematic tree (the topology means nothing). Click a tip: &quot;Display Node Data&quot; lists what the record carries (taxonomy, accession, cross-references, domains, metadata); &quot;Open Sequence DB&quot; opens its accession&apos;s page, and &quot;Open PDB&quot; the PDB entries it names, by a cross-reference whose source is PDB (BRCA1: 1T15, 1JM7, 1JNX) or a pdb_ids metadata field (the MERS-CoV tip: four). The desktop Archaeopteryx&apos;s demo tree, with the same records.</description>
+  <clade>
+    <branch_length>0.0</branch_length>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>BRCA1_HUMAN</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="ncbi">9606</id>
+          <code>HUMAN</code>
+          <scientific_name>Homo sapiens</scientific_name>
+        </taxonomy>
+        <sequence type="protein">
+          <symbol>BRCA1</symbol>
+          <accession source="UniProt">P38398</accession>
+          <name>Breast cancer type 1 susceptibility protein</name>
+          <cross_references>
+            <accession source="PDB" comment="X-ray">1T15</accession>
+            <accession source="ensembl">ENSG00000012048</accession>
+            <accession source="geneid">672</accession>
+            <accession source="interpro">IPR001357</accession>
+            <accession source="interpro">IPR001841</accession>
+            <accession source="interpro">IPR011364</accession>
+            <accession source="pdb">1JM7</accession>
+            <accession source="pdb">1JNX</accession>
+          </cross_references>
+          <domain_architecture length="1863">
+            <domain from="24" to="65" confidence="-1.0" id="PF00097">zf-C3HC4</domain>
+            <domain from="1642" to="1736" confidence="-1.0" id="PF00533">BRCT</domain>
+            <domain from="1756" to="1855" confidence="-1.0" id="PF00533">BRCT</domain>
+          </domain_architecture>
+        </sequence>
+        <reference doi="10.1126/science.7545954">
+          <desc>Miki Y et al. (1994) A strong candidate for the breast and ovarian cancer susceptibility gene BRCA1. Science 266:66-71</desc>
+        </reference>
+        <property ref="data:gene_page" datatype="xsd:string" applies_to="node">https://www.ncbi.nlm.nih.gov/gene/672</property>
+      </clade>
+      <clade>
+        <name>Guaroa_virus|AKC42486.1</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="ncbi">80941</id>
+          <scientific_name>Guaroa virus</scientific_name>
+        </taxonomy>
+        <sequence type="protein">
+          <accession source="ncbi">AKC42486.1</accession>
+          <name>polymerase [Guaroa virus]</name>
+        </sequence>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>AAY88866</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="uniprot">333387</id>
+          <code>BCHK3</code>
+          <scientific_name>Bat SARS coronavirus HKU3-1</scientific_name>
+        </taxonomy>
+        <sequence type="protein">
+          <accession source="ncbi">AAY88866</accession>
+          <name>Bat SARS coronavirus HKU3-1 spike glycoprotein</name>
+          <gene_name>S</gene_name>
+          <cross_references>
+            <accession source="interpro">IPR002552</accession>
+            <accession source="interpro">IPR018548</accession>
+            <accession source="uniprot">Q3LZX1</accession>
+          </cross_references>
+        </sequence>
+      </clade>
+      <clade>
+        <name>KJ473821</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="uniprot">1495253</id>
+          <scientific_name>BtVs-BetaCoV/SC2013</scientific_name>
+        </taxonomy>
+        <sequence type="protein">
+          <accession source="ncbi">KJ473821</accession>
+          <name>BtVs-BetaCoV/SC2013, complete genome</name>
+        </sequence>
+      </clade>
+      <clade>
+        <name>PP_006XHL9.4</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="ncbi">565995</id>
+          <scientific_name>Bundibugyo virus</scientific_name>
+        </taxonomy>
+        <sequence type="dna">
+          <accession source="pathoplexus">PP_006XHL9.4</accession>
+          <name>Bundibugyo ebolavirus</name>
+          <uri desc="pathoplexus record">https://pathoplexus.org/seq/PP_006XHL9.4</uri>
+        </sequence>
+      </clade>
+      <clade>
+        <name>MERS-CoV_EMC/2012|AFS88936.1</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="ncbi">1335626</id>
+          <scientific_name>Middle East respiratory syndrome-related coronavirus</scientific_name>
+        </taxonomy>
+        <sequence type="protein">
+          <accession source="ncbi">AFS88936.1</accession>
+          <name>spike glycoprotein [Middle East respiratory syndrome-related coronavirus]</name>
+        </sequence>
+        <property ref="data:pdb_ids" datatype="xsd:string" applies_to="node">4KQZ,4L3N,5X4R,5X59</property>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

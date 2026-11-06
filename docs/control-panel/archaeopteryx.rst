@@ -686,10 +686,10 @@ an entry the tree does not allow is greyed, with a tooltip that says why.
      - remove this node and its whole clade from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
    * - Open Sequence DB [accession]
      - open the database record of this node's accession (NCBI protein or nucleotide, RefSeq, UniProt) in a new browser tab; offered when the node has one, among its properties or sequences or as a UniProt-style name such as CASP9\_HUMAN
+   * - Open PDB…
+     - list the PDB entries this node names, each a link to its RCSB PDB page; offered when the node names several
    * - Delete External Node
      - remove this tip from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
    * - Open PDB [entry]
      - open the RCSB PDB page of the structure this node names, in a new browser tab; offered when the node names one PDB entry, by a sequence accession or cross-reference whose source is PDB or in a metadata field named for PDB identifiers (pdb\_ids and its kin, in any namespace)
-   * - Open PDB…
-     - list the PDB entries this node names, each a link to its RCSB PDB page; offered when the node names several
 

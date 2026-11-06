@@ -15,7 +15,7 @@ the panel's order, with the icon it draws and what it does. The words are
 the control's own tooltip, as the panel's cheat sheet lists them (the card
 button in the panel header, "Control panel: what each control does"); no
 row shows a live value. The panel draws a control only when the tree on view
-gives it something to do, so this is the union over the 26 demo trees of
+gives it something to do, so this is the union over the 27 demo trees of
 ``demo.html``, and the last column says which of them show the control.
 A control with two icons shows the one for what the next click will do. The
 Download section ends with the formats of the Download… button's menu, each with
@@ -225,7 +225,7 @@ Visualizations
      - all demos but swh1, sarscov2, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous
    * - Shape
      - change the node shape by a field the tree carries
-     - auspice, beast, herpes\_dnapol, adenoviridae, clustergram, influenza, confidences, branch\_events, flu\_h5, circular, woese, flu\_h5n1\_seg3
+     - auspice, beast, herpes\_dnapol, adenoviridae, clustergram, influenza, node\_data\_links, confidences, branch\_events, flu\_h5, circular, woese, flu\_h5n1\_seg3
 
 Display Data
 ------------
@@ -244,10 +244,10 @@ Display Data
      - all demos
    * - Taxonomy
      - to show/hide node taxonomic information
-     - flavivirus, caliciviridae\_500, adenoviridae, apaf, bcl2
+     - flavivirus, caliciviridae\_500, adenoviridae, apaf, bcl2, node\_data\_links
    * - Sequence
      - to show/hide node sequence information
-     - swh1, flavivirus, caliciviridae\_500, adenoviridae, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, influenza, confidences, branch\_events
+     - all demos but auspice, beast, sarscov2, herpes\_dnapol, clustergram, dinosaur, ammonite, late\_cretaceous, bcl2, flu\_h5, circular, woese, flu\_h5n1\_seg3
    * - Metadata
      - to show/hide the nodes' metadata (phyloXML properties: species, host, …) in their labels; Metadata fields… chooses which, and in what order
      - all demos but swh1, sarscov2, apaf, genome\_regions, alignment\_nt, genome\_alignment, alignment, sequence\_logo, dinosaur, ammonite, late\_cretaceous, bcl2
@@ -326,7 +326,7 @@ Display Data
      - auspice, clustergram, influenza, confidences
    * - Domain Architectures
      - to show/hide the protein domain architectures beside the tips
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - Genes
      - to show/hide the genome regions beside the tips: each gene an arrow on a backbone, coloured by family, the rows lined up on one family
      - genome\_regions
@@ -361,22 +361,22 @@ Domain Architectures
      - Shown for
    * - −
      - narrow the domain tracks (hold to repeat)
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - \+
      - widen the domain tracks (hold to repeat)
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - −
      - Decrease the E-value threshold by a factor of 10
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - \+
      - Increase the E-value threshold by a factor of 10
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - Labels
      - where the domain names go: on the boxes (rectangular layout only), in a legend, or nowhere
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
    * - Glow
      - a soft glow in each domain's own colour around its box
-     - flavivirus, apaf
+     - flavivirus, apaf, node\_data\_links
 
 Genome regions
 --------------
@@ -832,18 +832,18 @@ reference and are to be checked like any draft.
      - swh1, alignment\_nt, genome\_alignment, alignment, sequence\_logo
    * - Delete Subtree
      - remove this node and its whole clade from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
-     - all demos but flu\_h5n1\_seg3; with enableManualNodeSelection
+     - all demos but node\_data\_links, flu\_h5n1\_seg3; with enableManualNodeSelection
    * - Open Sequence DB [accession]
      - open the database record of this node's accession (NCBI protein or nucleotide, RefSeq, UniProt) in a new browser tab; offered when the node has one, among its properties or sequences or as a UniProt-style name such as CASP9\_HUMAN
-     - flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, genome\_regions, influenza, confidences, branch\_events, flu\_h5n1\_seg3
+     - flavivirus, herpes\_dnapol, caliciviridae\_500, adenoviridae, genome\_regions, influenza, node\_data\_links, confidences, branch\_events, flu\_h5n1\_seg3
+   * - Open PDB…
+     - list the PDB entries this node names, each a link to its RCSB PDB page; offered when the node names several
+     - node\_data\_links; the PDB links test tree
    * - Delete External Node
      - remove this tip from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
      - all demos; with enableManualNodeSelection
    * - Open PDB [entry]
      - open the RCSB PDB page of the structure this node names, in a new browser tab; offered when the node names one PDB entry, by a sequence accession or cross-reference whose source is PDB or in a metadata field named for PDB identifiers (pdb\_ids and its kin, in any namespace)
-     - the PDB links test tree
-   * - Open PDB…
-     - list the PDB entries this node names, each a link to its RCSB PDB page; offered when the node names several
      - the PDB links test tree
 
 Icon files

@@ -44,6 +44,7 @@ config key live and shows the exact config JSON to copy into your own
 * [Ammonite time tree (fossil ranges)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=ammonite)
 * [Late Cretaceous time tree (stages)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=late_cretaceous)
 * [Bcl-2 family](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=bcl2)
+* [Node data links (Open PDB)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=node_data_links)
 * [Confidence values](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=confidences)
 * [Branch events](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=branch_events)
 * [Influenza A H5Nx (354 strains)](https://cmzmasek.github.io/archaeopteryx-js/demo.html?tree=flu_h5)
@@ -1537,7 +1538,8 @@ The node menu opens the records a node names, each in a new browser tab:
   (`4KRR_A` opens 4KRR); an identifier-shaped value under another field name
   is not guessed at. The rules are the desktop Archaeopteryx's (since its
   0.11.202), and its two demo trees are this viewer's acceptance test
-  (`test/data/node-data-links.xml`, `node-data-links-none.xml`). A node
+  (`test/data/node-data-links.xml`, `node-data-links-none.xml`); the first is
+  also a demo here (`demo.html?tree=node_data_links`). A node
   naming no entry has no "Open PDB" entry at all, as it has no sequence link
   without an accession (the desktop greys its entry and says why); several
   entries are listed in a dialog here, in a submenu there.
