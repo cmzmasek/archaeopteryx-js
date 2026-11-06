@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.phyloxml.org http://www.phyloxml.org/1.20/phyloxml.xsd">
+  <phylogeny rooted="true">
+    <name>PDB links</name>
+    <description>Four tips naming PDB entries four ways, for the node menu's Open PDB entry: a sequence accession with the same entry again as a cross-reference by its chain, one cross-reference among others, a metadata field listing several with the tokens that are no identifier, and none.</description>
+    <clade>
+      <clade>
+        <branch_length>0.1</branch_length>
+        <clade>
+          <name>pdb_acc</name>
+          <branch_length>0.2</branch_length>
+          <sequence type="protein">
+            <accession source="pdb">4KRR</accession>
+            <cross_references>
+              <accession source="pdb">4KRR_A</accession>
+            </cross_references>
+          </sequence>
+        </clade>
+        <clade>
+          <name>one_xref</name>
+          <branch_length>0.2</branch_length>
+          <sequence type="protein">
+            <accession source="UniProt">P38398</accession>
+            <cross_references>
+              <accession source="interpro">IPR001357</accession>
+              <accession source="pdb">1JM7</accession>
+            </cross_references>
+          </sequence>
+        </clade>
+      </clade>
+      <clade>
+        <branch_length>0.1</branch_length>
+        <clade>
+          <name>many</name>
+          <branch_length>0.2</branch_length>
+          <property ref="data:pdb_ids" datatype="xsd:string" applies_to="node">4KQZ, 4l3n; 5X59 | 1999 +58more none 4KRR_A</property>
+          <property ref="data:structure" datatype="xsd:string" applies_to="node">2AJF</property>
+        </clade>
+        <clade>
+          <name>none</name>
+          <branch_length>0.2</branch_length>
+          <property ref="data:pdb_year" datatype="xsd:string" applies_to="node">2013</property>
+        </clade>
+      </clade>
+    </clade>
+  </phylogeny>
+</phyloxml>

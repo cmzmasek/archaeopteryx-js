@@ -1,0 +1,165 @@
+<!doctype html>
+<meta charset="utf-8"><title>aptx: Open PDB in the node menu</title>
+<style>html,body{margin:0;height:100%}#p{position:absolute;inset:0}</style>
+<script src="../../docs/lib/d3.v7.min.js"></script>
+<script src="../../docs/lib/sax.js"></script>
+<script src="../../docs/lib/phyloxml.js"></script>
+<script src="../../docs/lib/forester.js"></script>
+<script src="../../docs/lib/archaeopteryx.js"></script>
+<div id="p"></div>
+<script>
+// "Open PDB" in the node menu, the desktop's entry (its 0.11.202): a node
+// naming one PDB entry opens it outright, one naming several lists them in a
+// dialog to choose from, one naming none has no entry. The trees are the
+// desktop's two demo trees (this viewer's acceptance fixtures) and a small
+// tree of our own; the menu is opened as a user opens it, by a click on the
+// tree's svg at the node's point. test/pdb_test.js pins the model.
+//   ''          node-data-links.xml: BRCA1_HUMAN names three (cross-references), the MERS tip four
+//               (data:pdb_ids); the Guaroa tip has a sequence link but no PDB entry; the node-data
+//               dialog lists the cross-references
+//   ?none=1     node-data-links-none.xml: no tip names an entry (data:pdb_ids = none)
+//   ?one=1      pdb_links.xml: one entry opens outright (window.open stubbed), the accession tip's
+//               two spellings are one, the several-entries tip lists four, the none tip has no entry
+//   ?config=1   node-data-links.xml with enableAccessToDatabases: false: neither link
+//   &shot=menu | &shot=dialog   leaves BRCA1's menu or dialog open, for a screenshot
+(async function () {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = []; let failures = 0;
+    const check = (l, ok, d) => { if (!ok) { failures++; }
+        out.push((ok ? 'pass  ' : 'FAIL  ') + l + (d === undefined ? '' : '   [' + d + ']')); };
+    const done = () => { window.__benchResult = {report: out.join('\n'), failures}; window.__benchDone = true; };
+    const q = new URLSearchParams(location.search);
+    const mode = ['none', 'one', 'config'].find((m) => q.get(m) === '1') || 'links';
+    const shot = q.get('shot') || '';
+    out.push('case ' + mode);
+    const opened = [];
+    window.open = function (url) { opened.push(url); return null; };
+    const RCSB = 'https://www.rcsb.org/structure/';
+    try {
+        const file = '../data/' + {links: 'node-data-links.xml', none: 'node-data-links-none.xml',
+            one: 'pdb_links.xml', config: 'node-data-links.xml'}[mode];
+        const trees = archaeopteryx.parseTrees(file, await (await fetch(file)).text());
+        const config = mode === 'config' ? {enableAccessToDatabases: false} : {};
+        const viewer = archaeopteryx.launch('#p', trees, config);
+        await viewer.ready; await sleep(1500);
+        const svg = document.querySelector('#p svg.aptx-tree');
+        const groups = Array.from(document.querySelectorAll('#p g.node')).filter((g) => g.__data__);
+        const treeGroup = groups[0].parentElement;
+        const tips = groups.map((g) => g.__data__).filter((d) => !d.children);
+        const nodeNamed = (name) => { const g = groups.find((g) => g.__data__.name === name); return g ? g.__data__ : null; };
+        const menuItems = () => Array.from(document.querySelectorAll('.aptx-node-menu button')).map((b) => ({
+            label: b.childNodes[0] ? b.childNodes[0].textContent.trim() : '', title: b.getAttribute('title') || '',
+            detail: ((b.querySelector('.aptx-menu-detail') || {}).textContent || '').trim(), button: b}));
+        const labels = (items) => items.map((i) => i.label).join(' | ');
+        const openMenu = async (d) => {
+            if (!d) { throw new Error('no drawn node to open a menu on'); }
+            const p = new DOMPoint(d.y, d.x).matrixTransform(treeGroup.getScreenCTM());
+            svg.dispatchEvent(new MouseEvent('click', {clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, view: window}));
+            await sleep(300);
+            if (!document.querySelector('.aptx-node-menu')) { throw new Error('no menu opened on ' + d.name); }
+            return menuItems();
+        };
+        const closeMenu = async () => {
+            document.body.click(); await sleep(200);
+            if (document.querySelector('.aptx-node-menu')) {
+                document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await sleep(200);
+            }
+        };
+        const entry = (items, prefix) => items.find((i) => i.label.indexOf(prefix) === 0);
+        const dialogLinks = () => Array.from(document.querySelectorAll('#pdb_entries_dialog a')).map((a) => ({
+            text: a.textContent, href: a.getAttribute('href'), title: a.title, target: a.target, rel: a.rel}));
+        const closeDialog = async (id) => {
+            const d = document.getElementById(id);
+            if (d) { d.querySelector('.aptx-dialog-close').click(); await sleep(200); }
+        };
+        if (mode === 'links') {
+            let items = await openMenu(nodeNamed('BRCA1_HUMAN'));
+            // the sequence link names the UniProt-style NAME (databaseAccessionFor takes the name last and lets
+            // it win); the page it opens is P38398's either way
+            check('BRCA1_HUMAN: "Open Sequence DB [BRCA1_HUMAN]" is offered', !!items.find((i) => i.label === 'Open Sequence DB [BRCA1_HUMAN]'), labels(items));
+            const several = entry(items, 'Open PDB');
+            check('... and "Open PDB…", three entries', !!several && several.label === 'Open PDB…' && several.detail === '3 entries',
+                several ? several.label + ' / ' + several.detail : labels(items));
+            if (shot === 'menu') { done(); return; }
+            several.button.click(); await sleep(400);
+            const links = dialogLinks();
+            check('"Open PDB…" lists the three as written, in the window\'s order, each its RCSB page in a new tab',
+                JSON.stringify(links.map((l) => [l.text, l.href, l.target, l.rel])) === JSON.stringify([
+                    ['1T15', RCSB + '1T15', '_blank', 'noopener noreferrer'], ['1JM7', RCSB + '1JM7', '_blank', 'noopener noreferrer'],
+                    ['1JNX', RCSB + '1JNX', '_blank', 'noopener noreferrer']]), JSON.stringify(links));
+            check('... the page is each link\'s tooltip', links.length === 3 && links.every((l) => l.title === l.href), JSON.stringify(links.map((l) => l.title)));
+            const dlg = document.getElementById('pdb_entries_dialog');
+            check('... the dialog is modal, titled "Open PDB", and names the node and the count', !!dlg && dlg.open
+                && dlg.querySelector('.aptx-dialog-name').textContent === 'Open PDB'
+                && /^BRCA1_HUMAN: 3 PDB entries$/.test(dlg.querySelector('.aptx-dialog-lead').textContent),
+                dlg ? dlg.querySelector('.aptx-dialog-body').textContent.slice(0, 120) : 'no dialog');
+            check('... the menu is gone and listing opened no tab', !document.querySelector('.aptx-node-menu') && opened.length === 0, opened.join(' '));
+            if (shot === 'dialog') { done(); return; }
+            await closeDialog('pdb_entries_dialog');
+            check('... its close control closes it', !document.getElementById('pdb_entries_dialog'));
+            items = await openMenu(nodeNamed('MERS-CoV_EMC/2012|AFS88936.1'));
+            const mers = entry(items, 'Open PDB');
+            check('the MERS tip: "Open PDB…", four entries from data:pdb_ids', !!mers && mers.label === 'Open PDB…' && mers.detail === '4 entries',
+                mers ? mers.label + ' / ' + mers.detail : labels(items));
+            mers.button.click(); await sleep(400);
+            const four = dialogLinks();
+            check('... 4KQZ, 4L3N, 5X4R, 5X59', JSON.stringify(four.map((l) => l.text + ' ' + l.href)) === JSON.stringify(
+                ['4KQZ', '4L3N', '5X4R', '5X59'].map((id) => id + ' ' + RCSB + id)), JSON.stringify(four));
+            await closeDialog('pdb_entries_dialog');
+            items = await openMenu(nodeNamed('Guaroa_virus|AKC42486.1'));
+            check('the Guaroa tip: the sequence link, no PDB entry', !!items.find((i) => i.label === 'Open Sequence DB [AKC42486.1]') && !entry(items, 'Open PDB'), labels(items));
+            await closeMenu();
+            items = await openMenu(nodeNamed('BRCA1_HUMAN'));
+            entry(items, 'Display Node Data').button.click(); await sleep(400);
+            const body = document.querySelector('#node_data_dialog .aptx-dialog-body');
+            const t = body ? body.textContent : '';
+            check('Display Node Data lists the cross-references, every source, a comment on its own line as the accession\'s',
+                // (the dialog marks "Label:" up as a key cell and drops the "-- " of a sub-row, so the text runs them together)
+                /Cross-reference \[PDB\]:?\s*1T15\s*(-- )?comment:?\s*X-ray/.test(t) && /Cross-reference \[ensembl\]:?\s*ENSG00000012048/.test(t)
+                && /Cross-reference \[pdb\]:?\s*1JNX/.test(t) && /Accession \[UniProt\]:?\s*P38398/.test(t), t.slice(0, 300));
+            await closeDialog('node_data_dialog');
+        } else if (mode === 'none') {
+            check('four tips drawn', tips.length === 4, tips.length);
+            for (const d of tips) {
+                const items = await openMenu(d);
+                check(d.name + ': no PDB entry', !entry(items, 'Open PDB'), labels(items));
+                await closeMenu();
+            }
+        } else if (mode === 'one') {
+            let items = await openMenu(nodeNamed('one_xref'));
+            const one = entry(items, 'Open PDB');
+            check('one_xref: "Open PDB [1JM7]", the page as its tooltip', !!one && one.label === 'Open PDB [1JM7]' && one.title === RCSB + '1JM7',
+                one ? one.label + ' / ' + one.title : labels(items));
+            one.button.click(); await sleep(200);
+            check('... opens the page in a new tab outright, no dialog', JSON.stringify(opened) === JSON.stringify([RCSB + '1JM7'])
+                && !document.getElementById('pdb_entries_dialog'), JSON.stringify(opened));
+            items = await openMenu(nodeNamed('pdb_acc'));
+            const accEntry = entry(items, 'Open PDB');
+            check('pdb_acc: the accession and its chain spelling are one entry, "Open PDB [4KRR]"', !!accEntry && accEntry.label === 'Open PDB [4KRR]',
+                accEntry ? accEntry.label : labels(items));
+            accEntry.button.click(); await sleep(200);
+            check('... opens 4KRR', opened[1] === RCSB + '4KRR', JSON.stringify(opened));
+            items = await openMenu(nodeNamed('many'));
+            const many = entry(items, 'Open PDB');
+            check('many: "Open PDB…", four entries', !!many && many.label === 'Open PDB…' && many.detail === '4 entries',
+                many ? many.label + ' / ' + many.detail : labels(items));
+            many.button.click(); await sleep(400);
+            const links = dialogLinks();
+            check('... as written: 4KQZ, 4l3n, 5X59, 4KRR_A; the year, the overflow token and none left out',
+                JSON.stringify(links.map((l) => l.text)) === JSON.stringify(['4KQZ', '4l3n', '5X59', '4KRR_A'])
+                && JSON.stringify(links.map((l) => l.href)) === JSON.stringify(['4KQZ', '4L3N', '5X59', '4KRR'].map((id) => RCSB + id)),
+                JSON.stringify(links));
+            await closeDialog('pdb_entries_dialog');
+            items = await openMenu(nodeNamed('none'));
+            check('none: no PDB entry and no sequence link', !entry(items, 'Open PDB') && !entry(items, 'Open Sequence DB'), labels(items));
+            await closeMenu();
+        } else {
+            const items = await openMenu(nodeNamed('BRCA1_HUMAN'));
+            check('enableAccessToDatabases: false: neither "Open Sequence DB" nor "Open PDB"',
+                !entry(items, 'Open Sequence DB') && !entry(items, 'Open PDB') && items.length > 3, labels(items));
+            await closeMenu();
+        }
+    } catch (e) { check('no exception', false, e && (e.stack || e)); }
+    done();
+})();
+</script>

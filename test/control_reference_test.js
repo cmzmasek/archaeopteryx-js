@@ -175,11 +175,24 @@ test('the node menu: labels keyed without their value, words from the table or t
     assert.strictEqual(gen.menuLabel('Open Sequence DB [P12345]'), 'Open Sequence DB [accession]');
     assert.strictEqual(gen.menuLabel('Open Sequence DB [YBL23344.1]'), 'Open Sequence DB [accession]');
     assert.strictEqual(gen.menuLabel('Delete Subtree'), 'Delete Subtree');
+    assert.strictEqual(gen.menuLabel('Open PDB [1JM7]'), 'Open PDB [entry]');
+    assert.strictEqual(gen.menuLabel('Open PDB [4krr.B]'), 'Open PDB [entry]');
+    assert.strictEqual(gen.menuLabel('Open PDB\u2026'), 'Open PDB\u2026');
+    const pdb = gen.pdbLaunch();
+    assert.ok(pdb.menuOnly === true && /pdb_links\.xml$/.test(pdb.file), 'the PDB launch reads the menu of the PDB test tree');
+    // its rows are the two Open PDB entries alone: the rest of its menu is every demo's
+    const pdbRows = gen.menuRows({key: gen.PDB_KEY, menu: {menus: [{at: 'a tip naming one PDB entry', entries: [
+        {label: 'Display Node Data', disabled: false, title: '', danger: false},
+        {label: 'Open PDB [1JM7]', disabled: false, title: 'https://www.rcsb.org/structure/1JM7', danger: false},
+        {label: 'Open PDB\u2026', disabled: false, title: '', danger: false},
+        {label: 'Delete External Node', disabled: false, title: '', danger: true}]}]}});
+    assert.deepStrictEqual(pdbRows.rows.map((x) => x.name), ['Open PDB [entry]', 'Open PDB\u2026']);
+    assert.deepStrictEqual(pdbRows.problems, []);
     // every entry the viewer builds has words
     for (const label of ['Display Node Data', 'Switch to Subtree', 'Collapse/Uncollapse', 'Uncollapse Subtree',
         'Swap Descendants', 'Ladderize Subtree', 'Reroot', 'Select/Deselect Node', 'Select/Deselect Tips',
         'Download Ext. Node Data', 'List Sequences in Fasta', 'Download Sequences in Fasta', 'Open Sequence DB [accession]',
-        'Delete Subtree', 'Delete External Node']) {
+        'Open PDB [entry]', 'Open PDB\u2026', 'Delete Subtree', 'Delete External Node']) {
         assert.ok(gen.MENU_WORDS[label], label + ' has words');
     }
     const launch = {key: 'beast', menu: {menus: [

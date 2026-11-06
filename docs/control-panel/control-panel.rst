@@ -774,8 +774,10 @@ an entry the tree does not allow is greyed, with a tooltip that says why.
 
 The labels and the greyed entries' reasons are read from the menu, opened on a tip, a
 tip with an accession, an internal node and a child of the root of each demo tree
-shown in the rectangular layout, and once more on the first demo launched with
-``enableManualNodeSelection``, which adds two entries. The words of this table are
+shown in the rectangular layout, once more on the first demo launched with
+``enableManualNodeSelection``, which adds two entries, and on a tip naming one PDB
+entry and a tip naming several of the PDB links test tree (no demo tree names any;
+``test/data/pdb_links.xml``). The words of this table are
 NOT the viewer's: its entries carry no tooltip, so they were written for this
 reference and are to be checked like any draft.
 
@@ -837,6 +839,12 @@ reference and are to be checked like any draft.
    * - Delete External Node
      - remove this tip from the tree on view; the visualizations and the search are recomputed on what is left; not offered in a subtree view
      - all demos; with enableManualNodeSelection
+   * - Open PDB [entry]
+     - open the RCSB PDB page of the structure this node names, in a new browser tab; offered when the node names one PDB entry, by a sequence accession or cross-reference whose source is PDB or in a metadata field named for PDB identifiers (pdb\_ids and its kin, in any namespace)
+     - the PDB links test tree
+   * - Open PDB…
+     - list the PDB entries this node names, each a link to its RCSB PDB page; offered when the node names several
+     - the PDB links test tree
 
 Icon files
 ----------

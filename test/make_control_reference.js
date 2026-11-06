@@ -101,6 +101,11 @@ const EXTRAS_CIRCULAR = ['#fitwidth'];
 // The launch that is not a demo: the first demo tree with the setting that
 // adds the two selection entries to the node menu.
 const SELECTION_KEY = 'with enableManualNodeSelection';
+// The other launch that is no demo: the PDB links test tree, the one tree
+// with a tip naming one PDB entry and a tip naming several (no demo tree
+// names any); the page reads the menu alone.
+const PDB_KEY = 'the PDB links test tree';
+const PDB_FILE = '../test/data/pdb_links.xml';   // relative to docs/, as the page resolves a file
 const KEYS_SECTION = 'Keyboard shortcuts';
 const DOWNLOAD_SECTION = 'Download';   // the panel's legend
 const DOWNLOAD_GROUP = 'Download\u2026 menu: ';
@@ -130,6 +135,11 @@ const MENU_WORDS = {
         + 'window to copy from; offered when the tree carries sequences',
     'Download Sequences in Fasta': 'download the molecular sequences of the tips under this node as a FASTA '
         + 'file; offered when the tree carries sequences',
+    'Open PDB [entry]': 'open the RCSB PDB page of the structure this node names, in a new browser tab; offered '
+        + 'when the node names one PDB entry, by a sequence accession or cross-reference whose source is PDB '
+        + 'or in a metadata field named for PDB identifiers (pdb_ids and its kin, in any namespace)',
+    'Open PDB\u2026': 'list the PDB entries this node names, each a link to its RCSB PDB page; offered when '
+        + 'the node names several',
     'Open Sequence DB [accession]': 'open the database record of this node\'s accession (NCBI protein or nucleotide, '
         + 'RefSeq, UniProt) in a new browser tab; offered when the node has one, among its properties or '
         + 'sequences or as a UniProt-style name such as CASP9_HUMAN',
@@ -200,6 +210,11 @@ function demoTrees(only) {
 function selectionLaunch(tree) {
     return {key: SELECTION_KEY, file: tree.file,
         config: Object.assign({}, tree.config, {enableManualNodeSelection: true}), menuOnly: true};
+}
+
+// The launch for the "Open PDB" entries: the PDB links test tree, the menu alone.
+function pdbLaunch() {
+    return {key: PDB_KEY, file: PDB_FILE, config: {}, menuOnly: true};
 }
 
 // The page's console, as it comes, goes to stderr (the page says which tree
@@ -430,9 +445,10 @@ function keyOf(r) {
 // ------------------------------------------------- the menu and the keys
 
 // An entry's label without the value it carries: "Open Sequence DB [P12345]" is the
-// one entry whatever the accession.
+// one entry whatever the accession, "Open PDB [1JM7]" whatever the entry.
 function menuLabel(label) {
-    return label.replace(/^Open Sequence DB \[.*\]$/, 'Open Sequence DB [accession]');
+    return label.replace(/^Open Sequence DB \[.*\]$/, 'Open Sequence DB [accession]')
+        .replace(/^Open PDB \[.*\]$/, 'Open PDB [entry]');
 }
 
 // The menu entries one launch read, as rows for unite(): one per entry, its
@@ -442,9 +458,15 @@ function menuRows(launch) {
     const rows = [];
     const problems = [];
     const menus = (launch.menu && launch.menu.menus) || [];
+    // the PDB launch is there for its two entries alone: the rest of its
+    // menu is every demo's, and naming a test tree on those rows is noise
+    const pdbOnly = launch.key === PDB_KEY;
     for (const m of menus) {
         for (const e of (m.entries || [])) {
             const label = menuLabel(e.label);
+            if (pdbOnly && !/^Open PDB/.test(label)) {
+                continue;
+            }
             let words;
             if (e.disabled && e.title) {
                 words = e.title;
@@ -729,8 +751,10 @@ function makeRst(union, menu, reading, trees, skipped, glyphInfo) {
     out += MENU_INTRO;
     out += 'The labels and the greyed entries\' reasons are read from the menu, opened on a tip, a\n'
         + 'tip with an accession, an internal node and a child of the root of each demo tree\n'
-        + 'shown in the rectangular layout, and once more on the first demo launched with\n'
-        + '``enableManualNodeSelection``, which adds two entries. The words of this table are\n'
+        + 'shown in the rectangular layout, once more on the first demo launched with\n'
+        + '``enableManualNodeSelection``, which adds two entries, and on a tip naming one PDB\n'
+        + 'entry and a tip naming several of the PDB links test tree (no demo tree names any;\n'
+        + '``test/data/pdb_links.xml``). The words of this table are\n'
         + 'NOT the viewer\'s: its entries carry no tooltip, so they were written for this\n'
         + 'reference and are to be checked like any draft.\n\n';
     out += listTable([24, 56, 20], ['Entry', 'What it does', 'Shown for'],
@@ -825,7 +849,7 @@ async function main() {
     } else {
         process.stderr.write('reading the panel of ' + trees.length + ' demo trees'
             + (skipped.length ? ' (' + skipped.join(', ') + ' left out: the panel is folded)' : '') + ' ...\n');
-        const launches = trees.length > 0 ? trees.concat([selectionLaunch(trees[0])]) : trees;
+        const launches = trees.length > 0 ? trees.concat([selectionLaunch(trees[0]), pdbLaunch()]) : trees;
         reading = await readPanels(launches, settle);
     }
     let bad = 0;
@@ -889,5 +913,5 @@ if (require.main === module) {
 }
 
 // for test/control_reference_test.js: the parts that need no browser
-module.exports = {demoTrees, selectionLaunch, glyphFile, rstText, unite, mergeOrders, mergeByControl, listTable, menuLabel, menuRows,
+module.exports = {demoTrees, selectionLaunch, pdbLaunch, PDB_KEY, glyphFile, rstText, unite, mergeOrders, mergeByControl, listTable, menuLabel, menuRows,
     menuUnion, downloadRows, withDownloads, keyColumns, MENU_WORDS, UNTITLED, GLYPH_PAD, GLYPH_PX};

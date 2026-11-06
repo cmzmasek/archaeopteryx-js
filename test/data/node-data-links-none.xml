@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phyloxml xmlns="http://www.phyloxml.org">
+<phylogeny rooted="true" rerootable="true">
+  <name>Node Data Links: none (demo)</name>
+  <description>The twin of node-data-links.xml: node data that names no page Archaeopteryx knows how to open (a BV-BRC feature id, a GTDB and an ITIS taxonomy id, a KEGG cross-reference, a file: URI, a reference without a DOI, an NCBI accession of unknown shape and no type, a pdb_ids field saying none). Display Node Data shows every value as plain text: no links, and the node menu&apos;s &quot;Open PDB&quot; is greyed.</description>
+  <clade>
+    <branch_length>0.0</branch_length>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>fig|1000.9.peg.1</name>
+        <branch_length>0.02</branch_length>
+        <sequence type="protein">
+          <accession source="BV-BRC">fig|1000.9.peg.1</accession>
+          <name>Type II topoisomerase subunit</name>
+          <uri desc="local copy">file:///data/genomes/1000.9.fasta</uri>
+        </sequence>
+        <reference>
+          <desc>Unpublished (no DOI)</desc>
+        </reference>
+        <property ref="data:note" datatype="xsd:string" applies_to="node">see the BV-BRC record</property>
+      </clade>
+      <clade>
+        <name>dnaA_E_coli</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="gtdb">s__Escherichia coli</id>
+          <common_name>E. coli</common_name>
+        </taxonomy>
+        <sequence type="protein">
+          <name>chromosomal replication initiator protein DnaA</name>
+          <cross_references>
+            <accession source="kegg">eco:b3702</accession>
+          </cross_references>
+        </sequence>
+      </clade>
+    </clade>
+    <clade>
+      <branch_length>0.05</branch_length>
+      <clade>
+        <name>tsn_180092</name>
+        <branch_length>0.02</branch_length>
+        <taxonomy>
+          <id provider="itis">180092</id>
+          <common_name>human</common_name>
+        </taxonomy>
+      </clade>
+      <clade>
+        <name>XYZ12345678</name>
+        <branch_length>0.02</branch_length>
+        <sequence>
+          <accession source="ncbi">XYZ12345678</accession>
+          <name>an accession of unknown shape</name>
+        </sequence>
+        <property ref="data:pdb_ids" datatype="xsd:string" applies_to="node">none</property>
+      </clade>
+    </clade>
+  </clade>
+</phylogeny>
+</phyloxml>

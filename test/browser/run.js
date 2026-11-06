@@ -93,6 +93,7 @@ const CASES = {
     'legend_font': ['', '?legend=domains', '?legend=genes'],
     'figure_colorby': ['', '?field=1', '?missing=1', '?absent=1', '?config=1', '?configmiss=1'],
     'figure_switches': ['', '?none=1', '?on=1', '?unrooted=1', '?nolengths=1', '?config=1', '?switch=1'],
+    'pdb_links': ['', '?none=1', '?one=1', '?config=1'],
     'expand_after_zoom': ['?zooms=3', '?zooms=0', '?zooms=8', '?layout=circular&zooms=3'],
     'host_css': ['?host=bvbrc', '?host=bvbrc&theme=dark', '?host=bootstrap3', '?host=bootstrap5', '?host=tailwind', '?host=wild',
         '?host=wild&tree=time', '?host=wild&tree=alignment'],

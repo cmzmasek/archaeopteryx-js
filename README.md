@@ -1514,6 +1514,38 @@ internal labels are clade names rather than support, set
 always read as confidences; a bracket that is not a number is a comment and is
 ignored.
 
+### Database links
+
+The node menu opens the records a node names, each in a new browser tab:
+
+- **Open Sequence DB [accession]**: the node's sequence accession at NCBI
+  (protein or nucleotide, RefSeq) or UniProt, found among its metadata fields
+  named "accession", its sequences, or a UniProt-style name such as
+  CASP9_HUMAN.
+- **Open PDB [1JM7]**: the RCSB PDB page of the structure the node names;
+  a node naming several gets **Open PDB…**, which lists them to choose from.
+  A node names a PDB entry by a sequence accession or cross-reference whose
+  source is PDB (`pdb`, `rcsb`, `wwpdb`), or in a metadata field named for
+  PDB identifiers: `pdb_ids`, `pdb_id`, `pdb`, `pdb_entry`, `pdb_code`,
+  `pdb_accession`, `pdb_structure` and their plurals, in any namespace and
+  whatever the case or separators (`data:PDB-IDs`, `meta:PDBCode`), or a
+  `pdb:` namespace with `ids`, `entry`, …. Such a field lists identifiers
+  between commas, semicolons, bars or spaces; a token that is no identifier
+  (`+58more`, `none`) stays text, and a web address in the field is offered
+  as written. An identifier is a digit 1–9 and three letters or digits
+  (`4KRR`, `4krr`), with at most a chain or entity after `_`, `.` or `:`
+  (`4KRR_A` opens 4KRR); an identifier-shaped value under another field name
+  is not guessed at. The rules are the desktop Archaeopteryx's (since its
+  0.11.202), and its two demo trees are this viewer's acceptance test
+  (`test/data/node-data-links.xml`, `node-data-links-none.xml`). A node
+  naming no entry has no "Open PDB" entry at all, as it has no sequence link
+  without an accession (the desktop greys its entry and says why); several
+  entries are listed in a dialog here, in a submenu there.
+
+Both links are offered only while `enableAccessToDatabases` is true (its
+default). The node-data dialog lists a sequence's cross-references, every
+source alike.
+
 ### References
 
 1. Felsenstein, J. *PHYLIP (Phylogeny Inference Package)*. Department of
@@ -1787,7 +1819,7 @@ copy-pastable JSON.
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
-| `enableAccessToDatabases` | `true` | Offer the “Open Sequence DB” link in the node menu. |
+| `enableAccessToDatabases` | `true` | Offer the “Open Sequence DB” and “Open PDB” links in the node menu. |
 | `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
 
 ### Anything else throws

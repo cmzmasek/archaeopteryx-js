@@ -485,6 +485,7 @@ function (root, d3, forester, phyloXml) {
     // (drawn with attributes, as any svg file is; paintInline moves its paint into styles where it is used)
     const ARCHAEOPTERYX_LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Archaeopteryx"> <defs> <linearGradient id="aptxlogo-wg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#4f46e5"/><stop offset="0.55" stop-color="#38bdf8"/><stop offset="1" stop-color="#a7f3d0"/> </linearGradient> <linearGradient id="aptxlogo-wg2" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#3730a3"/><stop offset="1" stop-color="#4f79e0"/> </linearGradient> <linearGradient id="aptxlogo-tg" x1="0" y1="1" x2="1" y2="0"> <stop offset="0" stop-color="#f43f5e"/><stop offset="0.5" stop-color="#fb923c"/><stop offset="1" stop-color="#fde047"/> </linearGradient> <linearGradient id="aptxlogo-bg" x1="0" y1="0" x2="0" y2="1"> <stop offset="0" stop-color="#fff7e0"/><stop offset="1" stop-color="#fcd34d"/> </linearGradient> </defs> <g transform="translate(28.9,18.0) scale(0.9091)"> <g stroke="#25304f" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"> <path d="M 78.0,152.0 C 49.3,150.6 12.5,173.3 -4.4,194.3 C 25.1,192.0 66.1,175.5 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 48.1,143.8 3.5,158.8 -19.7,176.6 C 12.1,181.2 59.5,173.7 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 51.8,138.2 6.9,142.5 -18.7,154.0 C 10.0,164.8 56.0,167.9 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 78.0,152.0 C 58.9,135.3 20.6,130.3 -2.8,135.1 C 18.9,149.7 56.6,161.2 78.0,152.0 Z" fill="url(#aptxlogo-tg)"/> <path d="M 118.0,126.0 C 110.4,106.2 84.4,93.0 65.5,92.1 C 75.9,110.5 99.0,129.6 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 115.6,103.3 92.6,79.7 73.5,71.3 C 79.1,93.8 97.5,122.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 118.0,126.0 C 123.0,106.1 110.4,79.8 96.5,67.4 C 94.4,87.9 101.6,117.0 118.0,126.0 Z" fill="url(#aptxlogo-wg2)"/> <path d="M 106,172 L 101,202 M 132,172 L 129,202" fill="none" stroke-width="9"/> <path d="M 101,202 L 88,209 M 101,202 L 112,210 M 101,202 L 99,213 M 129,202 L 116,209 M 129,202 L 140,210 M 129,202 L 128,213" fill="none" stroke-width="6"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="url(#aptxlogo-bg)"/> <path d="M 100,174 C 86,166 82,150 90,138 C 96,146 108,152 122,152 C 136,152 148,148 156,140 C 160,156 150,172 128,177 C 118,179 108,178 100,174 Z" fill="#fff6dd" stroke="none"/> <path d="M 96,176 C 74,168 66,146 76,128 C 86,110 110,102 132,106 C 152,110 164,126 162,146 C 160,166 142,180 120,180 C 112,180 103,179 96,176 Z" fill="none"/> <path d="M 150.0,60.0 C 159.5,51.2 158.7,35.2 152.9,25.9 C 145.3,35.7 141.5,51.8 150.0,60.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 164.0,56.0 C 174.4,51.0 177.8,37.3 175.2,28.0 C 166.2,34.2 158.9,46.9 164.0,56.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 136.0,66.0 C 141.8,56.5 137.0,44.2 129.6,38.5 C 125.7,48.3 126.7,61.9 136.0,66.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 158,58 C 186,54 208,72 208,96 C 208,120 188,136 164,134 C 140,132 126,114 128,92 C 130,72 142,60 158,58 Z" fill="url(#aptxlogo-bg)"/> <path d="M 203,82 C 216,84 230,92 238,100 C 230,108 216,113 202,112 C 206,104 206,90 203,82 Z" fill="#fb923c"/> <path d="M 204,101 C 214,102 224,103 234,101" fill="none" stroke-width="4"/> <path d="M 128.0,116.0 C 113.1,91.9 75.3,80.3 50.0,83.2 C 68.3,104.8 103.7,124.6 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 118.0,85.8 79.7,60.2 51.1,54.1 C 65.4,83.1 98.9,116.3 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 127.0,83.7 97.3,47.3 71.5,32.7 C 76.9,65.0 99.8,107.4 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> <path d="M 128.0,116.0 C 136.1,88.7 121.1,50.1 103.3,30.9 C 99.0,59.5 106.6,101.2 128.0,116.0 Z" fill="url(#aptxlogo-wg)"/> </g> <g> <ellipse cx="172" cy="94" rx="15" ry="17" fill="#25304f"/> <ellipse cx="172" cy="97" rx="10" ry="11" fill="#38bdf8"/> <circle cx="167" cy="88" r="6" fill="#ffffff"/> <circle cx="178" cy="103" r="3" fill="#ffffff" opacity="0.9"/> <ellipse cx="146" cy="112" rx="9" ry="5" fill="#fb7185" opacity="0.75"/> <path d="M 52,53 C 53.62,59.75 54.25,60.38 61,62 C 54.25,63.62 53.62,64.25 52,71 C 50.38,64.25 49.75,63.62 43,62 C 49.75,60.38 50.38,59.75 52,53 Z" fill="#fde68a"/> <path d="M 222,161 C 223.26,166.25 223.75,166.74 229,168 C 223.75,169.26 223.26,169.75 222,175 C 220.74,169.75 220.25,169.26 215,168 C 220.25,166.74 220.74,166.25 222,161 Z" fill="#fde68a"/> <path d="M 86,208 C 87.08,212.5 87.5,212.92 92,214 C 87.5,215.08 87.08,215.5 86,220 C 84.92,215.5 84.5,215.08 80,214 C 84.5,212.92 84.92,212.5 86,208 Z" fill="#fde68a"/> </g> </g> </svg>';
     const NODE_DATA = 'node_data_dialog';
+    const PDB_ENTRIES = 'pdb_entries_dialog';
     const COLOR_PICKER = 'color_picker_dialog';
     const NODE_EVENTS_CB = 'nevts_cb';
     const NODE_NAME_CB = 'nn_cb';
@@ -7750,9 +7751,23 @@ function (root, d3, forester, phyloXml) {
             }
             if (_settings.enableAccessToDatabases === true) {
                 let acc = databaseAccessionFor(d);
-                if (acc) {
+                // "Open PDB", the desktop's entry (its 0.11.202): every PDB
+                // entry the node names, one opened outright, several listed
+                // to choose from (the desktop opens a submenu; a menu here
+                // has none, and a dialog holds a tip's 311 entries as well).
+                let pdb = forester.pdbEntries(d);
+                if (acc || pdb.length > 0) {
                     items.push({separator: true});
+                }
+                if (acc) {
                     items.push({label: 'Open Sequence DB [' + acc + ']', action: function () { openSequenceDatabase(d); }});
+                }
+                if (pdb.length === 1) {
+                    items.push({label: 'Open PDB [' + pdb[0].text + ']', title: pdb[0].url,
+                        action: function () { openExternal(pdb[0].url); }});
+                } else if (pdb.length > 1) {
+                    items.push({label: 'Open PDB\u2026', detail: pdb.length + ' entries',
+                        action: function () { showPdbEntries(d, pdb); }});
                 }
             }
             if ((_settings.enableSubtreeDeletion === true) && !_in_subtree
@@ -18217,6 +18232,10 @@ function (root, d3, forester, phyloXml) {
             + '.aptx-dialog-line + .aptx-dialog-line { border-top:1px solid var(--p-line); }'
             + '.aptx-dialog-key { flex:0 0 42%; color:var(--p-muted); }'
             + '.aptx-dialog-val { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }'
+            + '.aptx-dialog-lead { margin:0 0 8px; color:var(--p-muted); }'
+            + '.aptx-dialog-href,.aptx-dialog-href:link,.aptx-dialog-href:visited { color:var(--p-accent-ink);'
+            + ' text-decoration:none; overflow-wrap:anywhere; }'
+            + '.aptx-dialog-href:hover,.aptx-dialog-href:focus-visible { text-decoration:underline; }'
             // the shortcuts cheat sheet: key chips in the key column
             + '.aptx-props .aptx-props-head { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--p-muted); margin:12px 0 3px; }'
             + '.aptx-props > div:first-child { margin-top:0; }'
@@ -18975,6 +18994,18 @@ function (root, d3, forester, phyloXml) {
                         text += '-- comment: ' + s.accession.comment + '<br>';
                     }
                 }
+                // The cross-references (<cross_references>, each an accession
+                // with a source), which this dialog never listed: the node
+                // menu's "Open PDB" reads the PDB ones, so the reader should
+                // see them here, every source alike.
+                (s.cross_references || []).forEach(function (x) {
+                    if (x && x.value) {
+                        text += '- Cross-reference' + (x.source ? ' [' + x.source + ']' : '') + ': ' + x.value + '<br>';
+                        if (x.comment) {
+                            text += '-- comment: ' + x.comment + '<br>';
+                        }
+                    }
+                });
                 if (s.symbol) {
                     text += '- Symbol: ' + s.symbol + '<br>';
                 }
@@ -19250,6 +19281,32 @@ function (root, d3, forester, phyloXml) {
         shell.dialog.showModal();
     }
 
+    // The PDB entries a node names, when it names several: one link per
+    // entry, named as the file writes it, its RCSB PDB page as the tooltip,
+    // each opening in a new tab. Built as elements: names and identifiers
+    // are file data and never become markup.
+    function showPdbEntries(node, entries) {
+        let shell = makeDialogShell(PDB_ENTRIES, 'Open PDB', 340);
+        let lead = document.createElement('div');
+        lead.className = 'aptx-dialog-lead';
+        lead.textContent = (node && node.name ? node.name + ': ' : '') + entries.length + ' PDB entries';
+        shell.body.appendChild(lead);
+        entries.forEach(function (e) {
+            let line = document.createElement('div');
+            line.className = 'aptx-dialog-line';
+            let a = document.createElement('a');
+            a.className = 'aptx-dialog-href';
+            a.href = e.url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.title = e.url;
+            a.textContent = e.text;
+            line.appendChild(a);
+            shell.body.appendChild(line);
+        });
+        shell.body.style.maxHeight = '60vh';   // the body scrolls past it
+        shell.dialog.showModal();
+    }
     // ===================== Tree properties =====================
     // What the tree IS and what it carries: the desktop's View > Tree
     // Properties, read-only (Christian, 2026-09-23 -- the editable half waits

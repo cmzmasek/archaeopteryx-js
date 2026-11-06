@@ -11901,6 +11901,179 @@
     };
 
 
+
+    // --------------------------------------------------------------
+    // PDB entries: the desktop's NodeDataLinks rules (its 0.11.202,
+    // 2026-11-06), ported on Christian's word. A node names a PDB entry by
+    // a sequence accession or cross-reference whose source is PDB, or in a
+    // metadata field NAMED for PDB identifiers; an identifier-shaped value
+    // under another field name is not guessed at, and a value without a
+    // source is not either. The node menu's "Open PDB" offers exactly
+    // these. Its two demo trees (test/data/node-data-links*.xml) are the
+    // acceptance test shared with the desktop.
+    // --------------------------------------------------------------
+    const RCSB_PDB = 'https://www.rcsb.org/structure/';
+    // A PDB identifier: a digit 1-9 and three letters or digits, either
+    // case, with at most a chain or entity after "_", "." or ":" (4KRR_A,
+    // 4krr.B and 4KRR:1 all open 4KRR). Five characters, a leading zero or
+    // letter, a chain of five ("1ABC_HUMAN") and a composite ("pdb|4KRR|A")
+    // are none; all digits ("1999") is a number, not an entry.
+    const PDB_ID = /^([1-9][A-Za-z0-9]{3})(?:[_.:][A-Za-z0-9]{1,4})?$/;
+    // The sources that name PDB, trimmed and lower-cased, as the desktop lists them.
+    const PDB_SOURCES = ['pdb', 'rcsb', 'rcsb pdb', 'rcsb_pdb', 'rcsb-pdb', 'wwpdb'];
+    // The local names of a metadata field that lists PDB identifiers,
+    // folded as the ranks are (case aside; spaces, "_", "-" and "." gone),
+    // so pdb_code, PDB-Code and PDBCode are one name.
+    const PDB_FIELD_NAMES = ['pdb', 'pdbid', 'pdbids', 'pdbentry', 'pdbentries', 'pdbcode', 'pdbcodes',
+        'pdbaccession', 'pdbaccessions', 'pdbstructure', 'pdbstructures'];
+    // One token of a list of identifiers: what lies between commas,
+    // semicolons, bars and white space.
+    const PDB_LIST_TOKEN = /[^,;|\s]+/g;
+    // The first token of an accession value (letters, digits, "_" and ".",
+    // trailing dots dropped); what follows it must be a separator, so
+    // "4KRR:A" and "4KRR (X-ray)" yield 4KRR and "4KRR5" yields nothing.
+    const ACCESSION_TOKEN = /^[A-Za-z0-9_.]+/;
+    const ACCESSION_SEPARATOR = /[\s:|/;,]/;
+    const WEB_ADDRESS = /^https?:\/\/\S+$/i;
+
+    function pdbTrim(s) {
+        return (typeof s === 'string') ? s.trim() : '';
+    }
+
+    // RCSB PDB's page for a PDB identifier (written in either case, with at
+    // most a chain or entity after it), or null when `value` is not one.
+    forester.pdbUrl = function (value) {
+        let m = PDB_ID.exec(pdbTrim(value));
+        if (!m) {
+            return null;
+        }
+        let id = m[1].toUpperCase();
+        return /^\d+$/.test(id) ? null : RCSB_PDB + id;
+    };
+
+    // The page of an accession whose source names PDB, by the value's first
+    // token; null for any other source, or a value that is no identifier.
+    function pdbAccessionUrl(value, source) {
+        if (PDB_SOURCES.indexOf(pdbTrim(source).toLowerCase()) < 0) {
+            return null;
+        }
+        let v = pdbTrim(value);
+        let m = ACCESSION_TOKEN.exec(v);
+        if (!m) {
+            return null;
+        }
+        if (m[0].length < v.length && !ACCESSION_SEPARATOR.test(v.charAt(m[0].length))) {
+            return null;
+        }
+        return forester.pdbUrl(m[0].replace(/\.+$/, ''));
+    }
+
+    // A value that is a web address, trimmed, when the whole of it is one
+    // with a host; null otherwise.
+    function webAddress(value) {
+        let t = pdbTrim(value);
+        if (!WEB_ADDRESS.test(t)) {
+            return null;
+        }
+        try {
+            return new URL(t).host ? t : null;
+        } catch {
+            return null;   // not a URL at all
+        }
+    }
+
+    // Whether a metadata reference names a field of PDB identifiers: its
+    // local name (after the namespace), folded, is one of PDB_FIELD_NAMES
+    // ("repseq:pdb_ids", "data:PDB-IDs", "meta:PDBCode"); or its namespace
+    // is pdb and the local name says which identifiers ("pdb:ids",
+    // "pdb:entry"). A field merely about structures (pdb_year, structure,
+    // has_structure) is not one.
+    forester.isPdbRef = function (ref) {
+        let r = pdbTrim(ref);
+        let colon = r.lastIndexOf(':');
+        let local = foldRank(r.substring(colon + 1));
+        if (PDB_FIELD_NAMES.indexOf(local) >= 0) {
+            return true;
+        }
+        return colon > 0 && foldRank(r.substring(0, colon)) === 'pdb'
+            && PDB_FIELD_NAMES.indexOf('pdb' + local) >= 0;
+    };
+
+    // The PDB identifiers listed in `text`, each as {start, end, url}: the
+    // characters it occupies and the page it opens; a token that is no
+    // identifier ("+58more", "none", a year) is left out.
+    function pdbIdSpans(text) {
+        let out = [];
+        let m;
+        PDB_LIST_TOKEN.lastIndex = 0;
+        while ((m = PDB_LIST_TOKEN.exec(text)) !== null) {
+            let url = forester.pdbUrl(m[0]);
+            if (url) {
+                out.push({start: m.index, end: m.index + m[0].length, url: url});
+            }
+        }
+        return out;
+    }
+
+    // The links in a metadata value, in order, as {start, end, url} -- the
+    // ONE rule the node menu's "Open PDB" reads (the desktop's node window
+    // reads it too): a value that is a web address is one link, the whole
+    // value (the span is the whole value, padding included, as the desktop
+    // spans it; the text is trimmed where it is shown); a value in a field
+    // named for PDB identifiers holds one link per identifier it lists; any
+    // other value links nothing.
+    function valueSpans(value, pdbField) {
+        let web = webAddress(value);
+        if (web) {
+            return [{start: 0, end: value.length, url: web}];
+        }
+        return pdbField ? pdbIdSpans(value) : [];
+    }
+    forester.propertySpans = function (ref, value) {
+        return (typeof value === 'string') ? valueSpans(value, forester.isPdbRef(ref)) : [];
+    };
+
+    // The PDB entries a node names, as {text, url} in the node window's
+    // order -- each sequence's accession, then its cross-references, then
+    // what the metadata fields named for PDB identifiers link -- one per
+    // entry (an identifier named twice, "4KRR" and "4KRR_A", is one, and
+    // the first text wins), the text as the file writes it. Empty when none.
+    forester.pdbEntries = function (node) {
+        let byUrl = new Map();
+        let put = function (url, text) {
+            if (url && !byUrl.has(url)) {
+                byUrl.set(url, text);
+            }
+        };
+        let putAccession = function (acc) {
+            if (acc && typeof acc.value === 'string') {
+                put(pdbAccessionUrl(acc.value, acc.source), pdbTrim(acc.value));
+            }
+        };
+        if (node) {
+            (node.sequences || []).forEach(function (s) {
+                if (!s) {
+                    return;
+                }
+                putAccession(s.accession);
+                (s.cross_references || []).forEach(putAccession);
+            });
+            (node.properties || []).forEach(function (p) {
+                if (p && forester.isPdbRef(p.ref)) {   // a web address in any OTHER field is no PDB entry
+                    let value = (typeof p.value === 'string') ? p.value : '';
+                    valueSpans(value, true).forEach(function (span) {
+                        put(span.url, value.substring(span.start, span.end).trim());
+                    });
+                }
+            });
+        }
+        let out = [];
+        byUrl.forEach(function (text, url) {
+            out.push({text: text, url: url});
+        });
+        return out;
+    };
+
     // --------------------------------------------------------------
     // For exporting
     // --------------------------------------------------------------
