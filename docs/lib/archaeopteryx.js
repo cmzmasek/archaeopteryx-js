@@ -7403,7 +7403,7 @@ function (root, d3, forester, phyloXml) {
     }
 
 
-    // The accession the "Access DB" menu entry would look up, or null when this
+    // The accession the "Open Sequence DB" menu entry would look up, or null when this
     // node carries nothing a database link can be built from.
     function databaseAccessionFor(d) {
         let value = null;
@@ -7503,7 +7503,7 @@ function (root, d3, forester, phyloXml) {
                 update();
             }
 
-            function accessDatabase(node) {
+            function openSequenceDatabase(node) {
                 let url = null;
                 let accessionValue = null;
                 if (node.properties && node.properties.length > 0) {
@@ -7752,7 +7752,7 @@ function (root, d3, forester, phyloXml) {
                 let acc = databaseAccessionFor(d);
                 if (acc) {
                     items.push({separator: true});
-                    items.push({label: 'Access DB [' + acc + ']', action: function () { accessDatabase(d); }});
+                    items.push({label: 'Open Sequence DB [' + acc + ']', action: function () { openSequenceDatabase(d); }});
                 }
             }
             if ((_settings.enableSubtreeDeletion === true) && !_in_subtree

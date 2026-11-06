@@ -1787,7 +1787,7 @@ copy-pastable JSON.
 | `nhExportWriteConfidences` | `true` | Write confidences into exported Newick. |
 | `internalNumericLabels` | `'auto'` | Newick / Nexus parsing: how a bare numeric internal label (`)100:0.05`) is read. `'auto'` reads them as confidence values only when *every* internal label looks like support; `'confidence'` reads every numeric label as one, whatever its value; `'label'` keeps them as names. Replaces `nhConfidenceValuesAsInternalNames` (still accepted, with a warning; its `true` maps to `'confidence'`). |
 | `enableSubtreeDeletion` | `true` | Offer node / subtree deletion in the node menu. |
-| `enableAccessToDatabases` | `true` | Offer the “Access DB” link in the node menu. |
+| `enableAccessToDatabases` | `true` | Offer the “Open Sequence DB” link in the node menu. |
 | `enableManualNodeSelection` | `false` | Add the Select/Deselect entries to the node menu. |
 
 ### Anything else throws

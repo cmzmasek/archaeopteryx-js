@@ -172,13 +172,13 @@ test('a shortcut\'s keys for both platforms, from the chips of either', () => {
 });
 
 test('the node menu: labels keyed without their value, words from the table or the greyed reason, a new entry is a problem', () => {
-    assert.strictEqual(gen.menuLabel('Access DB [P12345]'), 'Access DB [accession]');
-    assert.strictEqual(gen.menuLabel('Access DB [YBL23344.1]'), 'Access DB [accession]');
+    assert.strictEqual(gen.menuLabel('Open Sequence DB [P12345]'), 'Open Sequence DB [accession]');
+    assert.strictEqual(gen.menuLabel('Open Sequence DB [YBL23344.1]'), 'Open Sequence DB [accession]');
     assert.strictEqual(gen.menuLabel('Delete Subtree'), 'Delete Subtree');
     // every entry the viewer builds has words
     for (const label of ['Display Node Data', 'Switch to Subtree', 'Collapse/Uncollapse', 'Uncollapse Subtree',
         'Swap Descendants', 'Ladderize Subtree', 'Reroot', 'Select/Deselect Node', 'Select/Deselect Tips',
-        'Download Ext. Node Data', 'List Sequences in Fasta', 'Download Sequences in Fasta', 'Access DB [accession]',
+        'Download Ext. Node Data', 'List Sequences in Fasta', 'Download Sequences in Fasta', 'Open Sequence DB [accession]',
         'Delete Subtree', 'Delete External Node']) {
         assert.ok(gen.MENU_WORDS[label], label + ' has words');
     }
@@ -187,7 +187,7 @@ test('the node menu: labels keyed without their value, words from the table or t
             {label: 'Display Node Data', disabled: false, title: '', danger: false},
             {label: 'Collapse/Uncollapse', disabled: true, title: '', danger: false},
             {label: 'Reroot', disabled: true, title: 'Time trees can\'t be re-rooted.', danger: false},
-            {label: 'Access DB [P12345]', disabled: false, title: '', danger: false},
+            {label: 'Open Sequence DB [P12345]', disabled: false, title: '', danger: false},
             {label: 'Frobnicate', disabled: false, title: '', danger: false}
         ]}
     ]}};
@@ -196,7 +196,7 @@ test('the node menu: labels keyed without their value, words from the table or t
         ['Node menu', 'Display Node Data', gen.MENU_WORDS['Display Node Data']],
         ['Node menu', 'Collapse/Uncollapse', gen.MENU_WORDS['Collapse/Uncollapse']],
         ['Node menu', 'Reroot', 'Time trees can\'t be re-rooted.'],
-        ['Node menu', 'Access DB [accession]', gen.MENU_WORDS['Access DB [accession]']]
+        ['Node menu', 'Open Sequence DB [accession]', gen.MENU_WORDS['Open Sequence DB [accession]']]
     ]);
     assert.deepStrictEqual(r.problems, ['a node menu entry without words: "Frobnicate"']);
     assert.deepStrictEqual(gen.menuRows({key: 'x'}), {rows: [], problems: []});

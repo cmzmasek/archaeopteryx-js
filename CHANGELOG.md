@@ -101,6 +101,9 @@ users see a change only when a version is cut.
   (⌘I), and About Archaeopteryx.js".
 
 ### Changed
+- **The node menu's database link is "Open Sequence DB [accession]"**, the
+  desktop's words ("Access DB" before): the entry names what happens, a
+  page opens. The config key `enableAccessToDatabases` is unchanged.
 - **A legend reads at the small tree font: 11 to 16 px.** Every legend (the
   Color-by, Shape-by and Clades-by-rank cards, the Protein domains card, the
   Gene families card) reads at the font the support values and branch lengths

@@ -130,7 +130,7 @@ const MENU_WORDS = {
         + 'window to copy from; offered when the tree carries sequences',
     'Download Sequences in Fasta': 'download the molecular sequences of the tips under this node as a FASTA '
         + 'file; offered when the tree carries sequences',
-    'Access DB [accession]': 'open the database record of this node\'s accession (NCBI protein or nucleotide, '
+    'Open Sequence DB [accession]': 'open the database record of this node\'s accession (NCBI protein or nucleotide, '
         + 'RefSeq, UniProt) in a new browser tab; offered when the node has one, among its properties or '
         + 'sequences or as a UniProt-style name such as CASP9_HUMAN',
     'Delete Subtree': 'remove this node and its whole clade from the tree on view; the visualizations and the '
@@ -429,10 +429,10 @@ function keyOf(r) {
 
 // ------------------------------------------------- the menu and the keys
 
-// An entry's label without the value it carries: "Access DB [P12345]" is the
+// An entry's label without the value it carries: "Open Sequence DB [P12345]" is the
 // one entry whatever the accession.
 function menuLabel(label) {
-    return label.replace(/^Access DB \[.*\]$/, 'Access DB [accession]');
+    return label.replace(/^Open Sequence DB \[.*\]$/, 'Open Sequence DB [accession]');
 }
 
 // The menu entries one launch read, as rows for unite(): one per entry, its

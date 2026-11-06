@@ -266,7 +266,7 @@
             }
         });
         const deep = (d) => !!(d.parent && d.parent.parent && d.parent.parent.parent);
-        // what the Access DB entry looks for: an accession among the
+        // what the Open Sequence DB entry looks for: an accession among the
         // properties or the sequences, or a UniProt-style name (CASP9_HUMAN)
         const hasAccession = (d) => (d.properties || []).some((p) => p.value && p.ref && /accession/i.test(p.ref))
             || (d.sequences || []).some((s) => s.accession && s.accession.value)
